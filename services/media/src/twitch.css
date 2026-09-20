@@ -1,0 +1,102 @@
+/* twitch.tv: purple on near-black, the followed-channels column with live dots, a grid
+   of streams with LIVE badges and viewer counts, and on a channel's stream the chat
+   column down the right-hand side. */
+.skin-twitch { --paper: #0e0e10; --surface: #18181b; --radius: 0px; --mast: 50px; --chip: #2f2f35; --guide: 240px; font-family: Inter, "Helvetica Neue", Arial, sans-serif; font-size: 13px; }
+.skin-twitch .masthead { background: #18181b; box-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.9); padding: 0 10px; }
+.skin-twitch .burger { display: none; }
+.skin-twitch .brand .mark { display: block; position: relative; width: 24px; height: 26px; background: #9146ff; border-radius: 2px 2px 2px 8px; margin-right: 8px; }
+.skin-twitch .brand .mark i { display: block; position: absolute; left: 9px; top: 7px; width: 3px; height: 8px; background: #ffffff; box-shadow: 6px 0 0 #ffffff; }
+.skin-twitch .brand .word { font-size: 22px; font-weight: 700; color: #efeff1; letter-spacing: -1px; text-transform: lowercase; }
+.skin-twitch .masthead .sections { display: flex; gap: 24px; flex: 1; font-size: 18px; font-weight: 600; margin-left: 12px; }
+.skin-twitch .masthead .sections a:hover { color: #bf94ff; }
+.skin-twitch .masthead .middle { flex: 0 1 390px; }
+.skin-twitch .searchbox, .skin-twitch .searchbox input, .skin-twitch .searchbox button { height: 36px; }
+.skin-twitch .searchbox input { border-radius: 6px 0 0 6px; border: 1px solid #53535f; border-right-width: 0; background: #0e0e10; font-size: 14px; padding: 0 10px; }
+.skin-twitch .searchbox input:focus { border-color: #a970ff; }
+.skin-twitch .searchbox button { border-radius: 0 6px 6px 0; border: 0; width: 36px; background: #2f2f35; margin-left: 1px; }
+.skin-twitch .masthead .end a { border-radius: 4px; background: #2f2f35; font-weight: 600; font-size: 13px; height: 30px; line-height: 30px; padding: 0 10px; }
+.skin-twitch .avatar { width: 30px; height: 30px; line-height: 30px; background: #00c8af; color: #0e0e10; }
+.skin-twitch .guide { background: #1f1f23; padding: 10px 0; }
+.skin-twitch .guide .item { border-radius: 0; height: 36px; padding: 0 10px; gap: 10px; font-weight: 600; }
+.skin-twitch .guide h3 { font-size: 13px; font-weight: 600; text-transform: uppercase; border: 0; margin: 8px 0 0 0; padding: 8px 10px; color: #efeff1; }
+.skin-twitch .guide .channel { border-radius: 0; height: 42px; padding: 5px 10px; gap: 10px; }
+.skin-twitch .guide .channel img.cover { width: 30px; height: 30px; }
+.skin-twitch .guide .channel .name { font-weight: 600; font-size: 14px; line-height: 17px; }
+.skin-twitch .guide .channel .sub { display: block; font-size: 13px; line-height: 16px; color: #adadb8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skin-twitch .livedot { background: #eb0400; }
+.skin-twitch main { padding: 0 30px 64px 30px; }
+.skin-twitch .billboard { height: 300px; margin: 20px 0 10px 0; border-radius: 6px; }
+.skin-twitch .billboard .copy { left: 30px; bottom: 30px; width: 460px; }
+.skin-twitch .billboard h1 { font-size: 24px; line-height: 30px; max-height: 60px; }
+.skin-twitch .billboard p { font-size: 14px; line-height: 20px; max-height: 60px; }
+.skin-twitch .cta { background: #9146ff; color: #ffffff; border-radius: 4px; height: 36px; font-size: 14px; font-weight: 600; }
+.skin-twitch .cta:hover { background: #772ce8; }
+.skin-twitch .cta.quiet { background: rgba(83,83,95,.6); }
+.skin-twitch .chips { position: static; padding: 10px 0 20px 0; gap: 8px; }
+.skin-twitch .chip { border-radius: 12px; height: 24px; line-height: 24px; padding: 0 10px; font-size: 12px; font-weight: 600; color: #adadb8; background: #2f2f35; }
+.skin-twitch .chip.on { background: #9146ff; color: #ffffff; }
+.skin-twitch .shelf { border: 0; margin: 0; padding: 0 0 20px 0; }
+.skin-twitch .shelf h2, .skin-twitch .gridtitle { font-size: 18px; line-height: 24px; font-weight: 600; margin: 0 0 10px 0; }
+.skin-twitch .shelf h2 a { color: #bf94ff; }
+.skin-twitch .gridtitle { display: block; }
+.skin-twitch .rail { gap: 10px; padding: 6px 0 12px 6px; }
+.skin-twitch .rail .tile { width: 290px; }
+.skin-twitch .rail .thumb { height: 163px; }
+.skin-twitch .grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px 10px; padding-left: 6px; }
+.skin-twitch .tile .thumb { background: #9146ff; overflow: visible; }
+.skin-twitch .tile .thumb img.still { transition-property: transform; transition-duration: .1s; }
+.skin-twitch .tile:hover .thumb img.still { transform: translate(6px, -6px); }
+.skin-twitch .flags { left: 10px; top: 10px; }
+.skin-twitch .flag { border-radius: 4px; font-size: 13px; line-height: 20px; padding: 0 5px; font-weight: 600; background: rgba(0,0,0,.6); }
+.skin-twitch .flag.live { background: #eb0400; }
+.skin-twitch .time { left: 10px; right: auto; bottom: 10px; border-radius: 2px; background: rgba(0,0,0,.6); font-size: 13px; line-height: 20px; font-weight: 400; }
+.skin-twitch .tile.live .time { display: none; }
+.skin-twitch .details { gap: 10px; margin-top: 10px; }
+.skin-twitch .details img.cover { width: 40px; height: 40px; }
+/* `overflow-wrap: break-word`, which the base sheet sets on every title so a long word
+   in a two-line card wraps, suppresses `text-overflow: ellipsis` in the engine (see the
+   report's engine gaps), so a one-line title turns it back off. */
+.skin-twitch .title { display: block; font-size: 14px; line-height: 20px; max-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; font-weight: 600; }
+.skin-twitch .tile:hover .title { color: #bf94ff; }
+.skin-twitch .text .channel { margin-top: 0; font-size: 13px; }
+.skin-twitch .stats { font-size: 13px; }
+.skin-twitch .pill { border-radius: 4px; height: 30px; font-size: 13px; font-weight: 600; padding: 0 10px; background: #2f2f35; }
+.skin-twitch .pill.subscribe, .skin-twitch .pill.solid { background: #9146ff; color: #ffffff; }
+.skin-twitch .pill.subscribe:hover { background: #772ce8; }
+.skin-twitch .pill.subscribe.on { background: #2f2f35; color: #efeff1; }
+.skin-twitch .pill.small { background: transparent; height: 20px; padding: 0 4px; }
+/* The stream page: the chat column runs down the right. */
+.skin-twitch.page-watch main { padding: 0; }
+.skin-twitch .watch-layout { grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "main comments" "side comments"; column-gap: 0; padding-top: 0; max-width: none; }
+.skin-twitch .info { padding: 16px 30px 0 30px; }
+.skin-twitch .upnext { padding: 16px 30px 40px 30px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px 16px; }
+.skin-twitch .upnext h2 { grid-column: 1 / -1; font-size: 16px; font-weight: 600; }
+.skin-twitch .heading h1 { font-size: 16px; line-height: 22px; font-weight: 600; }
+.skin-twitch .owner .names a { font-size: 18px; font-weight: 600; }
+.skin-twitch .description { background: #18181b; border-radius: 4px; }
+.skin-twitch .description a { color: #bf94ff; }
+.skin-twitch .comments { background: #18181b; border-left: 1px solid #2f2f35; padding: 0; position: sticky; top: var(--mast); height: calc(100vh - var(--mast)); display: flex; flex-direction: column; }
+.skin-twitch .comments h2 { font-size: 12px; line-height: 50px; height: 50px; font-weight: 600; text-transform: uppercase; text-align: center; margin: 0; border-bottom: 1px solid #2f2f35; flex: none; }
+.skin-twitch .thread { flex: 1; overflow-y: auto; padding: 10px 0; order: 1; }
+.skin-twitch .compose { order: 2; margin: 0; padding: 10px; flex: none; display: block; }
+.skin-twitch .compose img.cover { display: none; }
+.skin-twitch form.field { display: flex; flex-wrap: wrap; justify-content: flex-end; }
+.skin-twitch form.field input { flex: none; width: 100%; height: 40px; border: 2px solid transparent; border-radius: 6px; background: #2f2f35; padding: 0 10px; font-size: 13px; }
+.skin-twitch form.field input:focus { border: 2px solid #a970ff; background: #0e0e10; }
+.skin-twitch form.field button { height: 30px; border-radius: 4px; background: #9146ff; color: #ffffff; font-size: 13px; font-weight: 600; padding: 0 10px; margin-top: 10px; }
+.skin-twitch .comment { margin: 0; padding: 5px 20px; gap: 0; align-items: center; }
+.skin-twitch .comment:hover { background: #26262c; }
+.skin-twitch .comment img.cover { display: none; }
+.skin-twitch .comment .body { font-size: 13px; line-height: 20px; }
+.skin-twitch .comment .author { display: inline; font-weight: 700; color: #bf94ff; }
+.skin-twitch .comment:nth-child(3n+1) .author { color: #1e90ff; }
+.skin-twitch .comment:nth-child(3n+2) .author { color: #00c8af; }
+.skin-twitch .comment .author::after { content: ": "; color: #efeff1; font-weight: 400; }
+.skin-twitch .comment .said { display: inline; font-size: 13px; }
+.skin-twitch .tabs .tab { font-size: 18px; font-weight: 600; }
+.skin-twitch .tabs .tab.on { color: #bf94ff; border-bottom-color: #bf94ff; }
+.skin-twitch .banner { border-radius: 0; margin: 0 -30px; }
+@media (max-width: 1000px) {
+  .skin-twitch .watch-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "comments" "side"; }
+  .skin-twitch .comments { position: static; height: 420px; border-left: 0; }
+}

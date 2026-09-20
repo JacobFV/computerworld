@@ -1,0 +1,62 @@
+/* tiktok.com: black, the two-tone wordmark, the left rail of For You and the accounts
+   you follow, tall 9:16 tiles with the play count on the picture, and the red Follow. */
+.skin-tiktok { --radius: 8px; --mast: 60px; --chip: rgba(255,255,255,.12); --guide: 240px; font-family: Inter, "Helvetica Neue", Arial, sans-serif; }
+.skin-tiktok .masthead { border-bottom: 1px solid rgba(255,255,255,.12); }
+.skin-tiktok .burger { display: none; }
+.skin-tiktok .brand .mark { display: block; position: relative; width: 26px; height: 30px; }
+.skin-tiktok .brand .mark i { display: block; font-style: normal; font-size: 28px; line-height: 30px; color: #ffffff; text-shadow: -2px -1px 0 #25f4ee, 2px 1px 0 #fe2c55; }
+.skin-tiktok .brand .mark i::before { content: "\266A"; }
+.skin-tiktok .brand .word { font-size: 24px; font-weight: 700; letter-spacing: -1px; color: #ffffff; }
+.skin-tiktok .masthead .middle { flex: 0 1 516px; }
+.skin-tiktok .searchbox, .skin-tiktok .searchbox input, .skin-tiktok .searchbox button { height: 46px; }
+.skin-tiktok .searchbox input { border-radius: 23px 0 0 23px; border: 0; background: rgba(255,255,255,.12); font-size: 16px; }
+.skin-tiktok .searchbox button { border-radius: 0 23px 23px 0; border: 0; background: rgba(255,255,255,.12); border-left: 1px solid rgba(255,255,255,.12); width: 56px; color: rgba(255,255,255,.75); }
+.skin-tiktok .masthead .end a { background: #fe2c55; color: #ffffff; border-radius: 4px; font-weight: 700; }
+.skin-tiktok .guide { border-right: 1px solid rgba(255,255,255,.12); padding: 16px 8px; }
+.skin-tiktok .guide .item { font-size: 18px; font-weight: 700; height: 48px; gap: 12px; border-radius: 8px; background: transparent; }
+.skin-tiktok .guide .item.on { color: #fe2c55; }
+.skin-tiktok .guide h3 { font-size: 14px; font-weight: 600; color: var(--muted); }
+.skin-tiktok .guide .channel { height: 48px; gap: 12px; }
+.skin-tiktok .guide .channel img.cover { width: 32px; height: 32px; }
+.skin-tiktok .guide .channel .name { font-weight: 700; font-size: 16px; line-height: 20px; }
+.skin-tiktok .guide .channel .sub { display: block; font-size: 12px; line-height: 16px; color: var(--muted); }
+.skin-tiktok .chips { top: var(--mast); }
+.skin-tiktok .chip { border-radius: 8px; height: 38px; line-height: 38px; padding: 0 16px; font-size: 16px; font-weight: 600; }
+.skin-tiktok .shelf { border: 0; margin: 0; padding: 0 0 16px 0; }
+.skin-tiktok .shelf h2, .skin-tiktok .gridtitle { font-size: 18px; font-weight: 700; margin: 8px 0 12px 0; }
+.skin-tiktok .gridtitle { display: block; }
+.skin-tiktok .rail .tile { width: 200px; }
+.skin-tiktok .rail .thumb { height: 267px; }
+.skin-tiktok .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 24px 16px; }
+.skin-tiktok .tile { position: relative; }
+.skin-tiktok .tile .thumb { aspect-ratio: 3 / 4; }
+.skin-tiktok .tile .time { display: none; }
+.skin-tiktok .tile .details { display: block; margin-top: 8px; }
+.skin-tiktok .tile .details img.cover { display: none; }
+.skin-tiktok .tile .title { font-size: 14px; line-height: 18px; max-height: 36px; font-weight: 400; }
+.skin-tiktok .tile .channel { font-weight: 700; color: var(--ink); margin-top: 4px; }
+.skin-tiktok .tile .stats { position: absolute; left: 10px; top: 0; font-size: 14px; font-weight: 700; color: #ffffff; text-shadow: 0 1px 2px #000000; }
+.skin-tiktok .tile .stats .dot, .skin-tiktok .tile .stats span + span + span { display: none; }
+.skin-tiktok .pill.subscribe, .skin-tiktok .pill.solid { background: #fe2c55; color: #ffffff; border-radius: 4px; font-weight: 700; }
+.skin-tiktok .pill.subscribe.on { background: rgba(255,255,255,.12); }
+.skin-tiktok .pill.like.on { color: #fe2c55; }
+/* The video page: the tall video beside its comments. */
+.skin-tiktok .watch-layout { grid-template-columns: minmax(0, 1fr) 420px; grid-template-areas: "main comments" "side side"; max-width: 1200px; }
+.skin-tiktok .stage { width: 380px; aspect-ratio: 9 / 16; margin: 0 auto; border-radius: 16px; }
+.skin-tiktok .comments { padding: 0 0 24px 0; }
+.skin-tiktok .comments h2 { font-size: 16px; border-bottom: 1px solid rgba(255,255,255,.12); padding-bottom: 12px; }
+.skin-tiktok .upnext { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.12); }
+.skin-tiktok .upnext h2 { grid-column: 1 / -1; }
+.skin-tiktok .rowcard .thumb { width: 90px; aspect-ratio: 3 / 4; }
+.skin-tiktok .rowcard.long .thumb { width: 180px; }
+.skin-tiktok .description { background: rgba(255,255,255,.06); }
+.skin-tiktok .description a { color: #ffffff; font-weight: 700; }
+.skin-tiktok form.field input { height: 40px; border: 0; border-radius: 8px; background: rgba(255,255,255,.12); padding: 0 12px; }
+.skin-tiktok form.field input:focus { border: 0; }
+.skin-tiktok form.field button { background: transparent; color: #fe2c55; font-weight: 700; }
+.skin-tiktok .banner { display: none; }
+.skin-tiktok .identity img.cover { width: 116px; height: 116px; }
+.skin-tiktok .tabs .tab.on { border-bottom-color: #ffffff; }
+@media (max-width: 1000px) {
+  .skin-tiktok .watch-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "comments" "side"; }
+}

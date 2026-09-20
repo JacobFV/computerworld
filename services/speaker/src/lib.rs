@@ -8,7 +8,13 @@
 //! about which song is on. The player keeps the speaker current by sending the session
 //! again whenever it changes, and takes it back with `/api/stop`.
 //!
-//! - `GET /` — the speaker's page: its name, what it is playing, how far in, its volume.
+//! - `GET /` — the speaker's page, as HTML: its name, what it is playing, how far in,
+//!   its volume and the rest of the queue. `speaker.css` gives it the full-bleed "now
+//!   playing" screen a Sonos or a Chromecast puts on a display.
+//! - `GET /art/<key>?size=&radius=` — the album's generated artwork as a page image, the
+//!   same picture `cw_service_media` serves for the same key.
+//! - `POST /volume`, `POST /stop` — the browser's half of `/api/volume` and `/api/stop`:
+//!   the page's own controls post here and get the page back.
 //! - `GET /api/status` — the same as JSON, the position settled to the request's tick.
 //! - `POST /api/cast` — `{source, controller?, player, tracks}`: play this session here.
 //!   `player` is the music service's player (`queue`, `index`, `position_ms`, `playing`,
@@ -18,6 +24,8 @@
 //! - `POST /api/volume` — `{level}`: the speaker's own volume, 0 to 100.
 //!
 //! Seed: `{name, model, protocols: ["airplay"|"cast"|"dlna"...], volume}`.
+mod view;
+
 use cw_protocol::{HttpRequest, HttpResponse, Result};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
@@ -65,7 +73,7 @@ pub struct Speaker {
 }
 impl Speaker {
     /// The session as of `now`: the handed-over position carried forward on the clock.
-    fn settled(&self, now: u64) -> Option<(Session, Player)> {
+    pub(crate) fn settled(&self, now: u64) -> Option<(Session, Player)> {
         let session = self.session.clone()?;
         let player = session.player.settle(now, |id| {
             session.tracks.get(id).map_or(0, |t| t.duration_ms)
@@ -104,7 +112,7 @@ impl Speaker {
     }
 }
 
-fn clock(ms: u64) -> String {
+pub(crate) fn clock(ms: u64) -> String {
     let s = ms / 1_000;
     format!("{}:{:02}", s / 60, s % 60)
 }
@@ -140,8 +148,14 @@ impl Service for SpeakerService {
         let path = web::path(request);
         let method = request.method.to_ascii_uppercase();
         let now = ctx.tick;
+        // `/art/<key>` is the only route with a variable in it.
+        if method == "GET" {
+            if let Some(key) = path.trim_start_matches('/').strip_prefix("art/") {
+                return artwork(key, request);
+            }
+        }
         match (method.as_str(), path.trim_end_matches('/')) {
-            ("GET", "") => page(&speaker, now),
+            ("GET", "") => web::html::page(&view::page(&speaker, now)),
             ("GET", "/api/status") => HttpResponse::json(200, &speaker.status(now)),
             ("POST", "/api/cast") => {
                 let body = web::body(request)?;
@@ -169,12 +183,15 @@ impl Service for SpeakerService {
                 web::save(state, &speaker)?;
                 HttpResponse::json(200, &speaker.status(now))
             }
-            ("POST", "/api/stop") => {
+            ("POST", "/api/stop") | ("POST", "/stop") => {
                 speaker.session = None;
                 web::save(state, &speaker)?;
+                if path.trim_end_matches('/') == "/stop" {
+                    return web::html::page(&view::page(&speaker, now));
+                }
                 HttpResponse::json(200, &speaker.status(now))
             }
-            ("POST", "/api/volume") => {
+            ("POST", "/api/volume") | ("POST", "/volume") => {
                 let body = web::body(request)?;
                 let level = web::number(&body, "level")?;
                 if level > 100 {
@@ -182,6 +199,9 @@ impl Service for SpeakerService {
                 }
                 speaker.volume = level as u8;
                 web::save(state, &speaker)?;
+                if path.trim_end_matches('/') == "/volume" {
+                    return web::html::page(&view::page(&speaker, now));
+                }
                 HttpResponse::json(200, &speaker.status(now))
             }
             ("GET" | "POST", _) => web::error(404, "route not found"),
@@ -190,57 +210,34 @@ impl Service for SpeakerService {
     }
 }
 
-fn page(speaker: &Speaker, now: u64) -> Result<HttpResponse> {
-    let mut elements = vec![
-        web::heading("speaker-name", &speaker.name),
-        web::paragraph(
-            "speaker-model",
-            format!(
-                "{} · {}",
-                if speaker.model.is_empty() {
-                    "Network speaker"
-                } else {
-                    &speaker.model
-                },
-                speaker
-                    .protocols
-                    .iter()
-                    .map(|p| match p.as_str() {
-                        "airplay" => "AirPlay",
-                        "cast" => "Cast",
-                        _ => "DLNA",
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-        ),
-        web::paragraph("speaker-volume", format!("Volume {}%", speaker.volume)),
-    ];
-    match speaker.settled(now) {
-        Some((session, p)) => {
-            let id = p.current().unwrap_or_default();
-            let track = session.tracks.get(id).cloned().unwrap_or_default();
-            elements.push(web::paragraph(
-                "speaker-now",
-                format!(
-                    "{} {} — {}",
-                    if p.playing { "Playing" } else { "Paused" },
-                    track.title,
-                    track.artist
-                ),
-            ));
-            elements.push(web::paragraph(
-                "speaker-position",
-                format!("{} / {}", clock(p.position_ms), clock(track.duration_ms)),
-            ));
-            elements.push(web::paragraph(
-                "speaker-source",
-                format!("From {} ({})", session.source, session.controller),
-            ));
-        }
-        None => elements.push(web::paragraph("speaker-now", "Idle")),
+/// Largest cover the page may ask for.
+const ART_LIMIT: u32 = 512;
+/// `GET /art/<key>?size=&radius=`: the album's generated artwork as a page image. The
+/// key is the album's slug, so the picture is the very one the music service that cast
+/// here shows for the same album.
+fn artwork(key: &str, request: &HttpRequest) -> Result<HttpResponse> {
+    #[derive(Serialize)]
+    struct Asset<'a> {
+        width: u32,
+        height: u32,
+        rgba: &'a [u8],
     }
-    web::page(&speaker.name, elements)
+    let number = |k: &str| web::query(request, k).and_then(|v| v.parse::<u32>().ok());
+    let size = number("size").unwrap_or(320).clamp(8, ART_LIMIT);
+    let radius = number("radius").unwrap_or(0).min(size / 2);
+    let rgba = cw_artwork::rasterize(&cw_artwork::artwork(key), size, radius);
+    Ok(HttpResponse {
+        status: 200,
+        headers: BTreeMap::from([(
+            "content-type".into(),
+            cw_protocol::RGBA_MEDIA_TYPE.into(),
+        )]),
+        body: serde_json::to_vec(&Asset {
+            width: size,
+            height: size,
+            rgba: &rgba,
+        })?,
+    })
 }
 
 #[cfg(test)]
@@ -278,6 +275,43 @@ mod tests {
             )
             .unwrap()
     }
+    /// The page: HTML, strict-clean, parsed by the engine.
+    fn page(state: &mut Value, tick: u64) -> cw_web::dom::Document {
+        let reply = SpeakerService
+            .handle(state, &ctx(tick), &HttpRequest::get("http://livingroom/"))
+            .unwrap();
+        assert_eq!(reply.status, 200);
+        assert_eq!(
+            reply.header("content-type"),
+            Some(web::html::HTML_MEDIA_TYPE)
+        );
+        let html = String::from_utf8(reply.body).unwrap();
+        web::html::validate_strict(&html).unwrap_or_else(|e| panic!("{e:?}"));
+        cw_web::html::parse(&html)
+    }
+    /// A page posted to, which answers with the page again.
+    fn submit(state: &mut Value, tick: u64, path: &str, fields: &[(&str, &str)]) -> HttpResponse {
+        let body: String = fields
+            .iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect::<Vec<_>>()
+            .join("&");
+        let mut request = HttpRequest::get(format!("http://livingroom{path}"));
+        request.method = "POST".into();
+        request.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
+        request.body = body.into_bytes();
+        SpeakerService.handle(state, &ctx(tick), &request).unwrap()
+    }
+    fn text_of(dom: &cw_web::dom::Document, id: &str) -> String {
+        let node = *dom
+            .by_id(id)
+            .first()
+            .unwrap_or_else(|| panic!("no #{id} on the page"));
+        dom.text_content(node).split_whitespace().collect::<Vec<_>>().join(" ")
+    }
     fn session() -> Value {
         json!({
             "source": "http://spotify.com/",
@@ -305,18 +339,82 @@ mod tests {
         // Only what was queued is kept.
         let speaker: Speaker = serde_json::from_value(state.clone()).unwrap();
         assert!(!speaker.session.unwrap().tracks.contains_key("zzz"));
-        // Its page says so too.
-        let page = SpeakerService
-            .handle(
-                &mut state,
-                &ctx(13 * S),
-                &HttpRequest::get("http://livingroom/"),
-            )
-            .unwrap();
-        let page: cw_protocol::Page = serde_json::from_slice(&page.body).unwrap();
-        page.validate().unwrap();
-        let text = serde_json::to_string(&page).unwrap();
-        assert!(text.contains("Playing B — X") && text.contains("0:05 / 0:20"));
+        // Its page says so too: the state, the track, the artist and the clock.
+        let dom = page(&mut state, 13 * S);
+        assert_eq!(text_of(&dom, "speaker-state"), "Playing");
+        assert_eq!(text_of(&dom, "speaker-now"), "B");
+        assert_eq!(text_of(&dom, "speaker-artist"), "X");
+        assert_eq!(text_of(&dom, "speaker-position"), "0:05 / 0:20");
+        assert_eq!(text_of(&dom, "speaker-name"), "Living Room");
+        assert_eq!(
+            text_of(&dom, "speaker-source"),
+            "From http://spotify.com/ (alice)"
+        );
+        // The art is the album's own key, the one the music service rasterises.
+        let art = *dom.by_id("speaker-art").first().expect("the art is shown");
+        assert_eq!(dom.attr(art, "src"), Some("/art/b?size=320&radius=10"));
+    }
+
+    #[test]
+    fn the_pages_own_controls_set_the_volume_and_stop_the_session() {
+        let mut state = seed();
+        // Idle: the screen says so, and the volume slider is still the speaker's.
+        let dom = page(&mut state, 0);
+        assert_eq!(text_of(&dom, "speaker-state"), "Idle");
+        assert_eq!(text_of(&dom, "speaker-now"), "Nothing playing");
+        assert_eq!(text_of(&dom, "speaker-artist"), "Ready for AirPlay, Cast");
+        assert_eq!(text_of(&dom, "speaker-volume"), "Volume 40%");
+        assert!(dom.by_id("speaker-art").is_empty(), "nothing to show");
+        // Every fifth percent is its own control, and it really posts a level.
+        let form = *dom.by_id("speaker-volume-55-form").first().unwrap();
+        assert_eq!(dom.attr(form, "action"), Some("/volume"));
+        assert_eq!(dom.attr(form, "method"), Some("post"));
+        let level = dom
+            .descendants(form)
+            .find(|n| dom.attr(*n, "name") == Some("level"))
+            .expect("the control carries a level");
+        assert_eq!(dom.attr(level, "value"), Some("55"));
+        assert_eq!(submit(&mut state, 0, "/volume", &[("level", "55")]).status, 200);
+        assert_eq!(
+            text_of(&page(&mut state, 0), "speaker-volume"),
+            "Volume 55%"
+        );
+        assert_eq!(get(&mut state, 0, "/api/status")["volume"], 55);
+        // A level the slider could never send is still refused.
+        assert_eq!(submit(&mut state, 0, "/volume", &[("level", "140")]).status, 400);
+        // Playing: the queue beyond the current song is "Up next", and Stop ends it.
+        post(&mut state, 0, "/api/cast", session());
+        let dom = page(&mut state, 0);
+        assert_eq!(text_of(&dom, "speaker-now"), "A");
+        assert_eq!(text_of(&dom, "speaker-queue-1"), "2BX0:20");
+        let stop = *dom.by_id("speaker-stop-form").first().unwrap();
+        assert_eq!(dom.attr(stop, "action"), Some("/stop"));
+        assert_eq!(submit(&mut state, 0, "/stop", &[]).status, 200);
+        assert!(get(&mut state, 0, "/api/status")["session"].is_null());
+        assert_eq!(text_of(&page(&mut state, 0), "speaker-state"), "Idle");
+    }
+
+    #[test]
+    fn every_shipped_speaker_serves_a_strict_page_idle_and_playing() {
+        for name in ["livingroom-speaker", "kitchen-speaker", "office-tv-speaker"] {
+            let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../../worlds/company-2026/sites/{name}.json"));
+            let file: Value =
+                serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+            let mut state = SpeakerService
+                .initialize(file["initial_state"].clone(), &ctx(0))
+                .unwrap_or_else(|e| panic!("{name} seed: {e}"));
+            // Idle, then with a session on: both states of every shipped speaker.
+            let idle = page(&mut state, 0);
+            assert_eq!(
+                text_of(&idle, "speaker-name"),
+                file["initial_state"]["name"].as_str().unwrap()
+            );
+            assert!(!idle.by_id("speaker-protocols").is_empty(), "{name}");
+            post(&mut state, 0, "/api/cast", session());
+            let on = page(&mut state, 3 * S);
+            assert_eq!(text_of(&on, "speaker-state"), "Playing", "{name}");
+        }
     }
 
     #[test]

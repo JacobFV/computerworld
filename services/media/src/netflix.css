@@ -1,0 +1,54 @@
+/* netflix.com: black, the red wordmark, a masthead that floats over a billboard with a
+   gradient, and rows of posters that scroll sideways. No guide; the rows are the site. */
+.skin-netflix { --paper: #141414; --radius: 4px; --mast: 68px; --chip: rgba(255,255,255,.08); font-family: Arial, Helvetica, sans-serif; }
+.skin-netflix .masthead { position: fixed; left: 0; right: 0; height: var(--mast); padding: 0 48px; background: linear-gradient(180deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,0) 100%); justify-content: flex-start; gap: 32px; }
+.skin-netflix.page-watch .masthead, .skin-netflix.page-results .masthead, .skin-netflix.page-playlist .masthead,
+.skin-netflix.page-library .masthead, .skin-netflix.page-channel .masthead { position: sticky; background: #141414; }
+.skin-netflix .burger, .skin-netflix .guide, .skin-netflix .masthead .end a { display: none; }
+.skin-netflix .brand .word { color: #e50914; font-size: 30px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; transform: scaleY(1.25); display: block; text-shadow: 0 1px 0 #7a0509; }
+.skin-netflix .masthead .sections { display: flex; flex: 1; }
+.skin-netflix .masthead .sections a { color: #e5e5e5; font-size: 14px; }
+.skin-netflix .masthead .sections a:hover { color: #b3b3b3; }
+.skin-netflix .masthead .middle { flex: 0 1 260px; }
+.skin-netflix .searchbox { height: 34px; }
+.skin-netflix .searchbox input { height: 34px; order: 2; border: 1px solid rgba(255,255,255,.85); border-left-width: 0; border-radius: 0; background: rgba(0,0,0,.75); font-size: 14px; padding: 0 8px; }
+.skin-netflix .searchbox button { height: 34px; width: 38px; order: 1; border: 1px solid rgba(255,255,255,.85); border-right-width: 0; border-radius: 0; background: rgba(0,0,0,.75); }
+.skin-netflix .avatar { border-radius: 4px; background: #0b6cc4; }
+.skin-netflix main { padding: 0 48px 64px 48px; }
+.skin-netflix .billboard { height: 600px; margin: 0 -48px; }
+.skin-netflix .billboard .fade { background: linear-gradient(77deg, rgba(0,0,0,.75) 0%, rgba(0,0,0,0) 80%), linear-gradient(180deg, rgba(20,20,20,0) 60%, #141414 100%); }
+.skin-netflix .billboard .copy { bottom: 150px; }
+.skin-netflix .billboard h1 { font-size: 48px; line-height: 54px; text-shadow: 2px 2px 4px rgba(0,0,0,.45); }
+.skin-netflix .billboard p { font-size: 18px; line-height: 25px; max-height: 75px; text-shadow: 2px 2px 4px rgba(0,0,0,.45); }
+.skin-netflix .flag { background: #e50914; border-radius: 2px; }
+.skin-netflix .chips { position: relative; top: 0; margin-top: -112px; background: transparent; z-index: 5; }
+.skin-netflix.page-home .chips { padding-bottom: 20px; }
+.skin-netflix .chip { background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.6); border-radius: 16px; height: 30px; line-height: 28px; font-weight: 400; }
+.skin-netflix .chip.on { background: #ffffff; color: #141414; }
+.skin-netflix .shelf { border: 0; margin: 0; padding: 0 0 28px 0; position: relative; z-index: 5; }
+.skin-netflix .shelf h2, .skin-netflix .gridtitle { font-size: 20px; font-weight: 700; color: #e5e5e5; margin: 0 0 10px 0; }
+.skin-netflix .shelf h2 a:hover { color: #ffffff; }
+.skin-netflix .gridtitle { display: block; margin-top: 12px; }
+.skin-netflix .rail { gap: 6px; }
+/* Netflix's web rows are landscape boxart, not the phone app's portrait posters:
+   about five to a row at 1280, each 16:9. */
+.skin-netflix .rail .tile { width: 244px; }
+.skin-netflix .tile { position: relative; border-radius: 4px; overflow: hidden; }
+.skin-netflix .rail .thumb { height: 137px; }
+.skin-netflix .tile .details { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; padding: 40px 10px 10px 10px; background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.9)); }
+.skin-netflix .tile .details img.cover, .skin-netflix .tile .channel, .skin-netflix .tile .stats { display: none; }
+.skin-netflix .tile .title { font-size: 14px; line-height: 18px; max-height: 54px; font-weight: 700; color: #ffffff; text-shadow: 0 1px 2px #000000; }
+.skin-netflix .tile .time { right: 6px; top: 6px; bottom: auto; background: rgba(0,0,0,.6); }
+.skin-netflix .tile .flags { left: 6px; top: 6px; }
+.skin-netflix .tile:hover { box-shadow: 0 0 0 2px #ffffff; }
+.skin-netflix .grid { grid-template-columns: repeat(auto-fill, minmax(244px, 1fr)); gap: 32px 6px; }
+.skin-netflix .pill { border-radius: 4px; }
+.skin-netflix .pill.subscribe, .skin-netflix .pill.solid { background: #ffffff; color: #000000; font-weight: 700; }
+.skin-netflix .pill.subscribe.on { background: rgba(109,109,110,.7); color: #ffffff; }
+.skin-netflix .stage { border-radius: 0; }
+.skin-netflix .description { background: transparent; padding: 12px 0; font-size: 16px; line-height: 24px; }
+.skin-netflix .description a { color: #ffffff; text-decoration: underline; }
+.skin-netflix form.field button { background: #e50914; color: #ffffff; border-radius: 4px; }
+.skin-netflix .tabs .tab.on { border-bottom-color: #e50914; }
+.skin-netflix .banner { border-radius: 0; height: 240px; margin: 0 -48px; }
+.skin-netflix .tile.stack .thumb { box-shadow: none; }

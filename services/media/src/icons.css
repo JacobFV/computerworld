@@ -1,0 +1,48 @@
+/* Glyphs every skin shares, drawn from text symbols the bundled faces carry and from
+   boxes: `<span class="ic ic-play"><i></i></span>`. A skin recolours them through
+   `color` and resizes them through `font-size` on the `.ic`. */
+.ic {
+  display: inline-block; position: relative; width: 24px; height: 24px; line-height: 24px;
+  text-align: center; font-size: 16px; font-style: normal; font-weight: 400; vertical-align: middle; flex: none;
+}
+.ic i { display: none; font-style: normal; }
+.ic-play::before { content: "\25B6"; }
+.ic-pause i { display: block; position: absolute; left: 7px; top: 5px; width: 10px; height: 14px; border-left: 4px solid currentColor; border-right: 4px solid currentColor; }
+.ic-next::before { content: "\25B6"; margin-right: 3px; }
+.ic-next i { display: block; position: absolute; right: 4px; top: 7px; width: 2px; height: 11px; background: currentColor; }
+.ic-previous::before { content: "\25C0"; margin-left: 3px; }
+.ic-previous i { display: block; position: absolute; left: 4px; top: 7px; width: 2px; height: 11px; background: currentColor; }
+.ic-shuffle::before { content: "\21C4"; font-size: 20px; }
+.ic-repeat::before, .ic-repeat-one::before { content: "\21BB"; font-size: 20px; }
+.ic-repeat-one i { display: block; position: absolute; right: 0; top: 0; width: 10px; height: 10px; line-height: 10px; font-size: 9px; font-weight: 700; }
+.ic-repeat-one i::before { content: "1"; }
+.ic-like::before { content: "\2661"; font-size: 20px; }
+.ic-like-fill::before { content: "\2665"; font-size: 20px; }
+.ic-home::before { content: "\2302"; font-size: 22px; }
+.ic-compass::before { content: "\25CE"; font-size: 20px; }
+.ic-plus::before { content: "+"; font-size: 22px; }
+.ic-check::before { content: "\2713"; }
+.ic-close::before { content: "\2715"; }
+.ic-clock::before { content: "\25F7"; font-size: 18px; }
+.ic-mic::before { content: "\266A"; font-size: 18px; }
+.ic-queue::before { content: "\2630"; }
+.ic-info i { display: block; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border: 2px solid currentColor; border-radius: 50%; line-height: 14px; font-size: 12px; font-weight: 700; }
+.ic-info i::before { content: "i"; }
+.ic-gear::before { content: "\2699"; font-size: 18px; }
+.ic-radio::before { content: "\25C9"; }
+.ic-release::before { content: "\271A"; }
+.ic-chart::before { content: "\2191"; font-size: 20px; }
+.ic-mood::before { content: "\263A"; font-size: 20px; }
+.ic-full i { display: block; position: absolute; left: 5px; top: 6px; width: 14px; height: 12px; border: 2px solid currentColor; }
+.ic-search i { display: block; position: absolute; left: 4px; top: 4px; width: 12px; height: 12px; border: 2px solid currentColor; border-radius: 50%; }
+.ic-search::after { content: ""; position: absolute; left: 14px; top: 14px; width: 7px; height: 2px; background: currentColor; transform: rotate(45deg); transform-origin: 0 50%; }
+.ic-library i { display: block; position: absolute; left: 4px; top: 4px; width: 3px; height: 16px; background: currentColor; }
+.ic-library::before { content: ""; position: absolute; left: 10px; top: 4px; width: 3px; height: 16px; background: currentColor; }
+.ic-library::after { content: ""; position: absolute; left: 17px; top: 5px; width: 3px; height: 15px; background: currentColor; transform: rotate(-14deg); }
+.ic-bars i { display: block; position: absolute; left: 10px; bottom: 5px; width: 3px; height: 13px; background: currentColor; }
+.ic-bars::before { content: ""; position: absolute; left: 5px; bottom: 5px; width: 3px; height: 8px; background: currentColor; }
+.ic-bars::after { content: ""; position: absolute; left: 15px; bottom: 5px; width: 3px; height: 10px; background: currentColor; }
+.ic-volume i, .ic-volume-mute i { display: block; position: absolute; left: 3px; top: 9px; width: 5px; height: 6px; background: currentColor; }
+.ic-volume::before, .ic-volume-mute::before { content: "\25C0"; position: absolute; left: 2px; top: 0; font-size: 15px; }
+.ic-volume::after { content: ")"; position: absolute; left: 16px; top: -1px; font-size: 14px; font-weight: 700; }
+.ic-volume-mute::after { content: "\2715"; position: absolute; left: 15px; top: 0; font-size: 9px; }

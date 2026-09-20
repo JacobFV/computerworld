@@ -1,0 +1,52 @@
+/* vimeo.com: the lowercase wordmark, a quiet top navigation, a staff-picked film
+   leading the page, showcases as rows and calm, rounded, blue-accented controls. */
+.skin-vimeo { --radius: 8px; --mast: 64px; --chip: rgba(255,255,255,.08); font-family: Inter, "Helvetica Neue", Arial, sans-serif; }
+.skin-vimeo .masthead { padding: 0 32px; border-bottom: 1px solid var(--line); justify-content: flex-start; gap: 28px; }
+.skin-vimeo .burger, .skin-vimeo .guide { display: none; }
+.skin-vimeo .brand .word { font-size: 28px; font-weight: 700; font-style: italic; letter-spacing: -1.5px; text-transform: lowercase; color: #ffffff; }
+.skin-vimeo .masthead .sections { display: flex; gap: 24px; flex: 1; font-size: 15px; font-weight: 600; }
+.skin-vimeo .masthead .sections a:hover { color: var(--accent); }
+.skin-vimeo .masthead .middle { flex: 0 1 320px; }
+.skin-vimeo .searchbox, .skin-vimeo .searchbox input, .skin-vimeo .searchbox button { height: 40px; }
+.skin-vimeo .searchbox input { border-radius: 8px 0 0 8px; border-color: #30363d; background: #161b22; font-size: 14px; }
+.skin-vimeo .searchbox input:focus { border-color: var(--accent); }
+.skin-vimeo .searchbox button { border-radius: 0 8px 8px 0; border-color: #30363d; background: #161b22; width: 44px; }
+.skin-vimeo .masthead .end a { background: var(--accent); color: #0d1117; border-radius: 6px; font-weight: 700; }
+.skin-vimeo .avatar { background: #ff6b6b; }
+.skin-vimeo main { padding: 0 32px 64px 32px; max-width: 1400px; margin: 0 auto; }
+.skin-vimeo .billboard { height: 440px; margin: 24px 0 8px 0; border-radius: 12px; }
+.skin-vimeo .billboard .copy { left: 40px; bottom: 40px; }
+.skin-vimeo .billboard h1 { font-size: 36px; line-height: 42px; }
+.skin-vimeo .cta { background: var(--accent); color: #0d1117; border-radius: 6px; height: 40px; font-size: 15px; }
+.skin-vimeo .cta.quiet { background: rgba(255,255,255,.16); color: #ffffff; }
+.skin-vimeo .flag { background: #ffffff; color: #0d1117; border-radius: 3px; text-transform: none; letter-spacing: 0; font-size: 12px; }
+.skin-vimeo .chips { position: static; padding: 16px 0; }
+.skin-vimeo .chip { border-radius: 16px; background: transparent; border: 1px solid #30363d; line-height: 30px; font-weight: 600; font-size: 13px; }
+.skin-vimeo .chip:hover { border-color: var(--accent); background: transparent; }
+.skin-vimeo .chip.on { background: #ffffff; color: #0d1117; border-color: #ffffff; }
+.skin-vimeo .shelf { border: 0; margin: 0; padding: 0 0 24px 0; }
+.skin-vimeo .shelf h2, .skin-vimeo .gridtitle { font-size: 22px; line-height: 28px; font-weight: 700; margin: 8px 0 14px 0; }
+.skin-vimeo .shelf h2 a:hover { color: var(--accent); }
+.skin-vimeo .gridtitle { display: block; }
+.skin-vimeo .rail .tile { width: 320px; }
+.skin-vimeo .rail .thumb { height: 180px; }
+.skin-vimeo .grid { gap: 32px 20px; }
+.skin-vimeo .details img.cover { width: 28px; height: 28px; order: 2; }
+.skin-vimeo .title { font-size: 16px; font-weight: 700; max-height: 22px; white-space: nowrap; text-overflow: ellipsis; }
+.skin-vimeo .tile:hover .title { color: var(--accent); }
+.skin-vimeo .text .channel { margin-top: 2px; }
+.skin-vimeo .time { background: rgba(13,17,23,.85); border-radius: 3px; }
+.skin-vimeo .pill { border-radius: 6px; font-weight: 700; }
+.skin-vimeo .pill.subscribe, .skin-vimeo .pill.solid { background: var(--accent); color: #0d1117; }
+.skin-vimeo .pill.subscribe.on { background: transparent; border: 1px solid #30363d; color: var(--ink); }
+.skin-vimeo .pill.like.on { color: #ff6b6b; }
+.skin-vimeo .stage { border-radius: 0; }
+.skin-vimeo .stage .bigplay { background: rgba(26,183,234,.9); border-radius: 6px; }
+.skin-vimeo .watch-layout { grid-template-columns: minmax(0, 1fr) 360px; max-width: 1400px; }
+.skin-vimeo .heading h1 { font-size: 28px; line-height: 34px; }
+.skin-vimeo .description { background: transparent; padding: 12px 0; font-size: 16px; line-height: 24px; }
+.skin-vimeo .description a { color: var(--accent); }
+.skin-vimeo form.field input { height: 40px; border: 1px solid #30363d; border-radius: 6px; padding: 0 12px; background: #161b22; }
+.skin-vimeo form.field input:focus { border: 1px solid var(--accent); }
+.skin-vimeo form.field button { background: var(--accent); border-radius: 6px; font-weight: 700; }
+.skin-vimeo .tabs .tab.on { border-bottom-color: var(--accent); }

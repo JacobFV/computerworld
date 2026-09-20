@@ -10,3 +10,9 @@ serde.workspace = true
 serde_json.workspace = true
 cw-service-common = { path = "../common" }
 cw-artwork = { path = "../../crates/artwork" }
+
+[dev-dependencies]
+cw-service-common = { path = "../common", features = ["validate"] }
+cw-web = { path = "../../crates/web" }
+cw-render = { path = "../../crates/render" }
+png = "0.17"

@@ -1,0 +1,147 @@
+/* music.youtube.com: near-black, the red disc beside "Music", the wide search box, Home,
+   Explore and Library down the left above your playlists, mood chips, shelves of square
+   covers and round artists, and the grey player bar whose top edge is the red progress line. */
+.skin-ytmusic { --accent: #ff0000; --page: #030303; --paper: #030303; --raised: rgba(255,255,255,.1); --track: rgba(255,255,255,.2); --played: #ff0000; --chip: rgba(255,255,255,.1); --top: 64px; --bar: 72px; --side: 240px; font-family: Roboto, Arial, sans-serif; }
+.skin-ytmusic .topbar { padding: 0 24px 0 16px; border-bottom: 1px solid rgba(255,255,255,.1); justify-content: flex-start; }
+.skin-ytmusic .topbar .start { display: flex; align-items: center; gap: 16px; width: 224px; flex: none; }
+.skin-ytmusic .burger { display: block; width: 24px; padding: 3px; }
+.skin-ytmusic .burger i { display: block; height: 2px; margin: 4px 0; background: #ffffff; }
+.skin-ytmusic .logo { display: flex; align-items: center; gap: 4px; }
+.skin-ytmusic .logo .mark { display: block; width: 26px; height: 26px; border-radius: 50%; background: #ff0000; text-align: center; box-shadow: inset 0 0 0 3px #ff0000, inset 0 0 0 4px #ffffff; }
+.skin-ytmusic .logo .mark .ic { width: 26px; height: 26px; line-height: 26px; font-size: 9px; color: #ffffff; }
+.skin-ytmusic .logo .name { font-size: 20px; font-weight: 700; letter-spacing: -1px; }
+.skin-ytmusic .searchpill { flex: 0 1 480px; height: 40px; padding: 0 12px; gap: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.08); color: var(--muted); font-size: 16px; margin-left: 76px; }
+.skin-ytmusic .searchpill:hover { background: rgba(255,255,255,.14); }
+.skin-ytmusic .avatar { background: #7e57c2; color: #ffffff; margin-left: auto; font-weight: 400; }
+.skin-ytmusic .frame { gap: 0; padding-left: 0; padding-right: 0; }
+.skin-ytmusic .side { border-right: 1px solid rgba(255,255,255,.1); padding: 8px; min-height: calc(100vh - var(--top) - var(--bar)); max-height: calc(100vh - var(--top) - var(--bar)); }
+.skin-ytmusic .nav { display: block; height: 48px; border-radius: 8px; padding: 0 16px; }
+.skin-ytmusic .nav .row { display: flex; align-items: center; gap: 20px; height: 48px; }
+.skin-ytmusic .nav .label { font-size: 16px; font-weight: 500; }
+.skin-ytmusic .nav:hover { background: rgba(255,255,255,.06); }
+.skin-ytmusic .nav.on { background: rgba(255,255,255,.1); }
+.skin-ytmusic .side hr { margin: 16px 16px; }
+.skin-ytmusic .side .pill { display: flex; justify-content: center; height: 36px; border-radius: 18px; background: rgba(255,255,255,.1); margin: 0 8px 12px 8px; font-size: 14px; font-weight: 500; }
+.skin-ytmusic .side .list { display: block; padding: 8px 16px; border-radius: 8px; }
+.skin-ytmusic .side .list:hover { background: rgba(255,255,255,.06); }
+.skin-ytmusic .side .list .title { display: block; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skin-ytmusic .side .list .meta { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skin-ytmusic #main { padding: 24px 56px 48px 56px; max-width: 1480px; }
+.skin-ytmusic.page-home #main { background: linear-gradient(180deg, rgba(90,40,60,.45) 0px, rgba(3,3,3,0) 320px); }
+.skin-ytmusic .chip { border-radius: 8px; height: 36px; padding: 0 12px; font-size: 14px; font-weight: 500; border: 1px solid rgba(255,255,255,.05); }
+.skin-ytmusic .heading { font-size: 30px; line-height: 38px; font-weight: 700; margin: 36px 0 16px 0; }
+.skin-ytmusic .shelf { gap: 20px; margin: 0; }
+.skin-ytmusic .tile { width: 160px; padding: 0; border-radius: 4px; }
+.skin-ytmusic .tile:hover { background: transparent; }
+.skin-ytmusic .tile img.cover, .skin-ytmusic .tile .likedart.large { width: 160px; height: 160px; border-radius: 4px; box-shadow: none; }
+.skin-ytmusic .tile .likedart.large .ic { line-height: 160px; }
+.skin-ytmusic .tile.round img.cover { border-radius: 50%; }
+.skin-ytmusic .tile.round .title, .skin-ytmusic .tile.round .meta { text-align: center; }
+.skin-ytmusic .tile .title { font-size: 16px; font-weight: 500; margin-top: 12px; }
+.skin-ytmusic .tile .meta { font-size: 14px; line-height: 20px; max-height: 40px; }
+.skin-ytmusic .tilegrid { margin: 16px 0 0 0; gap: 24px 20px; }
+.skin-ytmusic .shelf.picks { display: grid; grid-template-rows: repeat(4, 56px); grid-auto-flow: column; grid-auto-columns: minmax(300px, 1fr); gap: 0 24px; }
+.skin-ytmusic .song { display: block; border-radius: 4px; padding: 4px; min-width: 0; }
+.skin-ytmusic .song:hover { background: rgba(255,255,255,.06); }
+.skin-ytmusic .song .row { display: flex; align-items: center; gap: 16px; }
+.skin-ytmusic .song img.cover { width: 48px; height: 48px; border-radius: 2px; }
+.skin-ytmusic .song .title { font-weight: 500; }
+.skin-ytmusic .likedart { background: linear-gradient(135deg, #6d3df5, #e04fb4); }
+.skin-ytmusic .explore-buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.skin-ytmusic .bigbutton { display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 20px; border-radius: 8px; background: rgba(255,255,255,.1); font-size: 20px; font-weight: 700; }
+.skin-ytmusic .bigbutton:hover { background: rgba(255,255,255,.17); }
+.skin-ytmusic .bigbutton.on { background: #ffffff; color: #000000; }
+.skin-ytmusic .genres { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 24px; }
+.skin-ytmusic .genre { display: block; height: 48px; border-radius: 4px; background: #292929; overflow: hidden; }
+.skin-ytmusic .genre:hover { background: #3a3a3a; }
+.skin-ytmusic .genre .row { display: flex; align-items: center; gap: 12px; height: 48px; }
+.skin-ytmusic .genre .edge { display: block; width: 6px; height: 48px; flex: none; }
+.skin-ytmusic .genre .name { font-size: 14px; font-weight: 700; }
+.skin-ytmusic .header { display: flex; align-items: center; gap: 32px; padding: 16px 0 24px 0; }
+.skin-ytmusic .header img.cover, .skin-ytmusic .header .likedart.huge { width: 220px; height: 220px; border-radius: 6px; }
+.skin-ytmusic .header .likedart.huge .ic { line-height: 220px; }
+.skin-ytmusic .header .identity { flex: 1; min-width: 0; }
+.skin-ytmusic .header h1 { font-size: 36px; line-height: 44px; font-weight: 700; margin-bottom: 8px; }
+.skin-ytmusic .line { display: block; font-size: 14px; line-height: 22px; color: rgba(255,255,255,.7); }
+.skin-ytmusic .buttons { display: flex; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+.skin-ytmusic .ctl.bigplay { background: #ffffff; width: 64px; height: 64px; line-height: 64px; }
+.skin-ytmusic .ctl.bigplay .ic { width: 64px; height: 64px; line-height: 64px; font-size: 26px; }
+.skin-ytmusic .outline { height: 36px; border-radius: 18px; border-color: rgba(255,255,255,.2); font-size: 14px; font-weight: 500; }
+.skin-ytmusic .subscribe { height: 36px; padding: 0 16px; border-radius: 18px; background: #ffffff; color: #000000; font-size: 14px; font-weight: 500; white-space: nowrap; }
+.skin-ytmusic .subscribe.on { background: rgba(255,255,255,.2); color: #ffffff; }
+.skin-ytmusic .trow { border-bottom: 1px solid rgba(255,255,255,.1); border-radius: 0; min-height: 56px; }
+.skin-ytmusic .trow.current .names .title { color: #ffffff; }
+.skin-ytmusic .num.playing { color: #ffffff; }
+.skin-ytmusic .cells img.cover { width: 32px; height: 32px; border-radius: 2px; }
+.skin-ytmusic .cells.with-art { grid-template-columns: 28px 32px minmax(0, 4fr) minmax(0, 3fr); }
+.skin-ytmusic .names .title { font-weight: 500; font-size: 14px; }
+/* Thumbs for likes: the palm, the cuff and the thumb. */
+.skin-ytmusic .ic-like::before, .skin-ytmusic .ic-like-fill::before { content: ""; position: absolute; left: 5px; top: 11px; width: 3px; height: 9px; border: 1px solid currentColor; }
+.skin-ytmusic .ic-like i, .skin-ytmusic .ic-like-fill i { display: block; position: absolute; left: 9px; top: 10px; width: 11px; height: 10px; border: 1px solid currentColor; border-radius: 1px 4px 4px 1px; }
+.skin-ytmusic .ic-like::after, .skin-ytmusic .ic-like-fill::after { content: ""; position: absolute; left: 11px; top: 4px; width: 5px; height: 8px; border: 1px solid currentColor; border-bottom-width: 0; border-radius: 3px 3px 0 0; transform: rotate(18deg); }
+.skin-ytmusic .ic-like-fill::before, .skin-ytmusic .ic-like-fill i, .skin-ytmusic .ic-like-fill::after { background: currentColor; }
+.skin-ytmusic .likedart .ic-like-fill { transform: scale(2.4); width: 24px; height: 24px; margin: 0 auto; }
+.skin-ytmusic .likedart.small .ic-like-fill { transform: scale(1); }
+.skin-ytmusic .ctl.like.on { color: #ffffff; }
+.skin-ytmusic .banner { position: relative; height: 380px; margin: -24px -56px 0 -56px; overflow: hidden; background: var(--wash, #333333); }
+.skin-ytmusic .banner img.still { opacity: .6; }
+.skin-ytmusic .banner::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 240px; background: linear-gradient(180deg, rgba(3,3,3,0), #030303); }
+.skin-ytmusic .banner .identity { position: absolute; left: 56px; right: 56px; bottom: 24px; z-index: 2; }
+.skin-ytmusic .banner h1 { font-size: 56px; line-height: 64px; font-weight: 700; }
+.skin-ytmusic .about { color: rgba(255,255,255,.7); max-width: 720px; line-height: 22px; }
+.skin-ytmusic .topresult { display: block; padding: 16px; border-radius: 8px; background: rgba(255,255,255,.1); max-width: 640px; }
+.skin-ytmusic .topresult .row { display: flex; align-items: center; gap: 16px; }
+.skin-ytmusic .topresult .title { font-size: 22px; line-height: 28px; font-weight: 700; }
+.skin-ytmusic form.field input { height: 44px; border-radius: 8px; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.15); }
+.skin-ytmusic form.field button { height: 44px; border-radius: 22px; background: #ffffff; }
+/* The watch page: the big artwork beside Up next. */
+.skin-ytmusic .watch { display: flex; gap: 64px; align-items: flex-start; }
+.skin-ytmusic .stage { flex: 3 1 0; min-width: 0; text-align: center; }
+.skin-ytmusic .stage img.cover { width: 100%; max-width: 560px; height: auto; aspect-ratio: 1 / 1; margin: 0 auto 20px auto; border-radius: 8px; }
+.skin-ytmusic .stage h1 { font-size: 24px; line-height: 32px; font-weight: 700; }
+.skin-ytmusic .upnext { flex: 2 1 0; min-width: 0; }
+.skin-ytmusic .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 12px; }
+.skin-ytmusic .tab { display: block; text-align: center; font-size: 14px; font-weight: 500; letter-spacing: .5px; color: var(--muted); padding-top: 12px; }
+.skin-ytmusic .tab .line { display: block; height: 2px; margin-top: 12px; background: rgba(255,255,255,.1); }
+.skin-ytmusic .tab.on { color: #ffffff; }
+.skin-ytmusic .tab.on .line { background: #ffffff; }
+.skin-ytmusic .tab.off { color: rgba(255,255,255,.3); }
+.skin-ytmusic .from { font-size: 13px; color: var(--muted); padding: 4px 8px 8px 8px; }
+.skin-ytmusic .watch .lyrics { background: transparent; padding: 8px; }
+.skin-ytmusic .lyric { font-size: 18px; line-height: 28px; font-weight: 500; }
+.skin-ytmusic .lyric.sung { color: rgba(255,255,255,.5); }
+.skin-ytmusic .lyric.ahead { color: rgba(255,255,255,.7); }
+/* The player bar: the progress line on top, transport left, the song centred, volume right. */
+.skin-ytmusic .bar { background: #212121; }
+.skin-ytmusic .bar.idle { display: flex; align-items: center; justify-content: center; }
+.skin-ytmusic .bar .progress { display: flex; margin-top: -5px; }
+.skin-ytmusic .bar .seg { height: 12px; padding: 5px 0 5px 0; }
+.skin-ytmusic .bar .row { display: flex; align-items: center; gap: 16px; height: 66px; padding: 0 16px 6px 16px; }
+.skin-ytmusic .bar .left { display: flex; align-items: center; gap: 8px; flex: 2 1 0; min-width: 0; }
+.skin-ytmusic .bar .ctl { color: #ffffff; width: 40px; height: 40px; line-height: 40px; }
+.skin-ytmusic .bar .ctl .ic { width: 40px; height: 40px; line-height: 40px; }
+.skin-ytmusic .bar .ctl.big { background: transparent; color: #ffffff; }
+.skin-ytmusic .bar .ctl.big .ic { font-size: 26px; }
+.skin-ytmusic .bar .ctl.like, .skin-ytmusic .bar .right .ctl { color: var(--muted); }
+.skin-ytmusic .bar .right .ctl.on, .skin-ytmusic .bar .ctl.like.on { color: #ffffff; }
+.skin-ytmusic .bar .time { font-size: 12px; color: var(--muted); white-space: nowrap; margin-left: 8px; }
+.skin-ytmusic .bar .now { display: flex; align-items: center; justify-content: center; gap: 12px; flex: 4 1 0; min-width: 0; }
+.skin-ytmusic .bar .now img.cover { width: 40px; height: 40px; border-radius: 2px; }
+.skin-ytmusic .bar .names { display: block; min-width: 0; }
+.skin-ytmusic .bar .names a { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skin-ytmusic .bar .names .title { font-size: 16px; font-weight: 500; line-height: 20px; }
+.skin-ytmusic .bar .names .artist { font-size: 14px; color: var(--muted); }
+.skin-ytmusic .bar .right { display: flex; align-items: center; justify-content: flex-end; gap: 4px; flex: 2 1 0; min-width: 0; }
+@media (max-width: 900px) {
+  .skin-ytmusic .frame { flex-direction: column; align-items: stretch; }
+  .skin-ytmusic .side { position: static; width: auto; max-height: none; min-height: 0; border-right: 0; order: 2; }
+  .skin-ytmusic #main { padding: 16px; }
+  .skin-ytmusic .banner { margin: -16px -16px 0 -16px; height: 260px; }
+  .skin-ytmusic .banner .identity { left: 16px; right: 16px; }
+  .skin-ytmusic .searchpill { margin-left: 0; }
+  .skin-ytmusic .topbar .start { width: auto; }
+  .skin-ytmusic .watch { flex-direction: column; gap: 24px; }
+  .skin-ytmusic .header { flex-direction: column; align-items: flex-start; }
+  .skin-ytmusic .bar .row { flex-wrap: wrap; height: auto; }
+  .skin-ytmusic .genres, .skin-ytmusic .explore-buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

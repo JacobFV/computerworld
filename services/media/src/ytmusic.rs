@@ -4,22 +4,10 @@
 //! artist avatars, an Up next queue beside the big artwork, and a player bar pinned to the
 //! bottom whose red progress line is a real seek control.
 use super::catalog;
-use super::kit::{self, bold, cover, text, Skin};
+use super::kit::{self, Row};
+use super::player as catalog_player;
+use super::view::{self, act, cover, div, el, field_form, href, icon, press, short, span, Html};
 use super::*;
-
-const SKIN: Skin = Skin {
-    page: "#030303",
-    panel: "#030303",
-    raised: "#ffffff1a",
-    ink: "#ffffff",
-    muted: "#aaaaaa",
-    accent: "#ff0000",
-    played: "#ff0000",
-    track: "#ffffff33",
-    art_radius: 4,
-    like: ("thumb-up", "thumb-up-fill"),
-};
-const BAR: &str = "#212121";
 
 /// A `list` query value to the context it plays, and back. YouTube Music's own prefixes:
 /// `LM` is Liked Music, `OLAK` an album, `RD` a radio mix.
@@ -62,7 +50,6 @@ pub fn route(
     ctx: &ServiceContext,
     request: &HttpRequest,
     parts: &[&str],
-    theme: &PageTheme,
     count: bool,
 ) -> Result<HttpResponse> {
     let back = kit::here(request);
@@ -78,17 +65,11 @@ pub fn route(
                 None => format!("station:{}", web::text(&item, "channel")),
             };
             let current = catalog::player(state, &ctx.actor, ctx.tick);
-            let already = current
-                .as_ref()
-                .is_some_and(|p| p.current() == Some(v.as_str()) && p.context == context);
+            let already = current.as_ref().is_some_and(|p| p.current() == Some(v.as_str()) && p.context == context);
             if !already {
-                catalog::command(
-                    state,
-                    ctx,
-                    &json!({"action": "play", "item": v, "context": context}),
-                )
-                .or_else(|_| catalog::command(state, ctx, &json!({"action": "play", "item": v})))
-                .map_err(cw_protocol::SimError::invalid)?;
+                catalog::command(state, ctx, &json!({"action": "play", "item": v, "context": context}))
+                    .or_else(|_| catalog::command(state, ctx, &json!({"action": "play", "item": v})))
+                    .map_err(cw_protocol::SimError::invalid)?;
             }
         }
     }
@@ -102,11 +83,7 @@ pub fn route(
         ["explore", part @ ("new_releases" | "charts" | "moods_and_genres")] => {
             ("Explore".into(), "explore", explore(s, ctx, &back, part))
         }
-        ["library"] => (
-            "Library".into(),
-            "library",
-            library(s, ctx, "playlists", &back),
-        ),
+        ["library"] => ("Library".into(), "library", library(s, ctx, "playlists", &back)),
         ["library", tab @ ("playlists" | "songs" | "albums" | "artists")] => {
             ("Library".into(), "library", library(s, ctx, tab, &back))
         }
@@ -115,11 +92,7 @@ pub fn route(
             None => return web::error(404, "album not found"),
         },
         ["channel", id] => match record(s, "channels", id) {
-            Some(_) => (
-                catalog::artist_name(s, id),
-                "",
-                artist_page(s, ctx, id, &back),
-            ),
+            Some(_) => (catalog::artist_name(s, id), "", artist_page(s, ctx, id, &back)),
             None => return web::error(404, "artist not found"),
         },
         ["playlist"] => {
@@ -130,9 +103,7 @@ pub fn route(
             let title = if list == "LM" {
                 "Liked Music".to_owned()
             } else {
-                record(s, "playlists", &list)
-                    .map(|p| web::text(p, "title"))
-                    .unwrap_or_default()
+                record(s, "playlists", &list).map(|p| web::text(p, "title")).unwrap_or_default()
             };
             (title, "", playlist_page(s, ctx, &list, &back))
         }
@@ -141,9 +112,7 @@ pub fn route(
             // A watch page keeping itself current follows the player on to the next song,
             // as YouTube Music's does.
             if request.header(cw_protocol::REFRESH_HEADER).is_some() {
-                if let Some(now) = catalog::player(s, &ctx.actor, ctx.tick)
-                    .and_then(|p| p.current().map(str::to_owned))
-                {
+                if let Some(now) = catalog::player(s, &ctx.actor, ctx.tick).and_then(|p| p.current().map(str::to_owned)) {
                     v = now;
                 }
             }
@@ -151,7 +120,7 @@ pub fn route(
                 return web::error(404, "song not found");
             };
             let tab = web::query(request, "tab").unwrap_or_default();
-            (web::text(item, "title"), "", watch(s, ctx, &v, &tab, &back))
+            (web::text(item, "title"), "watch", watch(s, ctx, &v, &tab, &back))
         }
         ["search"] => {
             let q = web::query(request, "q").unwrap_or_default();
@@ -159,258 +128,118 @@ pub fn route(
         }
         _ => return web::error(404, "route not found"),
     };
-    let mut theme = theme.clone();
-    theme.background = Some(SKIN.page.into());
-    theme.content_width = None;
-    let response = web::themed_page(
-        &if title == "YouTube Music" {
-            title.clone()
-        } else {
-            format!("{title} - YouTube Music")
-        },
-        theme,
+    let doc = view::document(
+        s,
+        "music",
+        &if title == "YouTube Music" { title.clone() } else { format!("{title} - YouTube Music") },
+        &format!("page-{}", if section.is_empty() { "detail" } else { section }),
         vec![
             top_bar(&ctx.actor),
-            web::styled_row(
-                "frame",
-                24,
-                "start",
-                web::style().padding(8),
-                vec![
-                    sidebar(s, &ctx.actor, section),
-                    web::column("main", 20, web::style().flex(4), main),
-                ],
-            ),
+            div("frame").id("frame").child(sidebar(s, &ctx.actor, section)).child(el("main").id("main").children(main)),
             player_bar(s, ctx, &back),
         ],
-    )?;
-    Ok(kit::live(response, s, ctx, &back))
+    );
+    Ok(kit::live(doc.response(), s, ctx, &back))
 }
-fn top_bar(actor: &str) -> PageElement {
-    web::styled_row(
-        "topbar",
-        16,
-        "center",
-        web::style().padding(10).background(SKIN.page),
-        vec![
-            web::card_action(
-                "topbar-logo",
-                web::style().width(120).padding(2).background(SKIN.page),
-                web::visit("/"),
-                vec![web::styled_row(
-                    "topbar-logo-row",
-                    6,
-                    "center",
-                    web::style(),
-                    vec![
-                        web::icon(
-                            "topbar-logo-mark",
-                            "play",
-                            "YouTube Music",
-                            web::style()
-                                .width(26)
-                                .height(26)
-                                .radius(13)
-                                .padding(6)
-                                .background("#ff0000")
-                                .color("#ffffff")
-                                .size(14),
-                        ),
-                        bold("topbar-logo-name", "Music", 19, SKIN.ink),
-                    ],
-                )],
+fn top_bar(actor: &str) -> Html {
+    el("header")
+        .id("topbar")
+        .class("topbar")
+        .child(
+            div("start").child(span("burger").attr("aria-hidden", "true").each(0..3, |_| el("i"))).child(
+                el("a")
+                    .id("topbar-logo")
+                    .class("logo")
+                    .attr("href", "/")
+                    .attr("aria-label", "YouTube Music")
+                    .child(span("mark").id("topbar-logo-mark").attr("aria-hidden", "true").child(icon("play")))
+                    .child(span("name").id("topbar-logo-name").text("Music")),
             ),
-            web::card_action(
-                "topbar-search",
-                web::style()
-                    .flex(4)
-                    .padding(11)
-                    .radius(8)
-                    .background("#ffffff14")
-                    .border("#ffffff1a"),
-                web::visit("/search"),
-                vec![kit::line(
-                    "topbar-search-hint",
-                    "Search songs, albums, artists, podcasts",
-                    14,
-                    SKIN.muted,
-                )],
-            ),
-            web::spacer("topbar-space", 0),
-            web::thumbnail(
-                "topbar-avatar",
-                actor
-                    .chars()
-                    .next()
-                    .map(|c| c.to_uppercase().to_string())
-                    .unwrap_or_default(),
-                web::style()
-                    .width(32)
-                    .height(32)
-                    .radius(16)
-                    .background("#7e57c2")
-                    .color("#ffffff")
-                    .size(13),
-            ),
-        ],
-    )
+        )
+        .child(
+            el("a")
+                .id("topbar-search")
+                .class("searchpill")
+                .attr("href", "/search")
+                .child(icon("search"))
+                .child(span("hint").id("topbar-search-hint").text("Search songs, albums, artists, podcasts")),
+        )
+        .child(span("avatar").id("topbar-avatar").attr("aria-label", actor).text(view::initial(actor)))
 }
-fn nav(id: &str, icon: &str, label: &str, to: &str, on: bool) -> PageElement {
-    web::card_action(
-        id,
-        web::style()
-            .padding(10)
-            .radius(8)
-            .background(if on { SKIN.raised } else { "#00000000" }),
-        web::visit(to),
-        vec![web::styled_row(
-            &format!("{id}-row"),
-            16,
-            "center",
-            web::style(),
-            vec![
-                web::icon(
-                    &format!("{id}-icon"),
-                    icon,
-                    label,
-                    web::style().size(22).color(SKIN.ink).width(24),
-                ),
-                bold(&format!("{id}-label"), label, 15, SKIN.ink),
-            ],
-        )],
+fn nav(id: &str, glyph: &str, label: &str, to: &str, on: bool) -> Html {
+    el("a").id(id).class(if on { "nav on" } else { "nav" }).attr("href", to).child(
+        span("row")
+            .id(format!("{id}-row"))
+            .child(icon(glyph))
+            .child(span("label").id(format!("{id}-label")).text(label)),
     )
 }
 fn owner(p: &Value) -> String {
     match web::text(p, "owner") {
         o if o.is_empty() => "YouTube Music".into(),
-        o => {
-            let mut c = o.chars();
-            c.next()
-                .map(|f| f.to_uppercase().chain(c).collect())
-                .unwrap_or_default()
-        }
+        o => label(&o),
     }
 }
-fn sidebar(state: &Value, actor: &str, section: &str) -> PageElement {
-    let mut rows = vec![
-        nav("nav-home", "home", "Home", "/", section == "home"),
-        nav(
-            "nav-explore",
-            "compass",
-            "Explore",
-            "/explore",
-            section == "explore",
-        ),
-        nav(
-            "nav-library",
-            "library",
-            "Library",
-            "/library",
-            section == "library",
-        ),
-        web::divider("nav-divider"),
-        web::card_action(
-            "nav-new",
-            web::style().padding(10).radius(20).background(SKIN.raised),
-            web::visit("/library/playlists"),
-            vec![kit::labelled(
-                "nav-new-text",
-                "plus",
-                "New playlist",
-                14,
-                SKIN.ink,
-            )],
-        ),
-    ];
-    let mut entry = |id: String, title: String, meta: String, to: String| {
-        rows.push(web::card_action(
-            &format!("nav-list-{id}"),
-            web::style().padding(8).radius(8).background("#00000000"),
-            web::visit(to),
-            vec![
-                text(&format!("nav-list-{id}-title"), title, 14, SKIN.ink),
-                text(&format!("nav-list-{id}-meta"), meta, 12, SKIN.muted),
-            ],
-        ));
+fn sidebar(state: &Value, actor: &str, section: &str) -> Html {
+    let entry = |id: &str, title: String, meta: String, to: String| {
+        el("a")
+            .id(format!("nav-list-{id}"))
+            .class("list")
+            .attr("href", to)
+            .child(span("title").id(format!("nav-list-{id}-title")).text(title))
+            .child(span("meta").id(format!("nav-list-{id}-meta")).text(meta))
     };
-    entry(
-        "liked".into(),
-        "Liked Music".into(),
-        format!(
-            "♪ Auto playlist • {}",
-            kit::count(catalog::liked(state, actor).len(), "song", "songs")
-        ),
-        "/playlist?list=LM".into(),
-    );
-    for id in keys(state, "playlists") {
-        let p = record(state, "playlists", &id)
-            .cloned()
-            .unwrap_or(Value::Null);
-        entry(
-            id.clone(),
-            web::text(&p, "title"),
-            owner(&p),
-            format!("/playlist?list={id}"),
-        );
-    }
-    web::column("nav", 4, web::style().width(220), rows)
+    el("nav")
+        .id("nav")
+        .class("side")
+        .child(nav("nav-home", "home", "Home", "/", section == "home"))
+        .child(nav("nav-explore", "compass", "Explore", "/explore", section == "explore"))
+        .child(nav("nav-library", "library", "Library", "/library", section == "library"))
+        .child(el("hr").id("nav-divider"))
+        .child(
+            el("a")
+                .id("nav-new")
+                .class("pill")
+                .attr("href", "/library/playlists")
+                .child(span("label").id("nav-new-text").child(icon("plus")).child(span("").id("nav-new-text-label").text("New playlist"))),
+        )
+        .child(entry(
+            "liked",
+            "Liked Music".into(),
+            format!("♪ Auto playlist • {}", kit::count(catalog::liked(state, actor).len(), "song", "songs")),
+            "/playlist?list=LM".into(),
+        ))
+        .each(keys(state, "playlists"), |id| {
+            let p = record(state, "playlists", &id).cloned().unwrap_or(Value::Null);
+            entry(&id, web::text(&p, "title"), owner(&p), href("/playlist", &[("list", &id)]))
+        })
 }
-fn heading(id: &str, title: &str) -> PageElement {
-    web::styled(id, title, web::style().size(24).bold().color(SKIN.ink))
+fn heading(id: &str, title: &str) -> Html {
+    el("h2").id(id).class("heading").text(title)
 }
 /// A titled shelf of tiles on one line that scrolls sideways, as YouTube Music's do.
-/// `columns` is how many a wide window shows at once.
-fn shelf(id: &str, title: &str, columns: u32, tiles: Vec<PageElement>) -> Vec<PageElement> {
+fn shelf(id: &str, title: &str, class: &str, tiles: Vec<Html>) -> Vec<Html> {
     if tiles.is_empty() {
         return vec![];
     }
-    let _ = columns;
-    vec![
-        heading(&format!("{id}-heading"), title),
-        web::styled_row(id, 16, "start", web::style().scroll_x(), tiles),
-    ]
+    vec![heading(&format!("{id}-heading"), title), div(&format!("shelf {class}")).id(id).children(tiles)]
 }
 /// Square (or, for an artist, round) art over a title and one line, the unit every
 /// YouTube Music shelf repeats.
-fn tile(id: &str, of: &str, title: &str, meta: &str, to: String, round: bool) -> PageElement {
-    web::card_action(
-        id,
-        web::style()
-            .padding(0)
-            .radius(4)
-            .width(150)
-            .background("#00000000"),
-        web::visit(to),
-        vec![
-            cover(
-                &format!("{id}-art"),
-                of,
-                if round { "" } else { title },
-                (150, 150),
-                if round { 75 } else { 4 },
-            ),
-            web::styled(
-                &format!("{id}-title"),
-                title,
-                web::style()
-                    .size(15)
-                    .medium()
-                    .color(SKIN.ink)
-                    .align(if round { "center" } else { "left" }),
-            ),
-            web::styled(
-                &format!("{id}-meta"),
-                meta,
-                web::style().size(13).color(SKIN.muted).align(if round {
-                    "center"
-                } else {
-                    "left"
-                }),
-            ),
-        ],
-    )
+fn tile(id: &str, of: &str, title: &str, meta: &str, to: String, round: bool) -> Html {
+    el("a")
+        .id(id)
+        .class(if round { "tile round" } else { "tile" })
+        .attr("href", to)
+        .child(if of == "liked" {
+            span("likedart large").id(format!("{id}-art")).attr("role", "img").attr("aria-label", "Liked Music").child(icon("like-fill"))
+        } else {
+            cover(&format!("{id}-art"), of, if round { "" } else { title }, 150, if round { 75 } else { 4 })
+        })
+        .child(span("title").id(format!("{id}-title")).text(title))
+        .child(span("meta").id(format!("{id}-meta")).text(meta))
 }
-fn album_tile(prefix: &str, a: &catalog::Album) -> PageElement {
+fn album_tile(prefix: &str, a: &catalog::Album) -> Html {
     tile(
         &format!("{prefix}-{}", a.id),
         &a.id,
@@ -420,7 +249,7 @@ fn album_tile(prefix: &str, a: &catalog::Album) -> PageElement {
         false,
     )
 }
-fn artist_tile(state: &Value, prefix: &str, id: &str) -> PageElement {
+fn artist_tile(state: &Value, prefix: &str, id: &str) -> Html {
     let subs = record(state, "channels", id).map_or(0, |c| num(c, "subscribers"));
     tile(
         &format!("{prefix}-{id}"),
@@ -431,143 +260,54 @@ fn artist_tile(state: &Value, prefix: &str, id: &str) -> PageElement {
         true,
     )
 }
-/// "184K", "1.2M": YouTube never prints a subscriber count in full.
-fn short(n: u64) -> String {
-    match n {
-        0..=999 => n.to_string(),
-        1_000..=999_999 => format!("{}K", n / 1_000),
-        _ => {
-            let tenths = n / 100_000;
-            if tenths.is_multiple_of(10) {
-                format!("{}M", tenths / 10)
-            } else {
-                format!("{}.{}M", tenths / 10, tenths % 10)
-            }
-        }
-    }
-}
 /// A compact song entry: small art, title, and "artist • album" — the Quick picks unit.
-fn song_entry(state: &Value, prefix: &str, id: &str, to: String) -> PageElement {
+fn song_entry(state: &Value, prefix: &str, id: &str, to: String) -> Html {
     let item = record(state, "items", id).cloned().unwrap_or(Value::Null);
-    let album = catalog::album(state, &catalog::album_id(&item))
-        .map(|a| a.title)
-        .unwrap_or_default();
-    web::card_action(
-        &format!("{prefix}-{id}"),
-        web::style().padding(4).radius(4).background("#00000000"),
-        web::visit(to),
-        vec![web::styled_row(
-            &format!("{prefix}-{id}-row"),
-            12,
-            "center",
-            web::style(),
-            vec![
-                cover(
-                    &format!("{prefix}-{id}-art"),
-                    &catalog::album_id(&item),
-                    "",
-                    (48, 48),
-                    4,
-                ),
-                web::column(
-                    &format!("{prefix}-{id}-text"),
-                    0,
-                    web::style().flex(1),
-                    vec![
-                        text(
-                            &format!("{prefix}-{id}-title"),
-                            web::text(&item, "title"),
-                            15,
-                            SKIN.ink,
-                        ),
-                        text(
-                            &format!("{prefix}-{id}-meta"),
-                            format!(
-                                "{} • {album}",
-                                catalog::artist_name(state, &web::text(&item, "channel"))
-                            ),
-                            13,
-                            SKIN.muted,
-                        ),
-                    ],
-                ),
-            ],
-        )],
+    let album = catalog::album(state, &catalog::album_id(&item)).map(|a| a.title).unwrap_or_default();
+    el("a").id(format!("{prefix}-{id}")).class("song").attr("href", to).child(
+        span("row")
+            .id(format!("{prefix}-{id}-row"))
+            .child(cover(&format!("{prefix}-{id}-art"), &catalog::album_id(&item), "", 48, 4))
+            .child(
+                span("names")
+                    .id(format!("{prefix}-{id}-text"))
+                    .child(span("title").id(format!("{prefix}-{id}-title")).text(web::text(&item, "title")))
+                    .child(span("meta").id(format!("{prefix}-{id}-meta")).text(format!(
+                        "{} • {album}",
+                        catalog::artist_name(state, &web::text(&item, "channel"))
+                    ))),
+            ),
     )
 }
 /// YouTube Music's mood chips, in its order, limited to the moods some song here carries.
-const MOODS: &[&str] = &[
-    "energize",
-    "relax",
-    "feel good",
-    "workout",
-    "commute",
-    "focus",
-    "party",
-    "sleep",
-];
+const MOODS: &[&str] = &["energize", "relax", "feel good", "workout", "commute", "focus", "party", "sleep"];
 fn moods(state: &Value) -> Vec<String> {
     let tags: Vec<String> = keys(state, "items")
         .iter()
         .filter_map(|id| record(state, "items", id))
         .flat_map(|i| web::strings(i, "tags"))
         .collect();
-    MOODS
-        .iter()
-        .filter(|m| tags.iter().any(|t| t.eq_ignore_ascii_case(m)))
-        .map(|m| (*m).to_owned())
-        .collect()
+    MOODS.iter().filter(|m| tags.iter().any(|t| t.eq_ignore_ascii_case(m))).map(|m| (*m).to_owned()).collect()
 }
 fn label(tag: &str) -> String {
     let mut c = tag.chars();
-    c.next()
-        .map(|f| f.to_uppercase().chain(c).collect())
-        .unwrap_or_default()
+    c.next().map(|f| f.to_uppercase().chain(c).collect()).unwrap_or_default()
 }
-fn chip(id: &str, text_: &str, on: bool, to: String) -> PageElement {
-    web::card_action(
-        id,
-        web::style()
-            .padding(8)
-            .radius(8)
-            .background(if on { SKIN.ink } else { SKIN.raised }),
-        web::visit(to),
-        vec![web::styled(
-            &format!("{id}-text"),
-            text_,
-            web::style()
-                .size(14)
-                .medium()
-                .one_line()
-                .color(if on { "#000000" } else { SKIN.ink }),
-        )],
-    )
+fn chip(id: &str, text_: &str, on: bool, to: String) -> Html {
+    el("a")
+        .id(id)
+        .class(if on { "chip on" } else { "chip" })
+        .attr("href", to)
+        .child(span("").id(format!("{id}-text")).text(text_))
 }
-fn home(state: &Value, ctx: &ServiceContext, mood: &str) -> Vec<PageElement> {
-    let chips = moods(state)
-        .iter()
-        .map(|t| {
-            let on = t.eq_ignore_ascii_case(mood);
-            chip(
-                &format!("mood-{}", slug(t)),
-                &label(t),
-                on,
-                if on {
-                    "/".into()
-                } else {
-                    format!("/?mood={}", encode(t))
-                },
-            )
-        })
-        .collect();
-    let mut out = vec![kit::pills("moods", 8, chips)];
+fn home(state: &Value, ctx: &ServiceContext, mood: &str) -> Vec<Html> {
+    let mut out = vec![div("chips").id("moods").each(moods(state).iter(), |t| {
+        let on = t.eq_ignore_ascii_case(mood);
+        chip(&format!("mood-{}", slug(t)), &label(t), on, if on { "/".into() } else { href("/", &[("mood", t)]) })
+    })];
     let fits = |id: &String| {
         mood.is_empty()
-            || record(state, "items", id).is_some_and(|i| {
-                web::strings(i, "tags")
-                    .iter()
-                    .any(|t| t.eq_ignore_ascii_case(mood))
-            })
+            || record(state, "items", id).is_some_and(|i| web::strings(i, "tags").iter().any(|t| t.eq_ignore_ascii_case(mood)))
     };
     let history: Vec<String> = strings_at(state, "history", &ctx.actor)
         .into_iter()
@@ -575,7 +315,7 @@ fn home(state: &Value, ctx: &ServiceContext, mood: &str) -> Vec<PageElement> {
         .filter(fits)
         .take(6)
         .collect();
-    let again: Vec<PageElement> = history
+    let again: Vec<Html> = history
         .iter()
         .map(|id| {
             let item = record(state, "items", id).cloned().unwrap_or(Value::Null);
@@ -583,36 +323,29 @@ fn home(state: &Value, ctx: &ServiceContext, mood: &str) -> Vec<PageElement> {
                 &format!("again-{id}"),
                 &catalog::album_id(&item),
                 &web::text(&item, "title"),
-                &format!(
-                    "Song • {}",
-                    catalog::artist_name(state, &web::text(&item, "channel"))
-                ),
+                &format!("Song • {}", catalog::artist_name(state, &web::text(&item, "channel"))),
                 format!("/watch?v={id}"),
                 false,
             )
         })
         .collect();
-    out.extend(shelf("home-again", "Listen again", 6, again));
-    let context = if mood.is_empty() {
-        "charts".to_owned()
-    } else {
-        format!("mood:{mood}")
-    };
-    let picks: Vec<PageElement> = catalog::charts(state)
+    out.extend(shelf("home-again", "Listen again", "", again));
+    let context = if mood.is_empty() { "charts".to_owned() } else { format!("mood:{mood}") };
+    let picks: Vec<Html> = catalog::charts(state)
         .into_iter()
         .filter(fits)
         .take(12)
         .map(|id| song_entry(state, "pick", &id, watch_url(&id, &context)))
         .collect();
-    out.extend(shelf("home-picks", "Quick picks", 3, picks));
-    let albums: Vec<PageElement> = catalog::albums(state)
+    out.extend(shelf("home-picks", "Quick picks", "picks", picks));
+    let albums: Vec<Html> = catalog::albums(state)
         .iter()
         .filter(|a| a.tracks.iter().any(fits))
         .map(|a| album_tile("recommended", a))
         .collect();
-    out.extend(shelf("home-albums", "Recommended albums", 5, albums));
+    out.extend(shelf("home-albums", "Recommended albums", "", albums));
     if mood.is_empty() {
-        let lists: Vec<PageElement> = keys(state, "playlists")
+        let lists: Vec<Html> = keys(state, "playlists")
             .iter()
             .filter_map(|id| record(state, "playlists", id).map(|p| (id, p)))
             .map(|(id, p)| {
@@ -621,231 +354,130 @@ fn home(state: &Value, ctx: &ServiceContext, mood: &str) -> Vec<PageElement> {
                     id,
                     &web::text(p, "title"),
                     &format!("Playlist • {}", owner(p)),
-                    format!("/playlist?list={id}"),
+                    href("/playlist", &[("list", id)]),
                     false,
                 )
             })
             .collect();
-        out.extend(shelf("home-mixes", "Mixed for you", 5, lists));
-        let artists: Vec<PageElement> = keys(state, "channels")
-            .iter()
-            .map(|id| artist_tile(state, "artist", id))
-            .collect();
-        out.extend(shelf("home-artists", "Artists you might like", 5, artists));
+        out.extend(shelf("home-mixes", "Mixed for you", "", lists));
+        let artists: Vec<Html> = keys(state, "channels").iter().map(|id| artist_tile(state, "artist", id)).collect();
+        out.extend(shelf("home-artists", "Artists you might like", "", artists));
     }
     out
 }
-fn explore(state: &Value, ctx: &ServiceContext, back: &str, part: &str) -> Vec<PageElement> {
-    let mut out = vec![web::styled_row(
-        "explore-buttons",
-        12,
-        "center",
-        web::style(),
+fn explore(state: &Value, ctx: &ServiceContext, back: &str, part: &str) -> Vec<Html> {
+    let mut out = vec![div("explore-buttons").id("explore-buttons").each(
         [
-            ("new_releases", "✚  New releases", "/explore/new_releases"),
-            ("charts", "↑  Charts", "/explore/charts"),
-            (
-                "moods_and_genres",
-                "☺  Moods & genres",
-                "/explore/moods_and_genres",
-            ),
-        ]
-        .iter()
-        .map(|(id, text_, to)| {
+            ("new_releases", "release", "New releases", "/explore/new_releases"),
+            ("charts", "chart", "Charts", "/explore/charts"),
+            ("moods_and_genres", "mood", "Moods & genres", "/explore/moods_and_genres"),
+        ],
+        |(id, glyph, text_, to)| {
             // The section on show is the one whose button is lit; pressing it again
             // goes back to the whole Explore page.
-            let on = part == *id;
-            web::card_action(
-                &format!("explore-{id}"),
-                web::style()
-                    .padding(16)
-                    .radius(8)
-                    .background(if on { SKIN.ink } else { SKIN.raised })
-                    .flex(1),
-                web::visit(if on { "/explore" } else { *to }),
-                vec![kit::line_bold(
-                    &format!("explore-{id}-text"),
-                    *text_,
-                    16,
-                    if on { "#000000" } else { SKIN.ink },
-                )],
-            )
-        })
-        .collect(),
+            let on = part == id;
+            el("a")
+                .id(format!("explore-{id}"))
+                .class(if on { "bigbutton on" } else { "bigbutton" })
+                .attr("href", if on { "/explore" } else { to })
+                .child(icon(glyph))
+                .child(span("").id(format!("explore-{id}-text")).text(text_))
+        },
     )];
     let show = |section: &str| part.is_empty() || part == section;
     if show("new_releases") {
-        let albums: Vec<PageElement> = catalog::albums(state)
+        let albums: Vec<Html> = catalog::albums(state)
             .iter()
             .take(if part.is_empty() { 5 } else { 50 })
             .map(|a| album_tile("release", a))
             .collect();
-        out.extend(shelf("explore-releases", "New albums & singles", 5, albums));
+        out.extend(shelf("explore-releases", "New albums & singles", if part.is_empty() { "" } else { "wrap" }, albums));
     }
     if show("moods_and_genres") {
-        out.extend(explore_moods(state));
+        out.push(heading("explore-moods-heading", "Moods & genres"));
+        out.push(div("genres").id("explore-moods").each(moods(state).iter(), |t| {
+            el("a")
+                .id(format!("genre-{}", slug(t)))
+                .class("genre")
+                .attr("href", href("/", &[("mood", t)]))
+                .child(
+                    span("row")
+                        .id(format!("genre-{}-row", slug(t)))
+                        .child(
+                            span("edge")
+                                .id(format!("genre-{}-edge", slug(t)))
+                                .style(&format!("background-color: {}", tint(&format!("mood{t}")))),
+                        )
+                        .child(span("name").id(format!("genre-{}-name", slug(t))).text(label(t))),
+                )
+        }));
     }
     if show("charts") {
-        out.extend(explore_charts(
-            state,
-            ctx,
-            back,
-            if part.is_empty() { 10 } else { 50 },
-        ));
-    }
-    out
-}
-fn explore_moods(state: &Value) -> Vec<PageElement> {
-    let mut out = vec![];
-    out.push(heading("explore-moods-heading", "Moods & genres"));
-    out.push(web::grid(
-        "explore-moods",
-        4,
-        12,
-        moods(state)
-            .iter()
-            .map(|t| {
-                web::card_action(
-                    &format!("genre-{}", slug(t)),
-                    web::style().padding(0).radius(6).background("#292929"),
-                    web::visit(format!("/?mood={}", encode(t))),
-                    vec![web::styled_row(
-                        &format!("genre-{}-row", slug(t)),
-                        12,
-                        "center",
-                        web::style(),
-                        vec![
-                            web::thumbnail(
-                                &format!("genre-{}-edge", slug(t)),
-                                "",
-                                web::style()
-                                    .width(6)
-                                    .height(44)
-                                    .radius(0)
-                                    .background(tint(&format!("mood{t}"))),
-                            ),
-                            bold(&format!("genre-{}-name", slug(t)), label(t), 14, SKIN.ink),
-                        ],
-                    )],
+        out.push(heading("explore-charts-heading", "Top songs"));
+        let playing = catalog::player(state, &ctx.actor, ctx.tick).and_then(|p| p.current().map(str::to_owned));
+        let row = Row { prefix: "chart", context: "charts", playing: playing.as_deref(), back, art: true };
+        out.push(div("tracks").id("explore-chart-tracks").each(
+            catalog::charts(state).iter().take(if part.is_empty() { 10 } else { 50 }).enumerate(),
+            |(rank, id)| {
+                kit::track_row(
+                    state,
+                    &ctx.actor,
+                    &row,
+                    id,
+                    rank + 1,
+                    record(state, "items", id).map(|i| format!("{} plays", short(num(i, "plays")))),
                 )
-            })
-            .collect(),
-    ));
-    out
-}
-fn explore_charts(
-    state: &Value,
-    ctx: &ServiceContext,
-    back: &str,
-    limit: usize,
-) -> Vec<PageElement> {
-    let mut out = vec![heading("explore-charts-heading", "Top songs")];
-    let playing =
-        catalog::player(state, &ctx.actor, ctx.tick).and_then(|p| p.current().map(str::to_owned));
-    for (rank, id) in catalog::charts(state).iter().take(limit).enumerate() {
-        out.push(kit::track_row(
-            state,
-            &ctx.actor,
-            "chart",
-            id,
-            rank + 1,
-            "charts",
-            playing.as_deref(),
-            &SKIN,
-            back,
-            record(state, "items", id).map(|i| format!("{} plays", short(num(i, "plays")))),
-            true,
+            },
         ));
     }
     out
 }
-fn library(state: &Value, ctx: &ServiceContext, tab: &str, back: &str) -> Vec<PageElement> {
+fn library(state: &Value, ctx: &ServiceContext, tab: &str, back: &str) -> Vec<Html> {
     let actor = &ctx.actor;
-    let mut out = vec![kit::pills(
-        "library-chips",
-        8,
-        ["playlists", "songs", "albums", "artists"]
-            .iter()
-            .map(|t| {
-                chip(
-                    &format!("library-chip-{t}"),
-                    &label(t),
-                    *t == tab,
-                    format!("/library/{t}"),
-                )
-            })
-            .collect(),
-    )];
+    let mut out = vec![
+        heading("library-heading", "Library"),
+        div("chips").id("library-chips").each(["playlists", "songs", "albums", "artists"], |t| {
+            chip(&format!("library-chip-{t}"), &label(t), t == tab, format!("/library/{t}"))
+        }),
+    ];
+    let nothing = |text_: &str| el("p").id("library-empty").class("muted").text(text_);
     match tab {
         "songs" => {
             let songs = catalog::library_songs(state, actor);
             if songs.is_empty() {
-                out.push(text(
-                    "library-empty",
-                    "Songs you save will show up here",
-                    15,
-                    SKIN.muted,
-                ));
+                out.push(nothing("Songs you save will show up here"));
             } else {
-                out.push(web::card_action(
+                out.push(kit::command(
                     "library-shuffle",
-                    web::style()
-                        .padding(10)
-                        .radius(20)
-                        .background(SKIN.ink)
-                        .width(150),
-                    kit::fields(&[
-                        ("action", "play"),
-                        ("context", "library"),
-                        ("shuffle", "true"),
-                        ("return", back),
-                    ]),
-                    vec![kit::labelled(
-                        "library-shuffle-text",
-                        "shuffle",
-                        "Shuffle all",
-                        14,
-                        "#000000",
-                    )],
+                    &[("action", "play"), ("context", "library"), ("shuffle", "true"), ("return", back)],
+                    press("solid", "").child(
+                        span("label")
+                            .id("library-shuffle-text")
+                            .child(icon("shuffle"))
+                            .child(span("").id("library-shuffle-text-label").text("Shuffle all")),
+                    ),
                 ));
-                let playing = catalog::player(state, actor, ctx.tick)
-                    .and_then(|p| p.current().map(str::to_owned));
-                for (i, id) in songs.iter().enumerate() {
+                let playing = catalog::player(state, actor, ctx.tick).and_then(|p| p.current().map(str::to_owned));
+                let row = Row { prefix: "song", context: "library", playing: playing.as_deref(), back, art: true };
+                out.push(div("tracks").id("library-songs").each(songs.iter().enumerate(), |(i, id)| {
                     let album = record(state, "items", id)
                         .and_then(|item| catalog::album(state, &catalog::album_id(item)))
                         .map(|a| a.title);
-                    out.push(kit::track_row(
-                        state,
-                        actor,
-                        "song",
-                        id,
-                        i + 1,
-                        "library",
-                        playing.as_deref(),
-                        &SKIN,
-                        back,
-                        album,
-                        true,
-                    ));
-                }
+                    kit::track_row(state, actor, &row, id, i + 1, album)
+                }));
             }
         }
         "albums" => {
             let library = strings_at(state, "library", actor);
-            let tiles: Vec<PageElement> = catalog::albums(state)
+            let tiles: Vec<Html> = catalog::albums(state)
                 .iter()
                 .filter(|a| a.tracks.iter().any(|t| library.contains(t)))
                 .map(|a| album_tile("library-album", a))
                 .collect();
             if tiles.is_empty() {
-                out.push(text(
-                    "library-empty",
-                    "Albums you save will show up here",
-                    15,
-                    SKIN.muted,
-                ));
+                out.push(nothing("Albums you save will show up here"));
             } else {
-                out.push(web::grid("library-albums", 5, 16, tiles));
+                out.push(div("tilegrid").id("library-albums").children(tiles));
             }
         }
         "artists" => {
@@ -857,54 +489,33 @@ fn library(state: &Value, ctx: &ServiceContext, tab: &str, back: &str) -> Vec<Pa
                     }
                 }
             }
-            let tiles: Vec<PageElement> = artists
+            let tiles: Vec<Html> = artists
                 .iter()
                 .filter(|a| record(state, "channels", a).is_some())
                 .map(|a| artist_tile(state, "library-artist", a))
                 .collect();
             if tiles.is_empty() {
-                out.push(text(
-                    "library-empty",
-                    "Artists you subscribe to will show up here",
-                    15,
-                    SKIN.muted,
-                ));
+                out.push(nothing("Artists you subscribe to will show up here"));
             } else {
-                out.push(web::grid("library-artists", 5, 16, tiles));
+                out.push(div("tilegrid").id("library-artists").children(tiles));
             }
         }
         _ => {
-            let mut tiles = vec![tile(
-                "library-liked",
-                "liked",
-                "Liked Music",
-                "Auto playlist",
-                "/playlist?list=LM".into(),
-                false,
-            )];
+            let mut tiles = vec![tile("library-liked", "liked", "Liked Music", "Auto playlist", "/playlist?list=LM".into(), false)];
             for id in keys(state, "playlists") {
-                let p = record(state, "playlists", &id)
-                    .cloned()
-                    .unwrap_or(Value::Null);
+                let p = record(state, "playlists", &id).cloned().unwrap_or(Value::Null);
                 tiles.push(tile(
                     &format!("library-{id}"),
                     &id,
                     &web::text(&p, "title"),
-                    &format!(
-                        "{} • {}",
-                        owner(&p),
-                        kit::count(web::strings(&p, "items").len(), "track", "tracks")
-                    ),
-                    format!("/playlist?list={id}"),
+                    &format!("{} • {}", owner(&p), kit::count(web::strings(&p, "items").len(), "track", "tracks")),
+                    href("/playlist", &[("list", &id)]),
                     false,
                 ));
             }
-            out.push(web::grid("library-playlists", 5, 16, tiles));
-            out.push(web::form(
-                "playlist",
-                "/playlists",
-                &[("title", "New playlist", "")],
-            ));
+            out.push(div("tilegrid").id("library-playlists").children(tiles));
+            out.push(heading("playlist-heading", "New playlist"));
+            out.push(field_form("playlist", "/playlists", "post", "title", "New playlist", "", "Create").class("createform"));
         }
     }
     out
@@ -912,197 +523,102 @@ fn library(state: &Value, ctx: &ServiceContext, tab: &str, back: &str) -> Vec<Pa
 fn current(state: &Value, ctx: &ServiceContext) -> Option<catalog_player::Player> {
     catalog::player(state, &ctx.actor, ctx.tick)
 }
-use super::player as catalog_player;
-fn round(id: &str, icon: &str, label: &str, fg: &str, bg: &str, action: PageAction) -> PageElement {
-    kit::control(id, icon, label, 22, fg, Some(bg), action)
+/// The header of an album or playlist page: big art, title, two lines, its buttons.
+fn header(id: &str, of: &str, title: &str, lines: Vec<String>, buttons: Vec<Html>) -> Html {
+    div("header")
+        .id(format!("{id}-header"))
+        .child(if of == "liked" {
+            span("likedart huge").id(format!("{id}-art")).attr("role", "img").attr("aria-label", "Liked Music").child(icon("like-fill"))
+        } else {
+            cover(&format!("{id}-art"), of, title, 220, 6)
+        })
+        .child(
+            div("identity")
+                .id(format!("{id}-identity"))
+                .child(el("h1").id(format!("{id}-title")).text(title))
+                .each(lines.into_iter().enumerate(), |(i, line)| span("line").id(format!("{id}-line-{i}")).text(line))
+                .child(div("buttons").id(format!("{id}-buttons")).children(buttons)),
+        )
 }
-#[allow(clippy::too_many_arguments)]
-fn header(
-    id: &str,
-    of: &str,
-    title: &str,
-    lines: Vec<String>,
-    buttons: Vec<PageElement>,
-    round_art: bool,
-) -> PageElement {
-    let mut identity = vec![web::styled(
-        &format!("{id}-title"),
-        title,
-        web::style().size(36).bold().color(SKIN.ink),
-    )];
-    for (i, line) in lines.into_iter().enumerate() {
-        identity.push(text(&format!("{id}-line-{i}"), line, 14, SKIN.muted));
-    }
-    identity.push(kit::pills(&format!("{id}-buttons"), 12, buttons));
-    web::styled_row(
-        &format!("{id}-header"),
-        32,
-        "center",
-        web::style().padding(8),
-        vec![
-            cover(
-                &format!("{id}-art"),
-                of,
-                title,
-                (220, 220),
-                if round_art { 64 } else { 6 },
-            ),
-            web::column(&format!("{id}-identity"), 6, web::style().flex(3), identity),
-        ],
-    )
-}
-fn play_buttons(
-    id: &str,
-    context: &str,
-    back: &str,
-    p: Option<&catalog_player::Player>,
-) -> Vec<PageElement> {
+fn play_buttons(id: &str, context: &str, back: &str, p: Option<&catalog_player::Player>) -> Vec<Html> {
     let playing_this = p.is_some_and(|p| p.context == context && p.playing);
+    let (glyph, name) = if playing_this { ("pause", "Pause") } else { ("play", "Play") };
+    let play = press("ctl bigplay", name).child(icon(glyph));
     vec![
-        round(
-            &format!("{id}-play"),
-            if playing_this { "pause" } else { "play" },
-            if playing_this { "Pause" } else { "Play" },
-            "#000000",
-            SKIN.ink,
-            if playing_this {
-                kit::fields(&[("action", "toggle"), ("return", back)])
-            } else {
-                kit::fields(&[("action", "play"), ("context", context), ("return", back)])
-            },
-        ),
-        web::card_action(
+        if playing_this {
+            kit::command(&format!("{id}-play"), &[("action", "toggle"), ("return", back)], play)
+        } else {
+            kit::command(&format!("{id}-play"), &[("action", "play"), ("context", context), ("return", back)], play)
+        },
+        kit::command(
             &format!("{id}-shuffle"),
-            web::style()
-                .padding(10)
-                .radius(20)
-                .border("#ffffff33")
-                .background("#00000000"),
-            kit::fields(&[
-                ("action", "play"),
-                ("context", context),
-                ("shuffle", "true"),
-                ("return", back),
-            ]),
-            vec![web::styled_row(
-                &format!("{id}-shuffle-row"),
-                8,
-                "center",
-                web::style(),
-                vec![
-                    web::icon(
-                        &format!("{id}-shuffle-icon"),
-                        "shuffle",
-                        "Shuffle",
-                        web::style().size(18).color(SKIN.ink).width(18),
-                    ),
-                    kit::line_bold(&format!("{id}-shuffle-text"), "Shuffle", 14, SKIN.ink),
-                ],
-            )],
+            &[("action", "play"), ("context", context), ("shuffle", "true"), ("return", back)],
+            press("outline", "").child(
+                span("label")
+                    .id(format!("{id}-shuffle-row"))
+                    .child(icon("shuffle"))
+                    .child(span("").id(format!("{id}-shuffle-text")).text("Shuffle")),
+            ),
         ),
     ]
 }
-fn rows(
-    state: &Value,
-    ctx: &ServiceContext,
-    prefix: &str,
-    ids: &[String],
-    context: &str,
-    back: &str,
-    art: bool,
-) -> Vec<PageElement> {
+fn rows(state: &Value, ctx: &ServiceContext, prefix: &str, ids: &[String], context: &str, back: &str, art: bool) -> Vec<Html> {
     let playing = current(state, ctx).and_then(|p| p.current().map(str::to_owned));
+    let row = Row { prefix, context, playing: playing.as_deref(), back, art };
     ids.iter()
         .enumerate()
         .map(|(i, id)| {
             kit::track_row(
                 state,
                 &ctx.actor,
-                prefix,
+                &row,
                 id,
                 i + 1,
-                context,
-                playing.as_deref(),
-                &SKIN,
-                back,
                 record(state, "items", id).map(|i| format!("{} plays", short(num(i, "plays")))),
-                art,
             )
         })
         .collect()
 }
-fn album_page(
-    state: &Value,
-    ctx: &ServiceContext,
-    album: &catalog::Album,
-    back: &str,
-) -> Vec<PageElement> {
+fn album_page(state: &Value, ctx: &ServiceContext, album: &catalog::Album, back: &str) -> Vec<Html> {
     let context = format!("album:{}", album.id);
     let library = strings_at(state, "library", &ctx.actor);
     let saved = album.tracks.iter().all(|t| library.contains(t));
     let p = current(state, ctx);
     let mut buttons = play_buttons("album", &context, back, p.as_ref());
-    buttons.push(web::card_action(
+    buttons.push(act(
         "album-save",
-        web::style()
-            .padding(10)
-            .radius(20)
-            .border("#ffffff33")
-            .background("#00000000"),
-        post(format!("/library/albums/{}", album.id), &[("return", back)]),
-        vec![kit::labelled(
-            "album-save-text",
-            if saved { "check" } else { "plus" },
-            if saved {
-                "Saved to library"
-            } else {
-                "Save to library"
-            },
-            14,
-            SKIN.ink,
-        )],
+        &format!("/library/albums/{}", album.id),
+        &[("return", back)],
+        press("outline", "").child(
+            span("label")
+                .id("album-save-text")
+                .child(icon(if saved { "check" } else { "plus" }))
+                .child(span("").id("album-save-text-label").text(if saved { "Saved to library" } else { "Save to library" })),
+        ),
     ));
-    let mut out = vec![header(
-        "album",
-        &album.id,
-        &album.title,
-        vec![
-            format!("{} • {} • {}", album.kind(), album.artist_name, album.year),
-            format!(
-                "{} • {}",
-                kit::count(album.tracks.len(), "song", "songs"),
-                kit::running(state, &album.tracks)
-            ),
-        ],
-        buttons,
-        false,
-    )];
-    out.extend(rows(
-        state,
-        ctx,
-        "track",
-        &album.tracks,
-        &context,
-        back,
-        false,
-    ));
-    out
+    vec![
+        header(
+            "album",
+            &album.id,
+            &album.title,
+            vec![
+                format!("{} • {} • {}", album.kind(), album.artist_name, album.year),
+                format!("{} • {}", kit::count(album.tracks.len(), "song", "songs"), kit::running(state, &album.tracks)),
+            ],
+            buttons,
+        ),
+        div("tracks").id("tracks").children(rows(state, ctx, "track", &album.tracks, &context, back, false)),
+    ]
 }
-fn playlist_page(state: &Value, ctx: &ServiceContext, list: &str, back: &str) -> Vec<PageElement> {
+fn playlist_page(state: &Value, ctx: &ServiceContext, list: &str, back: &str) -> Vec<Html> {
     let context = context_of(list);
     let items = catalog::context_tracks(state, &ctx.actor, &context);
     let (title, who, editable) = if list == "LM" {
         ("Liked Music".to_owned(), "Auto playlist".to_owned(), false)
     } else {
-        let p = record(state, "playlists", list)
-            .cloned()
-            .unwrap_or(Value::Null);
+        let p = record(state, "playlists", list).cloned().unwrap_or(Value::Null);
         let o = web::text(&p, "owner");
-        (
-            web::text(&p, "title"),
-            owner(&p),
-            o.is_empty() || o == ctx.actor,
-        )
+        (web::text(&p, "title"), owner(&p), o.is_empty() || o == ctx.actor)
     };
     let p = current(state, ctx);
     let mut out = vec![header(
@@ -1111,214 +627,102 @@ fn playlist_page(state: &Value, ctx: &ServiceContext, list: &str, back: &str) ->
         &title,
         vec![
             format!("Playlist • {who}"),
-            format!(
-                "{} • {}",
-                kit::count(items.len(), "song", "songs"),
-                kit::running(state, &items)
-            ),
+            format!("{} • {}", kit::count(items.len(), "song", "songs"), kit::running(state, &items)),
         ],
-        if items.is_empty() {
-            vec![]
-        } else {
-            play_buttons("playlist", &context, back, p.as_ref())
-        },
-        false,
+        if items.is_empty() { vec![] } else { play_buttons("playlist", &context, back, p.as_ref()) },
     )];
     if items.is_empty() {
-        out.push(text(
-            "playlist-empty",
-            "This playlist is empty. Add songs with Save to playlist on any song.",
-            15,
-            SKIN.muted,
-        ));
+        out.push(
+            el("p")
+                .id("playlist-empty")
+                .class("muted")
+                .text("This playlist is empty. Add songs with Save to playlist on any song."),
+        );
     }
-    for (i, row) in rows(state, ctx, "track", &items, &context, back, true)
-        .into_iter()
-        .enumerate()
-    {
+    let mut table = div("tracks").id("tracks");
+    for (i, row) in rows(state, ctx, "track", &items, &context, back, true).into_iter().enumerate() {
         if editable {
-            let id = &items[i];
-            out.push(web::styled_row(
-                &format!("playlist-entry-{i}"),
-                4,
-                "center",
-                web::style(),
-                vec![
-                    web::column(
-                        &format!("playlist-entry-{i}-row"),
-                        0,
-                        web::style().flex(1),
-                        vec![row],
-                    ),
-                    kit::control(
+            table = table.child(
+                div("entry")
+                    .id(format!("playlist-entry-{i}"))
+                    .child(div("grow").id(format!("playlist-entry-{i}-row")).child(row))
+                    .child(act(
                         &format!("playlist-remove-{i}"),
-                        "close",
-                        "Remove from playlist",
-                        16,
-                        SKIN.muted,
-                        None,
-                        post(
-                            format!("/playlists/{list}/remove"),
-                            &[("item", id), ("return", back)],
-                        ),
-                    ),
-                ],
-            ));
+                        &format!("/playlists/{list}/remove"),
+                        &[("item", &items[i]), ("return", back)],
+                        press("ctl", "Remove from playlist").child(icon("close")),
+                    )),
+            );
         } else {
-            out.push(row);
+            table = table.child(row);
         }
     }
+    out.push(table);
     out
 }
-fn artist_page(state: &Value, ctx: &ServiceContext, id: &str, back: &str) -> Vec<PageElement> {
-    let artist = record(state, "channels", id)
-        .cloned()
-        .unwrap_or(Value::Null);
+fn artist_page(state: &Value, ctx: &ServiceContext, id: &str, back: &str) -> Vec<Html> {
+    let artist = record(state, "channels", id).cloned().unwrap_or(Value::Null);
     let name = web::text(&artist, "name");
     let subscribed = has(state, "subscriptions", &ctx.actor, id);
     let subs = num(&artist, "subscribers");
-    let mut out = vec![web::card(
-        "artist-banner",
-        web::style()
-            .padding(28)
-            .radius(0)
-            .background(kit::shade(&kit::wash(id), 80)),
-        vec![
-            web::styled(
-                "artist-name",
-                &name,
-                web::style().size(48).bold().color(SKIN.ink),
-            ),
-            text(
-                "artist-subscribers",
-                format!("{} subscribers", short(subs)),
-                14,
-                SKIN.ink,
-            ),
-            kit::pills(
-                "artist-buttons",
-                12,
-                vec![
-                    web::card_action(
-                        "artist-shuffle",
-                        web::style().padding(10).radius(20).background(SKIN.ink),
-                        kit::fields(&[
-                            ("action", "play"),
-                            ("context", &format!("artist:{id}")),
-                            ("shuffle", "true"),
-                            ("return", back),
-                        ]),
-                        vec![kit::labelled(
-                            "artist-shuffle-text",
-                            "shuffle",
-                            "Shuffle",
-                            14,
-                            "#000000",
-                        )],
-                    ),
-                    web::card_action(
-                        "artist-radio",
-                        web::style()
-                            .padding(10)
-                            .radius(20)
-                            .border("#ffffff66")
-                            .background("#00000000"),
-                        kit::fields(&[
-                            ("action", "play"),
-                            ("context", &format!("station:{id}")),
-                            ("return", back),
-                        ]),
-                        vec![kit::line_bold(
-                            "artist-radio-text",
-                            "◉  Radio",
-                            14,
-                            SKIN.ink,
-                        )],
-                    ),
-                    web::card_action(
-                        "artist-subscribe",
-                        web::style()
-                            .padding(10)
-                            .radius(20)
-                            .background(if subscribed { "#ffffff33" } else { SKIN.ink }),
-                        post(format!("/channels/{id}/subscribe"), &[("return", back)]),
-                        vec![kit::line_bold(
-                            "artist-subscribe-text",
-                            if subscribed {
-                                format!("Subscribed {}", short(subs))
-                            } else {
-                                format!("Subscribe {}", short(subs))
-                            },
-                            14,
-                            if subscribed { SKIN.ink } else { "#000000" },
-                        )],
-                    ),
-                ],
-            ),
-        ],
-    )];
+    let mut out = vec![div("banner")
+        .id("artist-banner")
+        .style(&format!("--wash: {}", kit::shade(&kit::wash(id), 80)))
+        .child(view::still("artist-banner-art", id, "", 512))
+        .child(
+            div("identity")
+                .child(el("h1").id("artist-name").text(name.as_str()))
+                .child(span("line").id("artist-subscribers").text(format!("{} subscribers", short(subs))))
+                .child(
+                    div("buttons")
+                        .id("artist-buttons")
+                        .child(kit::command(
+                            "artist-shuffle",
+                            &[("action", "play"), ("context", &format!("artist:{id}")), ("shuffle", "true"), ("return", back)],
+                            press("solid", "").child(
+                                span("label")
+                                    .id("artist-shuffle-text")
+                                    .child(icon("shuffle"))
+                                    .child(span("").id("artist-shuffle-text-label").text("Shuffle")),
+                            ),
+                        ))
+                        .child(kit::command(
+                            "artist-radio",
+                            &[("action", "play"), ("context", &format!("station:{id}")), ("return", back)],
+                            press("outline", "").child(span("label").child(icon("radio")).child(span("").id("artist-radio-text").text("Radio"))),
+                        ))
+                        .child(act(
+                            "artist-subscribe",
+                            &format!("/channels/{id}/subscribe"),
+                            &[("return", back)],
+                            press(if subscribed { "subscribe on" } else { "subscribe" }, "").child(span("").id("artist-subscribe-text").text(
+                                if subscribed { format!("Subscribed {}", short(subs)) } else { format!("Subscribe {}", short(subs)) },
+                            )),
+                        )),
+                ),
+        )];
     out.push(heading("artist-top-heading", "Top songs"));
     let top: Vec<String> = catalog::top_tracks(state, id).into_iter().take(5).collect();
-    out.extend(rows(
-        state,
-        ctx,
-        "top",
-        &top,
-        &format!("artist:{id}"),
-        back,
-        true,
-    ));
-    let albums: Vec<PageElement> = catalog::albums(state)
-        .iter()
-        .filter(|a| a.artist == id)
-        .map(|a| album_tile("disc", a))
-        .collect();
-    out.extend(shelf("artist-albums", "Albums", 5, albums));
+    out.push(div("tracks").id("artist-top").children(rows(state, ctx, "top", &top, &format!("artist:{id}"), back, true)));
+    let albums: Vec<Html> = catalog::albums(state).iter().filter(|a| a.artist == id).map(|a| album_tile("disc", a)).collect();
+    out.extend(shelf("artist-albums", "Albums", "", albums));
     let about = web::text(&artist, "about");
     if !about.is_empty() {
         out.push(heading("artist-about-heading", "About"));
-        out.push(web::styled(
-            "artist-about",
-            about,
-            web::style().size(14).color(SKIN.muted),
-        ));
+        out.push(el("p").id("artist-about").class("about").text(about));
     }
     out
 }
-fn watch(state: &Value, ctx: &ServiceContext, v: &str, tab: &str, back: &str) -> Vec<PageElement> {
+fn watch(state: &Value, ctx: &ServiceContext, v: &str, tab: &str, back: &str) -> Vec<Html> {
     let item = record(state, "items", v).cloned().unwrap_or(Value::Null);
     let p = current(state, ctx);
-    // Tabs: the one on show is white over a white underline; LYRICS is greyed out because
-    // no song in this catalogue has lyrics, which is exactly what YouTube Music does.
+    // Tabs: the one on show is white over a white underline; LYRICS is greyed out when
+    // the song has no lyrics, which is exactly what YouTube Music does.
     let tab_cell = |id: &str, label: &str, on: bool, to: Option<String>| {
-        let children = vec![
-            web::styled(
-                &format!("{id}-text"),
-                label,
-                web::style()
-                    .size(13)
-                    .bold()
-                    .align("center")
-                    .color(match (&to, on) {
-                        (None, _) => "#ffffff4d",
-                        (_, true) => SKIN.ink,
-                        _ => SKIN.muted,
-                    }),
-            ),
-            web::thumbnail(
-                &format!("{id}-line"),
-                "",
-                web::style().height(2).radius(0).background(if on {
-                    SKIN.ink
-                } else {
-                    "#ffffff1a"
-                }),
-            ),
-        ];
-        let style = web::style().padding(4).radius(0).background("#00000000");
+        let inner = [span("").id(format!("{id}-text")).text(label), span("line").id(format!("{id}-line"))];
         match to {
-            Some(to) => web::card_action(id, style, web::visit(to), children),
-            None => web::card(id, style, children),
+            Some(to) => el("a").id(id).class(if on { "tab on" } else { "tab" }).attr("href", to).children(inner),
+            None => span("tab off").id(id).children(inner),
         }
     };
     // A tab keeps the list the song is playing from, so switching tabs never restarts it.
@@ -1327,285 +731,131 @@ fn watch(state: &Value, ctx: &ServiceContext, v: &str, tab: &str, back: &str) ->
         _ => format!("/watch?v={v}"),
     };
     let lines = catalog::lyrics(&item);
-    let tabs = web::grid(
-        "tabs",
-        3,
-        0,
-        vec![
-            tab_cell(
-                "tab-next",
-                "UP NEXT",
-                tab != "related" && tab != "lyrics",
-                Some(here.clone()),
-            ),
-            // Greyed out, as YouTube Music does, when the song has no lyrics.
-            tab_cell(
-                "tab-lyrics",
-                "LYRICS",
-                tab == "lyrics",
-                (!lines.is_empty()).then(|| format!("{here}&tab=lyrics")),
-            ),
-            tab_cell(
-                "tab-related",
-                "RELATED",
-                tab == "related",
-                Some(format!("{here}&tab=related")),
-            ),
-        ],
+    let mut side = div("upnext").id("watch-side").child(
+        div("tabs")
+            .id("tabs")
+            .child(tab_cell("tab-next", "UP NEXT", tab != "related" && tab != "lyrics", Some(here.clone())))
+            .child(tab_cell("tab-lyrics", "LYRICS", tab == "lyrics", (!lines.is_empty()).then(|| format!("{here}&tab=lyrics"))))
+            .child(tab_cell("tab-related", "RELATED", tab == "related", Some(format!("{here}&tab=related")))),
     );
-    let mut side = vec![tabs];
     if tab == "lyrics" && !lines.is_empty() {
         // Time-synced when this is the song playing: the sung line is lit.
-        let at = p
-            .as_ref()
-            .filter(|p| p.current() == Some(v))
-            .and_then(|p| catalog::sung(&lines, p.position_ms));
-        side.extend(kit::lyric_lines(
-            "lyric",
-            &lines,
-            at,
-            18,
-            (SKIN.ink, "#ffffff80", "#ffffffb3"),
-            back,
-        ));
-        side.push(text(
-            "lyrics-source",
-            "Lyrics synced to the music",
-            12,
-            SKIN.muted,
-        ));
+        let at = p.as_ref().filter(|p| p.current() == Some(v)).and_then(|p| catalog::sung(&lines, p.position_ms));
+        side = side
+            .child(div("lyrics").id("lyrics").children(kit::lyric_lines("lyric", &lines, at, back)))
+            .child(el("p").id("lyrics-source").class("fine").text("Lyrics synced to the music"));
     } else if tab == "related" {
-        for id in catalog::station(state, &web::text(&item, "channel"))
-            .iter()
-            .filter(|id| *id != v)
-            .take(10)
-        {
-            side.push(song_entry(state, "related", id, format!("/watch?v={id}")));
+        for id in catalog::station(state, &web::text(&item, "channel")).iter().filter(|id| *id != v).take(10) {
+            side = side.child(song_entry(state, "related", id, format!("/watch?v={id}")));
         }
     } else if let Some(p) = &p {
         let from = catalog::context_title(state, &p.context);
         if !from.is_empty() {
-            side.push(text(
-                "queue-from",
-                format!("Playing from {from}"),
-                13,
-                SKIN.muted,
-            ));
+            side = side.child(el("p").id("queue-from").class("from").text(format!("Playing from {from}")));
         }
         for (i, id) in p.queue.iter().enumerate() {
             let row_item = record(state, "items", id).cloned().unwrap_or(Value::Null);
             let now = i == p.index;
-            side.push(web::card_action(
+            side = side.child(kit::command(
                 &format!("queue-{i}"),
-                web::style().padding(6).radius(4).background(if now {
-                    SKIN.raised
-                } else {
-                    "#00000000"
-                }),
-                kit::fields(&[
-                    ("action", "jump"),
-                    ("index", &i.to_string()),
-                    ("return", back),
-                ]),
-                vec![web::styled_row(
-                    &format!("queue-{i}-row"),
-                    12,
-                    "center",
-                    web::style(),
-                    vec![
-                        cover(
-                            &format!("queue-{i}-art"),
-                            &catalog::album_id(&row_item),
-                            if now { "▶" } else { "" },
-                            (40, 40),
-                            2,
-                        ),
-                        web::column(
-                            &format!("queue-{i}-text"),
-                            0,
-                            web::style().flex(1),
-                            vec![
-                                text(
-                                    &format!("queue-{i}-title"),
-                                    web::text(&row_item, "title"),
-                                    14,
-                                    SKIN.ink,
+                &[("action", "jump"), ("index", &i.to_string()), ("return", back)],
+                press(if now { "qrow current" } else { "qrow" }, "").child(
+                    span("row")
+                        .id(format!("queue-{i}-row"))
+                        .child(cover(&format!("queue-{i}-art"), &catalog::album_id(&row_item), if now { "Playing" } else { "" }, 40, 2))
+                        .child(
+                            span("names")
+                                .id(format!("queue-{i}-text"))
+                                .child(span("title").id(format!("queue-{i}-title")).text(web::text(&row_item, "title")))
+                                .child(
+                                    span("artist")
+                                        .id(format!("queue-{i}-artist"))
+                                        .text(catalog::artist_name(state, &web::text(&row_item, "channel"))),
                                 ),
-                                text(
-                                    &format!("queue-{i}-artist"),
-                                    catalog::artist_name(state, &web::text(&row_item, "channel")),
-                                    12,
-                                    SKIN.muted,
-                                ),
-                            ],
-                        ),
-                        text(
-                            &format!("queue-{i}-time"),
-                            clock(num(&row_item, "duration_s")),
-                            12,
-                            SKIN.muted,
-                        ),
-                    ],
-                )],
+                        )
+                        .child(span("dur").id(format!("queue-{i}-time")).text(clock(num(&row_item, "duration_s")))),
+                ),
             ));
         }
     }
     let album = catalog::album(state, &catalog::album_id(&item));
-    vec![web::styled_row(
-        "watch",
-        32,
-        "start",
-        web::style(),
-        vec![
-            web::column(
-                "watch-player",
-                12,
-                web::style().flex(3),
-                vec![
-                    cover(
-                        "watch-art",
-                        &catalog::album_id(&item),
-                        &web::text(&item, "title"),
-                        (0, 360),
-                        4,
-                    ),
-                    bold("watch-title", web::text(&item, "title"), 20, SKIN.ink),
-                    text(
-                        "watch-meta",
-                        format!(
-                            "{} • {} • {}",
-                            catalog::artist_name(state, &web::text(&item, "channel")),
-                            album.as_ref().map(|a| a.title.clone()).unwrap_or_default(),
-                            album.as_ref().map(|a| a.year.clone()).unwrap_or_default()
-                        ),
-                        14,
-                        SKIN.muted,
-                    ),
-                ],
-            ),
-            web::column("watch-side", 6, web::style().flex(2), side),
-        ],
-    )]
+    vec![div("watch")
+        .id("watch")
+        .child(
+            div("stage")
+                .id("watch-player")
+                .child(cover("watch-art", &catalog::album_id(&item), &web::text(&item, "title"), 360, 4))
+                .child(el("h1").id("watch-title").text(web::text(&item, "title")))
+                .child(el("p").id("watch-meta").class("muted").text(format!(
+                    "{} • {} • {}",
+                    catalog::artist_name(state, &web::text(&item, "channel")),
+                    album.as_ref().map(|a| a.title.clone()).unwrap_or_default(),
+                    album.as_ref().map(|a| a.year.clone()).unwrap_or_default()
+                ))),
+        )
+        .child(side)]
 }
-fn search(state: &Value, ctx: &ServiceContext, q: &str, back: &str) -> Vec<PageElement> {
-    let mut out = vec![web::form(
-        "search",
-        "/search",
-        &[("q", "Search songs, albums, artists, podcasts", q)],
-    )];
+fn search(state: &Value, ctx: &ServiceContext, q: &str, back: &str) -> Vec<Html> {
+    let mut out =
+        vec![field_form("search", "/search", "get", "q", "Search songs, albums, artists, podcasts", q, "Search").class("searchform")];
     if q.trim().is_empty() {
         out.push(heading("search-moods-heading", "Moods & genres"));
-        out.push(kit::pills(
-            "search-moods",
-            8,
-            moods(state)
-                .iter()
-                .map(|t| {
-                    chip(
-                        &format!("search-mood-{}", slug(t)),
-                        &label(t),
-                        false,
-                        format!("/?mood={}", encode(t)),
-                    )
-                })
-                .collect(),
-        ));
+        out.push(div("chips").id("search-moods").each(moods(state).iter(), |t| {
+            chip(&format!("search-mood-{}", slug(t)), &label(t), false, href("/", &[("mood", t)]))
+        }));
         return out;
     }
     let hits = catalog::search(state, q);
     let list = |k: &str| web::strings(&hits, k);
-    let (songs, albums, artists, playlists) = (
-        list("tracks"),
-        list("albums"),
-        list("artists"),
-        list("playlists"),
-    );
+    let (songs, albums, artists, playlists) = (list("tracks"), list("albums"), list("artists"), list("playlists"));
     if songs.is_empty() && albums.is_empty() && artists.is_empty() && playlists.is_empty() {
         out.push(heading("results-none", "No results"));
-        out.push(text(
-            "results-hint",
-            "Try different keywords, or check your spelling",
-            14,
-            SKIN.muted,
-        ));
+        out.push(el("p").id("results-hint").class("muted").text("Try different keywords, or check your spelling"));
         return out;
     }
     if let Some(top) = artists.first() {
         out.push(heading("results-top-heading", "Top result"));
-        out.push(web::card_action(
-            "results-top",
-            web::style().padding(16).radius(8).background(SKIN.raised),
-            web::visit(format!("/channel/{top}")),
-            vec![web::styled_row(
-                "results-top-row",
-                16,
-                "center",
-                web::style(),
-                vec![
-                    cover("results-top-art", top, "", (96, 96), 48),
-                    web::column(
-                        "results-top-text",
-                        2,
-                        web::style().flex(1),
-                        vec![
-                            bold(
-                                "results-top-name",
-                                catalog::artist_name(state, top),
-                                22,
-                                SKIN.ink,
-                            ),
-                            text(
-                                "results-top-meta",
-                                format!(
-                                    "Artist • {} subscribers",
-                                    short(
-                                        record(state, "channels", top)
-                                            .map_or(0, |c| num(c, "subscribers"))
-                                    )
-                                ),
-                                14,
-                                SKIN.muted,
-                            ),
-                        ],
+        out.push(
+            el("a").id("results-top").class("topresult").attr("href", format!("/channel/{top}")).child(
+                span("row")
+                    .id("results-top-row")
+                    .child(cover("results-top-art", top, "", 96, 48))
+                    .child(
+                        span("names")
+                            .id("results-top-text")
+                            .child(span("title").id("results-top-name").text(catalog::artist_name(state, top)))
+                            .child(span("meta").id("results-top-meta").text(format!(
+                                "Artist • {} subscribers",
+                                short(record(state, "channels", top).map_or(0, |c| num(c, "subscribers")))
+                            ))),
                     ),
-                ],
-            )],
-        ));
+            ),
+        );
     }
     if !songs.is_empty() {
         out.push(heading("results-songs-heading", "Songs"));
         let playing = current(state, ctx).and_then(|p| p.current().map(str::to_owned));
+        let mut table = div("tracks").id("results-songs");
         for (i, id) in songs.iter().take(8).enumerate() {
-            let artist = record(state, "items", id)
-                .map(|i| web::text(i, "channel"))
-                .unwrap_or_default();
-            out.push(kit::track_row(
+            let artist = record(state, "items", id).map(|i| web::text(i, "channel")).unwrap_or_default();
+            let context = format!("station:{artist}");
+            let row = Row { prefix: "result", context: &context, playing: playing.as_deref(), back, art: true };
+            table = table.child(kit::track_row(
                 state,
                 &ctx.actor,
-                "result",
+                &row,
                 id,
                 i + 1,
-                &format!("station:{artist}"),
-                playing.as_deref(),
-                &SKIN,
-                back,
                 record(state, "items", id).map(|i| format!("{} plays", short(num(i, "plays")))),
-                true,
             ));
         }
+        out.push(table);
     }
-    let tiles: Vec<PageElement> = albums
-        .iter()
-        .filter_map(|a| catalog::album(state, a))
-        .map(|a| album_tile("result-album", &a))
-        .collect();
-    out.extend(shelf("results-albums", "Albums", 5, tiles));
-    let tiles: Vec<PageElement> = artists
-        .iter()
-        .map(|a| artist_tile(state, "result-artist", a))
-        .collect();
-    out.extend(shelf("results-artists", "Artists", 5, tiles));
-    let tiles: Vec<PageElement> = playlists
+    let tiles: Vec<Html> = albums.iter().filter_map(|a| catalog::album(state, a)).map(|a| album_tile("result-album", &a)).collect();
+    out.extend(shelf("results-albums", "Albums", "", tiles));
+    let tiles: Vec<Html> = artists.iter().map(|a| artist_tile(state, "result-artist", a)).collect();
+    out.extend(shelf("results-artists", "Artists", "", tiles));
+    let tiles: Vec<Html> = playlists
         .iter()
         .filter_map(|id| record(state, "playlists", id).map(|p| (id, p)))
         .map(|(id, p)| {
@@ -1614,127 +864,59 @@ fn search(state: &Value, ctx: &ServiceContext, q: &str, back: &str) -> Vec<PageE
                 id,
                 &web::text(p, "title"),
                 &format!("Playlist • {}", owner(p)),
-                format!("/playlist?list={id}"),
+                href("/playlist", &[("list", id)]),
                 false,
             )
         })
         .collect();
-    out.extend(shelf("results-playlists", "Playlists", 5, tiles));
+    out.extend(shelf("results-playlists", "Playlists", "", tiles));
     out
 }
-fn player_bar(state: &Value, ctx: &ServiceContext, back: &str) -> PageElement {
-    let style = web::style().background(BAR).padding(0).pin("bottom");
+fn player_bar(state: &Value, ctx: &ServiceContext, back: &str) -> Html {
+    let bar = el("footer").id("bar").class("bar");
     let Some(now) = kit::loaded(state, &ctx.actor, ctx.tick) else {
-        return web::styled_row(
-            "bar",
-            12,
-            "center",
-            style.padding(16),
-            vec![text(
-                "bar-idle",
-                "Pick a song to start listening",
-                13,
-                SKIN.muted,
-            )],
-        );
+        return bar.class("idle").child(span("muted").id("bar-idle").text("Pick a song to start listening"));
     };
     let p = &now.player;
     let liked = has(state, "likes", &ctx.actor, &now.id);
     let album = now.album.as_ref();
-    let mut left = kit::transport(p, &SKIN, back, ("#00000000", SKIN.ink));
     // YouTube Music keeps previous, play and next on the left; shuffle and repeat live on
     // the right, so split the five controls the way it does.
+    let mut left = kit::transport(p, back);
     let repeat = left.pop().expect("five controls");
     let shuffle = left.remove(0);
-    left.push(text(
-        "bar-time",
-        format!(
-            "{} / {}",
-            kit::clock_ms(p.position_ms),
-            kit::clock_ms(now.length_ms)
-        ),
-        12,
-        SKIN.muted,
-    ));
-    let row = web::styled_row(
-        "bar-row",
-        16,
-        "center",
-        web::style().padding(8),
-        vec![
-            web::styled_row("bar-left", 4, "center", web::style().flex(2), left),
-            web::styled_row(
-                "bar-now",
-                12,
-                "center",
-                web::style().flex(4),
-                vec![
-                    cover(
-                        "bar-art",
-                        &album.map(|a| a.id.clone()).unwrap_or_default(),
-                        "",
-                        (40, 40),
-                        2,
-                    ),
-                    web::column(
-                        "bar-text",
-                        0,
-                        web::style().flex(1),
-                        vec![
-                            web::card_action(
-                                "bar-title",
-                                web::style().padding(0).background("#00000000"),
-                                web::visit(watch_url(&now.id, &p.context)),
-                                vec![text("bar-title-text", &now.title, 14, SKIN.ink)],
-                            ),
-                            web::card_action(
-                                "bar-meta",
-                                web::style().padding(0).background("#00000000"),
-                                web::visit(format!("/channel/{}", now.artist_id)),
-                                vec![text(
-                                    "bar-meta-text",
-                                    match album {
-                                        Some(a) => {
-                                            format!("{} • {} • {}", now.artist, a.title, a.year)
-                                        }
+    left.push(span("time").id("bar-time").text(format!("{} / {}", kit::clock_ms(p.position_ms), kit::clock_ms(now.length_ms))));
+    bar.child(div("progress").id("bar-progress").child(kit::scrubber(p, now.length_ms, back))).child(
+        div("row")
+            .id("bar-row")
+            .child(div("left").id("bar-left").children(left))
+            .child(
+                div("now")
+                    .id("bar-now")
+                    .child(cover("bar-art", &album.map(|a| a.id.clone()).unwrap_or_default(), "", 40, 2))
+                    .child(
+                        div("names")
+                            .id("bar-text")
+                            .child(
+                                el("a")
+                                    .id("bar-title")
+                                    .class("title")
+                                    .attr("href", watch_url(&now.id, &p.context))
+                                    .child(span("").id("bar-title-text").text(now.title.as_str())),
+                            )
+                            .child(
+                                el("a")
+                                    .id("bar-meta")
+                                    .class("artist")
+                                    .attr("href", format!("/channel/{}", now.artist_id))
+                                    .child(span("").id("bar-meta-text").text(match album {
+                                        Some(a) => format!("{} • {} • {}", now.artist, a.title, a.year),
                                         None => now.artist.clone(),
-                                    },
-                                    12,
-                                    SKIN.muted,
-                                )],
+                                    })),
                             ),
-                        ],
-                    ),
-                    kit::like("bar-like", &now.id, liked, 20, &SKIN, back),
-                ],
-            ),
-            web::styled_row(
-                "bar-right",
-                4,
-                "center",
-                web::style().flex(2),
-                vec![
-                    web::spacer("bar-right-space", 0),
-                    kit::volume(p, &SKIN, back),
-                    repeat,
-                    shuffle,
-                ],
-            ),
-        ],
-    );
-    web::column(
-        "bar",
-        0,
-        style,
-        vec![
-            web::styled_row(
-                "bar-progress",
-                0,
-                "center",
-                web::style(),
-                kit::scrubber(p, now.length_ms, &SKIN, back),
-            ),
-            row,
-        ],
+                    )
+                    .child(kit::like("bar-like", &now.id, liked, back)),
+            )
+            .child(div("right").id("bar-right").child(kit::volume(p, back)).child(repeat).child(shuffle)),
     )
 }

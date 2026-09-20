@@ -1,0 +1,8 @@
+/* youtube.com: the red play-button mark beside the wordmark, the pill search box, the
+   guide, the chip bar and the responsive grid of 16:9 thumbnails. */
+.skin-youtube .brand .mark { display: block; position: relative; width: 30px; height: 21px; border-radius: 6px; background: #ff0000; }
+.skin-youtube .brand .mark i { display: block; position: absolute; left: 0; top: 0; width: 30px; height: 21px; line-height: 21px; text-align: center; color: #ffffff; font-size: 10px; font-style: normal; }
+.skin-youtube .brand .mark i::before { content: "\25B6"; }
+.skin-youtube .brand .word { font-family: Arial, sans-serif; font-size: 20px; letter-spacing: -1.2px; }
+.skin-youtube .masthead .end a { background: transparent; border: 1px solid #3f3f3f; color: #3ea6ff; }
+.skin-youtube .masthead .end a:hover { background: #263850; border-color: transparent; }

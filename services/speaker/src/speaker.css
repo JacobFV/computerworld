@@ -1,0 +1,295 @@
+/* A network speaker's own screen: the full-bleed "now playing" a Sonos or a Chromecast
+   puts on a display. The wash behind everything is the artwork's own colour, handed to
+   the sheet as --wash on <html>; the art sits large and shadowed in the middle, the
+   track under it, and the speaker's volume and the rest of the queue sit on a shelf
+   across the bottom. */
+:root {
+  --ink: #ffffff;
+  --muted: rgba(255, 255, 255, .62);
+  --faint: rgba(255, 255, 255, .38);
+  --hair: rgba(255, 255, 255, .12);
+  --wash: #2a2f3a;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: Inter, "Source Sans 3", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink);
+  background-color: #0b0c10;
+  background-image:
+    radial-gradient(900px 560px at 26% 22%, var(--wash) 0%, rgba(11, 12, 16, 0) 68%),
+    linear-gradient(180deg, var(--wash) 0%, rgba(11, 12, 16, 0) 46%);
+}
+h1, h2, h3, p, ol { margin: 0; }
+ol { padding: 0; list-style-type: none; }
+button { font: inherit; color: inherit; cursor: pointer; }
+form.act { display: block; margin: 0; }
+
+.room {
+  max-width: 1000px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 0 32px 40px 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------------- header */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px 0 8px 0;
+}
+.who { display: flex; align-items: center; gap: 14px; min-width: 0; }
+/* The mark: a rounded cabinet with two grille circles, the way a speaker is drawn. */
+.mark {
+  display: block;
+  position: relative;
+  width: 40px;
+  height: 46px;
+  flex: none;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, .28);
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, .16) 0%, rgba(255, 255, 255, .04) 100%);
+}
+.mark i {
+  display: block;
+  position: absolute;
+  left: 50%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .55);
+}
+.mark i:first-child { top: 7px; width: 14px; height: 14px; margin-left: -7px; }
+.mark i:last-child { top: 24px; width: 20px; height: 20px; margin-left: -10px; }
+.names { min-width: 0; }
+h1 {
+  font-size: 27px;
+  line-height: 34px;
+  font-weight: 700;
+  letter-spacing: -.5px;
+}
+.model { font-size: 13px; color: var(--muted); }
+
+.chips { display: flex; align-items: center; gap: 8px; flex: none; }
+.chip {
+  display: block;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--hair);
+  background-color: rgba(255, 255, 255, .06);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* -------------------------------------------------------------------- stage */
+.stage {
+  display: flex;
+  align-items: center;
+  gap: 44px;
+  flex: 1;
+  padding: 44px 0 48px 0;
+}
+.art { position: relative; flex: none; width: 320px; height: 320px; }
+.art .cover {
+  display: block;
+  width: 320px;
+  height: 320px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 26px 50px rgba(0, 0, 0, .55);
+}
+/* The pool of shadow the cabinet casts, under the art rather than around it. */
+.art .shadow {
+  display: block;
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: -26px;
+  height: 40px;
+  border-radius: 50%;
+  background-image: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, .55) 0%, rgba(0, 0, 0, 0) 70%);
+}
+/* Idle: the cabinet itself, its grille drawn in rings. */
+.art .grille {
+  display: block;
+  position: relative;
+  width: 320px;
+  height: 320px;
+  border-radius: 14px;
+  border: 1px solid var(--hair);
+  background-image: linear-gradient(160deg, rgba(255, 255, 255, .09) 0%, rgba(255, 255, 255, .02) 100%);
+}
+.art .grille i {
+  display: block;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .16);
+}
+.art .grille i:nth-child(1) { width: 96px; height: 96px; margin: -48px 0 0 -48px; }
+.art .grille i:nth-child(2) { width: 164px; height: 164px; margin: -82px 0 0 -82px; }
+.art .grille i:nth-child(3) { width: 232px; height: 232px; margin: -116px 0 0 -116px; }
+
+.meta { flex: 1; min-width: 0; }
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 10px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, .1);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.state .dot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--faint);
+}
+.state.on { color: var(--ink); }
+.state.on .dot { background-color: #4ade80; box-shadow: 0 0 0 4px rgba(74, 222, 128, .2); }
+
+.track {
+  font-size: 42px;
+  line-height: 50px;
+  font-weight: 700;
+  letter-spacing: -1.4px;
+  margin: 16px 0 6px 0;
+  overflow-wrap: break-word;
+}
+.artist { font-size: 19px; line-height: 26px; color: var(--muted); }
+
+.line { display: flex; align-items: center; gap: 16px; margin-top: 32px; }
+.time { display: block; flex: none; font-size: 12px; font-weight: 500; color: var(--faint); }
+#speaker-position { width: 84px; text-align: right; }
+.scrub {
+  display: block;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 5px;
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, .2);
+  overflow: hidden;
+}
+.scrub .fill { display: block; height: 5px; border-radius: 3px; background-color: var(--ink); }
+
+.source { font-size: 13px; color: var(--faint); margin-top: 14px; }
+.actions { display: flex; align-items: center; gap: 18px; margin-top: 28px; }
+button.stop {
+  display: block;
+  padding: 10px 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .32);
+  background-color: rgba(255, 255, 255, 0);
+  font-size: 14px;
+  font-weight: 600;
+}
+button.stop:hover { background-color: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .5); }
+
+/* --------------------------------------------------------- the bottom shelf */
+.panel {
+  display: flex;
+  align-items: flex-start;
+  gap: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--hair);
+}
+.volume { flex: 1 1 320px; max-width: 460px; min-width: 0; }
+.vhead { display: flex; align-items: center; gap: 9px; }
+.vhead .level { font-size: 13px; font-weight: 600; letter-spacing: .3px; color: var(--muted); }
+.ic {
+  display: block;
+  position: relative;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--muted);
+}
+.ic-volume i {
+  display: block;
+  position: absolute;
+  left: 2px;
+  top: 7px;
+  width: 5px;
+  height: 6px;
+  background-color: currentColor;
+}
+.ic-volume::before {
+  content: "\25C0";
+  position: absolute;
+  left: 1px;
+  top: -2px;
+  font-size: 14px;
+}
+.ic-volume::after {
+  content: ")";
+  position: absolute;
+  left: 13px;
+  top: -3px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Twenty steps butted together so they read as one bar, not a level meter; each is
+   still its own control, so a click really sets that level. */
+.slider { display: flex; align-items: center; margin-top: 14px; height: 10px; border-radius: 5px; overflow: hidden; }
+.slider .act { flex: 1; min-width: 0; height: 10px; }
+.slider .seg {
+  display: block;
+  width: 100%;
+  height: 10px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background-color: rgba(255, 255, 255, .15);
+}
+.slider .seg.on { background-color: var(--ink); }
+.slider .act:hover .seg { background-color: rgba(255, 255, 255, .38); }
+.slider .act:hover .seg.on { background-color: rgba(255, 255, 255, .8); }
+
+.queue { flex: 1 1 380px; min-width: 0; }
+.qhead {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.rows { margin-top: 6px; }
+.row { display: flex; align-items: center; gap: 14px; padding: 9px 0; border-bottom: 1px solid rgba(255, 255, 255, .07); }
+.row:last-child { border-bottom: none; }
+.row:hover { background-color: rgba(255, 255, 255, .04); }
+.num { display: block; flex: none; width: 18px; font-size: 13px; color: var(--faint); }
+.qnames { min-width: 0; flex: 1; }
+.qtitle { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qartist { display: block; font-size: 13px; color: var(--faint); }
+.qtime { display: block; flex: none; font-size: 13px; color: var(--faint); }
+.queue.empty .fine { font-size: 13px; color: var(--faint); margin-top: 8px; }
+
+/* A phone-sized window stacks the art over the track and the shelf into one column. */
+@media (max-width: 860px) {
+  .room { padding: 0 20px 32px 20px; }
+  .stage { flex-direction: column; align-items: flex-start; gap: 28px; padding: 28px 0 32px 0; }
+  .art, .art .cover, .art .grille { width: 100%; height: auto; }
+  .art .cover { height: auto; }
+  .track { font-size: 32px; line-height: 40px; letter-spacing: -1px; }
+  .panel { flex-direction: column; gap: 28px; }
+  .chips { display: none; }
+}

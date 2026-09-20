@@ -16,7 +16,7 @@
 //!   repeat|jump|queue, ...}`, answered with the player;
 //! - `POST /api/library/items/<id>`, `/api/library/albums/<id>` — save or unsave;
 //! - `POST /api/items/<id>/queue`, `/api/playlists/<id>/remove` — Play Next and removal.
-use cw_protocol::{HttpRequest, HttpResponse, PageAction, PageElement, PageTheme, Result};
+use cw_protocol::{HttpRequest, HttpResponse, Result};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde_json::{json, Map, Value};
@@ -24,6 +24,8 @@ mod catalog;
 mod kit;
 mod player;
 mod spotify;
+mod video;
+mod view;
 mod ytmusic;
 pub use player::{Player, Repeat};
 pub struct MediaService;
@@ -137,1127 +139,21 @@ fn toggle(state: &mut Value, map: &str, key: &str, value: &str) -> bool {
         }
     }
 }
-fn post(url: String, fields: &[(&str, &str)]) -> PageAction {
-    PageAction {
-        method: "POST".into(),
-        url,
-        fields: fields
-            .iter()
-            .map(|(k, v)| ((*k).into(), (*v).to_owned()))
-            .collect(),
-    }
-}
-/// A pill that really submits; `on` is the engaged state, which is what makes a toggle legible.
-fn pill(id: &str, text: &str, on: bool, theme: &PageTheme, action: PageAction) -> PageElement {
-    let accent = theme.accent.clone().unwrap_or_else(|| "#ff0000".into());
-    let surface = theme.surface.clone().unwrap_or_else(|| "#212121".into());
-    let ink = theme.ink.clone().unwrap_or_else(|| "#f1f1f1".into());
-    let style =
-        web::style()
-            .padding(10)
-            .radius(18)
-            .background(if on { accent.clone() } else { surface });
-    web::card_action(
-        id,
-        style,
-        action,
-        vec![web::styled(
-            &format!("{id}-text"),
-            text,
-            web::style()
-                .size(13)
-                .medium()
-                .color(if on { "#ffffff".to_owned() } else { ink }),
-        )],
-    )
-}
-fn muted(theme: &PageTheme) -> String {
-    theme.muted.clone().unwrap_or_else(|| "#aaaaaa".into())
-}
-fn ink(theme: &PageTheme) -> String {
-    theme.ink.clone().unwrap_or_else(|| "#f1f1f1".into())
-}
-fn surface(theme: &PageTheme) -> String {
-    theme.surface.clone().unwrap_or_else(|| "#212121".into())
-}
-/// Artwork stand-in: a tinted block carrying its own label, never claiming to be a photograph.
-/// A flat-colour stand-in for a still. A `width` of 0 fills the column it sits in.
-fn art(id: &str, label: &str, width: u32, height: u32, radius: u32) -> PageElement {
-    let style = web::style();
-    let style = if width == 0 {
-        style
-    } else {
-        style.width(width)
-    };
-    web::thumbnail(
-        id,
-        label,
-        style
-            .height(height)
-            .radius(radius)
-            .background(tint(id))
-            .color("#e8eaed")
-            .align("center"),
-    )
-}
-fn chrome(state: &Value, mode: &str, theme: &PageTheme) -> PageElement {
-    let brand = match web::text(state, "brand").as_str() {
-        "" => BRAND.to_owned(),
-        s => s.to_owned(),
-    };
-    let accent = theme.accent.clone().unwrap_or_else(|| "#ff0000".into());
-    let (search_url, field, label, library) = match mode {
-        "audio" => ("/search", "q", "Search songs and artists", "/playlists"),
-        _ => ("/results", "search_query", "Search", "/playlists"),
-    };
-    web::styled_row(
-        "chrome",
-        16,
-        "center",
-        web::style().background(surface(theme)).padding(12),
-        vec![
-            web::card_action(
-                "chrome-home",
-                web::style().width(150),
-                web::visit("/"),
-                vec![web::styled(
-                    "chrome-brand",
-                    brand,
-                    web::style().size(22).bold().color(accent),
-                )],
-            ),
-            web::styled_row(
-                "chrome-search",
-                0,
-                "center",
-                web::style().flex(3),
-                vec![web::form("search", search_url, &[(field, label, "")])],
-            ),
-            web::link("chrome-library", "Library", library),
-        ],
-    )
-}
-/// Optional seed flags — "LIVE", "4K", "NEW". LIVE is the loud one, as it is on the real thing.
-fn flags(item: &Value, prefix: &str, theme: &PageTheme) -> Vec<PageElement> {
-    web::strings(item, "badges")
-        .iter()
-        .map(|flag| {
-            let background = if flag.eq_ignore_ascii_case("live") {
-                theme.accent.clone().unwrap_or_else(|| "#ff0000".into())
-            } else {
-                "#3f3f3f".to_owned()
-            };
-            web::badge(
-                &format!("{prefix}-flag-{}", slug(flag)),
-                flag,
-                web::style()
-                    .size(11)
-                    .padding(4)
-                    .radius(4)
-                    .color("#ffffff")
-                    .background(background),
-            )
-        })
-        .collect()
-}
-/// One video tile: artwork, duration, title, channel, view count — the unit the home grid repeats.
-fn video_card(state: &Value, id: &str, theme: &PageTheme) -> PageElement {
-    video_tile(state, id, "tile", theme)
-}
-/// The same tile under a caller-chosen id prefix, so a video shown twice on one page (a home
-/// section and the grid) keeps every element id unique.
-fn video_tile(state: &Value, id: &str, prefix: &str, theme: &PageTheme) -> PageElement {
-    let item = record(state, "items", id).cloned().unwrap_or(Value::Null);
-    let channel = web::text(&item, "channel");
-    let channel_name = record(state, "channels", &channel)
-        .map(|c| web::text(c, "name"))
-        .unwrap_or(channel);
-    let tile = &format!("{prefix}-{id}");
-    web::card_action(
-        tile,
-        web::style().padding(4),
-        web::visit(format!("/watch?v={id}")),
-        vec![
-            art(
-                &format!("{tile}-art"),
-                &web::text(&item, "title"),
-                0,
-                150,
-                8,
-            ),
-            web::styled_row(
-                &format!("{tile}-meta"),
-                8,
-                "center",
-                web::style(),
-                std::iter::once(web::badge(
-                    &format!("{tile}-duration"),
-                    clock(num(&item, "duration_s")),
-                    web::style()
-                        .background("#000000")
-                        .color("#ffffff")
-                        .size(11)
-                        .padding(4)
-                        .radius(4),
-                ))
-                .chain(flags(&item, tile, theme))
-                .chain(std::iter::once(web::styled(
-                    &format!("{tile}-published"),
-                    web::text(&item, "published"),
-                    web::style().size(11).color(muted(theme)),
-                )))
-                .collect(),
-            ),
-            web::styled(
-                &format!("{tile}-title"),
-                web::text(&item, "title"),
-                web::style().size(15).medium().color(ink(theme)),
-            ),
-            web::styled(
-                &format!("{tile}-channel"),
-                channel_name,
-                web::style().size(13).color(muted(theme)),
-            ),
-            web::styled(
-                &format!("{tile}-views"),
-                format!("{} views", grouped(num(&item, "views"))),
-                web::style().size(12).color(muted(theme)),
-            ),
-        ],
-    )
-}
-/// Compact row used by "Up next" and by every list that is not the home grid.
-fn item_row(state: &Value, id: &str, prefix: &str, theme: &PageTheme, to: String) -> PageElement {
-    let item = record(state, "items", id).cloned().unwrap_or(Value::Null);
-    let channel = web::text(&item, "channel");
-    let channel_name = record(state, "channels", &channel)
-        .map(|c| web::text(c, "name"))
-        .unwrap_or(channel);
-    web::card_action(
-        &format!("{prefix}-{id}"),
-        web::style().padding(6),
-        web::visit(to),
-        vec![web::styled_row(
-            &format!("{prefix}-{id}-row"),
-            12,
-            "start",
-            web::style(),
-            vec![
-                art(
-                    &format!("{prefix}-{id}-art"),
-                    &clock(num(&item, "duration_s")),
-                    120,
-                    68,
-                    6,
-                ),
-                web::styled_row(
-                    &format!("{prefix}-{id}-text"),
-                    2,
-                    "start",
-                    web::style().flex(3),
-                    vec![
-                        web::styled(
-                            &format!("{prefix}-{id}-title"),
-                            web::text(&item, "title"),
-                            web::style().size(13).medium().color(ink(theme)),
-                        ),
-                        web::styled(
-                            &format!("{prefix}-{id}-channel"),
-                            format!("{channel_name} · {} views", grouped(num(&item, "views"))),
-                            web::style().size(11).color(muted(theme)),
-                        ),
-                    ],
-                ),
-            ],
-        )],
-    )
-}
-fn comment_block(
-    state: &Value,
-    item_id: &str,
-    actor: &str,
-    theme: &PageTheme,
-    back: &str,
-) -> Vec<PageElement> {
-    let item = record(state, "items", item_id)
-        .cloned()
-        .unwrap_or(Value::Null);
-    let comments = item
-        .get("comments")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    let mut out = vec![
-        web::styled(
-            "comments-heading",
-            format!("{} Comments", comments.len()),
-            web::style().size(16).bold().color(ink(theme)),
-        ),
-        web::styled_row(
-            "comment-compose",
-            12,
-            "center",
-            web::style(),
-            vec![
-                art("comment-avatar", actor, 40, 40, 20),
-                web::form(
-                    "comment",
-                    &format!("/items/{item_id}/comments"),
-                    &[("text", "Add a comment", "")],
-                ),
-            ],
-        ),
-    ];
-    for comment in comments {
-        let cid = web::text(&comment, "id");
-        let author = web::text(&comment, "author");
-        out.push(web::styled_row(
-            &format!("comment-{cid}"),
-            12,
-            "start",
-            web::style().padding(8),
-            vec![
-                art(&format!("comment-{cid}-avatar"), &author, 36, 36, 18),
-                web::styled_row(
-                    &format!("comment-{cid}-body"),
-                    4,
-                    "start",
-                    web::style().flex(4),
-                    vec![
-                        web::styled(
-                            &format!("comment-{cid}-author"),
-                            format!("@{author}"),
-                            web::style().size(13).medium().color(ink(theme)),
-                        ),
-                        web::styled(
-                            &format!("comment-{cid}-text"),
-                            web::text(&comment, "text"),
-                            web::style().size(13).color(ink(theme)),
-                        ),
-                    ],
-                ),
-                pill(
-                    &format!("comment-{cid}-like"),
-                    &format!("♥ {}", num(&comment, "likes")),
-                    false,
-                    theme,
-                    post(
-                        format!("/items/{item_id}/comments/{cid}/like"),
-                        &[("return", back)],
-                    ),
-                ),
-            ],
-        ));
-    }
-    out
-}
-fn home(state: &Value, theme: &PageTheme) -> Result<HttpResponse> {
-    let ids = by_recency(state, |_| true);
-    let mut tags: Vec<String> = ids
-        .iter()
-        .filter_map(|id| record(state, "items", id))
-        .flat_map(|item| web::strings(item, "tags"))
-        .collect();
-    tags.sort();
-    tags.dedup();
-    let chips = tags
-        .iter()
-        .map(|tag| {
-            web::card_action(
-                &format!("chip-{tag}"),
-                web::style()
-                    .padding(8)
-                    .radius(14)
-                    .background(surface(theme)),
-                web::visit(format!("/results?search_query={tag}")),
-                vec![web::styled(
-                    &format!("chip-{tag}-text"),
-                    tag,
-                    web::style().size(13).color(ink(theme)),
-                )],
-            )
-        })
-        .collect();
-    let tiles = ids.iter().map(|id| video_card(state, id, theme)).collect();
-    let mut elements = vec![
-        chrome(state, "video", theme),
-        web::styled_row("chips", 8, "center", web::style().padding(12), chips),
-    ];
-    elements.extend(sections(state, theme));
-    elements.push(web::grid("home-grid", 3, 20, tiles));
-    web::themed_page(&web::text(state, "brand"), theme.clone(), elements)
-}
-/// Optional seed `sections`: `[{"title", "items": [ids]}]`, each a titled row of tiles above the
-/// grid. Unknown ids are skipped and a seed without the key renders exactly as before.
-fn sections(state: &Value, theme: &PageTheme) -> Vec<PageElement> {
-    let mut out = vec![];
-    let listed = state.get("sections").and_then(Value::as_array);
-    for (index, section) in listed.into_iter().flatten().enumerate() {
-        let tiles: Vec<PageElement> = web::strings(section, "items")
-            .iter()
-            .filter(|id| record(state, "items", id).is_some())
-            .map(|id| video_tile(state, id, &format!("section-{index}"), theme))
-            .collect();
-        if tiles.is_empty() {
-            continue;
-        }
-        out.push(web::styled(
-            &format!("section-{index}-title"),
-            web::text(section, "title"),
-            web::style().size(18).bold().color(ink(theme)).padding(12),
-        ));
-        out.push(web::grid(&format!("section-{index}-grid"), 3, 20, tiles));
-    }
-    out
-}
-/// The watch page. `list` keeps a playlist queue in the sidebar so playback has somewhere to go.
-fn watch(
-    state: &Value,
-    id: &str,
-    list: Option<&str>,
-    actor: &str,
-    theme: &PageTheme,
-) -> Result<HttpResponse> {
-    let Some(item) = record(state, "items", id).cloned() else {
-        return web::error(404, "video not found");
-    };
-    let back = match list {
-        Some(l) => format!("/watch?v={id}&list={l}"),
-        None => format!("/watch?v={id}"),
-    };
-    let channel_id = web::text(&item, "channel");
-    let channel = record(state, "channels", &channel_id)
-        .cloned()
-        .unwrap_or(Value::Null);
-    let subscribed = has(state, "subscriptions", actor, &channel_id);
-    let liked = has(state, "likes", actor, id);
-    let description = web::text(&item, "description");
-    let mut left = vec![
-        art("player", &web::text(&item, "title"), 0, 360, 10),
-        web::styled_row(
-            "watch-heading",
-            10,
-            "center",
-            web::style(),
-            std::iter::once(web::styled(
-                "watch-title",
-                web::text(&item, "title"),
-                web::style().size(20).bold().color(ink(theme)).flex(3),
-            ))
-            .chain(flags(&item, "watch", theme))
-            .collect(),
-        ),
-        web::styled_row(
-            "watch-actions",
-            12,
-            "center",
-            web::style(),
-            vec![
-                art("watch-avatar", &web::text(&channel, "name"), 48, 48, 24),
-                web::styled_row(
-                    "watch-channel",
-                    2,
-                    "start",
-                    web::style().flex(3),
-                    vec![
-                        web::link(
-                            "watch-channel-name",
-                            web::text(&channel, "name"),
-                            format!("/channel/{channel_id}"),
-                        ),
-                        web::styled(
-                            "watch-subs",
-                            format!("{} subscribers", grouped(num(&channel, "subscribers"))),
-                            web::style().size(12).color(muted(theme)),
-                        ),
-                    ],
-                ),
-                pill(
-                    "watch-subscribe",
-                    if subscribed {
-                        "Subscribed"
-                    } else {
-                        "Subscribe"
-                    },
-                    subscribed,
-                    theme,
-                    post(
-                        format!("/channels/{channel_id}/subscribe"),
-                        &[("return", &back)],
-                    ),
-                ),
-                pill(
-                    "watch-like",
-                    &format!("♥ {}", grouped(num(&item, "likes"))),
-                    liked,
-                    theme,
-                    post(format!("/items/{id}/like"), &[("return", &back)]),
-                ),
-                pill(
-                    "watch-later",
-                    "Save",
-                    false,
-                    theme,
-                    post(
-                        "/playlists/watch-later/items".into(),
-                        &[("item", id), ("return", &back)],
-                    ),
-                ),
-            ],
-        ),
-        web::card(
-            "watch-description",
-            web::style()
-                .background(surface(theme))
-                .padding(12)
-                .radius(8),
-            std::iter::once(web::styled(
-                "watch-stats",
-                format!(
-                    "{} views · {}",
-                    grouped(num(&item, "views")),
-                    web::text(&item, "published")
-                ),
-                web::style().size(13).medium().color(ink(theme)),
-            ))
-            .chain(std::iter::once(web::paragraph("watch-body", &description)))
-            .chain(web::links("watch", &description))
-            .collect(),
-        ),
-        web::divider("watch-divider"),
-    ];
-    left.extend(comment_block(state, id, actor, theme, &back));
-    let queue: Vec<String> = match list.and_then(|l| record(state, "playlists", l).cloned()) {
-        Some(playlist) => web::strings(&playlist, "items"),
-        None => web::strings(&item, "related"),
-    };
-    let mut side = vec![web::styled(
-        "queue-heading",
-        match list {
-            Some(l) => record(state, "playlists", l)
-                .map(|p| web::text(p, "title"))
-                .unwrap_or_else(|| "Up next".into()),
-            None => "Up next".into(),
-        },
-        web::style().size(15).bold().color(ink(theme)),
-    )];
-    for next in queue.iter().filter(|n| *n != id) {
-        let to = match list {
-            Some(l) => format!("/watch?v={next}&list={l}"),
-            None => format!("/watch?v={next}"),
-        };
-        side.push(item_row(state, next, "queue", theme, to));
-    }
-    web::themed_page(
-        &web::text(&item, "title"),
-        theme.clone(),
-        vec![
-            chrome(state, "video", theme),
-            web::styled_row(
-                "watch-layout",
-                24,
-                "start",
-                web::style().padding(16),
-                vec![
-                    web::column("watch-main", 12, web::style().flex(3), left),
-                    web::column("watch-side", 8, web::style().flex(2), side),
-                ],
-            ),
-        ],
-    )
-}
-fn channel_page(state: &Value, id: &str, actor: &str, theme: &PageTheme) -> Result<HttpResponse> {
-    let Some(channel) = record(state, "channels", id).cloned() else {
-        return web::error(404, "channel not found");
-    };
-    let name = web::text(&channel, "name");
-    let subscribed = has(state, "subscriptions", actor, id);
-    let owned = by_recency(state, |item| web::text(item, "channel") == id);
-    let video = web::variant(state, "mode", MODES)? == "video";
-    let tiles = owned
-        .iter()
-        .map(|item| {
-            if video {
-                video_card(state, item, theme)
-            } else {
-                item_row(state, item, "channel", theme, format!("/track/{item}"))
-            }
-        })
-        .collect();
-    web::themed_page(
-        &name,
-        theme.clone(),
-        vec![
-            chrome(state, if video { "video" } else { "audio" }, theme),
-            art("channel-banner", &name, 0, 120, 10),
-            web::styled_row(
-                "channel-header",
-                16,
-                "center",
-                web::style().padding(16),
-                vec![
-                    art("channel-avatar", &name, 80, 80, 40),
-                    web::styled_row(
-                        "channel-identity",
-                        4,
-                        "start",
-                        web::style().flex(3),
-                        vec![
-                            web::styled(
-                                "channel-name",
-                                &name,
-                                web::style().size(22).bold().color(ink(theme)),
-                            ),
-                            web::styled(
-                                "channel-handle",
-                                format!(
-                                    "{} · {} subscribers",
-                                    web::text(&channel, "handle"),
-                                    grouped(num(&channel, "subscribers"))
-                                ),
-                                web::style().size(13).color(muted(theme)),
-                            ),
-                            web::styled(
-                                "channel-about",
-                                web::text(&channel, "about"),
-                                web::style().size(13).color(muted(theme)),
-                            ),
-                        ],
-                    ),
-                    pill(
-                        "channel-subscribe",
-                        if subscribed {
-                            "Subscribed"
-                        } else {
-                            "Subscribe"
-                        },
-                        subscribed,
-                        theme,
-                        post(
-                            format!("/channels/{id}/subscribe"),
-                            &[("return", &format!("/channel/{id}"))],
-                        ),
-                    ),
-                ],
-            ),
-            web::divider("channel-divider"),
-            if video {
-                web::grid("channel-grid", 3, 20, tiles)
-            } else {
-                web::styled_row("channel-list", 8, "start", web::style().padding(12), tiles)
-            },
-        ],
-    )
-}
 /// Title, description, tags and channel name all match, so a search is worth typing.
 fn matches(state: &Value, id: &str, needle: &str) -> bool {
     let Some(item) = record(state, "items", id) else {
         return false;
     };
-    let channel = record(state, "channels", &web::text(item, "channel"))
-        .map(|c| web::text(c, "name"))
-        .unwrap_or_default();
     let hay = format!(
         "{} {} {} {} {}",
         web::text(item, "title"),
         web::text(item, "description"),
         web::text(item, "album"),
         web::strings(item, "tags").join(" "),
-        channel
+        record(state, "channels", &web::text(item, "channel")).map(|c| web::text(c, "name")).unwrap_or_default()
     )
     .to_lowercase();
-    needle
-        .split_whitespace()
-        .all(|word| hay.contains(&word.to_lowercase()))
-}
-fn results(state: &Value, query: &str, theme: &PageTheme, video: bool) -> Result<HttpResponse> {
-    let hits = by_recency(state, |_| true)
-        .into_iter()
-        .filter(|id| matches(state, id, query))
-        .collect::<Vec<_>>();
-    let mut elements = vec![
-        chrome(state, if video { "video" } else { "audio" }, theme),
-        web::styled(
-            "results-heading",
-            format!("{} results for \"{query}\"", hits.len()),
-            web::style().size(16).bold().color(ink(theme)).padding(12),
-        ),
-    ];
-    for id in &hits {
-        let to = if video {
-            format!("/watch?v={id}")
-        } else {
-            format!("/track/{id}")
-        };
-        elements.push(item_row(state, id, "result", theme, to));
-    }
-    for channel in keys(state, "channels") {
-        let name = record(state, "channels", &channel)
-            .map(|c| web::text(c, "name"))
-            .unwrap_or_default();
-        if !name.to_lowercase().contains(&query.to_lowercase()) {
-            continue;
-        }
-        elements.push(web::card_action(
-            &format!("result-channel-{channel}"),
-            web::style().padding(8),
-            web::visit(format!("/channel/{channel}")),
-            vec![web::styled_row(
-                &format!("result-channel-{channel}-row"),
-                12,
-                "center",
-                web::style(),
-                vec![
-                    art(&format!("result-channel-{channel}-art"), &name, 56, 56, 28),
-                    web::styled(
-                        &format!("result-channel-{channel}-name"),
-                        name,
-                        web::style().size(14).medium().color(ink(theme)),
-                    ),
-                ],
-            )],
-        ));
-    }
-    web::themed_page(&format!("{query} - search"), theme.clone(), elements)
-}
-fn playlist_page(
-    state: &Value,
-    id: &str,
-    actor: &str,
-    theme: &PageTheme,
-    video: bool,
-) -> Result<HttpResponse> {
-    let Some(playlist) = record(state, "playlists", id).cloned() else {
-        return web::error(404, "playlist not found");
-    };
-    let tracks = web::strings(&playlist, "items");
-    let title = web::text(&playlist, "title");
-    let owner = match web::text(&playlist, "owner") {
-        o if o.is_empty() => "everyone".to_owned(),
-        o => o,
-    };
-    let mut elements = vec![
-        chrome(state, if video { "video" } else { "audio" }, theme),
-        web::styled_row(
-            "playlist-header",
-            20,
-            "center",
-            web::style().padding(16),
-            vec![
-                art("playlist-art", &title, 180, 180, 8),
-                web::styled_row(
-                    "playlist-identity",
-                    6,
-                    "start",
-                    web::style().flex(3),
-                    vec![
-                        web::styled(
-                            "playlist-title",
-                            &title,
-                            web::style().size(28).bold().color(ink(theme)),
-                        ),
-                        web::styled(
-                            "playlist-meta",
-                            format!("{owner} · {} tracks", tracks.len()),
-                            web::style().size(13).color(muted(theme)),
-                        ),
-                        match tracks.first() {
-                            Some(first) if video => web::card_action(
-                                "playlist-play",
-                                web::style().padding(10).radius(18).background(
-                                    theme.accent.clone().unwrap_or_else(|| "#ff0000".into()),
-                                ),
-                                web::visit(format!("/watch?v={first}&list={id}")),
-                                vec![web::styled(
-                                    "playlist-play-text",
-                                    "Play all",
-                                    web::style().size(13).medium().color("#ffffff"),
-                                )],
-                            ),
-                            Some(first) => pill(
-                                "playlist-play",
-                                "Play",
-                                true,
-                                theme,
-                                post(
-                                    format!("/items/{first}/play"),
-                                    &[("list", id), ("return", &format!("/playlist/{id}"))],
-                                ),
-                            ),
-                            None => web::styled(
-                                "playlist-play",
-                                "Nothing added yet",
-                                web::style().size(13).color(muted(theme)),
-                            ),
-                        },
-                    ],
-                ),
-            ],
-        ),
-        web::divider("playlist-divider"),
-    ];
-    for (index, track) in tracks.iter().enumerate() {
-        let to = if video {
-            format!("/watch?v={track}&list={id}")
-        } else {
-            format!("/track/{track}")
-        };
-        elements.push(web::styled_row(
-            &format!("playlist-line-{index}"),
-            12,
-            "center",
-            web::style(),
-            vec![
-                web::styled(
-                    &format!("playlist-index-{index}"),
-                    format!("{}", index + 1),
-                    web::style().size(13).color(muted(theme)).width(28),
-                ),
-                item_row(state, track, "playlist", theme, to),
-            ],
-        ));
-    }
-    elements.push(web::divider("playlist-foot"));
-    elements.push(track_bar(state, actor, theme));
-    web::themed_page(&title, theme.clone(), elements)
-}
-/// Library: every playlist plus the form that creates one, which is what makes them buildable.
-fn library(state: &Value, theme: &PageTheme, video: bool) -> Result<HttpResponse> {
-    let cards = keys(state, "playlists")
-        .iter()
-        .map(|id| {
-            let playlist = record(state, "playlists", id)
-                .cloned()
-                .unwrap_or(Value::Null);
-            let title = web::text(&playlist, "title");
-            web::card_action(
-                &format!("library-{id}"),
-                web::style().padding(8),
-                web::visit(if video {
-                    format!("/playlist?list={id}")
-                } else {
-                    format!("/playlist/{id}")
-                }),
-                vec![
-                    art(&format!("library-{id}-art"), &title, 0, 140, 8),
-                    web::styled(
-                        &format!("library-{id}-title"),
-                        title,
-                        web::style().size(14).medium().color(ink(theme)),
-                    ),
-                    web::styled(
-                        &format!("library-{id}-count"),
-                        format!("{} tracks", web::strings(&playlist, "items").len()),
-                        web::style().size(12).color(muted(theme)),
-                    ),
-                ],
-            )
-        })
-        .collect();
-    web::themed_page(
-        "Library",
-        theme.clone(),
-        vec![
-            chrome(state, if video { "video" } else { "audio" }, theme),
-            web::styled(
-                "library-heading",
-                "Your playlists",
-                web::style().size(20).bold().color(ink(theme)).padding(12),
-            ),
-            web::grid("library-grid", 3, 16, cards),
-            web::divider("library-divider"),
-            web::form("playlist", "/playlists", &[("title", "New playlist", "")]),
-        ],
-    )
-}
-/// The persistent now-playing bar. Inert text plus one real link to whatever is parked there.
-fn track_bar(state: &Value, actor: &str, theme: &PageTheme) -> PageElement {
-    let Some(playing) = record(state, "now_playing", actor).cloned() else {
-        return web::styled(
-            "bar",
-            "Nothing playing",
-            web::style().size(12).color(muted(theme)).padding(12),
-        );
-    };
-    let id = web::text(&playing, "item");
-    let item = record(state, "items", &id).cloned().unwrap_or(Value::Null);
-    web::styled_row(
-        "bar",
-        12,
-        "center",
-        web::style().background(surface(theme)).padding(12),
-        vec![
-            art("bar-art", &web::text(&item, "title"), 48, 48, 4),
-            web::link(
-                "bar-title",
-                web::text(&item, "title"),
-                format!("/track/{id}"),
-            ),
-            web::styled(
-                "bar-meta",
-                format!(
-                    "{} · {} plays",
-                    web::text(&item, "album"),
-                    grouped(num(&item, "plays"))
-                ),
-                web::style().size(12).color(muted(theme)),
-            ),
-        ],
-    )
-}
-fn browse(state: &Value, actor: &str, theme: &PageTheme) -> Result<HttpResponse> {
-    let artists = keys(state, "channels")
-        .iter()
-        .map(|id| {
-            let artist = record(state, "channels", id)
-                .cloned()
-                .unwrap_or(Value::Null);
-            let name = web::text(&artist, "name");
-            web::card_action(
-                &format!("artist-{id}"),
-                web::style()
-                    .padding(12)
-                    .background(surface(theme))
-                    .radius(8),
-                web::visit(format!("/artist/{id}")),
-                vec![
-                    art(&format!("artist-{id}-art"), &name, 140, 140, 70),
-                    web::styled(
-                        &format!("artist-{id}-name"),
-                        name,
-                        web::style().size(15).medium().color(ink(theme)),
-                    ),
-                    web::styled(
-                        &format!("artist-{id}-meta"),
-                        format!("{} followers", grouped(num(&artist, "subscribers"))),
-                        web::style().size(12).color(muted(theme)),
-                    ),
-                ],
-            )
-        })
-        .collect();
-    let mut side = vec![web::styled(
-        "side-heading",
-        "Your library",
-        web::style().size(14).bold().color(ink(theme)),
-    )];
-    for id in keys(state, "playlists") {
-        let playlist = record(state, "playlists", &id)
-            .cloned()
-            .unwrap_or(Value::Null);
-        side.push(web::link(
-            &format!("side-{id}"),
-            web::text(&playlist, "title"),
-            format!("/playlist/{id}"),
-        ));
-    }
-    side.push(web::form(
-        "playlist",
-        "/playlists",
-        &[("title", "New playlist", "")],
-    ));
-    let tracks = by_recency(state, |_| true)
-        .iter()
-        .map(|id| track_line(state, id, actor, theme))
-        .collect();
-    web::themed_page(
-        &web::text(state, "brand"),
-        theme.clone(),
-        vec![
-            chrome(state, "audio", theme),
-            web::styled_row(
-                "browse-layout",
-                24,
-                "start",
-                web::style().padding(16),
-                vec![
-                    web::styled_row(
-                        "browse-side",
-                        8,
-                        "start",
-                        web::style()
-                            .flex(1)
-                            .background(surface(theme))
-                            .padding(12)
-                            .radius(8),
-                        side,
-                    ),
-                    web::styled_row(
-                        "browse-main",
-                        16,
-                        "start",
-                        web::style().flex(3),
-                        vec![
-                            web::styled(
-                                "browse-heading",
-                                "Popular artists",
-                                web::style().size(20).bold().color(ink(theme)),
-                            ),
-                            web::grid("browse-artists", 3, 16, artists),
-                            web::styled(
-                                "browse-tracks-heading",
-                                "Tracks",
-                                web::style().size(20).bold().color(ink(theme)),
-                            ),
-                            web::styled_row("browse-tracks", 4, "start", web::style(), tracks),
-                        ],
-                    ),
-                ],
-            ),
-            track_bar(state, actor, theme),
-        ],
-    )
-}
-/// One line of the track table: open, play and like are three separate, real controls.
-fn track_line(state: &Value, id: &str, actor: &str, theme: &PageTheme) -> PageElement {
-    let item = record(state, "items", id).cloned().unwrap_or(Value::Null);
-    let artist = record(state, "channels", &web::text(&item, "channel"))
-        .map(|c| web::text(c, "name"))
-        .unwrap_or_default();
-    web::styled_row(
-        &format!("line-{id}"),
-        12,
-        "center",
-        web::style().padding(6),
-        vec![
-            web::card_action(
-                &format!("line-{id}-open"),
-                web::style().flex(3),
-                web::visit(format!("/track/{id}")),
-                vec![
-                    web::styled(
-                        &format!("line-{id}-title"),
-                        web::text(&item, "title"),
-                        web::style().size(14).medium().color(ink(theme)).one_line(),
-                    ),
-                    web::styled(
-                        &format!("line-{id}-artist"),
-                        format!("{artist} · {}", web::text(&item, "album")),
-                        web::style().size(12).color(muted(theme)).one_line(),
-                    ),
-                ],
-            ),
-            pill(
-                &format!("line-{id}-play"),
-                "Play",
-                false,
-                theme,
-                post(format!("/items/{id}/play"), &[("return", "/")]),
-            ),
-            pill(
-                &format!("line-{id}-like"),
-                "♥",
-                has(state, "likes", actor, id),
-                theme,
-                post(format!("/items/{id}/like"), &[("return", "/")]),
-            ),
-            web::badge(
-                &format!("line-{id}-duration"),
-                clock(num(&item, "duration_s")),
-                web::style().size(11).color(muted(theme)).padding(4),
-            ),
-        ],
-    )
-}
-fn track_page(state: &Value, id: &str, actor: &str, theme: &PageTheme) -> Result<HttpResponse> {
-    let Some(item) = record(state, "items", id).cloned() else {
-        return web::error(404, "track not found");
-    };
-    let artist_id = web::text(&item, "channel");
-    let artist = record(state, "channels", &artist_id)
-        .cloned()
-        .unwrap_or(Value::Null);
-    let back = format!("/track/{id}");
-    let title = web::text(&item, "title");
-    web::themed_page(
-        &title,
-        theme.clone(),
-        vec![
-            chrome(state, "audio", theme),
-            web::styled_row(
-                "track-header",
-                24,
-                "center",
-                web::style().padding(16),
-                vec![
-                    art("track-art", &title, 200, 200, 6),
-                    web::styled_row(
-                        "track-identity",
-                        8,
-                        "start",
-                        web::style().flex(3),
-                        vec![
-                            web::styled(
-                                "track-title",
-                                &title,
-                                web::style().size(30).bold().color(ink(theme)),
-                            ),
-                            web::link(
-                                "track-artist",
-                                web::text(&artist, "name"),
-                                format!("/artist/{artist_id}"),
-                            ),
-                            web::styled(
-                                "track-meta",
-                                format!(
-                                    "{} · {} · {} plays",
-                                    web::text(&item, "album"),
-                                    clock(num(&item, "duration_s")),
-                                    grouped(num(&item, "plays"))
-                                ),
-                                web::style().size(13).color(muted(theme)),
-                            ),
-                            web::styled_row(
-                                "track-actions",
-                                12,
-                                "center",
-                                web::style(),
-                                vec![
-                                    pill(
-                                        "track-play",
-                                        "Play",
-                                        true,
-                                        theme,
-                                        post(format!("/items/{id}/play"), &[("return", &back)]),
-                                    ),
-                                    pill(
-                                        "track-like",
-                                        &format!("♥ {}", grouped(num(&item, "likes"))),
-                                        has(state, "likes", actor, id),
-                                        theme,
-                                        post(format!("/items/{id}/like"), &[("return", &back)]),
-                                    ),
-                                    pill(
-                                        "track-save",
-                                        "Add to playlist",
-                                        false,
-                                        theme,
-                                        post(
-                                            "/playlists/liked/items".into(),
-                                            &[("item", id), ("return", &back)],
-                                        ),
-                                    ),
-                                ],
-                            ),
-                        ],
-                    ),
-                ],
-            ),
-            track_bar(state, actor, theme),
-        ],
-    )
-}
-/// Brand splash; nothing on it reads as a control, so no action is promised that does not exist.
-fn landing(state: &Value) -> Result<HttpResponse> {
-    let pick = |key: &str, fallback: &str| match web::text(state, key) {
-        s if s.is_empty() => fallback.to_owned(),
-        s => s,
-    };
-    web::brand_page(
-        &pick("brand", BRAND),
-        &pick("tagline", TAGLINE),
-        web::theme(state)?,
-    )
+    needle.split_whitespace().all(|word| hay.contains(&word.to_lowercase()))
 }
 fn item_mut<'a>(state: &'a mut Value, id: &str) -> Option<&'a mut Value> {
     state.get_mut("items")?.as_object_mut()?.get_mut(id)
@@ -1310,9 +206,7 @@ fn render(
     request: &HttpRequest,
     count: bool,
 ) -> Result<HttpResponse> {
-    let theme = web::theme(state)?;
     let mode = web::variant(state, "mode", MODES)?;
-    let video = mode == "video";
     let path = web::path(request);
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     match parts.as_slice() {
@@ -1326,17 +220,17 @@ fn render(
             )
         }
         ["art", key] => return kit::artwork(key, request),
-        [""] if state.get("items").is_none() => return landing(state),
+        [""] if state.get("items").is_none() => return video::landing(state),
         _ => {}
     }
     match mode.as_str() {
-        "audio" => return spotify::route(state, ctx, request, &parts, &theme),
-        "music" => return ytmusic::route(state, ctx, request, &parts, &theme, count),
+        "audio" => return spotify::route(state, ctx, request, &parts),
+        "music" => return ytmusic::route(state, ctx, request, &parts, count),
         _ => {}
     }
+    let actor = ctx.actor.as_str();
     match parts.as_slice() {
-        [""] if video => home(state, &theme),
-        [""] => browse(state, &ctx.actor, &theme),
+        [""] => video::home(state, actor),
         ["watch"] => {
             let Some(id) = web::query(request, "v") else {
                 return web::error(404, "video not found");
@@ -1345,34 +239,28 @@ fn render(
             if count {
                 play(state, &id, list.as_deref(), ctx, true);
             }
-            watch(state, &id, list.as_deref(), &ctx.actor, &theme)
+            video::watch(state, &id, list.as_deref(), actor)
         }
-        ["results"] => results(
+        ["results"] => video::results(
             state,
             &web::query(request, "search_query").unwrap_or_default(),
-            &theme,
-            video,
+            actor,
         ),
-        ["search"] => results(
-            state,
-            &web::query(request, "q").unwrap_or_default(),
-            &theme,
-            video,
-        ),
-        ["channel", id] | ["artist", id] => channel_page(state, id, &ctx.actor, &theme),
-        ["track", id] => track_page(state, id, &ctx.actor, &theme),
-        ["playlists"] => library(state, &theme, video),
+        ["search"] => video::results(state, &web::query(request, "q").unwrap_or_default(), actor),
+        ["channel", id] | ["artist", id] => video::channel_page(state, id, actor),
+        ["track", id] => video::track_page(state, id, actor),
+        ["playlists"] => video::library(state, actor),
         ["playlist"] => match web::query(request, "list") {
-            Some(id) => playlist_page(state, &id, &ctx.actor, &theme, video),
-            None => library(state, &theme, video),
+            Some(id) => video::playlist_page(state, &id, actor),
+            None => video::library(state, actor),
         },
-        ["playlist", id] => playlist_page(state, id, &ctx.actor, &theme, video),
+        ["playlist", id] => video::playlist_page(state, id, actor),
         // youtu.be hands us the bare video id and nothing else.
-        [id] if video && record(state, "items", id).is_some() => {
+        [id] if record(state, "items", id).is_some() => {
             if count {
                 play(state, id, None, ctx, true);
             }
-            watch(state, id, None, &ctx.actor, &theme)
+            video::watch(state, id, None, actor)
         }
         _ => web::error(404, "route not found"),
     }
@@ -1394,7 +282,6 @@ impl Service for MediaService {
         ctx: &ServiceContext,
         request: &HttpRequest,
     ) -> Result<HttpResponse> {
-        let theme = web::theme(state)?;
         let video = web::variant(state, "mode", MODES)? == "video";
         let path = web::path(request);
         let method = request.method.to_ascii_uppercase();
@@ -1619,7 +506,7 @@ impl Service for MediaService {
                         false,
                     );
                 }
-                return results(state, &query, &theme, video);
+                return video::results(state, &query, &ctx.actor);
             }
             _ => return web::error(404, "route not found"),
         };
@@ -2396,12 +1283,20 @@ mod tests {
                 let url = format!("http://{host}{route}");
                 let page = get(&mut state, &url);
                 assert_eq!(page.status, 200, "{url}");
-                let parsed: cw_protocol::Page = serde_json::from_slice(&page.body).unwrap();
-                parsed.validate().unwrap_or_else(|e| panic!("{url}: {e}"));
                 let body = text(&page);
+                web::html::validate_strict(&body).unwrap_or_else(|e| panic!("{url}: {e:?}"));
+                let dom = cw_web::html::parse(&body);
                 assert!(
-                    body.contains("player-toggle") && body.contains("\"pin\":\"bottom\""),
-                    "{url} has no player bar"
+                    !dom.by_id("player-toggle").is_empty(),
+                    "{url} has no play control"
+                );
+                let bar = *dom
+                    .by_id("bar")
+                    .first()
+                    .unwrap_or_else(|| panic!("{url} has no player bar"));
+                assert!(
+                    dom.is(bar, "footer") && dom.has_class(bar, "bar"),
+                    "{url}: the player bar is the page's pinned footer"
                 );
                 assert_eq!(page, get(&mut state, &url), "{url} must be pure");
             }
@@ -2604,28 +1499,33 @@ mod tests {
                 };
                 let reply = get_at(state, tick, &url);
                 assert_eq!(reply.status, 200);
-                let page: cw_protocol::Page = serde_json::from_slice(&reply.body).unwrap();
-                page.validate().unwrap();
-                page
+                let html = String::from_utf8(reply.body).unwrap();
+                web::html::validate_strict(&html).unwrap_or_else(|e| panic!("{mode}: {e:?}"));
+                cw_web::html::parse(&html)
             };
-            // The lit line is the one the clock has reached.
-            let lit = |page: &cw_protocol::Page| -> String {
-                let text = serde_json::to_string(page).unwrap();
-                ["first line", "second line", "third line"]
-                    .into_iter()
-                    .find(|line| {
-                        let at = text.find(&format!("\"text\":\"{line}\"")).unwrap();
-                        text[at..].split('}').next().unwrap().contains("#ffffff\"")
+            // The lit line is the one the clock has reached: `lyric now` on its button.
+            let lit = |dom: &cw_web::dom::Document| -> String {
+                (0..3)
+                    .find_map(|i| {
+                        let node = *dom.by_id(&format!("lyric-{i}")).first()?;
+                        dom.has_class(node, "now")
+                            .then(|| dom.text_content(node).trim().to_owned())
                     })
-                    .unwrap_or("none")
-                    .to_owned()
+                    .unwrap_or_else(|| "none".to_owned())
             };
             assert_eq!(lit(&page(&mut state, S)), "none", "{mode}");
             assert_eq!(lit(&page(&mut state, 3 * S)), "first line", "{mode}");
             assert_eq!(lit(&page(&mut state, 7 * S)), "second line", "{mode}");
-            // A line is a seek control to where it is sung.
-            let text = serde_json::to_string(&page(&mut state, 7 * S)).unwrap();
-            assert!(text.contains("\"position_ms\":\"12000\""), "{mode}");
+            // A line is a seek control to where it is sung: its form posts that position.
+            let dom = page(&mut state, 7 * S);
+            let form = *dom.by_id("lyric-2-form").first().unwrap();
+            assert_eq!(dom.attr(form, "action"), Some("/player"), "{mode}");
+            assert_eq!(dom.attr(form, "method"), Some("post"), "{mode}");
+            let seek = dom
+                .descendants(form)
+                .find(|n| dom.attr(*n, "name") == Some("position_ms"))
+                .unwrap_or_else(|| panic!("{mode}: the line carries no seek"));
+            assert_eq!(dom.attr(seek, "value"), Some("12000"), "{mode}");
         }
     }
 
