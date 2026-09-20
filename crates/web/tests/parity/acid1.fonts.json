@@ -1,0 +1,17 @@
+[
+ {
+  "family": "Verdana, sans-serif",
+  "first": "html>body>dl:nth-child(1)>dt:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 6
+   }
+  ]
+ },
+ {
+  "family": "Arial",
+  "first": "html>body>dl:nth-child(1)>dd:nth-child(2)>ul:nth-child(1)>li:nth-child(2)>form:nth-child(2)>p:nth-child(1)>input:nth-child(1)",
+  "chromium": []
+ }
+]

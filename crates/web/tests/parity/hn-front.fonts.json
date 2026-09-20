@@ -1,0 +1,22 @@
+[
+ {
+  "family": "\"Times New Roman\"",
+  "first": "html",
+  "chromium": []
+ },
+ {
+  "family": "Verdana, Geneva, sans-serif",
+  "first": "html>body>center:nth-child(1)>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(1)>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(2)>span:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 51
+   }
+  ]
+ },
+ {
+  "family": "monospace",
+  "first": "html>body>center:nth-child(1)>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(4)>td:nth-child(1)>center:nth-child(4)>form:nth-child(4)>input:nth-child(1)",
+  "chromium": []
+ }
+]

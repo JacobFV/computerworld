@@ -1,0 +1,45 @@
+[
+ {
+  "family": "\"Times New Roman\"",
+  "first": "html",
+  "chromium": []
+ },
+ {
+  "family": "Georgia, \"Times New Roman\", serif",
+  "first": "html>body>div:nth-child(3)>p:nth-child(2)",
+  "chromium": [
+   {
+    "family": "Liberation Mono",
+    "glyphs": 4
+   },
+   {
+    "family": "Liberation Serif",
+    "glyphs": 244
+   },
+   {
+    "family": "Liberation Serif",
+    "glyphs": 8
+   }
+  ]
+ },
+ {
+  "family": "Helvetica, Arial, sans-serif",
+  "first": "html>body>div:nth-child(1)>span:nth-child(1)>a:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 5
+   }
+  ]
+ },
+ {
+  "family": "\"Courier New\", Courier, monospace",
+  "first": "html>body>div:nth-child(3)>h1:nth-child(1)>code:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Mono",
+    "glyphs": 2
+   }
+  ]
+ }
+]

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Table layout torture page</title>
+<style>
+body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; margin: 16px; color: #222222; background-color: #ffffff; }
+h1 { font-size: 20px; margin: 0 0 12px 0; }
+h2 { font-size: 15px; margin: 20px 0 6px 0; }
+table { margin-bottom: 8px; }
+caption { font-weight: bold; padding: 4px; }
+th { background-color: #e8e8e8; }
+.sep { border: 1px solid #888888; border-spacing: 4px; }
+.sep td, .sep th { border: 1px solid #bbbbbb; padding: 3px 6px; }
+.col { border-collapse: collapse; }
+.col td, .col th { border: 1px solid #444444; padding: 4px 8px; }
+.col td.thick { border: 3px solid #cc0000; }
+.fixed { table-layout: fixed; width: 600px; border-collapse: collapse; }
+.fixed td, .fixed th { border: 1px solid #999999; padding: 2px 4px; overflow: hidden; white-space: nowrap; }
+.pct { width: 100%; border-collapse: collapse; }
+.pct td { border: 1px solid #999999; padding: 4px; }
+.empty { border-collapse: separate; border-spacing: 2px; empty-cells: hide; }
+.empty td { border: 1px solid #666666; padding: 4px 10px; }
+.showempty { border-collapse: separate; border-spacing: 2px; empty-cells: show; }
+.showempty td { border: 1px solid #666666; padding: 4px 10px; }
+.inner { border-collapse: collapse; width: 100%; }
+.inner td { border: 1px solid #66aa66; padding: 2px 4px; background-color: #f0fff0; }
+.right { text-align: right; }
+.center { text-align: center; }
+.tall { height: 60px; }
+.bottom td { vertical-align: bottom; }
+.mid td { vertical-align: middle; }
+</style>
+</head>
+<body>
+<h1>Table layout torture page</h1>
+
+<h2>1. Spans, separate borders</h2>
+<table class="sep" id="spans">
+<caption>Colspan and rowspan in one grid</caption>
+<tr><th>A</th><th colspan="2">B spans two</th><th>D</th></tr>
+<tr><td rowspan="2">1 spans two rows</td><td>2</td><td>3</td><td rowspan="3">4 spans three rows with a longer label</td></tr>
+<tr><td colspan="2">5 spans two</td></tr>
+<tr><td>6</td><td>7</td><td>8</td></tr>
+<tr><td colspan="4" class="center">9 spans the whole width</td></tr>
+</table>
+
+<h2>2. Collapsed borders with a thick cell</h2>
+<table class="col" id="collapsed">
+<caption>border-collapse: collapse</caption>
+<tr><th>Item</th><th>Qty</th><th>Unit</th><th>Total</th></tr>
+<tr><td>Widget</td><td class="right">3</td><td class="right">4.50</td><td class="right">13.50</td></tr>
+<tr><td>Gadget</td><td class="right thick">12</td><td class="right">0.99</td><td class="right">11.88</td></tr>
+<tr><td>Gizmo</td><td class="right">1</td><td class="right">120.00</td><td class="right">120.00</td></tr>
+<tr><th colspan="3" class="right">Sum</th><td class="right">145.38</td></tr>
+</table>
+
+<h2>3. Fixed layout at 600 px</h2>
+<table class="fixed" id="fixed">
+<col style="width: 80px"><col style="width: 220px"><col><col>
+<tr><th>Code</th><th>Description</th><th>Notes</th><th>More notes</th></tr>
+<tr><td>AAA</td><td>A description that is longer than its column and gets clipped</td><td>short</td><td>also short</td></tr>
+<tr><td>BB</td><td>Short</td><td>A note that is long enough to be cut off at the column edge</td><td>x</td></tr>
+</table>
+
+<h2>4. Percentage widths</h2>
+<table class="pct" id="percent">
+<tr><td style="width: 10%">10%</td><td style="width: 30%">30%</td><td style="width: 40%">40%</td><td>rest</td></tr>
+<tr><td>a</td><td>b</td><td>c</td><td>d</td></tr>
+</table>
+<table class="pct" id="percent-table" style="width: 50%">
+<tr><td style="width: 25%">25% of half</td><td>the rest of half</td></tr>
+</table>
+
+<h2>5. Empty cells</h2>
+<table class="empty" id="empty-hide">
+<tr><td>a</td><td></td><td>c</td></tr>
+<tr><td></td><td>b</td><td></td></tr>
+</table>
+<table class="showempty" id="empty-show">
+<tr><td>a</td><td></td><td>c</td></tr>
+<tr><td></td><td>b</td><td></td></tr>
+</table>
+
+<h2>6. Nested tables</h2>
+<table class="sep" id="outer">
+<tr>
+<td style="width: 200px; vertical-align: top">Outer cell one
+<table class="inner" id="inner-1">
+<tr><td>i1</td><td>i2</td></tr>
+<tr><td colspan="2">i3 spans</td></tr>
+</table>
+</td>
+<td style="vertical-align: top">Outer cell two, with a taller nested table
+<table class="inner" id="inner-2">
+<tr><td>j1</td><td>j2</td><td>j3</td></tr>
+<tr><td>j4</td><td rowspan="2">j5 tall</td><td>j6</td></tr>
+<tr><td>j7</td><td>j8</td></tr>
+</table>
+</td>
+</tr>
+</table>
+
+<h2>7. Vertical alignment in tall rows</h2>
+<table class="col" id="valign">
+<tr class="tall bottom"><td>bottom</td><td style="vertical-align: top">top</td><td style="vertical-align: middle">middle</td><td>bottom again</td></tr>
+<tr class="tall mid"><td>middle</td><td>middle</td><td style="vertical-align: baseline">baseline</td><td style="font-size: 20px">big baseline</td></tr>
+</table>
+
+<h2>8. Presentational attributes</h2>
+<table border="1" cellpadding="6" cellspacing="3" width="500" bgcolor="#f8f0e0" id="attrs">
+<tr><th align="left">left head</th><th align="right">right head</th></tr>
+<tr><td align="center" valign="top" height="40">centre top</td><td bgcolor="#e0f0f8">tinted</td></tr>
+<tr><td width="30%">thirty percent</td><td>rest</td></tr>
+</table>
+
+<h2>9. Caption at the bottom and a thead/tfoot</h2>
+<table class="col" id="groups">
+<caption style="caption-side: bottom">Totals are computed by the reader</caption>
+<thead><tr><th>Month</th><th>Income</th><th>Expenses</th></tr></thead>
+<tfoot><tr><th>Total</th><td class="right">6,300</td><td class="right">4,150</td></tr></tfoot>
+<tbody>
+<tr><td>January</td><td class="right">2,100</td><td class="right">1,400</td></tr>
+<tr><td>February</td><td class="right">2,100</td><td class="right">1,350</td></tr>
+<tr><td>March</td><td class="right">2,100</td><td class="right">1,400</td></tr>
+</tbody>
+</table>
+</body>
+</html>

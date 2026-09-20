@@ -1,0 +1,32 @@
+[
+ {
+  "family": "\"Times New Roman\"",
+  "first": "html",
+  "chromium": []
+ },
+ {
+  "family": "arial, sans-serif",
+  "first": "html>body>center:nth-child(1)>table:nth-child(4)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(1)>span:nth-child(1)>span:nth-child(8)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 4
+   }
+  ]
+ },
+ {
+  "family": "\"Times New Roman\", times, serif",
+  "first": "html>body>center:nth-child(1)>table:nth-child(4)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(1)>span:nth-child(1)>span:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Serif",
+    "glyphs": 1
+   }
+  ]
+ },
+ {
+  "family": "Arial",
+  "first": "html>body>center:nth-child(1)>form:nth-child(7)>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(1)>input:nth-child(1)",
+  "chromium": []
+ }
+]

@@ -11,4 +11,11 @@ cw-protocol = { path = "../protocol" }
 serde.workspace = true
 serde_json.workspace = true
 
+[features]
+# The parity and reftest runners in `tests/` call `html::parse`, `css::parse_stylesheet`
+# and `style::cascade`; until those land the runners are `#[ignore]`d and the calls are
+# compiled only with this feature on.
+pipeline = []
+
 [dev-dependencies]
+cw-render = { path = "../render" }
