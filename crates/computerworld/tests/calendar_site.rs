@@ -64,11 +64,15 @@ fn google_calendar_is_browsed_answered_and_edited_through_the_agent_api() {
     let (page, all) = elements(&world, &session);
     assert_eq!(page["title"], "Google Calendar");
     // Navigation, the grid's chips and the new-event form are all there under their ids.
-    for (id, href) in [("today", "/?day=0"), ("prev", "/?day=0"), ("next", "/?day=7"), ("create", "/?day=0"), ("view-month", "/?view=month&day=0")] {
+    // Create reaches the new-event form, which is already in the panel on this page.
+    for (id, href) in [("today", "/?day=0"), ("next", "/?day=7"), ("create", "/#event-title"), ("view-month", "/?view=month&day=0")] {
         let e = by_id(&all, id);
         assert_eq!(e["kind"], "link", "{id}");
         assert_eq!(e["url"], format!("http://calendar.google.com{href}"), "{id}");
     }
+    // This is the first week the world has, so the back arrow is drawn but is not a
+    // control: nothing an agent can click leads to a week before the epoch.
+    assert!(!all.iter().any(|e| e["id"] == "prev" && e["kind"] == "link"), "{all:?}");
     assert_eq!(by_id(&all, "event")["kind"], "form");
     let title = by_id(&all, "event-title");
     assert_eq!((title["kind"].as_str(), title["label"].as_str()), (Some("input"), Some("Title")));
@@ -102,6 +106,7 @@ fn google_calendar_is_browsed_answered_and_edited_through_the_agent_api() {
     assert_eq!(url(&world, &session), "http://calendar.google.com/?day=7");
     let (_, all) = elements(&world, &session);
     assert!(all.iter().any(|e| e["id"] == "day-8-event-4"), "the retro is on Friday the 25th");
+    // From the second week, back is a link again.
     act(&mut world, &session, "click", json!({"id":"prev"}));
     assert_eq!(url(&world, &session), "http://calendar.google.com/?day=0");
 

@@ -48,6 +48,10 @@ pub struct Repository {
     pub topics: Vec<String>,
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub stars: BTreeSet<String>,
+    /// Who is subscribed to the repository's activity. Empty by default, so a world that
+    /// never mentions watching serialises exactly as it did before the button was real.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub watchers: BTreeSet<String>,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub forks: u64,
     /// Issues and pull requests share one number space, as they do on the real thing.
@@ -364,6 +368,46 @@ impl Repository {
             true
         }
     }
+    /// Toggling, as starring is; returns whether the actor now watches the repository.
+    pub fn watch(&mut self, actor: &str) -> bool {
+        if self.watchers.remove(actor) {
+            false
+        } else {
+            self.watchers.insert(actor.into());
+            true
+        }
+    }
+    /// A draft pull request leaving draft. The author may do it, as may a maintainer.
+    pub fn ready(&mut self, number: u64, actor: &str) -> Result<(), (u16, String)> {
+        let writer = self.can_write(actor);
+        let pull = self.thread_mut(true, number)?;
+        if !writer && pull.author != actor {
+            return Err((403, "only the author or a maintainer may do that".into()));
+        }
+        if !pull.draft {
+            return Err((409, "this pull request is not a draft".into()));
+        }
+        pull.draft = false;
+        Ok(())
+    }
+    /// Deleting the branch a merged pull request came from: the tidy-up the merge box
+    /// offers. Only once it is merged, and only for a ref that is still there.
+    pub fn delete_branch(&mut self, number: u64, actor: &str) -> Result<(), (u16, String)> {
+        if !self.can_write(actor) {
+            return Err((403, "repository write denied".into()));
+        }
+        let head = {
+            let pull = self.thread_mut(true, number)?;
+            if pull.state != "merged" {
+                return Err((409, "the pull request is not merged".into()));
+            }
+            pull.head.clone()
+        };
+        if head.is_empty() || self.refs.remove(&head).is_none() {
+            return Err((409, "the branch is already gone".into()));
+        }
+        Ok(())
+    }
     pub fn push(&mut self, actor: &str, push: Push) -> Result<(), (u16, String)> {
         if !self.can_write(actor) {
             return Err((403, "repository write denied".into()));
@@ -443,6 +487,18 @@ mod plain;
 /// A branch tip: the ref's short name and the commit it names.
 pub fn branch_tip<'a>(repository: &'a Repository, branch: &str) -> Option<(String, &'a Commit)> {
     let id = repository.refs.get(&format!("refs/heads/{branch}"))?;
+    repository.objects.get(id).map(|c| (id.clone(), c))
+}
+/// The commit a revision names: a branch, or a commit id (in full or shortened), which is
+/// what "browse the repository at this point in the history" hands the tree pages.
+pub fn resolve<'a>(repository: &'a Repository, rev: &str) -> Option<(String, &'a Commit)> {
+    if let Some(found) = branch_tip(repository, rev) {
+        return Some(found);
+    }
+    if rev.len() < 4 || !rev.chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+    let id = repository.objects.keys().find(|k| k.starts_with(rev))?;
     repository.objects.get(id).map(|c| (id.clone(), c))
 }
 /// The default branch: `main` when it exists, otherwise the first head in name order.

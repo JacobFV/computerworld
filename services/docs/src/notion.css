@@ -12,12 +12,11 @@ button { cursor: pointer; }
 
 /* ------------------------------------------------------------------ sidebar */
 .side { width: 240px; flex: none; background: var(--side); padding: 6px 4px 24px 4px; box-shadow: inset -1px 0 0 var(--line); }
+/* The workspace row and the page rows carry no hover: only the things that navigate do. */
 .workspace { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; margin-bottom: 6px; border-radius: 6px; font-weight: 500; }
-.workspace:hover { background: var(--hover); }
 .tile { width: 22px; height: 22px; border-radius: 4px; background: #e3e2e0; color: #6b6a66; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; flex: none; line-height: 1; }
 .tile.small { width: 24px; height: 24px; border-radius: 50%; font-size: 12px; }
 .ws-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.chev { color: var(--faint); font-size: 12px; }
 .side-nav a, .page-link { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border-radius: 6px; color: #5f5e5b; font-weight: 500; white-space: nowrap; }
 .side-nav a:hover, .page-link:hover { background: var(--hover); }
 .side-nav a.on, .page-link.on { background: var(--hover); color: var(--ink); }
@@ -25,7 +24,6 @@ button { cursor: pointer; }
 #side-starred::before { border: 0; content: "☆"; font-size: 17px; line-height: 16px; color: #91918e; text-align: center; }
 #side-home::before { border: 0; content: "⌂"; font-size: 17px; line-height: 16px; color: #91918e; text-align: center; }
 .side-title { padding: 18px 12px 6px 12px; font-size: 12px; font-weight: 500; color: var(--faint); }
-.page-link .tw { width: 12px; flex: none; color: var(--faint); font-size: 13px; text-align: center; }
 .page-link .t { overflow: hidden; text-overflow: ellipsis; }
 .glyph { width: 14px; height: 17px; flex: none; display: inline-block; border: 1.5px solid #91918e; border-radius: 2px; position: relative; background: #ffffff; }
 .glyph::before { content: ""; position: absolute; left: 2px; top: 3px; width: 7px; height: 1.5px; background: #91918e; box-shadow: 0 3.5px 0 #91918e, 0 7px 0 #91918e; }
@@ -38,6 +36,7 @@ main { flex: 1; min-width: 0; }
 .topbar { height: 45px; display: flex; align-items: center; gap: 8px; padding: 0 16px; position: sticky; top: 0; background: #ffffff; z-index: 2; }
 .crumb { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 6px; border-radius: 4px; white-space: nowrap; }
 .crumb.root { color: var(--muted); }
+a.crumb:hover { background: var(--hover); }
 .crumb .glyph { transform: scale(.85); }
 .sep { color: var(--faint); }
 .edited { margin-left: auto; font-size: 13px; color: var(--faint); white-space: nowrap; }

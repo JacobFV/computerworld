@@ -239,7 +239,7 @@ fn owner_repo_blob_and_gist_pages_resolve() {
     assert!(Page::parse("gist", get(&mut state, "alice", "/gist/bfs-order").1).raw_text("gist-file-text-0").contains("sort before you iterate"));
     assert_eq!(Page::parse("gists", get(&mut state, "alice", "/gists").1).attr("gist-bfs-order", "href"), "/gist/bfs-order");
     let hits = Page::parse("search", get(&mut state, "alice", "/search?q=simulation").1);
-    assert_eq!(hits.text("search-title"), "1 repository results");
+    assert_eq!(hits.text("search-title"), "1 repository result");
     assert_eq!(hits.attr("hit-link-atlas", "href"), "/northstar/atlas");
     assert_eq!(get(&mut state, "alice", "/northstar/ghost").0, 404);
     assert_eq!(get(&mut state, "alice", "/nobody").0, 404);
@@ -341,7 +341,15 @@ fn commits_commit_tree_blob_and_branches_pages_render_history() {
     assert_eq!(blob.raw_text("line-numbers").lines().count(), 19);
     assert!(blob.raw_text("blob-text").contains("use std::collections::HashMap;"));
     assert_eq!((blob.text("raw"), blob.attr("raw", "href")), ("Raw".to_owned(), "/northstar/atlas/raw/main/src/bfs.rs".to_owned()));
-    assert_eq!(blob.text("blame"), "Blame");
+    // Blame, copy, download and edit are gone: this instance has no blame view, no
+    // clipboard and no editor. Raw is the one file action left, and it serves the bytes.
+    assert!(!blob.has("blame") && !blob.has("copy") && !blob.has("download") && !blob.has("edit"));
+    let raw = GitService
+        .handle(&mut state, &ctx("alice"), &HttpRequest::get("http://github.com/northstar/atlas/raw/main/src/bfs.rs"))
+        .unwrap();
+    assert_eq!(raw.status, 200);
+    assert_eq!(raw.headers["content-type"], "text/plain; charset=utf-8");
+    assert!(String::from_utf8(raw.body).unwrap().contains("use std::collections::HashMap;"));
     assert_eq!(blob.text("blob-stats"), "19 lines (18 loc) · 665 Bytes");
     // A branch on another ref shows that ref's tree.
     assert!(page(&mut state, "/northstar/atlas/blob/sort-refs/src/bfs.rs").raw_text("blob-text").contains("BTreeMap"));

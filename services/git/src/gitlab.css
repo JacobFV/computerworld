@@ -32,7 +32,9 @@ body { background: var(--paper); }
 .sidebar { position: sticky; top: 0; width: 256px; flex: none; height: 100vh; padding: 12px 8px; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
 .side-top { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
 .side-tools { display: flex; align-items: center; gap: 2px; }
-.tool { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--radius); color: var(--muted); font-size: 16px; }
+.tool { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--radius); color: var(--muted); font-size: 16px; }
+.tool:hover { background: var(--hover); text-decoration: none; }
+.nav-profile { display: inline-flex; align-items: center; }
 .side-tools .avatar { width: 24px; height: 24px; font-size: 10px; margin-left: 4px; }
 /* The tanuki, as near as CSS triangles get: two ears over an arrowhead that comes to a
    point at the bottom, the middle of it in the darker red. */

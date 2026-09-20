@@ -1,6 +1,12 @@
 //! The simulated web has to hang together: every declared domain answers, every link a
 //! page paints leads somewhere real, and every search result resolves. A dead link in a
 //! world an agent is being trained on is a silently wrong lesson.
+//!
+//! Sites serve one of two things: the `Page` JSON the browser converts, or the HTML the
+//! migrated services emit. The crawl reads both. It has to: a body that is not a `Page`
+//! used to be skipped in silence, so as services moved to HTML they quietly fell out of
+//! this test, and a link one of them painted to a route that no longer existed had
+//! nothing checking it.
 use computerworld::{reference_world, World};
 use cw_protocol::{
     ActionEnvelope, EnvironmentConfig, HttpRequest, HttpResponse, Page, PageElement,
@@ -74,6 +80,66 @@ fn outbound(page: &Page) -> Vec<String> {
     walk(&page.elements, &mut out);
     out.retain(|url| url.starts_with("http://") || url.starts_with("https://"));
     out
+}
+/// The same, for a page served as HTML: every `href`, every GET `action`, every GET
+/// `formaction`, resolved against the URL it was found on. A `POST` is left alone —
+/// following one would fire the world's write routes — and so is a `#fragment`, which
+/// never leaves the page.
+fn outbound_html(base: &str, body: &str) -> Vec<String> {
+    use cw_web::dom::Document as Dom;
+    let Ok(base) = url::Url::parse(base) else {
+        return Vec::new();
+    };
+    let doc = cw_web::html::parse(body);
+    let mut out = Vec::new();
+    for node in doc.descendants(Dom::ROOT) {
+        if !doc.is_element(node) {
+            continue;
+        }
+        let Some(target) = doc
+            .attr(node, "href")
+            .or_else(|| doc.attr(node, "action"))
+            .or_else(|| doc.attr(node, "formaction"))
+        else {
+            continue;
+        };
+        if target.trim().is_empty() || target.starts_with('#') {
+            continue;
+        }
+        // What method would this send? A form's own `method`; a submit button's
+        // `formmethod`, and failing that the method of the form it sits in — a button
+        // that posts somewhere else still posts, and following it would write.
+        if doc.is(node, "form") || doc.is(node, "button") || doc.is(node, "input") {
+            let method = if doc.is(node, "form") {
+                doc.attr(node, "method").unwrap_or("get").to_owned()
+            } else {
+                match doc.attr(node, "formmethod") {
+                    Some(method) => method.to_owned(),
+                    None => doc
+                        .ancestors(node)
+                        .find(|a| doc.is(*a, "form"))
+                        .and_then(|form| doc.attr(form, "method"))
+                        .unwrap_or("get")
+                        .to_owned(),
+                }
+            };
+            if !method.eq_ignore_ascii_case("get") {
+                continue;
+            }
+        }
+        if let Ok(link) = base.join(target) {
+            let link = link.to_string();
+            if link.starts_with("http://") || link.starts_with("https://") {
+                out.push(link);
+            }
+        }
+    }
+    out
+}
+/// Whether a response body is a page the engine would render as HTML.
+fn is_html(body: &str) -> bool {
+    let head = body.trim_start().to_ascii_lowercase();
+    head.starts_with("<!doctype html") || head.starts_with("<html")
 }
 fn children_of(element: &PageElement) -> Option<&Vec<PageElement>> {
     match element {
@@ -209,15 +275,20 @@ fn every_link_a_page_paints_leads_somewhere_real() {
         if depth >= 2 {
             continue;
         }
-        let page = match checked_page(&response) {
-            Ok(Some(page)) => page,
-            Ok(None) => continue,
-            Err(why) => {
-                broken.push(format!("{url} -> serves a page the browser rejects: {why}"));
-                continue;
+        let body = String::from_utf8_lossy(&response.body).into_owned();
+        let links = if is_html(&body) {
+            outbound_html(&url, &body)
+        } else {
+            match checked_page(&response) {
+                Ok(Some(page)) => outbound(&page),
+                Ok(None) => continue,
+                Err(why) => {
+                    broken.push(format!("{url} -> serves a page the browser rejects: {why}"));
+                    continue;
+                }
             }
         };
-        for link in outbound(&page) {
+        for link in links {
             if seen.insert(link.clone()) {
                 queue.push_back((link, depth + 1));
             }

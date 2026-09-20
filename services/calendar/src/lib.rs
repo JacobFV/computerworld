@@ -223,6 +223,12 @@ pub(crate) struct Nav {
     pub event: Option<String>,
     /// `?view=month`: the month grid instead of the week. A view-only affordance.
     pub month: bool,
+    /// `?hide=carol,alice`: calendars the reader has unticked in the sidebar. View-only,
+    /// so it lives in the query rather than the store and two readers never collide.
+    pub hide: Vec<String>,
+    /// Reading `/events/<id>` rather than the grid, which is the one page whose own
+    /// permalink would lead back to itself.
+    pub permalink: bool,
 }
 /// The original calendar page. Frozen: `calendar.internal` and its world data read these bytes.
 fn plain(s: &CalendarState, actor: &str) -> SimResult<HttpResponse> {
@@ -274,14 +280,23 @@ fn view(s: &CalendarState, actor: &str, now: u64, nav: &Nav) -> SimResult<HttpRe
         _ => plain(s, actor),
     }
 }
-/// Optional integer field: absent means "leave this alone", not "zero".
-fn optional(body: &Value, key: &str) -> SimResult<Option<u64>> {
+/// Optional integer field: absent means "leave this alone", not "zero". A field the
+/// reader typed nonsense into is a domain error, so the answer is a 400 page rather
+/// than a failed request.
+fn optional(body: &Value, key: &str) -> DomainResult<Option<u64>> {
     match body.get(key) {
         None | Some(Value::Null) => Ok(None),
         Some(Value::String(s)) if s.trim().is_empty() => Ok(None),
-        Some(_) => web::number(body, key).map(Some),
+        Some(_) => required(body, key).map(Some),
     }
 }
+/// Required integer field, as a domain error rather than a transport failure: a form
+/// submitted with a field left blank must come back as a page, not a dead request.
+fn required(body: &Value, key: &str) -> DomainResult<u64> {
+    web::number(body, key).map_err(|_| format!("{key} must be a whole number of microseconds"))
+}
+/// What a route rejects a request with: the message `web::domain` turns into a status.
+type DomainResult<T> = std::result::Result<T, String>;
 impl Service for CalendarService {
     fn kind(&self) -> &str {
         "calendar"
@@ -338,8 +353,15 @@ impl Service for CalendarService {
         let method = r.method.to_ascii_uppercase();
         let nav = |event: Option<String>| Nav {
             day: web::query(r, "day").and_then(|d| d.parse().ok()),
+            permalink: event.is_some(),
             event: event.or_else(|| web::query(r, "event")),
             month: web::query(r, "view").as_deref() == Some("month"),
+            hide: web::query(r, "hide")
+                .unwrap_or_default()
+                .split(',')
+                .filter(|owner| !owner.is_empty())
+                .map(str::to_owned)
+                .collect(),
         };
         if method == "GET" {
             return match parts.as_slice() {
@@ -367,20 +389,23 @@ impl Service for CalendarService {
         let b = web::body(r)?;
         let mut land = Nav::default();
         let result = match (method.as_str(), parts.as_slice()) {
-            ("POST", ["events"]) => s
-                .create(
-                    &c.actor,
-                    &web::text(&b, "title"),
-                    web::number(&b, "start")?,
-                    web::number(&b, "end")?,
-                    web::strings(&b, "attendees"),
-                    c.tick,
-                )
+            ("POST", ["events"]) => required(&b, "start")
+                .and_then(|start| required(&b, "end").map(|end| (start, end)))
+                .and_then(|(start, end)| {
+                    s.create(
+                        &c.actor,
+                        &web::text(&b, "title"),
+                        start,
+                        end,
+                        web::strings(&b, "attendees"),
+                        c.tick,
+                    )
+                })
                 .map(|e| {
                     land = Nav {
                         day: Some(civil(e.start).index),
                         event: Some(e.id.clone()),
-                        month: false,
+                        ..Nav::default()
                     };
                     json!(e)
                 }),
@@ -391,7 +416,7 @@ impl Service for CalendarService {
                 land = Nav {
                     day: s.visible(&c.actor, id).map(|e| civil(e.start).index),
                     event: Some((*id).to_owned()),
-                    month: false,
+                    ..Nav::default()
                 };
                 s.respond(&c.actor, id, response)
                     .map(|_| json!({"ok":true}))
@@ -402,17 +427,13 @@ impl Service for CalendarService {
                     .get("title")
                     .and_then(Value::as_str)
                     .filter(|t| !t.is_empty());
-                let result = s.update(
-                    &c.actor,
-                    id,
-                    title,
-                    optional(&b, "start")?,
-                    optional(&b, "end")?,
-                );
+                let result = optional(&b, "start")
+                    .and_then(|start| optional(&b, "end").map(|end| (start, end)))
+                    .and_then(|(start, end)| s.update(&c.actor, id, title, start, end));
                 land = Nav {
                     day: s.visible(&c.actor, id).map(|e| civil(e.start).index),
                     event: Some((*id).to_owned()),
-                    month: false,
+                    ..Nav::default()
                 };
                 result.map(|_| json!({"ok":true}))
             }
@@ -420,8 +441,7 @@ impl Service for CalendarService {
             ("DELETE", ["events", id]) | ("POST", ["events", id, "delete"]) => {
                 land = Nav {
                     day: s.visible(&c.actor, id).map(|e| civil(e.start).index),
-                    event: None,
-                    month: false,
+                    ..Nav::default()
                 };
                 s.delete(&c.actor, id).map(|_| json!({"ok":true}))
             }
@@ -631,7 +651,10 @@ mod tests {
         assert!(page.has("day-2") && !page.has("day-3"));
         let chip = "day-0-event-1";
         assert_eq!(page.tag(chip), "a");
-        assert_eq!(page.attr(chip, "href"), "/?day=0&event=event-1");
+        // This chip is the one in the panel, so clicking it again closes the panel.
+        assert_eq!(page.attr(chip, "href"), "/?day=0");
+        let shut = Dom::of(&get(&mut v, "carol", "http://calendar/?day=0"));
+        assert_eq!(shut.attr(chip, "href"), "/?day=0&event=event-1");
         assert_eq!(page.text(&format!("{chip}-title")), "Atlas launch review");
         assert_eq!(page.text(&format!("{chip}-clock")), "10:00 – 11:00");
         // 10:00 is three hours below the 07:00 top of the grid, at 48px an hour.
@@ -652,17 +675,38 @@ mod tests {
         assert_eq!(page.attr("delete-form", "action"), "/events/event-1/delete");
         assert_eq!(page.tag("delete"), "button");
         assert_eq!(page.attr("detail-permalink", "href"), "/events/event-1");
+        assert_eq!(page.text("guests-title"), "2 guests · organised by carol");
         assert_eq!(page.attr("detail-back", "href"), "/?day=0");
         assert_eq!(page.attr("today", "href"), "/?day=0");
-        assert_eq!(page.attr("prev", "href"), "/?day=0");
+        // The first week has no week before it, so the back arrow is a greyed glyph.
+        assert_eq!(page.tag("prev"), "span");
+        assert_eq!(page.attr("prev", "class"), "arrow off");
         assert_eq!(page.attr("next", "href"), "/?day=7");
+        // Create clears the open event, which is what puts the new-event form back.
         assert_eq!(page.attr("create", "href"), "/?day=0");
         assert_eq!(page.attr("mini-24", "href"), "/?day=7");
         assert_eq!(page.tag("mini-16"), "span");
+        // The day on screen is where the reader already is, and so is the week view: neither
+        // is a link back to the page it is on.
+        assert_eq!(page.tag("mini-17"), "span");
+        assert_eq!(page.tag("view-week"), "span");
+        assert_eq!(page.attr("view-month", "href"), "/?view=month&day=0");
+        // A calendar in the sidebar is a checkbox: the link takes it out of the grid, and
+        // with it the open event, which is one of the events it takes away.
+        assert_eq!(page.attr("calendar-carol", "href"), "/?day=0&hide=carol");
+        assert_eq!(page.attr("calendar-carol", "aria-label"), "Hide carol's calendar");
         assert_eq!(page.text("calendar-carol"), "carol");
+        let hidden = Dom::of(&get(&mut v, "carol", "http://calendar/?day=0&hide=carol"));
+        assert!(!hidden.has("day-0-event-1"), "carol's calendar is off");
+        assert_eq!(hidden.attr("calendar-carol", "href"), "/?day=0");
+        assert_eq!(hidden.attr("calendar-carol", "aria-label"), "Show carol's calendar");
+        assert_eq!(hidden.attr("next", "href"), "/?day=7&hide=carol", "the filter travels");
         assert_eq!(page.attr("account", "title"), "carol");
         let permalink = Dom::of(&get(&mut v, "carol", "http://calendar/events/event-1"));
         assert_eq!(permalink.text("detail-title"), "Atlas launch review");
+        // On the permalink there is nowhere for a permalink to lead, so it is not drawn.
+        assert!(!permalink.has("detail-permalink"));
+        assert_eq!(permalink.attr("detail-back", "href"), "/?day=0");
         assert_eq!(get(&mut v, "carol", "http://calendar/events/event-9").status, 404);
         // Next week is a real link and shows no events, because the only one is this week.
         let next = Dom::of(&get(&mut v, "carol", "http://calendar/?day=7"));
@@ -676,6 +720,10 @@ mod tests {
         }
         assert_eq!(next.attr("event-start", "value"), (7 * DAY_US + HOUR_US).to_string());
         assert_eq!(next.tag("event-submit"), "button");
+        // With the form already in the panel, Create reaches its first field.
+        assert_eq!(next.attr("create", "href"), "#event-title");
+        // Week 7 does have a week before it, and going back is a link again.
+        assert_eq!(next.attr("prev", "href"), "/?day=0");
     }
     #[test]
     fn the_month_view_is_the_same_events_in_a_seven_column_grid() {
@@ -683,18 +731,24 @@ mod tests {
         let page = Dom::of(&get(&mut v, "alice", "http://calendar/?view=month&day=0"));
         assert_eq!(page.text("range"), "September 2026");
         assert_eq!(page.attr("view-week", "href"), "/?day=0");
-        assert_eq!(page.attr("view-month", "href"), "/?view=month&day=0");
+        assert_eq!(page.tag("view-month"), "span", "the month is the view being read");
         assert_eq!(page.attr("day-0-event-1", "href"), "/?view=month&day=0&event=event-1");
         assert_eq!(page.attr("day-0-head", "href"), "/?day=0");
         assert!(page.has("day-13") && page.has("day-16"), "the grid runs to the Saturday after the 30th");
         assert_eq!(page.attr("next", "href"), "/?view=month&day=14");
-        assert_eq!(page.attr("prev", "href"), "/?view=month&day=0");
+        assert_eq!(page.tag("prev"), "span", "September is the first month there is");
         let october = Dom::of(&get(&mut v, "alice", "http://calendar/?view=month&day=14"));
         assert_eq!(october.text("range"), "October 2026");
         assert_eq!(october.attr("prev", "href"), "/?view=month&day=0");
         assert_eq!(october.attr("next", "href"), "/?view=month&day=45");
         let open = Dom::of(&get(&mut v, "alice", "http://calendar/?view=month&day=0&event=event-1"));
         assert_eq!(open.attr("rsvp", "action"), "/events/event-1/rsvp");
+        // The month keeps the month when a calendar is hidden, and its cells keep the filter.
+        let hidden = Dom::of(&get(&mut v, "alice", "http://calendar/?view=month&day=0&hide=carol"));
+        assert!(!hidden.has("day-0-event-1"), "carol's calendar is off");
+        assert_eq!(hidden.attr("next", "href"), "/?view=month&day=14&hide=carol");
+        assert_eq!(hidden.attr("day-6-head", "href"), "/?day=6&hide=carol");
+        assert_eq!(hidden.attr("calendar-carol", "href"), "/?view=month&day=0");
     }
     #[test]
     fn overlapping_events_share_a_column_and_long_ones_sit_in_the_all_day_row() {

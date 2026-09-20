@@ -693,7 +693,7 @@ fn a_screenshot_is_taken_at_the_machines_own_screen_size() {
 #[test]
 fn the_reference_worlds_machines_report_their_own_form_factor() {
     let has_battery = |machine: &str, user: &str| {
-        // The shells are opt-in (the browser demo turns them on the same way); what
+        // The shells are opt-in (the live site world turns them on the same way); what
         // each machine *is* comes from the world itself.
         let mut d = reference_world();
         d.metadata["desktop_themes"] = json!({

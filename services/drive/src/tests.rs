@@ -210,7 +210,10 @@ fn skinned_pages_validate_and_only_promise_real_routes() {
         // The folder screen: crumbs, items that open where they should, and the three forms.
         let folder = html(&get(&mut state, "alice", SCREENS[1]));
         assert_eq!(attr_of(&folder, "crumb-root", "href"), "/drive/folders/root");
-        assert_eq!(attr_of(&folder, "crumb-f-atlas", "href"), "/drive/folders/f-atlas");
+        // The folder one is already in keeps its crumb id, but it is text rather than a link
+        // whose only effect would be to fetch this same page again.
+        assert!(folder.is(node(&folder, "crumb-f-atlas"), "span"));
+        assert_eq!(text_of(&folder, "crumb-f-atlas"), "Atlas");
         assert_eq!(text_of(&folder, "head-title"), "Atlas");
         assert_eq!(text_of(&folder, "head-meta"), "2 items · owner carol");
         assert_eq!(attr_of(&folder, "item-f-logo", "href"), "/file/f-logo");
@@ -253,6 +256,20 @@ fn skinned_pages_validate_and_only_promise_real_routes() {
         assert_eq!(attr_of(&file, "rename-name", "value"), "atlas-logo.txt");
         assert_eq!(attr_of(&file, "rename-parent", "value"), "f-atlas");
         assert_eq!(attr_of(&file, "trash-action-form", "action"), "/nodes/f-logo/trash");
+        // New goes to the form that makes something: the one on this screen when there is one,
+        // the actor's own drive otherwise, and nothing at all when they may make nothing.
+        if skin == "gdrive" {
+            assert_eq!(attr_of(&folder, "new", "href"), "#make-title");
+            let starred = html(&get(&mut state, "alice", SCREENS[5]));
+            assert_eq!(attr_of(&starred, "new", "href"), "/#make-title");
+            let guest = html(&get(&mut state, "bob", "http://drive.google.com/"));
+            assert!(guest.by_id("new").is_empty(), "bob has no drive to file into");
+            assert!(guest.by_id("make").is_empty() && guest.by_id("upload").is_empty());
+        }
+        // An empty box was submitted: no results, and no "Results for " heading either.
+        let blank = html(&get(&mut state, "alice", "http://drive.google.com/search"));
+        assert_eq!(text_of(&blank, "head-title"), "Search");
+        assert!(blank.by_id("items").is_empty() && blank.by_id("item-f-logo").is_empty());
         let shortcut = html(&get(&mut state, "alice", SCREENS[3]));
         assert_eq!(attr_of(&shortcut, "target", "href"), "http://docs.google.com/documents/atlas-launch");
         // Minting a link, starring and trashing land on validated pages that show the change.
@@ -274,6 +291,16 @@ fn skinned_pages_validate_and_only_promise_real_routes() {
         assert!(!found.by_id("item-f-private").is_empty());
         let trashed = html(&send_form(&mut state, "alice", "http://drive.google.com/nodes/f-logo/trash", ""));
         assert!(!trashed.by_id("item-f-logo").is_empty(), "the trash lists what was deleted");
+        // Nothing may be filed into the trash, so the move form offers the root instead of the
+        // one parent that would be refused: saving it is how a deletion is undone.
+        let gone = html(&get(&mut state, "alice", "http://drive.google.com/file/f-logo"));
+        assert_eq!(text_of(&gone, "rename-title"), "Restore or rename");
+        assert_eq!(attr_of(&gone, "rename-parent", "value"), "root");
+        assert!(gone.by_id("trash-action").is_empty(), "it is already in the trash");
+        let back = html(&send_form(&mut state, "alice", "http://drive.google.com/nodes/f-logo", "name=atlas-logo.txt&parent=root"));
+        assert_eq!(text_of(&back, "rename-title"), "Rename or move", "the restore emptied the trash");
+        assert!(!back.by_id("trash-action").is_empty(), "it can be deleted again");
+        assert_eq!(text_of(&back, "crumb-root"), "My Drive", "it is filed in My Drive now");
         let nothing = html(&get(&mut state, "carol", "http://drive.google.com/starred"));
         assert_eq!(text_of(&nothing, "empty"), "Nothing here.");
         // A folder the actor cannot see is refused, not quietly rendered empty.
@@ -308,6 +335,55 @@ fn the_two_skins_lay_the_same_items_out_differently() {
     assert!(page.is(node(&page, "item-f-logo"), "a"));
     assert!(page.is(node(&page, "item-meta-f-logo"), "td"));
 }
+/// The chips on a Drive folder and the column headers of a Dropbox table are links that set
+/// `type`, `people` and `sort` on the screen they stand on, and the service really answers them.
+#[test]
+fn the_chips_and_the_column_headers_filter_and_sort_for_real() {
+    fn order(doc: &cw_web::dom::Document) -> Vec<String> {
+        let items = doc.by_id("items")[0];
+        doc.descendants(items)
+            .filter(|n| doc.is(*n, "a"))
+            .filter_map(|n| doc.attr(n, "id"))
+            .filter(|id| id.starts_with("item-"))
+            .map(str::to_owned)
+            .collect()
+    }
+    let mut drive = state("gdrive", "alice");
+    let root = html(&get(&mut drive, "alice", "http://drive.google.com/"));
+    assert_eq!(attr_of(&root, "chip-type", "href"), "/?type=folders");
+    assert_eq!(attr_of(&root, "chip-people", "href"), "/?people=mine");
+    assert_eq!(attr_of(&root, "chip-modified", "href"), "/?sort=modified");
+    // The root holds carol's folder and alice's file, so each filter keeps one of them.
+    let folders = html(&get(&mut drive, "alice", "http://drive.google.com/?type=folders"));
+    assert!(!folders.by_id("item-f-atlas").is_empty() && folders.by_id("item-f-private").is_empty());
+    assert_eq!(text_of(&folders, "head-meta"), "1 item · owner alice");
+    assert_eq!(text_of(&folders, "chip-type"), "Folders");
+    // A chip that is on turns itself off again; none of them links to the screen it is on.
+    assert_eq!(attr_of(&folders, "chip-type", "href"), "/?type=files");
+    let mine = html(&get(&mut drive, "alice", "http://drive.google.com/?people=mine"));
+    assert!(mine.by_id("item-f-atlas").is_empty() && !mine.by_id("item-f-private").is_empty());
+    assert_eq!(text_of(&mine, "chip-people"), "Owned by me");
+    // Nothing is left, and the page says why rather than claiming the folder is empty.
+    let none = html(&get(&mut drive, "alice", "http://drive.google.com/?type=folders&people=mine"));
+    assert_eq!(text_of(&none, "empty"), "Nothing here matches those filters.");
+    // An upload arrives at this tick, so ordering by modification really moves it to the front.
+    send_form(&mut drive, "alice", "http://drive.google.com/files", "name=zzz.txt&parent=f-atlas&content=hi");
+    let by_name = html(&get(&mut drive, "alice", "http://drive.google.com/drive/folders/f-atlas"));
+    assert_eq!(order(&by_name), ["item-d-launch", "item-f-logo", "item-file-1"]);
+    let by_time = html(&get(&mut drive, "alice", "http://drive.google.com/drive/folders/f-atlas?sort=modified"));
+    assert_eq!(order(&by_time), ["item-file-1", "item-d-launch", "item-f-logo"]);
+    // Dropbox sorts from its column headers: the column in use is text, the other is the link.
+    let mut dropbox = state("dropbox", "alice");
+    let table = html(&get(&mut dropbox, "alice", "http://dropbox.com/drive/folders/f-atlas"));
+    assert!(table.by_id("sort-name").is_empty(), "the table is already ordered by name");
+    assert_eq!(attr_of(&table, "sort-modified", "href"), "/drive/folders/f-atlas?sort=modified");
+    let newest = html(&get(&mut dropbox, "alice", "http://dropbox.com/drive/folders/f-atlas?sort=modified"));
+    assert_eq!(attr_of(&newest, "sort-name", "href"), "/drive/folders/f-atlas");
+    assert!(newest.by_id("sort-modified").is_empty());
+    // A search keeps its query when it is reordered, or the sort link would drop the results.
+    let found = html(&get(&mut dropbox, "alice", "http://dropbox.com/search?q=atlas"));
+    assert_eq!(attr_of(&found, "sort-modified", "href"), "/search?q=atlas&sort=modified");
+}
 /// The plain skin has no chrome and no palette: it is the rendering a bare `drive` instance gets.
 #[test]
 fn plain_renders_without_a_theme_and_still_navigates() {
@@ -320,6 +396,16 @@ fn plain_renders_without_a_theme_and_still_navigates() {
         .elements
         .iter()
         .any(|e| e.id() == "item-f-atlas" || e.id() == "item-f-private"));
+    // alice owns the root, so the plain screen carries the forms that file something in it.
+    assert!(page.elements.iter().any(|e| e.id() == "folder"));
+    assert!(page.elements.iter().any(|e| e.id() == "upload"));
+    assert!(page.elements.iter().any(|e| e.id() == "find"));
+    // bob may only see the root, so he is not offered forms that could only be refused.
+    let mut bobs = DriveService.initialize(seed("plain"), &ctx("bob")).unwrap();
+    let his: Page = serde_json::from_slice(&get(&mut bobs, "bob", "http://drive/").body).unwrap();
+    his.validate().unwrap();
+    assert!(his.elements.iter().all(|e| e.id() != "folder" && e.id() != "upload"));
+    assert!(his.elements.iter().any(|e| e.id() == "item-f-atlas"));
     assert_eq!(serde_json::to_value(load(&state)).unwrap(), state);
 }
 /// A browser drives the skinned pages: upload, star and share, each visible on the next request.

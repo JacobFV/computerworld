@@ -109,6 +109,40 @@ fn token(id: &str, tick: u64) -> String {
     }
     format!("{:012x}", h & 0xffff_ffff_ffff)
 }
+/// How a listing is filtered and ordered. The Drive filter chips and the Dropbox column
+/// headers set these on the listing route they already stand on, so no new route is involved
+/// and an unsifted request renders exactly what it always did.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Sift {
+    /// `folders` or `files` keeps that kind alone; anything else keeps everything.
+    kind: String,
+    /// `mine` keeps what this actor owns.
+    people: String,
+    /// `modified` orders newest first; otherwise folders first, then by name.
+    sort: String,
+}
+impl Sift {
+    fn read(r: &HttpRequest) -> Sift {
+        Sift {
+            kind: web::query(r, "type").unwrap_or_default(),
+            people: web::query(r, "people").unwrap_or_default(),
+            sort: web::query(r, "sort").unwrap_or_default(),
+        }
+    }
+    pub(crate) fn kind(&self) -> &str {
+        &self.kind
+    }
+    pub(crate) fn people(&self) -> &str {
+        &self.people
+    }
+    pub(crate) fn sort(&self) -> &str {
+        &self.sort
+    }
+    /// Whether anything is hiding rows, which is the difference between "empty" and "no match".
+    pub(crate) fn filters(&self) -> bool {
+        self.kind == "folders" || self.kind == "files" || self.people == "mine"
+    }
+}
 impl DriveState {
     pub fn brand(&self) -> &str {
         if self.brand.is_empty() {
@@ -211,6 +245,22 @@ impl DriveState {
                 && !self.trashed(&n.id)
                 && (n.name.to_lowercase().contains(&q) || n.content.to_lowercase().contains(&q))
         })
+    }
+    /// Narrow and order a listing the way the chips and column headers ask. Unset fields
+    /// leave the list exactly as the screen built it.
+    pub(crate) fn arrange<'a>(&self, actor: &str, mut nodes: Vec<&'a Node>, sift: &Sift) -> Vec<&'a Node> {
+        match sift.kind() {
+            "folders" => nodes.retain(|n| n.kind == NodeKind::Folder),
+            "files" => nodes.retain(|n| n.kind != NodeKind::Folder),
+            _ => (),
+        }
+        if sift.people() == "mine" {
+            nodes.retain(|n| n.owner == actor);
+        }
+        if sift.sort() == "modified" {
+            nodes.sort_by(|a, b| (b.tick, &a.name, &a.id).cmp(&(a.tick, &b.name, &b.id)));
+        }
+        nodes
     }
     fn sorted(&self, keep: impl Fn(&Node) -> bool) -> Vec<&Node> {
         let mut found: Vec<_> = self.nodes.values().filter(|n| keep(n)).collect();
@@ -433,11 +483,11 @@ pub(crate) enum Screen<'a> {
     Link(&'a str),
 }
 /// The unskinned rendering: one flat column of links and forms, no palette, no chrome.
-fn view(s: &DriveState, actor: &str, screen: Screen) -> SimResult<HttpResponse> {
+fn view(s: &DriveState, actor: &str, screen: Screen, sift: &Sift) -> SimResult<HttpResponse> {
     let brand = s.brand().to_owned();
     let listing = |title: &str, nodes: Vec<&Node>| {
         let mut e = vec![web::heading("title", title)];
-        for n in nodes {
+        for n in s.arrange(actor, nodes, sift) {
             e.push(web::link(
                 &format!("item-{}", n.id),
                 format!("{} · {}", n.name, n.kind.label()),
@@ -453,6 +503,11 @@ fn view(s: &DriveState, actor: &str, screen: Screen) -> SimResult<HttpResponse> 
         Screen::SharedWithMe => listing("Shared with me", s.shared_with_me(actor)),
         Screen::Starred => listing("Starred", s.starred(actor)),
         Screen::Trash => listing("Trash", s.trash(actor)),
+        // Nothing was asked for, so there is nothing to report: "Results for " is not a heading.
+        Screen::Search(q) if q.trim().is_empty() => vec![
+            web::heading("title", "Search"),
+            web::paragraph("hint", "Type a name, or a word from a file, in the box above."),
+        ],
         Screen::Search(q) => listing(&format!("Results for {q}"), s.search(actor, q)),
         Screen::Folder(id) => {
             // A drive with nothing in it is an empty drive, not a forbidden one: the root
@@ -463,20 +518,24 @@ fn view(s: &DriveState, actor: &str, screen: Screen) -> SimResult<HttpResponse> 
                 Err(e) => return web::error(if s.nodes.contains_key(id) { 403 } else { 404 }, e),
             };
             let mut e = listing(&name, s.children(actor, id));
-            e.push(web::form(
-                "folder",
-                "/folders",
-                &[("name", "Folder name", ""), ("parent", "Parent", id)],
-            ));
-            e.push(web::form(
-                "upload",
-                "/files",
-                &[
-                    ("name", "File name", ""),
-                    ("parent", "Parent", id),
-                    ("content", "Contents", ""),
-                ],
-            ));
+            // Filing here takes a direct grant, so without one the forms are not offered:
+            // a form whose only possible answer is 403 is not a control.
+            if s.granted_to(actor, id) {
+                e.push(web::form(
+                    "folder",
+                    "/folders",
+                    &[("name", "Folder name", ""), ("parent", "Parent", id)],
+                ));
+                e.push(web::form(
+                    "upload",
+                    "/files",
+                    &[
+                        ("name", "File name", ""),
+                        ("parent", "Parent", id),
+                        ("content", "Contents", ""),
+                    ],
+                ));
+            }
             e
         }
         Screen::File(id) | Screen::Link(id) => {
@@ -509,7 +568,8 @@ fn view(s: &DriveState, actor: &str, screen: Screen) -> SimResult<HttpResponse> 
                 e.push(web::paragraph("content", &node.content));
                 e.extend(web::links("content", &node.content));
             }
-            if matches!(screen, Screen::File(_)) {
+            // Only the owner may share, so only the owner is shown the form.
+            if matches!(screen, Screen::File(_)) && node.owner == actor {
                 e.push(web::form(
                     "share",
                     &format!("/nodes/{}/share", node.id),
@@ -519,14 +579,50 @@ fn view(s: &DriveState, actor: &str, screen: Screen) -> SimResult<HttpResponse> 
             e
         }
     };
-    e.insert(0, web::link("home", &brand, "/"));
+    // The chrome the plain skin can honestly carry: the drive itself, the screens beside it,
+    // and the box that searches it. The screen one is already on is not offered again.
+    let at_root = matches!(screen, Screen::Folder(id) if id == s.root_id());
+    let mut chrome = vec![];
+    if !at_root {
+        chrome.push(web::link("home", &brand, "/"));
+    }
+    for (id, text, url, here) in [
+        (
+            "nav-shared",
+            "Shared with me",
+            "/shared-with-me",
+            matches!(screen, Screen::SharedWithMe),
+        ),
+        (
+            "nav-starred",
+            "Starred",
+            "/starred",
+            matches!(screen, Screen::Starred),
+        ),
+        (
+            "nav-trash",
+            "Trash",
+            "/trash",
+            matches!(screen, Screen::Trash),
+        ),
+    ] {
+        if !here {
+            chrome.push(web::link(id, text, url));
+        }
+    }
+    let query = match screen {
+        Screen::Search(q) => q,
+        _ => "",
+    };
+    chrome.push(web::form("find", "/search", &[("q", "Search files", query)]));
+    e.splice(0..0, chrome);
     web::page(&brand, e)
 }
-fn render(s: &DriveState, actor: &str, screen: Screen) -> SimResult<HttpResponse> {
+fn render(s: &DriveState, actor: &str, screen: Screen, sift: &Sift) -> SimResult<HttpResponse> {
     if s.skin.is_plain() {
-        view(s, actor, screen)
+        view(s, actor, screen, sift)
     } else {
-        skin::view(s, actor, screen)
+        skin::view(s, actor, screen, sift)
     }
 }
 impl Service for DriveService {
@@ -599,30 +695,32 @@ impl Service for DriveService {
         let api = p.starts_with("/api/");
         let method = r.method.to_ascii_uppercase();
         let root = s.root_id().to_owned();
+        // The chips and the column headers set these on the route they are already on.
+        let sift = Sift::read(r);
         if method == "GET" {
             let query = web::query(r, "q").unwrap_or_default();
             return match parts.as_slice() {
-                [""] => render(&s, &c.actor, Screen::Folder(&root)),
-                ["drive", "folders", id] if !api => render(&s, &c.actor, Screen::Folder(id)),
+                [""] => render(&s, &c.actor, Screen::Folder(&root), &sift),
+                ["drive", "folders", id] if !api => render(&s, &c.actor, Screen::Folder(id), &sift),
                 ["drive", "folders", id] => match s.read(&c.actor, id) {
                     Ok(_) => HttpResponse::json(200, &s.children(&c.actor, id)),
                     Err(e) => web::error(403, e),
                 },
-                ["file", id] if !api => render(&s, &c.actor, Screen::File(id)),
+                ["file", id] if !api => render(&s, &c.actor, Screen::File(id), &sift),
                 ["nodes"] => HttpResponse::json(
                     200,
                     &s.sorted(|n| s.visible(&c.actor, &n.id) && !s.trashed(&n.id)),
                 ),
                 ["file", id] | ["nodes", id] => web::domain(s.read(&c.actor, id).map(|n| json!(n))),
-                ["shared-with-me"] if !api => render(&s, &c.actor, Screen::SharedWithMe),
+                ["shared-with-me"] if !api => render(&s, &c.actor, Screen::SharedWithMe, &sift),
                 ["shared-with-me"] => HttpResponse::json(200, &s.shared_with_me(&c.actor)),
-                ["starred"] if !api => render(&s, &c.actor, Screen::Starred),
+                ["starred"] if !api => render(&s, &c.actor, Screen::Starred, &sift),
                 ["starred"] => HttpResponse::json(200, &s.starred(&c.actor)),
-                ["trash"] if !api => render(&s, &c.actor, Screen::Trash),
+                ["trash"] if !api => render(&s, &c.actor, Screen::Trash, &sift),
                 ["trash"] => HttpResponse::json(200, &s.trash(&c.actor)),
-                ["search"] if !api => render(&s, &c.actor, Screen::Search(&query)),
+                ["search"] if !api => render(&s, &c.actor, Screen::Search(&query), &sift),
                 ["search"] => HttpResponse::json(200, &s.search(&c.actor, &query)),
-                ["s", link] => render(&s, &c.actor, Screen::Link(link)),
+                ["s", link] => render(&s, &c.actor, Screen::Link(link), &sift),
                 _ => web::error(404, "route not found"),
             };
         }
@@ -633,7 +731,7 @@ impl Service for DriveService {
             return if api {
                 HttpResponse::json(200, &s.search(&c.actor, &q))
             } else {
-                render(&s, &c.actor, Screen::Search(&q))
+                render(&s, &c.actor, Screen::Search(&q), &sift)
             };
         }
         let parent = |b: &Value| match web::text(b, "parent") {
@@ -690,10 +788,10 @@ impl Service for DriveService {
                 .unwrap_or_default(),
         };
         match s.nodes.get(&touched) {
-            _ if s.trashed(&touched) => render(&s, &c.actor, Screen::Trash),
-            Some(n) if n.kind == NodeKind::Folder => render(&s, &c.actor, Screen::Folder(&touched)),
-            Some(_) => render(&s, &c.actor, Screen::File(&touched)),
-            None => render(&s, &c.actor, Screen::Folder(&root)),
+            _ if s.trashed(&touched) => render(&s, &c.actor, Screen::Trash, &sift),
+            Some(n) if n.kind == NodeKind::Folder => render(&s, &c.actor, Screen::Folder(&touched), &sift),
+            Some(_) => render(&s, &c.actor, Screen::File(&touched), &sift),
+            None => render(&s, &c.actor, Screen::Folder(&root), &sift),
         }
     }
 }

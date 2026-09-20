@@ -42,6 +42,7 @@ button { cursor: pointer; }
 #slide-body { height: 96px; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .none { padding: 48px 0; text-align: center; color: var(--muted); }
+.readonly { padding: 12px 2px; font-size: 13px; color: var(--muted); }
 .sr { display: none; }
 
 /* ------------------------------------------------------------------ home */
@@ -58,8 +59,10 @@ button { cursor: pointer; }
 .start { background: var(--band); padding: 16px 0 24px 0; }
 .start h2 { font-size: 16px; font-weight: 400; color: var(--ink); line-height: 24px; padding-bottom: 12px; }
 .start-row { display: flex; gap: 28px; align-items: flex-start; }
+/* The template card is a picture of the product's template strip, not a control: this world
+   has no page script, the form beside it is what starts a file, and so the card is drawn
+   aria-hidden, with no id and no hover, rather than inviting a click it would swallow. */
 .blank { width: 146px; height: 188px; flex: none; background: #ffffff; border: 1px solid var(--line); border-radius: 4px; display: flex; align-items: center; justify-content: center; }
-.blank:hover { border-color: var(--accent); }
 .plus { position: relative; width: 56px; height: 56px; display: block; }
 .plus::before { content: ""; position: absolute; left: 0; top: 24px; width: 28px; height: 8px; background: #ea4335; }
 .plus::after { content: ""; position: absolute; left: 28px; top: 24px; width: 28px; height: 8px; background: #34a853; }

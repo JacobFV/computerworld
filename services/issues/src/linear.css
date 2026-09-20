@@ -27,9 +27,11 @@ button, input, textarea { font-family: Inter, Arial, sans-serif; font-size: 13px
 .workspace { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; height: 28px; padding: 0 6px; border-radius: 6px; font-weight: 600; font-size: 13px; }
 .workspace:hover { background: var(--hover); }
 .workspace-logo { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; background: linear-gradient(135deg, #5e6ad2, #8b5cf6); color: #ffffff; font-size: 10px; font-weight: 700; }
-.chev { color: var(--faint); font-size: 10px; font-family: "DejaVu Sans", sans-serif; }
-.rail-tool { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; color: var(--muted); font-family: "DejaVu Sans", sans-serif; }
-.rail-tool.compose { background: var(--paper); border: 1px solid var(--line); box-shadow: 0 1px 1px rgba(0,0,0,.04); color: var(--ink); }
+.search { display: flex; align-items: center; gap: 4px; margin: 0; }
+.search input { flex: 1; min-width: 0; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+.search input:focus { border-color: var(--accent); outline: 0; }
+.search-go { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; flex: none; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); box-shadow: 0 1px 1px rgba(0,0,0,.04); cursor: pointer; }
+.search-go:hover { background: var(--hover); }
 .mag { position: relative; display: block; width: 14px; height: 14px; }
 .mag::before { content: ""; position: absolute; left: 1px; top: 1px; width: 9px; height: 9px; box-sizing: border-box; border: 1.5px solid var(--muted); border-radius: 50%; }
 .mag::after { content: ""; position: absolute; left: 8px; top: 9px; width: 5px; height: 1.5px; background: var(--muted); transform: rotate(45deg); transform-origin: 0 50%; }
@@ -55,9 +57,9 @@ a.rail-item:hover, .team:hover, .team-sub:hover { background: var(--hover); }
 .key { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .tabs { display: flex; align-items: center; gap: 4px; margin-left: 8px; }
 .tab { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; font-weight: 500; }
-.tab:hover { background: var(--hover); }
+a.tab:hover { background: var(--hover); }
 .tab.current { background: var(--surface); color: var(--ink); border-color: var(--line-strong); }
-.ghost { display: inline-flex; align-items: center; height: 26px; padding: 0 8px; border-radius: 6px; color: var(--muted); font-size: 12px; font-weight: 500; font-family: Inter, "DejaVu Sans", sans-serif; }
+.filter-label { color: var(--muted); font-size: 12px; font-weight: 500; }
 .sub { padding: 12px 20px 0; color: var(--muted); }
 .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 20px; border-bottom: 1px solid var(--line); }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 1px dashed var(--line-strong); border-radius: 12px; color: var(--muted); font-size: 12px; }
@@ -116,7 +118,7 @@ a.tr:hover { background: var(--surface); }
 
 /* ------------------------------------------------------------------ list and board */
 .group-head { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--line); font-weight: 500; }
-.plus { color: var(--muted); font-size: 16px; }
+.empty { padding: 16px 20px; color: var(--muted); }
 .row { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 20px; border-bottom: 1px solid var(--line); }
 .row:hover { background: var(--surface); }
 .row .key { width: 56px; flex: none; }

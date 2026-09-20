@@ -12,7 +12,6 @@ button { cursor: pointer; }
 
 /* ------------------------------------------------------------------ header */
 .bar { height: 56px; display: flex; align-items: center; background: var(--navy); color: #ffffff; padding: 0 16px 0 0; border-bottom: 3px solid var(--accent); }
-.menu { display: none; }
 .brand { display: flex; align-items: center; gap: 10px; width: 236px; flex: none; padding-left: 18px; }
 .brand .logo { width: 30px; height: 22px; flex: none; position: relative; overflow: hidden; background: #ffffff; border-radius: 3px; }
 .brand .logo i { position: absolute; left: 4px; top: -14px; width: 22px; height: 22px; display: block; border-right: 3px solid var(--accent); border-bottom: 3px solid var(--accent); transform: rotate(45deg); }
@@ -54,27 +53,32 @@ button { cursor: pointer; }
 .folder .count:empty { display: none; }
 .tags { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
 .tags-title { padding: 0 18px 6px 18px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
-.tag { display: flex; align-items: center; height: 28px; padding: 0 18px 0 21px; font-size: 13px; }
+.tag { display: flex; align-items: center; height: 28px; padding: 0 18px 0 21px; border-left: 3px solid transparent; font-size: 13px; }
+.tag:hover { background: var(--head); }
+.tag.on { background: var(--on); border-left-color: var(--accent); font-weight: 700; color: var(--accent); }
 .tag .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 14px; flex: none; }
 
 /* ------------------------------------------------------------------ the list */
 .list { flex: 5; min-width: 0; background: var(--surface); border-right: 1px solid var(--line); }
 .view-list .list { flex: 1; }
 .list-head { height: 44px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--line); }
-.tools { display: none; }
+.refresh { width: 26px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 3px; background: #ffffff; color: var(--accent); font-size: 15px; line-height: 1; margin-right: 10px; }
+.refresh:hover { border-color: var(--accent); }
 #list-title { font-size: 17px; font-weight: 700; color: var(--navy); flex: 1; }
 .list-head .count { font-size: 12px; color: var(--muted); }
-.cols { display: flex; align-items: center; height: 28px; padding: 0 16px 0 66px; background: var(--head); border-bottom: 1px solid var(--line); font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.cols { display: flex; align-items: center; height: 28px; padding: 0 16px 0 44px; background: var(--head); border-bottom: 1px solid var(--line); font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
 .c-from { width: 190px; flex: none; }
 .c-subject { flex: 1; }
 .c-date { width: 72px; flex: none; text-align: right; }
-.row { display: flex; align-items: center; height: 38px; padding: 0 16px; border-bottom: 1px solid #e8ecf1; color: var(--ink); white-space: nowrap; }
+.row-wrap { position: relative; }
+.row { display: flex; align-items: center; height: 38px; padding: 0 16px 0 44px; border-bottom: 1px solid #e8ecf1; color: var(--ink); white-space: nowrap; }
 .row:hover { background: #f5f8fc; }
 .row.unread { font-weight: 700; }
 .row.open { background: var(--on); }
-.row .check { width: 14px; height: 14px; border: 1px solid #94a3b8; border-radius: 2px; flex: none; background: #ffffff; }
-.row .star { width: 18px; flex: none; margin: 0 10px 0 8px; font-size: 15px; line-height: 1; color: #cbd5e1; font-weight: 400; text-align: center; }
-.row .star.on { color: #f59e0b; }
+.star-form { position: absolute; left: 14px; top: 0; height: 38px; margin: 0; display: flex; align-items: center; }
+.star { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 2px; background: transparent; font-size: 15px; line-height: 1; color: #cbd5e1; font-weight: 400; text-align: center; }
+.star.on { color: #f59e0b; }
+.star:hover { background: #e2e8f0; }
 .row .avatar { display: none; }
 .row .who { width: 190px; flex: none; display: flex; align-items: baseline; gap: 4px; overflow: hidden; padding-right: 16px; }
 .row .sender { overflow: hidden; text-overflow: ellipsis; }

@@ -19,8 +19,6 @@ html {
 .site-header .bar { display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 16px; }
 .bar-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .bar-right { display: flex; align-items: center; gap: 8px; }
-.burger { display: inline-flex; flex-direction: column; justify-content: center; gap: 3px; width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius); }
-.burger i { display: block; height: 1.5px; border-radius: 1px; background: var(--muted); }
 .mark { position: relative; display: block; width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--ink); }
 .mark:hover { text-decoration: none; }
 .mark .face { position: absolute; left: 7px; top: 10px; width: 18px; height: 14px; border-radius: 9px 9px 8px 8px; background: #ffffff; }
@@ -28,9 +26,11 @@ html {
 .mark .ear.l { left: 8px; }
 .mark .ear.r { left: 17px; }
 .site-search { width: 320px; color: var(--muted); }
-.tool { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--muted); font-size: 16px; }
+.tool { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--muted); font-size: 16px; }
+.tool:hover { background: var(--hover); text-decoration: none; }
+.nav-profile { display: inline-flex; align-items: center; }
 .repo-tabs { border-bottom: 0; margin: 0; padding: 0 16px; }
 .site-header .tab-item.active::after { bottom: 0; }
 
 .site-footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; max-width: 1280px; margin: 0 auto; padding: 40px 32px; color: var(--muted); font-size: 12px; }
-.foot-item { color: var(--accent); }
+.foot-item { color: var(--muted); }

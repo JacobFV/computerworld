@@ -50,7 +50,7 @@ h1, h2, p, dl, dd { margin: 0; }
 /* Main */
 #main { padding: 20px 32px 48px 32px; }
 .crumbs { display: flex; align-items: center; gap: 6px; min-height: 20px; color: var(--muted); font-size: 13px; }
-.crumb:hover { text-decoration: underline; }
+a.crumb:hover { text-decoration: underline; }
 .crumb.here { color: var(--ink); }
 .sep { color: #a39d95; }
 .head { display: flex; align-items: center; gap: 12px; margin: 6px 0 2px 0; }
@@ -74,6 +74,9 @@ form.one { display: block; margin: 0; }
 /* The file table */
 .files { width: 100%; margin: 16px 0 0 0; border-collapse: collapse; }
 .files th { height: 36px; padding: 0 12px; border-bottom: 1px solid #d8d3cb; color: var(--muted); font-size: 12px; font-weight: 500; text-align: left; }
+.files th a { color: var(--muted); }
+.files th a:hover { color: var(--ink); text-decoration: underline; }
+.files th.sorted { color: var(--ink); }
 .files td { padding: 16px 12px; border-bottom: 1px solid #eeebe6; color: #52443c; font-size: 13px; vertical-align: middle; }
 .files tbody tr:hover td { background: #f7f5f2; }
 .c-access { width: 190px; }

@@ -10,8 +10,14 @@
 //! `empty`, `grant-title`, `grant-note`, `link-action`, `link-url`, the `grant`, `make`, `upload`
 //! and `rename` forms (`<form>-<field>`, `<form>-submit`), `preview`, `preview-line-<i>`,
 //! `target`, `content-link-<i>`, `details`, `detail-value-<key>`, `public`, `trash-action`.
-//! Every control carries a route this crate serves; one that would be refused is not drawn.
-use super::{DriveState, Node, NodeKind, Screen, TRASH};
+//! The filters added with them are links on the same route: Drive's `chip-type`, `chip-people`
+//! and `chip-modified`, Dropbox's `sort-name` and `sort-modified`, each setting `type`, `people`
+//! or `sort` on the screen it stands on.
+//!
+//! Every control carries a route this crate serves; one that would be refused is not drawn, and
+//! one whose only effect would be to fetch this same page again (the last crumb, the column
+//! already sorted by) is drawn as text.
+use super::{DriveState, Node, NodeKind, Screen, Sift, TRASH};
 use cw_protocol::{HttpResponse, Result};
 use cw_service_common as web;
 use cw_service_common::html::{
@@ -109,6 +115,10 @@ struct View<'a> {
     query: &'a str,
     /// Whether this screen carries the new-folder and upload forms the New button jumps to.
     can_new: bool,
+    /// The path this screen answers on, which the chips and the column headers link back to
+    /// with one more parameter. Every one of them is a route the service already serves.
+    base: String,
+    sift: &'a Sift,
 }
 impl View<'_> {
     fn document(&self, title: &str, screen: &str, main: Vec<Html>) -> Document {
@@ -178,6 +188,75 @@ impl View<'_> {
             .child(span("who").id("account-name").text(self.actor))
             .child(span("avatar").id("account").attr("aria-label", self.actor).text(initials(self.actor)))
     }
+    /// This same screen, filtered or ordered differently. `q` rides along so a sorted search
+    /// is still that search.
+    fn sifted(&self, kind: &str, people: &str, sort: &str) -> String {
+        let mut params: Vec<(&str, &str)> = vec![];
+        if !self.query.is_empty() {
+            params.push(("q", self.query));
+        }
+        for (key, value) in [("type", kind), ("people", people), ("sort", sort)] {
+            if !value.is_empty() {
+                params.push((key, value));
+            }
+        }
+        web::html::href(&self.base, &params)
+    }
+    /// Drive's filter chips, each a link that turns its own filter on, or off again. A chip
+    /// never points at the screen it is already on.
+    fn chips(&self) -> Html {
+        let (kind, people, sort) = (self.sift.kind(), self.sift.people(), self.sift.sort());
+        let chip = |id: &str, text: &str, on: bool, href: String| {
+            link(id, href, text).class(if on { "chip on" } else { "chip" })
+        };
+        let owned = people == "mine";
+        let newest = sort == "modified";
+        div("chips")
+            .child(chip(
+                "chip-type",
+                match kind {
+                    "folders" => "Folders",
+                    "files" => "Files",
+                    _ => "Type",
+                },
+                kind == "folders" || kind == "files",
+                self.sifted(
+                    match kind {
+                        "folders" => "files",
+                        "files" => "",
+                        _ => "folders",
+                    },
+                    people,
+                    sort,
+                ),
+            ))
+            .child(chip(
+                "chip-people",
+                if owned { "Owned by me" } else { "People" },
+                owned,
+                self.sifted(kind, if owned { "" } else { "mine" }, sort),
+            ))
+            .child(chip(
+                "chip-modified",
+                if newest { "Newest first" } else { "Modified" },
+                newest,
+                self.sifted(kind, people, if newest { "" } else { "modified" }),
+            ))
+    }
+    /// A column header that orders the table. The column already in use is plain text with the
+    /// direction beside it: a link there would only fetch this page again.
+    fn column(&self, class: &str, id: &str, title: &str, sort: &str, arrow: &str) -> Html {
+        let th = el("th").class(class);
+        if self.sift.sort() == sort {
+            th.class("sorted").text(format!("{title} {arrow}"))
+        } else {
+            th.child(link(
+                id,
+                self.sifted(self.sift.kind(), self.sift.people(), sort),
+                title,
+            ))
+        }
+    }
     fn top(&self) -> Html {
         let bar = el("header").id("chrome").class("top");
         if self.dropbox {
@@ -209,9 +288,24 @@ impl View<'_> {
                 .child(entry("nav-trash", "trash", "Deleted files", "/trash"))
                 .child(div("storage").id("storage").child(div("meter").child(el("i"))).child(span("").text(format!("{used} of 2 GB used"))))
         } else {
-            nav.child(
-                el("a").id("new").class("new").attr("href", if self.can_new { "#make-title" } else { "/" }).child(span("plus").attr("aria-hidden", "true")).child(span("").text("New")),
-            )
+            // New goes where something can actually be made: this folder when the actor may
+            // file here, otherwise their own drive, which carries the same form. An actor with
+            // no grant anywhere has nothing to make, so nothing is drawn.
+            let make = if self.can_new {
+                Some("#make-title")
+            } else if self.s.granted_to(self.actor, self.s.root_id()) {
+                Some("/#make-title")
+            } else {
+                None
+            };
+            nav.maybe(make.map(|href| {
+                el("a")
+                    .id("new")
+                    .class("new")
+                    .attr("href", href)
+                    .child(span("plus").attr("aria-hidden", "true"))
+                    .child(span("").text("New"))
+            }))
             .child(entry("nav-drive", "drive", "My Drive", "/"))
             .child(entry("nav-shared", "shared", "Shared with me", "/shared-with-me"))
             .child(entry("nav-starred", "starred", "Starred", "/starred"))
@@ -225,15 +319,21 @@ impl View<'_> {
         let trail = self.s.path_to(self.actor, id);
         let last = trail.len().saturating_sub(1);
         el("nav").id("crumbs").class("crumbs").attr("aria-label", "Folder path").each(trail.iter().enumerate(), |(i, node)| {
-            let crumb = link(
-                &format!("crumb-{}", node.id),
-                match node.kind {
-                    NodeKind::Folder => format!("/drive/folders/{}", node.id),
-                    _ => format!("/file/{}", node.id),
-                },
-                node.name.as_str(),
-            )
-            .class(if i == last { "crumb here" } else { "crumb" });
+            // The last crumb is the screen the reader is already on, so it is text rather
+            // than a link that would fetch this very page again.
+            let crumb = if i == last {
+                span("crumb here").id(format!("crumb-{}", node.id)).text(node.name.as_str())
+            } else {
+                link(
+                    &format!("crumb-{}", node.id),
+                    match node.kind {
+                        NodeKind::Folder => format!("/drive/folders/{}", node.id),
+                        _ => format!("/file/{}", node.id),
+                    },
+                    node.name.as_str(),
+                )
+                .class("crumb")
+            };
             fragment([
                 if i > 0 { span("sep").attr("aria-hidden", "true").text("›") } else { empty() },
                 if i == last && !self.dropbox { el("h1").id("head-title").child(crumb) } else { crumb },
@@ -315,9 +415,9 @@ impl View<'_> {
     fn table(&self, nodes: &[&Node]) -> Html {
         let head = el("thead").child(
             el("tr")
-                .child(el("th").class("c-name").text("Name"))
+                .child(self.column("c-name", "sort-name", "Name", "", "↑"))
                 .child(el("th").class("c-access").text("Who can access"))
-                .child(el("th").class("c-when").text("Modified"))
+                .child(self.column("c-when", "sort-modified", "Modified", "modified", "↓"))
                 // `item-meta-<id>` is the owner and, for a file, its size: the column says so
                 // rather than promising a size a folder does not have.
                 .child(el("th").class("c-size").text("Owner")),
@@ -425,7 +525,7 @@ impl View<'_> {
     }
     fn folder(&self, node: &Node) -> Vec<Html> {
         let id = &node.id;
-        let kids = self.s.children(self.actor, id);
+        let kids = self.s.arrange(self.actor, self.s.children(self.actor, id), self.sift);
         let granted = self.s.granted_to(self.actor, id);
         let mut e = vec![self.head(node)];
         e.push(el("p").id("head-meta").class("note").text(format!(
@@ -444,17 +544,17 @@ impl View<'_> {
                     .child(link("do-share", "#grant-title", "Share").class("btn")),
             );
         } else {
-            e.push(
-                div("chips")
-                    .attr("aria-hidden", "true")
-                    .each(["Type", "People", "Modified"], |c| span("chip").text(c)),
-            );
+            e.push(self.chips());
         }
         if id == self.s.root_id() {
             e.push(self.suggested(id));
         }
         if kids.is_empty() {
-            e.push(el("p").id("empty").class("empty").text("This folder is empty."));
+            e.push(el("p").id("empty").class("empty").text(if self.sift.filters() {
+                "Nothing here matches those filters."
+            } else {
+                "This folder is empty."
+            }));
         } else {
             e.push(self.items(&kids));
         }
@@ -543,18 +643,32 @@ impl View<'_> {
         let mut aside = el("aside").class("info").child(self.details(node));
         if !public {
             aside = aside.child(self.sharing(node));
-            if self.s.granted_to(self.actor, id) && node.parent.is_some() {
+            // Nothing may be filed into the trash, so for something already there the field
+            // offers the drive's own root: saving the form is how a deletion is undone.
+            let deleted = node.parent.as_deref() == Some(TRASH);
+            let home = if deleted { self.s.root_id() } else { node.parent.as_deref().unwrap_or_default() };
+            let mine = self.s.granted_to(self.actor, id) && node.parent.is_some();
+            // Renaming files the node afresh, which takes a grant on the folder it lands in as
+            // well as on the node: without both, saving the form could only ever be refused.
+            if mine && self.s.granted_to(self.actor, home) {
                 aside = aside.child(
-                    el("section").class("card").child(el("h2").id("rename-title").text("Rename or move")).child(
-                        form("rename", format!("/nodes/{id}"), "post")
-                            .child(field("rename", "name", "Name", &node.name))
-                            .child(field("rename", "parent", "Folder id", node.parent.as_deref().unwrap_or_default()))
-                            .child(button("rename-submit", "Save").class("primary")),
-                    ),
+                    el("section")
+                        .class("card")
+                        .child(el("h2").id("rename-title").text(if deleted { "Restore or rename" } else { "Rename or move" }))
+                        .when(deleted, |c| {
+                            c.child(el("p").id("rename-note").class("note").text("Filing it in a folder again takes it out of the trash."))
+                        })
+                        .child(
+                            form("rename", format!("/nodes/{id}"), "post")
+                                .child(field("rename", "name", "Name", &node.name))
+                                .child(field("rename", "parent", "Folder id", home))
+                                .child(button("rename-submit", "Save").class("primary")),
+                        ),
                 );
-                if node.parent.as_deref() != Some(TRASH) {
-                    aside = aside.child(action("trash-action", "Move to trash", format!("/nodes/{id}/trash"), "pill danger"));
-                }
+            }
+            // Deleting needs the grant on the node alone, so it stands on its own condition.
+            if mine && !deleted {
+                aside = aside.child(action("trash-action", "Move to trash", format!("/nodes/{id}/trash"), "pill danger"));
             }
         }
         e.push(div("split").child(self.preview(node)).child(aside));
@@ -572,7 +686,7 @@ impl View<'_> {
         ]
     }
 }
-pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen) -> Result<HttpResponse> {
+pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen, sift: &Sift) -> Result<HttpResponse> {
     let brand = s.brand().to_owned();
     let count = |n: usize| format!("{n} item{}", if n == 1 { "" } else { "s" });
     let mut v = View {
@@ -582,6 +696,17 @@ pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen) -> Result<HttpRe
         at: "",
         query: "",
         can_new: false,
+        base: match screen {
+            Screen::Folder(id) if id == s.root_id() => "/".to_owned(),
+            Screen::Folder(id) => format!("/drive/folders/{id}"),
+            Screen::File(id) => format!("/file/{id}"),
+            Screen::Link(link) => format!("/s/{link}"),
+            Screen::SharedWithMe => "/shared-with-me".to_owned(),
+            Screen::Starred => "/starred".to_owned(),
+            Screen::Trash => "/trash".to_owned(),
+            Screen::Search(_) => "/search".to_owned(),
+        },
+        sift,
     };
     let (title, class, main) = match screen {
         Screen::Folder(id) => match s.read(actor, id) {
@@ -605,7 +730,7 @@ pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen) -> Result<HttpRe
         },
         Screen::SharedWithMe => {
             v.at = "shared";
-            let found = s.shared_with_me(actor);
+            let found = s.arrange(actor, s.shared_with_me(actor), sift);
             (
                 format!("Shared with me · {brand}"),
                 "list",
@@ -617,12 +742,16 @@ pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen) -> Result<HttpRe
             (
                 format!("Starred · {brand}"),
                 "list",
-                v.listing("Starred", "A star is yours alone; other people keep their own.".into(), s.starred(actor)),
+                v.listing(
+                    "Starred",
+                    "A star is yours alone; other people keep their own.".into(),
+                    s.arrange(actor, s.starred(actor), sift),
+                ),
             )
         }
         Screen::Trash => {
             v.at = "trash";
-            let found = s.trash(actor);
+            let found = s.arrange(actor, s.trash(actor), sift);
             (
                 format!("Trash · {brand}"),
                 "list",
@@ -633,9 +762,22 @@ pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen) -> Result<HttpRe
                 ),
             )
         }
+        // An empty box was submitted: there is nothing to report, and "Results for " is not a
+        // heading. The box above is where the search starts.
+        Screen::Search(q) if q.trim().is_empty() => (
+            format!("Search · {brand}"),
+            "list",
+            vec![
+                div("head").id("head").child(el("h1").id("head-title").text("Search")),
+                el("p")
+                    .id("head-meta")
+                    .class("note")
+                    .text("Type a name, or a word from a file, in the box above."),
+            ],
+        ),
         Screen::Search(q) => {
             v.query = q;
-            let found = s.search(actor, q);
+            let found = s.arrange(actor, s.search(actor, q), sift);
             (format!("{q} · {brand}"), "list", v.listing(&format!("Results for {q}"), count(found.len()), found))
         }
     };

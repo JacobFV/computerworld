@@ -12,6 +12,15 @@
 //! `detail-join`, `detail-description`, `detail-link-<i>`, `guests-title`, `guest-<who>`,
 //! the `rsvp` form (`rsvp-yes`, `rsvp-no`, `rsvp-maybe`), the `edit` form, `delete` inside
 //! `delete-form`, `detail-permalink` and `detail-back`.
+//!
+//! Nothing here is drawn as a control it cannot be. This world runs no page script, so
+//! every affordance is a link, a form, or plainly inert: `prev` is a greyed span in the
+//! first week there is, the view the reader is already in labels itself rather than
+//! linking to itself, the mini-month marks the day on screen instead of linking to it,
+//! `create` reaches the new-event form (clearing the open event when there is one), a
+//! chip whose event is open closes it again, `detail-permalink` is not drawn on the
+//! permalink, and a sidebar calendar is a real checkbox: it hides that owner's events
+//! through `?hide=`, which every link on the page then carries.
 use crate::{civil, days_in_month, heading, CalendarState, Event, Nav, DAY_US, HOUR_US};
 use cw_protocol::{HttpResponse, Result};
 use cw_service_common::html::{
@@ -97,16 +106,58 @@ struct View<'a> {
 impl View<'_> {
     /// A GET link into this calendar; every coordinate is in the query so a page is a permalink.
     fn at(&self, day: u64, event: Option<&str>) -> String {
+        self.go(self.month, day, event)
+    }
+    /// The same, for a link that changes the view as well as the day.
+    fn go(&self, month: bool, day: u64, event: Option<&str>) -> String {
+        self.url(month, day, event, &self.nav.hide.join(","))
+    }
+    /// One address in this calendar: the view, the day, the open event and the calendars
+    /// the reader has turned off, which every link carries so a filter survives a click.
+    fn url(&self, month: bool, day: u64, event: Option<&str>, hidden: &str) -> String {
         let day = day.to_string();
         let mut params = Vec::new();
-        if self.month {
+        if month {
             params.push(("view", "month"));
         }
         params.push(("day", day.as_str()));
         if let Some(id) = event {
             params.push(("event", id));
         }
+        if !hidden.is_empty() {
+            params.push(("hide", hidden));
+        }
         href("/", &params)
+    }
+    /// Whether this owner's calendar is drawn at all.
+    fn shown(&self, owner: &str) -> bool {
+        !self.nav.hide.iter().any(|h| h == owner)
+    }
+    /// The link that unticks this calendar, or ticks it again: the same page without its
+    /// events, keeping the open event only while it is still one of the events on screen.
+    fn toggle(&self, owner: &str) -> String {
+        let mut hidden: Vec<&str> = self.nav.hide.iter().map(String::as_str).collect();
+        match hidden.iter().position(|h| *h == owner) {
+            Some(i) => {
+                hidden.remove(i);
+            }
+            None => hidden.push(owner),
+        }
+        let open = self.nav.event.as_deref().filter(|id| {
+            self.s
+                .visible(self.actor, id)
+                .is_some_and(|e| !hidden.contains(&e.owner.as_str()))
+        });
+        self.url(self.month, self.focus, open, &hidden.join(","))
+    }
+    /// Whether the week or month before the one on screen has any day the query can name.
+    /// Time starts at the epoch, so at the first week it does not, and the arrow is inert.
+    fn has_earlier(&self) -> bool {
+        if self.month {
+            self.month_start() >= 1
+        } else {
+            self.week_start() >= 1
+        }
     }
     /// Sunday of the week on screen, as a signed index: the first week begins before day 0.
     fn week_start(&self) -> i64 {
@@ -118,7 +169,12 @@ impl View<'_> {
         self.focus as i64 - (civil(self.focus * DAY_US).day as i64 - 1)
     }
     fn visible(&self, d: u64) -> Vec<&Event> {
-        let mut found = self.s.list(self.actor, day_start(d), day_end(d));
+        let mut found: Vec<&Event> = self
+            .s
+            .list(self.actor, day_start(d), day_end(d))
+            .into_iter()
+            .filter(|e| self.shown(&e.owner))
+            .collect();
         found.sort_by(|a, b| (a.start, &a.id).cmp(&(b.start, &b.id)));
         found
     }
@@ -158,19 +214,26 @@ impl View<'_> {
             .child(div("logo").attr("aria-hidden", "true").child(span("logo-day").text(today.day.to_string())))
             .child(span("wordmark").id("wordmark").text(self.brand.as_str()))
             .child(link("today", self.at(self.today, None), "Today").class("pill"))
-            .child(link("prev", self.at(prev, None), "‹").class("arrow").attr("aria-label", if self.month { "Previous month" } else { "Previous week" }))
+            .child(match self.has_earlier() {
+                true => link("prev", self.at(prev, None), "‹")
+                    .class("arrow")
+                    .attr("aria-label", if self.month { "Previous month" } else { "Previous week" }),
+                // Nothing precedes the epoch, so the arrow is a greyed glyph, not a control.
+                false => span("arrow off").id("prev").text("‹"),
+            })
             .child(link("next", self.at(next, None), "›").class("arrow").attr("aria-label", if self.month { "Next month" } else { "Next week" }))
             .child(el("h1").id("range").class("range").text(self.range()))
             .child(
+                // The view being read names itself; only the other one is a link.
                 div("views")
-                    .child(
-                        link("view-week", href("/", &[("day", &self.focus.to_string())]), "Week")
-                            .class(if self.month { "view" } else { "view on" }),
-                    )
-                    .child(
-                        link("view-month", href("/", &[("view", "month"), ("day", &self.focus.to_string())]), "Month")
-                            .class(if self.month { "view on" } else { "view" }),
-                    ),
+                    .child(match self.month {
+                        true => link("view-week", self.go(false, self.focus, None), "Week").class("view"),
+                        false => span("view on").id("view-week").text("Week"),
+                    })
+                    .child(match self.month {
+                        true => span("view on").id("view-month").text("Month"),
+                        false => link("view-month", self.go(true, self.focus, None), "Month").class("view"),
+                    }),
             )
             .child(
                 div("avatar")
@@ -205,7 +268,11 @@ impl View<'_> {
                     } else {
                         "mini-day"
                     };
-                    link(&id, self.at(day, None), n.to_string()).class(class)
+                    // The day already on screen is a marker; every other one opens its week.
+                    match day == self.focus {
+                        true => span(class).id(id).text(n.to_string()),
+                        false => link(&id, self.at(day, None), n.to_string()).class(class),
+                    }
                 }
             });
         }
@@ -222,10 +289,19 @@ impl View<'_> {
             .id("sidebar")
             .class("sidebar")
             .child(
+                // With an event open, Create puts the new-event form back in the panel; with
+                // the form already there, it jumps to its first field rather than reloading.
                 el("a")
                     .id("create")
                     .class("create")
-                    .attr("href", self.at(self.focus, None))
+                    .attr(
+                        "href",
+                        match self.nav.event.as_deref().and_then(|id| self.s.visible(self.actor, id)) {
+                            Some(_) => self.at(self.focus, None),
+                            None => "#event-title".to_owned(),
+                        },
+                    )
+                    .attr("aria-label", "Create an event")
                     .child(span("plus").attr("aria-hidden", "true"))
                     .child(span("create-label").id("create-label").text("Create")),
             )
@@ -235,8 +311,14 @@ impl View<'_> {
                     .id("calendars")
                     .child(div("calendars-title").id("calendars-title").text("My calendars"))
                     .each(owners, |owner| {
-                        div("calendar")
+                        // The tick is a real checkbox: it takes that calendar out of the grid,
+                        // and the same link puts it back.
+                        let on = self.shown(owner);
+                        el("a")
                             .id(format!("calendar-{owner}"))
+                            .class(if on { "calendar" } else { "calendar hidden" })
+                            .attr("href", self.toggle(owner))
+                            .attr("aria-label", format!("{} {owner}'s calendar", if on { "Hide" } else { "Show" }))
                             .child(span("swatch").class(&chip_class(owner)).attr("aria-hidden", "true"))
                             .child(span("calendar-name").id(format!("calendar-{owner}-name")).text(owner))
                     }),
@@ -252,7 +334,9 @@ impl View<'_> {
             .class(class)
             .class(&chip_class(&e.owner))
             .class(if open { "open" } else { "" })
-            .attr("href", self.at(d, Some(&e.id)))
+            // The chip whose event is already in the panel closes it again, rather than
+            // being a link back to the page it is on.
+            .attr("href", self.at(d, (!open).then_some(e.id.as_str())))
             .child(span("ev-title").id(format!("{id}-title")).text(e.title.as_str()))
             .child(span("ev-clock").id(format!("{id}-clock")).text(clock))
     }
@@ -408,7 +492,7 @@ impl View<'_> {
                     .id(format!("day-{d}"))
                     .maybe(dow)
                     .child(
-                        link(&format!("day-{d}-head"), href("/", &[("day", &d.to_string())]), label)
+                        link(&format!("day-{d}-head"), self.go(false, d, None), label)
                             .class("num")
                             .attr("aria-label", heading(d)),
                     )
@@ -421,7 +505,7 @@ impl View<'_> {
                         }
                     })
                     .when(more > 0, |cell| {
-                        cell.child(link(&format!("day-{d}-more"), href("/", &[("day", &d.to_string())]), format!("{more} more")).class("more"))
+                        cell.child(link(&format!("day-{d}-more"), self.go(false, d, None), format!("{more} more")).class("more"))
                     }),
             );
         }
@@ -510,7 +594,11 @@ impl View<'_> {
                 .child(
                     div("guests-title")
                         .id("guests-title")
-                        .text(format!("{} guest(s) · organised by {}", e.attendees.len(), e.owner)),
+                        .text(match e.attendees.len() {
+                            0 => format!("No guests · organised by {}", e.owner),
+                            1 => format!("1 guest · organised by {}", e.owner),
+                            n => format!("{n} guests · organised by {}", e.owner),
+                        }),
                 )
                 .each(&e.attendees, |(who, rsvp)| {
                     div("guest")
@@ -546,8 +634,11 @@ impl View<'_> {
                 .child(form("delete-form", format!("{route}/delete"), "post").child(button("delete", "Delete event").class("danger")));
         }
         panel.child(
+            // On the permalink itself there is nowhere for a permalink to lead.
             div("detail-links")
-                .child(link("detail-permalink", route.as_str(), "Permalink"))
+                .when(!self.nav.permalink, |links| {
+                    links.child(link("detail-permalink", route.as_str(), "Permalink"))
+                })
                 .child(link("detail-back", self.at(day, None), if self.month { "Back to the month" } else { "Back to the week" })),
         )
     }

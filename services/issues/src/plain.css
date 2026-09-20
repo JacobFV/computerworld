@@ -9,6 +9,10 @@ a:hover { text-decoration: underline; }
 .masthead { display: flex; align-items: baseline; gap: 8px; padding: 10px 24px; background: #f7f7f0; border-bottom: 2px solid #bb0000; }
 .masthead .brand { font-size: 20px; font-weight: 700; color: #222222; }
 .masthead .sep { color: #999999; }
+.masthead .here { color: #222222; }
+.masthead .search { display: flex; align-items: baseline; gap: 6px; margin: 0 0 0 auto; }
+.masthead .search input { height: 24px; width: 200px; padding: 0 6px; border: 1px solid #bbbbbb; font-size: 13px; font-family: Arial, sans-serif; }
+.masthead .search button { height: 24px; }
 main { max-width: 900px; margin: 0 auto; padding: 16px 24px 40px; }
 h1 { font-size: 22px; margin: 8px 0 12px; }
 h2 { font-size: 15px; margin: 0 0 8px; }

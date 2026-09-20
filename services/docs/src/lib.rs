@@ -59,6 +59,15 @@ impl DocType {
             Self::Slides => "Slides",
         }
     }
+    /// The word for a shelf of them, which is what a filtered gallery is headed. `Slides` is
+    /// already plural: one deck is "Slides", and so is a page full of them.
+    pub fn plural(&self) -> &'static str {
+        match self {
+            Self::Doc => "Docs",
+            Self::Sheet => "Sheets",
+            Self::Slides => "Slides",
+        }
+    }
     pub fn parse(value: &str) -> Result<Self, String> {
         match value {
             "" | "doc" => Ok(Self::Doc),
@@ -922,6 +931,18 @@ mod tests {
         assert_eq!(home.text("chrome-brand"), "Google Docs");
         assert_eq!(home.text("home-title"), "All files");
         assert_eq!(home.text("home-count"), "3 files shared with you");
+        // The word on the tab and the word over the gallery it opens are the same word, and
+        // one file is one file: `Slides` is already plural and a count of one is singular.
+        for (path, title) in [("/?type=doc", "Docs"), ("/?type=sheet", "Sheets"), ("/?type=slides", "Slides")] {
+            let tab = Dom::of(
+                &DocsService
+                    .handle(&mut state, &c, &HttpRequest::get(format!("http://docs{path}")))
+                    .unwrap(),
+                path,
+            );
+            assert_eq!(tab.text("home-title"), title);
+            assert_eq!(tab.text("home-count"), "1 file shared with you");
+        }
         for (id, href) in [
             ("nav-all", "/"),
             ("nav-doc", "/?type=doc"),
@@ -1007,11 +1028,20 @@ mod tests {
             ("cell".into(), "value".into())
         );
 
+        // alice may only read the deck, so she is not offered the slide form; carol owns it.
+        let read_only = Dom::of(
+            &DocsService
+                .handle(&mut state, &c, &HttpRequest::get("http://docs/documents/atlas-launch-review"))
+                .unwrap(),
+            "gdocs deck as a reader",
+        );
+        assert!(!read_only.has("slide") && !read_only.has("slide-submit"));
+        assert!(read_only.text("deck-readonly").starts_with("You can read this deck"));
         let deck = Dom::of(
             &DocsService
                 .handle(
                     &mut state,
-                    &c,
+                    &ctx("carol"),
                     &HttpRequest::get("http://docs/documents/atlas-launch-review"),
                 )
                 .unwrap(),

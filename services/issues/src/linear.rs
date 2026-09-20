@@ -1,7 +1,8 @@
 //! linear.app as HTML: the workspace sidebar, the projects table at `/`, a team's issues as
 //! Linear's grouped list (the default), a board (`?view=board`) or the current cycle
-//! (`?view=cycle`), and the issue page with its activity feed and properties column. The
-//! stylesheet is `linear.css` next to this file. The plain skin never reaches this module.
+//! (`?view=cycle`), the workspace search at `/search`, and the issue page with its activity
+//! feed and properties column. The stylesheet is `linear.css` next to this file. The plain
+//! skin never reaches this module.
 //!
 //! Element ids are the agent API and are the ones the `Page` version used: `workspace`,
 //! `nav-<KEY>`, `team-<KEY>`, `col-<status>` (a status group, in the list and on the board),
@@ -10,7 +11,13 @@
 //! with `new-issue-title`, `new-issue-body`, `new-issue-submit`; on the issue page `back`,
 //! `issue-key`, `issue-state`, `issue-title`, `body`, `comment-<n>`, `review-<n>`, the forms
 //! `comment` (`comment-body`, `comment-submit`), `update` (`update-assignee`,
-//! `update-submit`) and `review`, and the buttons `status-<status>`.
+//! `update-submit`) and `review`, and the buttons `status-<status>`. The sidebar's search is
+//! the form `search` (`search-q`, `search-go`) posting its query to `/search`, whose results
+//! are `result-<KEY>-<id>` under `search-title` and `search-sub`; `nav-mine` is that same
+//! page filtered to the actor.
+//!
+//! Nothing here is drawn as a control unless it is one: this world has no page script, so a
+//! menu, a modal or a command palette would be a dead pixel and is simply not drawn.
 use crate::{Issue, Project};
 use cw_protocol::{HttpResponse, PageTheme, Result};
 use cw_service_common as wire;
@@ -27,6 +34,10 @@ pub fn column_label(status: &str) -> &'static str {
 pub struct Look {
     pub workspace: String,
     pub theme: Option<PageTheme>,
+    /// Who is reading, so the sidebar's "My issues" is really theirs.
+    pub actor: String,
+    /// The `q` of this request, so the search box keeps what was typed into it.
+    pub query: String,
 }
 impl Look {
     fn brand(&self) -> &str {
@@ -59,6 +70,17 @@ impl View {
             View::Cycle => "cycle",
         }
     }
+}
+
+/// Where in the workspace the reader is, so the sidebar marks one row current and no other.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Spot<'a> {
+    /// The projects table at `/`.
+    Home,
+    /// `/search`; `mine` when it is filtered to the reader, which is "My issues".
+    Search { mine: bool },
+    /// A team's list, board, cycle or one of its issues.
+    Team(&'a str),
 }
 
 fn idn(node: Html, id: &str) -> Html {
@@ -150,12 +172,13 @@ fn linked(prefix: &str, body: &str) -> Vec<Html> {
     out
 }
 
-/// The workspace sidebar. The wordmark is a real link home; the team rows are the teams.
-fn rail(look: &Look, projects: &[(String, String)], current: Option<&str>, view: View) -> Html {
+/// The workspace sidebar. The wordmark is a real link home, the search box a real query
+/// against `/search`, and the team rows are the teams.
+fn rail(look: &Look, projects: &[(String, String)], spot: Spot, view: View) -> Html {
     let initial: String = look.brand().chars().next().map(|c| c.to_uppercase().collect()).unwrap_or_default();
     let mut nav = el("nav").class("teams").child(sp("teams-label", "rail-label", "Your teams"));
     for (key, name) in projects {
-        let here = current == Some(key.as_str());
+        let here = spot == Spot::Team(key.as_str());
         nav = nav.child(
             el("a")
                 .id(format!("nav-{key}"))
@@ -174,26 +197,26 @@ fn rail(look: &Look, projects: &[(String, String)], current: Option<&str>, view:
             nav = nav.child(sub("issues", "Issues", View::List)).child(sub("board", "Board", View::Board)).child(sub("cycle", "Cycles", View::Cycle));
         }
     }
+    let mut links = div("rail-links")
+        .child(sp("", "rail-label", "Workspace"))
+        .child(link("nav-projects", "/", "Projects").class(if spot == Spot::Home { "rail-item current" } else { "rail-item" }));
+    if !look.actor.is_empty() {
+        links = links.child(
+            link("nav-mine", href("/search", &[("assignee", look.actor.as_str())]), "My issues")
+                .class(if spot == (Spot::Search { mine: true }) { "rail-item current" } else { "rail-item" }),
+        );
+    }
     el("aside")
         .id("rail")
         .class("rail")
+        .child(div("rail-top").child(el("a").id("workspace").class("workspace").attr("href", "/").child(span("workspace-logo").text(initial)).child(Html::from(look.brand()))))
         .child(
-            div("rail-top")
-                .child(el("a").id("workspace").class("workspace").attr("href", "/").child(span("workspace-logo").text(initial)).child(Html::from(look.brand())).child(span("chev").text("▾")))
-                .child(span("rail-tool").attr("title", "Search").child(span("mag")))
-                .child(span("rail-tool compose").attr("title", "New issue").text("✎")),
+            form("search", "/search", "get")
+                .class("search")
+                .child(text_input("search-q", "q", &look.query).attr("placeholder", "Search issues…").attr("aria-label", "Search issues"))
+                .child(el("button").id("search-go").attr("type", "submit").class("search-go").attr("aria-label", "Search").child(span("mag"))),
         )
-        .child(
-            div("rail-links")
-                .child(span("rail-item").child(span("glyph").text("✉")).child(Html::from("Inbox")))
-                .child(span("rail-item").child(span("glyph").text("◎")).child(Html::from("My issues"))),
-        )
-        .child(
-            div("rail-links")
-                .child(sp("", "rail-label", "Workspace"))
-                .child(link("nav-projects", "/", "Projects").class(if current.is_none() { "rail-item current" } else { "rail-item" }))
-                .child(span("rail-item").text("Views")),
-        )
+        .child(links)
         .child(nav)
 }
 fn document(look: &Look, title: &str, rail: Html, main: Html) -> Result<HttpResponse> {
@@ -222,7 +245,7 @@ pub fn home(look: &Look, projects: &[(String, Project)]) -> Result<HttpResponse>
             .child(span("c-health").text("Health"))
             .child(span("c-lead").text("Lead"))
             .child(span("c-open").text("Issues"))
-            .child(span("c-progress").text("Status")),
+            .child(span("c-progress").text("Progress")),
     );
     for (key, project) in projects {
         let total = project.issues.len();
@@ -254,10 +277,59 @@ pub fn home(look: &Look, projects: &[(String, Project)]) -> Result<HttpResponse>
     let main = el("main")
         .id("main")
         .class("main")
-        .child(el("header").class("topbar").child(el("h1").id("home-title").text("Projects")).child(span("tabs").child(span("tab current").text("All projects"))).child(span("grow")).child(span("ghost").text("Filter")).child(span("ghost").text("Display")))
+        .child(el("header").class("topbar").child(el("h1").id("home-title").text("Projects")).child(span("tabs").child(span("tab current").text("All projects"))))
         .child(el("p").id("home-sub").class("sub").text("Your teams: boards, cycles and everything still open."))
         .child(table);
-    document(look, &format!("{} · Linear", look.brand()), rail(look, &names, None, View::List), main)
+    document(look, &format!("{} · Linear", look.brand()), rail(look, &names, Spot::Home, View::List), main)
+}
+/// Workspace search: every issue of every readable team that matches, as one list. The
+/// sidebar's search box and its "My issues" row both land here.
+pub fn results(look: &Look, projects: &[(String, String)], found: &[(String, Issue)], query: &str, assignee: Option<&str>) -> Result<HttpResponse> {
+    let searching = !query.trim().is_empty() || assignee.is_some();
+    let mine = assignee.is_some_and(|who| who == look.actor);
+    let heading = match assignee {
+        Some(who) if query.trim().is_empty() => format!("Issues assigned to {who}"),
+        _ => "Search".to_owned(),
+    };
+    let sub = if !searching {
+        "Type a word into the search box to find issues across every team.".to_owned()
+    } else {
+        let mut s = format!("{} {}", found.len(), if found.len() == 1 { "issue" } else { "issues" });
+        if !query.trim().is_empty() {
+            s.push_str(&format!(" matching “{}”", query.trim()));
+        }
+        if let Some(who) = assignee {
+            s.push_str(&format!(" assigned to {who}"));
+        }
+        s
+    };
+    let mut list = div("list").id("results");
+    for (key, issue) in found {
+        let id = issue.id;
+        list = list.child(
+            el("a")
+                .id(format!("result-{key}-{id}"))
+                .class("row")
+                .attr("href", format!("/projects/{key}/issues/{id}"))
+                .child(priority_icon("", issue))
+                .child(span("key").text(format!("{key}-{id}")))
+                .child(status_icon("", &issue.status))
+                .child(span("title").text(&issue.title))
+                .child(span("grow"))
+                .child(span("muted").text(column_label(&issue.status)))
+                .child(avatar("", &issue.assignee, 18)),
+        );
+    }
+    if searching && found.is_empty() {
+        list = list.child(el("p").id("search-empty").class("empty").text("No issue matches. Try a word from a title, a label or an assignee."));
+    }
+    let main = el("main")
+        .id("main")
+        .class("main")
+        .child(el("header").class("topbar").id("search-head").child(el("h1").id("search-title").text(&heading)))
+        .child(el("p").id("search-sub").class("sub").text(sub))
+        .child(list);
+    document(look, &format!("{heading} · {}", look.brand()), rail(look, projects, Spot::Search { mine }, View::List), main)
 }
 /// The real moves available to an issue: a status write that lands back on this view.
 fn moves(key: &str, issue: &Issue, view: View) -> Html {
@@ -326,8 +398,7 @@ pub fn board(look: &Look, key: &str, project: &Project, projects: &[(String, Str
                 .child(status_icon(&format!("col-dot-{status}"), status))
                 .child(span("group-name").text(name))
                 .child(sp(&format!("col-count-{status}"), "count", members.len().to_string()))
-                .child(span("grow"))
-                .child(span("plus").text("+")),
+                .child(span("grow")),
         );
         for issue in members {
             group = group.child(if view == View::Board { board_card(key, issue, view) } else { list_row(key, issue, view) });
@@ -348,7 +419,7 @@ pub fn board(look: &Look, key: &str, project: &Project, projects: &[(String, Str
         }
         href(&format!("/projects/{key}"), &params)
     };
-    let mut filters = div("filters").id("filters").child(span("ghost").text("Filter")).child(link("filter-all", to(None, view), "All").class(if assignee.is_none() { "chip current" } else { "chip" }));
+    let mut filters = div("filters").id("filters").child(sp("", "filter-label", "Assignee")).child(link("filter-all", to(None, view), "All").class(if assignee.is_none() { "chip current" } else { "chip" }));
     for who in people {
         filters = filters.child(
             el("a")
@@ -371,8 +442,7 @@ pub fn board(look: &Look, key: &str, project: &Project, projects: &[(String, Str
             .child(el("h1").id("board-title").text(&project.name))
             .child(sp("board-key", "key", key))
             .child(span("tabs").child(tab("view-list", "All issues", View::List)).child(tab("view-board", "Board", View::Board)).child(tab("view-cycle", "Current cycle", View::Cycle)))
-            .child(span("grow"))
-            .child(span("ghost").text("Display")),
+            .child(span("grow")),
     );
     if view == View::Cycle {
         main = main.child(
@@ -400,7 +470,7 @@ pub fn board(look: &Look, key: &str, project: &Project, projects: &[(String, Str
                     .child(div("actions").child(button("new-issue-submit", "Create issue").class("primary"))),
             ),
     );
-    document(look, &format!("{} · {}", project.name, look.brand()), rail(look, projects, Some(key), view), main)
+    document(look, &format!("{} · {}", project.name, look.brand()), rail(look, projects, Spot::Team(key), view), main)
 }
 /// One issue: the description and the activity feed, with the properties column beside it.
 pub fn issue(look: &Look, key: &str, item: &Issue, projects: &[(String, String)]) -> Result<HttpResponse> {
@@ -463,7 +533,7 @@ pub fn issue(look: &Look, key: &str, item: &Issue, projects: &[(String, String)]
         ))
         .child(prop("Labels", span("pills").children(label_pills("issue", item)).when(item.labels.is_empty(), |n| n.child(span("muted").text("No labels")))))
         .child(prop("Project", link("issue-project", format!("/projects/{key}"), team)));
-    let mut moves = div("status-moves").id("status-moves").child(sp("", "rail-label", "Move to"));
+    let mut moves = div("status-moves").id("status-moves").child(sp("", "rail-label", "Change status"));
     for (status, name) in COLUMNS.iter().filter(|(status, _)| *status != item.status) {
         moves = moves.child(
             form(&format!("status-{status}-form"), base.clone(), "post")
@@ -500,9 +570,7 @@ pub fn issue(look: &Look, key: &str, item: &Issue, projects: &[(String, String)]
                 .child(link("back", format!("/projects/{key}"), team).class("crumb"))
                 .child(span("crumb-sep").text("›"))
                 .child(sp("issue-key", "key", format!("{key}-{id}")))
-                .child(span("grow"))
-                .child(span("ghost").text("☆"))
-                .child(span("ghost").text("⋯")),
+                .child(span("grow")),
         )
         .child(
             div("issue-columns")
@@ -516,5 +584,5 @@ pub fn issue(look: &Look, key: &str, item: &Issue, projects: &[(String, String)]
                 )
                 .child(props),
         );
-    document(look, &format!("{key}-{id} {}", item.title), rail(look, projects, Some(key), View::List), main)
+    document(look, &format!("{key}-{id} {}", item.title), rail(look, projects, Spot::Team(key), View::List), main)
 }

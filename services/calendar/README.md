@@ -10,6 +10,8 @@ ambient clock is involved. The world may define an epoch for display.
 | Route | Behavior |
 | --- | --- |
 | GET `/` | Visible events and create/move/RSVP forms |
+| GET `/?view=month&day=<d>&event=<id>&hide=<owners>` | Skinned only: which grid, which day, which event is open, and which calendars the reader has unticked. Every link on the page carries them, so a page is a permalink and a filter survives a click |
+| GET `/events/{id}` | Skinned only: one event's permalink, in the week it falls in |
 | GET `/api/events?start=0&end=10000000` | Accessible events overlapping half-open interval |
 | POST `/api/events` | `{title,start,end,attendees:["bob"]}` |
 | PATCH/POST `/api/events/{id}` | Owner-only `{start,end}` reschedule |

@@ -13,7 +13,7 @@ const S: u64 = 1_000_000;
 fn world(profile: &str) -> (World, String) {
     let mut d = reference_world();
     d.metadata["desktop_themes"] = json!({ MACHINE: profile });
-    // The same entry examples/browser/build.mjs ships: Android's player is YouTube Music.
+    // The same entry scripts/build-live-world.mjs ships: Android's player is YouTube Music.
     d.metadata["desktop_apps"] = json!([{
         "id": "music", "label": "Music", "kind": "native", "url": "http://spotify.com/",
         "urls": {"android": "http://music.youtube.com/"}, "icon": "music"

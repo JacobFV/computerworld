@@ -91,6 +91,8 @@ pub(crate) struct Nav {
     pub folder: String,
     pub thread: Option<String>,
     pub compose: bool,
+    /// One of the reader's own labels, when the rail is filtering the folder by it.
+    pub label: String,
 }
 impl Nav {
     fn folder(&self) -> &str {
@@ -464,6 +466,7 @@ impl Service for MailService {
             folder: web::query(r, "folder").unwrap_or_default(),
             thread: thread.or_else(|| web::query(r, "thread")),
             compose: web::query(r, "compose").is_some(),
+            label: web::query(r, "label").unwrap_or_default(),
         };
         if method == "GET" {
             return match p.as_str() {
@@ -502,10 +505,13 @@ impl Service for MailService {
             };
         }
         let b = web::body(r)?;
+        // Where a form says it was pressed. `filter` is the label the list was narrowed to;
+        // `label` is never read here, because on `/messages/<id>` it is the label being added.
         let mut land = Nav {
             folder: web::text(&b, "folder"),
             thread: None,
             compose: false,
+            label: web::text(&b, "filter"),
         };
         let result = if method == "POST" && (p == "/api/messages" || p == "/send") {
             s.send(
@@ -547,7 +553,13 @@ impl Service for MailService {
                 Some(v) => v.parse().ok(),
                 None => None,
             };
-            land.thread = s.messages.get(id).map(|m| m.thread().to_owned());
+            // A row's star says which conversation was open when it was pressed, so the page
+            // comes back as it was; the reading pane sends no `thread` and opens the one it
+            // acted on, as it always has.
+            land.thread = match b.get("thread") {
+                Some(_) => Some(web::text(&b, "thread")).filter(|t| !t.is_empty()),
+                None => s.messages.get(id).map(|m| m.thread().to_owned()),
+            };
             s.update(
                 &c.actor,
                 id,
@@ -879,6 +891,25 @@ mod tests {
             assert_eq!(home.text("row-mail-2-count"), "2");
             assert!(home.has("row-mail-2-time") && home.has("row-mail-2-star") && home.has("row-mail-2-avatar"));
             assert!(!home.has("read-mail-1"), "no conversation is open");
+            // The row's star is a button of its own form, not an icon inside the row link: it
+            // posts the same toggle the reading pane posts and says where it was pressed.
+            assert_eq!(home.tag("row-mail-2-star"), "button", "{skin}");
+            assert_eq!(
+                (home.attr("row-mail-2-star", "name"), home.attr("row-mail-2-star", "value"), home.attr("row-mail-2-star", "aria-label")),
+                ("star".into(), "toggle".into(), "Star".into()),
+                "{skin}"
+            );
+            assert_eq!(
+                (home.attr("row-mail-2-star-form", "action"), home.attr("row-mail-2-star-form", "method")),
+                ("/messages/mail-2".into(), "post".into()),
+                "{skin}"
+            );
+            // The one toolbar icon is a link to this same view, which is what refresh means.
+            assert_eq!((home.tag("list-refresh"), home.attr("list-refresh", "href")), ("a".into(), "/?folder=inbox".into()), "{skin}");
+            // Nothing is drawn that cannot be pressed: no category strip, no select-all box.
+            assert!(!home.body().contains("Promotions") && !home.body().contains("Focused"), "{skin}");
+            // Gmail's rail used to call this "All Mail" while showing only what was archived.
+            assert_eq!(home.text("folder-archive-label"), "Archive", "{skin}");
 
             // The conversation: both messages, the doc link as a real link in the prose, the
             // three metadata buttons in one form, the label form and the reply form.
@@ -953,6 +984,23 @@ mod tests {
             assert!(read.classes("row-mail-2").contains(&"read".to_owned()));
             let labelled = Dom::of(&post(&mut v, "alice", "http://mail/messages/mail-2", &[("label", "Atlas")]));
             assert_eq!(labelled.text("read-mail-2-label-0"), "Atlas");
+            // The rail's labels are links into the mail that carries them, and the view they
+            // open says so in its heading.
+            assert_eq!((labelled.tag("label-0"), labelled.attr("label-0", "href")), ("a".into(), "/?folder=all&label=Atlas".into()), "{skin}");
+            let by_label = Dom::of(&get(&mut v, "alice", "http://mail/?folder=all&label=Atlas"));
+            assert_eq!(by_label.text("list-title"), "Atlas");
+            // A label belongs to the conversation: the label was typed on mail-2 and the row
+            // that stands for the exchange in `all` is its newest message, mail-3.
+            assert!(by_label.has("row-mail-3") && by_label.classes("label-0").contains(&"on".to_owned()), "{skin}");
+            // A star pressed in the list comes back to the list, not to some other conversation.
+            let from_list = Dom::of(&post(
+                &mut v,
+                "alice",
+                "http://mail/messages/mail-2",
+                &[("folder", "inbox"), ("filter", ""), ("thread", ""), ("star", "toggle")],
+            ));
+            assert!(!from_list.has("read-mail-2"), "{skin}: the list star does not open the thread");
+            assert_eq!(from_list.text("row-mail-2-star"), "☆", "{skin}: and it unstarred the row");
             let archived = Dom::of(&post(&mut v, "alice", "http://mail/messages/mail-2", &[("folder", "inbox"), ("archive", "true")]));
             assert!(!archived.has("row-mail-2"), "{skin}: archived mail leaves the inbox");
             assert!(Dom::of(&get(&mut v, "alice", "http://mail/?folder=archive")).has("row-mail-2"));

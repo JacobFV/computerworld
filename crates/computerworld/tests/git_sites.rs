@@ -136,8 +136,10 @@ fn github_is_browsed_from_a_repository_to_a_file_a_commit_and_a_pull_request() {
     assert_eq!(url(&world, &session), "http://github.com/northstar/atlas/blob/main/src/bfs.rs");
     assert_eq!(title(&world, &session), "northstar/atlas/src/bfs.rs at main · GitHub");
     let blob = all(&world, &session);
+    // Raw is the one file action a page with no script can offer, and it really serves
+    // the bytes: blame, copy, download and edit went rather than swallow a click.
     assert_eq!(link_to(&blob, "raw"), "http://github.com/northstar/atlas/raw/main/src/bfs.rs");
-    assert_eq!(text(&blob, "blame"), "Blame");
+    assert!(!has(&blob, "blame") && !has(&blob, "copy") && !has(&blob, "edit"));
     assert_eq!(link_to(&blob, "crumb-part-0"), "http://github.com/northstar/atlas/tree/main/src");
     // The source is on the page, numbered line by line (the gutter runs 1..19 beside it).
     let source = body_text(&blob);

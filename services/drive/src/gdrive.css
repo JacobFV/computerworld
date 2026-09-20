@@ -54,7 +54,7 @@ h1, h2, p, dl, dd { margin: 0; }
 #main { flex: 1 1 auto; min-width: 0; min-height: 720px; margin: 0 16px 16px 0; padding: 12px 24px 32px 24px; border-radius: 16px; background: var(--paper); }
 .crumbs { display: flex; flex: 1 1 auto; align-items: center; gap: 4px; min-width: 0; height: 40px; margin: 0 0 0 -12px; }
 .crumb { padding: 4px 12px; border-radius: 18px; color: #444746; font-size: 24px; line-height: 32px; }
-.crumb:hover { background: #ededed; }
+a.crumb:hover { background: #ededed; }
 .crumb.here { color: #1f1f1f; }
 .sep { color: #444746; font-size: 22px; }
 .head { display: flex; align-items: center; gap: 12px; min-height: 44px; margin: 4px 0 0 0; }
@@ -63,6 +63,9 @@ h1, h2, p, dl, dd { margin: 0; }
 .chips { display: flex; gap: 8px; margin: 14px 0 6px 0; }
 .chip { display: block; height: 32px; padding: 0 28px 0 14px; border: 1px solid #747775; border-radius: 8px; color: #1f1f1f; font-size: 14px; font-weight: 500; line-height: 30px; position: relative; }
 .chip::after { content: "▾"; position: absolute; right: 10px; top: 0; color: #444746; font-size: 13px; }
+.chip:hover { background: #f0f4f9; }
+.chip.on { border-color: #c2e7ff; background: #c2e7ff; color: #001d35; }
+.chip.on::after { color: #001d35; }
 .section { margin: 18px 0 10px 0; color: #1f1f1f; font-size: 14px; font-weight: 500; line-height: 20px; }
 .empty { margin: 48px 0; color: var(--muted); font-size: 16px; text-align: center; }
 form.one { display: block; margin: 0; }

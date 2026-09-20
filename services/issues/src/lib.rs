@@ -244,6 +244,8 @@ impl Service for IssuesService {
         let look = linear::Look {
             workspace: wire::text(state, "workspace"),
             theme: serde_json::from_value(state.get("theme").cloned().unwrap_or(Value::Null))?,
+            actor: ctx.actor.clone(),
+            query: wire::query(req, "q").unwrap_or_default(),
         };
         let assignee = wire::query(req, "assignee");
         let view = linear::View::parse(wire::query(req, "view").as_deref());
@@ -287,6 +289,46 @@ impl Service for IssuesService {
                 .filter_map(|v| Some((v["id"].as_str()?.to_owned(), v["name"].as_str().unwrap_or("Project").to_owned())))
                 .collect();
             return plain::projects(&listed);
+        }
+        // Workspace search: the sidebar's box and its "My issues" row both land here. It is
+        // a view over the issues that already exist, so it holds no state of its own.
+        if p.first() == Some(&"search") {
+            if p.len() != 1 {
+                return wire::error(404, "route not found");
+            }
+            if req.method != "GET" {
+                return wire::error(405, "method not allowed");
+            }
+            let query = look.query.clone();
+            let needle = query.trim().to_lowercase();
+            let searching = !needle.is_empty() || assignee.is_some();
+            let mut found: Vec<(String, Issue)> = vec![];
+            if searching {
+                for (key, value) in projects.iter() {
+                    if !access(value, "readers", &ctx.actor) {
+                        continue;
+                    }
+                    let project: Project = serde_json::from_value(value.clone())?;
+                    for item in project.issues.values() {
+                        if assignee.as_deref().is_some_and(|who| item.assignee != who) {
+                            continue;
+                        }
+                        if !needle.is_empty() && !haystack(key, item).contains(&needle) {
+                            continue;
+                        }
+                        found.push((key.clone(), item.clone()));
+                    }
+                }
+            }
+            if api {
+                let listed: Vec<Value> = found.iter().map(|(key, item)| json!({"project": key, "issue": item})).collect();
+                return HttpResponse::json(200, &listed);
+            }
+            return if skinned {
+                linear::results(&look, &nav, &found, &query, assignee.as_deref())
+            } else {
+                plain::results(&found, &query, assignee.as_deref())
+            };
         }
         if p.first() != Some(&"projects") || p.len() < 2 || p.len() > 5 {
             return wire::error(404, "route not found");
@@ -384,6 +426,11 @@ impl Service for IssuesService {
             Err((code, msg)) => wire::error(code, msg),
         }
     }
+}
+/// Everything about an issue a search is allowed to match, lowercased: its key, title,
+/// body, labels, assignee and author.
+fn haystack(key: &str, item: &Issue) -> String {
+    format!("{key}-{} {} {} {} {} {}", item.id, item.title, item.body, item.labels.join(" "), item.assignee, item.author).to_lowercase()
 }
 fn access(v: &Value, field: &str, actor: &str) -> bool {
     v[field]
@@ -628,7 +675,8 @@ mod linear_tests {
         create.body = b"title=Repair+DNS&body=Check+the+resolver".to_vec();
         let issue = Html::of(IssuesService.handle(&mut plain, &ctx("alice"), &create).unwrap());
         assert_eq!(issue.text("title"), "OPS-1 Repair DNS");
-        assert_eq!(issue.text("status"), "Status: open · Assigned:");
+        // Prose, not a contract: an unassigned issue says so rather than trailing a colon.
+        assert_eq!(issue.text("status"), "Status: open · Unassigned");
         assert_eq!(issue.text("body"), "Check the resolver");
         assert_eq!(issue.attr("back", "href"), "/projects/OPS");
         assert_eq!(issue.attr("comment", "action"), "/projects/OPS/issues/1/comments");

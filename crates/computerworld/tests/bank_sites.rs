@@ -88,7 +88,7 @@ fn northwind_accounts_are_read_filtered_and_a_transfer_is_made_through_the_agent
     browser_do(&mut world, &session, "click", json!({"id":"filter-go"}));
     assert_eq!(url(&world, &session), "http://northwind.example/accounts/chk-4417?category=&q=payroll");
     let (_, all) = page(&world, &session);
-    assert!(shows(&all, "1 transaction(s)"));
+    assert!(shows(&all, "1 transaction"), "the count reads as prose, not as a placeholder");
     assert_eq!(by_id(&all, "filter-q")["value"], "payroll");
 
     // A ledger row is one link to the transaction; the card charge links out to the order.
@@ -153,9 +153,9 @@ fn paypal_shows_the_balance_and_activity_and_sends_a_payment_through_the_agent_a
     assert!(all.iter().any(|e| e["kind"] == "link" && e["id"].as_str().is_some_and(|id| id.starts_with("t-tx-"))));
     assert!(all.iter().all(|e| e["id"] != "a-pp-bob"), "only alice's wallet is listed");
 
-    // Send: the round button goes to the send and request page, whose first form pays a contact.
+    // Send: the round button lands on the form it names, which pays a contact.
     browser_do(&mut world, &session, "click", json!({"id":"quick-send"}));
-    assert_eq!(url(&world, &session), "http://paypal.com/transfers");
+    assert_eq!(url(&world, &session), "http://paypal.com/transfers#pay-card");
     let (_, all) = page(&world, &session);
     assert_eq!(by_id(&all, "pay")["kind"], "form");
     assert_eq!(by_id(&all, "pay-payee")["label"], "Payee id");

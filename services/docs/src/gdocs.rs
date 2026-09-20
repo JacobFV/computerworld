@@ -12,7 +12,10 @@
 //! `body-link-<n>`, the `edit` form (`edit-revision`, `edit-body`, `edit-submit`), the `cell`
 //! form (`cell-cell`, `cell-value`, `cell-submit`), `sheet-<A1>`, the `slide` form
 //! (`slide-index`, `slide-title`, `slide-body`, `slide-submit`), `slide-<n>`, `note-<n>`, the
-//! `comment` form (`comment-text`, `comment-submit`) and `history-<revision>`.
+//! `comment` form (`comment-text`, `comment-submit`) and `history-<revision>`. The three
+//! editors (`edit`, `cell`, `slide`) are drawn only for someone who may write the file; a
+//! reader gets `doc-readonly`, `sheet-readonly` or `deck-readonly` instead of a form that
+//! could only ever answer 403.
 use super::blocks::{self, Kind};
 use super::{parse_cell, DocType, DocsState, Document, Screen, SHEET_COLUMNS};
 use cw_protocol::{HttpResponse, Result};
@@ -165,8 +168,8 @@ fn home(s: &DocsState, actor: &str, kind: Option<DocType>) -> Vec<Html> {
             .child(
                 div("recent-head")
                     .child(el("h1").id("home-title").text(match kind {
-                        Some(k) => format!("{}s", k.label()),
-                        None => "All files".to_owned(),
+                        Some(k) => k.plural(),
+                        None => "All files",
                     }))
                     .child(span("count").id("home-count").text(format!(
                         "{} file{} shared with you",
@@ -210,6 +213,11 @@ fn toolbar(kind: DocType) -> Html {
         span("group").each(group.iter(), |glyph| span(if glyph.chars().count() > 2 { "tool wide" } else { "tool" }).text(*glyph))
     })
 }
+/// Why a reader sees no editor. A form that could only ever answer 403 is a control in name
+/// alone, so the page says what is missing instead of drawing one.
+fn readonly(id: &str, what: &str) -> Html {
+    el("p").id(id).class("readonly").text(format!("You can read this {what}. Only its owner and the people it names as writers can change it."))
+}
 fn prose(d: &Document, actor: &str) -> Html {
     let parsed = blocks::parse(&d.body);
     let page = el("article").id("doc-page").class("paper").each(parsed.iter(), |b| {
@@ -240,10 +248,12 @@ fn prose(d: &Document, actor: &str) -> Html {
                         .child(div("actions").child(button("edit-submit", "Save").class("primary"))),
                 ),
         );
+    } else {
+        column = column.child(readonly("doc-readonly", "document"));
     }
     column
 }
-fn sheet(d: &Document) -> Html {
+fn sheet(d: &Document, actor: &str) -> Html {
     let (mut columns, mut rows) = (4u8, 6u32);
     for cell in d.cells.keys() {
         if let Some((c, r)) = parse_cell(cell) {
@@ -254,12 +264,6 @@ fn sheet(d: &Document) -> Html {
     let columns = columns.clamp(8, SHEET_COLUMNS);
     let rows = rows.clamp(18, MAX_ROWS);
     let letter = |c: u8| char::from(b'A' + c);
-    let bar = form("cell", format!("/documents/{}/cells", d.id), "post")
-        .class("formula")
-        .child(text_input("cell-cell", "cell", "").attr("aria-label", "Cell, for example B3").attr("placeholder", "A1").attr("autocomplete", "off"))
-        .child(span("fx").attr("aria-hidden", "true").text("fx"))
-        .child(text_input("cell-value", "value", "").attr("aria-label", "Value").attr("placeholder", "Value").attr("autocomplete", "off"))
-        .child(button("cell-submit", "Set cell"));
     let head = el("tr")
         .child(el("th").id("sheet-corner").class("corner"))
         .each(0..columns, |c| el("th").id(format!("sheet-col-{}", letter(c))).attr("scope", "col").text(letter(c).to_string()));
@@ -276,13 +280,24 @@ fn sheet(d: &Document) -> Html {
                     .text(value)
             })
     });
+    // The formula bar is the only way to change a cell, so a reader is not shown one: a bar
+    // that could only ever answer 403 is a control in name alone.
     div("column sheet-column")
-        .child(el("h2").id("sheet-edit-title").class("sr").text("Edit a cell"))
-        .child(bar)
+        .when(d.writable(actor), |c| {
+            c.child(el("h2").id("sheet-edit-title").class("sr").text("Edit a cell")).child(
+                form("cell", format!("/documents/{}/cells", d.id), "post")
+                    .class("formula")
+                    .child(text_input("cell-cell", "cell", "").attr("aria-label", "Cell, for example B3").attr("placeholder", "A1").attr("autocomplete", "off"))
+                    .child(span("fx").attr("aria-hidden", "true").text("fx"))
+                    .child(text_input("cell-value", "value", "").attr("aria-label", "Value").attr("placeholder", "Value").attr("autocomplete", "off"))
+                    .child(button("cell-submit", "Set cell")),
+            )
+        })
+        .when(!d.writable(actor), |c| c.child(readonly("sheet-readonly", "sheet")))
         .child(div("grid-wrap").child(el("table").id("sheet").child(el("thead").child(head)).child(body)))
         .child(div("sheet-tabs").attr("aria-hidden", "true").child(span("add").text("+")).child(span("all").text("☰")).child(span("tab on").text("Sheet1")))
 }
-fn deck(d: &Document) -> Html {
+fn deck(d: &Document, actor: &str) -> Html {
     let strip = div("filmstrip").attr("aria-hidden", "true").each(d.slides.iter().enumerate(), |(i, slide)| {
         div(if i == 0 { "frame on" } else { "frame" })
             .child(span("no").text((i + 1).to_string()))
@@ -301,18 +316,23 @@ fn deck(d: &Document) -> Html {
                 .child(el("p").id(format!("slide-body-{i}")).text(slide.body.as_str()))
         }));
     }
-    column = column.child(
-        el("section")
-            .class("panel editor")
-            .child(el("h2").id("deck-edit-title").text("Add or replace a slide"))
-            .child(
-                form("slide", format!("/documents/{}/slides", d.id), "post")
-                    .child(field("slide", "index", "Slide number to replace, blank to add", ""))
-                    .child(field("slide", "title", "Title", ""))
-                    .child(area("slide", "body", "Body", "", 4))
-                    .child(div("actions").child(button("slide-submit", "Save slide").class("primary"))),
-            ),
-    );
+    // As with the prose editor and the formula bar: only a writer is offered the slide form.
+    if d.writable(actor) {
+        column = column.child(
+            el("section")
+                .class("panel editor")
+                .child(el("h2").id("deck-edit-title").text("Add or replace a slide"))
+                .child(
+                    form("slide", format!("/documents/{}/slides", d.id), "post")
+                        .child(field("slide", "index", "Slide number to replace, blank to add", ""))
+                        .child(field("slide", "title", "Title", ""))
+                        .child(area("slide", "body", "Body", "", 4))
+                        .child(div("actions").child(button("slide-submit", "Save slide").class("primary"))),
+                ),
+        );
+    } else {
+        column = column.child(readonly("deck-readonly", "deck"));
+    }
     div("deck-wrap").child(strip).child(column)
 }
 fn document(d: &Document, actor: &str) -> Vec<Html> {
@@ -368,8 +388,8 @@ fn document(d: &Document, actor: &str) -> Vec<Html> {
         });
     let center = match d.doc_type {
         DocType::Doc => prose(d, actor),
-        DocType::Sheet => sheet(d),
-        DocType::Slides => deck(d),
+        DocType::Sheet => sheet(d, actor),
+        DocType::Slides => deck(d, actor),
     };
     vec![
         titlebar,

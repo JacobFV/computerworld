@@ -8,7 +8,8 @@
 //! the `comment` form (`comment-text`, `comment-submit`) and the `create` form
 //! (`create-title`, `create-body`, `create-readers`, `create-writers`, `create-submit`).
 //! Everything the skin adds is prefixed (`side-`, `crumb-`, `recent-`, `star`), so a document
-//! id can never collide with chrome.
+//! id can never collide with chrome. The `edit` form is drawn only for someone who may write
+//! the page; a reader gets `document-readonly` instead of a form that could only answer 403.
 use super::blocks::{self, Kind};
 use super::{DocType, DocsState, Document, Screen};
 use cw_protocol::{HttpResponse, Result};
@@ -37,10 +38,12 @@ fn sidebar(s: &DocsState, actor: &str, kind: Option<DocType>, current: Option<&s
     el("aside")
         .class("side")
         .child(
+            // The product's workspace switcher opens a menu; this world has one workspace and
+            // no page script, so the row is the workspace's name, not a chevron that swallows
+            // a click.
             div("workspace")
                 .child(span("tile").attr("aria-hidden", "true").text(name.chars().next().map(String::from).unwrap_or_default()))
-                .child(span("ws-name").text(format!("{name}'s Notion")))
-                .child(span("chev").attr("aria-hidden", "true").text("⌄")),
+                .child(span("ws-name").text(format!("{name}'s Notion"))),
         )
         .child(
             el("nav")
@@ -55,13 +58,18 @@ fn sidebar(s: &DocsState, actor: &str, kind: Option<DocType>, current: Option<&s
                 .id(d.id.as_str())
                 .class(if current == Some(d.id.as_str()) { "page-link on" } else { "page-link" })
                 .attr("href", format!("/documents/{}", d.id))
-                .child(span("tw").attr("aria-hidden", "true").text("›"))
                 .child(glyph(d.doc_type))
                 .child(span("t").text(d.title.as_str()))
         }))
 }
+/// The breadcrumb bar. `title` is the id the plain page put on its heading; on a page it is
+/// the crumb above that page and so a link back to the workspace, and on the workspace itself
+/// it names where you already are and stays text.
 fn topbar(root: &str, d: Option<&Document>, actor: &str) -> Html {
-    let mut bar = el("header").class("topbar").child(span("crumb root").id("title").text(root));
+    let mut bar = el("header").class("topbar").child(match d {
+        Some(_) => link("title", "/", root).class("crumb root"),
+        None => span("crumb root").id("title").text(root),
+    });
     if let Some(d) = d {
         let on = d.starred.contains(actor);
         bar = bar
@@ -141,6 +149,9 @@ fn document(d: &Document, actor: &str) -> Html {
                     .child(div("actions").child(button("edit-submit", "Save changes").class("primary"))),
             ),
         );
+    } else {
+        // No editor rather than one that could only ever answer 403; the page says why.
+        page = page.child(el("p").id("document-readonly").class("block muted").text("You can read this page. Only its owner and the people it names as writers can change it."));
     }
     page.child(
         el("section")
@@ -202,7 +213,7 @@ pub(crate) fn view(s: &DocsState, actor: &str, screen: Screen) -> Result<HttpRes
                 } else {
                     cards("starred", &docs)
                 });
-            ("Favorites · Notion".to_owned(), sidebar(s, actor, None, None, true), topbar("Starred", None, actor), main)
+            ("Favorites · Notion".to_owned(), sidebar(s, actor, None, None, true), topbar("Favorites", None, actor), main)
         }
         Screen::Doc(id) => match s.read(actor, id) {
             Ok(d) => (

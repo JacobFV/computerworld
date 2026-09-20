@@ -13,9 +13,19 @@
 //! `thread-<n>`, `list-open`, `list-closed`, `new`, `comment` (form), `comment-body`,
 //! `comment-submit`, `close`, `reopen`, `merge`, `approve`, `ready`, `new-issue-*`,
 //! `new-pull-*`, `ptab-*-link`, `side-*`, `gist-<id>`, `hit-link-<name>`, `repo-<owner>-<name>`.
+//!
+//! Every one of those is a control that acts, and nothing here is a control that does not:
+//! `watch` posts a real subscription (`/watchers` lists it), `go-to-file` reaches the file
+//! finder (`/<owner>/<name>/find/<rev>`), `raw` serves the bytes as `text/plain`, `code`
+//! goes to the source this server actually clones from, the header's `nav-issues`,
+//! `nav-pulls` and `nav-inbox` reach `/issues`, `/pulls` and `/notifications`, and
+//! `nav-avatar` is a link only when the actor has a profile. The pieces the real product
+//! wires to a script and this world cannot — the create menu, blame, copy, download, edit,
+//! the list filters, the merge-method menu, Write/Preview, the branch tabs — are gone
+//! rather than drawn dead. `fork` and `tags` stayed as counts, set as text, not buttons.
 use crate::{
     branch_tip, branches, commits_between, default_branch, diff_trees, language_color,
-    language_stats, last_commit_per_path, list_tree, log, merge_base, short, Commit, DiffLine,
+    language_stats, last_commit_per_path, list_tree, log, merge_base, resolve, short, Commit, DiffLine,
     FileDiff, GitState, Repository, Thread,
 };
 use cw_protocol::{HttpRequest, HttpResponse, Result};
@@ -72,6 +82,9 @@ struct Cx<'a> {
     look: Look,
     actor: &'a str,
     now: u64,
+    /// What is in the header's search box: the query this page answered, if it is a
+    /// search, so the box comes back filled the way the real one does.
+    search: &'a str,
 }
 
 // ---- Time. A tick is an hour; tick 0 is Saturday 1 August 2026, and "now" is the ----
@@ -358,12 +371,12 @@ fn prose(id: &str, body: &str) -> Html {
 
 // ---- The shell: GitHub's grey header band with the tab strip, or GitLab's sidebar. ----
 
-fn search_box(look: Look) -> Html {
+fn search_box(look: Look, query: &str) -> Html {
     form("search", "/search", "get")
         .class("site-search")
         .child(ic("search-icon", "search"))
         .child(
-            text_input("search-q", "q", "")
+            text_input("search-q", "q", query)
                 .attr(
                     "placeholder",
                     match look {
@@ -392,14 +405,30 @@ fn crumbs(trail: &[(&str, String)]) -> Html {
 }
 /// The whole page around `main`: `nav` is the repository's tab strip, if there is one.
 fn shell(cx: &Cx, trail: &[(&str, String)], nav: Option<Html>, main: Vec<Html>) -> Vec<Html> {
+    // Each of these reaches a page: the dashboards of everything open across the site, and
+    // the profile of whoever is signed in. The real header's "+" menu is not here, because
+    // nothing on this instance is created from the header.
     let tools = |class: &str| {
-        div(class)
+        let tool = |id: &str, icon: &str, title: &str, url: &str| {
+            el("a").id(id).class("tool").attr("href", url).attr("title", title).attr("aria-label", title).child(ic("", icon))
+        };
+        let mut bar = div(class)
             .id("chrome-right")
-            .child(sp("nav-plus", "tool", "+").attr("title", "Create new"))
-            .child(span("tool").id("nav-issues").attr("title", "Issues").child(ic("", "issue-open")))
-            .child(span("tool").id("nav-pulls").attr("title", cx.look.pulls()).child(ic("", "pull-request")))
-            .child(span("tool").id("nav-inbox").attr("title", "Notifications").child(ic("", "inbox")))
-            .child(avatar("nav-avatar", cx.actor, 32))
+            .child(tool("nav-issues", "issue-open", "Issues", "/issues"))
+            .child(tool("nav-pulls", "pull-request", cx.look.pulls(), "/pulls"))
+            .child(tool("nav-inbox", "inbox", "Notifications", "/notifications"));
+        // The avatar is a link only when there is a profile behind it.
+        bar = bar.child(if people(cx.state).contains(cx.actor) {
+            el("a")
+                .id("nav-profile")
+                .class("nav-profile")
+                .attr("href", format!("/{}", cx.actor))
+                .attr("aria-label", format!("{}'s profile", cx.actor))
+                .child(avatar("nav-avatar", cx.actor, 32))
+        } else {
+            avatar("nav-avatar", cx.actor, 32)
+        });
+        bar
     };
     match cx.look {
         Look::Github => vec![
@@ -411,7 +440,6 @@ fn shell(cx: &Cx, trail: &[(&str, String)], nav: Option<Html>, main: Vec<Html>) 
                         .child(
                             div("bar-left")
                                 .id("chrome-left")
-                                .child(span("burger").child(el("i")).child(el("i")).child(el("i")))
                                 .child(
                                     el("a")
                                         .id("mark")
@@ -423,12 +451,12 @@ fn shell(cx: &Cx, trail: &[(&str, String)], nav: Option<Html>, main: Vec<Html>) 
                                         .child(el("i").class("face")),
                                 )
                                 .child(if trail.is_empty() {
-                                    sp("crumb-home", "crumb last", "Dashboard")
+                                    sp("crumb-home", "crumb-text", "Dashboard")
                                 } else {
                                     crumbs(trail)
                                 }),
                         )
-                        .child(search_box(cx.look))
+                        .child(search_box(cx.look, cx.search))
                         .child(tools("bar-right")),
                 )
                 .maybe(nav),
@@ -436,6 +464,7 @@ fn shell(cx: &Cx, trail: &[(&str, String)], nav: Option<Html>, main: Vec<Html>) 
             el("footer")
                 .class("site-footer")
                 .child(sp("foot-copy", "", "© 2026 GitHub, Inc."))
+                // Set as text, not as links: this instance has no terms or status page.
                 .each(["Terms", "Privacy", "Security", "Status", "Docs", "Contact"], |t| sp("", "foot-item", t)),
         ],
         Look::Gitlab => vec![div("layout")
@@ -458,7 +487,7 @@ fn shell(cx: &Cx, trail: &[(&str, String)], nav: Option<Html>, main: Vec<Html>) 
                             )
                             .child(tools("side-tools")),
                     )
-                    .child(search_box(cx.look))
+                    .child(search_box(cx.look, cx.search))
                     .child(match nav {
                         Some(nav) => nav,
                         None => el("nav")
@@ -472,7 +501,7 @@ fn shell(cx: &Cx, trail: &[(&str, String)], nav: Option<Html>, main: Vec<Html>) 
             .child(
                 div("page")
                     .child(div("topbar").child(if trail.is_empty() {
-                        el("nav").class("crumbs").child(sp("crumb-home", "crumb last", "Your work / Projects"))
+                        el("nav").class("crumbs").child(sp("crumb-home", "crumb-text", "Your work / Projects"))
                     } else {
                         crumbs(trail)
                     }))
@@ -519,7 +548,8 @@ enum Tab {
     Code,
     Issues,
     Pulls,
-    Other,
+    /// One of the tabs that has only a blank state behind it, by its route name.
+    Stub(&'static str),
 }
 /// One tab: `<li id>` around `<a id="<id>-link">` with its icon, label and count.
 fn tab(id: &str, icon: &str, text: &str, count: Option<usize>, url: String, active: bool) -> Html {
@@ -543,6 +573,7 @@ fn tabs(id: &str, class: &str, items: Vec<Html>) -> Html {
 fn repo_frame(cx: &Cx, repository: &Repository, name: &str, active: Tab, body: Vec<Html>) -> Vec<Html> {
     let path = slug(repository, name);
     let starred = repository.stars.contains(cx.actor);
+    let watching = repository.watchers.contains(cx.actor);
     let gitlab = cx.look == Look::Gitlab;
     let t = |id: &str, icon: &str, text: &str, count: Option<usize>, route: &str, on: bool| {
         tab(id, icon, text, count, format!("/{path}{route}"), on)
@@ -558,12 +589,12 @@ fn repo_frame(cx: &Cx, repository: &Repository, name: &str, active: Tab, body: V
             "/pulls",
             active == Tab::Pulls,
         ),
-        t("tab-actions", "play", if gitlab { "Build" } else { "Actions" }, None, "/actions", false),
-        t("tab-projects", "grid", if gitlab { "Plan" } else { "Projects" }, None, "/projects", false),
-        t("tab-wiki", "book", "Wiki", None, "/wiki", false),
-        t("tab-security", "shield", if gitlab { "Secure" } else { "Security" }, None, "/security", false),
-        t("tab-insights", "signal", if gitlab { "Analyze" } else { "Insights" }, None, "/pulse", false),
-        t("tab-settings", "gear", "Settings", None, "/settings", false),
+        t("tab-actions", "play", if gitlab { "Build" } else { "Actions" }, None, "/actions", active == Tab::Stub("actions")),
+        t("tab-projects", "grid", if gitlab { "Plan" } else { "Projects" }, None, "/projects", active == Tab::Stub("projects")),
+        t("tab-wiki", "book", "Wiki", None, "/wiki", active == Tab::Stub("wiki")),
+        t("tab-security", "shield", if gitlab { "Secure" } else { "Security" }, None, "/security", active == Tab::Stub("security")),
+        t("tab-insights", "signal", if gitlab { "Analyze" } else { "Insights" }, None, "/pulse", active == Tab::Stub("pulse")),
+        t("tab-settings", "gear", "Settings", None, "/settings", active == Tab::Stub("settings")),
     ];
     let nav = if gitlab {
         // The sidebar names the project above its sections.
@@ -583,26 +614,41 @@ fn repo_frame(cx: &Cx, repository: &Repository, name: &str, active: Tab, body: V
                 .child(a("repo-owner", "repo-owner", format!("/{}", repository.owner), &repository.owner))
                 .child(sp("repo-sep", "sep", "/"))
                 .child(a("repo-name", "repo-name", format!("/{path}"), name))
-                .child(sp("repo-visibility", "pill", "Public")),
+                .child(sp("repo-visibility", "pill", if repository.readers.is_empty() { "Public" } else { "Private" })),
         )
         .child(
             div("repo-actions")
+                // Watching is a subscription the repository really keeps, so the button
+                // posts like the star beside it and the count is the set's size.
                 .child(
-                    el("a")
-                        .id("watch")
-                        .class("btn btn-sm")
-                        .attr("href", format!("/{path}/stargazers"))
-                        .child(ic("watch-icon", if gitlab { "bell" } else { "eye" }))
-                        .child(sp("watch-label", "", if gitlab { "Notifications" } else { "Watch" }))
-                        .child(counter("watch-count", (repository.stars.len() * 2 + 3).to_string())),
+                    form("watch-form", format!("/{path}/watch"), "post")
+                        .class("inline-form watch-group")
+                        .child(
+                            el("button")
+                                .id("watch")
+                                .attr("type", "submit")
+                                .class(if watching { "btn btn-sm watching" } else { "btn btn-sm" })
+                                .child(ic("watch-icon", if gitlab { "bell" } else { "eye" }))
+                                .child(sp(
+                                    "watch-label",
+                                    "",
+                                    match (gitlab, watching) {
+                                        (true, true) => "Notifications on",
+                                        (true, false) => "Notifications",
+                                        (false, true) => "Unwatch",
+                                        (false, false) => "Watch",
+                                    },
+                                )),
+                        )
+                        .child(a("watch-count", "btn btn-sm star-count", format!("/{path}/watchers"), repository.watchers.len().to_string())),
                 )
+                // Forks are a count this instance carries, not something it can make: a
+                // statistic, set as one, with no click to swallow.
                 .child(
-                    el("a")
+                    span("chip")
                         .id("fork")
-                        .class("btn btn-sm")
-                        .attr("href", format!("/{path}/branches"))
                         .child(ic("fork-icon", "fork"))
-                        .child(sp("fork-label", "", if gitlab { "Forks" } else { "Fork" }))
+                        .child(sp("fork-label", "", "Forks"))
                         .child(counter("fork-count", repository.forks.to_string())),
                 )
                 .child(
@@ -776,7 +822,6 @@ fn diff_block(prefix: &str, file: &FileDiff, url: &str) -> Html {
     }
     let head = div("box-head diff-head")
         .id(format!("{prefix}-head"))
-        .child(ic(&format!("{prefix}-chev"), "chevron-down"))
         .child(a(&format!("{prefix}-path"), "diff-path", url.to_owned(), &file.path))
         .child(sp(&format!("{prefix}-status"), "muted small", &file.status))
         .child(span("grow"))
@@ -858,9 +903,8 @@ fn diff_section(prefix: &str, files: &[FileDiff], path: &str, branch: &str) -> V
 // ---- Pages. ----
 
 fn home(cx: &Cx) -> Result<HttpResponse> {
-    let mut side = el("aside").id("home-side").class("home-side").child(
-        div("side-head").child(el("h2").id("side-title").text("Top repositories")).child(sp("", "btn btn-primary btn-sm", "New")),
-    );
+    // No "New" button: nothing on this instance creates a repository from the web.
+    let mut side = el("aside").id("home-side").class("home-side").child(div("side-head").child(el("h2").id("side-title").text("Top repositories")));
     let mut feed = vec![];
     for (name, repository) in &cx.state.repositories {
         if repository.owner.is_empty() {
@@ -883,11 +927,11 @@ fn home(cx: &Cx) -> Result<HttpResponse> {
             );
         }
         meta = meta
-            .child(span("meta-item").child(ic("", "star")).child(sp(&format!("repo-stars-{name}"), "", format!("{} stars", repository.stars.len()))))
+            .child(span("meta-item").child(ic("", "star")).child(sp(&format!("repo-stars-{name}"), "", format!("{} star{}", repository.stars.len(), plural(repository.stars.len())))))
             .child(
                 span("meta-item")
                     .child(ic("", "issue-open"))
-                    .child(sp(&format!("repo-issues-{name}"), "", format!("{} open issues", open_count(&repository.issues)))),
+                    .child(sp(&format!("repo-issues-{name}"), "", format!("{} open issue{}", open_count(&repository.issues), plural(open_count(&repository.issues))))),
             );
         if let Some((_, commit)) = tip {
             meta = meta.child(sp(&format!("repo-updated-{name}"), "", format!("Updated {}", ago(cx.now, commit.tick))));
@@ -902,7 +946,7 @@ fn home(cx: &Cx) -> Result<HttpResponse> {
                         .id(format!("repo-title-{name}"))
                         .child(avatar(&format!("repo-avatar-{name}"), &repository.owner, 20).class("square"))
                         .child(sp(&format!("repo-name-{name}"), "name", &path))
-                        .child(span("pill").text("Public")),
+                        .child(span("pill").text(if repository.readers.is_empty() { "Public" } else { "Private" })),
                 )
                 .child(sp(&format!("repo-desc-{name}"), "desc", &repository.description))
                 .child(meta),
@@ -945,57 +989,211 @@ fn search_page(cx: &Cx, query: &str) -> Result<HttpResponse> {
                     div("hit-text")
                         .child(a(&format!("hit-link-{name}"), "hit-link", format!("/{path}"), &path))
                         .child(el("p").id(format!("hit-desc-{name}")).class("muted").text(&repository.description))
-                        .child(div("topics").each(repository.topics.iter(), |t| span("topic").text(t))),
+                        // The topic you are already looking at is the heading of this
+                        // page, so it is set as a chip; the others search for themselves.
+                        .child(div("topics").each(repository.topics.iter().enumerate(), |(i, t)| {
+                            let id = format!("hit-topic-{name}-{i}");
+                            if t.eq_ignore_ascii_case(query) {
+                                sp(&id, "topic active", t.as_str())
+                            } else {
+                                a(&id, "topic", html::href("/search", &[("q", t)]), t.as_str())
+                            }
+                        })),
                 ),
         );
     }
     let count = rows.len();
     let main = vec![
-        el("h1").id("search-title").class("page-title").text(format!("{count} repository results")),
+        el("h1").id("search-title").class("page-title").text(format!("{count} repository result{}", plural(count))),
         div("box hits").children(rows),
     ];
     finish(cx, &format!("{query} · Search"), shell(cx, &[], None, main))
 }
 
-fn owner_page(cx: &Cx, owner: &str) -> Result<HttpResponse> {
+/// One row of a cross-repository list: which repository, which thread, and how it stands.
+fn thread_row(cx: &Cx, prefix: &str, repository: &Repository, name: &str, thread: &Thread, pulls: bool) -> Html {
+    let path = slug(repository, name);
+    let route = if pulls { "pull" } else { "issues" };
+    let n = thread.number;
+    div("thread-row")
+        .id(format!("{prefix}-{n}"))
+        .child(state_icon(&format!("{prefix}-state-{n}"), thread, pulls))
+        .child(
+            div("row-main")
+                .id(format!("{prefix}-main-{n}"))
+                .child(
+                    div("row-title")
+                        .id(format!("{prefix}-title-{n}"))
+                        .child(a(&format!("{prefix}-repo-{n}"), "muted", format!("/{path}"), format!("{path} ")))
+                        .child(a(&format!("{prefix}-link-{n}"), "thread-link", format!("/{path}/{route}/{n}"), &thread.title))
+                        .children(labels(&format!("{prefix}-{n}"), thread)),
+                )
+                .child(div("row-meta").id(format!("{prefix}-meta-{n}")).child(sp(
+                    &format!("{prefix}-when-{n}"),
+                    "",
+                    format!("#{n} opened {} by {}", ago(cx.now, thread.tick), thread.author),
+                ))),
+        )
+}
+/// The header's issue and pull-request dashboards: everything open across the instance.
+fn dashboard(cx: &Cx, pulls: bool) -> Result<HttpResponse> {
+    let what = if pulls { cx.look.pulls().to_owned() } else { "Issues".to_owned() };
+    let prefix = if pulls { "dash-pull" } else { "dash-issue" };
+    let mut rows = vec![];
+    for (name, repository) in &cx.state.repositories {
+        if repository.owner.is_empty() {
+            continue;
+        }
+        let threads = if pulls { &repository.pull_requests } else { &repository.issues };
+        for thread in threads.values().filter(|t| t.state == "open") {
+            rows.push((thread.tick, thread_row(cx, prefix, repository, name, thread, pulls)));
+        }
+    }
+    rows.sort_by_key(|(tick, _)| std::cmp::Reverse(*tick));
+    let count = rows.len();
+    let mut list = div("box threads").id("threads");
+    if rows.is_empty() {
+        list = list.child(
+            div("blank")
+                .id("empty")
+                .child(ic("", if pulls { "pull-request" } else { "issue-open" }))
+                .child(el("h3").text("Nothing open across this instance.")),
+        );
+    }
+    let main = vec![
+        el("h1").id("dash-title").class("page-title ruled").text(&what),
+        el("p").id("dash-sub").class("muted").text(format!(
+            "{count} open {} in every repository here.",
+            if pulls { format!("{} request{}", if cx.look == Look::Gitlab { "merge" } else { "pull" }, plural(count)) } else { format!("issue{}", plural(count)) }
+        )),
+        list.children(rows.into_iter().map(|(_, row)| row)),
+    ];
+    finish(cx, &format!("{what} · {}", cx.look.brand()), shell(cx, &[], None, main))
+}
+/// Notifications: the threads this actor is part of — filed, commented on, reviewed,
+/// assigned or merged — newest first. Nothing is stored for it; it is a reading of the
+/// threads themselves, which is what makes it always true.
+fn notifications_page(cx: &Cx) -> Result<HttpResponse> {
+    let mut rows = vec![];
+    for (name, repository) in &cx.state.repositories {
+        if repository.owner.is_empty() {
+            continue;
+        }
+        for (pulls, threads) in [(false, &repository.issues), (true, &repository.pull_requests)] {
+            for thread in threads.values() {
+                let last = thread.comments.iter().map(|c| c.tick).chain(thread.reviews.iter().map(|r| r.tick)).max().unwrap_or(thread.tick);
+                let mine = thread.author == cx.actor
+                    || thread.assignee == cx.actor
+                    || thread.comments.iter().any(|c| c.author == cx.actor)
+                    || thread.reviews.iter().any(|r| r.author == cx.actor)
+                    || repository.watchers.contains(cx.actor);
+                if mine {
+                    rows.push((last, thread_row(cx, "inbox", repository, name, thread, pulls)));
+                }
+            }
+        }
+    }
+    rows.sort_by_key(|(tick, _)| std::cmp::Reverse(*tick));
+    let count = rows.len();
+    let mut list = div("box threads").id("threads");
+    if rows.is_empty() {
+        list = list.child(
+            div("blank")
+                .id("empty")
+                .child(ic("", "inbox"))
+                .child(el("h3").text("All caught up"))
+                .child(el("p").class("muted").text("Nothing here mentions you yet. File an issue or watch a repository and it will show up.")),
+        );
+    }
+    let main = vec![
+        el("h1").id("inbox-title").class("page-title ruled").text("Notifications"),
+        el("p").id("inbox-sub").class("muted").text(format!(
+            "{count} thread{} you have taken part in or are watching.",
+            plural(count)
+        )),
+        list.children(rows.into_iter().map(|(_, row)| row)),
+    ];
+    finish(cx, &format!("Notifications · {}", cx.look.brand()), shell(cx, &[("notifications", "/notifications".into())], None, main))
+}
+
+/// Everyone this instance knows by name: repository owners, the people who write the
+/// commits, star or watch a repository, file and answer its threads, and publish gists.
+/// Every `/<name>` link a page paints is one of these, so every one of them has a page.
+fn people(state: &GitState) -> std::collections::BTreeSet<String> {
+    let mut out = std::collections::BTreeSet::new();
+    for repository in state.repositories.values() {
+        if !repository.owner.is_empty() {
+            out.insert(repository.owner.clone());
+        }
+        out.extend(repository.objects.values().map(|c| c.author.clone()).filter(|a| !a.is_empty()));
+        out.extend(repository.stars.iter().cloned());
+        out.extend(repository.watchers.iter().cloned());
+        for thread in repository.issues.values().chain(repository.pull_requests.values()) {
+            for who in std::iter::once(&thread.author)
+                .chain(std::iter::once(&thread.assignee))
+                .chain(std::iter::once(&thread.merged_by))
+                .chain(thread.comments.iter().map(|c| &c.author))
+                .chain(thread.reviews.iter().map(|r| &r.author))
+            {
+                if !who.is_empty() {
+                    out.insert(who.clone());
+                }
+            }
+        }
+    }
+    out.extend(state.gists.values().map(|g| g.owner.clone()).filter(|o| !o.is_empty()));
+    out
+}
+/// A profile. `tab` picks the view the tab strip names: the overview, every repository
+/// they own, or every repository they have starred.
+fn owner_page(cx: &Cx, owner: &str, tab_name: &str) -> Result<HttpResponse> {
     let owned: Vec<_> = cx.state.repositories.iter().filter(|(_, r)| r.owner == owner).collect();
-    if owned.is_empty() {
+    if owned.is_empty() && !people(cx.state).contains(owner) {
         return web::error(404, "owner not found");
     }
-    let mut cards = vec![];
+    let starred: Vec<_> = cx.state.repositories.iter().filter(|(_, r)| r.stars.contains(owner)).collect();
+    let is_org = owned.len() > 1;
+    // An organisation's graph is the work in its repositories; a person's is their own
+    // commits, wherever they landed.
     let mut commits: Vec<u64> = vec![];
-    let mut followers = std::collections::BTreeSet::new();
-    for (name, repository) in &owned {
-        followers.extend(repository.stars.iter().cloned());
+    if is_org {
+        for (_, repository) in &owned {
+            if let Some((id, _)) = branch_tip(repository, &default_branch(repository)) {
+                commits.extend(log(repository, &id).iter().map(|(_, c)| c.tick));
+            }
+        }
+    } else {
+        for repository in cx.state.repositories.values() {
+            commits.extend(repository.objects.values().filter(|c| c.author == owner).map(|c| c.tick));
+        }
+    }
+    let card = |name: &String, repository: &Repository, prefix: &str| {
         let branch = default_branch(repository);
-        let mut meta = div("meta").id(format!("owned-meta-{name}"));
-        if let Some((id, tip)) = branch_tip(repository, &branch) {
-            commits.extend(log(repository, &id).iter().map(|(_, c)| c.tick));
+        let mut meta = div("meta").id(format!("{prefix}-meta-{name}"));
+        if let Some((_, tip)) = branch_tip(repository, &branch) {
             if let Some((language, ..)) = language_stats(&tip.files).first() {
                 meta = meta.child(
                     span("lang")
-                        .child(el("i").id(format!("owned-dot-{name}")).class("dot").style(&format!("background: {}", language_color(language))))
-                        .child(sp(&format!("owned-lang-{name}"), "", language)),
+                        .child(el("i").id(format!("{prefix}-dot-{name}")).class("dot").style(&format!("background: {}", language_color(language))))
+                        .child(sp(&format!("{prefix}-lang-{name}"), "", language)),
                 );
             }
         }
         meta = meta
-            .child(span("meta-item").child(ic(&format!("owned-star-icon-{name}"), "star")).child(sp(&format!("owned-stars-{name}"), "", repository.stars.len().to_string())))
-            .child(span("meta-item").child(ic(&format!("owned-fork-icon-{name}"), "fork")).child(sp(&format!("owned-forks-{name}"), "", repository.forks.to_string())));
-        cards.push(
-            div("pin")
-                .id(format!("owned-{name}"))
-                .child(
-                    div("pin-head")
-                        .id(format!("owned-head-{name}"))
-                        .child(ic(&format!("owned-icon-{name}"), "book"))
-                        .child(a(&format!("owned-name-{name}"), "pin-name", format!("/{owner}/{name}"), name.as_str()))
-                        .child(sp(&format!("owned-vis-{name}"), "pill", "Public")),
-                )
-                .child(el("p").id(format!("owned-desc-{name}")).class("pin-desc").text(&repository.description))
-                .child(meta),
-        );
-    }
+            .child(span("meta-item").child(ic(&format!("{prefix}-star-icon-{name}"), "star")).child(sp(&format!("{prefix}-stars-{name}"), "", repository.stars.len().to_string())))
+            .child(span("meta-item").child(ic(&format!("{prefix}-fork-icon-{name}"), "fork")).child(sp(&format!("{prefix}-forks-{name}"), "", repository.forks.to_string())));
+        div("pin")
+            .id(format!("{prefix}-{name}"))
+            .child(
+                div("pin-head")
+                    .id(format!("{prefix}-head-{name}"))
+                    .child(ic(&format!("{prefix}-icon-{name}"), "book"))
+                    .child(a(&format!("{prefix}-name-{name}"), "pin-name", format!("/{}/{name}", repository.owner), name.as_str()))
+                    .child(sp(&format!("{prefix}-vis-{name}"), "pill", if repository.readers.is_empty() { "Public" } else { "Private" })),
+            )
+            .child(el("p").id(format!("{prefix}-desc-{name}")).class("pin-desc").text(&repository.description))
+            .child(meta)
+    };
     // Twenty-six weeks of squares, Sunday to Saturday down each column, newest at the right.
     const WEEKS: u64 = 26;
     let today = cx.now / 24;
@@ -1024,61 +1222,80 @@ fn owner_page(cx: &Cx, owner: &str) -> Result<HttpResponse> {
             );
         }
     }
-    let is_org = owned.len() > 1;
-    let profile = el("aside")
+    let mut profile = el("aside")
         .id("owner-profile")
         .class("profile")
         .child(avatar("owner-avatar", owner, 260).when(is_org, |n| n.class("square")))
         .child(el("h1").id("owner-name").text(owner))
-        .child(el("p").id("owner-login").class("login").text(if is_org { "Organization" } else { "User" }))
-        .child(btn_link("follow", "Follow", format!("/{owner}")).class("block"))
-        .child(
+        .child(el("p").id("owner-login").class("login").text(if is_org { "Organization" } else { "User" }));
+    // Following, a location and a home page are things this instance does not know; the
+    // one number it does know is how many people have starred the work.
+    if !owned.is_empty() {
+        let mut fans = std::collections::BTreeSet::new();
+        for (_, repository) in &owned {
+            fans.extend(repository.stars.iter().cloned());
+        }
+        profile = profile.child(
             el("p")
                 .id("owner-followers")
                 .class("profile-line")
-                .child(ic("owner-followers-icon", "person"))
-                .child(sp("owner-followers-count", "strong", followers.len().to_string()))
-                .child(sp("owner-followers-label", "", " followers · "))
-                .child(sp("owner-following-count", "strong", "12"))
-                .child(sp("owner-following-label", "", " following")),
-        )
-        .child(el("p").id("owner-location").class("profile-line").child(ic("owner-location-icon", "location")).child(sp("owner-location-text", "", "Lisbon, Portugal")))
-        .child(
-            el("p")
-                .id("owner-site")
-                .class("profile-line")
-                .child(ic("owner-site-icon", "link"))
-                .child(a("owner-site-link", "", format!("http://{owner}.example/"), format!("{owner}.example"))),
+                .child(ic("owner-followers-icon", "star"))
+                .child(sp("owner-followers-count", "strong", fans.len().to_string()))
+                .child(sp(
+                    "owner-followers-label",
+                    "",
+                    format!(" {} starred {} {} repositor{}", if fans.len() == 1 { "person has" } else { "people have" }, if is_org { "its" } else { "their" }, owned.len(), if owned.len() == 1 { "y" } else { "ies" }),
+                )),
         );
-    let o = |id: &str, icon: &str, text: &str, count: Option<usize>, on: bool| tab(id, icon, text, count, format!("/{owner}"), on);
-    let main = div("profile-main")
-        .id("owner-main")
-        .child(tabs(
-            "owner-tabs",
-            "tabs",
-            vec![
-                o("otab-overview", "book", "Overview", None, true),
-                o("otab-repos", "archive", "Repositories", Some(owned.len()), false),
-                o("otab-projects", "grid", "Projects", None, false),
-                o("otab-packages", "archive", "Packages", None, false),
-                o("otab-stars", "star", "Stars", None, false),
-            ],
-        ))
-        .child(el("h2").id("pinned-title").class("section-title").text("Popular repositories"))
-        .child(div("pins").id("owned").children(cards))
-        .child(el("h2").id("contrib-title").class("section-title").text(format!("{} contributions in the last year", commits.len())))
-        .child(
-            div("box graph")
-                .id("graph")
-                .child(cells)
-                .child(
+    }
+    let o = |id: &str, icon: &str, text: &str, count: Option<usize>, route: &str, on: bool| {
+        tab(id, icon, text, count, if route.is_empty() { format!("/{owner}") } else { html::href(&format!("/{owner}"), &[("tab", route)]) }, on)
+    };
+    let mut strip = vec![
+        o("otab-overview", "book", "Overview", None, "", tab_name.is_empty()),
+        o("otab-repos", "archive", "Repositories", Some(owned.len()), "repositories", tab_name == "repositories"),
+    ];
+    if !starred.is_empty() {
+        strip.push(o("otab-stars", "star", "Stars", Some(starred.len()), "stars", tab_name == "stars"));
+    }
+    let mut main = div("profile-main").id("owner-main").child(tabs("owner-tabs", "tabs", strip));
+    main = match tab_name {
+        "repositories" => {
+            let heading = format!("{} repositor{}", owned.len(), if owned.len() == 1 { "y" } else { "ies" });
+            main.child(el("h2").id("pinned-title").class("section-title").text(heading)).child(
+                div("pins")
+                    .id("owned")
+                    .children(owned.iter().map(|(name, repository)| card(name, repository, "owned")))
+                    .when(owned.is_empty(), |n| n.child(el("p").id("owned-none").class("muted").text(format!("{owner} owns no repositories here.")))),
+            )
+        }
+        "stars" => main
+            .child(el("h2").id("starred-title").class("section-title").text(format!("{} starred repositor{}", starred.len(), if starred.len() == 1 { "y" } else { "ies" })))
+            .child(
+                div("pins")
+                    .id("starred")
+                    .children(starred.iter().map(|(name, repository)| card(name, repository, "starred")))
+                    .when(starred.is_empty(), |n| n.child(el("p").id("starred-none").class("muted").text(format!("{owner} has not starred anything here.")))),
+            ),
+        _ => main
+            .child(el("h2").id("pinned-title").class("section-title").text(if owned.is_empty() { "Repositories" } else { "Popular repositories" }))
+            .child(
+                div("pins")
+                    .id("owned")
+                    .children(owned.iter().take(6).map(|(name, repository)| card(name, repository, "owned")))
+                    .when(owned.is_empty(), |n| n.child(el("p").id("owned-none").class("muted").text(format!("{owner} owns no repositories here.")))),
+            )
+            .child(el("h2").id("contrib-title").class("section-title").text(format!("{} contribution{} in the last year", commits.len(), plural(commits.len()))))
+            .child(
+                div("box graph").id("graph").child(cells).child(
                     div("legend")
                         .id("graph-legend")
                         .child(sp("legend-less", "", "Less"))
                         .each(0..5, |l| el("i").id(format!("legend-{l}")).class(&format!("cell l{l}")))
                         .child(sp("legend-more", "", "More")),
                 ),
-        );
+            ),
+    };
     let body = shell(cx, &[(owner, format!("/{owner}"))], None, vec![div("owner").id("owner").child(profile).child(main)]);
     finish(cx, &format!("{owner} · {}", cx.look.brand()), body)
 }
@@ -1108,7 +1325,7 @@ fn file_table(cx: &Cx, repository: &Repository, name: &str, branch: &str, tip_id
                     .class("history")
                     .attr("href", format!("/{path}/commits/{branch}"))
                     .child(ic("history-icon", "clock"))
-                    .child(Html::from(format!("{} Commits", history.len()))),
+                    .child(Html::from(format!("{} Commit{}", history.len(), plural(history.len())))),
             ),
     );
     if !prefix.is_empty() {
@@ -1152,13 +1369,15 @@ fn file_table(cx: &Cx, repository: &Repository, name: &str, branch: &str, tip_id
     table
 }
 fn branch_select(path: &str, branch: &str) -> Html {
+    // The real one drops a menu open; this one goes to the page that lists the branches,
+    // so there is no chevron promising a menu.
     el("a")
         .id("branch-select")
         .class("btn branch-select")
         .attr("href", format!("/{path}/branches"))
+        .attr("title", "Switch branches")
         .child(ic("branch-icon", "branch"))
         .child(sp("branch-name", "", branch))
-        .child(ic("branch-chevron", "chevron-down"))
 }
 fn branch_bar(cx: &Cx, repository: &Repository, name: &str, branch: &str, count_tags: usize) -> Html {
     let path = slug(repository, name);
@@ -1173,25 +1392,26 @@ fn branch_bar(cx: &Cx, repository: &Repository, name: &str, branch: &str, count_
                 .child(ic("branches-icon", "branch"))
                 .child(Html::from({ let n = branches(repository).len(); format!("{n} {}", if n == 1 { "Branch" } else { "Branches" }) })),
         )
+        // Tags are a statistic here: this instance stores heads, not tags, so the count
+        // is read rather than clicked.
         .child(
-            el("a")
+            span("quiet")
                 .id("tags")
-                .class("quiet")
-                .attr("href", format!("/{path}/branches"))
                 .child(ic("tags-icon", "tag"))
                 .child(Html::from(format!("{count_tags} Tag{}", plural(count_tags)))),
         )
         .child(span("grow"))
-        .child(btn_link("go-to-file", if cx.look == Look::Gitlab { "Find file" } else { "Go to file" }, format!("/{path}/tree/{branch}")))
-        .child(btn_link("add-file", "+", format!("/{path}/tree/{branch}")).attr("aria-label", "Add file"))
+        .child(btn_link("go-to-file", if cx.look == Look::Gitlab { "Find file" } else { "Go to file" }, format!("/{path}/find/{branch}")))
+        // "Code" opens a clone dialog on the real thing. Here it goes to the page this
+        // server actually serves the source from, which is the thing that dialog is about.
         .child(
             el("a")
                 .id("code")
                 .class("btn btn-primary")
-                .attr("href", format!("/{path}/tree/{branch}"))
+                .attr("href", format!("/repos/{name}"))
+                .attr("title", "Browse and clone the source over HTTP")
                 .child(ic("", "code"))
-                .child(Html::from("Code"))
-                .child(ic("", "chevron-down")),
+                .child(Html::from("Code")),
         )
 }
 fn about(cx: &Cx, repository: &Repository, name: &str, tip: &Commit) -> Html {
@@ -1201,24 +1421,30 @@ fn about(cx: &Cx, repository: &Repository, name: &str, tip: &Commit) -> Html {
     );
     side = side.child(el("p").id("repo-description").class("about-desc").text(&repository.description));
     if !repository.topics.is_empty() {
-        side = side.child(
-            div("topics")
-                .id("repo-topics")
-                .each(repository.topics.iter().enumerate(), |(i, t)| sp(&format!("topic-{i}"), "topic", t)),
-        );
+        // A topic searches for itself, the way it does on the real thing.
+        side = side.child(div("topics").id("repo-topics").each(repository.topics.iter().enumerate(), |(i, t)| {
+            a(&format!("topic-{i}"), "topic", html::href("/search", &[("q", t)]), t.as_str())
+        }));
     }
+    let branch = default_branch(repository);
     let line = |id: &str, icon: &str, text: String, url: String| {
         div("about-line").id(id).child(ic(&format!("{id}-icon"), icon)).child(a(&format!("{id}-link"), "", url, text))
     };
-    side = side.child(line("about-readme", "book", "Readme".into(), format!("/{path}")));
-    if tip.files.keys().any(|f| f.eq_ignore_ascii_case("LICENSE")) {
-        side = side.child(line("about-license", "law", "MIT license".into(), format!("/{path}/blob/main/LICENSE")));
+    let fact = |id: &str, icon: &str, text: String| {
+        div("about-line").id(id).child(ic(&format!("{id}-icon"), icon)).child(sp(&format!("{id}-text"), "", text))
+    };
+    // Readme and licence point at the files themselves; the counts point at the people.
+    if let Some(readme) = tip.files.keys().find(|f| f.eq_ignore_ascii_case("README.md")) {
+        side = side.child(line("about-readme", "book", "Readme".into(), format!("/{path}/blob/{branch}/{readme}")));
+    }
+    if let Some(license) = tip.files.keys().find(|f| f.eq_ignore_ascii_case("LICENSE")) {
+        side = side.child(line("about-license", "law", "MIT license".into(), format!("/{path}/blob/{branch}/{license}")));
     }
     side = side
-        .child(line("about-activity", "signal", "Activity".into(), format!("/{path}/commits/main")))
-        .child(line("about-stars", "star", format!("{} stars", repository.stars.len()), format!("/{path}/stargazers")))
-        .child(line("about-watching", "eye", format!("{} watching", repository.stars.len() * 2 + 3), format!("/{path}/stargazers")))
-        .child(line("about-forks", "fork", format!("{} forks", repository.forks), format!("/{path}/branches")));
+        .child(line("about-activity", "signal", "Activity".into(), format!("/{path}/commits/{branch}")))
+        .child(line("about-stars", "star", format!("{} star{}", repository.stars.len(), plural(repository.stars.len())), format!("/{path}/stargazers")))
+        .child(line("about-watching", "eye", format!("{} watching", repository.watchers.len()), format!("/{path}/watchers")))
+        .child(fact("about-forks", "fork", format!("{} fork{}", repository.forks, plural(repository.forks as usize))));
     let mut authors: Vec<&str> = repository.objects.values().map(|c| c.author.as_str()).collect();
     authors.sort_unstable();
     authors.dedup();
@@ -1258,20 +1484,20 @@ fn about(cx: &Cx, repository: &Repository, name: &str, tip: &Commit) -> Html {
     }
     side.child(languages)
 }
+/// The README below the file table. The real one has a tab strip beside it that swaps in
+/// the licence; here the heading names what is shown, and About links to the licence file.
 fn readme_card(tip: &Commit, prefix: &str) -> Option<Html> {
     let (_, readme) = tip.files.iter().find(|(f, _)| {
         let dir = f.rsplit_once('/').map_or("", |(d, _)| d);
         dir == prefix && f.rsplit('/').next().unwrap_or(f).eq_ignore_ascii_case("README.md")
     })?;
-    let licensed = tip.files.keys().any(|f| f.eq_ignore_ascii_case("LICENSE"));
     Some(
         div("box readme")
             .id("readme")
             .child(
                 div("readme-head")
                     .id("readme-head")
-                    .child(span("readme-tab active").child(ic("readme-icon", "book")).child(sp("readme-title", "", "README")))
-                    .when(licensed, |n| n.child(span("readme-tab").child(ic("license-icon", "law")).child(sp("license-title", "", "MIT license")))),
+                    .child(span("readme-tab active").child(ic("readme-icon", "book")).child(sp("readme-title", "", "README"))),
             )
             .child(el("article").id("readme-body").class("markdown").children(markdown("readme", readme))),
     )
@@ -1302,7 +1528,7 @@ fn path_crumbs(id: &str, path: &str, name: &str, branch: &str, target: &str) -> 
 }
 fn code_page(cx: &Cx, repository: &Repository, name: &str, branch: &str, prefix: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
-    let Some((tip_id, tip)) = branch_tip(repository, branch) else {
+    let Some((tip_id, tip)) = resolve(repository, branch) else {
         return web::error(404, "branch not found");
     };
     if !prefix.is_empty() && !tip.files.keys().any(|f| f.starts_with(&format!("{prefix}/"))) {
@@ -1321,9 +1547,46 @@ fn code_page(cx: &Cx, repository: &Repository, name: &str, branch: &str, prefix:
     finish(cx, &format!("{title} · {}", cx.look.brand()), repo_frame(cx, repository, name, Tab::Code, vec![columns]))
 }
 
+/// "Go to file": every path in the tree, narrowed by a substring. The real one filters in
+/// the browser; this one submits the same box to the same route and filters on the server.
+fn find_page(cx: &Cx, repository: &Repository, name: &str, branch: &str, query: &str) -> Result<HttpResponse> {
+    let path = slug(repository, name);
+    let Some((_, tip)) = resolve(repository, branch) else {
+        return web::error(404, "branch not found");
+    };
+    let needle = query.to_ascii_lowercase();
+    let hits: Vec<&String> = tip.files.keys().filter(|f| f.to_ascii_lowercase().contains(&needle)).collect();
+    let mut list = div("box files").id("find-results");
+    for (i, file) in hits.iter().enumerate() {
+        list = list.child(
+            div("entry").id(format!("find-{i}")).child(
+                div("entry-name")
+                    .child(ic(&format!("find-icon-{i}"), "file"))
+                    .child(a(&format!("find-link-{i}"), "entry-link mono", format!("/{path}/blob/{branch}/{file}"), file.as_str())),
+            ),
+        );
+    }
+    let body = vec![
+        el("h1").id("find-title").class("page-title").text(if cx.look == Look::Gitlab { "Find file" } else { "Go to file" }),
+        form("find", format!("/{path}/find/{branch}"), "get")
+            .class("branch-bar")
+            .child(branch_select(&path, branch))
+            .child(text_input("find-q", "q", query).attr("aria-label", "Filter files by name").attr("placeholder", "Filter files by name"))
+            .child(button("find-submit", "Search").class("btn")),
+        el("p").id("find-count").class("muted").text(format!(
+            "{} of {} file{} on {branch}",
+            hits.len(),
+            tip.files.len(),
+            plural(tip.files.len())
+        )),
+        list,
+    ];
+    finish(cx, &format!("Find a file · {path}"), repo_frame(cx, repository, name, Tab::Code, body))
+}
+
 fn blob_page(cx: &Cx, repository: &Repository, name: &str, branch: &str, file: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
-    let Some((tip_id, tip)) = branch_tip(repository, branch) else {
+    let Some((tip_id, tip)) = resolve(repository, branch) else {
         return web::error(404, "branch not found");
     };
     let Some(content) = tip.files.get(file) else {
@@ -1355,21 +1618,14 @@ fn blob_page(cx: &Cx, repository: &Repository, name: &str, branch: &str, file: &
             ),
         );
     }
-    let tool = |id: &str, icon: &str, title: &str| span("btn btn-sm icon-btn").id(id).attr("title", title).child(ic("", icon));
+    // Copy, download, edit and "more" are the browser's clipboard and the site's editor on
+    // the real thing; neither exists here. Raw stays, and really serves the bytes.
     let head = div("box-head blob-head")
         .id("blob-head")
-        .child(
-            span("segmented")
-                .child(a("blob-code-tab", "seg active", format!("/{path}/blob/{branch}/{file}"), "Code"))
-                .child(a("blame", "seg", format!("/{path}/blob/{branch}/{file}"), "Blame")),
-        )
+        .child(sp("blob-code-tab", "seg active", "Code"))
         .child(sp("blob-stats", "muted small", format!("{} lines ({loc} loc) · {} Bytes", lines.len(), content.len())))
         .child(span("grow"))
-        .child(a("raw", "btn btn-sm", format!("/{path}/raw/{branch}/{file}"), "Raw"))
-        .child(tool("copy", "copy", "Copy raw file"))
-        .child(tool("download", "download", "Download"))
-        .child(tool("edit", "pencil", "Edit file"))
-        .child(tool("more", "more", "More options"));
+        .child(a("raw", "btn btn-sm", format!("/{path}/raw/{branch}/{file}"), "Raw"));
     let code = div("blob-body")
         .id("blob-body")
         .child(el("pre").id("line-numbers").class("line-numbers").attr("aria-hidden", "true").text(numbers.join("\n")))
@@ -1396,20 +1652,16 @@ fn commit_row(cx: &Cx, prefix: &str, path: &str, id: &str, commit: &Commit) -> H
                 ),
         )
         .child(
+            // No clipboard here, so the "copy SHA" button is gone; browsing the tree at a
+            // commit is real, because a tree page takes a commit id as its revision.
             div("commit-side")
                 .id(format!("{prefix}-side"))
                 .child(a(&format!("{prefix}-sha"), "sha-btn", format!("/{path}/commit/{id}"), short(id)))
                 .child(
-                    span("icon-btn quiet-btn")
-                        .id(format!("{prefix}-copy"))
-                        .attr("title", "Copy full SHA")
-                        .child(ic("", "copy")),
-                )
-                .child(
                     el("a")
                         .id(format!("{prefix}-browse"))
                         .class("icon-btn quiet-btn")
-                        .attr("href", format!("/{path}/commit/{id}"))
+                        .attr("href", format!("/{path}/tree/{id}"))
                         .attr("title", "Browse the repository at this point in the history")
                         .attr("aria-label", "Browse the repository at this point in the history")
                         .child(ic("", "code")),
@@ -1448,18 +1700,15 @@ fn commit_groups(cx: &Cx, prefix: &str, path: &str, history: &[(String, &Commit)
 }
 fn commits_page(cx: &Cx, repository: &Repository, name: &str, branch: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
-    let Some((tip_id, _)) = branch_tip(repository, branch) else {
+    let Some((tip_id, _)) = resolve(repository, branch) else {
         return web::error(404, "branch not found");
     };
     let history = log(repository, &tip_id);
     let body = vec![
         el("h1").id("commits-title").class("page-title ruled").text("Commits"),
-        div("branch-bar")
-            .id("commits-bar")
-            .child(branch_select(&path, branch))
-            .child(span("grow"))
-            .child(btn_link("filter-user", "All users ▾", format!("/{path}/commits/{branch}")))
-            .child(btn_link("filter-time", "All time ▾", format!("/{path}/commits/{branch}"))),
+        // The author and date menus the real page carries filter in the browser; with no
+        // filter to apply they would only reload this page, so the bar is the selector.
+        div("branch-bar").id("commits-bar").child(branch_select(&path, branch)).child(span("grow")),
         commit_groups(cx, "commits", &path, &history),
     ];
     finish(cx, &format!("Commits · {path}"), repo_frame(cx, repository, name, Tab::Code, body))
@@ -1540,7 +1789,6 @@ fn branches_page(cx: &Cx, repository: &Repository, name: &str) -> Result<HttpRes
             .id("branches-head")
             .child(sp("branches-head-label", "branch-cell name", "Branch"))
             .child(sp("branches-head-updated", "branch-cell updated", "Updated"))
-            .child(sp("branches-head-check", "branch-cell check", "Check status"))
             .child(sp("branches-head-behind", "branch-cell behind", "Behind | Ahead"))
             .child(sp("branches-head-pr", "branch-cell pr", cx.look.pulls().trim_end_matches('s'))),
     );
@@ -1584,49 +1832,51 @@ fn branches_page(cx: &Cx, repository: &Repository, name: &str) -> Result<HttpRes
                         .child(avatar("", &commit.author, 16))
                         .child(sp(&format!("branch-updated-{i}"), "muted", format!("Updated {} by {}", ago(cx.now, commit.tick), commit.author))),
                 )
-                .child(span("branch-cell check").child(ic("", "check").class("st-open")))
                 .child(behind_cell)
                 .child(pr_cell),
         );
     }
+    // Overview / Yours / Active / Stale / All are five views of one list on the real page;
+    // this one has a single list, so it is not dressed up as five tabs.
     let body = vec![
         el("h1").id("branches-title").class("page-title").text("Branches"),
-        tabs(
-            "branches-tabs",
-            "tabs",
-            ["Overview", "Yours", "Active", "Stale", "All"]
-                .iter()
-                .enumerate()
-                .map(|(i, text)| tab(&format!("btab-{i}"), "branch", text, None, format!("/{path}/branches"), i == 0))
-                .collect(),
-        ),
+        el("p").id("branches-sub").class("muted").text(format!("Every branch of {path}, newest commit first in each row.")),
         list,
     ];
     finish(cx, &format!("Branches · {path}"), repo_frame(cx, repository, name, Tab::Code, body))
 }
 
-fn stargazers_page(cx: &Cx, repository: &Repository, name: &str) -> Result<HttpResponse> {
+/// Stargazers, and the same page for watchers: two sets of people the repository keeps.
+fn people_page(cx: &Cx, repository: &Repository, name: &str, watchers: bool) -> Result<HttpResponse> {
     let path = slug(repository, name);
-    let cards = repository.stars.iter().enumerate().map(|(i, who)| {
+    let who = if watchers { &repository.watchers } else { &repository.stars };
+    let prefix = if watchers { "watcher" } else { "stargazer" };
+    let cards = who.iter().enumerate().map(|(i, name)| {
         div("stargazer")
-            .id(format!("stargazer-{i}"))
-            .child(avatar(&format!("stargazer-avatar-{i}"), who, 48))
+            .id(format!("{prefix}-{i}"))
+            .child(avatar(&format!("{prefix}-avatar-{i}"), name, 48))
             .child(
                 div("stargazer-text")
-                    .id(format!("stargazer-text-{i}"))
-                    .child(a(&format!("stargazer-name-{i}"), "stargazer-name", format!("/{who}"), who))
-                    .child(sp(&format!("stargazer-login-{i}"), "muted small", format!("@{who}"))),
+                    .id(format!("{prefix}-text-{i}"))
+                    .child(a(&format!("{prefix}-name-{i}"), "stargazer-name", format!("/{name}"), name.as_str()))
+                    .child(sp(&format!("{prefix}-login-{i}"), "muted small", format!("@{name}"))),
             )
     });
+    let n = who.len();
+    let (title, count_id, sentence) = if watchers {
+        ("Watchers", "watchers-count", format!("{n} {} watching {path}", if n == 1 { "person is" } else { "people are" }))
+    } else {
+        ("Stargazers", "stars-count", format!("{n} {} starred {path}", if n == 1 { "person" } else { "people" }))
+    };
     let body = vec![
-        el("h1").id("stars-title").class("page-title ruled").text("Stargazers"),
-        el("p").id("stars-count").class("muted").text(format!("{} people starred {path}", repository.stars.len())),
-        div("stargazers").id("stargazer-grid").children(cards),
+        el("h1").id(if watchers { "watchers-title" } else { "stars-title" }).class("page-title ruled").text(title),
+        el("p").id(count_id).class("muted").text(sentence),
+        div("stargazers").id(format!("{prefix}-grid")).children(cards),
     ];
-    finish(cx, &format!("Stargazers · {path}"), repo_frame(cx, repository, name, Tab::Code, body))
+    finish(cx, &format!("{title} · {path}"), repo_frame(cx, repository, name, Tab::Code, body))
 }
 
-fn list_page(cx: &Cx, repository: &Repository, name: &str, pulls: bool, filter: &str) -> Result<HttpResponse> {
+fn list_page(cx: &Cx, repository: &Repository, name: &str, pulls: bool, filter: &str, query: &str) -> Result<HttpResponse> {
     let path = slug(repository, name);
     let threads = if pulls { &repository.pull_requests } else { &repository.issues };
     let (title, route, kind) = if pulls { (cx.look.pulls(), "pull", "pr") } else { ("Issues", "issues", "issue") };
@@ -1634,6 +1884,7 @@ fn list_page(cx: &Cx, repository: &Repository, name: &str, pulls: bool, filter: 
     let closed = filter == "closed";
     let open = open_count(threads);
     let shut = threads.len() - open;
+    let list_url = |state: &str| html::href(&format!("/{path}/{list_route}"), &[("state", state), ("q", query)]);
     let toggle = |id: &str, icon: &str, text: String, url: String, on: bool| {
         el("a")
             .id(id)
@@ -1642,36 +1893,43 @@ fn list_page(cx: &Cx, repository: &Repository, name: &str, pulls: bool, filter: 
             .child(ic(&format!("{id}-icon"), icon))
             .child(Html::from(text))
     };
-    let mut head = div("box-head list-head")
+    // The real head carries six menus that filter in the browser. The one filter this
+    // list can really apply is the open/closed split and the text box below it.
+    let head = div("box-head list-head")
         .id("list-head")
         .child(toggle(
             "list-open",
             if pulls { "pull-request" } else { "issue-open" },
             format!("{open} Open"),
-            format!("/{path}/{list_route}"),
+            list_url("open"),
             !closed,
         ))
-        .child(toggle("list-closed", "check", format!("{shut} Closed"), format!("/{path}/{list_route}?state=closed"), closed))
+        .child(toggle("list-closed", "check", format!("{shut} Closed"), list_url("closed"), closed))
         .child(span("grow"));
-    for f in ["Author", "Labels", "Projects", "Milestones", "Assignees", "Sort"] {
-        let key = f.to_ascii_lowercase();
-        head = head.child(
-            span("list-filter")
-                .id(format!("filter-{key}"))
-                .child(sp(&format!("filter-{key}-label"), "", f))
-                .child(ic(&format!("filter-{key}-chevron"), "chevron-down")),
-        );
-    }
     let mut list = div("box threads").id("threads").child(head);
-    let mut shown: Vec<&Thread> = threads.values().filter(|t| (t.state == "open") != closed).collect();
+    let needle = query.to_ascii_lowercase();
+    let mut shown: Vec<&Thread> = threads
+        .values()
+        .filter(|t| (t.state == "open") != closed)
+        .filter(|t| {
+            needle.is_empty()
+                || t.title.to_ascii_lowercase().contains(&needle)
+                || t.body.to_ascii_lowercase().contains(&needle)
+                || t.labels.iter().any(|l| l.to_ascii_lowercase().contains(&needle))
+        })
+        .collect();
     shown.sort_by_key(|t| std::cmp::Reverse(t.number));
     if shown.is_empty() {
         list = list.child(
             div("blank")
                 .id("empty")
                 .child(ic("", if pulls { "pull-request" } else { "issue-open" }))
-                .child(el("h3").text("No results matched your search."))
-                .child(el("p").class("muted").text("You could search all of the site or try an advanced search.")),
+                .child(el("h3").text(if needle.is_empty() { "Nothing here yet." } else { "No results matched your search." }))
+                .child(el("p").class("muted").text(if needle.is_empty() {
+                    format!("There are no {} {} in this repository.", if closed { "closed" } else { "open" }, if pulls { "pull requests" } else { "issues" })
+                } else {
+                    format!("Nothing {} matches \u{201c}{query}\u{201d}.", if closed { "closed" } else { "open" })
+                })),
         );
     }
     for thread in shown {
@@ -1721,19 +1979,22 @@ fn list_page(cx: &Cx, repository: &Repository, name: &str, pulls: bool, filter: 
                 .child(side),
         );
     }
+    // The search box really searches: it submits to this route and narrows the list. The
+    // Labels and Milestones buttons went, because this instance has neither page.
     let body = vec![
         div("list-bar")
             .id("list-bar")
             .child(
-                div("list-search")
-                    .id("list-search")
+                form("list-search", format!("/{path}/{list_route}"), "get")
+                    .class("list-search")
                     .child(ic("list-search-icon", "search"))
-                    .child(sp("list-search-hint", "", format!("is:{kind} is:{}", if closed { "closed" } else { "open" }))),
-            )
-            .child(
-                span("btn-group")
-                    .child(a("labels-link", "btn", format!("/{path}/{list_route}"), "Labels"))
-                    .child(a("milestones-link", "btn", format!("/{path}/{list_route}"), "Milestones")),
+                    .child(hidden("state", if closed { "closed" } else { "open" }))
+                    .child(
+                        text_input("list-search-q", "q", query)
+                            .attr("aria-label", format!("Search {}", if pulls { "pull requests" } else { "issues" }))
+                            .attr("placeholder", format!("Search is:{kind} is:{}", if closed { "closed" } else { "open" })),
+                    )
+                    .child(button("list-search-submit", "Search").class("btn")),
             )
             .child(primary_link(
                 "new",
@@ -1793,7 +2054,6 @@ fn comment_card(prefix: &str, author: &str, verb: &str, body: &str, badge: Optio
     if let Some(badge) = badge {
         strip = strip.child(sp(&format!("{prefix}-badge"), "pill", badge));
     }
-    strip = strip.child(ic("", "more"));
     let shown = if body.trim().is_empty() { "No description provided." } else { body };
     div("timeline-item")
         .child(avatar(&format!("{prefix}-avatar"), author, 40).class("gutter"))
@@ -1811,14 +2071,11 @@ fn event(id: &str, icon: &str, class: &str, children: Vec<Html>) -> Html {
 /// The sidebar of a thread page.
 fn thread_sidebar(cx: &Cx, prefix: &str, repository: &Repository, name: &str, thread: &Thread, pulls: bool) -> Html {
     let path = slug(repository, name);
+    // Each gear opened a picker on the real thing; nothing here assigns or labels, so the
+    // sections are headed by their name alone.
     let section = |id: &str, title: &str, content: Vec<Html>| {
         div("side-section")
-            .child(
-                div("side-section-head")
-                    .id(format!("{prefix}-{id}-head"))
-                    .child(sp(&format!("{prefix}-{id}-title"), "", title))
-                    .child(ic(&format!("{prefix}-{id}-gear"), "gear")),
-            )
+            .child(div("side-section-head").id(format!("{prefix}-{id}-head")).child(sp(&format!("{prefix}-{id}-title"), "", title)))
             .children(content)
     };
     let mut side = el("aside").id(format!("{prefix}-sidebar")).class("thread-side");
@@ -1939,9 +2196,9 @@ fn composer(cx: &Cx, base: &str, thread: &Thread, pulls: bool) -> Html {
             div("composer-main")
                 .child(el("h3").class("composer-title").text("Add a comment"))
                 .child(
+                    // Write / Preview is a script on the real thing; there is one box here.
                     form("comment", format!("{base}/comments"), "post")
                         .class("box composer-card")
-                        .child(div("composer-tabs").child(span("composer-tab active").text("Write")).child(span("composer-tab").text("Preview")))
                         .child(
                             el("textarea")
                                 .id("comment-body")
@@ -1992,8 +2249,9 @@ fn thread_head(cx: &Cx, repository: &Repository, name: &str, thread: &Thread, pu
             .id("thread-title-row")
             .child(el("h1").child(sp("thread-title", "", &thread.title)).child(Html::from(" ")).child(sp("thread-number", "number", format!("#{n}"))))
             .child(
+                // Editing a title is not something this instance can do, so there is no
+                // Edit button to press; New is a real route.
                 div("thread-actions")
-                    .child(btn_link("edit", "Edit", format!("/{path}/{}/{n}", if pulls { "pull" } else { "issues" })))
                     .child(primary_link(
                         "new-from-thread",
                         &if pulls { format!("New {}", cx.look.pull()) } else { "New issue".to_owned() },
@@ -2040,7 +2298,8 @@ fn issue_page(cx: &Cx, repository: &Repository, name: &str, thread: &Thread) -> 
 }
 /// The green (open), grey (draft), purple (merged) or red (closed) box at the foot of a
 /// pull request's conversation.
-fn merge_box(cx: &Cx, base: &str, thread: &Thread) -> Html {
+fn merge_box(cx: &Cx, repository: &Repository, base: &str, thread: &Thread) -> Html {
+    let branch_gone = thread.head.is_empty() || !repository.refs.contains_key(&thread.head);
     let approvals = thread.reviews.iter().filter(|r| r.decision == "approve").count();
     let changes = thread.reviews.iter().filter(|r| r.decision == "request_changes").count();
     let head = thread.head.trim_start_matches("refs/heads/");
@@ -2069,7 +2328,11 @@ fn merge_box(cx: &Cx, base: &str, thread: &Thread) -> Html {
                     &format!("{} successfully merged and closed", capitalise(what)),
                     &format!("You're all set — the {head} branch can be safely deleted."),
                 ),
-                actions(vec![btn_link("delete-branch", "Delete branch", base.to_string())]),
+                actions(if branch_gone {
+                    vec![sp("branch-deleted", "muted small", format!("The {head} branch has been deleted."))]
+                } else {
+                    vec![post_button("delete-branch", "btn", "Delete branch", format!("{base}/delete-branch"), &[])]
+                }),
             ],
         ),
         ("closed", _) => (
@@ -2098,13 +2361,7 @@ fn merge_box(cx: &Cx, base: &str, thread: &Thread) -> Html {
                     &format!("This {what} is still a work in progress"),
                     &format!("Draft {what}s cannot be merged."),
                 ),
-                actions(vec![post_button(
-                    "ready",
-                    "btn",
-                    "Ready for review",
-                    format!("{base}/reviews"),
-                    &[("decision", "comment"), ("body", "Ready for review")],
-                )]),
+                actions(vec![post_button("ready", "btn", "Ready for review", format!("{base}/ready"), &[])]),
             ],
         ),
         _ => {
@@ -2138,10 +2395,11 @@ fn merge_box(cx: &Cx, base: &str, thread: &Thread) -> Html {
                         "Merging can be performed automatically.",
                     ),
                     actions(vec![
+                        // One merge, no menu of merge methods: this server fast-forwards
+                        // the base ref and that is the only way it merges.
                         form("merge-form", format!("{base}/merge"), "post")
-                            .class("inline-form btn-group")
-                            .child(button("merge", format!("Merge {what}")).class("btn btn-primary"))
-                            .child(button("merge-options", "▾").class("btn btn-primary").attr("aria-label", "Select merge method")),
+                            .class("inline-form")
+                            .child(button("merge", format!("Merge {what}")).class("btn btn-primary")),
                         sp("merge-hint", "muted small", "You can also merge this with the command line."),
                     ]),
                 ],
@@ -2180,7 +2438,6 @@ fn pull_page(cx: &Cx, repository: &Repository, name: &str, thread: &Thread, view
             vec![
                 tab("ptab-conversation", "comment", "Conversation", Some(thread.comments.len() + thread.reviews.len()), base.clone(), view == "conversation"),
                 tab("ptab-commits", "commit", "Commits", Some(commits.len()), format!("{base}/commits"), view == "commits"),
-                tab("ptab-checks", "check", "Checks", Some(0), base.clone(), false),
                 tab("ptab-files", "file", "Files changed", Some(files.len()), format!("{base}/files"), view == "files"),
             ],
         )
@@ -2194,10 +2451,12 @@ fn pull_page(cx: &Cx, repository: &Repository, name: &str, thread: &Thread, view
                     .id("files-bar")
                     .child(sp("files-hint", "muted", "Changes from all commits"))
                     .child(span("grow"))
+                    // One button, one review: approving. The menu it wears on the real
+                    // site chooses between comment, approve and request changes.
                     .child(post_button(
                         "approve",
                         "btn btn-primary",
-                        "Review changes ▾",
+                        "Approve changes",
                         format!("{base}/reviews"),
                         &[("decision", "approve"), ("body", "Looks good.")],
                     )),
@@ -2259,7 +2518,7 @@ fn pull_page(cx: &Cx, repository: &Repository, name: &str, thread: &Thread, view
                     vec![sp("merged-event-text", "", format!("{} merged commit into {base_name} {}", thread.merged_by, ago(cx.now, thread.tick)))],
                 ));
             }
-            timeline = timeline.child(merge_box(cx, &base, thread)).child(composer(cx, &base, thread, true));
+            timeline = timeline.child(merge_box(cx, repository, &base, thread)).child(composer(cx, &base, thread, true));
             body.push(div("thread").id("thread").child(timeline).child(thread_sidebar(cx, "side", repository, name, thread, true)));
         }
     }
@@ -2269,23 +2528,66 @@ fn pull_page(cx: &Cx, repository: &Repository, name: &str, thread: &Thread, view
         repo_frame(cx, repository, name, Tab::Pulls, body),
     )
 }
-/// The tabs that have no data behind them: Actions, Projects, Wiki, Security, Insights, Settings.
-fn stub_page(cx: &Cx, repository: &Repository, name: &str, which: &str) -> Result<HttpResponse> {
+/// The tabs with nothing but a blank state behind them. Each says what is true of this
+/// repository rather than advertising a feature that is not here.
+fn stub_page(cx: &Cx, repository: &Repository, name: &str, which: &'static str) -> Result<HttpResponse> {
+    let gitlab = cx.look == Look::Gitlab;
     let (title, blurb, icon) = match which {
-        "actions" => ("Get started with GitHub Actions", "Build, test, and deploy your code. Make code reviews, branch management, and issue triaging work the way you want.", "play"),
-        "projects" => ("Welcome to the all-new projects", "Built like a spreadsheet, project tables give you a live canvas to filter, sort, and group issues and pull requests.", "grid"),
-        "wiki" => ("Welcome to the wiki!", "Wikis provide a place in your repository to lay out the roadmap of your project, show the current status, and document software better, together.", "book"),
-        "security" => ("Security overview", "Security policy, advisories and Dependabot alerts for this repository.", "shield"),
-        "pulse" => ("Pulse", "Activity over the last month: merged pull requests, closed issues and new commits.", "signal"),
-        _ => ("Settings", "General settings for this repository.", "gear"),
+        "actions" => (
+            if gitlab { "No pipelines have run" } else { "No workflow runs yet" },
+            "This repository has no workflows, so nothing has been built here.",
+            "play",
+        ),
+        "projects" => ("No projects yet", "This repository is not on any project board.", "grid"),
+        "wiki" => ("No wiki pages yet", "This repository has no wiki; what documentation there is lives in the tree.", "book"),
+        "security" => ("No security advisories", "This repository has published no advisories and has no alerts open.", "shield"),
+        _ => ("Nothing to configure here", "Access to this repository is set by the server operator, not from the web.", "gear"),
     };
-    let title = if cx.look == Look::Gitlab { title.replace("GitHub Actions", "GitLab CI/CD") } else { title.to_owned() };
     let body = vec![div("box blank stub")
         .id("stub")
         .child(ic("stub-icon", icon))
-        .child(el("h2").id("stub-title").text(title.as_str()))
+        .child(el("h2").id("stub-title").text(title))
         .child(el("p").id("stub-blurb").class("muted").text(blurb))];
-    finish(cx, &format!("{title} · {}", slug(repository, name)), repo_frame(cx, repository, name, Tab::Other, body))
+    finish(cx, &format!("{title} · {}", slug(repository, name)), repo_frame(cx, repository, name, Tab::Stub(which), body))
+}
+
+/// Insights: what really happened in this repository over the last thirty days, each row
+/// linking to the list it counts.
+fn pulse_page(cx: &Cx, repository: &Repository, name: &str) -> Result<HttpResponse> {
+    let path = slug(repository, name);
+    let since = cx.now.saturating_sub(30 * 24);
+    let merged = repository.pull_requests.values().filter(|p| p.state == "merged" && p.tick >= since).count();
+    let opened = repository.pull_requests.values().filter(|p| p.state == "open" && p.tick >= since).count();
+    let closed = repository.issues.values().filter(|i| i.state == "closed" && i.tick >= since).count();
+    let filed = repository.issues.values().filter(|i| i.state == "open" && i.tick >= since).count();
+    let branch = default_branch(repository);
+    let commits = branch_tip(repository, &branch)
+        .map(|(id, _)| log(repository, &id).iter().filter(|(_, c)| c.tick >= since).count())
+        .unwrap_or(0);
+    let authors: std::collections::BTreeSet<&str> = branch_tip(repository, &branch)
+        .map(|(id, _)| log(repository, &id).into_iter().filter(|(_, c)| c.tick >= since).map(|(_, c)| c.author.as_str()).collect())
+        .unwrap_or_default();
+    let row = |id: &str, icon: &str, text: String, url: String| {
+        div("about-line").id(id).child(ic(&format!("{id}-icon"), icon)).child(a(&format!("{id}-link"), "", url, text))
+    };
+    let what = cx.look.pull();
+    let body = vec![
+        el("h1").id("pulse-title").class("page-title ruled").text("Pulse"),
+        el("p").id("pulse-period").class("muted").text("The last 30 days in this repository."),
+        div("box pulse")
+            .id("pulse")
+            .child(row("pulse-merged", "merge", format!("{merged} {what}{} merged", plural(merged)), format!("/{path}/pulls?state=closed")))
+            .child(row("pulse-opened", "pull-request", format!("{opened} open {what}{}", plural(opened)), format!("/{path}/pulls")))
+            .child(row("pulse-closed", "issue-closed", format!("{closed} issue{} closed", plural(closed)), format!("/{path}/issues?state=closed")))
+            .child(row("pulse-filed", "issue-open", format!("{filed} issue{} open", plural(filed)), format!("/{path}/issues")))
+            .child(row(
+                "pulse-commits",
+                "commit",
+                format!("{commits} commit{} to {branch} by {} author{}", plural(commits), authors.len(), plural(authors.len())),
+                format!("/{path}/commits/{branch}"),
+            )),
+    ];
+    finish(cx, &format!("Pulse · {path}"), repo_frame(cx, repository, name, Tab::Stub("pulse"), body))
 }
 
 fn gist_index(cx: &Cx) -> Result<HttpResponse> {
@@ -2342,8 +2644,7 @@ fn gist_page(cx: &Cx, id: &str) -> Result<HttpResponse> {
                         .id(format!("gist-file-head-{i}"))
                         .child(ic(&format!("gist-file-icon-{i}"), "file"))
                         .child(sp(&format!("gist-file-name-{i}"), "strong-accent mono", file))
-                        .child(span("grow"))
-                        .child(span("btn btn-sm").text("Raw")),
+                        .child(span("grow")),
                 )
                 .child(
                     div("blob-body")
@@ -2376,20 +2677,26 @@ pub fn handle(
     let method = req.method.to_ascii_uppercase();
     let actor = ctx.actor.as_str();
     if method == "GET" {
+        let query = web::query(req, "q").unwrap_or_default();
         let cx = Cx {
             state: &s,
             look: Look::of(&s),
             actor,
             now: now(&s, ctx),
+            search: if parts.as_slice() == ["search"] { &query } else { "" },
         };
         let repo = |owner: &str, name: &str| repository(&s, owner, name);
         let missing = || web::error(404, "repository not found");
+        let state_filter = web::query(req, "state").unwrap_or_default();
         return match parts.as_slice() {
             [] => home(&cx),
-            ["search"] => search_page(&cx, &web::query(req, "q").unwrap_or_default()),
+            ["search"] => search_page(&cx, &query),
+            ["issues"] => dashboard(&cx, false),
+            ["pulls"] => dashboard(&cx, true),
+            ["notifications"] => notifications_page(&cx),
             ["gists"] => gist_index(&cx),
             ["gist", id] => gist_page(&cx, id),
-            [owner] => owner_page(&cx, owner),
+            [owner] => owner_page(&cx, owner, &web::query(req, "tab").unwrap_or_default()),
             [owner, name] => match repo(owner, name) {
                 Some(r) if api => HttpResponse::json(200, &json!(r)),
                 Some(r) => code_page(&cx, r, name, &default_branch(r), ""),
@@ -2399,18 +2706,29 @@ pub fn handle(
                 Some(r) => code_page(&cx, r, name, branch, &rest.join("/")),
                 None => missing(),
             },
-            [owner, name, "blob" | "raw", rest @ ..] if !rest.is_empty() => match repo(owner, name)
+            [owner, name, "find", branch] => match repo(owner, name) {
+                Some(r) => find_page(&cx, r, name, branch, &query),
+                None => missing(),
+            },
+            [owner, name, kind @ ("blob" | "raw"), rest @ ..] if !rest.is_empty() => match repo(owner, name)
             {
                 Some(r) => {
                     // `/blob/<branch>/<path>` is GitHub's shape; `/blob/<path>` is the older
                     // one this site used, and still resolves on the default branch.
-                    let (branch, file) = if rest.len() > 1
-                        && r.refs.contains_key(&format!("refs/heads/{}", rest[0]))
-                    {
+                    // `/blob/<rev>/<path>` where the revision is a branch or a commit id;
+                    // a tree browsed at a commit links its files that way.
+                    let (branch, file) = if rest.len() > 1 && resolve(r, rest[0]).is_some() {
                         (rest[0].to_owned(), rest[1..].join("/"))
                     } else {
                         (default_branch(r), rest.join("/"))
                     };
+                    // Raw is the bytes: the Raw button on a blob really serves the file.
+                    if *kind == "raw" {
+                        return match resolve(r, &branch).and_then(|(_, tip)| tip.files.get(&file)) {
+                            Some(content) => Ok(HttpResponse::text(200, content.clone())),
+                            None => web::error(404, "file not found"),
+                        };
+                    }
                     blob_page(&cx, r, name, &branch, &file)
                 }
                 None => missing(),
@@ -2439,7 +2757,12 @@ pub fn handle(
             },
             [owner, name, "stargazers"] => match repo(owner, name) {
                 Some(r) if api => HttpResponse::json(200, &json!(r.stars)),
-                Some(r) => stargazers_page(&cx, r, name),
+                Some(r) => people_page(&cx, r, name, false),
+                None => missing(),
+            },
+            [owner, name, "watchers"] => match repo(owner, name) {
+                Some(r) if api => HttpResponse::json(200, &json!(r.watchers)),
+                Some(r) => people_page(&cx, r, name, true),
                 None => missing(),
             },
             [owner, name, "issues", "new"] => match repo(owner, name) {
@@ -2459,7 +2782,7 @@ pub fn handle(
                         &r.issues
                     }),
                 ),
-                Some(r) => list_page(&cx, r, name, *kind == "pulls", &web::query(req, "state").unwrap_or_default()),
+                Some(r) => list_page(&cx, r, name, *kind == "pulls", &state_filter, &query),
                 None => missing(),
             },
             [owner, name, kind @ ("issues" | "pull"), number, view @ ..] if view.len() <= 1 => {
@@ -2483,9 +2806,26 @@ pub fn handle(
                     (None, _) => missing(),
                 }
             }
-            [owner, name, which @ ("actions" | "projects" | "wiki" | "security" | "pulse" | "settings")] => {
+            [owner, name, "pulse"] => match repo(owner, name) {
+                Some(r) => pulse_page(&cx, r, name),
+                None => missing(),
+            },
+            [owner, name, which @ ("actions" | "projects" | "wiki" | "security" | "settings")] => {
                 match repo(owner, name) {
-                    Some(r) => stub_page(&cx, r, name, which),
+                    // The arm's own patterns are the only strings that reach here, so the
+                    // stub's name is as static as the route.
+                    Some(r) => stub_page(
+                        &cx,
+                        r,
+                        name,
+                        match *which {
+                            "actions" => "actions",
+                            "projects" => "projects",
+                            "wiki" => "wiki",
+                            "security" => "security",
+                            _ => "settings",
+                        },
+                    ),
                     None => missing(),
                 }
             }
@@ -2515,6 +2855,10 @@ pub fn handle(
         [_, _, "star"] => {
             repo.star(&actor);
             Ok(format!("{path}/stargazers"))
+        }
+        [_, _, "watch"] => {
+            repo.watch(&actor);
+            Ok(format!("{path}/watchers"))
         }
         [_, _, "issues"] => repo
             .open_issue(
@@ -2551,6 +2895,8 @@ pub fn handle(
                             tick,
                         ),
                         "merge" if pulls => repo.merge(n, &actor, tick),
+                        "ready" if pulls => repo.ready(n, &actor),
+                        "delete-branch" if pulls => repo.delete_branch(n, &actor),
                         _ => Err((404, "route not found".into())),
                     };
                     done.map(|()| format!("{path}/{kind}/{n}"))

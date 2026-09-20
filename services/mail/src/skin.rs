@@ -5,11 +5,18 @@
 //!
 //! Element ids are the agent API and are the ones the `Page` version used: `search` (the
 //! form, with `search-q` and `search-submit`), `search-clear`, `compose`, `folder-<key>`,
-//! `row-<id>` (the whole row is one link, with `-sender`, `-subject`, `-snippet`, `-time`,
-//! `-star`, `-count` and `-avatar` inside), `new` (the compose form: `new-to`, `new-cc`,
+//! `row-<id>` (the row is one link, with `-sender`, `-subject`, `-snippet`, `-time`,
+//! `-count` and `-avatar` inside), `new` (the compose form: `new-to`, `new-cc`,
 //! `new-subject`, `new-body`, `new-submit`), `read-<id>` with `-star`, `-read`, `-archive`
 //! (three buttons of one form), `-permalink`, `-link-<n>`, the `read-<id>-label` form, and
 //! `reply` (`reply-to`, `reply-subject`, `reply-body`, `reply-submit`).
+//!
+//! Every control here acts. `row-<id>-star` is the submit button of `row-<id>-star-form`,
+//! which posts `star=toggle` to `/messages/<id>` and comes back to the view it was pressed
+//! in; `label-<n>` filters the mailbox by one of its own labels; `list-refresh` re-reads the
+//! folder. Nothing is drawn that cannot be pressed: there is no fake category strip, no
+//! select-all box, no app launcher and no hamburger, because this world has no page script
+//! and nothing behind them.
 use crate::{stamp, MailState, Message, Nav};
 use cw_protocol::{HttpResponse, Result};
 use cw_service_common::html::{
@@ -38,7 +45,9 @@ const GMAIL: Look = Look {
     compose: "Compose",
     new_message: "New Message",
     send: "Send",
-    folders: &[("inbox", "Inbox"), ("starred", "Starred"), ("sent", "Sent"), ("archive", "All Mail")],
+    // "All Mail" is Gmail's word for a view this mailbox does not serve: `archive` holds what
+    // has been archived, so it is called Archive and the label tells the truth.
+    folders: &[("inbox", "Inbox"), ("starred", "Starred"), ("sent", "Sent"), ("archive", "Archive")],
 };
 const OUTLOOK: Look = Look {
     skin: "outlook",
@@ -140,8 +149,47 @@ struct View<'a> {
     nav: &'a Nav,
     look: &'a Look,
     folder: String,
+    /// The label the rail is filtering by, empty for the whole folder.
+    label: String,
 }
 impl View<'_> {
+    /// A URL back into this same view: the folder and the label the reader is standing in,
+    /// with the conversation or the compose window opened or closed.
+    fn here(&self, thread: Option<&str>, compose: bool) -> String {
+        let mut params = vec![("folder", self.folder.as_str())];
+        if !self.label.is_empty() {
+            params.push(("label", self.label.as_str()));
+        }
+        if let Some(thread) = thread {
+            params.push(("thread", thread));
+        }
+        if compose {
+            params.push(("compose", "1"));
+        }
+        href("/", &params)
+    }
+    /// Every label on a conversation: a label belongs to the exchange, not to the one message
+    /// it was typed on, so the row that stands for the conversation shows all of them.
+    fn labels(&self, m: &Message) -> Vec<&str> {
+        let mut labels: Vec<&str> = self
+            .s
+            .thread(self.actor, m.thread())
+            .into_iter()
+            .flat_map(|m| m.mailboxes[self.actor].labels.iter().map(String::as_str))
+            .collect();
+        labels.sort_unstable();
+        labels.dedup();
+        labels
+    }
+    /// The conversations this view shows: the folder, narrowed to one label when the rail is
+    /// filtering.
+    fn conversations(&self) -> Vec<(&Message, usize)> {
+        self.s
+            .conversations(self.actor, &self.folder)
+            .into_iter()
+            .filter(|(m, _)| self.label.is_empty() || self.labels(m).contains(&self.label.as_str()))
+            .collect()
+    }
     fn brand(&self) -> &str {
         if self.s.brand.is_empty() {
             self.look.brand
@@ -172,7 +220,6 @@ impl View<'_> {
         el("header")
             .id("bar")
             .class("bar")
-            .child(span("menu").attr("aria-hidden", "true").each(0..9, |_| el("i")))
             .child(
                 el("a")
                     .id("wordmark")
@@ -213,7 +260,7 @@ impl View<'_> {
                 el("a")
                     .id("compose")
                     .class("compose")
-                    .attr("href", at(&self.folder, None, true))
+                    .attr("href", self.here(None, true))
                     .child(span("pen").attr("aria-hidden", "true"))
                     .child(span("").id("compose-label").text(self.look.compose)),
             )
@@ -238,22 +285,31 @@ impl View<'_> {
                     div("tags")
                         .id("sidebar-labels")
                         .child(div("tags-title").text(if self.look.skin == "outlook" { "Categories" } else { "Labels" }))
+                        // A label is a filter over everything this mailbox holds, which is
+                        // what a label means; the rail shows which one is on.
                         .each(labels.iter().enumerate(), |(i, name)| {
-                            div("tag")
+                            el("a")
+                                .id(format!("label-{i}"))
+                                .class(if *name == self.label { "tag on" } else { "tag" })
+                                .attr("href", href("/", &[("folder", "all"), ("label", name)]))
                                 .child(span(&format!("dot av{}", i % 6)).attr("aria-hidden", "true"))
-                                .child(span("label").text(*name))
+                                .child(span("label").id(format!("label-{i}-name")).text(*name))
                         }),
                 )
             })
     }
     fn list(&self) -> Html {
-        let title = self
-            .look
-            .folders
-            .iter()
-            .find(|(key, _)| *key == self.folder)
-            .map_or("Mail", |(_, text)| *text);
-        let conversations = self.s.conversations(self.actor, &self.folder);
+        let title = if self.label.is_empty() {
+            self.look
+                .folders
+                .iter()
+                .find(|(key, _)| *key == self.folder)
+                .map_or("Mail", |(_, text)| *text)
+                .to_owned()
+        } else {
+            self.label.clone()
+        };
+        let conversations = self.conversations();
         let n = conversations.len();
         let count = match (self.look.skin, n) {
             ("gmail", 0) => "0 of 0".to_owned(),
@@ -261,23 +317,24 @@ impl View<'_> {
             (_, 1) => "1 conversation".to_owned(),
             (_, n) => format!("{n} conversations"),
         };
+        // The one toolbar control that means something without a page script: re-read the
+        // folder, which is what the product's refresh does and what mail arriving needs.
         let head = div("list-head")
             .id("list-head")
-            .child(span("tools").attr("aria-hidden", "true").child(span("box")).child(span("reload")).child(span("more")))
-            .child(el("h1").id("list-title").text(title))
+            .child(
+                link("list-refresh", self.here(self.nav.thread.as_deref(), self.nav.compose), "↻")
+                    .class("refresh")
+                    .attr("aria-label", "Refresh"),
+            )
+            .child(el("h1").id("list-title").text(title.as_str()))
             .child(span("count").id("list-count").text(count));
-        let tabs = if self.look.skin == "mailcom" {
-            div("cols")
-                .attr("aria-hidden", "true")
-                .child(span("c-from").text("From"))
-                .child(span("c-subject").text("Subject"))
-                .child(span("c-date").text("Date"))
-        } else {
-            let names: &[&str] = if self.look.skin == "gmail" { &["Primary", "Promotions", "Social"] } else { &["Focused", "Other"] };
-            div("tabs").attr("aria-hidden", "true").each(names.iter().enumerate(), |(i, name)| {
-                span(if i == 0 { "tab on" } else { "tab" }).child(span(&format!("tab-ico t{i}"))).text(*name)
-            })
-        };
+        // mail.com heads its table with the columns below it; the Gmail category strip and the
+        // Outlook Focused/Other strip are gone, because neither sorts anything here.
+        let cols = div("cols")
+            .attr("aria-hidden", "true")
+            .child(span("c-from").text("From"))
+            .child(span("c-subject").text("Subject"))
+            .child(span("c-date").text("Date"));
         let rows = div("rows").id("list-rows").each(conversations, |(m, count)| {
             let box_ = &m.mailboxes[self.actor];
             let open = self.nav.thread.as_deref() == Some(m.thread());
@@ -287,17 +344,25 @@ impl View<'_> {
             if open {
                 class.push_str(" open");
             }
-            el("a")
+            // The star is a submit button of its own small form rather than an icon inside the
+            // row link: it posts the same `star=toggle` the reading pane posts, and the hidden
+            // fields bring the reader back to the view they pressed it in.
+            let star = form(&format!("row-{id}-star-form"), format!("/messages/{id}"), "post")
+                .class("star-form")
+                .child(hidden("folder", &self.folder))
+                .child(hidden("filter", &self.label))
+                .child(hidden("thread", self.nav.thread.as_deref().unwrap_or("")))
+                .child(
+                    button(&format!("row-{id}-star"), if box_.starred { "★" } else { "☆" })
+                        .class(if box_.starred { "star on" } else { "star" })
+                        .attr("name", "star")
+                        .attr("value", "toggle")
+                        .attr("aria-label", if box_.starred { "Unstar" } else { "Star" }),
+                );
+            let row = el("a")
                 .id(format!("row-{id}"))
                 .class(&class)
-                .attr("href", at(&self.folder, Some(m.thread()), false))
-                .child(span("check").attr("aria-hidden", "true"))
-                .child(
-                    span(if box_.starred { "star on" } else { "star" })
-                        .id(format!("row-{id}-star"))
-                        .attr("aria-label", if box_.starred { "Starred" } else { "Not starred" })
-                        .text(if box_.starred { "★" } else { "☆" }),
-                )
+                .attr("href", self.here(Some(m.thread()), false))
                 .child(avatar(&format!("row-{id}-avatar"), &self.s.display(&m.sender)))
                 .child(
                     span("who")
@@ -310,19 +375,20 @@ impl View<'_> {
                 )
                 .child(
                     span("line")
-                        .each(&box_.labels, |name| span("chip").text(name.as_str()))
+                        .each(self.labels(m), |name| span("chip").text(name))
                         .child(span("subject").id(format!("row-{id}-subject")).text(m.subject.as_str()))
                         .child(span("dash").attr("aria-hidden", "true").text(" - "))
                         .child(span("snippet").id(format!("row-{id}-snippet")).text(snippet(&m.body, 110))),
                 )
-                .child(span("time").id(format!("row-{id}-time")).text(stamp(m.time)))
+                .child(span("time").id(format!("row-{id}-time")).text(stamp(m.time)));
+            div("row-wrap").child(row).child(star)
         });
         el("section")
             .id("list")
             .class("list")
-            .attr("aria-label", title)
+            .attr("aria-label", title.as_str())
             .child(head)
-            .when(self.folder == "inbox" || self.look.skin == "mailcom", |l| l.child(tabs))
+            .when(self.look.skin == "mailcom", |l| l.child(cols))
             .child(rows)
             .when(n == 0, |l| l.child(el("p").id("list-empty").class("none").text("Nothing here.")))
     }
@@ -351,7 +417,7 @@ impl View<'_> {
             .child(
                 div("window-head")
                     .child(el("h2").id("compose-title").text(self.look.new_message))
-                    .child(link("compose-close", at(&self.folder, None, false), "×").attr("aria-label", "Discard and close")),
+                    .child(link("compose-close", self.here(None, false), "×").attr("aria-label", "Discard and close")),
             )
             .child(el("p").id("compose-from").class("from").text(format!("From {}", self.s.address(self.actor))))
             .child(
@@ -374,7 +440,7 @@ impl View<'_> {
         labels.dedup();
         let head = div("thread-head")
             .id("thread-head")
-            .child(link("thread-back", at(&self.folder, None, false), "←").class("back").attr("aria-label", "Back to the list"))
+            .child(link("thread-back", self.here(None, false), "←").class("back").attr("aria-label", "Back to the list"))
             .child(
                 el("h2")
                     .id("thread-subject")
@@ -412,6 +478,7 @@ impl View<'_> {
                     form(&format!("read-{id}-actions"), route.as_str(), "post")
                         .class("msg-actions")
                         .child(hidden("folder", &self.folder))
+                        .child(hidden("filter", &self.label))
                         .child(
                             button(&format!("read-{id}-star"), if box_.starred { "Unstar" } else { "Star" })
                                 .attr("name", "star")
@@ -428,6 +495,8 @@ impl View<'_> {
                 .child(
                     form(&format!("read-{id}-label"), route.as_str(), "post")
                         .class("msg-label")
+                        .child(hidden("folder", &self.folder))
+                        .child(hidden("filter", &self.label))
                         .child(
                             text_input(&format!("read-{id}-label-label"), "label", "")
                                 .attr("aria-label", "Add label")
@@ -463,7 +532,7 @@ pub(crate) fn mailbox(s: &MailState, actor: &str, nav: &Nav) -> Result<HttpRespo
         "mailcom" => &MAILCOM,
         _ => &GMAIL,
     };
-    let view = View { s, actor, nav, look, folder: nav.folder().to_owned() };
+    let view = View { s, actor, nav, look, folder: nav.folder().to_owned(), label: nav.label.clone() };
     let theme = s.theme.clone().unwrap_or_default();
     let [accent, paper, surface, ink, muted] = look.palette;
     let or = |value: &Option<String>, fallback: &str| value.clone().unwrap_or_else(|| fallback.to_owned());
@@ -473,11 +542,6 @@ pub(crate) fn mailbox(s: &MailState, actor: &str, nav: &Nav) -> Result<HttpRespo
         "view-thread"
     } else {
         "view-list"
-    };
-    let apps = if look.skin == "outlook" {
-        div("apps").attr("aria-hidden", "true").each(["mail on", "cal", "people", "todo"], |k| span(&format!("app {k}")).child(el("i")))
-    } else {
-        empty()
     };
     let document = Document::new(look.title)
         .lang("en")
@@ -493,7 +557,7 @@ pub(crate) fn mailbox(s: &MailState, actor: &str, nav: &Nav) -> Result<HttpRespo
         .body_class(&format!("skin-{} {mode}", look.skin))
         .body([
             view.header(),
-            div("panes").id("panes").child(apps).child(view.sidebar()).child(view.list()).child(view.reading()),
+            div("panes").id("panes").child(view.sidebar()).child(view.list()).child(view.reading()),
         ]);
     cw_service_common::html::page(&document)
 }
