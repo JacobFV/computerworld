@@ -146,6 +146,7 @@ fn theme(state: &SlackState, look: &Look) -> PageTheme {
         ink: Some(look.ink.into()),
         muted: Some(look.muted.into()),
         content_width: Some(4096),
+        font: None,
     })
 }
 /// A person's initials on a rounded square in their own colour, Slack's avatar shape.

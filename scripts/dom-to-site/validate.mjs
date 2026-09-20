@@ -51,7 +51,8 @@ export function validatePage(page, where = 'page') {
   if (page.theme) {
     for (const k of ['accent', 'background', 'surface', 'ink', 'muted']) if (page.theme[k] !== undefined && !colour(page.theme[k])) problems.push(`${where}: invalid theme colour ${k}=${page.theme[k]}`);
     if (page.theme.content_width > MAX_PAGE_EXTENT) problems.push(`${where}: theme content width exceeds ${MAX_PAGE_EXTENT}`);
-    for (const k of Object.keys(page.theme)) if (!['accent', 'background', 'surface', 'ink', 'muted', 'content_width'].includes(k)) problems.push(`${where}: unknown theme key ${k}`);
+    if (page.theme.font !== undefined && (typeof page.theme.font !== 'string' || !page.theme.font.trim() || page.theme.font.length > 256)) problems.push(`${where}: theme font must be a font-family list of at most 256 characters`);
+    for (const k of Object.keys(page.theme)) if (!['accent', 'background', 'surface', 'ink', 'muted', 'content_width', 'font'].includes(k)) problems.push(`${where}: unknown theme key ${k}`);
   }
   const ids = new Set();
   const visit = (elements, depth, path) => {

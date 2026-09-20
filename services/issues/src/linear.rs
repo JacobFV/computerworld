@@ -46,6 +46,7 @@ impl Look {
             ink: Some(INK.into()),
             muted: Some(MUTED.into()),
             content_width: Some(1160),
+            font: None,
         })
     }
     fn brand(&self) -> &str {

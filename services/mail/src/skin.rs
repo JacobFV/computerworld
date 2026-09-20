@@ -31,6 +31,7 @@ fn theme(accent: &str, background: &str, surface: &str, ink: &str, muted: &str) 
         ink: Some(ink.into()),
         muted: Some(muted.into()),
         content_width: None,
+        font: None,
     }
 }
 fn gmail() -> Look {

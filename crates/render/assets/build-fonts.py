@@ -105,6 +105,27 @@ leaves DejaVu without embedding DejaVu in the scene crate.
     Traditional-only (Big5 level 1 but not GB 2312), the script heuristic that
     picks Traditional Chinese forms for text with no language tag.
 
+`--web <dir>` builds the web faces, from the masters `fetch-web-sources.py <dir>`
+downloads (google/fonts at the same pinned commit, pinned SHA-256):
+
+  * `fonts/{arimo,tinos,cousine,gelasio,carlito,caladea,lato,sourcesans,
+    sourceserif,poppins,montserrat,playfair,jetbrainsmono}-{regular,bold,italic,
+    bold-italic}.ttf` — the families pages ask for by name, and metric-compatible
+    stand-ins for the ones that cannot be bundled (Arimo for Arial/Helvetica,
+    Tinos for Times New Roman, Cousine for Courier New, Gelasio for Georgia,
+    Carlito for Calibri, Caladea for Cambria); `cw_scene::fonts` maps CSS
+    `font-family` lists onto them. Variable masters are instanced at weights
+    400 and 700 (other axes at their defaults); static families use their
+    Regular, Bold, Italic and BoldItalic files. Every face is subset to
+    `DEJAVU_RANGES` — the same Latin, Greek, Cyrillic and symbol coverage the
+    DejaVu fallback has, so a page set in one of these faces is drawn in it for
+    every character the family designs, and DejaVu only for what it does not —
+    and, as with every other subset here, outlines, advances and unitsPerEm are
+    untouched. Their advances go to `crates/scene/src/metrics_web.rs`, one table
+    per face and one `[Option<..>; 4]` per family indexed by `bold + 2 * italic`,
+    `None` where a family has no file for that style (the renderer then
+    synthesises bold or oblique from the nearest face it does have).
+
 Usage:
   build-fonts.py <source-dir>   rebuild everything (requires the variable fonts)
   build-fonts.py --dejavu-only  rebuild just the DejaVu subsets and the metrics
@@ -113,6 +134,8 @@ Usage:
                                 the italics and the colour emoji from the masters
                                 `fetch-noto-sources.py <dir>` downloads (pinned
                                 commits, pinned SHA-256)
+  build-fonts.py --web <dir>    rebuild the web faces and `metrics_web.rs` from the
+                                masters `fetch-web-sources.py <dir>` downloads
 Requires fontTools (4.55.3 was used); brotli not needed.
 """
 import sys
@@ -553,10 +576,151 @@ def build_italics(src):
         METRICS = saved
 
 
+# Web faces: typeface, licence file, and per style (regular, bold, italic,
+# bold_italic) the master and the axes to instance it at, or None where the
+# family has no such face. Variable masters name only the axes that matter;
+# any other axis stays at its fvar default (Source Serif 4's opsz at 20, its
+# text size).
+WEB_FACES = [
+    ("arimo", "ARIMO-OFL.txt", {
+        "regular": ("Arimo-var.ttf", {"wght": 400}),
+        "bold": ("Arimo-var.ttf", {"wght": 700}),
+        "italic": ("Arimo-Italic-var.ttf", {"wght": 400}),
+        "bold_italic": ("Arimo-Italic-var.ttf", {"wght": 700}),
+    }),
+    ("tinos", "TINOS-OFL.txt", {
+        "regular": ("Tinos-Regular.ttf", None),
+        "bold": ("Tinos-Bold.ttf", None),
+        "italic": ("Tinos-Italic.ttf", None),
+        "bold_italic": ("Tinos-BoldItalic.ttf", None),
+    }),
+    ("cousine", "COUSINE-OFL.txt", {
+        "regular": ("Cousine-Regular.ttf", None),
+        "bold": ("Cousine-Bold.ttf", None),
+        "italic": ("Cousine-Italic.ttf", None),
+        "bold_italic": ("Cousine-BoldItalic.ttf", None),
+    }),
+    ("gelasio", "GELASIO-OFL.txt", {
+        "regular": ("Gelasio-var.ttf", {"wght": 400}),
+        "bold": ("Gelasio-var.ttf", {"wght": 700}),
+        "italic": ("Gelasio-Italic-var.ttf", {"wght": 400}),
+        "bold_italic": ("Gelasio-Italic-var.ttf", {"wght": 700}),
+    }),
+    ("carlito", "CARLITO-OFL.txt", {
+        "regular": ("Carlito-Regular.ttf", None),
+        "bold": ("Carlito-Bold.ttf", None),
+        "italic": ("Carlito-Italic.ttf", None),
+        "bold_italic": ("Carlito-BoldItalic.ttf", None),
+    }),
+    ("caladea", "CALADEA-OFL.txt", {
+        "regular": ("Caladea-Regular.ttf", None),
+        "bold": ("Caladea-Bold.ttf", None),
+        "italic": ("Caladea-Italic.ttf", None),
+        "bold_italic": ("Caladea-BoldItalic.ttf", None),
+    }),
+    ("lato", "LATO-OFL.txt", {
+        "regular": ("Lato-Regular.ttf", None),
+        "bold": ("Lato-Bold.ttf", None),
+        "italic": ("Lato-Italic.ttf", None),
+        "bold_italic": ("Lato-BoldItalic.ttf", None),
+    }),
+    ("sourcesans", "SOURCESANS3-OFL.txt", {
+        "regular": ("SourceSans3-var.ttf", {"wght": 400}),
+        "bold": ("SourceSans3-var.ttf", {"wght": 700}),
+        "italic": ("SourceSans3-Italic-var.ttf", {"wght": 400}),
+        "bold_italic": ("SourceSans3-Italic-var.ttf", {"wght": 700}),
+    }),
+    ("sourceserif", "SOURCESERIF4-OFL.txt", {
+        "regular": ("SourceSerif4-var.ttf", {"wght": 400}),
+        "bold": ("SourceSerif4-var.ttf", {"wght": 700}),
+        "italic": ("SourceSerif4-Italic-var.ttf", {"wght": 400}),
+        "bold_italic": ("SourceSerif4-Italic-var.ttf", {"wght": 700}),
+    }),
+    ("poppins", "POPPINS-OFL.txt", {
+        "regular": ("Poppins-Regular.ttf", None),
+        "bold": ("Poppins-Bold.ttf", None),
+        "italic": ("Poppins-Italic.ttf", None),
+        "bold_italic": ("Poppins-BoldItalic.ttf", None),
+    }),
+    ("montserrat", "MONTSERRAT-OFL.txt", {
+        "regular": ("Montserrat-var.ttf", {"wght": 400}),
+        "bold": ("Montserrat-var.ttf", {"wght": 700}),
+        "italic": ("Montserrat-Italic-var.ttf", {"wght": 400}),
+        "bold_italic": ("Montserrat-Italic-var.ttf", {"wght": 700}),
+    }),
+    ("playfair", "PLAYFAIRDISPLAY-OFL.txt", {
+        "regular": ("PlayfairDisplay-var.ttf", {"wght": 400}),
+        "bold": ("PlayfairDisplay-var.ttf", {"wght": 700}),
+        "italic": ("PlayfairDisplay-Italic-var.ttf", {"wght": 400}),
+        "bold_italic": ("PlayfairDisplay-Italic-var.ttf", {"wght": 700}),
+    }),
+    ("jetbrainsmono", "JETBRAINSMONO-OFL.txt", {
+        "regular": ("JetBrainsMono-var.ttf", {"wght": 400}),
+        "bold": ("JetBrainsMono-var.ttf", {"wght": 700}),
+        "italic": ("JetBrainsMono-Italic-var.ttf", {"wght": 400}),
+        "bold_italic": ("JetBrainsMono-Italic-var.ttf", {"wght": 700}),
+    }),
+]
+WEB_STYLES = ["regular", "bold", "italic", "bold_italic"]
+METRICS_WEB = HERE.parents[1] / "scene" / "src" / "metrics_web.rs"
+
+
+def instance(path, axes):
+    """A static face of `path`: the named axes pinned, every other axis at its
+    fvar default. A static master is returned as is."""
+    font = TTFont(path, recalcTimestamp=False)
+    if axes is None:
+        return font
+    location = {a.axisTag: a.defaultValue for a in font["fvar"].axes}
+    location.update(axes)
+    return instancer.instantiateVariableFont(font, location)
+
+
+def build_web(src):
+    src = Path(src)
+    rows, families = [], []
+    for face, licence, styles in WEB_FACES:
+        present = []
+        for style in WEB_STYLES:
+            source = styles.get(style)
+            if source is None:
+                present.append(None)
+                continue
+            master, axes = source
+            font = shrink(instance(src / master, axes), DEJAVU_RANGES)
+            path = OUT / f"{face}-{style.replace('_', '-')}.ttf"
+            font.save(path)
+            advances = table(font, DEJAVU_RANGES)
+            rows.append((face, style, font["head"].unitsPerEm, advances))
+            present.append(f"{face}_{style}".upper())
+            print(f"{path.name:30s} {(src / master).stat().st_size:>10,} -> {path.stat().st_size:>8,}"
+                  f"   {len(advances):>5} codepoints")
+        families.append((face.upper(), present))
+        (OUT / licence).write_bytes((src / licence).read_bytes())
+    with open(METRICS_WEB, "w") as out:
+        out.write("// Generated by crates/render/assets/build-fonts.py --web; do not edit.\n")
+        out.write("// (codepoint, advance in font units), sorted by codepoint.\n")
+        out.write("pub type Face = Option<(&'static [(u32, u16)], u32)>;\n")
+        for face, weight, upem, advances in rows:
+            ident = f"{face}_{weight}".upper()
+            out.write(f"pub const {ident}_UPEM: u32 = {upem};\n")
+            out.write(f"pub static {ident}: &[(u32, u16)] = &[\n")
+            for i in range(0, len(advances), 8):
+                out.write("    " + " ".join(f"({c}, {a})," for c, a in advances[i:i + 8]) + "\n")
+            out.write("];\n")
+        out.write("// A family's faces by `bold + 2 * italic`; `None` where it has no such file.\n")
+        for ident, present in families:
+            cells = ", ".join("None" if p is None else f"Some(({p}, {p}_UPEM))" for p in present)
+            out.write(f"pub static {ident}: [Face; 4] = [{cells}];\n")
+
+
 def main(argv):
     OUT.mkdir(exist_ok=True)
     if argv[:1] == ["--noto"]:
         build_noto(argv[1])
+        return
+    if argv[:1] == ["--web"]:
+        build_web(argv[1])
         return
     dejavu_only = "--dejavu-only" in argv
     rows = []

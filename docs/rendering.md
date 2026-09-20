@@ -9,7 +9,10 @@ No DOM, JavaScript executor or Chromium process is required for synthetic apps.
 role/label/value, interaction identifier, clipping, optional `rounded_clip`
 (`{rect, radius}`, honoured by hit testing), transform, z-order and opacity.
 A client that round-trips scene JSON must carry `typeface` and `rounded_clip`
-through, or it will silently lose font selection and window-corner clipping.
+through, or it will silently lose font selection and window-corner clipping. A
+`UiText`/`UiTextBold` node may carry its own `typeface` (omitted when absent), which
+overrides the scene's for that node: browser pages whose theme names a `font` set every
+text node in the family the list resolves to (`cw_scene::fonts::resolve_family`).
 
 The twelve primitives are `Box`, `RoundedBox`, `UiText`, `UiTextBold`, `Text`,
 `AssetImage`, `Shadow`, `Image`, `Path`, `Symbol`, `Backdrop` and `Region`
@@ -84,7 +87,10 @@ runs shaped, so Arabic joins cell by cell.
 The optional [native OS presentation](desktop-gui.md) composes application scenes
 with deterministic desktop/mobile chrome in Rust. `UiText` is proportional and picks
 its face from `Scene::typeface` — Inter, Open Sans, Ubuntu or Roboto per platform,
-DejaVu Sans as the fallback. `RoundedBox` supplies antialiased rounded surfaces with
+DejaVu Sans as the fallback — or from its own `typeface`, which may also be one of the
+thirteen web families (Arimo, Tinos, Cousine, Gelasio, Carlito, Caladea, Lato, Source
+Sans 3, Source Serif 4, Poppins, Montserrat, Playfair Display, JetBrains Mono; see
+`crates/render/assets/README.md`, "Web faces"). `RoundedBox` supplies antialiased rounded surfaces with
 matching hit tests. Existing `Text` and its golden pixels remain unchanged. Application nodes
 can now have translated scene coordinates inside window content clips. The mouse pointer
 is part of a desktop frame: a `Path` glyph at the last pointer position, shaped for what is

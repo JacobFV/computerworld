@@ -857,7 +857,13 @@ impl Style {
         Ok(())
     }
 }
-/// Page-wide palette. `content_width` centres the column on wider viewports.
+/// Longest `PageTheme::font` list accepted.
+pub const MAX_FONT_LIST: usize = 256;
+/// Page-wide palette. `content_width` centres the column on wider viewports; `font`
+/// is a CSS `font-family` list (`"Roboto, sans-serif"`, `"Times New Roman"`) that
+/// the browser resolves to a bundled face (`cw_scene::fonts::resolve_family`) for
+/// every text on the page, stand-ins included; absent, the page is set in the
+/// platform's UI face as before.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PageTheme {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -872,6 +878,8 @@ pub struct PageTheme {
     pub muted: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content_width: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font: Option<String>,
 }
 impl PageTheme {
     fn validate(&self) -> Result<()> {
@@ -891,6 +899,16 @@ impl PageTheme {
         }
         if self.content_width.is_some_and(|v| v > MAX_PAGE_EXTENT) {
             return Err(SimError::invalid("theme content width exceeds 8192"));
+        }
+        if let Some(font) = &self.font {
+            if font.trim().is_empty() {
+                return Err(SimError::invalid("theme font must name a family"));
+            }
+            if font.len() > MAX_FONT_LIST || font.chars().any(char::is_control) {
+                return Err(SimError::invalid(
+                    "theme font must be a font-family list of at most 256 characters",
+                ));
+            }
         }
         Ok(())
     }

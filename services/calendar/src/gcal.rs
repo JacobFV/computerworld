@@ -26,6 +26,7 @@ fn palette() -> PageTheme {
         ink: Some(INK.into()),
         muted: Some(MUTED.into()),
         content_width: None,
+        font: None,
     }
 }
 /// A vertical stack; `Grid` with one column is the page model's column primitive.

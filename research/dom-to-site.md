@@ -31,7 +31,8 @@ and a tree of `PageElement`s. The browser lays it out in
 | `badge`, `divider`, `icon`, `spacer` | Pill, 1 px rule, one of ~65 bundled symbols (`PAGE_ICONS`), vertical gap | A `spacer` inside a `row` is a flexible push (no style → flex 1) |
 | `image` | RGBA pixels served by the same origin as `application/vnd.computerworld.rgba+json` (`{width, height, rgba}`) | Same-origin only, ≤ 4 MiB decoded, 16 MiB browser cache (`crates/browser/src/lib.rs` `MAX_IMAGE_BYTES`, `MAX_CACHE_BYTES`) |
 
-`PageTheme` gives accent, background, surface, ink, muted and `content_width`; a themed
+`PageTheme` gives accent, background, surface, ink, muted, `content_width` and `font` (a
+CSS family list resolved to a bundled face); a themed
 page gets no drawn title and centres its column. Forms post `PageAction {method, url,
 fields}`; the renderer names a form's purpose from its id (`form_purpose`: search, compose,
 subscribe, comment, ...) and puts inputs in a bordered card. Validation limits:

@@ -40,6 +40,7 @@ fn theme(state: &GitState) -> PageTheme {
         ink: Some(INK.into()),
         muted: Some(MUTED.into()),
         content_width: Some(1280),
+        font: None,
     })
 }
 

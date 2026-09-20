@@ -835,6 +835,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-web"
+version = "0.1.2"
+dependencies = [
+ "cw-protocol",
+ "cw-render",
+ "cw-scene",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cw-zlib"
 version = "0.1.2"
 dependencies = [

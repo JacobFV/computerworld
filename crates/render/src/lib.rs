@@ -2,6 +2,7 @@
 //! A renderer owns disposable glyph/text caches and a retained RGBA framebuffer.
 mod assets;
 mod colr;
+mod faces;
 mod font_pack;
 mod glyph_fit;
 #[cfg(test)]
@@ -33,46 +34,17 @@ pub const UI_FONT_SHA256: &str = "a8ef62637fccede99b4736e2a376aafb723807e217dba9
 /// rasterizes to the pixels the master produced.
 const UI_FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/dejavu-sans.ttf");
 const FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/dejavu-mono.ttf");
-/// Latin subsets of the per-platform UI families: regular, strong weight, italic and
-/// strong italic of each. In a static so each face is in the binary once.
-static FACE_BYTES: [&[u8]; 16] = [
-    include_bytes!("../assets/fonts/inter-regular.ttf"),
-    include_bytes!("../assets/fonts/inter-bold.ttf"),
-    include_bytes!("../assets/fonts/inter-italic.ttf"),
-    include_bytes!("../assets/fonts/inter-bold-italic.ttf"),
-    include_bytes!("../assets/fonts/opensans-regular.ttf"),
-    include_bytes!("../assets/fonts/opensans-bold.ttf"),
-    include_bytes!("../assets/fonts/opensans-italic.ttf"),
-    include_bytes!("../assets/fonts/opensans-bold-italic.ttf"),
-    include_bytes!("../assets/fonts/ubuntu-regular.ttf"),
-    include_bytes!("../assets/fonts/ubuntu-bold.ttf"),
-    include_bytes!("../assets/fonts/ubuntu-italic.ttf"),
-    include_bytes!("../assets/fonts/ubuntu-bold-italic.ttf"),
-    include_bytes!("../assets/fonts/roboto-regular.ttf"),
-    include_bytes!("../assets/fonts/roboto-bold.ttf"),
-    include_bytes!("../assets/fonts/roboto-italic.ttf"),
-    include_bytes!("../assets/fonts/roboto-bold-italic.ttf"),
-];
 /// DejaVu Sans Oblique and Bold Oblique, subset to text scripts (see build-fonts.py).
 static OBLIQUE_BYTES: [&[u8]; 2] = [
     include_bytes!("../assets/fonts/dejavu-sans-oblique.ttf"),
     include_bytes!("../assets/fonts/dejavu-sans-bold-oblique.ttf"),
 ];
-fn face_index(typeface: Typeface, bold: bool, italic: bool) -> Option<usize> {
-    let family = match typeface {
-        Typeface::DejaVu | Typeface::Mono => return None,
-        Typeface::Inter => 0,
-        Typeface::OpenSans => 1,
-        Typeface::Ubuntu => 2,
-        Typeface::Roboto => 3,
-    };
-    Some(family * 4 + usize::from(bold) + 2 * usize::from(italic))
-}
+use faces::{face_index, FACE_BYTES, FACE_COUNT};
 /// Glyph-cache codes of the fonts a character can be drawn with.
 const MONO: u8 = 0;
-const PLATFORM: u8 = 3; // + face_index, 3..=18
-const OBLIQUE: u8 = 19; // + bold
-const FALLBACK: u8 = 64; // + FaceId
+const PLATFORM: u8 = 3; // + face_index (the platform and web families), 3..=70
+const OBLIQUE: u8 = PLATFORM + FACE_COUNT as u8; // + bold
+const FALLBACK: u8 = 128; // + FaceId
 /// Backdrop blur radius per pass; three passes reach three times this distance.
 const MAX_BACKDROP_BLUR: u32 = 48;
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -118,7 +90,7 @@ pub struct Renderer {
     font: Font,
     ui_font: Option<Font>,
     bold_font: Option<Font>,
-    faces: [Option<Font>; 16],
+    faces: [Option<Font>; FACE_COUNT],
     oblique: [Option<Font>; 2],
     glyphs: BTreeMap<(u8, char, u16), Arc<Glyph>>,
     /// Shaped glyphs of the fallback faces, by glyph id.
@@ -146,7 +118,7 @@ impl Renderer {
                 .expect("bundled font is valid"),
             ui_font: None,
             bold_font: None,
-            faces: Default::default(),
+            faces: [const { None }; FACE_COUNT],
             oblique: Default::default(),
             glyphs: BTreeMap::new(),
             shaped: BTreeMap::new(),
@@ -277,6 +249,13 @@ impl Renderer {
         {
             self.glyphs.clear()
         }
+        // A family without a file for the requested weight or slant is drawn from
+        // the nearest face it has, with the rest synthesised (see `faces`).
+        let (source, synthetic_bold, synthetic_oblique) = if (PLATFORM..OBLIQUE).contains(&ui) {
+            faces::face_source(usize::from(ui - PLATFORM))
+        } else {
+            (0, false, false)
+        };
         let font = if let Some((_, font)) = fallback {
             font
         } else if (OBLIQUE..OBLIQUE + 2).contains(&ui) {
@@ -286,9 +265,9 @@ impl Renderer {
                     .expect("bundled oblique font is valid")
             })
         } else if (PLATFORM..OBLIQUE).contains(&ui) {
-            let face = usize::from(ui - PLATFORM);
-            self.faces[face].get_or_insert_with(|| {
-                Font::from_bytes(FACE_BYTES[face], FontSettings::default())
+            self.faces[source].get_or_insert_with(|| {
+                let bytes = FACE_BYTES[source].expect("face_source picks a bundled file");
+                Font::from_bytes(bytes, FontSettings::default())
                     .expect("bundled platform font is valid")
             })
         } else if ui == 2 {
@@ -328,6 +307,16 @@ impl Renderer {
         // grid-fitted; proportional UI text keeps the rasterizer's own output.
         let (metrics, alpha) = if ui == 0 {
             glyph_fit::fit(font, c, size, metrics, alpha)
+        } else {
+            (metrics, alpha)
+        };
+        let (metrics, alpha) = if synthetic_bold {
+            faces::embolden(metrics, &alpha)
+        } else {
+            (metrics, alpha)
+        };
+        let (metrics, alpha) = if synthetic_oblique {
+            faces::oblique(metrics, &alpha)
         } else {
             (metrics, alpha)
         };
@@ -714,11 +703,14 @@ impl Renderer {
                         0,
                         scene.typeface,
                     )),
+                    // A node set in its own family draws in it; the rest take the
+                    // scene's.
                     Primitive::UiTextBold {
                         text,
                         size,
                         italic,
                         lang,
+                        typeface,
                         ..
                     } => Some(self.text_styled(
                         text,
@@ -727,13 +719,14 @@ impl Renderer {
                         node.bounds.height,
                         2,
                         Style::new(true, *italic, *lang),
-                        scene.typeface,
+                        typeface.unwrap_or(scene.typeface),
                     )),
                     Primitive::UiText {
                         text,
                         size,
                         italic,
                         lang,
+                        typeface,
                         ..
                     } => Some(self.text_styled(
                         text,
@@ -742,7 +735,7 @@ impl Renderer {
                         node.bounds.height,
                         1,
                         Style::new(false, *italic, *lang),
-                        scene.typeface,
+                        typeface.unwrap_or(scene.typeface),
                     )),
                     _ => None,
                 };
@@ -2216,13 +2209,7 @@ mod fidelity_tests {
     #[test]
     fn platform_typefaces_render_distinctly_with_fallback_glyphs() {
         let mut frames = Vec::new();
-        for typeface in [
-            Typeface::DejaVu,
-            Typeface::Inter,
-            Typeface::OpenSans,
-            Typeface::Ubuntu,
-            Typeface::Roboto,
-        ] {
+        for typeface in Typeface::ALL.into_iter().filter(|t| *t != Typeface::Mono) {
             let mut scene = Scene::new(260, 60);
             scene.typeface = typeface;
             scene.nodes.push(Node::ui_text(
@@ -2244,9 +2231,98 @@ mod fidelity_tests {
             let json = serde_json::to_string(&scene).unwrap();
             assert_eq!(json.contains("typeface"), typeface != Typeface::DejaVu);
             assert_eq!(serde_json::from_str::<Scene>(&json).unwrap(), scene);
-            assert!(!frames.contains(&frame));
+            assert!(!frames.contains(&frame), "{typeface:?}");
             frames.push(frame);
         }
+    }
+    /// Two nodes of one scene set in different families draw in their own faces and
+    /// measure with their own tables; a node naming none keeps the scene's, and its
+    /// JSON (and so its digest) is what it was before the field existed.
+    #[test]
+    fn a_node_can_name_its_own_typeface() {
+        let text = "Weights and measures";
+        let mut scene = Scene::new(300, 80);
+        scene.typeface = Typeface::Inter;
+        scene.nodes.push(Node::new(
+            1,
+            Rect::new(4, 4, 290, 24),
+            Primitive::ui_text_face(text, Color::BLACK, 16, Style::default(), Typeface::Tinos),
+        ));
+        scene.nodes.push(Node::new(
+            2,
+            Rect::new(4, 30, 290, 24),
+            Primitive::ui_text_face(text, Color::BLACK, 16, Style::default(), Typeface::Poppins),
+        ));
+        scene.nodes.push(Node::ui_text(
+            3,
+            Rect::new(4, 56, 290, 24),
+            text,
+            16,
+            Color::BLACK,
+        ));
+        let frame = Renderer::new().render(&scene);
+        let frame = &frame;
+        let row = |y0: u32| -> Vec<u8> {
+            (y0..y0 + 24)
+                .flat_map(|y| (0..300).map(move |x| frame.pixel(x, y).unwrap()[0]))
+                .collect()
+        };
+        assert_ne!(row(4), row(30));
+        assert_ne!(row(30), row(56));
+        // The third node is the scene's Inter: identical to the same node drawn in a
+        // scene whose typeface is Inter and nothing else.
+        let mut plain = Scene::new(300, 80);
+        plain.typeface = Typeface::Inter;
+        plain.nodes.push(Node::ui_text(
+            3,
+            Rect::new(4, 56, 290, 24),
+            text,
+            16,
+            Color::BLACK,
+        ));
+        let plain_frame = Renderer::new().render(&plain);
+        let plain_frame = &plain_frame;
+        let plain_row: Vec<u8> = (56..80)
+            .flat_map(|y| (0..300).map(move |x| plain_frame.pixel(x, y).unwrap()[0]))
+            .collect();
+        assert_eq!(row(56), plain_row);
+        // Each node measures with its own family.
+        let widths: Vec<u32> = scene
+            .nodes
+            .iter()
+            .map(|n| {
+                metrics::text_width(
+                    n.primitive.typeface().unwrap_or(scene.typeface),
+                    false,
+                    text,
+                    16,
+                )
+            })
+            .collect();
+        assert_eq!(
+            widths[0],
+            metrics::text_width(Typeface::Tinos, false, text, 16)
+        );
+        assert_eq!(
+            widths[1],
+            metrics::text_width(Typeface::Poppins, false, text, 16)
+        );
+        assert_eq!(
+            widths[2],
+            metrics::text_width(Typeface::Inter, false, text, 16)
+        );
+        assert!(widths[0] != widths[1] && widths[1] != widths[2]);
+        // Serialisation carries the field only when set.
+        let json = serde_json::to_string(&scene).unwrap();
+        assert!(json.contains("\"typeface\":\"tinos\""));
+        assert!(json.contains("\"typeface\":\"poppins\""));
+        assert_eq!(serde_json::from_str::<Scene>(&json).unwrap(), scene);
+        assert!(!serde_json::to_string(&plain.nodes[0])
+            .unwrap()
+            .contains("typeface"));
+        scene.stamp();
+        plain.stamp();
+        assert_eq!(scene.nodes[2].revision, plain.nodes[0].revision);
     }
     #[test]
     fn ui_text_wraps_between_words() {

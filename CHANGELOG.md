@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Rendering
+
+- **Web faces.** The renderer bundles thirteen more families in regular, bold, italic
+  and bold italic — Arimo, Tinos, Cousine, Gelasio, Carlito and Caladea as
+  metric-compatible stand-ins for Arial/Helvetica, Times New Roman, Courier New,
+  Georgia, Calibri and Cambria, and Lato, Source Sans 3, Source Serif 4, Poppins,
+  Montserrat, Playfair Display and JetBrains Mono as themselves — subset to DejaVu's
+  Latin, Greek and Cyrillic coverage (4.6 MB raw, 2.8 MB gzip in the Wasm module).
+  `cw_scene::fonts::resolve_family` resolves a CSS `font-family` list onto them
+  (aliases, generics, first bundled match wins). `PageTheme` gains `font`, such a list:
+  a page that names one is measured and drawn in the resolved face. `UiText` and
+  `UiTextBold` may carry their own `typeface`, overriding the scene's for one node;
+  scene JSON without it is unchanged. A family lacking a weight or slant would get a
+  synthetic bold or oblique, drawn deterministically.
+
 ## 0.1.2 — 2026-09-19
 
 ### The desktop

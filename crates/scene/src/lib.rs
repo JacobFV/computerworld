@@ -2,12 +2,15 @@
 //! use 1/1024 units. This crate never rasterizes or consults host fonts.
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
+pub mod fonts;
 pub mod metrics;
 pub mod text;
 #[rustfmt::skip]
 mod metrics_data;
 #[rustfmt::skip]
 mod metrics_italic;
+#[rustfmt::skip]
+mod metrics_web;
 pub use metrics::{Lang, Style, Typeface};
 
 pub const SCENE_VERSION: u32 = 2;
@@ -226,7 +229,8 @@ pub enum Primitive {
         radius: u32,
     },
     /// Proportional bundled sans-serif text, pixel-wrapped within the bounds.
-    /// `italic` and `lang` are optional in scene JSON and omitted when default.
+    /// `italic`, `lang` and `typeface` are optional in scene JSON and omitted when
+    /// default.
     UiText {
         text: String,
         color: Color,
@@ -236,6 +240,10 @@ pub enum Primitive {
         /// Language of the text, which picks regional Han forms (see [`Lang`]).
         #[serde(default, skip_serializing_if = "Lang::is_auto")]
         lang: Lang,
+        /// The family this node is set in; `None` takes the scene's
+        /// [`Scene::typeface`]. Measurement and drawing both use it.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        typeface: Option<Typeface>,
     },
     UiTextBold {
         text: String,
@@ -245,6 +253,8 @@ pub enum Primitive {
         italic: bool,
         #[serde(default, skip_serializing_if = "Lang::is_auto")]
         lang: Lang,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        typeface: Option<Typeface>,
     },
     Text {
         text: String,
@@ -280,8 +290,28 @@ pub enum Primitive {
     Region,
 }
 impl Primitive {
-    /// UI text set in `style`: `UiTextBold` when bold, otherwise `UiText`.
+    /// UI text set in `style`: `UiTextBold` when bold, otherwise `UiText`, in the
+    /// scene's typeface.
     pub fn ui_text(text: impl Into<String>, color: Color, size: u16, style: Style) -> Self {
+        Self::ui_text_in(text, color, size, style, None)
+    }
+    /// UI text set in `style` and in `typeface`, whatever the scene's family is.
+    pub fn ui_text_face(
+        text: impl Into<String>,
+        color: Color,
+        size: u16,
+        style: Style,
+        typeface: Typeface,
+    ) -> Self {
+        Self::ui_text_in(text, color, size, style, Some(typeface))
+    }
+    fn ui_text_in(
+        text: impl Into<String>,
+        color: Color,
+        size: u16,
+        style: Style,
+        typeface: Option<Typeface>,
+    ) -> Self {
         let text = text.into();
         let Style { bold, italic, lang } = style;
         if bold {
@@ -291,6 +321,7 @@ impl Primitive {
                 size,
                 italic,
                 lang,
+                typeface,
             }
         } else {
             Self::UiText {
@@ -299,6 +330,7 @@ impl Primitive {
                 size,
                 italic,
                 lang,
+                typeface,
             }
         }
     }
@@ -307,6 +339,14 @@ impl Primitive {
         match self {
             Self::UiText { italic, lang, .. } => Some(Style::new(false, *italic, *lang)),
             Self::UiTextBold { italic, lang, .. } => Some(Style::new(true, *italic, *lang)),
+            _ => None,
+        }
+    }
+    /// The family a UI text primitive names for itself; `None` when it takes the
+    /// scene's, or for anything but UI text.
+    pub fn typeface(&self) -> Option<Typeface> {
+        match self {
+            Self::UiText { typeface, .. } | Self::UiTextBold { typeface, .. } => *typeface,
             _ => None,
         }
     }

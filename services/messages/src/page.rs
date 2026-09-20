@@ -30,6 +30,7 @@ fn theme() -> PageTheme {
         ink: Some(INK.into()),
         muted: Some(MUTED.into()),
         content_width: Some(PHONE + 32),
+        font: None,
     }
 }
 fn avatar(id: &str, name: &str) -> PageElement {

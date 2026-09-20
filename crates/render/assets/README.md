@@ -84,8 +84,8 @@ The embedded scripts keep their OpenType layout tables and are instanced at weig
 CJK is in both weights; the pack scripts are regular only (their bold falls back to the
 regular glyphs), because each weight of a shaped script needs its own layout stub.
 
-**Fallback chain.** Per character, in order: the scene's platform face (Inter, Open
-Sans, Ubuntu, Roboto), DejaVu Sans (regular or bold; italic text tries the italic faces
+**Fallback chain.** Per character, in order: the node's own face if it names one, else
+the scene's platform face (Inter, Open Sans, Ubuntu, Roboto, or a web face below), DejaVu Sans (regular or bold; italic text tries the italic faces
 first, see below), the matching-weight Noto script face, Noto Sans SC (or its locale
 face), Noto Sans KR, Noto Emoji, and finally DejaVu's `.notdef`. Combining marks,
 joiners and the Indic dandas stay in their base's face. Emoji sequences — VS16, ZWJ
@@ -213,9 +213,10 @@ stubs add 60 KB. `docs/performance.md` has the module before/after.
 
 **Limits.**
 
-* Italic has no synthetic oblique: scripts without an italic face (Hebrew, Arabic,
-  CJK, Indic, emoji, …) and DejaVu's symbols, arrows and box drawing stay upright in
-  italic text. An italic glyph can overhang its advance by up to a fifth of an em on
+* Italic has no synthetic oblique for the shaped scripts: those without an italic
+  face (Hebrew, Arabic, CJK, Indic, emoji, …) and DejaVu's symbols, arrows and box
+  drawing stay upright in italic text. (Only the table-driven families synthesise a
+  missing slant or weight; see "Web faces".) An italic glyph can overhang its advance by up to a fifth of an em on
   the right, as italics do; layouts reserve the usual two spare pixels.
 * Colour emoji use palette 0 and draw palette entry 0xFFFF (foreground) in black; the
   non-separable blend modes (hue, saturation, colour, luminosity) composite as the
@@ -278,6 +279,85 @@ Licence 1.0 (`fonts/UBUNTU-UFL.txt`). These notices must accompany redistributed
 `build-fonts.py` also writes `crates/scene/src/metrics_data.rs`, the advance table that
 lets layout code measure, centre, wrap and ellipsize text exactly as the renderer will
 draw it. The renderer takes its advances and word wrapping from the same table.
+
+## Web faces
+
+Pages ask for families by name — `font-family: "Helvetica Neue", Arial, sans-serif` —
+and the renderer must answer with a face it ships. `fonts/{arimo,tinos,cousine,gelasio,
+carlito,caladea,lato,sourcesans,sourceserif,poppins,montserrat,playfair,jetbrainsmono}-
+{regular,bold,italic,bold-italic}.ttf` are thirteen families in four faces each, built by
+`build-fonts.py --web <dir>` from masters `fetch-web-sources.py <dir>` downloads from
+google/fonts at the same pinned commit as the Noto sources and checks against pinned
+SHA-256s (Tinos's directory carries no `OFL.txt` at that commit, so its licence comes
+from the Tinos repository at a pinned commit). Variable masters are instanced at
+weights 400 and 700 with every other axis at its default (Source Serif 4's `opsz` at
+20); static families use their Regular, Bold, Italic and BoldItalic files. Every face is
+subset to `DEJAVU_RANGES` — the Latin, Greek, Cyrillic and symbol coverage DejaVu has —
+so a page set in Tinos is Tinos for every character Tinos designs (Gelasio, Caladea and
+Poppins design no Greek or Cyrillic and Playfair Display no Greek; those fall to DejaVu
+as any gap does). As with every subset
+here, outlines, advances and `unitsPerEm` are untouched, the name table is kept (each
+file still says what it is and under what licence), and the build is byte-for-byte
+reproducible on fontTools 4.55.3. `crates/render/src/faces.rs` pins each file's
+SHA-256 and checks the name table, weight and slant of every face. All thirteen are
+SIL OFL 1.1 (`fonts/{ARIMO,TINOS,COUSINE,GELASIO,CARLITO,CALADEA,LATO,SOURCESANS3,
+SOURCESERIF4,POPPINS,MONTSERRAT,PLAYFAIRDISPLAY,JETBRAINSMONO}-OFL.txt`). Lato, Source
+Sans 3, Source Serif 4 and Playfair Display declare Reserved Font Names ("Lato",
+"Source", "Playfair Display"); the subsets keep their upstream names in the name table
+as the Noto subsets above do, and the runtime identifiers (`Typeface::Lato`,
+`"source_sans"`, …) are the renderer's own.
+
+| Family | `Typeface` | Stands in for | Raw | Gzip |
+| --- | --- | --- | ---: | ---: |
+| Arimo | `arimo` | Arial, Helvetica, Helvetica Neue, Liberation Sans; the `-apple-system`/`BlinkMacSystemFont`/`Segoe UI` stack; `sans-serif`, `system-ui` | 531,072 | 347,957 |
+| Tinos | `tinos` | Times, Times New Roman, Liberation Serif; `serif`, `ui-serif` | 555,548 | 344,585 |
+| Cousine | `cousine` | Courier, Courier New, Liberation Mono; `monospace` | 425,316 | 277,632 |
+| Gelasio | `gelasio` | Georgia; `cursive` | 252,356 | 146,062 |
+| Carlito | `carlito` | Calibri | 614,892 | 373,840 |
+| Caladea | `caladea` | Cambria | 144,688 | 83,971 |
+| Lato | `lato` | itself | 595,816 | 364,564 |
+| Source Sans 3 | `source_sans` | itself, Source Sans Pro | 321,924 | 193,007 |
+| Source Serif 4 | `source_serif` | itself, Source Serif Pro | 296,688 | 167,927 |
+| Poppins | `poppins` | itself | 103,884 | 61,637 |
+| Montserrat | `montserrat` | itself | 267,660 | 157,434 |
+| Playfair Display | `playfair` | itself; `fantasy` | 240,792 | 126,838 |
+| JetBrains Mono | `jetbrains_mono` | Menlo, Monaco, Consolas, SF Mono, Cascadia, Fira Code/Mono, Source Code Pro, Roboto Mono, Ubuntu Mono; `ui-monospace` | 232,728 | 122,009 |
+
+All four faces of each family are in the Wasm module: 4,583,364 bytes raw, 2,762,660
+gzip for the fifty-two files (a text-scripts-only subset was measured at 4,236,856 raw,
+2,578,514 gzip — the Latin, Greek and Cyrillic outlines are the bulk, so the symbol
+blocks were kept for consistency with DejaVu's set). Verdana and Tahoma resolve to DejaVu
+Sans (Bitstream Vera's lineage), `math` and `emoji` to DejaVu, and Roboto, Inter, Open
+Sans and Ubuntu to the platform faces above when a page names them.
+
+**Resolution.** `cw_scene::fonts::resolve_family(list)` reads a CSS `font-family` list:
+names are unquoted, lower-cased and single-spaced; a bundled family's own name wins
+outright, an alias maps to its stand-in, a generic family (`sans-serif`, `serif`,
+`monospace`, `system-ui`, `ui-sans-serif`, `ui-serif`, `ui-monospace`, `ui-rounded`,
+`cursive`, `fantasy`, `math`, `emoji`) maps as in the table, an unknown name is skipped,
+and the first match wins — so `Roboto, sans-serif` is Roboto and `Gill Sans, Futura,
+serif` is Tinos. A list naming nothing bundled is Arimo. `ALIASES` in that module is the
+whole table, and its tests cover every entry. A page's `PageTheme::font` is such a list:
+the browser resolves it once and sets every text node of the page in that face
+(`Primitive::UiText { typeface }`, below), measured with that face's advances, so line
+breaks and widths are the resolved family's own. Without a `font` the page is laid out
+as before, in the platform's UI face.
+
+**Per-node typefaces.** `UiText` and `UiTextBold` carry an optional `typeface`
+(omitted from scene JSON when absent, so every existing scene hash is unchanged) that
+overrides `Scene::typeface` for that node alone; `Primitive::ui_text_face` builds one,
+and `Primitive::typeface()` reads it back. Layout code measures such a node with
+`metrics::text_width(node.primitive.typeface().unwrap_or(scene.typeface), …)`.
+
+**Weights and slants.** Every family has a regular, bold, italic and bold-italic file,
+and `Typeface::web_face_index` and `crates/render/src/faces.rs` agree on which file
+serves a request. Should a family ever lack one — the metrics table then holds `None`
+for that slot — both fall to the same neighbour (the upright of that weight, then the
+regular of that slant, then the regular), and the renderer synthesises the rest on the
+rasterised coverage: bold by smearing each row one pixel to the right, oblique by
+shearing the bitmap 14/64 of a pixel per pixel of height about the baseline, both in
+integer arithmetic so the result is the same bits on every target. Synthetic bold keeps
+the regular advance, so it sets a little tighter than a designed bold.
 
 ## Symbols
 

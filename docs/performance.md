@@ -292,6 +292,25 @@ bold. None of it is fetched unless a page draws those glyphs; the browser demo w
 at boot only for regular SC and KR and the two emoji faces (6.4 MB gzip, of which the
 colour emoji are 2.8 MB) and fetches the rest behind them.
 
+The web faces (Milestone 0a of `docs/web-engine-plan.md`) — Arimo, Tinos, Cousine,
+Gelasio, Carlito, Caladea, Lato, Source Sans 3, Source Serif 4, Poppins, Montserrat,
+Playfair Display and JetBrains Mono, four faces each, subset to DejaVu's coverage —
+are embedded in the module, since a page's body text cannot wait for a fetch the way
+a CJK glyph can. `scripts/build-wasm.sh` before and after, same toolchain:
+
+| Module | Raw bytes | Gzip bytes |
+|---|---:|---:|
+| Before (`cea51ef`) | 26,185,463 | 10,397,794 |
+| After | 31,146,890 | 13,282,437 |
+| Change | +4,961,427 (+18.9%) | +2,884,643 (+27.7%) |
+
+The fifty-two font files are 4,583,364 raw / 2,762,660 gzip of that (per family in
+`crates/render/assets/README.md`, "Web faces"); the rest is their advance table
+(`crates/scene/src/metrics_web.rs`, 6,700 lines of `(codepoint, advance)` pairs) and
+the alias resolver. A text-scripts-only subset would have saved under 8%, so the symbol
+blocks were kept. Moving the web faces to the on-demand pack (drawing in DejaVu at the
+face's own advances until each file arrives) is the lever if the module must shrink.
+
 Runtime, measured in Node on this build with the pack installed: painting eight colour
 emoji in a fresh renderer (so every glyph is rasterized from its COLR paint graph)
 takes 2.7, 4.1 and 7.2 ms p50 at 16, 24 and 48 px, and the colour face costs nothing

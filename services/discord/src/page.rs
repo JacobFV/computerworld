@@ -167,6 +167,7 @@ fn theme(state: &DiscordState, look: &Look) -> PageTheme {
         ink: Some(look.ink.into()),
         muted: Some(look.muted.into()),
         content_width: Some(4096),
+        font: None,
     })
 }
 /// A block of one colour, `width` across, filling a pinned bar under the rail, the

@@ -16,7 +16,8 @@ const BORDER: Color = Color::rgb(225, 229, 235);
 /// Vertical air below a block element; every measured height carries its own.
 const GAP: u32 = 12;
 /// Line breaking uses the widest bundled family so the same breaks fit whichever
-/// platform typeface the shell selects.
+/// platform typeface the shell selects; a page whose theme names a `font` is
+/// measured and drawn in the face that resolves to instead.
 const FACE: Typeface = Typeface::DejaVu;
 fn parse_color(value: &str) -> Option<Color> {
     if !cw_protocol::valid_color(value) {
@@ -57,8 +58,18 @@ fn mix(a: Color, b: Color, pct: u32) -> Color {
     let c = |a: u8, b: u8| ((u32::from(a) * (100 - pct) + u32::from(b) * pct) / 100) as u8;
     Color(c(a.0, b.0), c(a.1, b.1), c(a.2, b.2), a.3)
 }
-fn ui_text(text: &str, size: u16, color: Color, style: TextStyle) -> Primitive {
-    Primitive::ui_text(text, color, size, style)
+/// UI text in the page's face when its theme names one, else the scene's.
+fn ui_text(
+    face: Option<Typeface>,
+    text: &str,
+    size: u16,
+    color: Color,
+    style: TextStyle,
+) -> Primitive {
+    match face {
+        Some(face) => Primitive::ui_text_face(text, color, size, style, face),
+        None => Primitive::ui_text(text, color, size, style),
+    }
 }
 /// Whether a block holds reading matter — a sentence, a field, a picture — rather than
 /// a stack of small controls like a vote arrow over a score.
@@ -139,19 +150,17 @@ fn style_of(e: &PageElement) -> Option<&Style> {
         _ => None,
     }
 }
-/// The face a styled element's text is measured with: the monospace family when the
-/// style asks for it, otherwise the page face.
-fn face_of(style: &Style) -> Typeface {
-    if style.mono == Some(true) {
-        Typeface::Mono
-    } else {
-        FACE
-    }
-}
 /// Text in the face `style` asks for: the fixed-pitch `Text` primitive for monospace
 /// (one grid cell per character, which is what `Typeface::Mono` measures), otherwise
-/// proportional UI text.
-fn text_primitive(style: &Style, text: &str, size: u16, color: Color, ts: TextStyle) -> Primitive {
+/// proportional UI text in `face` (the page's, when its theme names one).
+fn text_primitive(
+    face: Option<Typeface>,
+    style: &Style,
+    text: &str,
+    size: u16,
+    color: Color,
+    ts: TextStyle,
+) -> Primitive {
     if style.mono == Some(true) {
         Primitive::Text {
             text: text.to_owned(),
@@ -159,7 +168,7 @@ fn text_primitive(style: &Style, text: &str, size: u16, color: Color, ts: TextSt
             size,
         }
     } else {
-        ui_text(text, size, color, ts)
+        ui_text(face, text, size, color, ts)
     }
 }
 /// Inner horizontal padding of a link or button: a link is bare text unless it is boxed
@@ -232,8 +241,22 @@ struct Layout<'a> {
     dry: bool,
     /// The page's language (`Page::lang`), for text that does not name its own.
     lang: Lang,
+    /// The face text is measured with: [`FACE`] unless the theme names a `font`.
+    face: Typeface,
+    /// The face every text node is set in when the theme names a `font`; `None`
+    /// leaves nodes in the scene's (platform) typeface.
+    page_face: Option<Typeface>,
 }
 impl Layout<'_> {
+    /// The face a styled element's text is measured with: the monospace family when
+    /// the style asks for it, otherwise the page face.
+    fn face_of(&self, style: &Style) -> Typeface {
+        if style.mono == Some(true) {
+            Typeface::Mono
+        } else {
+            self.face
+        }
+    }
     fn id(&mut self, s: &str) -> u64 {
         if self.dry {
             return 0;
@@ -316,7 +339,13 @@ impl Layout<'_> {
         if style.lang.is_auto() {
             style.lang = self.lang;
         }
-        self.node(id, r, ui_text(text, size, color, style), None, None);
+        self.node(
+            id,
+            r,
+            ui_text(self.page_face, text, size, color, style),
+            None,
+            None,
+        );
     }
     /// `ts` with the page's language filled in where the element named none.
     fn with_lang(&self, mut ts: TextStyle) -> TextStyle {
@@ -337,7 +366,7 @@ impl Layout<'_> {
     fn min_width(&self, e: &PageElement) -> u32 {
         let longest = |text: &str, bold: TextStyle, size: u16| {
             text.split_whitespace()
-                .map(|word| metrics::text_width(FACE, bold, word, size))
+                .map(|word| metrics::text_width(self.face, bold, word, size))
                 .max()
                 .unwrap_or(0)
         };
@@ -364,7 +393,7 @@ impl Layout<'_> {
                 // would wrap its row instead.
                 pad + text
                     .split_whitespace()
-                    .map(|word| metrics::text_width(face_of(style), ts, word, size))
+                    .map(|word| metrics::text_width(self.face_of(style), ts, word, size))
                     .max()
                     .unwrap_or(0)
             }
@@ -375,19 +404,19 @@ impl Layout<'_> {
                 let style = style.as_ref().unwrap_or(&plain);
                 let size = style.size.unwrap_or(12).clamp(6, 96);
                 let ts = self.button_text_style(style);
-                metrics::text_width(face_of(style), ts, submit_label(id, text), size)
+                metrics::text_width(self.face_of(style), ts, submit_label(id, text), size)
                     + control_pad(style, true) * 2
             }
             // The label sits above the field on one line, so it sets the floor too.
             PageElement::Input { label, .. } => {
-                (metrics::text_width(FACE, false, label, 12) + 20).max(120)
+                (metrics::text_width(self.face, false, label, 12) + 20).max(120)
             }
             PageElement::Image { width, .. } => (*width).min(96),
             PageElement::Styled { text, style, .. } => {
                 let size = style.size.unwrap_or(13).clamp(6, 96);
                 let bold = self.text_style(style);
                 let pad = style.padding.unwrap_or(0).min(64) * 2;
-                let face = face_of(style);
+                let face = self.face_of(style);
                 pad + text
                     .split_whitespace()
                     .map(|word| metrics::text_width(face, bold, word, size))
@@ -397,7 +426,7 @@ impl Layout<'_> {
             PageElement::Badge { text, style, .. } => {
                 let size = style.size.unwrap_or(10).clamp(6, 96);
                 let pad = style.padding.unwrap_or(0).min(64);
-                metrics::text_width(FACE, true, text, size) + 2 * pad.max(9)
+                metrics::text_width(self.face, true, text, size) + 2 * pad.max(9)
             }
             // A hairline (a progress bar's segment) carries no caption, so it has no floor.
             PageElement::Thumbnail { style, .. } if style.height.is_some_and(|h| h < 12) => 1,
@@ -453,19 +482,19 @@ impl Layout<'_> {
         };
         let natural = match e {
             PageElement::Heading { text, level, .. } => {
-                metrics::text_width(FACE, true, text, if *level <= 1 { 18 } else { 15 })
+                metrics::text_width(self.face, true, text, if *level <= 1 { 18 } else { 15 })
             }
-            PageElement::Text { text, .. } => metrics::text_width(FACE, false, text, 13),
+            PageElement::Text { text, .. } => metrics::text_width(self.face, false, text, 13),
             PageElement::Link { text, style, .. } => {
                 let plain = Style::default();
                 let style = style.as_ref().unwrap_or(&plain);
                 let size = style.size.unwrap_or(13).clamp(6, 96);
-                metrics::text_width(face_of(style), self.text_style(style), text, size)
+                metrics::text_width(self.face_of(style), self.text_style(style), text, size)
                     + control_pad(style, false) * 2
             }
             PageElement::Styled { text, style, .. } => {
                 let size = style.size.unwrap_or(13).clamp(6, 96);
-                metrics::text_width(face_of(style), self.text_style(style), text, size)
+                metrics::text_width(self.face_of(style), self.text_style(style), text, size)
                     + style.padding.unwrap_or(0).min(64) * 2
             }
             PageElement::Image { width, .. } => *width,
@@ -658,7 +687,7 @@ impl Layout<'_> {
                 let plain = Style::default();
                 let style = style.as_ref().unwrap_or(&plain);
                 let size = style.size.unwrap_or(12).clamp(6, 96);
-                let face = face_of(style);
+                let face = self.face_of(style);
                 let ts = self.button_text_style(style);
                 let pad = control_pad(style, true);
                 // The pill's vertical padding follows its horizontal one at the ratio
@@ -707,7 +736,7 @@ impl Layout<'_> {
                         tw + 4,
                         lh + 3,
                     ),
-                    text_primitive(style, &shown, size, colour, ts),
+                    text_primitive(self.page_face, style, &shown, size, colour, ts),
                     None,
                     None,
                 );
@@ -726,7 +755,7 @@ impl Layout<'_> {
                 let styled = style.is_some();
                 let style = style.as_ref().unwrap_or(&plain);
                 let size = style.size.unwrap_or(13).clamp(6, 96);
-                let face = face_of(style);
+                let face = self.face_of(style);
                 let ts = self.text_style(style);
                 let boxed = style.background.is_some() || style.border.is_some();
                 let pad = control_pad(style, false);
@@ -768,7 +797,8 @@ impl Layout<'_> {
                     body.max(lh),
                 );
                 let ts = self.with_lang(ts);
-                let primitive = text_primitive(style, &lines.join("\n"), size, colour, ts);
+                let primitive =
+                    text_primitive(self.page_face, style, &lines.join("\n"), size, colour, ts);
                 if boxed {
                     let edge = style.border.as_deref().and_then(parse_color);
                     self.node(
@@ -798,7 +828,13 @@ impl Layout<'_> {
                 self.node(
                     id,
                     Rect::new(x, y, w, 30),
-                    ui_text(text, size, self.ink, TextStyle::new(true, false, self.lang)),
+                    ui_text(
+                        self.page_face,
+                        text,
+                        size,
+                        self.ink,
+                        TextStyle::new(true, false, self.lang),
+                    ),
                     Some(Semantic {
                         role: "heading".into(),
                         label: text.clone(),
@@ -809,13 +845,14 @@ impl Layout<'_> {
                 38
             }
             PageElement::Text { text, .. } => {
-                let lines = metrics::wrap(FACE, false, text, 13, w);
+                let lines = metrics::wrap(self.face, false, text, 13, w);
                 let lines: Vec<&str> = lines.iter().map(|l| l.trim_end()).collect();
                 let h = lines.len() as u32 * 17 + 9;
                 self.node(
                     id,
                     Rect::new(x, y, w, h),
                     ui_text(
+                        self.page_face,
                         &lines.join("\n"),
                         13,
                         self.ink,
@@ -983,7 +1020,7 @@ impl Layout<'_> {
             PageElement::Styled { text, style, .. } => {
                 let size = style.size.unwrap_or(13).clamp(6, 96);
                 let bold = self.text_style(style);
-                let face = face_of(style);
+                let face = self.face_of(style);
                 let pad = style.padding.unwrap_or(0).min(64);
                 let colour = self.ink_of(style);
                 let w = style.width.map_or(w, |v| v.min(w));
@@ -1017,7 +1054,14 @@ impl Layout<'_> {
                     self.node(
                         id,
                         Rect::new(x + pad as i32, y + pad as i32, inner, body.max(lh)),
-                        text_primitive(style, &lines.join("\n"), size, colour, bold),
+                        text_primitive(
+                            self.page_face,
+                            style,
+                            &lines.join("\n"),
+                            size,
+                            colour,
+                            bold,
+                        ),
                         Some(semantic),
                         None,
                     );
@@ -1032,7 +1076,8 @@ impl Layout<'_> {
                             tw.max(1),
                             lh,
                         );
-                        let primitive = text_primitive(style, line, size, colour, bold);
+                        let primitive =
+                            text_primitive(self.page_face, style, line, size, colour, bold);
                         if i == 0 {
                             self.node(id, r, primitive, Some(semantic.clone()), None);
                         } else {
@@ -1108,8 +1153,8 @@ impl Layout<'_> {
                     let colour = self.ink_of(style);
                     // Small tiles (avatars) keep a 2 px margin so initials fit.
                     let room = if w >= 64 { w - 16 } else { w.saturating_sub(4) };
-                    let shown = metrics::ellipsize(FACE, true, label, size, room);
-                    let tw = metrics::text_width(FACE, true, &shown, size);
+                    let shown = metrics::ellipsize(self.face, true, label, size, room);
+                    let tw = metrics::text_width(self.face, true, &shown, size);
                     let lh = line_height(size);
                     self.caption(
                         Rect::new(
@@ -1128,7 +1173,7 @@ impl Layout<'_> {
             }
             PageElement::Badge { text, style, .. } => {
                 let size = style.size.unwrap_or(10).clamp(6, 96);
-                let tw = metrics::text_width(FACE, true, text, size);
+                let tw = metrics::text_width(self.face, true, text, size);
                 // Padding grows the pill around its text; without any it keeps the
                 // compact 20 px count-badge shape.
                 let pad = style.padding.unwrap_or(0).min(64);
@@ -1691,6 +1736,11 @@ pub(super) fn layout_scrolled(
     );
     let ink = colour(|t| t.ink.as_ref(), INK);
     let surface = colour(|t| t.surface.as_ref(), Color::WHITE);
+    // A theme's `font` is a CSS family list; every text on the page is set in the
+    // bundled face it resolves to and measured with that face's own advances.
+    let page_face = theme
+        .and_then(|t| t.font.as_deref())
+        .map(cw_scene::fonts::resolve_family);
     let mut p = Layout {
         scene: Scene::new(width, height),
         fields,
@@ -1709,6 +1759,8 @@ pub(super) fn layout_scrolled(
         surface,
         dry: false,
         lang: page.lang.as_deref().map_or(Lang::Auto, Lang::from_tag),
+        face: page_face.unwrap_or(FACE),
+        page_face,
     };
     p.scene.background = colour(|t| t.background.as_ref(), Color::rgb(248, 250, 253));
     let special = !themed
@@ -2314,6 +2366,110 @@ mod tests {
             1
         );
         assert_eq!(scene, self::scene(&page, 800));
+    }
+    /// A theme's `font` resolves through `cw_scene::fonts` and every text node on
+    /// the page carries that face — headings, body text, links, buttons, captions —
+    /// measured with its own advances; a page without one is laid out as before,
+    /// with no typeface on any node.
+    #[test]
+    fn a_theme_font_sets_every_text_node_in_the_resolved_face() {
+        let build = |font: Option<&str>| {
+            let mut page = Page::new("Typeset");
+            page.theme = font.map(|f| PageTheme {
+                font: Some(f.into()),
+                ..PageTheme::default()
+            });
+            page.elements = vec![
+                PageElement::Heading {
+                    id: "h".into(),
+                    text: "Weights and measures".into(),
+                    level: 1,
+                },
+                PageElement::Text {
+                    id: "t".into(),
+                    text: "Body copy that wraps across a few lines of the page ".repeat(3),
+                },
+                link("l", "A link"),
+                PageElement::Button {
+                    id: "b".into(),
+                    text: "Press".into(),
+                    action: action("/press"),
+                    style: None,
+                },
+                PageElement::Styled {
+                    id: "s".into(),
+                    text: "Styled copy".into(),
+                    style: Style::default().align("center"),
+                },
+                PageElement::Styled {
+                    id: "m".into(),
+                    text: "code span".into(),
+                    style: Style {
+                        mono: Some(true),
+                        ..Style::default()
+                    },
+                },
+            ];
+            page.validate().unwrap();
+            scene(&page, 640)
+        };
+        let faces = |scene: &Scene| -> Vec<Option<Typeface>> {
+            scene
+                .nodes
+                .iter()
+                .filter(|n| n.painted_text().is_some())
+                .map(|n| n.primitive.typeface())
+                .collect()
+        };
+        for (font, face) in [
+            ("Roboto, sans-serif", Typeface::Roboto),
+            ("Times New Roman", Typeface::Tinos),
+            ("\"Helvetica Neue\", Arial, sans-serif", Typeface::Arimo),
+        ] {
+            let themed = build(Some(font));
+            let seen = faces(&themed);
+            assert!(seen.len() >= 6, "{font}: {seen:?}");
+            for (n, t) in themed
+                .nodes
+                .iter()
+                .filter(|n| n.painted_text().is_some())
+                .zip(&seen)
+            {
+                if matches!(n.primitive, Primitive::Text { .. }) {
+                    assert_eq!(*t, None, "{font}: the monospace span keeps the grid face");
+                } else {
+                    assert_eq!(*t, Some(face), "{font}: {:?}", n.semantic);
+                }
+            }
+            // Body text wraps by the resolved face's own advances, so a wider or
+            // narrower family makes different lines.
+            let body = node_by_label(
+                &themed,
+                &"Body copy that wraps across a few lines of the page ".repeat(3),
+            );
+            let shown = body.painted_text().unwrap();
+            let expected = metrics::wrap(
+                face,
+                false,
+                shown.replace('\n', " ").trim_end(),
+                13,
+                body.bounds.width,
+            );
+            assert_eq!(
+                shown.split('\n').map(str::trim_end).collect::<Vec<_>>(),
+                expected.iter().map(|l| l.trim_end()).collect::<Vec<_>>(),
+                "{font}"
+            );
+            assert_eq!(themed, build(Some(font)));
+        }
+        let plain = build(None);
+        assert!(faces(&plain).iter().all(Option::is_none));
+        assert!(!serde_json::to_string(&plain).unwrap().contains("typeface"));
+        // Centred text is placed at its measured width, so the face moves it.
+        assert_ne!(
+            node_by_label(&build(Some("Times New Roman")), "Styled copy").bounds,
+            node_by_label(&build(Some("Poppins")), "Styled copy").bounds
+        );
     }
     fn node_by_label<'a>(scene: &'a Scene, label: &str) -> &'a Node {
         scene

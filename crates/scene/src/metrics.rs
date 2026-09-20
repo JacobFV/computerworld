@@ -3,6 +3,7 @@
 //! measure, centre, wrap and truncate text without rasterizing or consulting a host.
 use crate::metrics_data as data;
 use crate::metrics_italic as italic;
+use crate::metrics_web as web;
 use crate::text;
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +11,15 @@ use serde::{Deserialize, Serialize};
 /// the terminal's DejaVu Sans Mono, which has one weight and no slant: it measures on
 /// the fixed grid `Primitive::Text` paints on ([`crate::text_cell`]), so a code span
 /// laid out with it is exactly as wide as it is drawn.
+///
+/// `Inter`, `OpenSans`, `Ubuntu` and `Roboto` are the platform UI faces (Latin
+/// subsets). The rest are the web faces: families pages ask for by name, and
+/// metric-compatible stand-ins for the ones that cannot be bundled — Arimo for
+/// Arial and Helvetica, Tinos for Times New Roman, Cousine for Courier New, Gelasio
+/// for Georgia, Carlito for Calibri, Caladea for Cambria. Each has regular, bold,
+/// italic and bold italic faces covering Latin, Greek and Cyrillic (whatever the
+/// family designs of the DejaVu coverage set); [`crate::fonts::resolve_family`] maps
+/// a CSS `font-family` list onto one of them.
 #[derive(
     Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
 )]
@@ -22,6 +32,20 @@ pub enum Typeface {
     Ubuntu,
     Roboto,
     Mono,
+    Arimo,
+    Tinos,
+    Cousine,
+    Gelasio,
+    Carlito,
+    Caladea,
+    Lato,
+    SourceSans,
+    SourceSerif,
+    Poppins,
+    Montserrat,
+    Playfair,
+    #[serde(rename = "jetbrains_mono")]
+    JetBrainsMono,
 }
 
 /// The language a run of text is written in, as far as glyph selection cares: it
@@ -106,10 +130,115 @@ impl From<bool> for Style {
 }
 
 impl Typeface {
+    /// Every bundled family, in declaration order.
+    pub const ALL: [Typeface; 19] = [
+        Self::DejaVu,
+        Self::Inter,
+        Self::OpenSans,
+        Self::Ubuntu,
+        Self::Roboto,
+        Self::Mono,
+        Self::Arimo,
+        Self::Tinos,
+        Self::Cousine,
+        Self::Gelasio,
+        Self::Carlito,
+        Self::Caladea,
+        Self::Lato,
+        Self::SourceSans,
+        Self::SourceSerif,
+        Self::Poppins,
+        Self::Montserrat,
+        Self::Playfair,
+        Self::JetBrainsMono,
+    ];
+    /// The web faces: every family with four faces (regular, bold, italic, bold
+    /// italic) and Latin, Greek and Cyrillic coverage, in declaration order.
+    pub const WEB: [Typeface; 13] = [
+        Self::Arimo,
+        Self::Tinos,
+        Self::Cousine,
+        Self::Gelasio,
+        Self::Carlito,
+        Self::Caladea,
+        Self::Lato,
+        Self::SourceSans,
+        Self::SourceSerif,
+        Self::Poppins,
+        Self::Montserrat,
+        Self::Playfair,
+        Self::JetBrainsMono,
+    ];
     pub fn is_default(&self) -> bool {
         *self == Self::DejaVu
     }
+    /// The family's own name, as a stylesheet would write it in `font-family`.
+    pub fn family_name(self) -> &'static str {
+        match self {
+            Self::DejaVu => "DejaVu Sans",
+            Self::Inter => "Inter",
+            Self::OpenSans => "Open Sans",
+            Self::Ubuntu => "Ubuntu",
+            Self::Roboto => "Roboto",
+            Self::Mono => "DejaVu Sans Mono",
+            Self::Arimo => "Arimo",
+            Self::Tinos => "Tinos",
+            Self::Cousine => "Cousine",
+            Self::Gelasio => "Gelasio",
+            Self::Carlito => "Carlito",
+            Self::Caladea => "Caladea",
+            Self::Lato => "Lato",
+            Self::SourceSans => "Source Sans 3",
+            Self::SourceSerif => "Source Serif 4",
+            Self::Poppins => "Poppins",
+            Self::Montserrat => "Montserrat",
+            Self::Playfair => "Playfair Display",
+            Self::JetBrainsMono => "JetBrains Mono",
+        }
+    }
+    /// Whether the family is fixed pitch.
+    pub fn is_monospace(self) -> bool {
+        matches!(self, Self::Mono | Self::Cousine | Self::JetBrainsMono)
+    }
+    /// A web family's four faces by `bold + 2 * italic`, `None` where the family has
+    /// no such file; `None` for the platform and DejaVu families.
+    fn web_faces(self) -> Option<&'static [web::Face; 4]> {
+        Some(match self {
+            Self::Arimo => &web::ARIMO,
+            Self::Tinos => &web::TINOS,
+            Self::Cousine => &web::COUSINE,
+            Self::Gelasio => &web::GELASIO,
+            Self::Carlito => &web::CARLITO,
+            Self::Caladea => &web::CALADEA,
+            Self::Lato => &web::LATO,
+            Self::SourceSans => &web::SOURCESANS,
+            Self::SourceSerif => &web::SOURCESERIF,
+            Self::Poppins => &web::POPPINS,
+            Self::Montserrat => &web::MONTSERRAT,
+            Self::Playfair => &web::PLAYFAIR,
+            Self::JetBrainsMono => &web::JETBRAINSMONO,
+            _ => return None,
+        })
+    }
+    /// Which of a web family's faces serves `bold`/`italic`: the face itself when the
+    /// family has it, else the nearest it does have, in the order the renderer
+    /// synthesises from — the upright of the same weight (synthetic oblique), the
+    /// regular of the same slant (synthetic bold), then the regular. Returns the
+    /// index `bold + 2 * italic` of the face used, so measurement and drawing agree.
+    pub fn web_face_index(self, bold: bool, italic: bool) -> Option<usize> {
+        let faces = self.web_faces()?;
+        let wanted = usize::from(bold) + 2 * usize::from(italic);
+        [wanted, wanted & !2, wanted & !1, 0]
+            .into_iter()
+            .find(|&i| faces[i].is_some())
+    }
     fn table(self, bold: bool, slanted: bool) -> (&'static [(u32, u16)], u32) {
+        if let Some(faces) = self.web_faces() {
+            let i = self
+                .web_face_index(bold, slanted)
+                .expect("every web family has a regular face");
+            return faces[i].expect("web_face_index returns a present face");
+        }
         match (self, bold, slanted) {
             // One face serves every weight and slant of the monospace family.
             (Self::Mono, _, _) => (data::DEJAVU_MONO, data::DEJAVU_MONO_UPEM),
@@ -146,6 +275,24 @@ impl Typeface {
             (Self::Roboto, true, true) => {
                 (italic::ROBOTO_BOLD_ITALIC, italic::ROBOTO_BOLD_ITALIC_UPEM)
             }
+            // Served by `web_faces` above.
+            (
+                Self::Arimo
+                | Self::Tinos
+                | Self::Cousine
+                | Self::Gelasio
+                | Self::Carlito
+                | Self::Caladea
+                | Self::Lato
+                | Self::SourceSans
+                | Self::SourceSerif
+                | Self::Poppins
+                | Self::Montserrat
+                | Self::Playfair
+                | Self::JetBrainsMono,
+                _,
+                _,
+            ) => unreachable!("web families are table-driven through web_faces"),
         }
     }
     /// Whether the family itself (not the DejaVu fallback) supplies this character.
@@ -401,5 +548,63 @@ mod tests {
             lines.iter().all(|l| l.trim_end().chars().count() <= 10),
             "{lines:?}"
         );
+    }
+    #[test]
+    fn web_families_have_four_faces_and_measure_in_their_own_advances() {
+        for t in Typeface::WEB {
+            for (bold, italic) in [(false, false), (true, false), (false, true), (true, true)] {
+                assert_eq!(
+                    t.web_face_index(bold, italic),
+                    Some(usize::from(bold) + 2 * usize::from(italic)),
+                    "{t:?} bold {bold} italic {italic}"
+                );
+                let style = Style::new(bold, italic, Lang::Auto);
+                assert_eq!(table_face(t, style, 'a'), Some((t, italic)), "{t:?}");
+                assert!(t.covers_style(style, 'é'), "{t:?}");
+                assert!(!t.covers_style(style, '語'), "{t:?}");
+            }
+            // Bold is a real face, not the regular re-measured (italics may share the
+            // upright's advances by design, as Arimo's does, like Arial's; a monospace
+            // family's bold is fixed pitch at the same width).
+            let sample = "Hamburgefonstiv 0123";
+            if !t.is_monospace() {
+                assert_ne!(
+                    text_width(t, false, sample, 16),
+                    text_width(t, true, sample, 16),
+                    "{t:?} bold"
+                );
+            }
+            // Greek and Cyrillic come from the family where it designs them; Gelasio,
+            // Caladea and Poppins design neither and Playfair Display no Greek, and
+            // those fall back to DejaVu like any other gap.
+            let designs_greek = !matches!(
+                t,
+                Typeface::Gelasio | Typeface::Caladea | Typeface::Poppins | Typeface::Playfair
+            );
+            let designs_cyrillic =
+                !matches!(t, Typeface::Gelasio | Typeface::Caladea | Typeface::Poppins);
+            assert_eq!(t.covers(false, 'λ'), designs_greek, "{t:?} Greek");
+            assert_eq!(t.covers(false, 'ж'), designs_cyrillic, "{t:?} Cyrillic");
+            assert_eq!(
+                table_face(t, Style::default(), 'λ'),
+                Some((if designs_greek { t } else { Typeface::DejaVu }, false))
+            );
+        }
+        // Distinct families measure distinctly; the monospace ones are fixed pitch.
+        assert_ne!(
+            text_width(Typeface::Arimo, false, "Settings", 13),
+            text_width(Typeface::Tinos, false, "Settings", 13)
+        );
+        for t in [Typeface::Cousine, Typeface::JetBrainsMono] {
+            assert_eq!(
+                advance(t, false, 'i', 14),
+                advance(t, false, 'W', 14),
+                "{t:?}"
+            );
+        }
+        assert_eq!(Typeface::ALL.len(), 6 + Typeface::WEB.len());
+        for t in Typeface::ALL {
+            assert!(!t.family_name().is_empty());
+        }
     }
 }

@@ -36,7 +36,14 @@ views by reading a service store directly from the browser.
 
 Pages that need real site structure add `Row`, `Grid`, `Card`, `Styled`,
 `Thumbnail`, `Icon`, `Badge`, `Divider` and `Spacer`, plus an optional page `theme`
-(`accent`, `background`, `surface`, `ink`, `muted`, `content_width`). `Style`
+(`accent`, `background`, `surface`, `ink`, `muted`, `content_width`, `font`). `font` is a
+CSS `font-family` list (`"Roboto, sans-serif"`, `"Times New Roman"`, at most 256
+characters) resolved by `cw_scene::fonts::resolve_family` to a bundled face — Arimo for
+Arial and Helvetica, Tinos for Times New Roman, Cousine for Courier New, Gelasio for
+Georgia, Carlito for Calibri, Caladea for Cambria, and Lato, Source Sans 3, Source Serif
+4, Poppins, Montserrat, Playfair Display and JetBrains Mono as themselves, plus the
+generic families — in which every text on the page is set and measured; without it the
+page uses the platform's UI face. `Style`
 carries `size`, `weight`, `color`, `background`, `border`, `radius`, `padding`,
 `align`, `width`, `height`, `flex`, `one_line`, `scroll_x`, `pin`, `justify` and `mono`;
 colours are `#rrggbb` or `#rrggbbaa` and radius/padding are capped at 64 by
