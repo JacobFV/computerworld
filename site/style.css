@@ -85,6 +85,26 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
 .slide.active { opacity: 1; cursor: default; transform: translate(calc(-50% + var(--x, 0px)), -50%); }
 .slide.far { visibility: hidden; transition: none; }
 .track.still, .track.still .slide { transition: none; }
+
+/* A shallow arc. The strip lies on the face of a very wide cylinder: a slide that stands
+   off centre is set back into the page (`--z`) and turned away from the viewer (`--rot`),
+   both written by app.js beside `--x`, so the running machine is square on at the front of
+   the curve and its neighbours lean away at the edges. The setting-back is what keeps the
+   turn from swinging them out of the window: on a curve they sit a little closer together
+   than they would in a straight line, exactly as much as the turn takes off their width.
+   It rides the transform transition above, so a slide turns as it slides. A browser with
+   no 3D transforms keeps the flat row, and so does anyone who asked for less motion. */
+@supports (perspective: 1px) {
+  .track { perspective: clamp(700px, 130vw, 2200px); }
+  .slide {
+    transform: translate(calc(-50% + var(--x, 0px)), -50%) translateZ(var(--z, 0px))
+               rotateY(var(--rot, 0deg)) scale(.94);
+  }
+  .slide.active {
+    transform: translate(calc(-50% + var(--x, 0px)), -50%) translateZ(var(--z, 0px))
+               rotateY(var(--rot, 0deg));
+  }
+}
 .tile {
   position: relative; flex: none; height: var(--h-desk); aspect-ratio: 1280 / 800;
   border-radius: var(--radius); overflow: hidden; background: #000;
@@ -173,7 +193,14 @@ body > footer {
 }
 body > footer span { display: block; padding-top: 1.4rem; border-top: 1px solid var(--line); }
 
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  /* Flat again, to the pixel: no depth to the strip, and the plain transform back, so
+     what is drawn is the straight row above and not a curve flattened to nothing. */
+  .track { perspective: none; }
+  .slide { transform: translate(calc(-50% + var(--x, 0px)), -50%) scale(.94) !important; }
+  .slide.active { transform: translate(calc(-50% + var(--x, 0px)), -50%) !important; }
+}
 @media (max-width: 720px) {
   .stage { --w-desk: 82vw; --h-phone: min(640px, 150vw, 100vh - 12rem); }
   .track { margin-bottom: 4.5rem; }

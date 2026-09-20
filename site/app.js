@@ -65,6 +65,17 @@ const ready = (async () => {
 
 let current = -1;
 
+// The strip lies on the face of a very wide cylinder: how far a slide stands off centre is
+// how far round the curve it has gone, so it is both turned away from the viewer and set
+// that much further back, and the machine in the middle is square on at the front. `ARC`
+// is the turn one place out; past that the angle eases towards a limit instead of piling
+// up, which keeps the far edges an arc rather than a wall. style.css does the drawing,
+// and drops all of it for a browser without 3D transforms or a reader who asked for less
+// motion — the numbers below are still written, and simply go unread.
+const ARC = 13 * Math.PI / 180;          // the turn at the neighbouring machine, in radians
+const EASE = 1 - Math.exp(-1);           // so that one place out lands exactly on ARC
+const turn = places => ARC * Math.sign(places) * (1 - Math.exp(-Math.abs(places))) / EASE;
+
 /** Lay the strip out around the current machine. It is a ring: each slide sits as many
  * places to the left or right as is shortest, so there is always a neighbour on both sides,
  * and one that changes sides does so out of sight. */
@@ -73,6 +84,10 @@ function arrange() {
   const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
   const width = slides.map(slide => slide.offsetWidth);
   const at = index => (index % count + count) % count;
+  // What one place out is worth in pixels here, so the same arc comes out of a phone's
+  // narrow strip as out of a wide window. Machines differ in width, so take the middle
+  // one and the average of the two beside it.
+  const step = (width[current] + (width[at(current + 1)] + width[at(current - 1)]) / 2) / 2 + gap;
   slides.forEach((slide, index) => {
     let places = at(index - current);
     if (places > count / 2) places -= count;
@@ -82,6 +97,14 @@ function arrange() {
     const far = Math.abs(places) > 3;
     if (far !== slide.classList.contains('far')) slide.classList.toggle('far', far);
     slide.style.setProperty('--x', `${Math.round(x)}px`);
+    // Off the measured position, not the place count: a slide half way to the next one is
+    // half way round, and the turn rides the same transition the slide's travel does. The
+    // radius is whatever puts the neighbour at ARC; the depth is how far round that curve
+    // has carried this slide back, which is what stops the turn shouldering the strip's
+    // edges out of the window.
+    const angle = step > 0 ? turn(x / step) : 0;
+    slide.style.setProperty('--rot', `${(angle * 180 / Math.PI).toFixed(2)}deg`);
+    slide.style.setProperty('--z', `${(-(step / ARC) * (1 - Math.cos(angle))).toFixed(1)}px`);
   });
   track.style.height = `${slides[current].offsetHeight}px`;
 }
