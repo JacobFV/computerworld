@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html><head><title>Tabs, accordion and menu</title>
+<style>
+  body { margin: 0; font: 16px/20px sans-serif }
+  .tabs button { padding: 4px 8px } .tabs button.active { font-weight: bold }
+  .panel { display: none; height: 40px } .panel.active { display: block }
+  .acc .body { display: none } .acc.open .body { display: block; height: 30px }
+  .menu ul { display: none; position: absolute; top: 20px; left: 0 } .menu:hover ul, .menu.open ul { display: block }
+  .menu { position: relative; height: 20px; width: 80px }
+</style></head>
+<body>
+<div class="tabs" id="tabs">
+  <button data-tab="one" class="active">One</button><button data-tab="two">Two</button><button data-tab="three">Three</button>
+</div>
+<div class="panel active" id="one">Panel one</div>
+<div class="panel" id="two">Panel two</div>
+<div class="panel" id="three">Panel three</div>
+<div class="acc" id="acc1"><h3 class="head">Head 1</h3><div class="body">Body 1</div></div>
+<div class="acc" id="acc2"><h3 class="head">Head 2</h3><div class="body">Body 2</div></div>
+<div class="menu" id="menu"><span id="menu-label">Menu</span><ul id="menu-list"><li><a href="/a" id="link-a">A</a></li><li><a href="/b">B</a></li></ul></div>
+<p id="status"></p>
+<script>
+  const status = document.getElementById('status');
+  document.getElementById('tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('active', x === b);
+    for (const p of document.querySelectorAll('.panel')) p.classList.toggle('active', p.id === b.dataset.tab);
+    status.textContent = 'tab:' + b.dataset.tab + ' visible:' + document.getElementById(b.dataset.tab).offsetHeight;
+  });
+  for (const h of document.querySelectorAll('.acc .head')) {
+    h.addEventListener('click', () => {
+      const acc = h.parentNode;
+      const open = acc.classList.toggle('open');
+      status.textContent = acc.id + (open ? ' open ' : ' closed ') + acc.querySelector('.body').getBoundingClientRect().height;
+    });
+  }
+  const menu = document.getElementById('menu');
+  menu.addEventListener('mouseenter', () => { menu.classList.add('open'); status.textContent = 'menu open ' + getComputedStyle(document.getElementById('menu-list')).display; });
+  menu.addEventListener('mouseleave', () => { menu.classList.remove('open'); status.textContent = 'menu closed'; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { menu.classList.remove('open'); status.textContent = 'escaped'; } });
+  window.addEventListener('load', () => { status.textContent = 'loaded ' + document.querySelectorAll('.panel').length; });
+</script>
+</body></html>

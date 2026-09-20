@@ -856,4 +856,63 @@ pub enum Kind {
     },
     /// Iterator helper / generic wrapper objects created by natives.
     Internal(Vec<Value>),
+    /// An embedder's host object (a DOM node, a live collection, a style
+    /// declaration): ordinary properties plus the exotic named and indexed
+    /// properties its `HostHooks` answer. `data` is the embedder's state (a node
+    /// id, a query); the prototype chain is ordinary.
+    Host(Box<HostData>),
+}
+
+/// The exotic behaviour of a `Kind::Host` object: each hook is consulted before
+/// the ordinary property map and answers `None` to fall through to it.
+pub struct HostHooks {
+    /// Class name for inspection and `Object.prototype.toString`.
+    pub class: &'static str,
+    /// [[GetOwnProperty]] for the exotic keys.
+    pub get: fn(&mut crate::vm::Vm, &Obj, &Key) -> JsResult<Option<Value>>,
+    /// [[Set]] for the exotic keys: `Some(ok)` when handled.
+    pub set: fn(&mut crate::vm::Vm, &Obj, &Key, &Value) -> JsResult<Option<bool>>,
+    /// [[Delete]] for the exotic keys: `Some(ok)` when handled.
+    pub delete: fn(&mut crate::vm::Vm, &Obj, &Key) -> JsResult<Option<bool>>,
+    /// The exotic own keys (listed before the ordinary ones), for enumeration.
+    pub keys: fn(&mut crate::vm::Vm, &Obj) -> JsResult<Vec<Key>>,
+}
+
+pub struct HostData {
+    pub hooks: &'static HostHooks,
+    pub data: Vec<Value>,
+}
+
+impl Obj {
+    /// The first host slot as a number (the usual node or handle id).
+    pub fn host_id(&self) -> Option<u32> {
+        match &self.borrow().kind {
+            Kind::Host(h) => match h.data.first() {
+                Some(Value::Num(n)) => Some(*n as u32),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+    /// A clone of a host slot.
+    pub fn host_slot(&self, i: usize) -> Option<Value> {
+        match &self.borrow().kind {
+            Kind::Host(h) => h.data.get(i).cloned(),
+            _ => None,
+        }
+    }
+    pub fn set_host_slot(&self, i: usize, v: Value) {
+        if let Kind::Host(h) = &mut self.borrow_mut().kind {
+            if h.data.len() <= i {
+                h.data.resize(i + 1, Value::Undefined);
+            }
+            h.data[i] = v;
+        }
+    }
+    pub fn host_hooks(&self) -> Option<&'static HostHooks> {
+        match &self.borrow().kind {
+            Kind::Host(h) => Some(h.hooks),
+            _ => None,
+        }
+    }
 }

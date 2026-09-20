@@ -243,8 +243,34 @@ fn same_attrs(a: &[Attribute], b: &[Attribute]) -> bool {
     a.len() == b.len() && a.iter().all(|x| b.iter().any(|y| x.name == y.name && x.value == y.value))
 }
 
+/// The document a tree builder writes into: borrowed for a plain parse, owned while
+/// a script-aware parse pauses at `</script>` and lends it to the script layer.
+pub enum DocRef<'a> {
+    Borrowed(&'a mut Document),
+    Owned(Document),
+}
+
+impl std::ops::Deref for DocRef<'_> {
+    type Target = Document;
+    fn deref(&self) -> &Document {
+        match self {
+            DocRef::Borrowed(d) => d,
+            DocRef::Owned(d) => d,
+        }
+    }
+}
+
+impl std::ops::DerefMut for DocRef<'_> {
+    fn deref_mut(&mut self) -> &mut Document {
+        match self {
+            DocRef::Borrowed(d) => d,
+            DocRef::Owned(d) => d,
+        }
+    }
+}
+
 pub struct TreeBuilder<'a> {
-    doc: &'a mut Document,
+    doc: DocRef<'a>,
     tok: Tokenizer,
     mode: Mode,
     original_mode: Mode,
@@ -264,10 +290,22 @@ pub struct TreeBuilder<'a> {
     ignore_lf: bool,
     scripting: bool,
     stopped: bool,
+    /// Pause `step` after a `</script>` end tag so the script layer can run it.
+    pub pause_on_script: bool,
+    pending_script: Option<NodeId>,
 }
 
 impl<'a> TreeBuilder<'a> {
     pub fn new(doc: &'a mut Document, tok: Tokenizer, scripting: bool) -> TreeBuilder<'a> {
+        Self::with_doc(DocRef::Borrowed(doc), tok, scripting)
+    }
+
+    /// A builder that owns its document (see `html::Parser`).
+    pub fn owned(doc: Document, tok: Tokenizer, scripting: bool) -> TreeBuilder<'static> {
+        TreeBuilder::with_doc(DocRef::Owned(doc), tok, scripting)
+    }
+
+    fn with_doc(doc: DocRef<'a>, tok: Tokenizer, scripting: bool) -> TreeBuilder<'a> {
         TreeBuilder {
             doc,
             tok,
@@ -287,7 +325,27 @@ impl<'a> TreeBuilder<'a> {
             ignore_lf: false,
             scripting,
             stopped: false,
+            pause_on_script: false,
+            pending_script: None,
         }
+    }
+
+    pub fn document(&mut self) -> &mut Document {
+        &mut self.doc
+    }
+
+    /// The owned document of a builder made with `owned`.
+    pub fn into_document(self) -> Option<Document> {
+        match self.doc {
+            DocRef::Owned(d) => Some(d),
+            DocRef::Borrowed(_) => None,
+        }
+    }
+
+    /// Inserts text into the tokenizer's input at the current position: what
+    /// `document.write` does while the parser is paused at a script.
+    pub fn insert_input(&mut self, s: &str) {
+        self.tok.insert(s);
     }
 
     /// Sets up the fragment case (§13.4) for `context`; the parsed nodes are appended
@@ -324,6 +382,13 @@ impl<'a> TreeBuilder<'a> {
     }
 
     pub fn run(&mut self) {
+        while self.parse_step().is_some() {}
+    }
+
+    /// Parses until the end of the input, or (with `pause_on_script`) until a
+    /// `<script>` element's end tag has been processed, returning that element so
+    /// the caller can run it before parsing resumes.
+    pub fn parse_step(&mut self) -> Option<NodeId> {
         while !self.stopped {
             self.tok.allow_cdata = self.adjusted_current_is_foreign();
             let ignore_lf = std::mem::take(&mut self.ignore_lf);
@@ -343,9 +408,13 @@ impl<'a> TreeBuilder<'a> {
                 Token::EndTag(t) => self.dispatch(Tok::End(t)),
                 Token::Comment(c) => self.dispatch(Tok::Comment(c)),
             }
+            if let Some(script) = self.pending_script.take() {
+                return Some(script);
+            }
         }
         self.open.clear();
         self.update_selectedcontent();
+        None
     }
 
     /// The customizable `<select>` model: a `<selectedcontent>` inside a select mirrors
@@ -1751,8 +1820,15 @@ impl<'a> TreeBuilder<'a> {
                 Some(Tok::Eof)
             }
             Tok::End(_) => {
-                self.open.pop();
+                let popped = self.open.pop();
                 self.mode = self.original_mode;
+                if self.pause_on_script {
+                    if let Some(el) = popped {
+                        if self.is_html(el, "script") {
+                            self.pending_script = Some(el);
+                        }
+                    }
+                }
                 None
             }
             _ => None,

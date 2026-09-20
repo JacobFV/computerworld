@@ -162,6 +162,10 @@ pub struct Compiler<'a> {
     pub completion: bool,
     /// Outermost destructuring context: (pattern position, source text).
     pat_ctx: Option<(Pos, Option<String>)>,
+    /// Classic browser scripts: top-level `var`, `let`, `const`, `class` and
+    /// function declarations become properties of the global object, shared with
+    /// every other script of the page (no TDZ for the lexical ones).
+    pub global_scope: bool,
 }
 
 type CResult<T> = Result<T, SyntaxErr>;
@@ -267,6 +271,7 @@ impl<'a> Compiler<'a> {
             exports: vec![],
             completion: false,
             pat_ctx: None,
+            global_scope: false,
         }
     }
 
@@ -637,7 +642,12 @@ impl<'a> Compiler<'a> {
                 _ => {}
             }
         }
+        let global = fn_top && self.at_global_scope();
         for (n, p, k) in lex {
+            if global {
+                self.hoist_global(&n);
+                continue;
+            }
             if fn_top {
                 // Conflict with params / vars in the function scope.
                 if let Some(b) = self.f().scopes.last().unwrap().find(&n) {
@@ -656,6 +666,17 @@ impl<'a> Compiler<'a> {
         // Declare every function binding before compiling any body, so
         // functions can reference ones declared later in the block.
         let mut slots = vec![];
+        if global {
+            for f in &funcs {
+                let name = f.name.clone().unwrap();
+                self.hoist_global(&name);
+                let idx = self.compile_function(f, Some(name.as_ref()))?;
+                self.emit(Op::Closure(idx));
+                let c = self.str_const(&name);
+                self.emit(Op::StoreGlobal(c));
+            }
+            return Ok(());
+        }
         for f in &funcs {
             let name = f.name.clone().unwrap();
             let slot = if fn_top {
@@ -730,12 +751,40 @@ impl<'a> Compiler<'a> {
         self.compile_program(prog, &[], false)
     }
 
+    /// Whether declarations at the current level go on the global object.
+    fn at_global_scope(&mut self) -> bool {
+        self.global_scope && self.f().is_top && self.f().scopes.len() == 1
+    }
+
+    /// Defines a global property as `undefined` unless it already exists (the
+    /// hoisting of a top-level declaration in a browser script).
+    fn hoist_global(&mut self, name: &str) {
+        let c = self.str_const(name);
+        let undef = self.str_const("undefined");
+        let done = self.new_label();
+        self.emit(Op::TypeofGlobal(c));
+        self.emit(Op::Const(undef));
+        self.emit(Op::StrictEq);
+        self.emit_jump(Op::JumpIfFalse(done));
+        let g = self.str_const("globalThis");
+        self.emit(Op::LoadGlobal(g));
+        self.emit(Op::Undef);
+        self.emit(Op::SetProp(c));
+        self.emit(Op::Pop);
+        self.bind(done);
+    }
+
     fn compile_body(&mut self, body: &[Stmt]) -> CResult<()> {
         let strict = self.f().strict;
         let mut vars = vec![];
         self.collect_vars(body, &mut vars, strict, true);
+        let global = self.at_global_scope();
         for (n, p) in vars {
-            self.declare_var(&n, p)?;
+            if global {
+                self.hoist_global(&n);
+            } else {
+                self.declare_var(&n, p)?;
+            }
         }
         self.hoist_block(body, true)?;
         for s in body {

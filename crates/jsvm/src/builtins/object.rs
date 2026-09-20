@@ -521,6 +521,7 @@ pub fn object_to_string(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
             Kind::Date(_) => "Date",
             Kind::RegExp(_) => "RegExp",
             Kind::Arguments => "Arguments",
+            Kind::Host(h) => h.hooks.class,
             _ => "Object",
         }
     };

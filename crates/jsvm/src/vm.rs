@@ -349,10 +349,34 @@ pub struct Vm<'h> {
     pub completion: Value,
     /// State native modules hand out by index (zlib streams, worker queues...).
     pub handles: Vec<Option<Box<dyn std::any::Any>>>,
+    /// The embedder's state (a browser realm's document), reachable from its
+    /// native functions through `embedder::<T>()`.
+    pub embedder: Option<Rc<dyn std::any::Any>>,
 }
 
 impl<'h> Vm<'h> {
     // ------------------------------------------------------------ objects
+    /// The embedder state installed in `embedder`, downcast.
+    pub fn embedder<T: 'static>(&self) -> Option<Rc<T>> {
+        let e = self.embedder.clone()?;
+        Rc::downcast::<T>(e).ok()
+    }
+    /// A host object with the given hooks, slots and prototype.
+    pub fn host_obj(&self, proto: Option<Obj>, hooks: &'static HostHooks, data: Vec<Value>) -> Obj {
+        self.obj_with(proto, Kind::Host(Box::new(HostData { hooks, data })))
+    }
+    /// Defines an accessor pair (getter, optional setter) on `target`.
+    pub fn accessor(&self, target: &Obj, name: &str, get: NativeFn, set: Option<NativeFn>) {
+        let g = self.native_fn(&format!("get {name}"), 0, get);
+        let s = set.map(|f| self.native_fn(&format!("set {name}"), 1, f));
+        target.borrow_mut().props.insert(
+            Key::str(name),
+            Prop {
+                slot: Slot::Accessor(Some(g), s),
+                flags: CONFIGURABLE | ENUMERABLE,
+            },
+        );
+    }
     pub fn obj_with(&self, proto: Option<Obj>, kind: Kind) -> Obj {
         Obj::new(ObjData::new(proto, kind))
     }

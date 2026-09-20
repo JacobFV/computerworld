@@ -183,6 +183,7 @@ impl<'h> Vm<'h> {
             open_fds: vec![],
             completion: Value::Undefined,
             handles: vec![],
+            embedder: None,
         };
         // The inspect symbol is registered under its key.
         let ic = vm.syms.inspect_custom.clone();

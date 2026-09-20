@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html><head><title>jQuery page</title>
+<style>body { margin: 0; font: 16px/20px sans-serif } .hidden { display: none } #box { width: 100px; height: 50px } li.sel { font-weight: bold }</style>
+<script src="/vendor/jquery-3.7.1.min.js"></script>
+</head><body>
+<div id="box" class="a">Box</div>
+<ul id="list"><li>one</li><li>two</li><li>three</li></ul>
+<form id="f" action="/submit"><input name="q" value="hello"><select name="s"><option>x</option><option selected>y</option></select><button id="go">Go</button></form>
+<div id="out"></div>
+<script>
+  $(function () {
+    $('#out').text('ready ' + $.fn.jquery + ' ' + $('li').length);
+    $('li').eq(1).addClass('sel').attr('data-k', 'v');
+    $('#list').append('<li class="added">four</li>').find('li.added').css({ color: 'red', 'margin-left': '3px' });
+    $('li').on('click', function () { $(this).toggleClass('on'); $('#out').text('clicked ' + $(this).text() + ' ' + $(this).hasClass('on') + ' idx ' + $(this).index()); });
+    $('#box').hide();
+    window.boxHidden = $('#box').is(':hidden') + ' ' + $('#box').css('display') + ' ' + $('#box').width() + ' ' + $('#box').outerHeight();
+    $('#box').show();
+    window.boxShown = $('#box').is(':visible') + ' ' + $('#box').width() + ' ' + $('#box').height() + ' ' + $('#box').offset().top;
+    $('#f').on('submit', function (e) { e.preventDefault(); $('#out').text('submitted ' + $(this).serialize()); });
+    $.ajax({ url: '/api/items', dataType: 'json' }).done(function (d) { $('#out').append('<span id="ajax">' + d.items.join(',') + '</span>'); });
+    $.get('/api/text', function (t) { window.gotText = t; });
+    $('<div id="made">').appendTo('body').data('x', 5).wrap('<section id="wrap">');
+    window.animDone = false;
+    $('#box').fadeOut(50, function () { window.animDone = true; window.boxAfterFade = $('#box').css('display'); });
+    $(document).on('custom.ns', function (e, a, b) { window.customGot = a + b; }).trigger('custom.ns', [1, 2]);
+    window.each = $.map($('li').toArray(), function (li, i) { return i + $(li).text().charAt(0); }).join('');
+    window.filtered = $('li').filter(':contains("t")').map(function () { return this.textContent; }).get().join('|');
+    window.parentInfo = $('li').first().parent().attr('id') + ' ' + $('li').last().prev().text() + ' ' + $('#list').children().length + ' ' + $('li:nth-child(2)').text();
+    window.valInfo = $('input[name=q]').val() + ' ' + $('select').val() + ' ' + $('#f').serialize();
+    $('input[name=q]').val('changed');
+    window.htmlInfo = $('#list').html().length > 0 && $('<p>').html('<b>x</b>').find('b').length === 1;
+    window.dimInfo = $(window).width() + 'x' + $(window).height() + ' ' + $(document).height() + ' ' + $(document).scrollTop();
+  });
+</script>
+</body></html>

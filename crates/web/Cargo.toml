@@ -8,6 +8,8 @@ description = "A deterministic HTML, CSS and DOM engine for the simulated browse
 [dependencies]
 cw-scene = { path = "../scene" }
 cw-protocol = { path = "../protocol" }
+cw-jsvm = { path = "../jsvm" }
+cw-script-host = { path = "../script-host" }
 serde.workspace = true
 serde_json.workspace = true
 
@@ -16,6 +18,10 @@ serde_json.workspace = true
 # and `style::cascade`; until those land the runners are `#[ignore]`d and the calls are
 # compiled only with this feature on.
 pipeline = []
+# The WPT corpus run takes about half an hour; it is opted into separately.
+wpt = ["pipeline"]
+# Kept so `--features script` still resolves; the script layer is always built.
+script = []
 
 [dev-dependencies]
 cw-render = { path = "../render" }

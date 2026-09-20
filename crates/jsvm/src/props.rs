@@ -68,6 +68,14 @@ impl<'h> Vm<'h> {
                     None
                 }
                 Kind::Proxy { target, handler } => Some((target.clone(), handler.clone())),
+                Kind::Host(h) => {
+                    let hooks = h.hooks;
+                    drop(d);
+                    if let Some(v) = (hooks.get)(self, o, key)? {
+                        return Ok(Some(Prop::data(v, ALL)));
+                    }
+                    None
+                }
                 _ => None,
             }
         };
@@ -315,6 +323,7 @@ impl<'h> Vm<'h> {
                 Length,
                 Typed(usize),
                 Proxy(Obj, Obj),
+                Host(&'static HostHooks),
                 No,
             }
             let ex = {
@@ -360,6 +369,7 @@ impl<'h> Vm<'h> {
                         _ => Ex::No,
                     },
                     Kind::Proxy { target, handler } => Ex::Proxy(target.clone(), handler.clone()),
+                    Kind::Host(h) => Ex::Host(h.hooks),
                     Kind::String(s) => match &key {
                         Key::Str(k) => {
                             if k.as_str() == "length"
@@ -398,6 +408,11 @@ impl<'h> Vm<'h> {
                         return Ok(r.truthy());
                     }
                     return self.set_on(&t, key, v, &Value::Obj(t.clone()));
+                }
+                Ex::Host(hooks) => {
+                    if let Some(ok) = (hooks.set)(self, o, &key, &v)? {
+                        return Ok(ok);
+                    }
                 }
                 Ex::No => {}
             }
@@ -655,6 +670,12 @@ impl<'h> Vm<'h> {
                 cur = Some(t);
                 continue;
             }
+            let host = c.host_hooks();
+            if let Some(h) = host {
+                if (h.get)(self, &c, key)?.is_some() {
+                    return Ok(true);
+                }
+            }
             let has = {
                 let d = c.borrow();
                 match &d.kind {
@@ -710,6 +731,11 @@ impl<'h> Vm<'h> {
             }
             return self.delete(&t, key);
         }
+        if let Some(h) = o.host_hooks() {
+            if let Some(ok) = (h.delete)(self, o, key)? {
+                return Ok(ok);
+            }
+        }
         let mut d = o.borrow_mut();
         let frozen = d.elems_frozen || d.elems_sealed;
         if let Kind::Array(arr) = &mut d.kind {
@@ -759,10 +785,23 @@ impl<'h> Vm<'h> {
             }
             return self.own_keys(&t);
         }
+        let host_keys = match o.host_hooks() {
+            Some(h) => (h.keys)(self, o)?,
+            None => vec![],
+        };
         let d = o.borrow();
         let mut idx: Vec<(u32, Key)> = vec![];
         let mut strs: Vec<Key> = vec![];
         let mut syms: Vec<Key> = vec![];
+        for k in host_keys {
+            match &k {
+                Key::Str(s) => match array_index(s) {
+                    Some(i) => idx.push((i, k.clone())),
+                    None => strs.push(k.clone()),
+                },
+                Key::Sym(_) => syms.push(k.clone()),
+            }
+        }
         match &d.kind {
             Kind::Array(v) => {
                 for (i, x) in v.iter().enumerate() {

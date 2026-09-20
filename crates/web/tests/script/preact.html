@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html><head><title>Preact counter</title>
+<script src="/vendor/preact-10.19.3.umd.js"></script>
+<script src="/vendor/preact-hooks-10.19.3.umd.js"></script>
+</head><body>
+<div id="app"></div>
+<script>
+  const { h, render, Fragment } = preact;
+  const { useState, useEffect, useRef, useCallback } = preactHooks;
+  window.effects = [];
+  function Item({ item, onRemove }) {
+    return h('li', { class: 'item', 'data-id': item.id, onClick: () => onRemove(item.id) }, item.label);
+  }
+  function App() {
+    const [count, setCount] = useState(0);
+    const [items, setItems] = useState([{ id: 1, label: 'a' }, { id: 2, label: 'b' }, { id: 3, label: 'c' }]);
+    const [text, setText] = useState('');
+    const inputRef = useRef();
+    useEffect(() => { window.effects.push('count:' + count); document.title = 'Count ' + count; }, [count]);
+    useEffect(() => { window.effects.push('mounted ' + inputRef.current.tagName); }, []);
+    const remove = useCallback((id) => setItems((list) => list.filter((i) => i.id !== id)), []);
+    return h(Fragment, null,
+      h('h1', null, 'Count: ', count),
+      h('button', { id: 'inc', onClick: () => setCount((c) => c + 1) }, '+'),
+      h('button', { id: 'dec', onClick: () => setCount((c) => c - 1), disabled: count <= 0 }, '-'),
+      h('input', { id: 'text', ref: inputRef, value: text, onInput: (e) => setText(e.target.value), placeholder: 'type' }),
+      h('p', { id: 'echo' }, 'You typed: ', text),
+      h('ul', { id: 'list' }, items.map((item) => h(Item, { key: item.id, item, onRemove: remove }))),
+      h('button', { id: 'add', onClick: () => setItems((list) => [{ id: Date.now() % 1000 + 10, label: 'new' + list.length }, ...list]) }, 'add'),
+      count > 2 ? h('div', { id: 'big', style: { color: 'red', fontSize: '20px' } }, 'big!') : null
+    );
+  }
+  render(h(App), document.getElementById('app'));
+</script>
+</body></html>

@@ -6,7 +6,9 @@
 //!
 //! Scripts never run here. Documents are parsed with the scripting flag on (the browser
 //! will run script), so `<noscript>` content is raw text; `ParseOptions::scripting`
-//! turns that off.
+//! turns that off. A script-aware parse goes through `Parser`, which pauses at each
+//! `</script>` so the script layer can run the element (and `document.write` into the
+//! input stream) before parsing resumes.
 
 pub mod entities;
 mod tokenizer;
@@ -14,6 +16,59 @@ mod tree_builder;
 
 pub use tokenizer::{longest_named_reference, numeric_reference_char};
 pub use tree_builder::foreign_attribute_namespace;
+
+/// An incremental document parse that stops at every `<script>` end tag: the hook the
+/// script layer drives so scripts run as the parser reaches them, in document order,
+/// with `document.write` inserting into the input stream at the current position.
+///
+/// ```ignore
+/// let mut p = Parser::new(Document::new(), source);
+/// while let Some(script) = p.next_script() {
+///     // p.document() holds the tree so far; run the script, then
+///     p.write("<p>text written by the script</p>");
+/// }
+/// let doc = p.finish();
+/// ```
+pub struct Parser {
+    builder: TreeBuilder<'static>,
+}
+
+impl Parser {
+    pub fn new(doc: Document, source: &str) -> Parser {
+        Parser::with_options(doc, source, &ParseOptions::default())
+    }
+
+    pub fn with_options(doc: Document, source: &str, options: &ParseOptions) -> Parser {
+        let tok = Tokenizer::new(preprocess(source));
+        let mut builder = TreeBuilder::owned(doc, tok, options.scripting);
+        builder.pause_on_script = true;
+        Parser { builder }
+    }
+
+    /// Parses up to and including the next `</script>`, returning the script
+    /// element, or `None` when the input is exhausted (the parse is then complete).
+    pub fn next_script(&mut self) -> Option<NodeId> {
+        self.builder.parse_step()
+    }
+
+    /// The document being built; the caller may mutate it (and swap it out with
+    /// `std::mem::swap`) while the parser is paused at a script.
+    pub fn document(&mut self) -> &mut Document {
+        self.builder.document()
+    }
+
+    /// `document.write`: inserts markup into the input stream at the parser's
+    /// current position, to be tokenized when parsing resumes.
+    pub fn write(&mut self, markup: &str) {
+        self.builder.insert_input(&preprocess(markup));
+    }
+
+    pub fn finish(self) -> Document {
+        let mut doc = self.builder.into_document().expect("owned document");
+        doc.mutations.clear();
+        doc
+    }
+}
 
 use crate::dom::{Document, Namespace, NodeId, NodeKind};
 use tokenizer::Tokenizer;

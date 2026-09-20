@@ -1474,6 +1474,12 @@ impl<'h> Vm<'h> {
 
     /// Runs source in the global scope (indirect eval / new Function).
     pub fn eval_source(&mut self, src: &str, file: &str, completion: bool) -> JsResult<Value> {
+        self.eval_source_with(src, file, completion, false)
+    }
+
+    /// `eval_source` with `global_scope`: top-level declarations become global
+    /// properties shared with later scripts (a browser's classic scripts).
+    pub fn eval_source_with(&mut self, src: &str, file: &str, completion: bool, global_scope: bool) -> JsResult<Value> {
         let _ = completion;
         let chars: Vec<char> = src.chars().collect();
         let prog = match crate::parser::parse(src, false) {
@@ -1484,7 +1490,9 @@ impl<'h> Vm<'h> {
             }
         };
         let fname: Rc<str> = Rc::from(file);
+        self.register_source(fname.clone(), Rc::from(src));
         let mut c = crate::compiler::Compiler::new(fname, &chars, false);
+        c.global_scope = global_scope;
         let code = match c.compile_eval(&prog) {
             Ok(code) => code,
             Err(e) => {
@@ -1730,7 +1738,7 @@ impl<'h> Vm<'h> {
         Ok(())
     }
 
-    fn next_due_timer(&self, now: f64) -> Option<usize> {
+    pub fn next_due_timer(&self, now: f64) -> Option<usize> {
         self.timers
             .iter()
             .enumerate()
@@ -1746,7 +1754,7 @@ impl<'h> Vm<'h> {
 
     /// Drains ticks and promise jobs after a callback, in the context Node
     /// would (between two callbacks of a batch, or after the batch).
-    pub(crate) fn drain_after(&mut self, between: Option<Batch>) -> JsResult<()> {
+    pub fn drain_after(&mut self, between: Option<Batch>) -> JsResult<()> {
         let saved = self.drain;
         self.drain = Drain {
             between,
@@ -1758,7 +1766,7 @@ impl<'h> Vm<'h> {
         r
     }
 
-    fn fire_timer(&mut self, i: usize) -> JsResult<()> {
+    pub fn fire_timer(&mut self, i: usize) -> JsResult<()> {
         let t = &self.timers[i];
         let (cb, args, obj, immediate, io) = (
             t.callback.clone(),

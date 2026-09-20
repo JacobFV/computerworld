@@ -247,6 +247,12 @@ impl Tokenizer {
         }
     }
 
+    /// Inserts `s` into the input at the current position (`document.write`
+    /// during parsing). `s` must be preprocessed like the original input.
+    pub fn insert(&mut self, s: &str) {
+        self.input.insert_str(self.pos, s);
+    }
+
     #[inline]
     fn peek(&self) -> Option<char> {
         let b = *self.input.as_bytes().get(self.pos)?;
