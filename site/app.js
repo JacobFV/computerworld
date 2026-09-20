@@ -1,30 +1,126 @@
 // No framework: a slideshow of live machines, a snippet to copy, and one star count.
-import { cast } from './cast.js';
+import { cast, opening } from './cast.js';
 
 const stage = document.getElementById('stage');
 const track = document.getElementById('track');
 const ticks = document.getElementById('ticks');
 
+// How a slide holds more than one machine. The scene's lead machine stands at the slide's
+// full height; the rest are grouped into rows stacked beside it that come to exactly the
+// same height, so however many machines a scene has, its slide is one rectangle the same
+// size as everybody else's, and the desktops in it are the big tiles with the phones
+// smaller alongside. `BUDGET` is how wide that rectangle may be, measured in its own
+// height: a group takes the fewest rows that keep it inside that, so two machines stand
+// side by side, three desktops become one and a column of two, and a seven-machine team
+// becomes one large screen and three short rows. `cast.js` documents the `layout` hint a
+// scene can pass instead. Nothing is stretched: a tile keeps its machine's aspect ratio
+// and every row shares one height.
+const MAX_ROWS = 3;
+const BUDGET = 2.45;
+
+const width = row => row.reduce((total, unit) => total + unit.aspect, 0);
+
+/** Cut `units` into `count` rows, in order, so the widest row is as narrow as it can be.
+ * Ties go to the fuller row first, which puts the ragged row at the bottom. */
+function split(units, count) {
+  if (count === 1) return [units];
+  let best = null;
+  const consider = rows => {
+    const widest = Math.max(...rows.map(width));
+    const first = width(rows[0]);
+    if (!best || widest < best.widest - 1e-9 || (widest < best.widest + 1e-9 && first > best.first)) {
+      best = { rows, widest, first };
+    }
+  };
+  const walk = (from, left, rows) => {
+    if (left === 1) return consider([...rows, units.slice(from)]);
+    for (let to = from + 1; to <= units.length - left + 1; to++) walk(to, left - 1, [...rows, units.slice(from, to)]);
+  };
+  walk(0, count, []);
+  return best.rows;
+}
+
+/** Which machine leads a slide, and how the others are grouped behind it. */
+function plan(scene, units) {
+  const hint = scene.layout ?? 'auto';
+  if (units.length === 1) return { hero: units[0], rows: [] };
+  if (hint === 'row') return { hero: units[0], rows: [units.slice(1)] };
+  // The lead is the first machine listed, or the first desktop when the slide mixes
+  // shapes: a phone listed first should not be the one carrying the composition.
+  const mixed = units.some(unit => unit.phone) && units.some(unit => !unit.phone);
+  const lead = mixed ? units.findIndex(unit => !unit.phone) : 0;
+  const hero = units[lead];
+  const rest = units.filter((unit, index) => index !== lead);
+  if (hint === 'stack') {
+    return { hero, rows: [rest.filter(u => !u.phone), rest.filter(u => u.phone)].filter(row => row.length) };
+  }
+  if (Array.isArray(hint)) {
+    const rows = [];
+    let at = 0;
+    for (const size of hint) {
+      const row = rest.slice(at, at + size);
+      at += row.length;
+      if (row.length) rows.push(row);
+    }
+    if (at < rest.length) rows.push(rest.slice(at));
+    return { hero, rows };
+  }
+  let best = null;
+  for (let count = 1; count <= Math.min(MAX_ROWS, rest.length); count++) {
+    const rows = split(rest, count);
+    const spread = hero.aspect + Math.max(...rows.map(width)) / count;
+    if (spread <= BUDGET) return { hero, rows };
+    if (!best || spread < best.spread) best = { hero, rows, spread };
+  }
+  return best;
+}
+
 // One slide per scene, one tile per machine in it, each holding the still its machine
 // replaces once it is running.
+const plans = [];
 const slides = cast.map(scene => {
   const slide = document.createElement('article');
-  slide.className = scene.machines.length > 1 ? 'slide duo' : 'slide';
+  slide.className = 'slide';
   slide.id = `scene-${scene.id}`;   // not the bare id: the browser would scroll the strip to it
   slide.setAttribute('role', 'tabpanel');
   slide.setAttribute('aria-label', scene.title);
-  for (const machine of scene.machines) {
+  const units = scene.machines.map(machine => {
     const [width, height] = machine.size;
     const tile = document.createElement('div');
-    tile.className = height > width ? 'tile phone' : 'tile';
+    const phone = height > width;
+    tile.className = phone ? 'tile phone' : 'tile';
     tile.style.aspectRatio = `${width} / ${height}`;
     tile.dataset.machine = machine.id;
     tile.dataset.label = machine.label ?? scene.title;
     tile.inert = true;
-    tile.innerHTML = `<img src="./media/scenes/${machine.id}.jpg" width="${width}" height="${height}" alt="" loading="lazy">` +
-      '<p class="booting" data-boot-note></p>';
-    tile.firstChild.alt = machine.label ?? scene.title;
-    slide.append(tile);
+    const still = document.createElement('img');
+    still.width = width;
+    still.height = height;
+    still.loading = 'lazy';
+    still.alt = machine.label ?? scene.title;
+    // A machine whose still has not been rendered yet keeps its shape and shows an empty
+    // screen, not a broken image, so a scene can land before its pictures do.
+    still.addEventListener('error', () => tile.classList.add('blank'), { once: true });
+    still.src = `./media/scenes/${machine.id}.jpg`;
+    const note = document.createElement('p');
+    note.className = 'booting';
+    note.dataset.bootNote = '';
+    tile.append(still, note);
+    return { el: tile, phone, aspect: width / height };
+  });
+  const shape = plan(scene, units);
+  plans.push(shape);
+  slide.append(shape.hero.el);
+  if (shape.rows.length) {
+    const rail = document.createElement('div');
+    rail.className = 'rail';
+    for (const row of shape.rows) {
+      const line = document.createElement('div');
+      line.className = 'row';
+      line.append(...row.map(unit => unit.el));
+      rail.append(line);
+    }
+    slide.append(rail);
   }
   track.append(slide);
   return slide;
@@ -39,6 +135,54 @@ const tabs = cast.map((scene, index) => {
   ticks.append(tab);
   return tab;
 });
+
+// The room a slide has to live in stays in style.css, where the media queries and
+// embed.css can reach it; these two read it back in pixels. Nothing is drawn in them.
+const probe = document.createElement('div');
+probe.style.cssText = 'position:absolute;top:0;left:0;visibility:hidden;pointer-events:none;width:var(--w-group);height:var(--h-desk)';
+const probePhone = document.createElement('div');
+probePhone.style.cssText = 'position:absolute;top:0;left:0;visibility:hidden;pointer-events:none;width:var(--gut);height:var(--h-phone)';
+stage.append(probe, probePhone);
+
+/** Size every slide's tiles for the room there is now: the lead machine as tall as the
+ * slide, the rows beside it sharing that height between them, and the whole group inside
+ * `--w-group`. A tile's width follows from its aspect ratio, and its corners are rounded
+ * in proportion, so a phone shrinks to a phone rather than to a rounded stamp. */
+function fit() {
+  const room = probe.offsetWidth;
+  const gut = probePhone.offsetWidth;
+  const caps = { desk: probe.offsetHeight, phone: probePhone.offsetHeight };
+  const spread = (shape, height) => {
+    if (!shape.rows.length) return shape.hero.aspect * height;
+    const each = (height - (shape.rows.length - 1) * gut) / shape.rows.length;
+    const rail = Math.max(...shape.rows.map(row => width(row) * each + (row.length - 1) * gut));
+    return shape.hero.aspect * height + gut + rail;
+  };
+  const put = (unit, height) => {
+    unit.el.style.height = `${height.toFixed(1)}px`;
+    const radius = unit.phone ? Math.max(4, height * 0.05) : Math.max(3, Math.min(10, height * 0.015));
+    unit.el.style.borderRadius = `${radius.toFixed(1)}px`;
+    // Too narrow for a sentence over it: style.css takes the boot note away there.
+    unit.el.classList.toggle('tight', height * unit.aspect < 150);
+  };
+  for (const shape of plans) {
+    const cap = caps[shape.hero.phone ? 'phone' : 'desk'];
+    let height = cap;
+    if (spread(shape, cap) > room) {
+      // The spread grows with the height, so the tallest that still fits is one search away.
+      let low = 0, high = cap;
+      for (let step = 0; step < 24; step++) {
+        const middle = (low + high) / 2;
+        if (spread(shape, middle) > room) high = middle; else low = middle;
+      }
+      height = low;
+    }
+    put(shape.hero, height);
+    if (!shape.rows.length) continue;
+    const each = (height - (shape.rows.length - 1) * gut) / shape.rows.length;
+    for (const row of shape.rows) for (const unit of row) put(unit, each);
+  }
+}
 
 const notes = () => [...document.querySelectorAll('[data-boot-note]')];
 const say = text => notes().forEach(n => { n.textContent = text; });
@@ -80,20 +224,24 @@ const turn = places => ARC * Math.sign(places) * (1 - Math.exp(-Math.abs(places)
  * places to the left or right as is shortest, so there is always a neighbour on both sides,
  * and one that changes sides does so out of sight. */
 function arrange() {
+  fit();
   const count = slides.length;
   const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
-  const width = slides.map(slide => slide.offsetWidth);
+  // Slides differ in width now that a slide may hold a team: a seven-machine group is
+  // half as wide again as one laptop. Every number below comes off the measured widths,
+  // so the gutter between neighbours is the same wherever the strip is standing.
+  const span = slides.map(slide => slide.offsetWidth);
   const at = index => (index % count + count) % count;
   // What one place out is worth in pixels here, so the same arc comes out of a phone's
   // narrow strip as out of a wide window. Machines differ in width, so take the middle
   // one and the average of the two beside it.
-  const step = (width[current] + (width[at(current + 1)] + width[at(current - 1)]) / 2) / 2 + gap;
+  const step = (span[current] + (span[at(current + 1)] + span[at(current - 1)]) / 2) / 2 + gap;
   slides.forEach((slide, index) => {
     let places = at(index - current);
     if (places > count / 2) places -= count;
     const side = Math.sign(places);
     let x = 0;
-    for (let k = 0; k !== places; k += side) x += side * (width[at(current + k)] / 2 + gap + width[at(current + k + side)] / 2);
+    for (let k = 0; k !== places; k += side) x += side * (span[at(current + k)] / 2 + gap + span[at(current + k + side)] / 2);
     const far = Math.abs(places) > 3;
     if (far !== slide.classList.contains('far')) slide.classList.toggle('far', far);
     slide.style.setProperty('--x', `${Math.round(x)}px`);
@@ -149,10 +297,21 @@ document.addEventListener('keydown', event => {
   if (ticks.contains(document.activeElement)) tabs[current].focus();
 });
 
-// A link to `#slack` opens on that machine.
+// A link to `#slack` opens on that machine — including on a page that is already open,
+// so a fragment typed into the address bar or followed from elsewhere on the page turns
+// the strip instead of doing nothing. `go` writes the fragment back with replaceState,
+// which raises no event of its own, so this only ever hears about someone else's change.
+window.addEventListener('hashchange', () => {
+  const asked = cast.findIndex(scene => `#${scene.id}` === location.hash);
+  if (asked >= 0) go(asked, { quiet: true });
+});
+
+// With nothing named, the cast's opening scene does, which is in the middle of the strip
+// rather than at its end.
 const named = cast.findIndex(scene => `#${scene.id}` === location.hash);
+const first = named >= 0 ? named : cast.findIndex(scene => scene.id === opening);
 track.classList.add('still');
-go(Math.max(named, 0), { quiet: true });
+go(Math.max(first, 0), { quiet: true });
 requestAnimationFrame(() => requestAnimationFrame(() => track.classList.remove('still')));
 
 /** Copy some text and say so through `report`, which takes the word and then nothing. */

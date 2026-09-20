@@ -66,6 +66,11 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
   --w-desk: min(1080px, 84vw, (100vh - 21rem) * 1.6);
   --h-desk: calc(var(--w-desk) * .625);
   --h-phone: var(--h-desk);
+  /* The room a whole slide has. A team of machines is allowed to run wider than one of
+     them, but not so much wider that it dwarfs its neighbours on the strip; app.js reads
+     these three back in pixels and sizes every tile inside them. */
+  --w-group: min(94vw, calc(var(--w-desk) * 1.34));
+  --gut: clamp(.45rem, 1.1vw, 1rem);
   margin-inline: calc(50% - 50vw); overflow: hidden;
   padding: 1rem 0 0;
 }
@@ -76,7 +81,7 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
 }
 .slide {
   position: absolute; left: 50%; top: 50%;
-  display: flex; align-items: center; gap: clamp(.6rem, 2vw, 1.5rem);
+  display: flex; align-items: center; gap: var(--gut);
   opacity: .28; cursor: pointer;
   transform: translate(calc(-50% + var(--x, 0px)), -50%) scale(.94);
   transition: opacity .55s ease, transform .55s cubic-bezier(.22, .8, .24, 1);
@@ -105,6 +110,16 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
                rotateY(var(--rot, 0deg));
   }
 }
+/* The lead machine sits first, and whatever else the scene has stands in rows beside it
+   that together come to the same height — one composition, one gutter throughout. The
+   heights and the corner radii are written by app.js, which knows how many machines are
+   in the slide and how much room there is; the sizes here are what one machine on its
+   own gets, and what a slide falls back to before the first measurement. */
+.slide .rail { display: flex; flex-direction: column; justify-content: center; gap: var(--gut); }
+/* Every row starts against the lead machine, so the gutter between it and the group is
+   the same one that runs between the tiles, and the group has one straight edge down its
+   middle rather than three rows floating at three different distances. */
+.slide .row { display: flex; align-items: center; justify-content: flex-start; gap: var(--gut); }
 .tile {
   position: relative; flex: none; height: var(--h-desk); aspect-ratio: 1280 / 800;
   border-radius: var(--radius); overflow: hidden; background: #000;
@@ -112,9 +127,15 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
   transition: box-shadow .55s ease;
 }
 .tile.phone { height: var(--h-phone); border-radius: clamp(16px, 2.2vw, 28px); }
-.duo .tile.phone { height: min(var(--h-phone), 88vw); }
+/* A machine whose still has not been rendered yet: an empty screen, not a broken image. */
+.tile.blank { background: repeating-linear-gradient(-45deg, #131211 0 10px, #0f0e0e 10px 20px); }
+.tile.blank img { display: none; }
 .slide.active .tile {
   box-shadow: 0 0 0 1px var(--line), 0 1px 0 1px rgba(255, 255, 255, .03), 0 40px 90px -20px rgba(0, 0, 0, .8);
+}
+/* The machines beside the lead are smaller, and cast a shadow to match. */
+.slide.active .rail .tile {
+  box-shadow: 0 0 0 1px var(--line), 0 1px 0 1px rgba(255, 255, 255, .03), 0 18px 40px -12px rgba(0, 0, 0, .75);
 }
 .tile img, .tile canvas { width: 100%; height: 100%; display: block; }
 .tile:not(.live) img { filter: saturate(.6) brightness(.6); }
@@ -125,10 +146,17 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
 
 /* What a panel says while its machine is coming up, over the still it replaces. */
 .booting {
-  position: absolute; inset: auto 0 50% 0; margin: 0; padding: 0 1rem; text-align: center;
+  position: absolute; inset: auto 0 50% 0; margin: 0; padding: 0 .5rem; text-align: center;
   color: var(--ink); font-family: var(--mono); font-size: .8rem; letter-spacing: .02em;
   text-shadow: 0 1px 12px rgba(0, 0, 0, .9);
+  overflow: hidden;
 }
+/* In a team the machines beside the lead are small, so their note is too, and it stays on
+   one line rather than stacking four words deep over a screen the size of a stamp. A tile
+   too narrow to read anything on says nothing at all and simply comes alive: app.js marks
+   those, since it is the one that knows how wide each tile came out. */
+.rail .booting { font-size: .62rem; padding: 0 .25rem; white-space: nowrap; text-overflow: ellipsis; }
+.tile.tight .booting { display: none; }
 .tile.live .booting, .slide:not(.active) .booting { display: none; }
 .booting:not(:empty) { cursor: pointer; }
 
