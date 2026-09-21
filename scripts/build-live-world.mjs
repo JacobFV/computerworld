@@ -3,8 +3,8 @@
  * The reference company (worlds/company-2026/world.json) is five computers on three OS
  * profiles. This adds the five graphical OS profiles, the two phones, the native
  * applications each platform ships and the documents and media they open, and writes the
- * result to site/world-definition.js, which site/live.js imports. OS shells are rendered
- * by Rust, never HTML overlays.
+ * result to site/world-definition.js, which site/live.js downloads as text and each of
+ * its workers parses for itself. OS shells are rendered by Rust, never HTML overlays.
  *
  *   node scripts/build-live-world.mjs      # or scripts/build-content.sh, which runs it
  */

@@ -102,9 +102,11 @@ if (!await up()) {
   process.exit(1);
 }
 
-/** What runs in the tab. It boots the machine the way site/live.js boots one — the same
+/** What runs in the tab. It boots the machine the way site/engine.js boots one — the same
  * module, the same world definition, the same opening actions — then asks it for a frame
- * and for the scene behind that frame, and draws the second on a copy of the first. */
+ * and for the scene behind that frame, and draws the second on a copy of the first. It
+ * does this on the page's own thread rather than in a worker, as the site does: there is
+ * nothing here to keep answerable while it works. */
 async function picture({sceneId, machineId, width, height, scale, quality, labels}) {
   const {default: init, World, installFont, fontPackStatus} = await import('/pkg/computerworld.js');
   await init();
@@ -119,7 +121,7 @@ async function picture({sceneId, machineId, width, height, scale, quality, label
     if (response.ok) installFont(new Uint8Array(await response.arrayBuffer()));
   }));
 
-  // site/live.js, `populate`: the reference company plus this scene's machines, each a
+  // site/engine.js, `populate`: the reference company plus this scene's machines, each a
   // copy of a reference computer on an address of its own.
   const world = structuredClone(definition);
   let host = 10;
@@ -140,7 +142,7 @@ async function picture({sceneId, machineId, width, height, scale, quality, label
     return {id, size, env: running.environment({actor: user, machines: [id], actions, observations, action_budget: 1_000_000})};
   });
 
-  // site/live.js, `hands`: the verbs a scene's opening is written against.
+  // site/engine.js, `hands`: the verbs a scene's opening is written against.
   const hands = (env, machine, size) => {
     const step = (family, op, payload) => env.step([{family, op, machine, payload}]);
     const [w, h] = size;
