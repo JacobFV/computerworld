@@ -666,12 +666,6 @@ html { scroll-padding-top: 2rem; }
 .button:hover { border-color: var(--ink); }
 .title .hero-note { margin-top: 1.1rem; font: .68rem/1.6 var(--mono); color: var(--faint); }
 .hero-note span { margin-left: 1.6rem; }
-.audiences { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 1rem 0 0; border-block: 1px solid var(--line-2); }
-.audiences a { position: relative; padding: 1.4rem 2rem 1.4rem 0; text-decoration: none; font-size: .88rem; }
-.audiences a + a { padding-left: 1.4rem; border-left: 1px solid var(--line); }
-.audiences span { display: block; margin-bottom: .5rem; color: var(--faint); font: .65rem/1.5 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
-.audiences b { position: absolute; right: 1rem; color: var(--accent); font-weight: 400; }
-.audiences a:hover { color: var(--accent); }
 .audience-section { padding: clamp(4rem, 8vw, 6.5rem) 0; }
 .audience-section + .audience-section { border-top: 1px solid var(--line-2); }
 .section-heading { margin-bottom: 3rem; }
@@ -740,10 +734,6 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 @media (max-width: 760px) {
   .feature-grid, .observation { grid-template-columns: minmax(0, 1fr); }
   .observation .prose { grid-row: 1; }
-  .audiences { grid-template-columns: 1fr; }
-  .audiences a, .audiences a + a { padding: 1rem 2rem 1rem 0; border-left: 0; }
-  .audiences a + a { border-top: 1px solid var(--line); }
-  .audiences span { margin-bottom: .25rem; }
   .results-heading { align-items: start; flex-direction: column; }
   .section-heading { margin-bottom: 2rem; }
   .title .eyebrow span { display: block; margin: .3rem 0 0; }
@@ -756,14 +746,20 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .title h1 { max-width: 24ch; font-weight: 400; }
 .title h1 b { font-weight: 700; }
 .hero-actions .button {
-  border-radius: 7px; padding: .55rem 1.05rem; gap: 1rem;
-  border: 1px solid var(--btn-line); background: var(--btn);
-  box-shadow: inset 0 1px 0 var(--btn-sheen), var(--btn-shadow);
-  text-shadow: var(--btn-text-shadow); font-size: .88rem; font-weight: 500;
+  gap: .55rem; padding: .72rem 1.25rem; border-radius: 8px;
+  border: 1px solid var(--line-2); background: none; color: var(--ink);
+  box-shadow: none; text-shadow: none; font-size: .9rem; font-weight: 500;
+  letter-spacing: -.008em;
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease;
 }
-.hero-actions .primary { background: var(--primary); border-color: var(--primary-line); color: var(--primary-ink); text-shadow: 0 1px 0 var(--primary-sheen); }
-.hero-actions .button:hover { filter: brightness(1.12); }
-.hero-actions .button:active { transform: translateY(1px); box-shadow: inset 0 1px 3px #00000055; }
+.hero-actions .button > span { color: var(--faint); font-size: .95em; transition: color .15s ease; }
+.hero-actions .button:hover { border-color: var(--ink); }
+.hero-actions .button:hover > span { color: var(--ink); }
+.hero-actions .primary { background: var(--accent); border-color: var(--accent); color: var(--primary-ink); }
+.hero-actions .primary > span { color: var(--primary-ink); opacity: .6; }
+.hero-actions .primary:hover { background: var(--accent); border-color: var(--accent); filter: brightness(1.07); }
+.hero-actions .primary:hover > span { color: var(--primary-ink); }
+.hero-actions .button:active { transform: translateY(1px); }
 .section-heading > p:last-child, .prose p, .prose .measure, .scope-note, .start-heading p { font: .96rem/1.7 var(--sans); color: var(--dim); letter-spacing: 0; }
 .prose .evidence-note { border: 0; padding: 0; }
 .metrics dt, .metrics small, .result-counts span, .results-heading a, .text-links a, .policy-details > summary { font: .85rem/1.6 var(--sans); letter-spacing: 0; }
