@@ -20,9 +20,7 @@ first; a commit that has not been verified is not a unit of work.
 
 Commit messages here are a declarative sentence, no prefix and no ticket, and a
 body in prose that says what was wrong and what it is now. Numbers in the body
-are measured, never estimated. End every commit with:
-
-    Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+are measured, never estimated.
 
 Commit; do not push unless asked.
 
