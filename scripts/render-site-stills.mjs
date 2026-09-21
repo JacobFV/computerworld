@@ -72,22 +72,30 @@ try {
       for (const machine of scene.machines) {
         // Desktops are saved at three quarters of their size: the still is a placeholder
         // behind a dimming filter, and there are dozens of them.
-        const jpeg = await page.evaluate(({id, scale}) => {
-          const canvas = document.querySelector(`[data-machine="${id}"] canvas`);
-          // A scene edited while this is running, or a machine the shell never brought
-          // up: say which one and leave the others alone.
-          if (!canvas) return null;
+        const jpeg = await page.evaluate(async ({id, scale}) => {
+          // The machine's own frame, asked of whoever is running it — not read off the
+          // canvas. The machines run in workers and draw through an OffscreenCanvas, and
+          // what a page gets back from one of those placeholders is the frame it was first
+          // given, not the frame it is showing: every still would be the moment before the
+          // fonts landed. A scene edited while this is running, or a machine the shell
+          // never brought up, answers null; say which one and leave the others alone.
+          const frame = await window.computerworldFrame(id);
+          if (!frame) return null;
+          const shown = document.createElement('canvas');
+          shown.width = frame.width;
+          shown.height = frame.height;
+          shown.getContext('2d').putImageData(frame, 0, 0);
           const still = document.createElement('canvas');
-          still.width = Math.round(canvas.width * scale);
-          still.height = Math.round(canvas.height * scale);
+          still.width = Math.round(frame.width * scale);
+          still.height = Math.round(frame.height * scale);
           const context = still.getContext('2d');
           context.imageSmoothingQuality = 'high';
-          context.drawImage(canvas, 0, 0, still.width, still.height);
+          context.drawImage(shown, 0, 0, still.width, still.height);
           return still.toDataURL('image/jpeg', 0.8).split(',')[1];
         }, {id: machine.id, scale: machine.size[0] > machine.size[1] ? 0.75 : 1});
         if (!jpeg) {
           failed++;
-          console.error(`${scene.id}: ${machine.id} has no canvas on the page`);
+          console.error(`${scene.id}: ${machine.id} gave back no frame`);
           continue;
         }
         await writeFile(`${root}site/media/scenes/${machine.id}.jpg`, Buffer.from(jpeg, 'base64'));

@@ -138,8 +138,11 @@ reported in `outcomes` even when `step` itself returns normally.
 
 The [project site](https://jacobfv.github.io/computerworld/) is the same module in a
 page: each screen is a `<canvas>` that forwards coordinates and keyboard events to
-Rust and paints the frame Rust returns (`site/live.js`, about two hundred lines). It
-does not implement an alternate desktop state machine. Run it locally with
+Rust and paints the frame Rust returns. The module is instantiated in a worker and the
+canvas handed to it with `transferControlToOffscreen`, so the world and the rasteriser are
+off the page's own thread (`site/engine.js` drives the simulator, `site/worker.js` hosts it,
+`site/live.js` does the download and the events). It does not implement an alternate
+desktop state machine. Run it locally with
 
 ```sh
 bash scripts/build-wasm.sh && cp -r pkg/web site/pkg

@@ -8,6 +8,23 @@ where the bytes cannot honestly be counted — a host that gzips the module send
 `Content-Length` counting the bytes on the wire, and a reader is handed back the decoded
 ones — the number is dropped rather than guessed at, and the spinner stands alone.
 `live.js` is the only thing that knows; it reports out through the callback `boot` takes.
+
+The machines do not run on the page's own thread. `engine.js` is the whole of what touches
+the simulator — a world per scene, a session per machine, a canvas each — and knows nothing
+about slides or events, so it runs unchanged in either host: `worker.js`, which is where it
+really runs, or the tab, for a browser without workers or `OffscreenCanvas`. A scene is
+dealt to one of at most four workers and keeps it; the page hands over each canvas with
+`transferControlToOffscreen` and thereafter sends events and receives a cursor, and no
+pixels cross back. Building a world is seconds of arithmetic and a screen is four megabytes
+of rasterising, and neither is something a page can do while it is also expected to scroll:
+the longest the main thread is unavailable while the seven-machine slide comes up is 112 ms,
+against 2,340 ms when the same code ran in the tab.
+
+One consequence, for anything reading a machine's pixels: a canvas whose control has gone
+to a worker hands the page back the frame it was first given, not the frame it is showing.
+`window.computerworldFrame(<machine id>)` asks the machine itself and is what
+`scripts/render-site-stills.mjs` saves.
+
 `.github/workflows/pages.yml` deploys it: it builds the Wasm bundle into `site/pkg/`
 for `live.js` to import, and the documentation into `site/docs/`, where
 `scripts/build-docs.mjs` turns `docs/*.md` into pages with the guides in reading order
