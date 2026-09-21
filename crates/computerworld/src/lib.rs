@@ -11,8 +11,18 @@ pub use cw_render::Frame;
 pub use cw_scene::Scene;
 pub use cw_sdk::{Application, Registry, Service};
 #[cfg(feature = "render")]
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
+
+/// How many bytes of retained screens a world keeps before it forgets the ones it has
+/// drawn least recently. A screen costs `width * height * 4`: 4,096,000 bytes at the
+/// 1280x800 this project's own web page uses, so the budget holds thirty-two of them
+/// against the fourteen machines that page shows at once, and still holds all fourteen at
+/// 1920x1200 (9,216,000 bytes each, 129,024,000 in total). The point is not to be tight —
+/// forgetting a screen costs it a full repaint — but to stop a long-lived world that
+/// cycles through sessions from retaining a frame for every session it has ever drawn.
+#[cfg(feature = "render")]
+pub const RETAINED_SURFACE_BYTES: usize = 128 << 20;
 
 /// Rasterizes a scene for the Screenshot effect. A fresh renderer per capture keeps the
 /// incremental cache the interactive path relies on untouched.
@@ -124,10 +134,19 @@ pub struct World {
     /// One per session: every machine on screen keeps the frame it was last left at, so a
     /// world showing seven of them repaints each incrementally instead of diffing one
     /// machine's screen against another's. The caches stay in the single renderer above.
+    /// Held to [`RETAINED_SURFACE_BYTES`] by forgetting the screens drawn least recently,
+    /// since sessions are never removed from a world and this would otherwise keep a frame
+    /// for every session that has ever been drawn.
     #[cfg(feature = "render")]
     surfaces: BTreeMap<String, cw_render::Surface>,
     #[cfg(feature = "render")]
     previous_scene: BTreeMap<String, Scene>,
+    /// The sessions with a retained screen, least recently drawn first. Recency is use
+    /// rather than arrival: a machine that keeps being drawn keeps its frame however long
+    /// ago its session was opened, which is what a page cycling between a few machines of
+    /// a large world wants.
+    #[cfg(feature = "render")]
+    drawn: VecDeque<String>,
 }
 impl World {
     /// Compose the optional standard services. The world definition supplies all instances.
@@ -160,6 +179,8 @@ impl World {
             surfaces: BTreeMap::new(),
             #[cfg(feature = "render")]
             previous_scene: BTreeMap::new(),
+            #[cfg(feature = "render")]
+            drawn: VecDeque::new(),
         }
     }
     pub fn from_json(definition: &str, seed: u64) -> Result<Self> {
@@ -257,7 +278,42 @@ impl World {
         });
         renderer.swap(&mut surface);
         self.surfaces.insert(session.to_owned(), surface);
+        self.drawn.retain(|drawn| drawn != session);
+        self.drawn.push_back(session.to_owned());
+        self.forget_cold_screens();
         Ok(taken)
+    }
+    /// Bytes of screen this world is holding on to, so that the session drawn next may be
+    /// repainted incrementally. Diagnostic, like `render_stats`: it is the quantity
+    /// [`RETAINED_SURFACE_BYTES`] bounds, and nothing but a test should depend on it.
+    #[cfg(feature = "render")]
+    pub fn retained_surface_bytes(&self) -> usize {
+        self.surfaces
+            .values()
+            .map(|surface| surface.frame().rgba.len())
+            .sum()
+    }
+    /// Drop the screens drawn longest ago until what is left fits the budget. The session
+    /// just drawn is at the back of the queue and so is never dropped, which keeps a world
+    /// whose single screen is larger than the whole budget rendering incrementally rather
+    /// than forgetting itself between frames.
+    #[cfg(feature = "render")]
+    fn forget_cold_screens(&mut self) {
+        let mut retained = self.retained_surface_bytes();
+        while retained > RETAINED_SURFACE_BYTES && self.drawn.len() > 1 {
+            let Some(cold) = self.drawn.pop_front() else {
+                break;
+            };
+            if let Some(surface) = self.surfaces.remove(&cold) {
+                retained -= surface.frame().rgba.len();
+            }
+            // The frame and the scene it was drawn from are a pair, and go together. A
+            // scene kept without its frame describes the changes to a screen this world no
+            // longer has, and is a growing thing of its own besides; dropping both leaves
+            // the next render of that session with nothing to diff against, which is to
+            // say a full repaint, which is always right.
+            self.previous_scene.remove(&cold);
+        }
     }
     /// What the renderer has drawn since the world was built. `painted_pixels` is the one
     /// that says whether a repaint was incremental: a screen redrawn only because another
@@ -323,6 +379,7 @@ impl World {
             self.renderer = None;
             self.surfaces.clear();
             self.previous_scene.clear();
+            self.drawn.clear();
         }
     }
 }
