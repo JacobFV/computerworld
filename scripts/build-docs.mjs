@@ -300,12 +300,23 @@ ${themeSnippet}
 </div>
 <script src="./theme.js" defer></script>
 <script>
+// The menu covers the screen below the bar on a phone. What made it feel wrong was scroll
+// chaining: a flick that reached the end of the menu carried on into the article behind
+// it, so closing the menu left the reader somewhere they had never scrolled to. The panel
+// keeps its own scrolling to itself (overscroll-behavior: contain) and opens at its top;
+// the page is never locked, so the bar stays stuck to the top and the reader comes back to
+// exactly the line they left.
 const menu = document.getElementById('menu'), side = document.getElementById('side');
-menu.addEventListener('click', () => {
-  const open = side.classList.toggle('open');
+const wide = matchMedia('(min-width: 761px)');
+function setMenu(open) {
+  side.classList.toggle('open', open);
   menu.setAttribute('aria-expanded', String(open));
   menu.setAttribute('aria-label', open ? 'Hide the documentation menu' : 'Show the documentation menu');
-});
+  if (open) side.scrollTop = 0;
+}
+menu.addEventListener('click', () => setMenu(!side.classList.contains('open')));
+// Widened past the breakpoint: the sidebar is a column again and there is nothing to lock.
+wide.addEventListener('change', (e) => { if (e.matches && side.classList.contains('open')) setMenu(false); });
 </script>
 </body>
 </html>
