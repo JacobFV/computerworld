@@ -283,6 +283,33 @@ impl JsEnvironment {
             rgba: frame.rgba,
         })
     }
+    /// Render into a buffer the caller already holds — an `ImageData`'s `data`, in
+    /// practice — so the pixels cross into JavaScript exactly once. `render` copies the
+    /// frame out of the renderer, then again into a fresh `Uint8Array`, and a canvas
+    /// wants a `Uint8ClampedArray` after that; a screen redrawn on every pointer move is
+    /// three copies of four megabytes that nothing reads.
+    #[wasm_bindgen(js_name = renderInto)]
+    pub fn render_into(
+        &self,
+        width: u32,
+        height: u32,
+        out: &js_sys::Uint8ClampedArray,
+    ) -> Result<(), JsValue> {
+        self.inner
+            .borrow_mut()
+            .render_with(&self.session, width, height, |frame| {
+                if out.length() as usize != frame.rgba.len() {
+                    return Err(error(format!(
+                        "the buffer holds {} bytes; a {width}x{height} frame is {}",
+                        out.length(),
+                        frame.rgba.len()
+                    )));
+                }
+                out.copy_from(&frame.rgba);
+                Ok(())
+            })
+            .map_err(error)?
+    }
 }
 #[wasm_bindgen(js_name = Frame)]
 pub struct JsFrame {

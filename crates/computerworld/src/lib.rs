@@ -10,6 +10,8 @@ pub use cw_protocol::*;
 pub use cw_render::Frame;
 pub use cw_scene::Scene;
 pub use cw_sdk::{Application, Registry, Service};
+#[cfg(feature = "render")]
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 /// Rasterizes a scene for the Screenshot effect. A fresh renderer per capture keeps the
@@ -119,8 +121,13 @@ pub struct World {
     environment: Environment,
     #[cfg(feature = "render")]
     renderer: Option<cw_render::Renderer>,
+    /// One per session: every machine on screen keeps the frame it was last left at, so a
+    /// world showing seven of them repaints each incrementally instead of diffing one
+    /// machine's screen against another's. The caches stay in the single renderer above.
     #[cfg(feature = "render")]
-    previous_scene: Option<Scene>,
+    surfaces: BTreeMap<String, cw_render::Surface>,
+    #[cfg(feature = "render")]
+    previous_scene: BTreeMap<String, Scene>,
 }
 impl World {
     /// Compose the optional standard services. The world definition supplies all instances.
@@ -150,7 +157,9 @@ impl World {
             #[cfg(feature = "render")]
             renderer: None,
             #[cfg(feature = "render")]
-            previous_scene: None,
+            surfaces: BTreeMap::new(),
+            #[cfg(feature = "render")]
+            previous_scene: BTreeMap::new(),
         }
     }
     pub fn from_json(definition: &str, seed: u64) -> Result<Self> {
@@ -214,22 +223,48 @@ impl World {
     }
     #[cfg(feature = "render")]
     pub fn render(&mut self, session: &str, width: u32, height: u32) -> Result<Frame> {
-        let scene = self.scene(session, width, height)?;
-        scene
-            .validate()
+        self.render_with(session, width, height, Frame::clone)
+    }
+    /// The same frame, handed to `take` where it lies in the renderer rather than copied
+    /// out of it first. A caller that is going to copy the pixels somewhere of its own —
+    /// a browser's `ImageData`, say — copies them once this way instead of two or three
+    /// times, which at four megabytes a screen is most of what a repaint costs.
+    #[cfg(feature = "render")]
+    pub fn render_with<T>(
+        &mut self,
+        session: &str,
+        width: u32,
+        height: u32,
+        take: impl FnOnce(&Frame) -> T,
+    ) -> Result<T> {
+        let next = self.scene(session, width, height)?;
+        next.validate()
             .map_err(|e| SimError::new("render", e.to_string()))?;
+        // Against this session's own last scene, never another session's: the damage is
+        // what spares the renderer the screen it has already drawn.
+        let damage = self
+            .previous_scene
+            .get(session)
+            .map(|previous| scene_damage(previous, &next));
+        self.previous_scene.insert(session.to_owned(), next);
+        let scene = &self.previous_scene[session];
         let renderer = self.renderer.get_or_insert_with(cw_render::Renderer::new);
-        let frame = if let Some(previous) = &self.previous_scene {
-            renderer
-                .render_incremental(&scene, &scene_damage(previous, &scene))
-                .clone()
-        } else {
-            renderer
-                .try_render(&scene)
-                .map_err(|e| SimError::new("render", e.to_string()))?
-        };
-        self.previous_scene = Some(scene);
-        Ok(frame)
+        let mut surface = self.surfaces.remove(session).unwrap_or_default();
+        renderer.swap(&mut surface);
+        let taken = take(match &damage {
+            Some(damage) => renderer.render_incremental(scene, damage),
+            None => renderer.render_ref(scene),
+        });
+        renderer.swap(&mut surface);
+        self.surfaces.insert(session.to_owned(), surface);
+        Ok(taken)
+    }
+    /// What the renderer has drawn since the world was built. `painted_pixels` is the one
+    /// that says whether a repaint was incremental: a screen redrawn only because another
+    /// screen in the same world was touched should cost a few rectangles, not a megapixel.
+    #[cfg(feature = "render")]
+    pub fn render_stats(&self) -> Option<&cw_render::RenderStats> {
+        self.renderer.as_ref().map(|renderer| &renderer.stats)
     }
     pub fn snapshot(&self) -> Snapshot {
         self.environment.snapshot()
@@ -286,7 +321,8 @@ impl World {
         #[cfg(feature = "render")]
         {
             self.renderer = None;
-            self.previous_scene = None;
+            self.surfaces.clear();
+            self.previous_scene.clear();
         }
     }
 }

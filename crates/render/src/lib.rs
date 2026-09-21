@@ -111,6 +111,19 @@ impl Default for Renderer {
         Self::new()
     }
 }
+/// One screen's last frame, held outside the renderer so that the caches inside it can be
+/// shared. `Renderer::swap` moves it in and out; a default one is a screen never drawn,
+/// which repaints in full the first time.
+#[derive(Clone, Debug, Default)]
+pub struct Surface {
+    frame: Frame,
+    revision: Option<u64>,
+}
+impl Surface {
+    pub fn frame(&self) -> &Frame {
+        &self.frame
+    }
+}
 impl Renderer {
     pub fn new() -> Self {
         Self {
@@ -183,6 +196,16 @@ impl Renderer {
     }
     pub fn frame(&self) -> &Frame {
         &self.frame
+    }
+    /// Exchange the pixels the renderer is holding for another screen's. Two moves, no
+    /// pixels copied, so several screens can share one renderer — and with it one set of
+    /// glyph, shaped-text and decoded-image caches — while each keeps a frame of its own
+    /// to repaint incrementally against. Without this, a page showing seven machines out
+    /// of one world diffs each screen against whichever screen was drawn last, and every
+    /// repaint of every machine is a full one.
+    pub fn swap(&mut self, surface: &mut Surface) {
+        core::mem::swap(&mut self.frame, &mut surface.frame);
+        core::mem::swap(&mut self.revision, &mut surface.revision);
     }
     fn allocate(&mut self, scene: &Scene) {
         let len = (scene.width as u128) * (scene.height as u128) * 4;

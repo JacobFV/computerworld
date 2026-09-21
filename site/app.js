@@ -277,7 +277,7 @@ function fit() {
   // Nothing below depends on anything but these three, so a slideshow being turned does
   // not re-solve forty-four compositions on every keypress.
   const measured = `${room}|${cap}|${gut}`;
-  if (measured === fitted) return;
+  if (measured === fitted) return false;
   fitted = measured;
   for (const shape of shapes) {
     const chosen = choose(shape, room, cap, gut);
@@ -298,6 +298,7 @@ function fit() {
       unit.el.classList.toggle('tight', height * unit.aspect < 150);
     });
   }
+  return true;
 }
 
 // The cast is a ring, so every index into it is taken the short way round.
@@ -452,7 +453,7 @@ async function come(index, mine) {
   for (const near of [index + 1, index - 1]) {
     await idle();
     if (era !== mine || current !== index || performance.now() - moved < 900) return;
-    await start(cast[at(near)], slides[at(near)]);
+    await start(cast[at(near)], slides[at(near)], { spare: true });
   }
 }
 
@@ -472,17 +473,27 @@ const ARC = 13 * Math.PI / 180;          // the turn at the neighbouring machine
 const EASE = 1 - Math.exp(-1);           // so that one place out lands exactly on ARC
 const turn = places => ARC * Math.sign(places) * (1 - Math.exp(-Math.abs(places))) / EASE;
 
+// What the strip measured the last time it was cut up. A slide's width and height are
+// settled by `fit` and by nothing else: the arc is a transform, `far` only hides, and a
+// tile is sized off its own aspect ratio rather than off the still inside it. So these are
+// read back from the page when the composition changes, and not once per keypress —
+// forty-four slides is forty-four forced layouts, taken in the frame a held arrow key
+// wanted for turning the strip.
+let span = null, tall = null, gap = 0;
+
 /** Lay the strip out around the current machine. It is a ring: each slide sits as many
  * places to the left or right as is shortest, so there is always a neighbour on both sides,
  * and one that changes sides does so out of sight. */
 function arrange() {
-  fit();
   const count = slides.length;
-  const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
-  // Slides differ in width now that a slide may hold a team: a seven-machine group is
-  // half as wide again as one laptop. Every number below comes off the measured widths,
-  // so the gutter between neighbours is the same wherever the strip is standing.
-  const span = slides.map(slide => slide.offsetWidth);
+  if (fit() || !span) {
+    gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+    // Slides differ in width now that a slide may hold a team: a seven-machine group is
+    // half as wide again as one laptop. Every number below comes off the measured widths,
+    // so the gutter between neighbours is the same wherever the strip is standing.
+    span = slides.map(slide => slide.offsetWidth);
+    tall = slides.map(slide => slide.offsetHeight);
+  }
   // What one place out is worth in pixels here, so the same arc comes out of a phone's
   // narrow strip as out of a wide window. Machines differ in width, so take the middle
   // one and the average of the two beside it.
@@ -505,7 +516,7 @@ function arrange() {
     slide.style.setProperty('--rot', `${(angle * 180 / Math.PI).toFixed(2)}deg`);
     slide.style.setProperty('--z', `${(-(step / ARC) * (1 - Math.cos(angle))).toFixed(1)}px`);
   });
-  track.style.height = `${slides[current].offsetHeight}px`;
+  track.style.height = `${tall[current]}px`;
 }
 // ONE MACHINE, THE WHOLE SCREEN. Every live tile carries a control in its top right. It
 // asks the Fullscreen API for that tile; where the API is missing or says no — a sandboxed
@@ -532,6 +543,7 @@ function dress(tile, on) {
  * the cache is dropped and one silent pass puts it all back without a slide sliding. */
 function settle() {
   fitted = '';
+  span = null;
   track.classList.add('still');
   arrange();
   requestAnimationFrame(() => requestAnimationFrame(() => track.classList.remove('still')));

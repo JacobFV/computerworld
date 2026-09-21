@@ -13,9 +13,13 @@ const SEED = 2026;
 const actions = ['terminal.v1', 'browser.v1', 'keyboard.v1', 'pointer.v1', 'application.v1', 'filesystem.v1', 'http.v1'];
 const observations = ['terminal.v1', 'semantic.v1', 'browser.v1'];
 
-// How many scenes stay running. Each is a world of its own, so a visitor who walks the
-// whole slideshow would otherwise be holding dozens of them.
+// How much stays running behind the visitor. Each scene is a world of its own, so a
+// visitor who walks the whole slideshow would otherwise be holding dozens of them — and a
+// scene is anything from one phone to a team of seven, so the count that matters is the
+// machines, not the scenes. The machine in the middle and one neighbour stay whatever they
+// cost; behind those two, either ceiling retires the rest.
 const KEPT = 6;
+const KEPT_MACHINES = 14;
 
 /** The world one scene runs in: the reference company, plus that scene's machines. Each is
  * a copy of the Mac, the PC, the ThinkPad or one of the two phones the reference world
@@ -65,12 +69,19 @@ function hands(env, machine, size) {
   };
 }
 
-function paint(env, canvas, [width, height]) {
-  const frame = env.render(width, height);
+/** One machine's repaint, set up once. The screen is 1280x800 or thereabouts, so a frame
+ * is four megabytes: the canvas keeps its backing store and the scene keeps its buffer,
+ * and the engine renders straight into that buffer rather than handing back a fresh
+ * array for each of `render`'s three copies to walk over. */
+function painter(env, canvas, [width, height]) {
   canvas.width = width;
   canvas.height = height;
-  canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(frame.rgba), width, height), 0, 0);
-  frame.free();
+  const context = canvas.getContext('2d');
+  const image = new ImageData(width, height);
+  return () => {
+    env.renderInto(width, height, image.data);
+    context.putImageData(image, 0, 0);
+  };
 }
 
 /** Wire one tile: its canvas takes the pointer, the wheel and the keyboard. `after` runs
@@ -83,7 +94,7 @@ function wire(tile, env, machine, size, after) {
   canvas.setAttribute('aria-label', `${tile.dataset.label}, running live`);
   show(tile, canvas);
 
-  const draw = () => paint(env, canvas, size);
+  const draw = painter(env, canvas, size);
   const at = e => {
     const r = canvas.getBoundingClientRect();
     return {
@@ -212,19 +223,31 @@ async function arrive(report) {
 export async function boot(report) {
   const definition = await arrive(report);
   const running = new Map();   // scene id → { booting, stop }, least recently shown first
-  const redraws = new Set();   // every running scene's repaint, for when a font lands
+  const painters = new Set();  // every running scene's repaint, for when a font lands
+
+  /** A font file landed, so every running scene's cached text is stale. Repaint the scene
+   * the visitor is looking at, and no more than that: the pack is a dozen files and six
+   * scenes may be running, so repainting all of them for every file is a few hundred full
+   * screens in one burst, all but one of them behind the strip. The rest are marked here
+   * and repainted when the slideshow next reaches them. */
+  const restale = () => {
+    for (const painter of painters) {
+      if (painter.slide.classList.contains('active')) painter.redraw();
+      else painter.stale = true;
+    }
+  };
 
   // The Wasm build does not embed the CJK and emoji faces; layout is final without them,
   // but their glyphs draw as boxes until the file is installed. Emoji are everywhere
   // (Slack reactions, message tapbacks), so those two come first and the rest follow in
-  // the background; every running scene is repainted as each file lands.
+  // the background; the scene on screen is repainted as each file lands.
   const fontPack = (async () => {
     const pending = fontPackStatus().files.filter(f => !f.installed);
     const first = new Set(['noto-emoji.ttf', 'noto-color-emoji.ttf', 'noto-sans-sc.ttf', 'noto-sans-kr.ttf']);
     const fetchFonts = files => Promise.all(files.map(async f => {
       try {
         const r = await fetch(new URL(`./pkg/${f.path}`, import.meta.url));
-        if (r.ok) { installFont(new Uint8Array(await r.arrayBuffer())); redraws.forEach(redraw => redraw()); }
+        if (r.ok) { installFont(new Uint8Array(await r.arrayBuffer())); restale(); }
       } catch (error) { console.warn('font pack', f.file, error); }
     }));
     await fetchFonts(pending.filter(f => first.has(f.file)));
@@ -234,21 +257,38 @@ export async function boot(report) {
 
   /** Stop the scenes shown longest ago. Their screens stay as they were left, as pictures. */
   function retire() {
-    for (const [id, scene] of [...running].slice(0, -KEPT)) {
+    let machines = 0;
+    [...running].reverse().forEach(([id, scene], place) => {
+      machines += scene.machines;
+      if (place < 2 || (place < KEPT && machines <= KEPT_MACHINES)) return;
       running.delete(id);
       scene.booting.then(() => scene.stop());
-    }
+    });
   }
 
-  /** Bring up `scene` in `slide` if it is not already running; resolves once it is painted. */
-  function start(scene, slide) {
+  /** Bring up `scene` in `slide` if it is not already running; resolves once it is painted.
+   *
+   * `spare` marks a scene nobody is looking at — a neighbour warmed so that the edges of
+   * the strip are already running when they are reached. That is worth a world when the
+   * neighbour is a laptop and not when it is a team of seven: the slideshow opens on five
+   * machines with four on one side and seven on the other, and building all sixteen before
+   * the visitor has touched anything costs more than it saves. So a spare scene comes up
+   * only while the machines already running leave room for it, and one that does not is
+   * started the ordinary way when the strip reaches it. */
+  function start(scene, slide, { spare = false } = {}) {
     const known = running.get(scene.id);
     if (known) {
       running.delete(scene.id);
       running.set(scene.id, known);
+      if (known.painter?.stale) { known.painter.stale = false; known.painter.redraw(); }
       return known.booting;
     }
-    const entry = { stop() {} };
+    if (spare) {
+      let machines = scene.machines.length;
+      for (const live of running.values()) machines += live.machines;
+      if (machines > KEPT_MACHINES) return Promise.resolve();
+    }
+    const entry = { machines: scene.machines.length, stop() {} };
     entry.booting = (async () => {
       const tiles = scene.machines.map(({ id }) => slide.querySelector(`[data-machine="${id}"]`));
       // Let the browser paint the overlay's spinner before the opening actions, which
@@ -262,23 +302,33 @@ export async function boot(report) {
       });
       try { scene.open(...machines.map(m => hands(m.env, m.id, m.size))); } catch (error) { console.warn(scene.id, error); }
       // Machines in one scene share a world: a text sent from one phone lands on the other.
-      // So once one of them has finished a gesture or a keystroke, the scene may have the
+      // So once one of them has FINISHED a gesture or a keystroke, the scene may have the
       // others catch up (`sync`), and every one of them is repainted.
+      //
+      // Only once it has finished, though. A pointer crossing a window, a button going
+      // down, a wheel turning: those change the machine under the hand and nothing else in
+      // the world, so that machine repaints alone. Repainting the whole scene for them is
+      // what made a slide of seven machines drag the page down — a hover is rendered every
+      // animation frame, and seven full screens do not fit in one.
       const settled = new Set(['up', 'key', 'type', 'double_click']);
       const draws = [];
-      const redraw = () => draws.forEach(draw => draw());
+      const redraw = () => { for (const draw of draws) draw(); };
       for (const m of machines) {
         const others = machines.filter(o => o !== m).map(o => hands(o.env, o.id, o.size));
-        draws.push(wire(m.tile, m.env, m.id, m.size, op => {
-          if (scene.sync && settled.has(op)) try { scene.sync(others); } catch (error) { console.warn(scene.id, error); }
+        let mine;
+        mine = wire(m.tile, m.env, m.id, m.size, op => {
+          if (!settled.has(op)) { mine(); return; }
+          if (scene.sync) try { scene.sync(others); } catch (error) { console.warn(scene.id, error); }
           redraw();
-        }));
+        });
+        draws.push(mine);
       }
       redraw();
-      redraws.add(redraw);
+      entry.painter = { slide, redraw, stale: false };
+      painters.add(entry.painter);
       for (const m of machines) m.tile.classList.add('live');
       entry.stop = () => {
-        redraws.delete(redraw);
+        painters.delete(entry.painter);
         for (const m of machines) {
           // A copy of the last frame, with none of the listeners that drove the machine.
           const canvas = m.tile.querySelector('canvas');
