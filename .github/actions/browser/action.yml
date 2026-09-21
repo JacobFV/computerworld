@@ -1,0 +1,27 @@
+# A browser for the checks that open the site, and a Playwright that can launch it.
+#
+# Three workflows need this — the push check, the deploy gate and the nightly stills run —
+# and they had three copies of it, which had already drifted: one installed `playwright-core`
+# unconditionally and then fell back to Playwright's own browser, which the script would
+# never have found, because a `playwright-core` sitting in node_modules answers first and
+# has no browser attached. One copy, so there is one thing to get right and one place to
+# bump the version.
+name: Browser to drive
+description: Install a Playwright that can drive a Chrome, and say where both are.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      # The runner image carries Google Chrome, so the driver with no browsers attached is
+      # all that has to come down. If the image ever stops carrying it, take Playwright's
+      # own browser rather than failing on an assumption about the image — and name it, so
+      # that the browser-less package is not the one the script picks up.
+      run: |
+        if command -v google-chrome >/dev/null; then
+          npm install --no-save playwright-core@1.57.0
+          echo "CHROME_BIN=$(command -v google-chrome)" >> "$GITHUB_ENV"
+        else
+          npm install --no-save playwright@1.57.0
+          npx playwright install --with-deps chromium
+          echo "PLAYWRIGHT_MODULE=$PWD/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+        fi

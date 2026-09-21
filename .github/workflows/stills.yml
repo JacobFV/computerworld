@@ -1,0 +1,50 @@
+# The pictures the site shows before its machines are running, against the machines.
+#
+# site/media/scenes/<machine>.jpg is rendered by booting the site and saving what each
+# machine draws, so every change to how a service is rendered leaves the saved picture a
+# little further behind — silently, because nothing looks at it. Eighteen of the
+# sixty-eight were a day stale before anyone noticed. This boots them nightly and fails
+# when a picture no longer matches its machine; the fix is to run the same script without
+# --check and commit site/media/scenes/, which is what the failure says.
+name: stills
+on:
+  schedule:
+    # Small hours in the Americas, after a day's pushes have landed.
+    - cron: '40 9 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stills
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # Sixty-eight machines, each booted and driven to mid-work in a page of its own: the
+    # whole cast is about twenty minutes locally, and a cold Rust build comes first.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install lockfile-matched wasm-bindgen CLI
+        run: |
+          BINDGEN_VERSION=$(python -c 'import tomllib; d=tomllib.load(open("Cargo.lock","rb")); print(next(p["version"] for p in d["package"] if p["name"] == "wasm-bindgen"))')
+          cargo install wasm-bindgen-cli --version "$BINDGEN_VERSION" --locked
+      - run: bash scripts/build-wasm.sh
+      # The same two lines pages.yml deploys from: the bundle in site/pkg/ for live.js to
+      # import, and the world already checked in. The documentation is left out — nothing
+      # a machine draws comes from it.
+      - name: Assemble the site
+        run: cp -r pkg/web site/pkg
+      - uses: ./.github/actions/browser
+      - name: The stills still show what the machines draw
+        run: node scripts/render-site-stills.mjs --check
