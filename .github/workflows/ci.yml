@@ -23,6 +23,34 @@ jobs:
         run: |
           node scripts/build-docs.mjs --check
           cargo doc --no-deps -p computerworld --lib
+  site:
+    # The page is the only part of this project nothing else in CI exercises: the Rust
+    # suites prove the engine and the bindings smoke test proves the two language
+    # bindings, but whether a visitor gets a running computer lives entirely in
+    # site/live.js, site/worker.js and site/engine.js and in the protocol between them.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: Swatinem/rust-cache@v2
+      - name: Install matching wasm-bindgen
+        run: |
+          BINDGEN_VERSION=$(python -c 'import tomllib; d=tomllib.load(open("Cargo.lock","rb")); print(next(p["version"] for p in d["package"] if p["name"] == "wasm-bindgen"))')
+          cargo install wasm-bindgen-cli --version "$BINDGEN_VERSION" --locked
+      - name: Build the bundle the machines run in
+        run: |
+          bash scripts/build-wasm.sh
+          cp -r pkg/web site/pkg
+      - uses: ./.github/actions/browser
+      - run: node scripts/check-site.mjs
   bindings:
     runs-on: ubuntu-latest
     steps:

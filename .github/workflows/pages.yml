@@ -50,6 +50,11 @@ jobs:
       # site/world-definition.js, which scripts/build-content.sh keeps generated.
       - name: Assemble the site
         run: cp -r pkg/web site/pkg
+      - uses: ./.github/actions/browser
+      - name: The machines run in the bundle about to be deployed
+        # Gating the deploy rather than only the push: what ships is this bundle with this
+        # site, and the pair of them is what has to work.
+        run: node scripts/check-site.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
