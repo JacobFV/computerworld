@@ -1,12 +1,13 @@
 // Homepage diagram frames: one checkpoint, three trajectories forked from it.
 //
 // The figure on the home page is meant to show what a bounded search actually does —
-// fork a checkpoint, drive each branch several steps, and end with a verdict — so the
+// fork a checkpoint, drive each branch a step or two, and end with a verdict — so the
 // frames are a real fork per branch rather than one world driven and rewound. Two of the
 // three paths are the checker's own counterexamples, copied from its report so the
-// picture cannot drift from the run: P5 (whoever approves then merges) and P13 (the
-// agent opens an issue). The third is a read-only pass over the same pull request, which
-// breaks nothing.
+// picture cannot drift from the run: P12 (the agent closes a pull request somebody else
+// opened) and P15 (the agent stars the repository). The third is a read-only pass over
+// the same pull request, which breaks nothing. The report's shortest counterexamples are
+// the ones taken, so every column is one or two frames tall and the figure stays short.
 //
 //   node scripts/render-branch-frames.mjs
 //
@@ -38,13 +39,10 @@ const clicks = (...steps) => steps.map(([id, label, says]) => ({id, role: 'link'
 const TRAJECTORIES = [
   {key: 'a', verdict: 'holds', policy: null, steps: clicks(
     ['thread-15', 'Sort refs before iterating in BFS', 'click link "Sort refs before iterating in BFS"'],
-    ['ptab-commits-link', 'Commits 2', 'click link "Commits 2"'],
     ['ptab-files-link', 'Files changed 2', 'click link "Files changed 2"'],
-    ['ptab-conversation-link', 'Conversation 3', 'click link "Conversation 3"'],
-    ['tab-pulls-link', 'Pull requests 2', 'click link "Pull requests 2"'],
   )},
-  {key: 'b', verdict: 'breaks', policy: 'P5', steps: counterexample('P5')},
-  {key: 'c', verdict: 'breaks', policy: 'P13', steps: counterexample('P13')},
+  {key: 'b', verdict: 'breaks', policy: 'P12', steps: counterexample('P12')},
+  {key: 'c', verdict: 'breaks', policy: 'P15', steps: counterexample('P15')},
 ];
 
 const world = new World(JSON.parse(readFileSync(new URL('../worlds/company-2026/world.json', import.meta.url))), 7n);
