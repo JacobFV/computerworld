@@ -1,6 +1,6 @@
 export default {
-  id: 'terminal-git', title: 'A git session in Terminal on Ubuntu',
-  summary: '~/project on branch greeting · "Greet Northstar by name" committed, then awk and sqlite3',
+  id: 'terminal-git', title: "A shell session that really runs",
+  summary: "On Ubuntu: ~/project on branch greeting, “Greet Northstar by name” committed, then awk over a file and a sqlite3 query — real commands against a real filesystem.",
   machines: [{ id: 'ubuntu-terminal', like: 'carol-ubuntu', size: [1280, 800] }],
   open(pc) {
     pc.launch('terminal');

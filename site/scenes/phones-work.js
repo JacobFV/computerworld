@@ -1,6 +1,6 @@
 export default {
-  id: 'phones-work', title: 'Numbers on an iPhone, Mail on a Pixel',
-  summary: '"August budget is up $21" sent, Budget.xlsx back open on the August SUM, read on the Pixel',
+  id: 'phones-work', title: "Desk work, finished on a phone",
+  summary: "“August budget is up $21” sent from an iPhone with Budget.xlsx reopened on the August SUM, and the mail read on a Pixel.",
   machines: [
     { id: 'iphone-numbers', like: 'alice-phone', size: [390, 844], label: "Alice's iPhone" },
     { id: 'pixel-mail', like: 'bob-android', size: [412, 892], label: "Bob's Pixel" },

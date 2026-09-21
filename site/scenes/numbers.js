@@ -1,6 +1,6 @@
 export default {
-  id: 'numbers', title: 'Totalling sales by region in Numbers on macOS',
-  summary: 'Sales.csv · Revenue =D2*E2 to F49, SUMIF per region in H1:J6, the chart dragged under it',
+  id: 'numbers', title: "Regional sales analysis from a CSV",
+  summary: "An analyst turns Sales.csv into a report in Numbers on macOS: Revenue =D2*E2 filled to row 49, SUMIF totals per region in H1:J6, and a chart dragged in underneath.",
   machines: [{ id: 'mac-numbers', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     const sheet = command => pc.step('application.v1', 'shell', { target: `window:0:content:sheet:${command}` });

@@ -1,6 +1,6 @@
 export default {
-  id: 'phones-music', title: 'Apple Music on an iPhone, YouTube Music on a Pixel',
-  summary: 'Cold Start playing at 6:20 on the iPhone, Warm Cache off Cold Reads started on the Pixel',
+  id: 'phones-music', title: "Playback that runs on the world clock",
+  summary: "Cold Start playing at 6:20 in Apple Music on an iPhone while Warm Cache starts in YouTube Music on a Pixel: the position comes from logical time, never the host's.",
   machines: [
     { id: 'iphone-music', like: 'alice-phone', size: [390, 844], label: "Alice's iPhone" },
     { id: 'pixel-music', like: 'bob-android', size: [412, 892], label: "Bob's Pixel" },

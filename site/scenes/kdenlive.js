@@ -1,6 +1,6 @@
 export default {
-  id: 'kdenlive', title: 'Cutting clips in Kdenlive on Ubuntu',
-  summary: 'Five clips on one timeline · cross dissolve then dip to black, "Golden hour, Pier 14"',
+  id: 'kdenlive', title: "Cutting a sequence on a timeline",
+  summary: "Five clips on one Kdenlive timeline on Ubuntu — a cross dissolve into a dip to black, with “Golden hour, Pier 14” over the opening.",
   machines: [{ id: 'ubuntu-kdenlive', like: 'carol-ubuntu', size: [1280, 800] }],
   open(pc) {
     const ui = target => pc.step('application.v1', 'shell', { target: `window:0:content:video:${target}` });

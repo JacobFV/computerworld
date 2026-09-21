@@ -1,6 +1,6 @@
 export default {
-  id: 'calendar', title: 'Launch week in Calendar on macOS',
-  summary: 'Calendar, month view · sixteen events from the dress rehearsal to quarter close, launch day 10:00',
+  id: 'calendar', title: "A launch week that has to fit",
+  summary: "Sixteen events from the dress rehearsal to quarter close, in Calendar's month view on macOS, with launch day pinned at 10:00.",
   machines: [{ id: 'mac-calendar', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     const cal = command => pc.step('application.v1', 'shell', { target: `window:0:content:cal:${command}` });

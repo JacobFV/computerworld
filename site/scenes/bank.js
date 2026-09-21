@@ -1,6 +1,6 @@
 export default {
-  id: 'bank', title: 'Northwind online banking in Safari on macOS',
-  summary: "northwind.example · the bank's own front page in Safari, before any money is moved",
+  id: 'bank', title: "Online banking as a site, not a mock",
+  summary: "northwind.example opens in Safari on macOS — a real HTML banking site served over the world's own network, with accounts and balances, before any money is moved.",
   machines: [{ id: 'mac-bank', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     pc.visit('http://northwind.example/');

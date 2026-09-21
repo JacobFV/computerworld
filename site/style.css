@@ -411,25 +411,34 @@ html[data-boot="ask"] .get { display: grid; }
      a word longer than the last. Wide enough and that is a title's line and a summary's;
      the ladder below is where the summary starts wrapping under it, measured over all
      forty-four scenes rather than guessed at. */
-  min-height: 2.95rem;
-  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center;
-  column-gap: .8rem; row-gap: .1rem; text-align: center;
-  font-family: var(--sans); line-height: 1.35;
+  min-height: 7.4rem;
+  /* One grid column, and the column is as wide as the paragraph wants to be. The title
+     and the count take their left edge from it instead of each being centred on its own
+     width, so the three lines share one leading edge; `justify-content` then centres that
+     column under the strip. Centring each line separately is what gives a caption three
+     different left edges and a ragged look on both sides. */
+  display: grid; justify-items: start; justify-content: center;
+  row-gap: .28rem; text-align: left;
+  font-family: var(--sans); line-height: 1.4;
 }
 #caption-title {
-  font-size: clamp(1.02rem, 1.35vw, 1.2rem); font-weight: 600; letter-spacing: -.015em;
-  color: var(--ink);
+  font-size: clamp(1.05rem, 1.4vw, 1.25rem); font-weight: 600; letter-spacing: -.02em;
+  color: var(--ink); text-wrap: balance;
 }
 #caption-summary {
-  min-width: 0; font-family: var(--mono); font-size: .72rem; line-height: 1.5;
-  letter-spacing: .01em; color: var(--dim);
+  max-width: 78ch; font-size: .85rem; line-height: 1.55; color: var(--dim);
+  text-wrap: pretty;
 }
+#caption-summary:empty { display: none; }
+/* Where in the cast this is. Above the title, where an eyebrow goes: it is a label for
+   what follows, and putting it last would push the paragraph away from its heading. */
 #caption-where {
-  font-family: var(--mono); font-size: .68rem; letter-spacing: .04em; color: var(--faint);
+  order: -1; margin-bottom: .1rem;
+  font-family: var(--mono); font-size: .64rem; letter-spacing: .07em; color: var(--faint);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 /* Where the summary no longer sits beside the title, and then where it wraps again. */
-@media (max-width: 919px) { .caption { min-height: 4.8rem; } }
+@media (max-width: 919px) { .caption { min-height: 7.2rem; } }
 .stage noscript img { display: block; width: var(--w-desk); height: auto; margin: 0 auto; border-radius: var(--radius); }
 
 /* WHAT THE STRIP DOES NOT SAY. Five sections under the machines, in two shapes. A band is
@@ -636,8 +645,8 @@ body > footer span { display: block; padding-top: 1.4rem; border-top: 1px solid 
   .pager > button { padding: .1rem .5rem; }
   /* The title holds its size here — it is the thing being read — and the summary wraps
      under it into the lines kept back for it. */
-  .caption { min-height: 6rem; column-gap: .55rem; }
-  #caption-summary { font-size: .68rem; }
+  .caption { min-height: 8.1rem; }
+  #caption-summary { font-size: .78rem; }
   .gh span { display: none; }
   .codebox pre { padding-inline: 1rem; }
   .codebox code { font-size: .78rem; }
@@ -650,8 +659,8 @@ body > footer span { display: block; padding-top: 1.4rem; border-top: 1px solid 
 }
 
 /* A title that wraps too, and then one that wraps twice. */
-@media (max-width: 479px) { .caption { min-height: 7rem; } }
-@media (max-width: 359px) { .caption { min-height: 8.4rem; } }
+@media (max-width: 479px) { .caption { min-height: 12rem; } }
+@media (max-width: 359px) { .caption { min-height: 13.2rem; } }
 
 /* Audience sections: capabilities first, measured evidence alongside. */
 html { scroll-padding-top: 2rem; }

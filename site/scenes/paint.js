@@ -1,6 +1,6 @@
 export default {
-  id: 'paint', title: 'A drawing in Paint on Windows',
-  summary: 'A 960 × 540 sheet · house, tree, sun and clouds in filled shapes, two birds in pencil',
+  id: 'paint', title: "The simplest tool on the machine",
+  summary: "Paint on Windows 11: a 960 × 540 sheet with a house, a tree, sun and clouds in filled shapes, and two birds drawn freehand.",
   machines: [{ id: 'windows-paint', like: 'bob-windows', size: [1280, 800] }],
   open(pc) {
     const ui = target => pc.step('application.v1', 'shell', { target: `window:0:content:paint:${target}` });

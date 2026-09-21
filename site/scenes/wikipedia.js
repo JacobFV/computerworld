@@ -1,6 +1,6 @@
 export default {
-  id: 'wikipedia', title: 'Reading Wikipedia on Ubuntu',
-  summary: 'en.wikipedia.org/wiki/Deterministic_simulation, scrolled into the body of the article',
+  id: 'wikipedia', title: "A long article, laid out and scrolled",
+  summary: "en.wikipedia.org/wiki/Deterministic_simulation in a browser on Ubuntu, scrolled into the body — real HTML and CSS through the engine's own layout.",
   machines: [{ id: 'ubuntu-wikipedia', like: 'carol-ubuntu', size: [1280, 800] }],
   open(pc) {
     pc.visit('http://en.wikipedia.org/wiki/Deterministic_simulation');

@@ -6,8 +6,8 @@ const refresh = phone => phone.click('messages:back') && phone.click(THREAD);
 const say = (phone, text) => { refresh(phone); phone.click('messages:compose'); phone.type(text); phone.key('Enter'); };
 
 export default {
-  id: 'texting', title: 'Two phones in one conversation: type on either',
-  summary: 'One SMS thread on both handsets · six messages about slide 7 of the Q3 deck; type into either',
+  id: 'texting', title: "One thread, two handsets, either one live",
+  summary: "Six messages about slide 7 of the Q3 deck, on both phones at once — type into either and the other receives it, because there is one world underneath.",
   machines: [
     { id: 'iphone-texting', like: 'alice-phone', size: [390, 844], label: "Alice's iPhone" },
     { id: 'pixel-texting', like: 'bob-android', size: [412, 892], label: "Bob's Pixel" },

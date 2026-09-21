@@ -3,8 +3,8 @@
 // Every machine here is on that one change: the same branch, the same two files, the
 // same pull request number.
 export default {
-  id: 'swe-team', title: 'Seven machines shipping one fix',
-  summary: 'atlas#14 → pull/15 on sort-refs (ATL-1): src/bfs.rs takes a BTreeMap, tests/path.rs pins the order',
+  id: 'swe-team', title: "A bug report carried through to a merge",
+  summary: "Seven machines move atlas#14 to pull/15: src/bfs.rs takes a BTreeMap on macOS, the diff is reviewed on Windows 11, ATL-1 advances in Linear on Ubuntu, and #eng, the issue and the CI mail are read on an iPhone and a Pixel.",
   machines: [
     { id: 'swe-mac-code', like: 'alice-mac', size: [1280, 800], label: "Alice's Mac · src/bfs.rs on sort-refs" },
     { id: 'swe-windows-pr', like: 'bob-windows', size: [1280, 800], label: "Bob's PC · the pull request 15 diff" },

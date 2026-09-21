@@ -1,6 +1,6 @@
 export default {
-  id: 'kicad-schematic', title: 'A 555 blinker in the KiCad schematic editor on macOS',
-  summary: 'blinker.kicad_sch · an NE555P astable wired up, C1 10 µF, the LED resistor 470 Ω, saved',
+  id: 'kicad-schematic', title: "Schematic capture from an empty sheet",
+  summary: "An NE555P astable wired up in KiCad on macOS — C1 at 10 µF, the LED resistor at 470 Ω — and blinker.kicad_sch saved.",
   machines: [{ id: 'mac-kicad', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     const ui = (w, target) => pc.step('application.v1', 'shell', { target: `window:${w}:content:kicad:${target}` });

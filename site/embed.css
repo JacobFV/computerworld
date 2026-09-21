@@ -12,12 +12,12 @@ main { width: 100%; }
 .stage {
   /* The frame is the whole page here, so a machine may have all of it
      bar what sits under it — where index.html has to leave 21rem for the
-     type above and the snippet below. That is the pager, which is now a
-     caption with a title's line and a summary's kept back under it
-     (about 4.8rem now the title is the larger of the two, after the
-     2.6rem it pulls back up through the track's 5.5rem shadow margin)
-     and the link under that, so: 9.8rem, which leaves a little air too. */
-  --w-desk: min(1080px, 90vw, (100vh - 9.8rem) * 1.6);
+     type above and the snippet below. That is the pager: a caption of a
+     count, a title and a paragraph kept back under it (7.4rem, measured
+     over the whole cast in style.css) after the 2.6rem it pulls back up
+     through the track's 5.5rem shadow margin, and the link under that.
+     So: 12.7rem, which leaves a little air too. */
+  --w-desk: min(1080px, 90vw, (100vh - 12.7rem) * 1.6);
   padding-top: 0;
 }
 
@@ -37,7 +37,15 @@ main { width: 100%; }
    it does not scroll, so the height cap has to survive down here too. */
 @media (max-width: 720px) {
   .stage {
-    --w-desk: min(88vw, (100vh - 12.8rem) * 1.6);
-    --h-phone: min(640px, 150vw, 100vh - 12rem);
+    --w-desk: min(88vw, (100vh - 15.8rem) * 1.6);
+    --h-phone: min(640px, 150vw, 100vh - 15rem);
+  }
+}
+/* Narrower still, where style.css keeps another two lines back for a caption that wraps
+   two or three times; the frame has to give those lines room as well. */
+@media (max-width: 479px) {
+  .stage {
+    --w-desk: min(88vw, (100vh - 18.2rem) * 1.6);
+    --h-phone: min(640px, 150vw, 100vh - 17.4rem);
   }
 }

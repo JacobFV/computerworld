@@ -1,6 +1,6 @@
 export default {
-  id: 'code-js', title: 'A Node project in VS Code on Windows 11',
-  summary: 'stockroom 0.3.0 · reorder.js over data/stock.json, index.js run: 3 of 5 SKUs need reordering',
+  id: 'code-js', title: "A Node project, edited and then run",
+  summary: "stockroom 0.3.0 in VS Code on Windows 11: reorder.js reads data/stock.json, and running index.js reports 3 of 5 SKUs below their reorder point.",
   machines: [{ id: 'windows-node', like: 'bob-windows', size: [1280, 800] }],
   open(pc) {
     const root = 'C:/Users/bob/stockroom';

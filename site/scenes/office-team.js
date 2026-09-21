@@ -3,8 +3,8 @@
 // paid at the bank. The quarter comes to $8,738.85, September to $2,898.65, and the
 // September utilities line — $131.10 — is the payment on Alice's statement.
 export default {
-  id: 'office-team', title: 'Three machines, one set of figures',
-  summary: 'Budget.xlsx Q3 = $8,738.85 · the $131.10 Cascade Power line paid from chk-4417 and mailed to Carol',
+  id: 'office-team', title: "Closing a quarter across three desks",
+  summary: "Three colleagues reconcile one number: Q3 comes to $8,738.85 in Excel on Windows 11, the $131.10 Cascade Power line is paid from chk-4417 at the bank on macOS, and the figures are mailed to Ubuntu to be checked.",
   machines: [
     { id: 'office-windows-excel', like: 'bob-windows', size: [1280, 800], label: "Bob's PC · the quarter in Excel" },
     { id: 'office-ubuntu-mail', like: 'carol-ubuntu', size: [1280, 800], label: "Carol's ThinkPad · replying about the figures" },

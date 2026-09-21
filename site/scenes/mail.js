@@ -1,6 +1,6 @@
 export default {
-  id: 'mail', title: 'Replying to a message in Outlook on Windows 11',
-  summary: 'Outlook · a reply to mail-1: the release job is green, launch.txt validates, OPS-1 next',
+  id: 'mail', title: "Answering a release thread",
+  summary: "An engineer replies to mail-1 in Outlook on Windows 11: the release job is green, launch.txt validates, and OPS-1 is next.",
   machines: [{ id: 'windows-mail', like: 'bob-windows', size: [1280, 800] }],
   open(pc) {
     pc.launch('mail');

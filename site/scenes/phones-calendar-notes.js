@@ -1,6 +1,6 @@
 export default {
-  id: 'phones-calendar-notes', title: 'Calendar on an iPhone, Notes on a Pixel',
-  summary: 'Nine events around the Atlas 1.0 release; "Seattle trip, 21-24 Sept" open on the Pixel',
+  id: 'phones-calendar-notes', title: "Planning a trip across two handsets",
+  summary: "Nine events around the Atlas 1.0 release in Calendar on an iPhone, and “Seattle trip, 21-24 Sept” open in Notes on a Pixel.",
   machines: [
     { id: 'iphone-calendar', like: 'alice-phone', size: [390, 844], label: "Alice's iPhone" },
     { id: 'pixel-notes', like: 'bob-android', size: [412, 892], label: "Bob's Pixel" },

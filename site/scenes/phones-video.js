@@ -1,6 +1,6 @@
 export default {
-  id: 'phones-video', title: 'iMovie on an iPhone, a video editor on a Pixel',
-  summary: '"Golden hour at the bay" cut on the iPhone, "Atlas 1.0 launch night" on the Pixel',
+  id: 'phones-video', title: "Editing video on the phone in your hand",
+  summary: "Two editors cut in parallel — “Golden hour at the bay” in iMovie on an iPhone, “Atlas 1.0 launch night” on a Pixel — both on the same deterministic media pipeline.",
   machines: [
     { id: 'iphone-imovie', like: 'alice-phone', size: [390, 844], label: "Alice's iPhone" },
     { id: 'pixel-video', like: 'bob-android', size: [412, 892], label: "Bob's Pixel" },

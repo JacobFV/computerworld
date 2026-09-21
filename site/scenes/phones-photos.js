@@ -1,6 +1,6 @@
 export default {
-  id: 'phones-photos', title: 'Photos on an iPhone, Sketchbook on a Pixel',
-  summary: 'Sunset.png under the vivid-warm filter, the same view drawn 360 × 640 on the Pixel',
+  id: 'phones-photos', title: "A photo edited, then redrawn by hand",
+  summary: "Sunset.png under the vivid-warm filter in Photos on an iPhone, and the same view drawn 360 × 640 in Sketchbook on a Pixel.",
   machines: [
     { id: 'iphone-photos', like: 'alice-phone', size: [390, 844], label: "Alice's iPhone" },
     { id: 'pixel-sketch', like: 'bob-android', size: [412, 892], label: "Bob's Pixel" },

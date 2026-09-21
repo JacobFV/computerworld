@@ -1,6 +1,6 @@
 export default {
-  id: 'code-debug', title: 'VS Code on macOS, stopped on a breakpoint',
-  summary: '~/orders/invoice.py · stopped inside line_total, a watch on quantity * price * discount, second order',
+  id: 'code-debug', title: "Stepping through Python inside the world",
+  summary: "VS Code on macOS stopped on a breakpoint in ~/orders/invoice.py, inside line_total on the second order, with a watch on quantity * price * discount.",
   machines: [{ id: 'mac-debug', like: 'alice-mac', size: [1280, 800] }],
   open(pc) {
     pc.sh("mkdir -p /Users/alice/orders && printf '" + [

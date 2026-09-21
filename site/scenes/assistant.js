@@ -1,6 +1,6 @@
 export default {
-  id: 'assistant', title: 'Asking Claude in Firefox on Ubuntu',
-  summary: 'claude.ai in Firefox · a suggestion opened, then "Who owns the Atlas launch?" asked in the composer',
+  id: 'assistant', title: "Asking an assistant about your own world",
+  summary: "claude.ai opens in Firefox on Ubuntu; a suggestion is taken, then “Who owns the Atlas launch?” is typed into the composer — an assistant site inside the simulation.",
   machines: [{ id: 'ubuntu-claude', like: 'carol-ubuntu', size: [1280, 800] }],
   open(pc) {
     pc.visit('http://claude.ai/');

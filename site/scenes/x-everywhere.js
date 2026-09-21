@@ -7,8 +7,8 @@
 // column of cards, with no narrow layout — so the phone shows the middle of that page,
 // which is what a phone really does with a site like it.
 export default {
-  id: 'x-everywhere', title: 'The same X account on a Mac and an iPhone',
-  summary: 'x.com · 1/3 and 2/3 posted, 3/ still in the reply box; the phone timeline already has 1/3',
+  id: 'x-everywhere', title: "One account, two devices, one timeline",
+  summary: "A writer posts a three-part thread from Safari on macOS while her iPhone shows the same timeline: 1/3 and 2/3 are up, 3/ is still in the reply box.",
   machines: [
     { id: 'mac-x-thread', like: 'alice-mac', size: [1280, 800], label: "Alice's Mac, writing a thread on X" },
     { id: 'iphone-x-thread', like: 'alice-phone', size: [390, 844], label: "Alice's iPhone, the same timeline" },

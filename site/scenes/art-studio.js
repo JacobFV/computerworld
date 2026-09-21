@@ -3,8 +3,8 @@
 // Pro, marks the same house onto a sunset photo in Photos on her phone, and Bob sketches
 // it once more in Sketchbook on his Pixel.
 export default {
-  id: 'art-studio', title: 'The same house drawn on four machines',
-  summary: 'One house: Paint 960 × 540, Pixelmator 800 × 600 in shapes, Markup on Sunset.png, Sketchbook 360 × 640',
+  id: 'art-studio', title: "One brief, four drawing tools",
+  summary: "Two designers draw the same house four ways — Paint on Windows 11, Pixelmator Pro on macOS, Markup over a photo on an iPhone, Sketchbook on a Pixel — so one asset can be compared across every canvas the team owns.",
   machines: [
     { id: 'windows-art', like: 'bob-windows', size: [1280, 800], label: "Bob's PC, drawing in Paint" },
     { id: 'mac-art', like: 'alice-mac', size: [1280, 800], label: "Alice's Mac, in Pixelmator Pro" },

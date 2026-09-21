@@ -1,6 +1,6 @@
 export default {
-  id: 'freecad-sketch', title: 'Constraining a sketch in FreeCAD on Windows',
-  summary: 'Sketcher · 80 × 50 symmetric about the origin, a ⌀24 bore and two equal ⌀8 holes 12 mm in',
+  id: 'freecad-sketch', title: "Constraint solving in a sketch",
+  summary: "FreeCAD's Sketcher on Windows 11 drives an 80 × 50 outline symmetric about the origin, a ⌀24 bore and two equal ⌀8 holes 12 mm in — solved, not drawn.",
   machines: [{ id: 'windows-freecad', like: 'bob-windows', size: [1280, 800] }],
   open(pc) {
     const ui = target => pc.step('application.v1', 'shell', { target: `window:0:content:freecad:${target}` });

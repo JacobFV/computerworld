@@ -15,8 +15,8 @@ const say = (pc, text) => {
 };
 
 export default {
-  id: 'hardware-team', title: 'Five machines on one board',
-  summary: 'sensor-node rev B · R3 330 Ω → 1 kΩ in the schematic and the BOM, DRC clean, lid outline 70 × 45 mm',
+  id: 'hardware-team', title: "Cross-disciplinary electronics engineering",
+  summary: "Four engineers take sensor-node rev B from schematic to enclosure: R3 goes 330 Ω → 1 kΩ in KiCad on Windows 11, the lid is cut to 70 × 45 mm in FreeCAD on macOS, DRC comes back clean, and the change lands in git on Ubuntu — discussed throughout on an iPhone.",
   machines: [
     { id: 'hardware-board', like: 'carol-ubuntu', size: [1280, 800], label: 'The lab bench · the sensor-node board, DRC after the change' },
     { id: 'hardware-schematic', like: 'bob-windows', size: [1280, 800], label: "Bob's PC · the same project's schematic, R3 → 1 kΩ" },
