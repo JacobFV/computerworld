@@ -53,6 +53,7 @@ const sections = [
     { file: 'custom-application.md', blurb: 'Adding a native application.' },
     { file: 'service-sdk.md', blurb: 'What a service is to the network.' },
     { file: 'custom-service.md', blurb: 'Adding a synthetic-internet service.' },
+    { file: 'html-migration.md', blurb: 'Moving a service from the `Page` format to HTML, with the search service as the worked example.' },
   ]},
   { title: 'How it works', pages: [
     { file: 'architecture.md', blurb: 'Crates and the boundaries between them.' },
@@ -66,7 +67,7 @@ const sections = [
   ]},
   { title: 'Project', pages: [
     { file: 'provenance.md', blurb: 'What was learned from the predecessor repositories.' },
-    { file: 'migration.md', blurb: 'Moving between 0.x versions.' },
+    { file: 'migration.md', blurb: 'Moving between 0.x releases, and what the predecessor projects left behind.' },
     { file: 'releasing.md', blurb: 'How a release is built, verified and published.' },
   ]},
   { title: 'API reference', pages: [
@@ -87,7 +88,8 @@ function rewriteHref(href, pages) {
   const target = path.replace(/^\.\//, '');
   const page = pages.get(target);
   if (page) return `${page.slug}.html${hash ? '#' + hash : ''}`;
-  if (target.endsWith('.md') && !target.includes('/')) return `${target.slice(0, -3)}.html${hash ? '#' + hash : ''}`;
+  // A `docs/*.md` that is not in the sidebar has no page here, so it goes to the
+  // repository like any other file rather than to a slug nothing wrote.
   // Anything else lives in the repository.
   const inRepo = target.startsWith('../') ? target.slice(3) : `docs/${target}`;
   const kind = inRepo.endsWith('/') || !/\.[a-z0-9]+$/i.test(inRepo) ? 'tree' : 'blob';
