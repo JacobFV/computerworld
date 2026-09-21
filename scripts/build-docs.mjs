@@ -20,8 +20,10 @@ const out = join(root, 'site', 'docs');
 const repo = 'https://github.com/JacobFV/computerworld';
 const check = process.argv.includes('--check');
 
-// The light/dark switch in the top bar, and the snippet that settles the theme before
-// the first paint — the same control and the same storage key as the rest of the site.
+// The two icon buttons in the top bar, and the snippet that settles the theme before the
+// first paint — the same control and the same storage key as the rest of the site.
+const hamburger = '<svg class="bars" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>';
+const cross = '<svg class="cross" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>';
 const sun = '<svg class="sun" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="3.1"/><path d="M8 1.1v1.7M8 13.2v1.7M1.1 8h1.7M13.2 8h1.7M3.15 3.15l1.2 1.2M11.65 11.65l1.2 1.2M12.85 3.15l-1.2 1.2M4.35 11.65l-1.2 1.2"/></svg>';
 const moon = '<svg class="moon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="currentColor"><path d="M13.6 10.4A6 6 0 0 1 5.6 2.4a6 6 0 1 0 8 8Z"/></svg>';
 const themeSnippet = `<script>/* Before the first paint: the reader's stored choice, or the device's own setting. */
@@ -280,7 +282,7 @@ ${themeSnippet}
   <nav class="links">
     <a href="./" aria-current="${page.slug === 'index' ? 'page' : 'false'}">Docs</a>
     <a href="${repo}">GitHub</a>
-    <button class="menu" id="menu" aria-expanded="false" aria-controls="side">Menu</button>
+    <button class="icon-button menu" id="menu" type="button" aria-expanded="false" aria-controls="side" aria-label="Show the documentation menu">${hamburger}${cross}</button>
     <button class="icon-button theme" type="button" hidden aria-label="Switch theme">${sun}${moon}</button>
   </nav>
 </header>
@@ -297,7 +299,11 @@ ${themeSnippet}
 <script src="./theme.js" defer></script>
 <script>
 const menu = document.getElementById('menu'), side = document.getElementById('side');
-menu.addEventListener('click', () => { const open = side.classList.toggle('open'); menu.setAttribute('aria-expanded', String(open)); });
+menu.addEventListener('click', () => {
+  const open = side.classList.toggle('open');
+  menu.setAttribute('aria-expanded', String(open));
+  menu.setAttribute('aria-label', open ? 'Hide the documentation menu' : 'Show the documentation menu');
+});
 </script>
 </body>
 </html>

@@ -7,6 +7,8 @@
    because CSS has no way to say "the device asked, OR the reader picked" in one rule. */
 :root {
   --radius: 10px;
+  /* A macOS window's corner, used by every figure on the page. */
+  --win-radius: 11px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
 }
@@ -33,16 +35,16 @@
   --syn-s: #a9b88f;
   --syn-t: #e0c9a0;
   /* The window a figure is shown in: title bar, hairline, title, and the top highlight. */
-  --chrome: linear-gradient(#38352f, #27251f);
-  --chrome-line: #555047;
-  --chrome-ink: #d4cfc4;
-  --chrome-sheen: #ffffff16;
-  --win-shadow: 0 12px 28px #00000033;
+  --chrome: linear-gradient(#332f2a, #292620);
+  --chrome-line: #4a453d;
+  --chrome-ink: #cdc7bb;
+  --chrome-sheen: #ffffff14;
+  --win-shadow: 0 18px 38px -14px #000000a6, 0 2px 6px #00000047;
   /* Inside a figure: the sheet the small frames are laid on, and the frames themselves. */
   --figure-bg: #171613;
   --frame-bg: #26231e;
-  --frame-line: #696155;
-  --frame-shadow: 0 4px 10px #00000055;
+  --frame-line: #575043;
+  --frame-shadow: 0 4px 10px #00000059;
   --engine-bg: #241e15;
   --engine-line: #79603c;
   /* The two hero controls, finished like buttons on the machines in the strip. */
@@ -77,11 +79,11 @@
     --syn-k: #6d665b;
     --syn-s: #4c6236;
     --syn-t: #8a5a12;
-    --chrome: linear-gradient(#f0ece5, #e2ded5);
+    --chrome: linear-gradient(#f5f2ec, #e7e2d8);
     --chrome-line: #cdc5b6;
-    --chrome-ink: #45413a;
+    --chrome-ink: #4a453d;
     --chrome-sheen: #ffffffcc;
-    --win-shadow: 0 12px 28px #00000026;
+    --win-shadow: 0 16px 34px -16px #00000038, 0 1px 3px #00000014;
     --figure-bg: #f2eee6;
     --frame-bg: #ffffff;
     --frame-line: #d8d1c3;
@@ -118,11 +120,11 @@
   --syn-k: #6d665b;
   --syn-s: #4c6236;
   --syn-t: #8a5a12;
-  --chrome: linear-gradient(#f0ece5, #e2ded5);
+  --chrome: linear-gradient(#f5f2ec, #e7e2d8);
   --chrome-line: #cdc5b6;
-  --chrome-ink: #45413a;
+  --chrome-ink: #4a453d;
   --chrome-sheen: #ffffffcc;
-  --win-shadow: 0 12px 28px #00000026;
+  --win-shadow: 0 16px 34px -16px #00000038, 0 1px 3px #00000014;
   --figure-bg: #f2eee6;
   --frame-bg: #ffffff;
   --frame-line: #d8d1c3;
@@ -190,6 +192,16 @@ button { font: inherit; color: inherit; }
 .theme:hover { color: var(--ink); border-color: var(--ink); }
 .theme svg { display: block; width: 15px; height: 15px; }
 :root[data-theme="dark"] .theme .moon, :root[data-theme="light"] .theme .sun { display: none; }
+
+/* Scrollbars belong to the page, not to the browser's own chrome: `color-scheme` on
+   :root already turns the window's bar over, and these draw the ones inside the page —
+   a code block, a wide table, the strip of frames in a figure — out of the palette. */
+* { scrollbar-width: thin; scrollbar-color: var(--faint) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 10px; background: var(--faint); background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--dim); background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }
 
 main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
 
@@ -667,8 +679,8 @@ html { scroll-padding-top: 2rem; }
 h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-spacing: -.02em; }
 .prose p { font-size: .94rem; line-height: 1.75; }
 .feature-grid figure { min-width: 0; margin: 0; }
-.feature-grid figure > img, .feature-grid video { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 0 0 8px 8px; }
-.figure-bar { display: flex; justify-content: space-between; gap: 1rem; padding: .85rem 1rem; border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--chrome); color: var(--chrome-ink); font: .63rem/1.5 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.feature-grid figure > img, .feature-grid video { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 0 0 var(--win-radius) var(--win-radius); }
+.figure-bar { display: flex; justify-content: space-between; gap: 1rem; padding: .85rem 1rem; border: 1px solid var(--line); border-bottom: 0; border-radius: var(--win-radius) var(--win-radius) 0 0; background: var(--chrome); color: var(--chrome-ink); font: .63rem/1.5 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
 .figure-bar span:last-child { color: var(--accent); }
 .metrics { display: flex; flex-wrap: wrap; gap: 1.2rem 2.5rem; padding: 1.4rem 0; margin: 1.4rem 0 0; border-block: 1px solid var(--line); }
 .metrics dt { color: var(--dim); font: .66rem/1.5 var(--mono); }
@@ -676,7 +688,7 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .metrics small { font-size: 1rem; color: var(--accent); letter-spacing: 0; }
 .prose .measure { font: .72rem/1.75 var(--mono); }
 .observation { margin-top: 3.5rem; padding-top: 3.5rem; border-top: 1px solid var(--line); grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
-.compare > img { border-radius: 0 0 8px 8px; }
+.compare > img { border-radius: 0 0 var(--win-radius) var(--win-radius); }
 .evidence-note { border-left: 2px solid var(--accent); padding-left: 1rem; }
 .replay-steps { list-style: none; padding: 0; margin: 1.5rem 0; }
 .replay-steps li { display: flex; gap: 1rem; padding: .8rem 0; border-top: 1px solid var(--line); font-size: .84rem; }
@@ -700,7 +712,7 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .policy-details > summary { cursor: pointer; font-size: .8rem; color: var(--ink); }
 .policy-details .table-wrap { margin-top: 1rem; }
 .text-links { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; }
-.map-content { padding: 1.5rem; border: 1px solid var(--line); border-radius: 0 0 8px 8px; background: var(--bg-2); }
+.map-content { padding: 1.5rem; border: 1px solid var(--line); border-radius: 0 0 var(--win-radius) var(--win-radius); background: var(--bg-2); }
 .map-languages, .map-machines { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; text-align: center; }
 .map-languages span { padding: .6rem .2rem; border: 1px solid var(--line-2); border-radius: 4px; font: .7rem/1.4 var(--mono); }
 .map-link { text-align: center; color: var(--faint); height: 1.8rem; }
@@ -752,13 +764,27 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .metrics small { color: var(--ink); }
 .scope-note { font-size: .85rem; }
 .feature-grid figcaption { font: .85rem/1.6 var(--sans); color: var(--dim); }
-.figure-bar { position: relative; justify-content: center; min-height: 36px; padding: .6rem 1rem .6rem 4.6rem; background: var(--chrome); border-color: var(--chrome-line); box-shadow: inset 0 1px 0 var(--chrome-sheen); font: .72rem/1.4 var(--sans); text-transform: none; letter-spacing: 0; color: var(--chrome-ink); }
-.figure-bar::before { content: ''; position: absolute; left: 14px; top: 13px; width: 9px; height: 9px; border-radius: 50%; background: #ce7162; box-shadow: 16px 0 #d3ad60, 32px 0 #89a475; }
+.figure-bar {
+  position: relative; justify-content: center; align-items: center;
+  min-height: 38px; padding: .5rem 5rem; border-color: var(--chrome-line);
+  border-radius: var(--win-radius) var(--win-radius) 0 0;
+  background: var(--chrome); box-shadow: inset 0 1px 0 var(--chrome-sheen);
+  font: 500 .78rem/1.4 var(--sans); text-transform: none; letter-spacing: -.005em;
+  color: var(--chrome-ink);
+}
+/* The three window controls: 12px across, 8px apart, one dot drawn and the other two cast
+   as its shadows. Sizes and colours are macOS's own, so the figure reads as a window on
+   the same desk as the machines in the strip rather than as a labelled box. */
+.figure-bar::before {
+  content: ''; position: absolute; left: 14px; top: 50%; margin-top: -6px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #ff5f57; box-shadow: 20px 0 #febc2e, 40px 0 #28c840;
+}
 .figure-bar span:last-child { color: inherit; }
-.feature-grid figure > img, .feature-grid video, .map-content, .compare { border: 1px solid var(--chrome-line); border-top: 0; border-radius: 0 0 8px 8px; box-shadow: var(--win-shadow); }
+.feature-grid figure > img, .feature-grid video, .map-content, .compare { border: 1px solid var(--chrome-line); border-top: 0; border-radius: 0 0 var(--win-radius) var(--win-radius); box-shadow: var(--win-shadow); }
 .compare { overflow: hidden; }
 .compare > img { box-shadow: none; border-radius: 0; }
-.branch-scroll { overflow-x: auto; background: var(--figure-bg); border: 1px solid var(--chrome-line); border-top: 0; border-radius: 0 0 8px 8px; box-shadow: var(--win-shadow); }
+.branch-scroll { overflow-x: auto; background: var(--figure-bg); border: 1px solid var(--chrome-line); border-top: 0; border-radius: 0 0 var(--win-radius) var(--win-radius); box-shadow: var(--win-shadow); }
 .branch-diagram { display: grid; grid-template-columns: minmax(140px,1fr) 36px minmax(140px,1fr) 38px 42px; grid-template-rows: 1fr 1fr; align-items: center; gap: 24px 0; min-width: 440px; padding: 26px 14px; }
 .branch-frame { overflow: hidden; border: 1px solid var(--frame-line); border-radius: 5px; background: var(--frame-bg); box-shadow: var(--frame-shadow); }
 .branch-frame img { display: block; width: 100%; height: auto; }
@@ -791,6 +817,6 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .study p, .study li { font: 1rem/1.8 var(--sans); color: var(--dim); }
 .study a { text-underline-offset: .2em; }
 .study-window { margin: 2rem 0; }
-.study-window > img { width: 100%; height: auto; display: block; border: 1px solid var(--chrome-line); border-radius: 0 0 8px 8px; }
+.study-window > img { width: 100%; height: auto; display: block; border: 1px solid var(--chrome-line); border-top: 0; border-radius: 0 0 var(--win-radius) var(--win-radius); box-shadow: var(--win-shadow); }
 .study figcaption { font: .85rem/1.6 var(--sans); }
 .study pre { padding: 1.2rem; overflow-x: auto; border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg-2); font-size: .8rem; }
