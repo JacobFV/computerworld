@@ -676,6 +676,10 @@ html { scroll-padding-top: 2rem; }
 .section-heading h2 { margin: 0; max-width: 24ch; font-size: clamp(2rem, 3.7vw, 3rem); line-height: 1.12; font-weight: 550; letter-spacing: -.04em; text-wrap: balance; }
 .section-heading > p:last-child { max-width: 65ch; margin: 1.3rem 0 0; color: var(--dim); font-size: 1.08rem; }
 .feature-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: clamp(2rem, 4vw, 3.5rem); align-items: start; }
+/* The fork figure is a row of frames per branch, so it takes the whole measure rather
+   than the narrower of two columns, and the prose sits above it instead of beside it. */
+.feature-grid.wide { grid-template-columns: minmax(0, 1fr); gap: clamp(1.6rem, 3vw, 2.4rem); }
+.feature-grid.wide .prose { max-width: 68ch; }
 h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-spacing: -.02em; }
 .prose p { font-size: .94rem; line-height: 1.75; }
 .feature-grid figure { min-width: 0; margin: 0; }
@@ -785,28 +789,101 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .compare { overflow: hidden; }
 .compare > img { box-shadow: none; border-radius: 0; }
 .branch-scroll { overflow-x: auto; background: var(--figure-bg); border: 1px solid var(--chrome-line); border-top: 0; border-radius: 0 0 var(--win-radius) var(--win-radius); box-shadow: var(--win-shadow); }
-.branch-diagram { display: grid; grid-template-columns: minmax(140px,1fr) 36px minmax(140px,1fr) 38px 42px; grid-template-rows: 1fr 1fr; align-items: center; gap: 24px 0; min-width: 440px; padding: 26px 14px; }
+/* ONE CHECKPOINT, THREE TRAJECTORIES. The checkpoint frame on the left, a bracket, and
+   one row of frames per branch — a frame for every action the branch took, in order, with
+   the verdict where the branch ended. The rows are ragged (five steps, then four, then
+   four), so they are flex rows rather than one grid: a grid would have to invent columns
+   for the steps the shorter branches never took, and a branch that stopped early should
+   look like it stopped early. Every frame is the same size for the same reason. */
+.branch-diagram { display: flex; align-items: stretch; min-width: 1030px; padding: 20px 16px; }
 .branch-frame { overflow: hidden; border: 1px solid var(--frame-line); border-radius: 5px; background: var(--frame-bg); box-shadow: var(--frame-shadow); }
 .branch-frame img { display: block; width: 100%; height: auto; }
-.branch-frame > span { display: block; padding: 5px 6px; color: var(--dim); font: .62rem/1.4 var(--sans); }
-.branch-root { grid-column: 1; grid-row: 1 / 3; }
-.branch-pass { grid-column: 3; grid-row: 1; }
-.branch-fail { grid-column: 3; grid-row: 2; }
-.branch-connector { position: relative; height: 1px; background: var(--holds); }
-.branch-connector::after { content: ''; position: absolute; right: 0; top: -3px; border-block: 3px solid transparent; border-left: 5px solid var(--holds); }
-.branch-connector > span { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 17px; height: 17px; border-radius: 50%; background: var(--figure-bg); text-align: center; color: var(--holds); font: 600 13px/17px var(--sans); }
-.fork-pass { grid-column: 2; grid-row: 1; }
-.fork-fail { grid-column: 2; grid-row: 2; }
-.fork-pass::before, .fork-fail::before { content: ''; position: absolute; left: 0; width: 1px; height: 62px; background: var(--holds); }
-.fork-pass::before { top: 0; }
-.fork-fail::before { bottom: 0; }
-.pass-end { grid-column: 4; grid-row: 1; }
-.fail-end { grid-column: 4; grid-row: 2; background: var(--breaks); width: 65%; }
-.fail-end::after { display: none; }
-.fail-end > span { color: var(--breaks); left: 100%; font-size: 18px; }
-.branch-result { font: .62rem/1.4 var(--sans); }
-.pass-result { grid-column: 5; grid-row: 1; color: var(--holds); }
-.fail-result { grid-column: 5; grid-row: 2; color: var(--breaks); }
+.branch-frame > span { display: block; padding: 5px 7px; color: var(--dim); font: .62rem/1.4 var(--sans); }
+.branch-frame > span small { display: block; color: var(--faint); font-size: .95em; }
+.branch-root { position: relative; flex: none; align-self: center; width: 180px; }
+/* Out of the checkpoint to the trunk. The frame is centred on the rows, so this meets the
+   trunk at its midpoint whatever the rows come out at. */
+.branch-root::after {
+  content: ''; position: absolute; left: 100%; top: 50%; width: 14px;
+  border-top: 1px solid var(--line-2);
+}
+
+/* The bracket: one rule down the left of the rows, and a tick out to each row. The rows
+   share the height equally, so the trunk runs from the first row's centre (a sixth down)
+   to the last row's centre (a sixth up) and every tick lands on it exactly. */
+.branch-paths {
+  flex: 1; min-width: 0; position: relative; margin: 0; padding: 0 0 0 28px;
+  display: flex; flex-direction: column; gap: 16px; list-style: none;
+}
+.branch-paths::before {
+  content: ''; position: absolute; left: 14px; top: 16.667%; bottom: 16.667%;
+  border-left: 1px solid var(--line-2);
+}
+.branch-path { position: relative; flex: 1 1 0; display: flex; align-items: center; }
+.branch-path::before {
+  content: ''; position: absolute; left: -14px; top: 50%; width: 14px;
+  border-top: 1px solid var(--line-2);
+}
+.branch-path > ol {
+  flex: none; display: flex; align-items: flex-start; gap: 18px;
+  margin: 0; padding: 0; list-style: none;
+}
+/* One frame is 128px across, so a 1440x900 frame is exactly 80px tall and the arrow
+   between two of them sits on their centre line without measuring anything. */
+.branch-path > ol > li { position: relative; flex: none; width: 128px; }
+.branch-path > ol > li + li::before {
+  content: ''; position: absolute; left: -16px; top: 41px; width: 10px;
+  border-top: 1px solid var(--line-2);
+}
+.branch-path > ol > li + li::after {
+  content: ''; position: absolute; left: -7px; top: 38px;
+  border-block: 3px solid transparent; border-left: 5px solid var(--line-2);
+}
+.branch-path > ol img {
+  display: block; width: 100%; height: auto;
+  border: 1px solid var(--frame-line); border-radius: 4px; background: var(--frame-bg);
+  box-shadow: var(--frame-shadow);
+}
+.branch-path > ol span {
+  display: block; margin-top: .4rem; color: var(--dim);
+  font: .62rem/1.35 var(--sans);
+}
+.branch-path > ol span b {
+  display: inline-block; min-width: 1.1em; margin-right: .2em;
+  color: var(--faint); font-weight: 400; font-variant-numeric: tabular-nums;
+}
+/* The verdict sits where the branch ended, not at a shared right margin, so a branch that
+   stopped in four steps is seen to have stopped. The colour is carried by the mark and
+   the word together, so the row reads the same way with the colour taken away. */
+.branch-verdict {
+  flex: none; margin: 0 0 0 14px; padding-bottom: 1.1rem;
+  font: .66rem/1.45 var(--sans); letter-spacing: .01em; white-space: nowrap;
+}
+.branch-verdict span { display: block; font-size: 1.1rem; line-height: 1; margin-bottom: .15rem; }
+.holds .branch-verdict { color: var(--holds); }
+.breaks .branch-verdict { color: var(--breaks); }
+.holds::before { border-top-color: var(--holds); }
+.breaks::before { border-top-color: var(--breaks); }
+
+/* Narrow enough that five frames in a row are stamps: the frames go, the actions stay as
+   a numbered list, and the figure still says what each branch did and what it cost. */
+@media (max-width: 720px) {
+  .branch-diagram { min-width: 0; flex-direction: column; gap: 14px; padding: 16px 14px; }
+  .branch-root { width: 100%; max-width: 280px; align-self: flex-start; }
+  .branch-root::after { display: none; }
+  .branch-paths { padding-left: 16px; }
+  .branch-paths::before { left: 0; top: 10px; bottom: 10px; }
+  .branch-path { flex-direction: column; align-items: flex-start; padding: 10px 0; }
+  .branch-path::before { left: -16px; width: 12px; top: 22px; }
+  .branch-path > ol { flex-direction: column; gap: 2px; width: 100%; }
+  .branch-path > ol > li { width: 100%; }
+  .branch-path > ol img { display: none; }
+  .branch-path > ol > li + li::before, .branch-path > ol > li + li::after { display: none; }
+  .branch-path > ol span { margin-top: 0; }
+  .branch-verdict { margin: .35rem 0 0; padding-bottom: 0; }
+  .branch-verdict span { display: inline; font-size: inherit; margin-right: .3rem; }
+}
+
 .study { max-width: 900px; }
 .study-nav { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; padding: 2rem 0; font-size: .85rem; border-bottom: 1px solid var(--line); }
 .study-nav a { text-decoration: none; color: var(--dim); }
