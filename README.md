@@ -40,7 +40,7 @@ npm install computerworld        # Node and browsers, one package
 
 ```toml
 # Rust: not on crates.io yet, so depend on the tag
-computerworld = { git = "https://github.com/JacobFV/computerworld.git", tag = "v0.1.2" }
+computerworld = { git = "https://github.com/JacobFV/computerworld.git", tag = "v0.2.0" }
 ```
 
 Pin the version. This is 0.x: APIs, world schemas and snapshots may change between

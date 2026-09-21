@@ -112,7 +112,7 @@ record for every domain a site declares, so no name depends on the runtime's aut
 `world.json` a spliced service is written on one line — the seed file is the reviewable
 copy — while the hand-written computers, network and `.internal` services stay
 pretty-printed. `scripts/build-content.sh` runs the splice, the
-index and the browser-demo regeneration, and is idempotent.
+index and the live site world's regeneration, and is idempotent.
 
 `cargo test -p computerworld --test internet_links` is the guard: it asks every declared
 domain to answer, checks alternate domains serve the same page as their canonical one,

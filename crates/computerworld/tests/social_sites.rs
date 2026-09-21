@@ -160,7 +160,7 @@ fn drive(world: &mut World, session: &str, domain: &str, brand: &str, home: &str
     click(world, session, "search-submit");
     let (_, all) = page(world, session);
     assert_eq!(by_id(&all, "search-q")["value"], "agent API");
-    assert!(has_text(&all, "1 results for \"agent API\""), "{domain}");
+    assert!(has_text(&all, "1 result for \"agent API\""), "{domain}");
     assert!(has_text(&all, &words), "{domain}");
     post
 }

@@ -10,16 +10,16 @@ binding. A compatible prebuilt wheel needs no Rust toolchain.
 python -m venv .venv
 # Linux/macOS: source .venv/bin/activate
 # Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install computerworld==0.1.2
+python -m pip install computerworld==0.2.0
 python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
-# Expected: 0.1.2 0.1.2
+# Expected: 0.2.0 0.2.0
 ```
 
 PyPI carries wheels for Linux x86-64 and arm64 (manylinux2014), macOS arm64 and x86-64,
 and Windows x64, and no source distribution: on any other platform, build from source
 as below. The same
 wheels are assets of
-[v0.1.2](https://github.com/JacobFV/computerworld/releases/tag/v0.1.2) with a
+[v0.2.0](https://github.com/JacobFV/computerworld/releases/tag/v0.2.0) with a
 `SHA256SUMS`; the release workflow publishes to PyPI the files it downloaded from that
 release and checked against it, so the two are byte-identical. Wheels
 contain the runtime, not an implicit company world. Download the tagged source
@@ -33,7 +33,7 @@ A Rust toolchain is required for this path. Use the release tag for a reproducib
 checkout (omit `--branch` to work on current development instead):
 
 ```sh
-git clone --branch v0.1.2 https://github.com/JacobFV/computerworld.git
+git clone --branch v0.2.0 https://github.com/JacobFV/computerworld.git
 cd computerworld
 python3 -m venv .venv
 . .venv/bin/activate
@@ -47,9 +47,9 @@ To build distributable wheels instead:
 ```sh
 python -m pip install 'maturin>=1.7,<2'
 maturin build --release --manifest-path crates/python/Cargo.toml
-python -m pip install --force-reinstall target/wheels/computerworld-0.1.2-*.whl
+python -m pip install --force-reinstall target/wheels/computerworld-0.2.0-*.whl
 python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
-# Expected: 0.1.2 0.1.2
+# Expected: 0.2.0 0.2.0
 ```
 
 Install by exact version, not `computerworld*.whl`. `target/wheels/` is a build

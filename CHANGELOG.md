@@ -1,6 +1,85 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-09-20
+
+The browser has a web engine. It parses HTML, cascades CSS, lays out in fixed point,
+paints, and runs the page's JavaScript, so a site in this world is written the way a site
+is written anywhere. Every service was rewritten onto it.
+
+### The web engine
+
+- **A new crate, `cw-web`.** An HTML 5 tokenizer and tree builder with the error recovery
+  real pages depend on, the complete named-entity table and a serializer, passing 3,549 of
+  html5lib's 3,553 tree-construction tests (the four that fail need scripts to run
+  mid-parse). A CSS Syntax Level 3 tokenizer and parser with nesting and layers; Selectors
+  Level 4 with specificity, a rule index bucketed by the rightmost compound, and dependency
+  sets for invalidation; Media Queries Level 4 and `@supports`. A cascade over one table of
+  124 longhands with every shorthand, `calc`, custom properties, the user-agent stylesheet
+  from the HTML Rendering section, presentational hints and incremental restyle. Layout in
+  app units, never floats, covering block, inline, tables, floats, positioned boxes, scroll
+  containers and sticky, plus Flexbox Level 1 and Grid Level 1 in full. Paint in the CSS
+  painting order with stacking contexts, clips, affine transforms, gradients, every border
+  style, shadows, text decoration and a semantic layer the agent API reads.
+- **Measured against Chromium**, element by element, on eleven fixture pages: the 1998 and
+  present Google home pages, a Wikipedia article, a documentation page, Hacker News, a
+  table torture page, and five pages a 2020s front-end author would write. Nine of the
+  eleven match on every node; Acid1 and Acid2 both render pixel for pixel against their
+  references. A corpus of 1,586 Web Platform Tests reftests runs with per-directory
+  expectations.
+- **Pair kerning** for the bundled web faces, extracted from each face's GPOS table the way
+  HarfBuzz resolves it, so measurement and the renderer agree by construction.
+
+### Script
+
+- **The DOM, CSSOM, events and the window on the existing JavaScript VM**: the node and
+  element classes frameworks touch, live style declarations and constructible stylesheets
+  that re-cascade lazily, three-phase events, timers and animation frames on the world
+  clock, `fetch` and `XMLHttpRequest` through a host trait, storage, history, observers,
+  custom elements, a software canvas, and `document.write` through an incremental parser.
+- **A page's scripts run in the browser.** Clicks, typing, hovering, scrolling, resizing
+  and visibility become events whose default action the browser then performs, never
+  re-entrantly. A runaway script is interrupted and the page stays usable; a background
+  tab's timers throttle. A snapshot clones in a tenth of a millisecond and restores by
+  replaying its journal, which a navigation resets.
+- **Unmodified production bundles run**: React 18 and 17 with hydration, Vue 3 compiling
+  templates at runtime, Svelte 4, Tailwind, styled-components, emotion, jQuery and Preact.
+  Every one loads with an empty console and reaches idle in well under a second. All
+  17,685 computed values on the Tailwind page agree with Chromium's.
+
+### The services
+
+- **Every service serves HTML.** `services/common` gains a typed template layer with a
+  strict validator that fails a service's own tests when a page uses what the engine cannot
+  render, and each site carries a real stylesheet. All twenty services and their
+  eighty-seven sites were rewritten to look like the products they stand in for. A site
+  seeded in the old page format is converted and served as HTML, so nothing was left
+  behind.
+- **No dead controls.** A control now either acts or is not drawn as one. `services/common`
+  also gains an auditor: it reads affordances off the engine's own cascade, re-cascades
+  with every element hovered to catch what lights up but cannot act, and compares an inert
+  element's painted box against the page's real controls. Each service crawls its own
+  pages, follows every link, submits every form and presses every control that needs no
+  typing, demanding an answer.
+- **Phone layouts.** Every skin has breakpoints, held by a test that lays out every page at
+  390, 412 and 768 pixels and fails any box reaching past the edge.
+
+### The browser
+
+- **The address bar takes what you type.** A host without a scheme gets `https`, anything
+  that is not an address goes to a search engine the world can name for itself, and a name
+  that does not resolve falls back to a search. A URL with a scheme is never quietly
+  searched for, so a programmatic caller with a bad URL still gets an error.
+
+### Fixed
+
+- The world's link crawl had been silently skipping every migrated site, since it only
+  parsed the old page format. It reads HTML now, crawls five and a half thousand pages, and
+  the hundred and eight broken links it found are fixed.
+- A clone URL the world's own guides publish now clones.
+- A profile page on the git service answered 404 for anyone who did not own a repository,
+  which made every stargazer and commit-author link a dead end.
+- A mail row's star sat inside the row link, so pressing it opened the conversation.
+- A reader was offered document editors whose only possible reply was 403.
 
 ### The project
 

@@ -114,6 +114,13 @@ fn desktop_browser_address_and_page_hit_targets_use_canonical_network() {
         .nodes
         .iter()
         .filter_map(|node| {
+            // A link, not merely something addressable: every element the page gives an
+            // `id` now carries an interaction string so an agent can read it, so the
+            // first one under the content is as likely to be a masthead as a link.
+            let role = node.semantic.as_ref().map(|s| s.role.as_str()).unwrap_or("");
+            if !matches!(role, "link" | "button") {
+                return None;
+            }
             let id = node.interaction.as_deref().filter(|id| {
                 id.starts_with("window:0:content:") && !id.starts_with("window:0:content:shell:")
             })?;
