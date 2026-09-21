@@ -188,11 +188,11 @@ button { font: inherit; color: inherit; }
    and shows the one for the theme it would switch TO, so the control says what it does.
    theme.js unhides it, so a page without scripts never offers a switch that cannot work. */
 .theme {
-  display: inline-grid; place-items: center; width: 1.9rem; height: 1.9rem; padding: 0;
-  border: 1px solid var(--line-2); border-radius: 7px; background: none;
-  color: var(--dim); cursor: pointer; transition: color .15s ease, border-color .15s ease;
+  display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; padding: 0;
+  border: 0; border-radius: 6px; background: none;
+  color: var(--dim); cursor: pointer; transition: color .15s ease;
 }
-.theme:hover { color: var(--ink); border-color: var(--ink); }
+.theme:hover { color: var(--ink); }
 .theme svg { display: block; width: 15px; height: 15px; }
 :root[data-theme="dark"] .theme .moon, :root[data-theme="light"] .theme .sun { display: none; }
 

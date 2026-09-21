@@ -73,11 +73,11 @@ button { font: inherit; color: inherit; }
    is narrow enough to hide the sidebar, and the light/dark switch, which is always there.
    Both are the same square so the row reads as one set of controls. */
 .icon-button {
-  display: inline-grid; place-items: center; width: 1.9rem; height: 1.9rem; padding: 0;
-  background: none; border: 1px solid var(--line-2); border-radius: 7px;
-  color: var(--dim); cursor: pointer; transition: color .15s ease, border-color .15s ease;
+  display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; padding: 0;
+  background: none; border: 0; border-radius: 6px;
+  color: var(--dim); cursor: pointer; transition: color .15s ease;
 }
-.icon-button:hover { color: var(--ink); border-color: var(--ink); }
+.icon-button:hover { color: var(--ink); }
 .icon-button svg { display: block; width: 15px; height: 15px; }
 .menu { display: none; }
 /* The bars become a cross while the sidebar is open, so the button says how to close it. */
