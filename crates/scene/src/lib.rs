@@ -1256,14 +1256,24 @@ pub fn window_of(interaction: &str) -> Option<u64> {
 /// Content hash over the canonical JSON encoding of a contract. Pure integer mixing on
 /// whole words: no `DefaultHasher`, whose output is not stable across Rust versions, and
 /// no host state, so the same content hashes the same everywhere and forever.
-struct Digest {
+/// The streaming hash behind [`digest`]. Public and `Copy` so a caller that hashes a
+/// long sequence can keep the state it had after each element and resume from there
+/// rather than hashing the whole sequence again; the bytes hashed, and so the value,
+/// are the same either way.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Digest {
     state: u64,
     word: [u8; 8],
     len: usize,
 }
 const K: u64 = 0x517c_c1b7_2722_0a95;
+impl Default for Digest {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl Digest {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             state: 0xcbf2_9ce4_8422_2325,
             word: [0; 8],
@@ -1274,7 +1284,7 @@ impl Digest {
         self.state = (self.state ^ word).wrapping_mul(K).rotate_left(31);
     }
     /// Never 0, which is reserved for "unstamped".
-    fn finish(mut self) -> u64 {
+    pub fn finish(mut self) -> u64 {
         let tail = self.len;
         self.word[tail..].fill(0);
         let word = u64::from_le_bytes(self.word);

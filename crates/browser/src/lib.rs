@@ -350,9 +350,181 @@ fn decode_jpeg(bytes: &[u8]) -> Option<ImageAsset> {
     }
     Some(ImageAsset { width, height, rgba })
 }
+/// A tab's back/forward stack, and the hash state the entries in it left behind.
+///
+/// The environment projects what an actor can see before and after every action, to say
+/// what the action changed and to stamp the outcome with a digest of the visible state.
+/// That projection hashes the whole stack — every page, every decoded image — and it did
+/// so from the beginning twice per action, so a step cost O(everything ever browsed):
+/// 13 µs on a fresh world, 179.7 ms once the log held 16,019 events, no fork involved.
+///
+/// The bytes hashed are unchanged, and so is every digest computed from them. What is
+/// kept is the hasher's state after each entry ([`History::hash_into`]), so a stack that
+/// has not changed is not hashed again, and one that grew by a page resumes from the
+/// state before it. The entries are still exactly a `Vec<HistoryEntry>` in the same
+/// order and still serialise as one flat array, so checkpoints are unchanged.
+///
+/// The cache cannot go stale: `History` has no `DerefMut`, so the only ways to a
+/// `&mut HistoryEntry` are `get_mut`, `last_mut` and `IndexMut`, and each of them drops
+/// the hash states from that entry on.
+#[derive(Default)]
+pub struct History {
+    entries: Vec<HistoryEntry>,
+    chain: std::sync::Mutex<HashChain>,
+}
+/// `states[i]` is the hasher's state after the `i`th entry was written into a hasher
+/// that was in state `start` when the array opened; the first `valid` of them are
+/// known to describe the entries that are there now.
+#[derive(Clone, Default)]
+struct HashChain {
+    start: Option<cw_scene::Digest>,
+    states: Vec<cw_scene::Digest>,
+    valid: usize,
+}
+impl History {
+    pub fn push(&mut self, entry: HistoryEntry) {
+        self.entries.push(entry);
+    }
+    pub fn truncate(&mut self, len: usize) {
+        self.entries.truncate(len);
+        self.forget(len);
+    }
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut HistoryEntry> {
+        self.forget(index);
+        self.entries.get_mut(index)
+    }
+    pub fn last_mut(&mut self) -> Option<&mut HistoryEntry> {
+        self.forget(self.entries.len().wrapping_sub(1));
+        self.entries.last_mut()
+    }
+    pub fn as_slice(&self) -> &[HistoryEntry] {
+        &self.entries
+    }
+    /// Write this stack into `hasher` exactly as `serde_json` would write the
+    /// `Vec<HistoryEntry>` it is — `[`, the entries separated by commas, `]` — resuming
+    /// from the last entry whose state is still known.
+    ///
+    /// The result is the same hash the whole array always produced. What it costs is
+    /// proportional to what has changed since the last call, not to the length of the
+    /// stack, as long as the hasher arrives in the state it arrived in last time.
+    pub fn hash_into(&self, hasher: &mut cw_scene::Digest) {
+        use std::io::Write;
+        let start = *hasher;
+        let mut chain = self.chain.lock().unwrap_or_else(|e| e.into_inner());
+        let mut from = if chain.start == Some(start) {
+            chain.valid.min(self.entries.len())
+        } else {
+            chain.start = Some(start);
+            0
+        };
+        // A state recorded for an entry that has since gone is no state at all.
+        if from > chain.states.len() {
+            from = chain.states.len();
+        }
+        chain.states.truncate(from);
+        if from == 0 {
+            let _ = hasher.write_all(b"[");
+        } else {
+            *hasher = chain.states[from - 1];
+        }
+        for (index, entry) in self.entries.iter().enumerate().skip(from) {
+            if index > 0 {
+                let _ = hasher.write_all(b",");
+            }
+            // Serialising one entry into the hasher writes the same bytes serialising
+            // the whole array would write for it: the value's own `Serialize`, and
+            // `serde_json`'s compact formatter, know nothing of what encloses them.
+            let _ = serde_json::to_writer(&mut *hasher, entry);
+            chain.states.push(*hasher);
+        }
+        chain.valid = self.entries.len();
+        let _ = hasher.write_all(b"]");
+    }
+    /// Drop what is known about the entries from `index` on. The states before it do
+    /// not depend on it, so they stand.
+    fn forget(&mut self, index: usize) {
+        let chain = self.chain.get_mut().unwrap_or_else(|e| e.into_inner());
+        chain.valid = chain.valid.min(index);
+        chain.states.truncate(chain.valid);
+    }
+}
+impl From<Vec<HistoryEntry>> for History {
+    fn from(entries: Vec<HistoryEntry>) -> Self {
+        Self {
+            entries,
+            chain: std::sync::Mutex::default(),
+        }
+    }
+}
+impl std::ops::Deref for History {
+    type Target = [HistoryEntry];
+    fn deref(&self) -> &[HistoryEntry] {
+        &self.entries
+    }
+}
+impl std::ops::Index<usize> for History {
+    type Output = HistoryEntry;
+    fn index(&self, index: usize) -> &HistoryEntry {
+        &self.entries[index]
+    }
+}
+impl std::ops::IndexMut<usize> for History {
+    fn index_mut(&mut self, index: usize) -> &mut HistoryEntry {
+        self.forget(index);
+        &mut self.entries[index]
+    }
+}
+impl<'a> IntoIterator for &'a History {
+    type Item = &'a HistoryEntry;
+    type IntoIter = std::slice::Iter<'a, HistoryEntry>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries.iter()
+    }
+}
+impl Clone for History {
+    /// The clone holds the same entries, so the states already known describe it too.
+    fn clone(&self) -> Self {
+        Self {
+            entries: self.entries.clone(),
+            chain: std::sync::Mutex::new(
+                self.chain
+                    .lock()
+                    .map(|c| c.clone())
+                    .unwrap_or_else(|e| e.into_inner().clone()),
+            ),
+        }
+    }
+}
+impl std::fmt::Debug for History {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.entries.fmt(f)
+    }
+}
+/// Two stacks are equal when their entries are; a cached hash state is not state.
+impl PartialEq for History {
+    fn eq(&self, other: &Self) -> bool {
+        self.entries == other.entries
+    }
+}
+impl Eq for History {}
+impl Serialize for History {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        self.entries.serialize(serializer)
+    }
+}
+impl<'de> Deserialize<'de> for History {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        Ok(Self::from(Vec::<HistoryEntry>::deserialize(deserializer)?))
+    }
+}
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tab {
-    pub history: Vec<HistoryEntry>,
+    pub history: History,
     pub position: usize,
     pub focused: Option<String>,
     pub fields: BTreeMap<String, String>,
@@ -1853,6 +2025,76 @@ pub fn layout_page_with_images(
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// The cached hash states are an optimisation and must never survive the entries
+    /// they describe: whatever has been done to the stack, hashing it must give what
+    /// hashing a stack that had never been touched gives.
+    #[test]
+    fn hashing_a_history_never_depends_on_what_was_done_to_it() {
+        let entry = |url: &str| HistoryEntry {
+            url: url.into(),
+            content: Content::Page(Page::new(url)),
+            status: 200,
+            images: BTreeMap::new(),
+            image_errors: BTreeMap::new(),
+            refresh: None,
+        };
+        // What the whole array hashes to, with no cache in play and through the plain
+        // `Serialize` the rest of the engine uses.
+        let reference = |h: &History, prefix: &[u8]| {
+            let mut hasher = cw_scene::Digest::new();
+            std::io::Write::write_all(&mut hasher, prefix).unwrap();
+            serde_json::to_writer(&mut hasher, h.as_slice()).unwrap();
+            hasher.finish()
+        };
+        let hashed = |h: &History, prefix: &[u8]| {
+            let mut hasher = cw_scene::Digest::new();
+            std::io::Write::write_all(&mut hasher, prefix).unwrap();
+            h.hash_into(&mut hasher);
+            hasher.finish()
+        };
+        let check = |h: &History| {
+            // Twice, so a resumed hash is checked as well as a cold one, and under two
+            // different prefixes, so a stack that follows something else is too.
+            for prefix in [b"".as_slice(), b"[[".as_slice(), b"[[[x,".as_slice()] {
+                assert_eq!(hashed(h, prefix), reference(h, prefix));
+                assert_eq!(hashed(h, prefix), reference(h, prefix));
+            }
+        };
+        let mut history = History::default();
+        check(&history);
+        history.push(entry("/a"));
+        check(&history);
+        history.push(entry("/b"));
+        history.push(entry("/c"));
+        check(&history);
+        // Every route to a `&mut` entry.
+        history.get_mut(0).unwrap().status = 404;
+        check(&history);
+        history[1].url = "/bb".into();
+        check(&history);
+        history.last_mut().unwrap().status = 500;
+        check(&history);
+        // Shape.
+        history.truncate(2);
+        check(&history);
+        history.push(entry("/d"));
+        check(&history);
+        // A stack built any other way hashes the same, and so does its clone and its
+        // JSON round trip.
+        let fresh = History::from(history.as_slice().to_vec());
+        assert_eq!(hashed(&fresh, b"["), hashed(&history, b"["));
+        assert_eq!(hashed(&history.clone(), b"["), hashed(&history, b"["));
+        let json = serde_json::to_string(&history).unwrap();
+        assert_eq!(json, serde_json::to_string(history.as_slice()).unwrap());
+        let parsed: History = serde_json::from_str(&json).unwrap();
+        assert_eq!(hashed(&parsed, b"["), hashed(&history, b"["));
+        // And a change is a change.
+        let before = hashed(&history, b"[");
+        history[0].status = 200;
+        assert_ne!(before, hashed(&history, b"["));
+        history[0].status = 404;
+        assert_eq!(before, hashed(&history, b"["));
+    }
     fn page() -> Page {
         let mut p = Page::new("Site");
         p.elements = vec![

@@ -12,6 +12,20 @@
 > 0.142 ms to 4.90 ms and fork from 16.5 µs to 265 µs, both roughly tracking the 26x
 > larger world definition. Everything that does not touch the whole world — a terminal
 > step, a file write, an editor keystroke, a reset — is unchanged.
+>
+> **The two fork rows below are now stale in the other direction, and by more.** Fork
+> cost tracked the definition because it validated it — twice, once in `Runtime::fork`
+> and once in the `restore` the fork performed on itself. It does not any more: a
+> checkpoint whose definition is one the runtime already holds is not re-walked, and the
+> environment's fork validates once. Measured on the current tree on the 3.7 MB
+> company-2026 world (which is 8.7x the 432 KB world the table below was taken on), a
+> fork of a freshly booted world is **15.9 µs**, and of one driven through 4,000 actor
+> steps **116.4 µs**. What a populated step costs fell with it, for an unrelated reason
+> in the same measurement pass: **176.2 ms → 219.2 µs** at 16,013 accumulated events.
+> [`benchmarks/fork-throughput.md`](../benchmarks/fork-throughput.md) has the method, the
+> three-run spreads, the cause of each and the evidence that no hash, event log,
+> `inspect()` or exported snapshot byte moved. The two binding fork rows further down
+> were measured on the old engine and the small world and have not been re-run at all.
 
 Measured on September 17, 2026, Linux ARM64, Cortex-X925 CPU 19 (3.9 GHz
 maximum), Rust 1.97.1 release builds and Chrome 151. Native actor terminal steps
@@ -80,8 +94,8 @@ larger figure, and that is the honest number for one-shot work.
 | Already-clean same-seed reset | 0.560 | 0.584 |
 | Dirty same-seed reset | 4.544 | 4.728 |
 | Snapshot handle | 0.976 | 1.040 |
-| Fork from initial snapshot | 264.921 | 271.161 |
-| Fork + first file mutation | 290.457 | 296.185 |
+| Fork from initial snapshot (**superseded**, see the note at the top) | 264.921 | 271.161 |
+| Fork + first file mutation (**superseded**) | 290.457 | 296.185 |
 | Portable initial snapshot encode | 962.083 | 1005.259 |
 | Portable initial snapshot decode | 4895.680 | 5464.466 |
 
@@ -91,7 +105,10 @@ The 0.144 µs clean-reset row intentionally measures an already-reset world;
 it should not be presented as the cost of discarding a populated episode.
 Snapshot encode/decode rows use the initialized snapshot; populated trajectory
 size naturally increases portable serialization cost. Fork + first write includes
-both operations rather than claiming an isolated mutation latency.
+both operations rather than claiming an isolated mutation latency. The two fork rows
+predate the fix described at the top of this document and are kept only as the before
+column; `benchmarks/fork-throughput.md` is the current measurement, and it is on a
+larger world than this table.
 
 ## Native renderer results
 

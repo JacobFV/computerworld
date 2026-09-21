@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ComputerWorld — a computer world that runs the same every time</title>
-<meta name="description" content="ComputerWorld: several machines, a synthetic internet and one Rust engine, with byte-identical replay. Fork a state in under two milliseconds, check a policy over every action sequence, and read each frame's ground truth out of the scene — from Python, Node, the browser and native.">
+<meta name="description" content="ComputerWorld: several machines, a synthetic internet and one Rust engine, with byte-identical replay. Fork a state in microseconds, check a policy over every action sequence, and read each frame's ground truth out of the scene — from Python, Node, the browser and native.">
 <meta property="og:title" content="ComputerWorld">
 <meta property="og:description" content="Several machines, a synthetic internet, one Rust engine. It runs the same every time — so you can search it, not just sample it.">
 <meta property="og:image" content="./media/scenes/mac-freecad.jpg">
@@ -81,9 +81,9 @@
   <div class="inner">
     <div class="prose">
       <h2 id="fork-h">Fork the world, not the VM.</h2>
-      <p>A snapshot is copy-on-write and a fork from it costs under two milliseconds and about twenty kilobytes, so a thousand live branches of a working world sit in one process inside twenty megabytes, and a branch that went nowhere costs what it wrote. A container or a virtual machine costs seconds and gigabytes per branch. That is the whole reason nobody actually runs tree search on computer-use agents: the primitive is too expensive to put in the inner loop, so the search gets replaced by a wider sample.</p>
+      <p>A snapshot is copy-on-write and a fork from it costs about thirty-five microseconds and twenty kilobytes, so a thousand live branches of a working world sit in one process inside twenty megabytes, and a branch that went nowhere costs what it wrote. A container or a virtual machine costs seconds and gigabytes per branch. That is the whole reason nobody actually runs tree search on computer-use agents: the primitive is too expensive to put in the inner loop, so the search gets replaced by a wider sample.</p>
       <p>Fork only means something because replay is exact. Two worlds forked from one checkpoint and fed the same actions end in the same state, byte for byte, so a branch you liked is re-entered later rather than approximated.</p>
-      <p class="measure"><span data-fact="t1-forks-per-sec">565</span> forks a second, <span data-fact="t1-bytes-retained">20.9&#8239;KB</span> retained per branch — measured on <code>company-2026</code> after a thousand real actor steps, not a fresh boot. <a href="https://github.com/JacobFV/computerworld/blob/main/benchmarks/fork-throughput.md">Method and caveats</a>.</p>
+      <p class="measure"><span data-fact="t1-forks-per-sec">28,500</span> forks a second, <span data-fact="t1-bytes-retained">20.9&#8239;KB</span> retained per branch — measured on <code>company-2026</code> after a thousand real actor steps, not a fresh boot. <a href="https://github.com/JacobFV/computerworld/blob/main/benchmarks/fork-throughput.md">Method and caveats</a>.</p>
       <p class="ran"><code data-fact="t1-command">cargo run --release -p cw-benchmarks --bin fork_throughput</code></p>
     </div>
     <figure>

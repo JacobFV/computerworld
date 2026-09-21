@@ -4,6 +4,17 @@ How cheap is it to branch a live world? Measured natively, in release, on the
 `worlds/company-2026` world, forking a world that has already been driven through real
 actor steps rather than one that has just booted.
 
+> **Superseded, and kept on purpose.** Everything from here to
+> ["What these numbers do not support"](#what-these-numbers-do-and-do-not-support)
+> measures the engine at `ad11d7c`, before the three costs it found were fixed. The
+> current figures — 28,508 forks/s and 35.0 µs at the headline level, a first write in a
+> branch of 30.5 MB instead of 269.2 MB, a step at 4,007 events of 133.8 µs instead of
+> 42.67 ms — are in
+> ["What was done about all three"](#what-was-done-about-all-three-and-what-it-cost-afterwards)
+> at the end, with the before/after tables and the proof that nothing observable moved.
+> Quote those. This part stays because it is what the fixes were aimed at, and because
+> the attribution in "Where the time goes" and "The caveat" is how they were found.
+
 ## Headline
 
 On a company-2026 world populated by **1,000 actor steps** (4,013 recorded events):
@@ -234,3 +245,137 @@ They are also one host, one pinned ARM64 core, one allocator and one world; they
 serial single-thread result, not a parallel throughput figure; and the window was not free
 of other load. The first-write cost above is part of the honest answer to "how cheap is it
 to branch a world", not a footnote to it.
+
+## What was done about all three, and what it cost afterwards
+
+Everything above describes the engine at `3ec0953`/`ad11d7c`. The three costs it measured —
+a fork dominated by validation, a branch's first write copying the whole event log, and a
+step growing with accumulated state — were then fixed. **The numbers above are kept as the
+"before" column and are no longer current.** Re-measured here, same host, same harness,
+same world, same method; the figures in this section come from `BENCH_RUNS=3
+BENCH_SAMPLES=300 BENCH_WARMUP=50 BENCH_LIVE_FORKS=200 BENCH_FORK_STEPS=0,1000,4000`, so
+they are medians of three runs of 300 timed forks, not five of a thousand, and each row
+carries its own three-run spread. The host was not quiet: other agents were building and
+testing in this repository throughout both the before and the after runs, and one "before"
+sample (the 1,000-step first write in run 0, 153 ms against 82 ms in the other two runs) is
+visibly a victim of that. The spread columns are the honest bound.
+
+[`results/fork-throughput.json`](results/fork-throughput.json) still holds the five-run
+dataset from the "before" engine and has not been regenerated; nothing in this section
+comes from it. Re-run the command above on a quiet host to refresh it, and note that the
+step counts it drives to now take minutes rather than the better part of an hour.
+
+### Forking
+
+| Accumulated state | Fork p50 before | after | Forks/s before | after |
+|---|---:|---:|---:|---:|
+| 0 steps (1 event) | 1.570 ms (1.561–1.574) | **15.9 µs** (15.8–15.9) | 627 (625–632) | **62,753** (61,414–62,874) |
+| 1,000 steps (4,007 events) | 1.660 ms (1.658–1.661) | **35.0 µs** (34.8–35.0) | 595 (592–597) | **28,508** (28,412–28,659) |
+| 4,000 steps (16,013 events) | 1.975 ms (1.967–1.978) | **116.4 µs** (116.4–116.9) | 500 (496–501) | **8,511** (8,481–8,549) |
+
+98.8x, 47.4x and 17.0x. p95/p99 move with p50: at the headline 1,000-step level, 1.823 /
+1.924 ms becomes 35.8 / 40.1 µs. Bytes per live fork are **unchanged to the byte**: 5,975 B
+of heap at every level in every run, before and after.
+
+`Environment::fork` validated the same kernel checkpoint twice — once in `Runtime::fork` and
+once in the `restore` that fork performed on itself — and each validation walked the 3.7 MB
+world definition (127 µs) and compared it field by field against the baseline (660 µs). The
+fork path now validates once (`Runtime::fork_and_restore`), and a checkpoint whose
+definition is the same `Arc` allocation the runtime already holds skips the walk and the
+comparison entirely: an `Arc<WorldDefinition>` is immutable, so pointer identity is
+byte identity, and `new`, `restore` and `remove_computer` all validate before installing.
+A checkpoint from anywhere else — imported JSON, another runtime, a different world — still
+pays both in full, and `restore_rejects_other_blueprint` and the import rejections still
+reject exactly what they rejected before. Neither probe changed: validating the definition
+still costs 125 µs and comparing it still costs 666 µs, when either is actually needed.
+
+What is left is not duplicated work: it is `validate_snapshot` walking the checkpoint's own
+state — the scheduler, every computer's `validate()`, the service instance set. That is why
+the fork still grows with accumulated state, 15.9 µs to 116.4 µs across 16,000 events. It is
+now the whole cost of a fork rather than 3% of it.
+
+### The first write in a branch
+
+| Steps | Events | First write before | after | Deep copy of the event log |
+|---:|---:|---|---|---:|
+| 0 | 1 | 89,106 B, 69 µs | 89,210 B, 27 µs | 2.1 KB |
+| 1,000 | 4,007 | 269.2 MB, 82.4 ms (82.2–153.3) | **30.5 MB, 8.11 ms** (8.00–8.44) | 248.8 MB |
+| 4,000 | 16,013 | 1,076.5 MB, 535.6 ms (529.2–537.9) | **88.1 MB, 29.4 ms** (29.4–29.6) | 995.3 MB |
+
+The event log is no longer a `Arc<Vec<EventRecord>>` that the first event after a checkpoint
+deep-copies. It is a chunked log: sealed chunks of 256 records that every fork shares for
+ever, and one open tail of fewer than 256 records that is the only thing copy-on-write ever
+copies. Appending is O(1) amortised whether or not the log is shared. Order, `sequence`
+numbering, `tick` values and the serialized form are untouched — it serializes as, and
+deserializes from, the same flat array, so a checkpoint written by either version imports
+into the other, and `trajectory()` still hands back the same `Vec<EventRecord>` (the deep
+copy column above, identical to the byte before and after).
+
+The 88.1 MB that remains at 4,000 steps is **not** the event log. It is the rest of the
+copy-on-write split, and most of it is the environment's session state: a `MachineSession`
+holds the browser's back/forward stack, and 800 history entries hold 800 fetched pages and
+their decoded images. That is the same shape of defect one layer up, and it is not fixed
+here.
+
+### What a step costs, with no fork involved
+
+The control column — the same file write in the parent, with the checkpoint dropped, so
+nothing is shared and no copy-on-write root can split:
+
+| Accumulated events | Before | After |
+|---:|---:|---:|
+| 1 | 13.2 µs (12.1–13.6) | 12.9 µs (12.7–13.2) |
+| 4,007 | 42.67 ms (42.59–42.95) | **133.8 µs** (132.8–137.1) |
+| 16,013 | 176.2 ms (175.1–176.6) | **219.2 µs** (217.2–222.0) |
+
+319x and 804x. The second write inside a branch, which the earlier report used to show a
+branch is not penalised after its split, moves the same way: 39.6 ms → 126.9 µs at 4,007
+events, 157.9 ms → 210.0 µs at 16,013.
+
+**It was never the event log.** Timing instrumentation inside `Environment::step`, at 0 /
+250 / 1,000 / 2,000 steps of the same cycle, attributed 86.0 ms of an 87.1 ms step at 2,000
+steps to one function: `browser_view`, called from the actor-visible projection `visible()`
+that brackets *every action*. Recording the event cost 0.000 ms, dispatch 0.120 ms, the
+journal 0.006 ms, the observation 0.103 ms, window/process reconciliation 0.001 ms. The
+projection ran twice per action and each run hashed every tab's entire back/forward
+stack — every page, every decoded image — from the beginning.
+
+It has to hash it: `ActionEffect::state`, the digest handed back with every action, is
+documented as content-derived, and `Visible`'s browser field is what makes two different
+browsing states different. So the hash input was not changed. What is kept now is the
+hasher's state after each history entry, so a stack that did not change is not hashed
+again and one that grew by a page resumes from the state before it, and the cache cannot go
+stale because `History` hands out `&mut HistoryEntry` only through methods that drop the
+states from that entry on. `browser_view` writes the hash input itself, byte for byte what
+serializing the same tuple wrote, and a test
+(`browser_view_hashes_what_serializing_would`) pins the two against each other across
+multiple tabs, unicode fields, zoom and a pending request.
+
+A step is no longer dominated by it: 12.9 µs at boot, 133.8 µs at 4,007 events, 219.2 µs
+at 16,013. What is left still creeps — roughly 6 µs per further thousand events — and this
+work did not attribute that residue. It is 800x smaller than what it replaced, and the
+projection is no longer the thing to look at first.
+
+### Nothing observable moved
+
+The whole point of the engine is that a run is a pure function of its inputs, so every fix
+above had to be invisible. Checked three ways:
+
+1. **The harness's own assertion**, at every level of every run: the parent's `state_hash()`
+   after 1,000 forks, five diverged branches and three control writes. The hashes it
+   recorded are identical before and after, at all three levels:
+   `336f426b…` (0 steps), `d751b331…` (1,000), `afd57f7f…` (4,000).
+2. **A 318-line fingerprint of a 300-step episode**, diffed between the two trees: the
+   `state_hash()` after every step, a SHA-256 of the `ActionOutcome`s of every step
+   (which carries every `ActionEffect` and its digest), a SHA-256 of every `Observation`,
+   the tick and pending count at every step, then the trajectory, `inspect()`, the
+   `export_snapshot()` bytes and their length, a scene, a seven-step fork and its parent,
+   a second fork proving the branch is reproducible, a replay through the action journal,
+   a portable import round trip and the exact error messages for a checkpoint with the
+   wrong engine version, a foreign world definition and a tampered journal. Byte-identical.
+3. **The determinism corpus** in `crates/computerworld/tests/` and the rest of
+   `cargo test --workspace`, green.
+
+The event log's in-memory content is identical too, which the deep-copy column measures
+independently: 2,132 B / 248,813,630 B / 995,255,900 B at the three levels, before and
+after, to the byte.

@@ -567,20 +567,38 @@ impl Environment {
         }
         self.validate_snapshot(snapshot)?;
         self.runtime.restore(&snapshot.kernel)?;
+        self.adopt(snapshot);
+        Ok(())
+    }
+    /// The environment half of `restore`, for a caller that has already installed the
+    /// kernel half. Everything `restore` checks is still checked; only the kernel
+    /// checkpoint's own validation is the caller's, which is what keeps a fork from
+    /// validating one checkpoint twice.
+    fn restore_environment(&mut self, snapshot: &Snapshot) -> Result<()> {
+        if snapshot.version != 1 {
+            return Err(SimError::invalid("unsupported environment snapshot"));
+        }
+        self.validate_snapshot(snapshot)?;
+        self.adopt(snapshot);
+        Ok(())
+    }
+    fn adopt(&mut self, snapshot: &Snapshot) {
         self.sessions = snapshot.sessions.clone();
         self.next_session = snapshot.next_session;
         self.journal = snapshot.journal.clone();
         self.verify_steps = snapshot.verify_steps;
-        Ok(())
     }
     pub fn fork(&self, snapshot: &Snapshot) -> Result<Self> {
-        let runtime = self.runtime.fork(&snapshot.kernel)?;
+        // `fork_and_restore` is `Runtime::fork` and `Runtime::restore` in one call: the
+        // fork used to restore into itself, which walked and compared the whole world
+        // definition a second time for every branch.
+        let runtime = self.runtime.fork_and_restore(&snapshot.kernel)?;
         let mut env = Self::new(runtime);
         env.extensions = self.extensions.clone();
         env.app_registry = self.app_registry.clone();
         env.observation_extensions = self.observation_extensions.clone();
         env.capture = self.capture.clone();
-        env.restore(snapshot)?;
+        env.restore_environment(snapshot)?;
         Ok(env)
     }
     pub fn reset(&mut self, seed: u64) -> Result<()> {
@@ -4144,6 +4162,72 @@ mod tests {
         let definition=WorldDefinition::from_json(r#"{"id":"test","profiles":[{"id":"linux","family":"linux"}],"computers":[{"id":"a","profile":"linux","address":"10.0.0.1","user":"alice","initial_files":{"/home/alice/file":"visible"}},{"id":"b","profile":"linux","address":"10.0.0.2","user":"bob","initial_files":{"/home/bob/private":"OTHER_MACHINE_SECRET"}}],"metadata":{"evaluator_secret":"PRIVATE_OBJECTIVE_CANARY"}}"#).unwrap();
         Environment::new(Runtime::new(definition, 42, Registry::new()).unwrap())
     }
+    /// `browser_view` writes the hash input itself so a tab's stack can resume from
+    /// the state it left behind. What it writes has to be, byte for byte, what
+    /// serialising the same tuple would write — otherwise every `ActionEffect::state`
+    /// an actor is handed would quietly change value.
+    #[test]
+    fn browser_view_hashes_what_serializing_would() {
+        use cw_browser::{Content, HistoryEntry, Tab};
+        use cw_protocol::Page;
+        let entry = |url: &str| HistoryEntry {
+            url: url.into(),
+            content: Content::Page(Page::new(url)),
+            status: 200,
+            images: BTreeMap::new(),
+            image_errors: BTreeMap::new(),
+            refresh: None,
+        };
+        // The composition this replaced, verbatim.
+        let legacy = |b: &BrowserState| {
+            let tabs: Vec<_> = b
+                .tabs
+                .iter()
+                .map(|t| (t.history.as_slice(), t.position, &t.focused, &t.fields))
+                .collect();
+            cw_scene::digest(&(tabs, b.active, &b.zoom, &b.pending))
+        };
+        let mut state = BrowserState::default();
+        state.tabs.clear();
+        let check = |state: &BrowserState| {
+            // Twice: cold, then with every cached hash state in play.
+            assert_eq!(browser_view(state).0, legacy(state));
+            assert_eq!(browser_view(state).0, legacy(state));
+        };
+        check(&state);
+        state.tabs.push(Tab::default());
+        check(&state);
+        state.tabs[0].history.push(entry("/a"));
+        state.tabs[0].history.push(entry("/b"));
+        state.tabs[0].position = 1;
+        state.tabs[0].focused = Some("q".into());
+        state.tabs[0]
+            .fields
+            .insert("q".into(), "typed ünïcode".into());
+        check(&state);
+        // A second tab, whose stack follows the first one's bytes in the same hash.
+        state.tabs.push(Tab::default());
+        state.tabs[1].history.push(entry("/other"));
+        state.tabs[1].history.push(entry("/tab"));
+        state.active = 1;
+        check(&state);
+        // Changing the first tab moves what the second one is hashed after.
+        state.tabs[0].history.push(entry("/c"));
+        state.tabs[0].position = 2;
+        check(&state);
+        state.tabs[0].history[0].status = 404;
+        check(&state);
+        state.tabs[0].history.truncate(1);
+        state.tabs[0].position = 0;
+        check(&state);
+        state.zoom.insert("example.com".into(), 150);
+        state.pending = Some(cw_protocol::HttpRequest::get("http://example.com/"));
+        check(&state);
+        // Distinct states stay distinct.
+        let one = browser_view(&state).0;
+        state.tabs[0].history[0].url = "/moved".into();
+        assert_ne!(one, browser_view(&state).0);
+    }
     #[test]
     fn actor_grants_and_private_metadata() {
         let mut e = world();
@@ -5706,16 +5790,38 @@ fn presented(state: &AppState) -> String {
 /// A browser's state as it bears on what is shown, split into its scroll positions and
 /// everything else. Storage and cookies are not shown and are left out.
 fn browser_view(b: &BrowserState) -> (u64, u64) {
-    let tabs: Vec<_> = b
-        .tabs
-        .iter()
-        .map(|t| (&t.history, t.position, &t.focused, &t.fields))
-        .collect();
+    // The hash of exactly the bytes `cw_scene::digest(&(tabs, b.active, &b.zoom,
+    // &b.pending))` hashes, where `tabs` is one `(&t.history, t.position, &t.focused,
+    // &t.fields)` per tab — written out here rather than through one `Serialize` so
+    // that each tab's back/forward stack can resume from the hash state it left behind
+    // (`History::hash_into`). Hashing every page and image a session ever fetched, on
+    // both sides of every action, was the whole of the growth in what a step costs.
+    // `browser_view_hashes_what_serializing_would` pins the two against each other.
+    let mut hasher = cw_scene::Digest::new();
+    let put = |hasher: &mut cw_scene::Digest, bytes: &[u8]| {
+        let _ = std::io::Write::write_all(hasher, bytes);
+    };
+    put(&mut hasher, b"[[");
+    for (index, tab) in b.tabs.iter().enumerate() {
+        put(&mut hasher, if index == 0 { b"[" } else { b",[" });
+        tab.history.hash_into(&mut hasher);
+        put(&mut hasher, b",");
+        let _ = serde_json::to_writer(&mut hasher, &tab.position);
+        put(&mut hasher, b",");
+        let _ = serde_json::to_writer(&mut hasher, &tab.focused);
+        put(&mut hasher, b",");
+        let _ = serde_json::to_writer(&mut hasher, &tab.fields);
+        put(&mut hasher, b"]");
+    }
+    put(&mut hasher, b"],");
+    let _ = serde_json::to_writer(&mut hasher, &b.active);
+    put(&mut hasher, b",");
+    let _ = serde_json::to_writer(&mut hasher, &b.zoom);
+    put(&mut hasher, b",");
+    let _ = serde_json::to_writer(&mut hasher, &b.pending);
+    put(&mut hasher, b"]");
     let scrolls: Vec<i32> = b.tabs.iter().map(|t| t.scroll_y).collect();
-    (
-        cw_scene::digest(&(tabs, b.active, &b.zoom, &b.pending)),
-        cw_scene::digest(&scrolls),
-    )
+    (hasher.finish(), cw_scene::digest(&scrolls))
 }
 fn visible(m: &MachineSession) -> Visible {
     let browsers: Vec<(u64, u64)> = std::iter::once(&m.browser)

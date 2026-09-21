@@ -70,7 +70,111 @@ struct State {
     services: BTreeMap<String, ServiceInstance>,
     scheduler: Scheduler<Task>,
     responses: BTreeMap<String, Result<HttpResponse>>,
-    events: Arc<Vec<EventRecord>>,
+    events: EventLog,
+}
+/// Records per sealed chunk of the event log. A branch copies at most this many
+/// records the first time it records an event of its own, instead of the whole
+/// trajectory; the sealed chunks behind it are shared with the parent for ever.
+const EVENT_CHUNK: usize = 256;
+/// The world's event log: append-only, shared by every fork of the world, and O(1)
+/// amortised to append to even while shared.
+///
+/// A plain `Arc<Vec<EventRecord>>` made the first event recorded after a checkpoint
+/// deep-copy the entire trajectory — 269 MB at 4,013 events, 1.08 GB at 16,019 — which
+/// a tree search paid on every branch. Sealed chunks are immutable and shared; only the
+/// open tail is ever copied, and it holds fewer than `EVENT_CHUNK` records.
+///
+/// Order, `sequence` numbering, `tick` values and serialized form are exactly those of
+/// the flat vector this replaced: it serializes as, and deserializes from, one flat
+/// array of records, so checkpoints written by either version import into the other.
+#[derive(Clone, Debug, Default)]
+pub struct EventLog {
+    sealed: Vec<Arc<Vec<EventRecord>>>,
+    sealed_len: usize,
+    tail: Arc<Vec<EventRecord>>,
+}
+impl EventLog {
+    pub fn len(&self) -> usize {
+        self.sealed_len + self.tail.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &EventRecord> + '_ {
+        self.sealed
+            .iter()
+            .flat_map(|chunk| chunk.iter())
+            .chain(self.tail.iter())
+    }
+    pub fn get(&self, index: usize) -> Option<&EventRecord> {
+        if index >= self.sealed_len {
+            return self.tail.get(index - self.sealed_len);
+        }
+        let chunk = index / EVENT_CHUNK;
+        self.sealed.get(chunk)?.get(index - chunk * EVENT_CHUNK)
+    }
+    pub fn last(&self) -> Option<&EventRecord> {
+        self.tail
+            .last()
+            .or_else(|| self.sealed.last().and_then(|chunk| chunk.last()))
+    }
+    pub fn to_vec(&self) -> Vec<EventRecord> {
+        let mut out = Vec::with_capacity(self.len());
+        out.extend(self.iter().cloned());
+        out
+    }
+    fn push(&mut self, record: EventRecord) {
+        // Only the open tail is ever copied-on-write, and it is bounded by EVENT_CHUNK.
+        let tail = Arc::make_mut(&mut self.tail);
+        tail.push(record);
+        if tail.len() >= EVENT_CHUNK {
+            self.sealed_len += tail.len();
+            self.sealed.push(std::mem::replace(
+                &mut self.tail,
+                Arc::new(Vec::with_capacity(EVENT_CHUNK)),
+            ));
+        }
+    }
+    /// Every sealed chunk but the last holds exactly `EVENT_CHUNK` records, which is
+    /// what makes `get` a division rather than a search.
+    fn from_records(records: Vec<EventRecord>) -> Self {
+        let mut log = Self::default();
+        for record in records {
+            log.push(record);
+        }
+        log
+    }
+}
+/// Two logs are equal when they hold the same records in the same order; how they are
+/// chunked is an implementation detail and is in fact always the same for the same
+/// records.
+impl PartialEq for EventLog {
+    fn eq(&self, other: &Self) -> bool {
+        self.len() == other.len() && self.iter().eq(other.iter())
+    }
+}
+impl Eq for EventLog {}
+impl Serialize for EventLog {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        use serde::ser::SerializeSeq;
+        let mut seq = serializer.serialize_seq(Some(self.len()))?;
+        for record in self.iter() {
+            seq.serialize_element(record)?;
+        }
+        seq.end()
+    }
+}
+impl<'de> Deserialize<'de> for EventLog {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        Ok(Self::from_records(Vec::<EventRecord>::deserialize(
+            deserializer,
+        )?))
+    }
 }
 /// Cheap complete kernel checkpoint. Actor/application sessions are owned by the environment.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -218,7 +322,7 @@ impl Runtime {
             services,
             scheduler: Scheduler::default(),
             responses: BTreeMap::new(),
-            events: Arc::new(vec![]),
+            events: EventLog::default(),
         });
         Ok(Self {
             baseline: Arc::new(definition.clone()),
@@ -338,7 +442,7 @@ impl Runtime {
     pub fn pending(&self) -> usize {
         self.state.scheduler.len() + self.live.len()
     }
-    pub fn events(&self) -> &[EventRecord] {
+    pub fn events(&self) -> &EventLog {
         &self.state.events
     }
     pub fn network(&self) -> &Network {
@@ -363,10 +467,11 @@ impl Runtime {
     }
     fn event(&mut self, kind: &str, machine: Option<&str>, actor: Option<&str>, data: Value) {
         let state = Arc::make_mut(&mut self.state);
-        let events = Arc::make_mut(&mut state.events);
-        events.push(EventRecord {
-            sequence: events.len() as u64,
-            tick: state.clock.now(),
+        let tick = state.clock.now();
+        let sequence = state.events.len() as u64;
+        state.events.push(EventRecord {
+            sequence,
+            tick,
             kind: kind.into(),
             machine: machine.map(str::to_owned),
             actor: actor.map(str::to_owned),
@@ -414,8 +519,17 @@ impl Runtime {
         if snapshot.version != SNAPSHOT_VERSION || snapshot.engine != ENGINE_VERSION {
             return Err(SimError::invalid("incompatible kernel checkpoint version"));
         }
-        snapshot.definition.validate()?;
-        if **snapshot.baseline.as_ref().unwrap_or(&snapshot.definition) != *self.baseline {
+        // A definition this runtime already holds has already been walked: `new`
+        // validates the one it is built from, `restore` validates the one it installs
+        // and `remove_computer` validates before installing. Pointer identity means
+        // the *same immutable allocation*, so re-walking it is the same work twice; a
+        // checkpoint carrying any other definition (imported, or from another runtime)
+        // still pays the full walk and the full field-by-field comparison below.
+        if !self.holds(&snapshot.definition) {
+            snapshot.definition.validate()?;
+        }
+        let baseline = snapshot.baseline.as_ref().unwrap_or(&snapshot.definition);
+        if !Arc::ptr_eq(baseline, &self.baseline) && **baseline != *self.baseline {
             return Err(SimError::invalid(
                 "checkpoint belongs to a different world definition",
             ));
@@ -485,8 +599,18 @@ impl Runtime {
         }
         Ok(())
     }
+    /// Whether `definition` is one this runtime already holds, and has therefore
+    /// already validated. Pointer identity, not equality: an `Arc<WorldDefinition>` is
+    /// immutable, so the same allocation is byte-for-byte the same world.
+    fn holds(&self, definition: &Arc<WorldDefinition>) -> bool {
+        Arc::ptr_eq(definition, &self.definition) || Arc::ptr_eq(definition, &self.baseline)
+    }
     pub fn restore(&mut self, snapshot: &Snapshot) -> Result<()> {
         self.validate_snapshot(snapshot)?;
+        self.install(snapshot)
+    }
+    /// Install a checkpoint `validate_snapshot` has just accepted.
+    fn install(&mut self, snapshot: &Snapshot) -> Result<()> {
         self.generation = self
             .generation
             .checked_add(1)
@@ -496,9 +620,10 @@ impl Runtime {
         self.state = snapshot.state.clone();
         Ok(())
     }
-    pub fn fork(&self, snapshot: &Snapshot) -> Result<Self> {
-        self.validate_snapshot(snapshot)?;
-        Ok(Self {
+    /// A runtime sharing `snapshot`'s state, built from a checkpoint this runtime has
+    /// just validated.
+    fn forked(&self, snapshot: &Snapshot) -> Self {
+        Self {
             definition: snapshot.definition.clone(),
             baseline: self.baseline.clone(),
             registry: self.registry.clone(),
@@ -507,7 +632,21 @@ impl Runtime {
             initial: self.initial.clone(),
             live: BTreeMap::new(),
             generation: 0,
-        })
+        }
+    }
+    pub fn fork(&self, snapshot: &Snapshot) -> Result<Self> {
+        self.validate_snapshot(snapshot)?;
+        Ok(self.forked(snapshot))
+    }
+    /// Exactly `fork` followed by `restore` on the result, validating the checkpoint
+    /// once instead of twice. The environment owns the other half of a checkpoint and
+    /// restores into every fork it makes, so it went through both entry points and
+    /// paid for the same walk of the same world twice on every branch.
+    pub fn fork_and_restore(&self, snapshot: &Snapshot) -> Result<Self> {
+        self.validate_snapshot(snapshot)?;
+        let mut forked = self.forked(snapshot);
+        forked.install(snapshot)?;
+        Ok(forked)
     }
     pub fn reset(&mut self, seed: u64) -> Result<()> {
         let generation = self
@@ -1538,5 +1677,85 @@ impl ShellHost for RuntimeShell<'_> {
                 message: e.message,
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod event_log {
+    use super::*;
+    fn record(i: u64) -> EventRecord {
+        EventRecord {
+            sequence: i,
+            tick: i * 3,
+            kind: "probe".into(),
+            machine: None,
+            actor: None,
+            data: json!({ "i": i }),
+        }
+    }
+    /// The chunking is invisible: order, indexing, length and the serialized form are
+    /// those of one flat vector, across chunk boundaries and at every boundary case.
+    #[test]
+    fn chunked_log_reads_and_serializes_as_one_flat_vector() {
+        for count in [
+            0,
+            1,
+            EVENT_CHUNK - 1,
+            EVENT_CHUNK,
+            EVENT_CHUNK + 1,
+            3 * EVENT_CHUNK + 7,
+        ] {
+            let flat: Vec<EventRecord> = (0..count as u64).map(record).collect();
+            let mut log = EventLog::default();
+            for r in flat.iter().cloned() {
+                log.push(r);
+            }
+            assert_eq!(log.len(), flat.len());
+            assert_eq!(log.is_empty(), flat.is_empty());
+            assert_eq!(log.to_vec(), flat);
+            assert_eq!(log.iter().cloned().collect::<Vec<_>>(), flat);
+            assert_eq!(log.last(), flat.last());
+            for i in 0..flat.len() + 2 {
+                assert_eq!(log.get(i), flat.get(i), "index {i} of {count}");
+            }
+            let json = serde_json::to_string(&log).unwrap();
+            assert_eq!(json, serde_json::to_string(&flat).unwrap());
+            // A checkpoint written as a flat array — by an older engine, or by this one —
+            // imports to the same log.
+            let parsed: EventLog = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed, log);
+            assert_eq!(parsed.to_vec(), flat);
+            assert_eq!(serde_json::to_string(&parsed).unwrap(), json);
+        }
+    }
+    /// What the fork fix is for: a log shared with a checkpoint keeps its sealed chunks
+    /// shared, and appending to either side leaves the other alone.
+    #[test]
+    fn appending_to_a_shared_log_leaves_the_other_side_alone() {
+        let mut parent = EventLog::default();
+        for i in 0..(2 * EVENT_CHUNK as u64 + 5) {
+            parent.push(record(i));
+        }
+        let checkpoint = parent.clone();
+        let mut branch = parent.clone();
+        for i in 0..(EVENT_CHUNK as u64 + 3) {
+            branch.push(record(1_000 + i));
+            parent.push(record(2_000 + i));
+        }
+        assert_eq!(checkpoint.len(), 2 * EVENT_CHUNK + 5);
+        assert_eq!(
+            checkpoint.to_vec(),
+            (0..checkpoint.len() as u64).map(record).collect::<Vec<_>>()
+        );
+        assert_eq!(branch.len(), parent.len());
+        assert_ne!(branch, parent);
+        assert!(branch.iter().take(checkpoint.len()).eq(checkpoint.iter()));
+        assert!(parent.iter().take(checkpoint.len()).eq(checkpoint.iter()));
+        // The sealed chunks really are shared rather than copied.
+        assert!(branch
+            .sealed
+            .iter()
+            .zip(&checkpoint.sealed)
+            .all(|(a, b)| Arc::ptr_eq(a, b)));
     }
 }
