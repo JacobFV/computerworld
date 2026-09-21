@@ -80,6 +80,9 @@ const sections = [
 // ---------- Markdown ----------
 
 const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// A heading is Markdown, and a title is drawn as plain text: strip the code ticks and
+// emphasis markers, and any tags an already-converted heading brought with it.
+const plain = (s) => s.replace(/<[^>]+>/g, '').replace(/[`*_]/g, '');
 const slugify = (s) => s.toLowerCase().replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, '').replace(/[^a-z0-9 _-]/g, '').trim().replace(/\s+/g, '-');
 
 function rewriteHref(href, pages) {
@@ -220,7 +223,7 @@ for (const section of sections) {
     page.slug ??= page.file.replace(/\.md$/, '');
     if (page.file) {
       page.source = readFileSync(join(root, 'docs', page.file), 'utf8');
-      page.title = /^#\s+(.+)$/m.exec(page.source)?.[1] ?? page.slug;
+      page.title = plain(/^#\s+(.+)$/m.exec(page.source)?.[1] ?? page.slug);
       pages.set(page.file, page);
     }
   }
@@ -339,7 +342,7 @@ for (const section of sections) {
     if (page.href) continue;
     const source = page.javascript ? javascriptReference() : page.source;
     const { html, headings } = markdown(source, pages);
-    page.title ??= headings[0]?.text ?? page.slug;
+    page.title ??= plain(headings[0]?.text ?? page.slug);
     const doc = layout({ title: page.title, body: html, headings, page, section });
     if (!check) writeFileSync(join(out, `${page.slug}.html`), doc);
     count++;
