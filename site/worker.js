@@ -37,11 +37,21 @@ self.onmessage = ({ data }) => {
     tell('painted', { id });
     // Only now, with something on screen to improve: a worker holding no machines has no
     // reason to parse twenty megabytes of fonts.
-    fonts ??= installFontPack(file => tell('font', { file })).then(() => tell('fonts'));
+    // Said either way. The pack failing is a page with boxes where some glyphs belong,
+    // which is survivable; a page still waiting to be told is not, and the stills renderer
+    // waits on exactly this before it saves a screen.
+    fonts ??= installFontPack(file => tell('font', { file }))
+      .catch(error => console.warn('font pack', error))
+      .then(() => tell('fonts'));
     return;
   }
   const scene = running.get(id);
-  if (!scene) return;
+  if (!scene) {
+    // A scene retired between the page asking and this arriving. Anything the page is
+    // waiting on is still answered, or it waits for ever.
+    if (kind === 'frame') tell('frame', { id, machine: data.machine, token: data.token });
+    return;
+  }
   if (kind === 'act') {
     const cursor = scene.act(data.machine, data.family, data.op, data.payload);
     if (cursor) tell('cursor', { id, machine: data.machine, cursor });
