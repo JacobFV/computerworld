@@ -527,8 +527,13 @@ figcaption code { color: var(--dim); }
    by the checkbox, or by a keyboard focus on it. No script: with the stylesheet gone both
    pictures are simply there, one under the other, which reads perfectly well. */
 .compare { position: relative; }
-.compare > .over { position: absolute; inset: 0; height: 100%; opacity: 0; transition: opacity .2s ease; }
-.compare:hover > .over, .compare-toggle:checked ~ .over, .compare-toggle:focus-visible ~ .over { opacity: 1; }
+/* The scene comes and goes on its own — about five seconds of the frame, then three of
+   the boxes over it — because the point of the figure is the pair, and a reader who never
+   hovers would otherwise only ever see half of it. Hovering, or the control below, holds
+   it on; a reader who asked for less motion gets no cycle and keeps both. */
+.compare > .over { position: absolute; inset: 0; height: 100%; opacity: 0; transition: opacity .35s ease; animation: scene-cycle 8s ease-in-out infinite; }
+@keyframes scene-cycle { 0%, 60% { opacity: 0 } 65%, 95% { opacity: 1 } 100% { opacity: 0 } }
+.compare:hover > .over, .compare-toggle:checked ~ .over, .compare-toggle:focus-visible ~ .over { opacity: 1; animation: none; }
 /* Left in the tab order and out of the picture; the label is what is seen and focused. */
 .compare-toggle { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; }
 .compare label {
@@ -797,19 +802,19 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .feature-grid figcaption { font: .85rem/1.6 var(--sans); color: var(--dim); }
 .figure-bar {
   position: relative; justify-content: center; align-items: center;
-  min-height: 38px; padding: .5rem 5rem; border-color: var(--chrome-line);
+  min-height: 29px; padding: .3rem 4.2rem; border-color: var(--chrome-line);
   border-radius: var(--win-radius) var(--win-radius) 0 0;
   background: var(--chrome); box-shadow: inset 0 1px 0 var(--chrome-sheen);
-  font: 500 .78rem/1.4 var(--sans); text-transform: none; letter-spacing: -.005em;
+  font: 500 .73rem/1.4 var(--sans); text-transform: none; letter-spacing: -.005em;
   color: var(--chrome-ink);
 }
-/* The three window controls: 12px across, 8px apart, one dot drawn and the other two cast
+/* The three window controls: 11px across, 7px apart, one dot drawn and the other two cast
    as its shadows. Sizes and colours are macOS's own, so the figure reads as a window on
    the same desk as the machines in the strip rather than as a labelled box. */
 .figure-bar::before {
-  content: ''; position: absolute; left: 14px; top: 50%; margin-top: -6px;
-  width: 12px; height: 12px; border-radius: 50%;
-  background: #ff5f57; box-shadow: 20px 0 #febc2e, 40px 0 #28c840;
+  content: ''; position: absolute; left: 11px; top: 50%; margin-top: -5.5px;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: #ff5f57; box-shadow: 18px 0 #febc2e, 36px 0 #28c840;
 }
 .figure-bar span:last-child { color: inherit; }
 .feature-grid figure > img, .feature-grid video, .map-content, .compare { border: 1px solid var(--chrome-line); border-top: 0; border-radius: 0 0 var(--win-radius) var(--win-radius); box-shadow: var(--win-shadow); }
