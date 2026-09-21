@@ -91,7 +91,7 @@
   <div class="feature-grid" id="exhaustive">
     <div class="prose"><h3>Inspect the actions behind a violation.</h3><p>Choose a start state, action set, and search depth. The checker explores the configured search space and tests policies against state. A counterexample records the actions needed to reproduce the violation.</p>
     <p>In the example, two actions violate P2: open the pull request, then merge it while a request for changes still stands.</p><p class="measure">A result that holds is bounded by the chosen model, start state, action domains, and depth. It is not a guarantee about every possible action or a production application.</p></div>
-    <figure><div class="figure-bar"><span>Recorded check + counterexample replay</span></div>    <video class="shot" poster="./media/b2-check.jpg" preload="none" width="1280" height="800" muted loop playsinline controls aria-label="A bounded check running: the frontier expands from the pull request list, one branch reaches a state that breaks P2, and the two clicks that got there are replayed.">
+    <figure><div class="figure-bar"><span>Recorded check + counterexample replay</span></div>    <video class="shot" poster="./media/b2-check.jpg" preload="metadata" width="1280" height="800" muted loop playsinline controls aria-label="A bounded check running: the frontier expands from the pull request list, one branch reaches a state that breaks P2, and the two clicks that got there are replayed.">
       <source src="./media/b2-check.mp4" type="video/mp4">
     </video>
 <figcaption>The recorded search finds and replays the two-action violation in the simulated pull-request workflow.</figcaption></figure>
