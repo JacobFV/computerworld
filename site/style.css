@@ -34,16 +34,19 @@
   --syn-k: #a69f92;
   --syn-s: #a9b88f;
   --syn-t: #e0c9a0;
-  /* The window a figure is shown in: title bar, hairline, title, and the top highlight. */
-  --chrome: linear-gradient(#332f2a, #292620);
-  --chrome-line: #4a453d;
-  --chrome-ink: #cdc7bb;
-  --chrome-sheen: #ffffff14;
+  /* The window a figure is shown in: title bar, hairline, title, and the top highlight.
+     These are macOS's own greys, not the page's warm neutral — the window is a picture of
+     another machine's screen, and it keeps that machine's colours. */
+  --chrome: linear-gradient(#3d3d3f, #333335);
+  --chrome-line: #4f4f52;
+  --chrome-ink: #c8c8cc;
+  --chrome-sheen: #ffffff17;
   --win-shadow: 0 18px 38px -14px #000000a6, 0 2px 6px #00000047;
-  /* Inside a figure: the sheet the small frames are laid on, and the frames themselves. */
-  --figure-bg: #171613;
-  --frame-bg: #26231e;
-  --frame-line: #575043;
+  /* Inside a figure: the sheet the small frames are laid on, and the frames themselves,
+     in the same grey as the bar above them rather than the page's warm neutral. */
+  --figure-bg: #1d1d1f;
+  --frame-bg: #2a2a2c;
+  --frame-line: #48484b;
   --frame-shadow: 0 4px 10px #00000059;
   --engine-bg: #241e15;
   --engine-line: #79603c;
@@ -79,14 +82,14 @@
     --syn-k: #6d665b;
     --syn-s: #4c6236;
     --syn-t: #8a5a12;
-    --chrome: linear-gradient(#f5f2ec, #e7e2d8);
-    --chrome-line: #cdc5b6;
-    --chrome-ink: #4a453d;
+    --chrome: linear-gradient(#f0f0f1, #e2e2e4);
+    --chrome-line: #c9c9cd;
+    --chrome-ink: #4a4a4e;
     --chrome-sheen: #ffffffcc;
     --win-shadow: 0 16px 34px -16px #00000038, 0 1px 3px #00000014;
-    --figure-bg: #f2eee6;
+    --figure-bg: #f4f4f6;
     --frame-bg: #ffffff;
-    --frame-line: #d8d1c3;
+    --frame-line: #d5d5d9;
     --frame-shadow: 0 3px 8px #0000001f;
     --engine-bg: #fdf3e1;
     --engine-line: #dfb676;
@@ -120,14 +123,14 @@
   --syn-k: #6d665b;
   --syn-s: #4c6236;
   --syn-t: #8a5a12;
-  --chrome: linear-gradient(#f5f2ec, #e7e2d8);
-  --chrome-line: #cdc5b6;
-  --chrome-ink: #4a453d;
+  --chrome: linear-gradient(#f0f0f1, #e2e2e4);
+  --chrome-line: #c9c9cd;
+  --chrome-ink: #4a4a4e;
   --chrome-sheen: #ffffffcc;
   --win-shadow: 0 16px 34px -16px #00000038, 0 1px 3px #00000014;
-  --figure-bg: #f2eee6;
+  --figure-bg: #f4f4f6;
   --frame-bg: #ffffff;
-  --frame-line: #d8d1c3;
+  --frame-line: #d5d5d9;
   --frame-shadow: 0 3px 8px #0000001f;
   --engine-bg: #fdf3e1;
   --engine-line: #dfb676;
