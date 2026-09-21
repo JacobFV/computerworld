@@ -15,7 +15,18 @@ about slides or events, so it runs unchanged in either host: `worker.js`, which 
 really runs, or the tab, for a browser without workers or `OffscreenCanvas`. A scene is
 dealt to one of at most four workers and keeps it; the page hands over each canvas with
 `transferControlToOffscreen` and thereafter sends events and receives a cursor, and no
-pixels cross back. Building a world is seconds of arithmetic and a screen is four megabytes
+pixels cross back. How many workers is bounded by `navigator.deviceMemory` as well as by
+cores, because each one holds an engine of its own and a copy of whatever fonts it has
+installed: on a device reporting 2 GB the pool of one costs 1,591 MB against the 1,808 MB
+four cost, and the same walk across four scenes 1,610 MB against 1,958 MB.
+
+`live.js` and `worker.js` each declare a protocol number as a literal, deliberately not
+shared through a module they would both cache. A page served before a deploy can meet a
+worker served after it — GitHub Pages gives these files ten minutes of cache — so the
+worker reports its number before the pool is used, and a page that is answered in a
+language it does not speak lets the workers go and runs the machines itself. The same
+handshake catches a `worker.js` that is not there at all. Bump both literals together when
+the messages change. Building a world is seconds of arithmetic and a screen is four megabytes
 of rasterising, and neither is something a page can do while it is also expected to scroll:
 the longest the main thread is unavailable while the seven-machine slide comes up is 112 ms,
 against 2,340 ms when the same code ran in the tab.

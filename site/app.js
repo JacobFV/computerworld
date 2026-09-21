@@ -447,7 +447,17 @@ async function come(index, mine) {
   if (era !== mine || current !== index) return;
   const start = await download();
   if (!start || era !== mine || current !== index) return;
-  await start(cast[index], slides[index]);
+  // The overlay belongs to this scene and to the moment it is coming up. It goes on here
+  // and comes off on the answer, whatever the answer is: `start` says whether the scene is
+  // really running, and a scene that will not come up — a worker that never loaded, a
+  // world that would not build — has to take its spinner away with it, or the slideshow
+  // goes on turning under a dimmed tile that is waiting for something that is not coming.
+  // Set on every arrival rather than once, so the scene after a failure has its spinner too.
+  phase('work');
+  const live = await start(cast[index], slides[index]);
+  if (era !== mine || current !== index) return;
+  phase(null);
+  if (!live) return;                       // the stills are what this slide shows, then
   // Then its neighbours, while nothing else is happening, so the machines at the edges of
   // the strip are already running when they are reached. Only while nothing else is
   // happening, though: a hand still on the arrow key is not nothing.
@@ -456,6 +466,13 @@ async function come(index, mine) {
     if (era !== mine || current !== index || performance.now() - moved < 900) return;
     await start(cast[at(near)], slides[at(near)], { spare: true });
   }
+  // And last, the fonts those neighbours went without: a worker fetches the 20 MB pack for
+  // a machine somebody is looking at, not for one pre-booted at the edge of the strip, so
+  // until this a neighbour is drawing boxes where the emoji and the CJK go. Nothing on
+  // screen changes for it, which is why it waits for the quietest moment there is.
+  await idle();
+  if (era !== mine || current !== index || performance.now() - moved < 900) return;
+  start.prewarm();
 }
 
 // When the strip last turned, so that a boot never lands on top of someone still moving.

@@ -20,6 +20,29 @@ const WORLD = new URL('./world-definition.js', import.meta.url);
 const KEPT = 6;
 const KEPT_MACHINES = 14;
 
+// THE NUMBER BELOW IS ONE HALF OF A MATCHED PAIR. worker.js writes the same literal out
+// again, and the two are bumped together whenever the shapes of the messages between these
+// files change. It is deliberately not imported from a module both could share: a third
+// file would be cached on its own timetable like these two are, and both sides would go on
+// agreeing about a number neither of them had just fetched.
+//
+// The disagreement is real. GitHub Pages serves this site with `cache-control:
+// max-age=600`, so for ten minutes after a deploy a returning visitor can hold this file
+// from before it and worker.js from after, and a message the far side does not recognise
+// is dropped without a word — a scene that never paints and a spinner that never stops.
+// The worker says its number in `ready`; a pool that answers with anything else, or does
+// not answer at all, is thrown away and the machines run in the tab, which is one file and
+// cannot disagree with itself.
+const PROTOCOL = 1;
+
+// How long the first worker has to say `ready`. It instantiates the module and parses 7.7
+// MB of world before it answers, which is 82 to 98 ms on this machine; two seconds leaves
+// room for one a good deal slower. Nothing is waiting on this but the choice between the
+// pool and the tab — the first machine is up in about 1.4 s either way, because the worker
+// had to finish that same work before it could act on a `start` in any case — and a worker
+// that has not spoken by then is not one to hand a scene to.
+const GREETING = 2000;
+
 /** What a tile shows: its screen, and whatever controls app.js hung on it (the fullscreen
  * button), which a swap of the screen must not throw away. */
 const show = (tile, screen) => tile.replaceChildren(screen, ...tile.querySelectorAll('[data-keep]'));
@@ -76,23 +99,60 @@ async function arrive(report) {
   return { module, world: start >= 0 ? text.slice(start, end) : text };
 }
 
-/** A pool of workers, or `null` where the browser will not give us one. A scene goes to an
- * idle worker where there is one and stays with it for as long as it runs, because its
- * world lives there; a worker is only made when a scene needs one, so a visitor who looks
- * at a single machine pays for a single worker.
+/** A pool of workers, or `null` where the browser will not give us one — or where the one
+ * it gives us turns out to be speaking a different protocol from this file. A scene goes
+ * to an idle worker where there is one and stays with it for as long as it runs, because
+ * its world lives there; a worker is only made when a scene needs one, so a visitor who
+ * looks at a single machine pays for a single worker.
  *
- * Four at most. Each holds a copy of the engine and of whatever fonts it has installed, so
- * the pool is bounded by memory rather than by cores — and past three or four, the scenes
- * a page runs at once are already spread thin enough to boot in parallel. */
-function crew(seed, heard) {
+ * Four at most, and fewer on a small machine. Each one holds its own instance of the
+ * engine, a world for every scene it is running and its own copy of whatever fonts have
+ * been installed into it, which is worth a couple of hundred megabytes apiece: the front
+ * page measures 1.81 GB resident across the browser with the two workers it fills against
+ * 1.59 GB held to one, and a walk across four one-machine scenes 1.96 GB on four workers
+ * against 1.61 GB on one.
+ * So the ceiling is memory as much as it is cores, and `navigator.deviceMemory` —
+ * gigabytes, rounded down to a power of two and capped at 8 by the browsers that offer it
+ * — is the only thing a page is told about the first. Firefox and Safari say nothing,
+ * which is what the `|| 0` is for: there the cores decide alone, as they did before. */
+async function crew(seed, heard) {
   if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined'
       || !HTMLCanvasElement.prototype.transferControlToOffscreen) return null;
-  const most = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4) - 1));
+  const gigabytes = navigator.deviceMemory || 0;
+  const most = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 4) - 1,
+                                   gigabytes ? Math.floor(gigabytes / 2) : 4));
   const hands = [];
   const desk = new Map();          // scene id → the worker holding it
   const painting = new Map();      // scene id → { resolve, reject } while it comes up
   const frames = new Map();        // token → whoever asked for a machine's pixels
   let asked = 0;
+
+  const holding = id => desk.get(id)?.worker;
+  const held = hand => [...desk].filter(([, h]) => h === hand).map(([id]) => id);
+  /** Which worker a scene goes to: an idle one if there is one, a new one while the pool
+   * has room, and otherwise whichever is carrying least. A scene stays with the worker it
+   * was dealt to for as long as it runs, because its world lives there. */
+  const deal = id => {
+    let hand = desk.get(id);
+    if (hand) return hand;
+    hand = hands.find(h => h.scenes === 0)
+      ?? (hands.length < most ? hire() : null)
+      ?? hands.reduce((fewest, h) => (h.scenes < fewest.scenes ? h : fewest));
+    hand.scenes++;
+    desk.set(id, hand);
+    return hand;
+  };
+
+  /** Tell a worker to fetch the font pack, once. It does not fetch it off its own bat any
+   * more: the pack is 20 MB of TTF and a worker parses its own copy, so one that is only
+   * holding a neighbour warmed in the background — a scene nobody has looked at — is 20 MB
+   * the visitor has not asked for. Until it is told, it has no fonts and nothing waits on
+   * its `fonts` either, which is why `fonts` below reads `warmed` and not `scenes`. */
+  const heat = hand => {
+    if (!hand || hand.warmed) return;
+    hand.warmed = true;
+    hand.worker.postMessage({ kind: 'warm' });
+  };
 
   const hire = () => {
     let worker;
@@ -102,10 +162,12 @@ function crew(seed, heard) {
       console.warn('worker', error);
       return null;
     }
-    const hand = { worker, scenes: 0, working: false };
+    const hand = { worker, scenes: 0, warmed: false };
     hand.fonts = new Promise(done => { hand.fontsIn = done; });
+    hand.ready = new Promise(done => { hand.readyIn = done; });
     worker.onmessage = ({ data }) => {
       const waiting = painting.get(data.id);
+      if (data.kind === 'ready') { hand.readyIn(data.protocol); return; }
       if (data.kind === 'painted') { painting.delete(data.id); waiting?.resolve(); }
       else if (data.kind === 'failed') { painting.delete(data.id); waiting?.reject(new Error(data.why)); }
       else if (data.kind === 'cursor') heard.cursor(data.id, data.machine, data.cursor);
@@ -131,6 +193,7 @@ function crew(seed, heard) {
       }
       for (const [token, answer] of frames) { answer(null); frames.delete(token); }
       hand.fontsIn();
+      hand.readyIn(null);            // a worker that died before it spoke never will
       hands.splice(hands.indexOf(hand), 1);
     };
     worker.postMessage({ kind: 'boot', module: seed.module, world: seed.world });
@@ -138,29 +201,25 @@ function crew(seed, heard) {
     return hand;
   };
 
-  // One now, so that a browser which refuses to make a module worker is found out here and
-  // answered with the tab rather than with a dead slideshow.
-  if (!hire()) return null;
-
-  const holding = id => desk.get(id)?.worker;
-  const held = hand => [...desk].filter(([, h]) => h === hand).map(([id]) => id);
-  /** Which worker a scene goes to: an idle one if there is one, a new one while the pool
-   * has room, and otherwise whichever is carrying least. A scene stays with the worker it
-   * was dealt to for as long as it runs, because its world lives there. */
-  const deal = id => {
-    let hand = desk.get(id);
-    if (hand) return hand;
-    hand = hands.find(h => h.scenes === 0)
-      ?? (hands.length < most ? hire() : null)
-      ?? hands.reduce((fewest, h) => (h.scenes < fewest.scenes ? h : fewest));
-    hand.scenes++;
-    hand.working = true;
-    desk.set(id, hand);
-    return hand;
-  };
+  // One now, and a word out of it before the pool is used for anything. A browser that
+  // refuses to make a module worker is found out here; so is a worker.js that is not the
+  // one this file was written against, or that is not there at all. Either way the answer
+  // is the tab rather than a dead slideshow. This costs the first machine nothing: the
+  // worker has to finish this same `boot` before it could act on a `start` anyway, so the
+  // wait below is one it was going to do inside `start`.
+  const first = hire();
+  if (!first) return null;
+  const spoken = await Promise.race([first.ready, new Promise(done => setTimeout(done, GREETING, null))]);
+  if (spoken !== PROTOCOL) {
+    console.warn(`this page speaks protocol ${PROTOCOL} and its workers speak ${spoken ?? 'nothing at all'}; running the machines in the tab instead`);
+    // `first` may already have taken itself out of `hands` on the way down; it is let go
+    // either way, because a worker nobody can talk to is still holding an engine.
+    for (const hand of new Set([first, ...hands])) hand.worker.terminate();
+    return null;
+  }
 
   return {
-    start(scene, screens) {
+    start(scene, screens, spare) {
       const hand = deal(scene.id);
       const offscreen = {};
       const moving = [];
@@ -170,8 +229,16 @@ function crew(seed, heard) {
       }
       const painted = new Promise((resolve, reject) => painting.set(scene.id, { resolve, reject }));
       hand.worker.postMessage({ kind: 'start', id: scene.id, screens: offscreen }, moving);
+      if (!spare) heat(hand);
       return painted;
     },
+    // A scene that was warmed as a neighbour is now the one being looked at, so the worker
+    // holding it needs the faces after all.
+    warm: id => heat(desk.get(id)),
+    // Every worker that is holding anything, whether or not the visitor has reached it.
+    // app.js asks for this once the strip has stood still, so that arrowing onto a
+    // neighbour is not watching its emoji turn from boxes into glyphs.
+    prewarm: () => { for (const hand of hands) if (hand.scenes) heat(hand); },
     act: (id, machine, family, op, payload) =>
       holding(id)?.postMessage({ kind: 'act', id, machine, family, op, payload }),
     frame(id, machine) {
@@ -190,11 +257,12 @@ function crew(seed, heard) {
       hand.scenes--;
       desk.delete(id);
     },
-    // Only the workers that have had machines in them: one that has never been dealt a
-    // scene has fetched no fonts and never will, so waiting on it would be waiting for
+    // Only the workers that have been asked for the pack: one that has never been dealt a
+    // scene, or that is holding nothing but a neighbour nobody has looked at, has fetched
+    // no fonts and never will unless it is told to, so waiting on it would be waiting for
     // ever. Read fresh each time, because which workers those are changes as the visitor
     // moves along the strip.
-    fonts: () => Promise.all(hands.filter(hand => hand.working).map(hand => hand.fonts)),
+    fonts: () => Promise.all(hands.filter(hand => hand.warmed).map(hand => hand.fonts)),
   };
 }
 
@@ -206,10 +274,14 @@ async function tab(seed, heard) {
   const running = new Map();
   let fonts = null;
   return {
-    async start(scene, screens) {
+    async start(scene, screens, spare) {
       running.set(scene.id, run(definition, scene, screens));
-      fonts ??= installFontPack(() => heard.font());
+      // Not for a neighbour nobody is looking at: here the pack is 6.1 s of parsing on the
+      // page's own thread, which is the worst moment to spend on a scene off the strip.
+      if (!spare) fonts ??= installFontPack(() => heard.font());
     },
+    warm: () => { fonts ??= installFontPack(() => heard.font()); },
+    prewarm: () => { if (running.size) fonts ??= installFontPack(() => heard.font()); },
     act(id, machine, family, op, payload) {
       const cursor = running.get(id)?.act(machine, family, op, payload);
       if (cursor) heard.cursor(id, machine, cursor);
@@ -319,7 +391,7 @@ export async function boot(report) {
     cursor: (id, machine, named) => wiring.get(id)?.get(machine)?.cursor(named),
     font: ids => restale(ids),
   };
-  const host = crew(seed, heard) ?? await tab(seed, heard);
+  const host = await crew(seed, heard) ?? await tab(seed, heard);
 
   /** A font file landed, so every running scene's cached text is stale. Repaint the scene
    * the visitor is looking at, and no more than that: the pack is a dozen files and six
@@ -366,7 +438,11 @@ export async function boot(report) {
     });
   }
 
-  /** Bring up `scene` in `slide` if it is not already running; resolves once it is painted.
+  /** Bring up `scene` in `slide` if it is not already running. Resolves with whether it is
+   * running: `true` once it is painted, `false` for one that would not come up and for a
+   * spare that was declined. The slideshow shows its overlay while this is outstanding and
+   * takes it away on the answer, so the answer has to come either way — a scene that fails
+   * silently is a spinner that turns for ever over a still.
    *
    * `spare` marks a scene nobody is looking at — a neighbour warmed so that the edges of
    * the strip are already running when they are reached. That is worth a world when the
@@ -374,21 +450,26 @@ export async function boot(report) {
    * machines with four on one side and seven on the other, and building all sixteen before
    * the visitor has touched anything costs more than it saves. So a spare scene comes up
    * only while the machines already running leave room for it, and one that does not is
-   * started the ordinary way when the strip reaches it. */
+   * started the ordinary way when the strip reaches it. It is also what decides whether the
+   * worker holding the scene fetches the font pack, so a scene that arrives as a spare and
+   * is then looked at has to say so. */
   function start(scene, slide, { spare = false } = {}) {
     const known = running.get(scene.id);
     if (known) {
       running.delete(scene.id);
       running.set(scene.id, known);
       if (known.stale) { known.stale = false; host.redraw(scene.id); }
+      // After it is up, not now: the scene is not on a worker's desk until `host.start` has
+      // dealt it to one, and a spare can be looked at before it has finished coming up.
+      if (known.spare && !spare) { known.spare = false; known.booting.then(() => host.warm(scene.id)); }
       return known.booting;
     }
     if (spare) {
       let machines = scene.machines.length;
       for (const live of running.values()) machines += live.count;
-      if (machines > KEPT_MACHINES) return Promise.resolve();
+      if (machines > KEPT_MACHINES) return Promise.resolve(false);
     }
-    const entry = { count: scene.machines.length, ids: scene.machines.map(m => m.id), slide, stale: false, tiles: [] };
+    const entry = { count: scene.machines.length, ids: scene.machines.map(m => m.id), slide, stale: false, spare, tiles: [] };
     entry.booting = (async () => {
       const tiles = new Map(scene.machines.map(({ id }) => [id, slide.querySelector(`[data-machine="${id}"]`)]));
       entry.tiles = [...tiles.values()];
@@ -404,13 +485,14 @@ export async function boot(report) {
       // Let the browser paint the overlay's spinner before the world is built, which in
       // the tab holds the thread for a second or two and in a worker holds nothing.
       await new Promise(resolve => requestAnimationFrame(resolve));
-      await host.start(scene, screens);
+      await host.start(scene, screens, entry.spare);
       // Not before it is painted: an empty canvas swapped in over the still is a machine
       // that blinks out and back, and the still is a real frame of the same machine.
       for (const { id } of scene.machines) {
         show(tiles.get(id), wired.get(id).canvas);
         tiles.get(id).classList.add('live');
       }
+      return true;
     })().catch(error => {
       // The stills are real renders of the same machines, so a scene that will not come up
       // is left as the pictures it was, and the slideshow is not told to wait for it again.
@@ -418,11 +500,19 @@ export async function boot(report) {
       running.delete(scene.id);
       for (const wired of wiring.get(scene.id)?.values() ?? []) wired.stop();
       wiring.delete(scene.id);
+      return false;
     });
     running.set(scene.id, entry);
     retire();
     return entry.booting;
   }
+
+  /** The font pack into every worker that is holding a scene, spare or not. A worker only
+   * fetches the pack for a machine somebody is looking at, which leaves a neighbour warmed
+   * in the background drawing boxes where the emoji and the CJK belong; this is how those
+   * get filled in before the visitor arrows onto them. app.js calls it once the page has
+   * been quiet for a moment, because it is 20 MB a worker and none of it is urgent. */
+  start.prewarm = () => host.prewarm();
 
   return start;
 }
