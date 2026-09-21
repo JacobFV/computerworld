@@ -84,7 +84,7 @@ one, so a scene added to the cast appears in both.
 is what lets a machine inside the frame take the whole screen; without it the control
 is still there and still works, but it can only fill the frame it was given, which on a
 16:10 embed is most of what fullscreen would have been anyway. The simulator is
-about 10 MB over the wire, so frame it lazily: a visitor who never scrolls to it
-should never pay for it. Everything below the stage in `app.js` asks for its elements
+about 16 MB gzipped — 14 MB of Wasm and 2 MB of world — so frame it lazily: a
+visitor who never scrolls to it should never pay for it. Everything below the stage in `app.js` asks for its elements
 before wiring itself up, which is what lets one script serve both pages — keep it
 that way when adding to it.

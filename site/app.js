@@ -372,10 +372,11 @@ function sweep(from) {
 }
 
 // The pictures get the browser to themselves until they are all in — or five seconds,
-// whichever comes first. Instantiating the simulator means parsing a 7.7 MB world and a
-// 10 MB module, which holds the main thread long enough to be seen as a stutter in a
-// thumbnail arriving; five seconds is long enough to have the whole cast on a decent line
-// and short enough that a visitor who has settled still gets a machine while they look.
+// whichever comes first. This is about the line, not the thread: the machines are built
+// and drawn in workers now, but the simulator is sixteen megabytes gzipped and a thumbnail
+// queued behind it arrives when it arrives. Five seconds is long enough to have the whole
+// cast on a decent line and short enough that a visitor who has settled still gets a
+// machine while they look.
 const pictures = () => Promise.race([arriving, new Promise(done => setTimeout(done, 5000))]);
 
 // What the overlay is doing, said once for every tile at once, because there is one
@@ -391,10 +392,11 @@ const phase = (state, text = '') => {
 
 // NOTHING WAITS ON A MACHINE. Every tile shows its pre-rendered still the moment the page
 // parses, and the slideshow turns on the same frame the key is pressed: none of what
-// follows is on the path of a click, an arrow or a `#link`. The simulator is a 10 MB
-// download and a Wasm module to instantiate, so it is not even asked for until the browser
-// is idle, and a scene is started only once the strip has stood still for a moment —
-// arrowing through twenty slides starts the one they stop on, not twenty worlds.
+// follows is on the path of a click, an arrow or a `#link`. The simulator is sixteen
+// megabytes gzipped, so it is not even asked for until the browser is idle, and a scene is
+// started only once the strip has stood still for a moment — arrowing through twenty
+// slides starts the one they stop on, not twenty worlds. Those worlds are built in workers
+// and cost this thread nothing, but they are still twenty worlds.
 let simulator = null;
 const download = () => (simulator ??= (async () => {
   // A browser asking for Save-Data gets the stills and a way in, not a download it did
@@ -438,9 +440,8 @@ function wake(index) {
 }
 
 async function come(index, mine) {
-  // The pictures come first. A world being built holds the main thread for seconds at a
-  // time, and a visitor looking at a still they can see is better served than one looking
-  // at a gap while a machine they have not asked for boots behind it.
+  // The pictures come first: they are small, they are what the visitor is looking at, and
+  // a machine nobody has asked for yet should not be taking the line from them.
   await warmNear(index);
   await pictures();
   if (era !== mine || current !== index) return;
@@ -692,10 +693,10 @@ track.classList.add('still');
 go(first, { quiet: true });
 requestAnimationFrame(() => requestAnimationFrame(() => track.classList.remove('still')));
 // In order: the stills a keypress away, then the rest of the cast in the background, and
-// only once those are asked for, the 10 MB the machines need. A visitor who turns the
+// only once those are asked for, the sixteen the machines need. A visitor who turns the
 // strip in the meantime is served by `wake`, which waits for the same pictures first.
 warmNear(first).then(() => {
-  sweep(first);                                  // every still asked for, before the 10 MB
+  sweep(first);                                  // every still asked for, before the 16 MB
   return pictures();
 }).then(() => idle()).then(() => download());
 
