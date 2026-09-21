@@ -112,6 +112,13 @@ hash and the same frames, on Linux, macOS, Windows and in a browser. The release
 pipeline refuses to publish unless they do. [Determinism](determinism.md) says exactly
 what is promised and how to use frames as labelled data.
 
+Because state is hashable, the transition relation is deterministic and backtracking is
+a fork, the same world can be *searched* rather than sampled.
+[Bounded model checking](checking.md) enumerates every state reachable within `k`
+actions of a start state and returns either a certificate for that bound or a literal
+action sequence that breaks a policy, replayed from a fresh world before it is written
+down.
+
 ## What is inside a machine
 
 Each computer has an inode filesystem with owners and modes, processes, users, installed
@@ -128,16 +135,24 @@ file manager, editor, browser, spreadsheet, and professional tools on exact engi
 <li><a href="debugging.md">Debugging</a><span>Breakpoints inside the world from VS Code.</span></li>
 <li><a href="networking.md">Networking</a><span>DNS, routes, transports, HTTP.</span></li>
 <li><a href="rendering.md">Rendering</a><span>Scenes, text and the frame contract.</span></li>
+<li><a href="checking.md">Bounded checking</a><span>Certificates and counterexamples.</span></li>
 </ul>
 
 ## The synthetic internet
 
 Machines talk to services over a modelled network: DNS, routes, links with latency, and
-HTTP. Services are independent state machines with their own storage: mail, chat,
-documents, drive, calendar, Git remotes, issues, search, wiki, forum, social, press,
-media, shop, bank, maps and an assistant. The reference world also hosts a browsable
-web of independent sites. The browser is synthetic: it renders received pages natively,
-with tabs, history, cookies, storage and forms, and needs no DOM or Chromium.
+HTTP. Services are independent state machines with their own storage: mail, chat
+(Slack and Discord), phone messages, documents, drive, calendar, Git remotes, issues,
+search, wiki, forum, social, press, media and speakers, shop, bank, maps, static sites
+and an assistant. The reference world hosts eighty-seven of their sites.
+
+Every one of them serves HTML, and the browser is a web engine: an HTML 5 parser, a CSS
+cascade over 124 longhands, block, inline, table, flex and grid layout in fixed point,
+paint, and the page's own JavaScript on a DOM, CSSOM and event loop driven by the world
+clock. React, Vue, Svelte, Tailwind and jQuery bundles run unmodified. It is measured
+element by element against Chromium on eleven fixture pages and against 1,586 Web
+Platform Tests reftests; Acid1 and Acid2 render pixel for pixel. No Chromium process is
+involved and nothing leaves the world.
 
 Nothing reaches the host. The engine has no filesystem, socket, clock, entropy or
 network access unless the owner wires an adapter in explicitly.

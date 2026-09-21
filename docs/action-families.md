@@ -112,7 +112,7 @@ window keeps its own history and tabs.
 | `key` | `{"key": string}` | Key into the focused page element |
 | `new_tab` | `{}` | |
 | `switch_tab` / `close_tab` | `{"tab": u64}` | Index |
-| `scroll` | `{"y": i64}`, or `{"row": string, "x": i64}` for a shelf that scrolls sideways | Clamped to `0..=i32::MAX` |
+| `scroll` | `{"y": i64}` for the page; `{"pane": string, "y": i64}` for a scroll container in the page; `{"row": string, "x": i64}` for a shelf that scrolls sideways | Clamped to `0..=i32::MAX` |
 
 #### The omnibox
 

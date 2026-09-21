@@ -43,8 +43,8 @@ a general renderer-only speedup over Chromium.
 [initial renderer/native baseline hashes](../benchmarks/results/machine-baseline.json), and
 [commands](../benchmarks/README.md) accompany the report. Final refreshed bindings
 are measured, including the cached reset and exact integer conversion changes.
-The final device-lifecycle runtime is included; rendering the multi-device console
-itself is not a measured workload. These are results on one host, not universal
+The final device-lifecycle runtime is included; no viewer or page around the engine is
+a measured workload. These are results on one host, not universal
 hardware guarantees.
 
 ## Method

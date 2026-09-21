@@ -9,8 +9,8 @@ threads; calls on one world are serialized.
 
 ```python
 import computerworld
-computerworld.__version__      # the package version, PEP 440 ("0.1.0", "0.1.0a3")
-computerworld.engine_version   # the engine version, Cargo style ("0.1.0", "0.1.0-alpha.3")
+computerworld.__version__      # the package version, PEP 440 ("0.2.0", "0.2.0a3")
+computerworld.engine_version   # the engine version, Cargo style ("0.2.0", "0.2.0-alpha.3")
 ```
 
 ## `World`

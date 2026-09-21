@@ -1,8 +1,11 @@
 # Rendering and observations
 
-The rendering pipeline is semantic application state → native page → layout →
-scene → optional RGBA. Structured-only observations stop before rasterization.
-No DOM, JavaScript executor or Chromium process is required for synthetic apps.
+Two pipelines end in one scene. A native application's is semantic application state →
+native page → layout → scene → optional RGBA. A web page's is HTML → DOM → cascade →
+layout → paint → scene → optional RGBA, run by `cw-web` (see
+[architecture](architecture.md)). Everything below the scene — hit testing, the semantic
+observation, the rasterizer, the font stack — is shared, and structured-only observations
+stop before rasterization in both. No Chromium process is involved in either.
 
 `cw-scene::Scene` stores dimensions, background, revision, nodes and an optional
 `typeface`. A node has a stable ID, integer bounds, primitive, optional semantic
@@ -72,11 +75,15 @@ renderer's own deterministic COLR rasterizer (gradients, clip boxes, transforms 
 composite modes), identically natively and in Wasm; the monochrome glyphs remain the
 fallback while the colour file is absent.
 
-This is a deliberately smaller layout and text system than a web browser. It does
-not claim complete CSS, vertical or justified text, synthetic italics,
-arbitrary DOM execution or browser compositor compatibility. Native pages should be designed for this
-contract. A real-browser adapter would be an optional compatibility backend and
-must not become the state model for ordinary synthetic services.
+Scene layout is a deliberately smaller system than the web engine above it: it is flow
+layout for native pages, and it does not claim CSS, vertical or justified text or
+browser compositor compatibility. Native applications should be designed for that
+contract. Web pages are not: they go through `cw-web`, which is where CSS, the DOM and
+script live, and which is what every `services/*` site is written against. The limits
+that remain — no vertical writing modes, no synthetic italics where a face lacks a
+slant — are listed with the supported property table in
+`crates/web/src/style/properties/mod.rs` and enforced for authored sites by
+`html::validate_strict`.
 
 Benchmarks must distinguish layout, scene patching, rasterization, readback and
 image encoding. See [performance](performance.md) for reproducible commands and

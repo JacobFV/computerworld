@@ -37,8 +37,8 @@ are part of the checkpoint compatibility boundary.
 separate simulators.
 
 Observations are a map of explicitly selected channels, keyed by machine within
-each channel. Terminal results and semantic/native page views do not reveal the
-kernel's complete state. `observe` does not rasterize. Request `render` explicitly
+each channel. Terminal results and page views do not reveal the kernel's complete
+state. `observe` does not rasterize. Request `render` explicitly
 for pixels; use scene hit testing for pointer actions. The filesystem observation
 contains the local working directory, not a world inspector. `browser.v1` includes
 the page, URL and fields. `semantic.v1` or `pixels.v1` is required to request a
@@ -95,9 +95,9 @@ preserved. Full topology changes are present in owner events.
 
 Checkpoints include the original baseline and current topology. Restore/fork can
 recover removed computers and sessions; reset returns to the original blueprint.
-Portable snapshots remain constrained to the matching baseline. The browser console
-additionally saves its device-shape visualization metadata alongside its in-memory
-snapshot; these UI descriptors do not introduce another simulator implementation.
+Portable snapshots remain constrained to the matching baseline. A snapshot holds
+simulation and environment state only; a viewer that wants its own layout metadata
+keeps it beside the snapshot, not inside it.
 
 ## Scene perception contract
 

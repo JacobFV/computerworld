@@ -1,13 +1,11 @@
 # Native OS desktop presentation
 
-OS shells and application views are Rust scene projections. The browser console
-transfers RGBA frames, scales coordinates and forwards input. Native, Wasm and
-Python consumers use the same state, scene contracts and renderer; programmatic
-interaction does not require the console. See the [Python/JavaScript guide and runnable demos](programmatic-computer-use.md).
+OS shells and application views are Rust scene projections. Native, Wasm and Python
+consumers use the same state, scene contracts and renderer, so a desktop is driven
+entirely through the agent API — there is no viewer to run. See the
+[Python/JavaScript guide and runnable demos](programmatic-computer-use.md).
 
 ## Profiles
-
-The browser example opts into these profiles:
 
 | Profile ID | Presentation |
 |---|---|
@@ -27,7 +25,7 @@ Alternatively, map computer IDs to themes without changing the OS substrate:
 
 A browser-only actor without `application.v1` receives a content-only browser
 scene, including on graphical profiles. Desktop dimensions are caller-selected;
-the console uses 960×640 desktops and 390×780 phones.
+the project site's live machines use 1280×800 desktops and 390×844 phones.
 
 [Visual archaeology](../research/desktop-visuals.md) and the [overhaul reference review](../research/desktop-fidelity-references.md)
 record predecessor paths and official visual references. Original generated
@@ -298,8 +296,9 @@ API calls alike. Unsupported decorative app controls are marked disabled.
 `application.v1` supports `home`, `launcher`, `minimize`, `maximize`, `switcher`,
 `focus`, `close`, `launch` and `event` (for registered SDK applications). Pointer operations include `click`, `down`, `move`,
 `up`, `cancel` and `double_click`; always supply the matching viewport dimensions.
-Keyboard type/key events target the focused control. The console's **Expand desktop**
-enlarges the selected monitor; controls below it are host visualization tools.
+Keyboard type/key events target the focused control. Desktop size is the viewport a
+caller asks for, so "expanding" a machine is rendering the same state at a larger
+`width`/`height`; nothing in the world changes with it.
 
 Window interactions use `window:<id>:drag`, `window:<id>:resize:<direction>`,
 `window:<id>:maximize`, and related names. Child content is namespaced under

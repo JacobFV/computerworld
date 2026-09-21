@@ -90,8 +90,10 @@ act('application.v1', 'launch', {kind: 'browser', argument: 'http://intranet.int
 ```
 
 That URL resolves through simulated DNS, routing and HTTP to the service in the
-world. It does not call host `fetch`. Browser content is a supported structured
-page, not arbitrary HTML/JavaScript execution.
+world. It does not call host `fetch`. The response is HTML, parsed, cascaded, laid out
+and painted by the engine's own web engine, with the page's own JavaScript running on
+its DOM — all inside the simulation, on the world clock, with no host browser
+involved.
 
 ## Pointer coordinates, windows and gestures
 

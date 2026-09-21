@@ -1,6 +1,14 @@
 # Plan: a real web engine for the in-world browser
 
-Status: proposal, 2026-09-19. Nothing here is built.
+Status: **M1, M2, M4 and M5 shipped in 0.2.0 (2026-09-20)**; M3 shipped with them, since
+the frameworks in M4 cannot run without it. `cw-web` is the engine described below, and
+every service serves HTML through it. What follows is the plan as written on 2026-09-19,
+kept because the constraints, the architecture and the gates are still the contract the
+engine is held to; read `crates/web/DESIGN.md` for the interfaces as built, the 0.2.0
+entry in `CHANGELOG.md` for what the gates actually returned, and
+[html-migration.md](html-migration.md) for the migration recipe. M0's remaining item —
+deleting the old page renderer once nothing depends on it — is still open: `Page` is
+behind `cw_web::page::to_document`.
 
 ## The problem
 

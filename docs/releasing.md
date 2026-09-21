@@ -70,13 +70,13 @@ release workflow/logs; the following list describes requirements, not past resul
 - [ ] The source commit is clean and pushed; release notes and license notices are included.
 - [ ] The complete verification workflow is green for that commit: Rust tests,
   formatting, strict Clippy, boundaries, host-adapter checks and Wasm build.
-- [ ] Binding/browser verification is green: Python/Node execution and state/pixel
-  parity, programmatic demos, offline browser checks and desktop interaction tests.
+- [ ] Binding verification is green: Python/Node execution and state/pixel parity,
+  the programmatic demos, and the desktop and site-world interaction tests.
 - [ ] Each advertised wheel builds on its target and installs into a clean Python
   environment. Import/version checks and a real terminal/world interaction pass.
 - [ ] Unpacked browser/Node bundles load their included Wasm, report the expected
-  engine version and run the included examples. The browser console runs from a
-  static file server with no simulation backend.
+  engine version and run the included examples. The browser bundle boots from a
+  static file server with no simulation backend behind it.
 - [ ] Asset names and supported platforms match what was actually built; failed or
   unavailable targets are omitted or explicitly documented rather than advertised.
 - [ ] Release artifacts carry project/font/icon/wallpaper notices, checksums and
