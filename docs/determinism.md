@@ -83,3 +83,8 @@ measured held-out-font accuracy rising from 0.668 to 0.794.
 
 This only holds within one engine version: pixel output is not stable across
 releases (the alpha shell work changed it), so keep the version with the data.
+
+What that buys, beyond replay: frames that are their own labels, above; and
+[bounded model checking](checking.md), which needs a hashable state, a deterministic
+transition relation and cheap backtracking, and would not be possible without them.
+The cost of a fork and of a step is measured in [performance](performance.md).

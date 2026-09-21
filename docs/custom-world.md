@@ -52,3 +52,11 @@ Keep secret evaluation answers outside the blueprint's actor-visible files and
 service responses. Use deterministic context values for generated fixtures.
 Store the definition, engine version, module versions, seed and action sequence
 when sharing a reproducible episode.
+
+The fields each of these steps fills in are listed in the
+[world schema](world-schema.md). A machine's insides are
+[computers](computers.md) and its screen is the [desktop](desktop-gui.md); the wiring
+between machines is [networking](networking.md). To add something the engine does not
+already have, write an [application](custom-application.md) or a
+[service](custom-service.md). Once the world runs, the
+[agent API](agent-api.md) is how an actor is let into it.

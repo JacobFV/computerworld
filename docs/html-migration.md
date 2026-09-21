@@ -80,3 +80,12 @@ presses Enter, and clicks `hit-0`.
 - [ ] The semantic tree still lists the links, buttons, inputs and forms an agent used, with their ids and labels (`aria-label` or `<label for>` on inputs).
 - [ ] Text from requests and seeds goes through `text(..)` or `.text(..)`, never `raw`.
 - [ ] `cargo test --workspace` and `cargo clippy --workspace --all-targets -- -D warnings` are green.
+
+## Further
+
+[service-sdk.md](service-sdk.md#html-services) describes the template layer, the
+stylesheet convention and the strict validator in full; [custom-service.md](custom-service.md)
+is the end-to-end example. What the engine does with the HTML afterwards — parse,
+cascade, lay out, paint, run the scripts — is [rendering](rendering.md) and the `cw-web`
+entry in [architecture](architecture.md). The ids this recipe is so careful to keep are
+the ones [action families](action-families.md) addresses.

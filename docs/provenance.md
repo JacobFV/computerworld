@@ -60,3 +60,7 @@ Provenance reports record licenses/attributions as found. In particular, SCE and
 standalone mocks do not declare a repository-wide license; some SCE security files
 explicitly attribute browser-os. Retain attribution and track any literal reuse;
 do not invent license grants for predecessor code/assets.
+
+What the redesign kept, dropped and made incompatible is summarised in
+[migration](migration.md), which also covers moving between 0.x releases of this project.
+The design those decisions produced is [architecture](architecture.md).

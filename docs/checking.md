@@ -328,3 +328,20 @@ A counterexample:
 | `margin` | The margin at the violating state. |
 | `replay_verified` | True only if the replay reproduced the violation. |
 | `replay_state_hash` | `stateHash()` at the end of the replay. |
+
+## Why this works here
+
+A bounded search needs four things from a simulator, and the engine already had all
+four: hashable state, so a state seen twice is recognised and not expanded again; a
+deterministic transition relation, so the same action from the same state always lands
+in the same place; cheap backtracking, which is what a
+[fork](determinism.md#the-corpus) of a checkpoint is; and an enumerable action set,
+which is what [`scene()`](rendering.md) gives — every control on the screen, with its
+role and its bounds, before a pixel is drawn. A VM or container cannot offer any of them
+without being rewritten.
+
+The policies are ordinary `Predicate` trees, the same evaluation surface the
+[agent API](agent-api.md) exposes for rewards; the actions are ordinary
+[action families](action-families.md), driven through the same `step()` an agent uses;
+and the world is the reference company in the [world schema](world-schema.md). Nothing
+in the checker is privileged, so a policy set of your own runs the same way.

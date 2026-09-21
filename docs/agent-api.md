@@ -68,7 +68,10 @@ parallel workers should own independent runtime instances.
 Only owners should call inspection, global trajectory, snapshot export or create
 new grants. Keep task rewards/private predicates in the evaluator layer. Examples
 should solve tasks using actor-visible actions rather than retrieving answers
-through owner inspection.
+through owner inspection. Those predicates are also what a
+[bounded check](checking.md) searches over: the same trees, evaluated over every state
+reachable within a chosen number of actions rather than over the ones a rollout
+happened to visit.
 
 ## Owner-controlled device lifecycle
 

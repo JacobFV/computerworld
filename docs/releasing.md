@@ -115,3 +115,8 @@ Pin the Git tag or exact asset/version in dependencies. Python and JS consumers
 should not mix files from different releases. Preserve world definitions and action
 traces in addition to snapshots: alpha checkpoint formats can change. Publish a
 new version for fixes rather than replacing an existing version's artifacts.
+
+What a version number has to mean is set by [determinism](determinism.md): snapshots and
+state hashes name the engine that made them, which is why the pipeline compares platforms
+before it publishes. [Migration](migration.md) lists what changed between releases, and
+the [Python](python.md) and [JavaScript](wasm.md) guides cover pinning on each side.

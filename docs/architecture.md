@@ -90,3 +90,7 @@ must not read host time, files, network or randomness. Service implementations a
 registered code; snapshots serialize their state and module versions, not code.
 See [determinism](determinism.md), [networking](networking.md), and
 [security](security.md) for the contract and its limits.
+
+What each of these boundaries costs at run time is [performance](performance.md); what
+they are allowed to reach is [security](security.md); and how a version of the whole
+workspace is built and compared across platforms is [releasing](releasing.md).

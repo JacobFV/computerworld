@@ -254,3 +254,10 @@ terminal, exactly as Run Without Debugging (`Ctrl+F5`) does.
   program imports is taken on trust until it is reached.
 * The debuggee's own `breakpoint()` (Python) and `debugger` (JavaScript) statements do
   not stop the program.
+
+The programs being debugged run on the interpreters described in
+[computers](computers.md) and are launched from the [shell](shell.md); the editor they
+are debugged from is one of the applications in the
+[desktop](desktop-gui.md). Because a debug session is made of ordinary actions, a
+stopped program is part of the checkpoint and replays with everything else
+([determinism](determinism.md)).

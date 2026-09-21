@@ -142,3 +142,6 @@ contains no separate command, service or desktop semantics.
 The owner also supports `world.add_computer(computer, node, links)` and
 `world.remove_computer(id)`. These preserve other devices and service state.
 See [device lifecycle and checkpoint rules](agent-api.md#owner-controlled-device-lifecycle).
+
+Every member of both handles is listed in the [Python API](api-python.md). Pinning, and
+what changes between 0.x releases, is [migration](migration.md).

@@ -171,3 +171,6 @@ across workers is not supported.
 
 Owner-only `addComputer(computer, node, links)` and `removeComputer(id)` change the
 canonical runtime; `definition()` reads its blueprint. See [owner lifecycle](agent-api.md#owner-controlled-device-lifecycle).
+
+The package's own declarations are rendered as the [JavaScript API](api-javascript.html).
+Pinning, and what changes between 0.x releases, is [migration](migration.md).

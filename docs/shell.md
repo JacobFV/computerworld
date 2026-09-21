@@ -1072,3 +1072,8 @@ Deliberately not implemented, and refused rather than faked:
   UTF-8 strings, so `printf '\211PNG'` writes the UTF-8 encoding of U+0089, not the
   byte `0x89`. Commands that *read* bytes (`file`, `xxd`, `od`, `hexdump`, `cmp`,
   `strings`, `md5sum` and friends) read them straight from the VFS and are exact.
+
+The filesystem, processes and users these commands act on are described in
+[computers](computers.md); the network commands go through
+[synthetic networking](networking.md); and `terminal.v1`, the action family that carries
+a command line, is in [action families](action-families.md).

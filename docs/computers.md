@@ -13,12 +13,15 @@ kernel access uses the machine's synthetic user. Host paths are never backing
 storage for these files.
 
 `ProcessTable` models spawn, exit, sleep/advance, signals, file descriptors and
-listener cleanup. Time-dependent changes use logical time. This is a simulated
+listener cleanup. Time-dependent changes use logical time
+([determinism](determinism.md)); a program running on a machine can be stopped and
+stepped from an editor ([debugging](debugging.md)). This is a simulated
 process model, not execution of arbitrary binaries. `PackageManager` supports
 registered packages, dependency resolution and install transactions.
 
 The shell interprets a supported command subset through `Computer::execute` and
-an explicit `ShellHost` capability. Network commands call synthetic networking;
+an explicit `ShellHost` capability. [Shell](shell.md) is the command matrix, including
+which of `python3` and `node` a machine has and what their consoles do. Network commands call synthetic networking;
 no command launches a host subprocess. Unsupported commands should fail visibly.
 Do not assume arbitrary POSIX shell or PowerShell script compatibility.
 
@@ -32,3 +35,8 @@ Focused implementation and regression tests live in
 [`crates/computer`](../crates/computer). The
 [company example](../examples/native/company.rs) demonstrates composition with
 network services.
+
+A machine's own definition — its OS profile, home, packages and the node it sits on — is
+part of the [world schema](world-schema.md); what an actor may do to it is the grant in
+the [agent API](agent-api.md), and what it may never reach is [security](security.md).
+The [desktop](desktop-gui.md) is what all of this looks like on a screen.

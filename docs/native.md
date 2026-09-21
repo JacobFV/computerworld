@@ -57,3 +57,8 @@ Do not expose it directly to an untrusted policy: it can create grants, inspect
 state and import checkpoints. A harness should forward only validated actor
 operations for a fixed session. The executable's host stdio is deliberately
 outside the pure library boundary and does not change simulator semantics.
+
+For what a session can then do, see the [agent API](agent-api.md) and
+[action families](action-families.md); for building the crate into something else, the
+[architecture](architecture.md) map and the crate boundaries it describes. The Python and
+JavaScript bindings wrap this same facade: [Python](python.md), [JavaScript](wasm.md).
