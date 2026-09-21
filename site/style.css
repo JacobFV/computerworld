@@ -718,20 +718,43 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .policy-details > summary { cursor: pointer; font-size: .8rem; color: var(--ink); }
 .policy-details .table-wrap { margin-top: 1rem; }
 .text-links { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; }
-.map-content { padding: 1.5rem; border: 1px solid var(--line); border-radius: 0 0 var(--win-radius) var(--win-radius); background: var(--bg-2); }
-.map-languages, .map-machines { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; text-align: center; }
-.map-languages span { padding: .6rem .2rem; border: 1px solid var(--line-2); border-radius: 4px; font: .7rem/1.4 var(--mono); }
-.map-link { text-align: center; color: var(--faint); height: 1.8rem; }
-.map-engine { padding: .8rem; border: 1px solid var(--engine-line); border-radius: 5px; text-align: center; background: var(--engine-bg); }
-.map-engine b { color: var(--accent); font-size: 1rem; font-weight: 500; }
-.map-engine span, .map-machines span { display: block; color: var(--dim); font: .62rem/1.6 var(--mono); margin-top: .3rem; }
-.map-machines { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.map-machines > div { padding: .7rem .3rem; border: 1px solid var(--line-2); border-radius: 5px; }
-.map-machines b { font-size: .8rem; font-weight: 500; }
-.map-network { border-top: 1px solid var(--line-2); margin-top: 1.2rem; padding-top: .8rem; text-align: center; }
-.map-network > span { font: .6rem/1.5 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--faint); }
-.map-network > div { margin-top: .5rem; font-size: .82rem; }
-.map-network i { color: var(--faint); font-style: normal; margin: 0 .6rem; }
+/* WHAT YOU HOLD, AND WHAT IT HOLDS. Read down: what you write, the one object you hold,
+   and the machines on the other side of it. Down rather than across because this figure
+   sits in the narrower of two columns and a row of panels would be one word per line
+   there — and a viewport media query cannot see how wide its own column is. The wire is
+   labelled both ways because that is the whole API: you send actions, you get back a
+   scene, a frame and a hash. */
+.map-content {
+  display: grid; justify-items: center; text-align: center;
+  padding: clamp(1.1rem, 2.5vw, 1.7rem) clamp(.9rem, 2vw, 1.4rem);
+  border: 1px solid var(--chrome-line); border-top: 0;
+  border-radius: 0 0 var(--win-radius) var(--win-radius); background: var(--figure-bg);
+  box-shadow: var(--win-shadow);
+}
+.map-cap { margin: 0 0 .5rem; font: .6rem/1.5 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); }
+.map-you, .map-engine {
+  width: min(22rem, 100%); padding: .8rem 1rem; border: 1px solid var(--line-2);
+  border-radius: 8px; background: var(--bg-2);
+}
+.map-engine { border-color: var(--engine-line); background: var(--engine-bg); }
+.map-you b, .map-engine b { display: block; font-size: 1rem; font-weight: 600; letter-spacing: -.015em; }
+.map-engine b { color: var(--accent); }
+.map-you span, .map-engine span { display: block; margin-top: .3rem; color: var(--dim); font: .66rem/1.5 var(--mono); }
+/* The wire, with a label either side of it. */
+.map-wire { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .6rem; width: min(24rem, 100%); padding: .55rem 0; }
+.map-wire i { position: relative; display: block; width: 9px; height: 30px; margin: 0 auto; background: linear-gradient(var(--line-2), var(--line-2)) 50% 0 / 1px 100% no-repeat; }
+.map-wire i::before, .map-wire i::after { content: ''; position: absolute; left: 50%; margin-left: -3px; border-inline: 3px solid transparent; }
+.map-wire i::before { bottom: 0; border-top: 5px solid var(--line-2); }
+.map-wire i::after { top: 0; border-bottom: 5px solid var(--line-2); }
+.map-wire.plain i::after { display: none; }
+.map-wire span { font: .6rem/1.4 var(--mono); letter-spacing: .03em; }
+.map-down { text-align: right; color: var(--accent); }
+.map-up { text-align: left; color: var(--faint); }
+.map-machines { display: grid; grid-template-columns: repeat(auto-fit, minmax(4.6rem, 1fr)); gap: .45rem; width: 100%; margin: 0; padding: 0; list-style: none; }
+.map-machines li { display: grid; justify-items: center; gap: .35rem; padding: .6rem .2rem; border: 1px solid var(--line-2); border-radius: 7px; }
+.map-machines svg { width: 20px; height: 20px; color: var(--dim); }
+.map-machines b { font: 500 .63rem/1.3 var(--sans); color: var(--ink); }
+.map-net { margin: .8rem 0 0; font: .62rem/1.5 var(--mono); color: var(--faint); }
 .start-heading { margin-top: 3.5rem; }
 .start-heading p { color: var(--dim); max-width: 70ch; font-size: .85rem; }
 .start-heading a { text-underline-offset: .2em; }
