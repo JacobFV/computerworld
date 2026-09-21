@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ComputerWorld — a computer world that runs the same every time</title>
-<meta name="description" content="ComputerWorld: several machines, a synthetic internet and one Rust engine, with byte-identical replay. Fork a state in microseconds, check a policy over every action sequence, and read each frame's ground truth out of the scene — from Python, Node, the browser and native.">
+<title>ComputerWorld — reproducible environments for computer-use agents</title>
+<meta name="description" content="Train, evaluate, and build computer-use agents in reproducible simulated worlds. Fork checkpoints, replay failures, and inspect state through Python, JavaScript, or Rust.">
 <meta property="og:title" content="ComputerWorld">
-<meta property="og:description" content="Several machines, a synthetic internet, one Rust engine. It runs the same every time — so you can search it, not just sample it.">
+<meta property="og:description" content="Training environments, reproducible evaluations, and programmable computers for computer-use agents.">
 <meta property="og:image" content="./media/scenes/mac-freecad.jpg">
 <meta name="theme-color" content="#0c0b0a">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0b0a'/%3E%3Cpath d='M9 20l4-8 3 5 2-3 5 6z' fill='%23ffb454'/%3E%3C/svg%3E">
@@ -30,8 +30,10 @@
 <main>
 
 <header class="title">
-  <h1>ComputerWorld</h1>
-  <p>Several machines, a synthetic internet, one Rust engine. It runs the same every time — so you can search it, not just sample it.</p>
+  <h1><b>ComputerWorld</b>: A reproducible world for computer-use agents</h1>
+  <p class="intro">Train, evaluate, and build agents across simulated computers and a connected internet. Fork checkpoints, replay actions, and inspect the state behind the screen.</p>
+  <div class="hero-actions"><a class="button primary" href="#get-started">Get started <span aria-hidden="true">↗</span></a><a class="button" href="#stage">Explore the live demo <span aria-hidden="true">↓</span></a></div>
+  <p class="hero-note">Python · JavaScript · Rust <span>MIT licensed</span></p>
 </header>
 
 <section id="stage" class="stage" aria-roledescription="carousel" aria-label="Machines running in this page">
@@ -44,82 +46,58 @@
   <noscript><img src="./media/scenes/mac-freecad.jpg" width="960" height="600" alt="FreeCAD on macOS inside the simulation, with a bored mounting plate in the 3D view"></noscript>
 </section>
 
-<section id="reward" class="band" aria-labelledby="reward-h">
-  <div class="prose">
-    <h2 id="reward-h">The reward is a spec, not a model.</h2>
-    <p>Credit assignment over a two-hundred-step trajectory is the open problem in agent RL. There are two answers on offer and you pay for both. Pay people to label every step, or train a process reward model to do it. A process reward model is a model: it has exploits, and a policy that searches for long enough will find them and be paid for the finding.</p>
-    <p>A reward computed from a formal constraint has nothing to exploit. The rule either held at that step or it did not, the verdict is a function of the state, and it comes out the same on every replay. There is no gradient into the judge because the judge has no parameters.</p>
-    <p>The per-step labels are already in the world, too. <code>scene()</code> returns every string on screen with its bounds before the frame is drawn, so a replayed episode annotates itself. One consumer trained an OCR model on its own agent's typed text and measured held-out-font accuracy rise from 0.668 to 0.794, with <a href="./docs/determinism.html#rendered-frames-as-labelled-data">no annotation pass</a>.</p>
-  </div>
-  <figure>
-    <img src="./media/diagrams/b1-verdict-strip.svg" width="1140" height="420" loading="lazy" decoding="async" alt="Eight rows of small square cells fan out from a single state on the left. Each row is one forked branch and each cell is one step's verdict against the constraint. Every cell is neutral except one, which is red at step 31 of the sixth branch.">
-    <figcaption>One state, forked eight ways, each branch stepped under the same constraint. Seven rows are a line of verdicts that held. The sixth breaks at step 31, and that cell — not a score for the episode — is what the branch is paid.</figcaption>
-  </figure>
-</section>
+<nav class="audiences" aria-label="Explore by use case">
+  <a href="#training"><span>01 / Researchers</span>Training environments <b aria-hidden="true">↘</b></a>
+  <a href="#evaluation"><span>02 / Evaluation teams</span>Reproducible evaluations <b aria-hidden="true">↘</b></a>
+  <a href="#development"><span>03 / Developers</span>Programmable worlds <b aria-hidden="true">↘</b></a>
+</nav>
 
-<section id="exhaustive" class="band" aria-labelledby="exhaustive-h">
-  <div class="prose">
-    <h2 id="exhaustive-h">Five hundred rollouts is not an argument.</h2>
-    <p>The assurance on offer today is a sample. Five hundred rollouts, a red team for a fortnight, a table of pass rates. Everyone in the room already knows what that is worth: it reports what happened on the paths somebody thought to walk. The adversary does not sample. It searches, and it has longer than a fortnight.</p>
-    <p>The alternative is to enumerate. Fix a start state and a depth, and check every action sequence the world allows from there. The check has two possible outputs.</p>
-    <div class="verdicts">
-      <p class="verdict holds"><b>SAFE</b> — no action sequence of length &le;5 from the pull request list moves <code>refs/heads/main</code> except by merging a pull request.</p>
-      <p class="verdict breaks"><b>VIOLATION</b> — P2, no merge over a standing request for changes. 2 actions. Replay &darr;</p>
-    </div>
-    <p>Neither is a number to argue about. The first is a statement about all of them. The second is a recording, and you can run it.</p>
-    <p>The spec is not a lab artifact. A constraint on the action stream — never contacted a domain outside the allowlist, never used a credential it was not granted — says nothing about the application it was written against, so the same file that bounded the search runs in production as a monitor, and in front of the agent as a shield. Written once, used twice.</p>
+<section id="training" class="audience-section" aria-labelledby="training-h">
+  <header class="section-heading"><p class="eyebrow">01 / For researchers</p><h2 id="training-h">Training environments for computer-use agents.</h2><p>Fork world state for parallel rollouts, compute rewards from explicit state checks, and extract labelled frames.</p></header>
+  <div class="feature-grid" id="fork">
+    <div class="prose"><h3>Branch from the same checkpoint.</h3><p>Take a snapshot, fork independent worlds, and try different action sequences. Each branch starts from the same state. Repeating the same actions with the same engine, world, seed, and viewport reproduces the run exactly.</p>
+    <dl class="metrics"><div><dt>Fork latency</dt><dd>35.0 <small>µs</small></dd></div><div><dt>Retained per fork</dt><dd>20.9 <small>KB</small></dd></div></dl>
+    <p class="measure">Measured natively on <code>company-2026</code> after 1,000 actor steps. Retained memory is before a branch writes; subsequent writes have additional costs. <a href="./studies/forking.html">Benchmark and methodology ↗</a></p></div>
+    <figure class="diagram branch-figure"><div class="figure-bar"><span>Checkpoint / two trajectories</span></div>
+      <div class="branch-scroll" tabindex="0" role="region" aria-label="Screenshot trajectories; scroll horizontally on small screens">
+        <div class="branch-diagram">
+          <div class="branch-frame branch-root"><img src="./media/branches/review.png" width="1440" height="900" loading="lazy" alt="Simulated pull request with an outstanding request for changes"><span>Checkpoint: review pending</span></div>
+          <div class="branch-connector fork-pass"><span aria-label="Check passes">✓</span></div>
+          <div class="branch-frame branch-pass"><img src="./media/branches/unmerged.png" width="1440" height="900" loading="lazy" alt="Return to the pull request list without merging"><span>Return to the list</span></div>
+          <div class="branch-connector pass-end"><span aria-label="Check passes">✓</span></div><span class="branch-result pass-result">Continue</span>
+          <div class="branch-connector fork-fail"><span aria-label="Check passes before the merge">✓</span></div>
+          <div class="branch-frame branch-fail"><img src="./media/branches/merged.png" width="1440" height="900" loading="lazy" alt="Pull request merged despite an outstanding request for changes"><span>Merge with changes requested</span></div>
+          <div class="branch-connector fail-end"><span aria-label="Check fails; trajectory terminates">×</span></div><span class="branch-result fail-result">Stop</span>
+        </div>
+      </div><figcaption>Actual simulator frames. Both branches start at the same review; merging violates the outstanding-review check.</figcaption></figure>
   </div>
-  <figure>
-    <video class="shot" poster="./media/b2-check.jpg" preload="none" width="1280" height="800" muted loop playsinline controls aria-label="A bounded check running: the frontier expands from the pull request list, one branch reaches a state that breaks P2, and the two clicks that got there are replayed.">
-      <source src="./media/b2-check.mp4" type="video/mp4">
-    </video>
-    <figcaption>A bounded check from the pull request list: the frontier expands, one branch reaches a state that breaks P2, and the two clicks that got it there — open <em>Sort refs before iterating in BFS</em>, press <em>Merge pull request</em>, over bmartinez's standing request for changes — are replayed at the end.</figcaption>
-  </figure>
-</section>
-
-<section id="fork" class="split" aria-labelledby="fork-h">
-  <div class="inner">
-    <div class="prose">
-      <h2 id="fork-h">Fork the world, not the VM.</h2>
-      <p>A snapshot is copy-on-write and a fork from it costs about thirty-five microseconds and twenty kilobytes, so a thousand live branches of a working world sit in one process inside twenty megabytes, and a branch that went nowhere costs what it wrote. A container or a virtual machine costs seconds and gigabytes per branch. That is the whole reason nobody actually runs tree search on computer-use agents: the primitive is too expensive to put in the inner loop, so the search gets replaced by a wider sample.</p>
-      <p>Fork only means something because replay is exact. Two worlds forked from one checkpoint and fed the same actions end in the same state, byte for byte, so a branch you liked is re-entered later rather than approximated.</p>
-      <p class="measure"><span data-fact="t1-forks-per-sec">28,500</span> forks a second, <span data-fact="t1-bytes-retained">20.9&#8239;KB</span> retained per branch — measured on <code>company-2026</code> after a thousand real actor steps, not a fresh boot. <a href="https://github.com/JacobFV/computerworld/blob/main/benchmarks/fork-throughput.md">Method and caveats</a>.</p>
-      <p class="ran"><code data-fact="t1-command">cargo run --release -p cw-benchmarks --bin fork_throughput</code></p>
-    </div>
-    <figure>
-      <img src="./media/diagrams/t1-fork-tree.svg" width="560" height="560" loading="lazy" decoding="async" alt="A tree of forked worlds: one root state branches, each branch branches again, and the subtrees that were explored and dropped are drawn faintly beside the path that was kept.">
-      <figcaption>One checkpoint, and the worlds taken from it. A branch that was abandoned is still replayable from the same checkpoint.</figcaption>
-    </figure>
-  </div>
-</section>
-
-<section id="scene" class="split" aria-labelledby="scene-h">
-  <div class="inner">
-    <div class="prose">
-      <h2 id="scene-h">Every frame arrives with its answer key.</h2>
-      <p><code>scene(w, h)</code> returns every text run, widget and window, with bounds, before anything is rasterized. <strong>The same API that labels your pixels also bounds your search space.</strong></p>
-      <p>Two payoffs from one call. The strings and their boxes are ground truth for the frame you are about to draw, which is where the OCR number above came from. And the widgets are the enabled actions in this state, so the branching factor is the number of controls that are really there. Raw computer use branches over about a million pixel positions. Enumerating affordances branches over the controls that are really there — sixty-seven on the frame beside this paragraph. That is the difference between a search that cannot finish and one that can.</p>
-      <p>This holds only while every control is live. A button the scene reports and the application ignores is a branch that goes nowhere and a state the search believes in, which is why the shops, the feeds, the forums and the players were swept for dead controls.</p>
-    </div>
-    <figure>
-      <div class="compare">
+  <div class="feature-grid observation" id="scene">
+    <figure><div class="figure-bar"><span>Rendered frame / structured scene</span></div>      <div class="compare">
         <input class="compare-toggle" type="checkbox" id="scene-overlay">
         <img src="./media/t2-frame.jpg" width="1280" height="800" loading="lazy" decoding="async" alt="A rendered frame from inside the world: a macOS desktop with the menu bar and dock, and Safari maximized on a GitHub pull request — toolbar and address bar, repository navigation, the pull request title and review conversation, and a sidebar of reviewers, assignees and labels.">
         <img class="over" src="./media/t2-overlay.jpg" width="1280" height="800" loading="lazy" decoding="async" alt="The same frame with the scene drawn over it: a hairline box around each of 96 text runs and a thick box around each of 67 enabled controls, sixteen of them labelled with the role and string the scene reports.">
         <label for="scene-overlay"><span class="on">Show the scene</span><span class="off">Hide the scene</span></label>
       </div>
-      <figcaption>The frame, and the scene the frame was drawn from. Every box and every string came back from <code>scene(1280, 800)</code> before a pixel was written.</figcaption>
-    </figure>
+<figcaption>This frame contains 96 text runs and 67 enabled controls. Toggle the overlay to see their bounds.</figcaption></figure>
+    <div class="prose" id="reward"><h3>State checks and frame labels.</h3><p>Use explicit predicates over world state to compute per-step rewards. A check gives the same verdict on replay; what it measures depends on the specification you write.</p><p><code>scene()</code> exposes text, widgets, and their bounds before rendering. Use those labels for perception training or enumerate the controls available to an agent.</p><p class="evidence-note">Engine-labelled frames improved held-out-font OCR accuracy from <strong>66.8% to 79.4%</strong>. <a href="./studies/ocr.html">OCR case study ↗</a></p></div>
   </div>
 </section>
 
-<section id="policies" class="band" aria-labelledby="policies-h">
-  <div class="prose">
-    <h2 id="policies-h">Which of your rules are actually rules?</h2>
-    <p>Every business application has policies. <em>Refunds over $500 need manager approval. Production deploys need two reviewers.</em> Nobody can tell you which of them the product enforces and which are merely conventional — true only because the people doing the work follow the process.</p>
-    <p>That distinction never mattered while the users were humans who had internalised the norms. It matters enormously when the user is a model that has internalised nothing and will take any path that exists.</p>
+<section id="evaluation" class="audience-section" aria-labelledby="evaluation-h">
+  <header class="section-heading"><p class="eyebrow">02 / For evaluation teams</p><h2 id="evaluation-h">Reproducible evaluations and bounded policy checks.</h2><p>Replay failures exactly. Explore a defined action space and return the sequence that violates a policy.</p></header>
+  <div class="feature-grid" id="exhaustive">
+    <div class="prose"><h3>Inspect the actions behind a violation.</h3><p>Choose a start state, action set, and search depth. The checker explores the configured search space and tests policies against state. A counterexample records the actions needed to reproduce the violation.</p>
+    <p>In the example, two actions violate P2: open the pull request, then merge it while a request for changes still stands.</p><p class="measure">A result that holds is bounded by the chosen model, start state, action domains, and depth. It is not a guarantee about every possible action or a production application.</p></div>
+    <figure><div class="figure-bar"><span>Recorded check + counterexample replay</span></div>    <video class="shot" poster="./media/b2-check.jpg" preload="none" width="1280" height="800" muted loop playsinline controls aria-label="A bounded check running: the frontier expands from the pull request list, one branch reaches a state that breaks P2, and the two clicks that got there are replayed.">
+      <source src="./media/b2-check.mp4" type="video/mp4">
+    </video>
+<figcaption>The recorded search finds and replays the two-action violation in the simulated pull-request workflow.</figcaption></figure>
   </div>
-  <div class="table-wrap">
+  <div id="policies" class="results-panel"><div class="results-heading"><div><p class="eyebrow">Reference-world results</p><h3>15 policies checked to depth 5.</h3></div><a href="./studies/policy-checks.html">Read the evaluation ↗</a></div>
+    <div class="result-counts"><p><strong>6</strong><span>held within the search</span></p><p><strong>9</strong><span>reachable violations</span></p><p><strong>77,748</strong><span>states checked</span></p></div>
+    <div class="result-strip" role="img" aria-label="Six of fifteen policies held within the bounded search; nine had reachable violations."><span></span><span></span><span></span><span></span><span></span><span></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <p class="scope-note">Simulated pull-request review and merge flow · engine 0.2.0 · seed 7 · 21 September 2026. All nine counterexamples reproduced from a fresh world.</p>
+    <details class="policy-details"><summary>View all policies and counterexamples</summary>  <div class="table-wrap">
     <table class="policies">
       <caption>Checked against the <code>company-2026</code> world. <span data-fact="b3-provenance">Depth 5 exhausted — every action sequence of five steps or fewer from the start state. 77,748 states checked in 2&#8239;h&#8239;59&#8239;m by <code>scripts/cw-check.mjs</code> on engine 0.2.0, 21 September 2026. All nine counterexamples were replayed from a fresh world and reproduced.</span></caption>
       <thead><tr><th scope="col">Policy</th><th scope="col">Statement</th><th scope="col">Verdict</th></tr></thead>
@@ -128,13 +106,18 @@
       </tbody>
     </table>
   </div>
-  <noscript><p class="fallback">This table is built in the page from <a href="./data/policies.json"><code>data/policies.json</code></a>, which is the checker's output and reads the same without a script.</p></noscript>
-  <div class="prose">
-    <p>This has value even if you never deploy an agent. The unapproved-refund path was always there. Nobody had a way to look for it.</p>
+</details>
   </div>
 </section>
 
-<section class="install">
+<section id="development" class="audience-section" aria-labelledby="development-h">
+  <header class="section-heading"><p class="eyebrow">03 / For developers</p><h2 id="development-h">Programmable computers, applications, and services.</h2><p>Define a world and control it through Python, JavaScript, or Rust. The same Rust engine runs natively and as WebAssembly.</p></header>
+  <div class="feature-grid">
+    <div class="prose"><h3>Configure the world your agent uses.</h3><p>World definitions describe machines, users, files, and network services. Connect desktops and phones to shared mail, chat, documents, and Git services, then give each agent a handle with explicit action and observation permissions.</p><p>Extend the simulation with custom applications and services. Supported operations and fidelity limits are documented per subsystem.</p><div class="text-links"><a href="./docs/world-schema.html">World schema ↗</a><a href="./docs/agent-api.html">Agent API ↗</a><a href="./docs/">All documentation ↗</a></div></div>
+    <figure class="world-map"><div class="figure-bar"><span>Inside one simulated world</span></div><div class="map-content"><div class="map-languages"><span>Python</span><span>JavaScript</span><span>Rust</span></div><div class="map-link" aria-hidden="true">↓</div><div class="map-engine"><b>ComputerWorld</b><span>State · scheduling · snapshots</span></div><div class="map-link" aria-hidden="true">↓</div><div class="map-machines"><div><b>Desktops</b><span>Shell · files · apps</span></div><div><b>Phones</b><span>Touch · apps · messages</span></div></div><div class="map-network"><span>Synthetic network</span><div>Mail <i>·</i> Chat <i>·</i> Docs <i>·</i> Git</div></div></div><figcaption>Machines and services share world state. The agent acts through a restricted environment handle.</figcaption></figure>
+  </div>
+  <div class="start-heading"><h3>Start with an environment.</h3><p>These examples use a world <code>definition</code>. Follow the <a href="./docs/#a-first-episode">first-episode guide</a> for setup and a complete example.</p></div>
+<div class="install" id="get-started">
   <div class="codebox">
     <div class="bar">
       <div class="tabs" role="tablist" aria-label="Language">
@@ -183,6 +166,7 @@ world.<span class="f">step</span>(&amp;session, <span class="f">vec!</span>[<spa
 <span class="k">let</span> checkpoint = world.<span class="f">snapshot</span>();
 <span class="k">let</span> branch = world.<span class="f">fork</span>(&amp;checkpoint)?;   <span class="c">// explore both futures</span></code></pre>
   </div>
+</div>
 </section>
 
 </main>

@@ -51,6 +51,7 @@ const sections = [
     { file: 'networking.md', blurb: 'DNS, routes, transports, HTTP and the browser.' },
     { file: 'rendering.md', blurb: 'Scenes, text, rasterization and the frame contract.' },
     { file: 'determinism.md', blurb: 'What is promised to be byte-identical, and frames as labelled data.' },
+    { file: 'checking.md', blurb: 'Bounded policy checks, search configuration, and replayable counterexamples.' },
     { file: 'security.md', blurb: 'Isolation, host access and what a restricted handle can reach.' },
     { file: 'performance.md', blurb: 'Measurements and what they were measured on.' },
   ]},
