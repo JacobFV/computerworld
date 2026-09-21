@@ -8,6 +8,11 @@
   --dim: #8d877c;
   --faint: #5f5a52;
   --accent: #ffb454;
+  /* A verdict is the one other thing on this page that draws, so it is the one other
+     thing given a colour. Both are held back to the warm end and spent on a mark, a
+     word or a rule down the side of a row — never on a fill. */
+  --holds: #9bb07e;
+  --breaks: #d4705a;
   --radius: 10px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -57,7 +62,10 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
   margin: 0; font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 650;
   line-height: 1.1; letter-spacing: -.035em;
 }
-.title p { margin: .45rem 0 0; color: var(--dim); font-size: .95rem; }
+.title p {
+  margin: .55rem 0 0; max-width: 56ch; color: var(--dim);
+  font-size: clamp(.98rem, 1.5vw, 1.08rem); line-height: 1.5;
+}
 
 /* The slideshow: a strip of machines as wide as the window. The one in the middle is
    running and takes input; its neighbours wait, dimmed, at the edges. */
@@ -272,8 +280,153 @@ html[data-boot="ask"] .get { display: grid; }
 @media (max-width: 919px) { .caption { min-height: 4.8rem; } }
 .stage noscript img { display: block; width: var(--w-desk); height: auto; margin: 0 auto; border-radius: var(--radius); }
 
+/* WHAT THE STRIP DOES NOT SAY. Five sections under the machines, in two shapes. A band is
+   a column of prose with its figure across the whole measure beneath it; a split sets the
+   prose and the figure side by side. They alternate — band, band, split, split, band —
+   so the page has a rhythm instead of five slabs, and both fall to one column early
+   enough that the figure is never squeezed. The install box below closes the run and is
+   ruled off like the rest of them. */
+.band, .split, .install {
+  padding: clamp(3.2rem, 7vw, 5.2rem) 0;
+  border-top: 1px solid var(--line);
+}
+.split .inner {
+  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: clamp(1.8rem, 4vw, 3.4rem); align-items: start;
+}
+/* Where the figure beside the prose is narrower than the picture wants to be. */
+@media (max-width: 880px) {
+  .split .inner { grid-template-columns: minmax(0, 1fr); }
+  .split figure { margin-top: clamp(1.9rem, 4vw, 2.6rem); }
+}
+
+.band h2, .split h2 {
+  margin: 0; font-size: clamp(1.35rem, 2.7vw, 1.9rem); font-weight: 650;
+  line-height: 1.15; letter-spacing: -.028em; text-wrap: balance;
+}
+.band h2 { max-width: 26ch; }
+.prose p { margin: 1.05rem 0 0; max-width: 66ch; color: var(--dim); }
+.prose h2 + p { margin-top: 1.2rem; }
+.prose strong { color: var(--ink); font-weight: 600; }
+.prose em { color: var(--ink); font-style: italic; }
+.prose code { color: var(--ink); font-size: .9em; }
+.prose a, .fallback a, .policies a {
+  color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-2);
+  text-underline-offset: .22em; transition: text-decoration-color .15s ease;
+}
+.prose a:hover, .fallback a:hover, .policies a:hover { text-decoration-color: var(--accent); }
+
+/* Figures. A picture that has not been written yet still holds its place: the box keeps
+   its shape from the width and height on the element, so nothing below it moves when the
+   file arrives, and an empty box is the page's own dark rather than a hole. */
+.band figure, .split figure { margin: clamp(1.9rem, 4vw, 2.6rem) 0 0; }
+.split figure { margin-top: .4rem; }
+.band figure img, .split figure img, .shot, .compare > img {
+  display: block; width: 100%; height: auto;
+  border-radius: var(--radius); background: var(--bg-2);
+  box-shadow: 0 0 0 1px var(--line);
+}
+figcaption {
+  margin-top: .85rem; max-width: 62ch;
+  color: var(--faint); font-size: .78rem; line-height: 1.55;
+}
+figcaption code { color: var(--dim); }
+/* No autoplay and no sound: the poster is what the section shows until someone asks for
+   the rest, and if the file never arrives the poster is all there ever is. */
+.shot { max-width: 860px; aspect-ratio: 16 / 10; object-fit: cover; }
+
+/* The two things a bounded check can answer with. */
+.verdicts { margin: clamp(1.5rem, 3.5vw, 2rem) 0 0; display: grid; gap: .55rem; max-width: 66ch; }
+.verdict {
+  margin: 0; padding: .8rem 1rem; background: var(--bg-2);
+  border: 1px solid var(--line); border-left-width: 3px; border-radius: var(--radius);
+  font-family: var(--mono); font-size: .78rem; line-height: 1.6; color: var(--dim);
+}
+.verdict b { font-weight: 400; letter-spacing: .07em; }
+.verdict.holds { border-left-color: var(--holds); }
+.verdict.holds b { color: var(--holds); }
+.verdict.breaks { border-left-color: var(--breaks); }
+.verdict.breaks b { color: var(--breaks); }
+
+/* A measurement and the line that produced it, so the number can be taken apart. */
+.measure {
+  margin: 1.5rem 0 0; color: var(--dim);
+  font-family: var(--mono); font-size: .8rem; line-height: 1.7;
+}
+.measure [data-fact] { color: var(--ink); font-variant-numeric: tabular-nums; }
+.ran { margin: .6rem 0 0; }
+.ran code {
+  display: block; overflow-x: auto; padding: .7rem .9rem;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-2);
+  color: var(--dim); font-size: .75rem; white-space: pre;
+}
+.ran code::before { content: "$ "; color: var(--faint); }
+
+/* THE FRAME AND THE SCENE IT CAME FROM. One picture over the other, revealed by hovering,
+   by the checkbox, or by a keyboard focus on it. No script: with the stylesheet gone both
+   pictures are simply there, one under the other, which reads perfectly well. */
+.compare { position: relative; }
+.compare > .over { position: absolute; inset: 0; height: 100%; opacity: 0; transition: opacity .2s ease; }
+.compare:hover > .over, .compare-toggle:checked ~ .over, .compare-toggle:focus-visible ~ .over { opacity: 1; }
+/* Left in the tab order and out of the picture; the label is what is seen and focused. */
+.compare-toggle { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; }
+.compare label {
+  position: absolute; left: .6rem; bottom: .6rem; padding: .38rem .7rem;
+  border: 1px solid var(--line-2); border-radius: 7px; background: rgba(8, 7, 6, .75);
+  color: var(--dim); font-family: var(--mono); font-size: .66rem; letter-spacing: .06em;
+  text-transform: uppercase; cursor: pointer; transition: color .15s ease, border-color .15s ease;
+}
+.compare label:hover { color: var(--ink); }
+.compare-toggle:focus-visible ~ label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.compare label .off { display: none; }
+.compare-toggle:checked ~ label { color: var(--ink); }
+.compare-toggle:checked ~ label .on { display: none; }
+.compare-toggle:checked ~ label .off { display: inline; }
+
+/* THE POLICIES, CHECKED. The rows are written by the small script at the foot of the page
+   out of the checker's own output; what is here is the shape they land in. A rule down
+   the left of the first cell carries the verdict, so the table is read the same way with
+   the colour taken away. */
+.table-wrap { margin: clamp(1.9rem, 4vw, 2.6rem) 0 0; overflow-x: auto; }
+.policies { width: 100%; border-collapse: collapse; text-align: left; font-size: .85rem; }
+.policies caption {
+  caption-side: bottom; padding-top: .9rem; text-align: left;
+  color: var(--faint); font-size: .78rem; line-height: 1.55;
+}
+.policies caption code { color: var(--dim); }
+.policies th, .policies td { padding: .7rem .9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.policies thead th {
+  color: var(--faint); font-family: var(--mono); font-weight: 400; font-size: .68rem;
+  letter-spacing: .07em; text-transform: uppercase;
+}
+.policies tbody th {
+  padding-left: 1rem; color: var(--dim);
+  font-family: var(--mono); font-weight: 400; font-size: .76rem; white-space: nowrap;
+}
+.policies tbody td { color: var(--ink); }
+.policies tr.holds th { box-shadow: inset 2px 0 0 var(--holds); }
+.policies tr.breaks th { box-shadow: inset 2px 0 0 var(--breaks); }
+.policies td.v {
+  font-family: var(--mono); font-size: .7rem; letter-spacing: .07em;
+  text-transform: uppercase; white-space: nowrap;
+}
+.policies tr.holds td.v { color: var(--holds); }
+.policies tr.breaks td.v { color: var(--breaks); }
+.policies tr.note td, .fallback { color: var(--faint); }
+.policies details { margin-top: .55rem; }
+.policies summary {
+  cursor: pointer; color: var(--dim);
+  font-family: var(--mono); font-size: .72rem; letter-spacing: .04em;
+}
+.policies summary:hover { color: var(--ink); }
+.policies ol {
+  margin: .65rem 0 .2rem; padding-left: 1.5rem; color: var(--dim);
+  font-family: var(--mono); font-size: .72rem; line-height: 1.75;
+}
+.fallback { margin: 1.4rem 0 0; font-size: .82rem; }
+.policies + .prose, .fallback + .prose, .table-wrap + .prose { margin-top: .6rem; }
+
 /* Install and snippet: one object, with the language as its tabs */
-.install { padding: clamp(3.5rem, 9vw, 6.5rem) 0 clamp(3rem, 7vw, 5rem); }
 .codebox { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-2); }
 .bar {
   display: flex; align-items: stretch; justify-content: space-between;
@@ -336,6 +489,12 @@ body > footer span { display: block; padding-top: 1.4rem; border-top: 1px solid 
   .gh span { display: none; }
   .codebox pre { padding-inline: 1rem; }
   .codebox code { font-size: .78rem; }
+  /* Narrow enough that the prose is the whole column, and the table would otherwise push
+     the page sideways; it scrolls inside its own box instead. */
+  .prose p, .verdicts, figcaption { max-width: none; }
+  .policies { font-size: .8rem; }
+  .policies th, .policies td { padding: .6rem .7rem; }
+  .policies tbody th { padding-left: .85rem; }
 }
 
 /* A title that wraps too, and then one that wraps twice. */

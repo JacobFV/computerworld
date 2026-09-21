@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 560" role="img"
+     preserveAspectRatio="xMidYMid meet">
+  <title>Copy-on-write forking turns one run into a search tree</title>
+  <desc>A run of a world begins as a single spine of states at the left. At the third state it
+  forks three ways, each of those forks again, and each of those once more, ending in twelve
+  branches spread down the right-hand side: a search tree rather than a single path. The trunk
+  is drawn thickest and every division thinner, because each branch still shares all the state
+  behind it - forking copies nothing. Only the new state at the tip of a branch, drawn as a
+  small amber ring, belongs to that branch alone. A note at the foot contrasts the two ways of
+  branching a world: a VM or a container means a whole copy and a wait for it, while a fork
+  means no copy and no wait.</desc>
+
+  <style>
+    text {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      letter-spacing: .04em;
+    }
+    /* The drawing is 560 units wide whatever box it lands in, so a label's size has to be
+       quoted against the box. Largest first: a renderer that ignores these rules still gets
+       type it can read on a phone, which is the size that has no room to spare. */
+    .cap  { font-size: 18px; fill: #8d877c; }
+    .lead { font-size: 18px; fill: #ece7dd; }
+    @media (min-width: 460px) { .cap, .lead { font-size: 16px; } }
+    @media (min-width: 640px) { .cap, .lead { font-size: 12px; } }
+    @media (min-width: 820px) { .cap, .lead { font-size: 10px; } }
+  </style>
+
+  <rect width="560" height="560" fill="#0c0b0a"/>
+
+  <text class="cap" x="18" y="26">branches share what they have not written</text>
+
+  <!-- legend -->
+  <line x1="18" y1="57" x2="44" y2="57" stroke="#3a3631" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="31" cy="57" r="6.2" fill="#3a3631"/>
+  <text class="cap" x="58" y="62">shared state</text>
+  <circle cx="31" cy="85" r="5.2" fill="#0c0b0a" stroke="#ffb454" stroke-width="2.2"/>
+  <text class="cap" x="58" y="90">new state</text>
+
+  <!-- The tree. Every edge is drawn as wide as the state behind it is shared: the trunk
+       carries all twelve branches, a limb four, a twig one. Nothing is copied to divide. -->
+  <g fill="none" stroke="#3a3631" stroke-linecap="round">
+    <path stroke-width="8" d="M44 224 C 68 224, 68 224, 92 224 M92 224 C 116 224, 116 224, 140 224"/>
+    <path stroke-width="5.5" d="M140 224 C 188 224, 188 96, 236 96 M140 224 C 188 224, 188 224, 236 224 M140 224 C 188 224, 188 352, 236 352"/>
+    <path stroke-width="3.6" d="M236 96 C 296 96, 296 64, 356 64 M236 96 C 296 96, 296 128, 356 128 M236 224 C 296 224, 296 192, 356 192 M236 224 C 296 224, 296 256, 356 256 M236 352 C 296 352, 296 320, 356 320 M236 352 C 296 352, 296 384, 356 384"/>
+    <path stroke-width="2.4" d="M356 64 C 426 64, 426 48, 496 48 M356 64 C 426 64, 426 80, 496 80 M356 128 C 426 128, 426 112, 496 112 M356 128 C 426 128, 426 144, 496 144 M356 192 C 426 192, 426 176, 496 176 M356 192 C 426 192, 426 208, 496 208 M356 256 C 426 256, 426 240, 496 240 M356 256 C 426 256, 426 272, 496 272 M356 320 C 426 320, 426 304, 496 304 M356 320 C 426 320, 426 336, 496 336 M356 384 C 426 384, 426 368, 496 368 M356 384 C 426 384, 426 400, 496 400"/>
+  </g>
+
+  <!-- states that everything downstream still shares -->
+  <g fill="#3a3631">
+    <circle cx="44" cy="224" r="7"/>
+    <circle cx="92" cy="224" r="7"/>
+    <circle cx="140" cy="224" r="7"/>
+    <circle cx="236" cy="96" r="6.2"/>
+    <circle cx="236" cy="224" r="6.2"/>
+    <circle cx="236" cy="352" r="6.2"/>
+    <circle cx="356" cy="64" r="5.4"/>
+    <circle cx="356" cy="128" r="5.4"/>
+    <circle cx="356" cy="192" r="5.4"/>
+    <circle cx="356" cy="256" r="5.4"/>
+    <circle cx="356" cy="320" r="5.4"/>
+    <circle cx="356" cy="384" r="5.4"/>
+  </g>
+
+  <!-- the one state each branch actually owns -->
+  <g fill="#0c0b0a" stroke="#ffb454" stroke-width="2.2">
+    <circle cx="496" cy="48" r="5.2"/>
+    <circle cx="496" cy="80" r="5.2"/>
+    <circle cx="496" cy="112" r="5.2"/>
+    <circle cx="496" cy="144" r="5.2"/>
+    <circle cx="496" cy="176" r="5.2"/>
+    <circle cx="496" cy="208" r="5.2"/>
+    <circle cx="496" cy="240" r="5.2"/>
+    <circle cx="496" cy="272" r="5.2"/>
+    <circle cx="496" cy="304" r="5.2"/>
+    <circle cx="496" cy="336" r="5.2"/>
+    <circle cx="496" cy="368" r="5.2"/>
+    <circle cx="496" cy="400" r="5.2"/>
+  </g>
+
+  <line x1="18" y1="446" x2="542" y2="446" stroke="#262320" stroke-width="1.6"/>
+  <text class="cap"  x="18" y="482">a VM or container: a whole copy, and a wait</text>
+  <text class="lead" x="18" y="518">a fork: no copy, and no wait</text>
+</svg>

@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1140 420" role="img" preserveAspectRatio="xMidYMid meet">
+  <title>A per-step verdict strip tells two identical outcomes apart</title>
+  <desc>A single starting state on the left fans out into eight branch rows. Under each branch
+  runs a strip of forty small cells, one per timestep, each holding the constraint monitor's
+  verdict for that step. Almost every cell is quiet and dim, meaning the rules held. Six of the
+  eight branches never finish. Two do, and they carry the same label, "task complete" - but on
+  the sixth branch the cell at step 31 is red: property the constraint was violated there and the run
+  carried on to finish anyway. The two end states are indistinguishable; only the strips tell
+  them apart.</desc>
+
+  <style>
+    text {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      letter-spacing: .04em;
+    }
+    /* The drawing is 1140 units wide whatever box it lands in, so a label's size has to be
+       quoted against the box. Largest first: a renderer that ignores these rules still gets
+       type it can read on a phone, which is the size that has no room to spare. */
+    .cap  { font-size: 35px; fill: #8d877c; }
+    .lead { font-size: 30px; fill: #ece7dd; }
+    .warn { font-size: 36px; fill: #d4705a; }
+    .legend { display: none; }
+    @media (min-width:  620px) { .legend { display: inline; } }
+    @media (min-width:  440px) { .cap, .lead { font-size: 27px; } .warn { font-size: 28px; } }
+    @media (min-width:  620px) { .cap, .lead { font-size: 21px; } .warn { font-size: 22px; } }
+    @media (min-width:  820px) { .cap, .lead { font-size: 17px; } .warn { font-size: 18px; } }
+    @media (min-width: 1000px) { .cap, .lead { font-size: 15px; } .warn { font-size: 16px; } }
+  </style>
+
+  <defs>
+    <g id="strip" fill="#33362b">
+    <rect x="210.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="224.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="239.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="253.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="268.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="282.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="297.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="311.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="326.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="340.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="355.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="369.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="384.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="398.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="413.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="427.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="442.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="456.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="471.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="485.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="500.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="514.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="529.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="543.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="558.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="572.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="587.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="601.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="616.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="630.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="645.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="659.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="674.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="688.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="703.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="717.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="732.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="746.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="761.0" y="-8" width="11.2" height="16.0" rx="2"/>
+    <rect x="775.5" y="-8" width="11.2" height="16.0" rx="2"/>
+    </g>
+  </defs>
+
+  <rect width="1140" height="420" fill="#0c0b0a"/>
+
+  <!-- the two branches that reached the same end state, grouped -->
+  <rect x="196" y="204" width="602" height="74" rx="9" fill="#131211"/>
+
+  <!-- step 31, held up as a column so the other branches can be read against it -->
+  <rect x="645.0" y="66" width="11.2" height="268" fill="#1b1917"/>
+
+  <!-- The trace from the callout down to the cell it names. It runs behind the strips, so it
+       shows only in the gaps between them and never reads as a verdict of its own. -->
+  <path d="M650.6 62 L 650.6 258" fill="none" stroke="#d4705a" stroke-width="2.4"/>
+
+  <!-- one starting state -->
+  <rect x="16" y="188" width="136" height="38" rx="7" fill="#131211" stroke="#3a3631" stroke-width="1.4"/>
+  <text class="cap" x="84" y="214" text-anchor="middle" fill="#ece7dd">start</text>
+
+  <!-- forking eight ways -->
+  <g fill="none" stroke="#3a3631" stroke-width="1.8">
+    <path d="M152 207 C 176 207, 182 88, 206 88"/>
+    <path d="M152 207 C 176 207, 182 122, 206 122"/>
+    <path d="M152 207 C 176 207, 182 156, 206 156"/>
+    <path d="M152 207 C 176 207, 182 190, 206 190"/>
+    <path d="M152 207 C 176 207, 182 224, 206 224"/>
+    <path d="M152 207 C 176 207, 182 258, 206 258"/>
+    <path d="M152 207 C 176 207, 182 292, 206 292"/>
+    <path d="M152 207 C 176 207, 182 326, 206 326"/>
+  </g>
+
+  <!-- a strip of per-step verdicts under each branch -->
+    <use href="#strip" xlink:href="#strip" y="88"/>
+    <use href="#strip" xlink:href="#strip" y="122"/>
+    <use href="#strip" xlink:href="#strip" y="156"/>
+    <use href="#strip" xlink:href="#strip" y="190"/>
+    <use href="#strip" xlink:href="#strip" y="224"/>
+    <use href="#strip" xlink:href="#strip" y="258"/>
+    <use href="#strip" xlink:href="#strip" y="292"/>
+    <use href="#strip" xlink:href="#strip" y="326"/>
+
+  <!-- step 31 on the sixth branch: the monitor says no, and the run continues -->
+  <rect x="645.0" y="247" width="11.2" height="22" rx="2" fill="#d4705a"/>
+
+  <!-- branches that never finished -->
+  <g stroke="#3a3631" stroke-width="2.4">
+    <line x1="803" y1="88" x2="833" y2="88"/>
+    <line x1="803" y1="122" x2="833" y2="122"/>
+    <line x1="803" y1="156" x2="833" y2="156"/>
+    <line x1="803" y1="190" x2="833" y2="190"/>
+    <line x1="803" y1="292" x2="833" y2="292"/>
+    <line x1="803" y1="326" x2="833" y2="326"/>
+  </g>
+
+  <!-- the two that did, named identically on purpose -->
+    <rect x="803" y="216.5" width="15" height="15" rx="2.5" fill="#3a3631"/>
+    <text class="lead" x="831" y="231">task complete</text>
+
+    <rect x="803" y="250.5" width="15" height="15" rx="2.5" fill="#3a3631"/>
+    <text class="lead" x="831" y="265">task complete</text>
+
+  <text class="warn" x="650.6" y="44" text-anchor="middle">constraint violated &#183; step 31</text>
+
+  <text class="cap" x="20" y="390">a verdict at every step</text>
+  <rect class="legend" x="740" y="374" width="16" height="16" rx="2.5" fill="#33362b"/>
+  <text class="cap legend" x="768" y="390">satisfied</text>
+  <rect class="legend" x="960" y="374" width="16" height="16" rx="2.5" fill="#d4705a"/>
+  <text class="cap legend" x="988" y="390">violated</text>
+</svg>

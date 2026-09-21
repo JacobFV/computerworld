@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ComputerWorld — an ultra computer world simulator written in Rust</title>
-<meta name="description" content="ComputerWorld: an ultra computer world simulator written in Rust. Five OS shells, real applications, a synthetic internet and byte-identical replay, from Python, Node, the browser and native.">
+<title>ComputerWorld — a computer world that runs the same every time</title>
+<meta name="description" content="ComputerWorld: several machines, a synthetic internet and one Rust engine, with byte-identical replay. Fork a state in under two milliseconds, check a policy over every action sequence, and read each frame's ground truth out of the scene — from Python, Node, the browser and native.">
 <meta property="og:title" content="ComputerWorld">
-<meta property="og:description" content="An ultra computer world simulator written in Rust.">
+<meta property="og:description" content="Several machines, a synthetic internet, one Rust engine. It runs the same every time — so you can search it, not just sample it.">
 <meta property="og:image" content="./media/scenes/mac-freecad.jpg">
 <meta name="theme-color" content="#0c0b0a">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0b0a'/%3E%3Cpath d='M9 20l4-8 3 5 2-3 5 6z' fill='%23ffb454'/%3E%3C/svg%3E">
@@ -31,7 +31,7 @@
 
 <header class="title">
   <h1>ComputerWorld</h1>
-  <p>an ultra computer world simulator written in Rust</p>
+  <p>Several machines, a synthetic internet, one Rust engine. It runs the same every time — so you can search it, not just sample it.</p>
 </header>
 
 <section id="stage" class="stage" aria-roledescription="carousel" aria-label="Machines running in this page">
@@ -42,6 +42,96 @@
     <button id="next" aria-label="Next machine">&rarr;</button>
   </nav>
   <noscript><img src="./media/scenes/mac-freecad.jpg" width="960" height="600" alt="FreeCAD on macOS inside the simulation, with a bored mounting plate in the 3D view"></noscript>
+</section>
+
+<section id="reward" class="band" aria-labelledby="reward-h">
+  <div class="prose">
+    <h2 id="reward-h">The reward is a spec, not a model.</h2>
+    <p>Credit assignment over a two-hundred-step trajectory is the open problem in agent RL. There are two answers on offer and you pay for both. Pay people to label every step, or train a process reward model to do it. A process reward model is a model: it has exploits, and a policy that searches for long enough will find them and be paid for the finding.</p>
+    <p>A reward computed from a formal constraint has nothing to exploit. The rule either held at that step or it did not, the verdict is a function of the state, and it comes out the same on every replay. There is no gradient into the judge because the judge has no parameters.</p>
+    <p>The per-step labels are already in the world, too. <code>scene()</code> returns every string on screen with its bounds before the frame is drawn, so a replayed episode annotates itself. One consumer trained an OCR model on its own agent's typed text and measured held-out-font accuracy rise from 0.668 to 0.794, with <a href="./docs/determinism.html#rendered-frames-as-labelled-data">no annotation pass</a>.</p>
+  </div>
+  <figure>
+    <img src="./media/diagrams/b1-verdict-strip.svg" width="1140" height="420" loading="lazy" decoding="async" alt="Eight rows of small square cells fan out from a single state on the left. Each row is one forked branch and each cell is one step's verdict against the constraint. Every cell is neutral except one, which is red at step 31 of the sixth branch.">
+    <figcaption>One state, forked eight ways, each branch stepped under the same constraint. Seven rows are a line of verdicts that held. The sixth breaks at step 31, and that cell — not a score for the episode — is what the branch is paid.</figcaption>
+  </figure>
+</section>
+
+<section id="exhaustive" class="band" aria-labelledby="exhaustive-h">
+  <div class="prose">
+    <h2 id="exhaustive-h">Five hundred rollouts is not an argument.</h2>
+    <p>The assurance on offer today is a sample. Five hundred rollouts, a red team for a fortnight, a table of pass rates. Everyone in the room already knows what that is worth: it reports what happened on the paths somebody thought to walk. The adversary does not sample. It searches, and it has longer than a fortnight.</p>
+    <p>The alternative is to enumerate. Fix a start state and a depth, and check every action sequence the world allows from there. The check has two possible outputs.</p>
+    <div class="verdicts">
+      <p class="verdict holds"><b>SAFE</b> — no action sequence of length &le;5 from the pull request list moves <code>refs/heads/main</code> except by merging a pull request.</p>
+      <p class="verdict breaks"><b>VIOLATION</b> — P2, no merge over a standing request for changes. 2 actions. Replay &darr;</p>
+    </div>
+    <p>Neither is a number to argue about. The first is a statement about all of them. The second is a recording, and you can run it.</p>
+    <p>The spec is not a lab artifact. A constraint on the action stream — never contacted a domain outside the allowlist, never used a credential it was not granted — says nothing about the application it was written against, so the same file that bounded the search runs in production as a monitor, and in front of the agent as a shield. Written once, used twice.</p>
+  </div>
+  <figure>
+    <video class="shot" poster="./media/b2-check.jpg" preload="none" width="1280" height="800" muted loop playsinline controls aria-label="A bounded check running: the frontier expands from the pull request list, one branch reaches a state that breaks P2, and the two clicks that got there are replayed.">
+      <source src="./media/b2-check.mp4" type="video/mp4">
+    </video>
+    <figcaption>A bounded check from the pull request list: the frontier expands, one branch reaches a state that breaks P2, and the two clicks that got it there — open <em>Sort refs before iterating in BFS</em>, press <em>Merge pull request</em>, over bmartinez's standing request for changes — are replayed at the end.</figcaption>
+  </figure>
+</section>
+
+<section id="fork" class="split" aria-labelledby="fork-h">
+  <div class="inner">
+    <div class="prose">
+      <h2 id="fork-h">Fork the world, not the VM.</h2>
+      <p>A snapshot is copy-on-write and a fork from it costs under two milliseconds and about twenty kilobytes, so a thousand live branches of a working world sit in one process inside twenty megabytes, and a branch that went nowhere costs what it wrote. A container or a virtual machine costs seconds and gigabytes per branch. That is the whole reason nobody actually runs tree search on computer-use agents: the primitive is too expensive to put in the inner loop, so the search gets replaced by a wider sample.</p>
+      <p>Fork only means something because replay is exact. Two worlds forked from one checkpoint and fed the same actions end in the same state, byte for byte, so a branch you liked is re-entered later rather than approximated.</p>
+      <p class="measure"><span data-fact="t1-forks-per-sec">565</span> forks a second, <span data-fact="t1-bytes-retained">20.9&#8239;KB</span> retained per branch — measured on <code>company-2026</code> after a thousand real actor steps, not a fresh boot. <a href="https://github.com/JacobFV/computerworld/blob/main/benchmarks/fork-throughput.md">Method and caveats</a>.</p>
+      <p class="ran"><code data-fact="t1-command">cargo run --release -p cw-benchmarks --bin fork_throughput</code></p>
+    </div>
+    <figure>
+      <img src="./media/diagrams/t1-fork-tree.svg" width="560" height="560" loading="lazy" decoding="async" alt="A tree of forked worlds: one root state branches, each branch branches again, and the subtrees that were explored and dropped are drawn faintly beside the path that was kept.">
+      <figcaption>One checkpoint, and the worlds taken from it. A branch that was abandoned is still replayable from the same checkpoint.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="scene" class="split" aria-labelledby="scene-h">
+  <div class="inner">
+    <div class="prose">
+      <h2 id="scene-h">Every frame arrives with its answer key.</h2>
+      <p><code>scene(w, h)</code> returns every text run, widget and window, with bounds, before anything is rasterized. <strong>The same API that labels your pixels also bounds your search space.</strong></p>
+      <p>Two payoffs from one call. The strings and their boxes are ground truth for the frame you are about to draw, which is where the OCR number above came from. And the widgets are the enabled actions in this state, so the branching factor is the number of controls that are really there. Raw computer use branches over about a million pixel positions. Enumerating affordances branches over the controls that are really there — sixty-seven on the frame beside this paragraph. That is the difference between a search that cannot finish and one that can.</p>
+      <p>This holds only while every control is live. A button the scene reports and the application ignores is a branch that goes nowhere and a state the search believes in, which is why the shops, the feeds, the forums and the players were swept for dead controls.</p>
+    </div>
+    <figure>
+      <div class="compare">
+        <input class="compare-toggle" type="checkbox" id="scene-overlay">
+        <img src="./media/t2-frame.jpg" width="1280" height="800" loading="lazy" decoding="async" alt="A rendered frame from inside the world: a macOS desktop with the menu bar and dock, and Safari maximized on a GitHub pull request — toolbar and address bar, repository navigation, the pull request title and review conversation, and a sidebar of reviewers, assignees and labels.">
+        <img class="over" src="./media/t2-overlay.jpg" width="1280" height="800" loading="lazy" decoding="async" alt="The same frame with the scene drawn over it: a hairline box around each of 96 text runs and a thick box around each of 67 enabled controls, sixteen of them labelled with the role and string the scene reports.">
+        <label for="scene-overlay"><span class="on">Show the scene</span><span class="off">Hide the scene</span></label>
+      </div>
+      <figcaption>The frame, and the scene the frame was drawn from. Every box and every string came back from <code>scene(1280, 800)</code> before a pixel was written.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="policies" class="band" aria-labelledby="policies-h">
+  <div class="prose">
+    <h2 id="policies-h">Which of your rules are actually rules?</h2>
+    <p>Every business application has policies. <em>Refunds over $500 need manager approval. Production deploys need two reviewers.</em> Nobody can tell you which of them the product enforces and which are merely conventional — true only because the people doing the work follow the process.</p>
+    <p>That distinction never mattered while the users were humans who had internalised the norms. It matters enormously when the user is a model that has internalised nothing and will take any path that exists.</p>
+  </div>
+  <div class="table-wrap">
+    <table class="policies">
+      <caption>Checked against the <code>company-2026</code> world. <span data-fact="b3-provenance">Depth 5 exhausted — every action sequence of five steps or fewer from the start state. 77,748 states checked in 2&#8239;h&#8239;59&#8239;m by <code>scripts/cw-check.mjs</code> on engine 0.2.0, 21 September 2026. All nine counterexamples were replayed from a fresh world and reproduced.</span></caption>
+      <thead><tr><th scope="col">Policy</th><th scope="col">Statement</th><th scope="col">Verdict</th></tr></thead>
+      <tbody id="policy-rows">
+        <tr class="note"><td colspan="3">The run's own output is <a href="./data/policies.json"><code>data/policies.json</code></a>; this table is that file, rendered.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <noscript><p class="fallback">This table is built in the page from <a href="./data/policies.json"><code>data/policies.json</code></a>, which is the checker's output and reads the same without a script.</p></noscript>
+  <div class="prose">
+    <p>This has value even if you never deploy an agent. The unapproved-refund path was always there. Nobody had a way to look for it.</p>
+  </div>
 </section>
 
 <section class="install">
@@ -99,6 +189,32 @@ world.<span class="f">step</span>(&amp;session, <span class="f">vec!</span>[<spa
 
 <footer><span>MIT licensed.</span></footer>
 
+<script>
+// The policy table is the checker's output, not a hand-written list: the rows come from
+// data/policies.json — `{ "policies": [{ id, statement, holds, actions }] }`, or that
+// array on its own — and anything this cannot read leaves the note in the table alone.
+fetch('./data/policies.json').then(r => r.ok ? r.json() : Promise.reject(r.status)).then(data => {
+  const policies = (Array.isArray(data) ? data : data.policies) || [];
+  if (!policies.length) return;
+  document.getElementById('policy-rows').replaceChildren(...policies.map(p => {
+    const row = document.createElement('tr');
+    row.className = p.holds ? 'holds' : 'breaks';
+    const id = document.createElement('th'), what = document.createElement('td'), verdict = document.createElement('td');
+    id.scope = 'row'; id.textContent = p.id ?? '';
+    what.textContent = p.statement ?? '';
+    verdict.className = 'v'; verdict.textContent = p.holds ? 'holds' : 'breaks';
+    const actions = p.holds ? [] : (p.actions || []);
+    if (actions.length) {
+      const details = document.createElement('details'), summary = document.createElement('summary'), list = document.createElement('ol');
+      summary.textContent = `${actions.length} actions`;
+      list.append(...actions.map(a => Object.assign(document.createElement('li'), { textContent: typeof a === 'string' ? a : JSON.stringify(a) })));
+      details.append(summary, list); what.append(details);
+    }
+    row.append(id, what, verdict);
+    return row;
+  }));
+}).catch(() => {});
+</script>
 <script type="module" src="./app.js"></script>
 </body>
 </html>

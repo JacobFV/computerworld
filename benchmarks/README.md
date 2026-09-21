@@ -29,6 +29,7 @@ cargo build --release -p cw-benchmarks
 taskset -c 19 target/release/world
 taskset -c 19 target/release/cw-benchmarks
 taskset -c 19 target/release/many_worlds
+taskset -c 19 target/release/fork_throughput   # 37 min; BENCH_RUNS=2 BENCH_FORK_STEPS=1000 for the headline level
 node benchmarks/bindings.mjs
 .venv/bin/python benchmarks/python_binding.py
 node benchmarks/browser-render.mjs
