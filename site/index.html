@@ -8,9 +8,12 @@
 <meta property="og:title" content="ComputerWorld">
 <meta property="og:description" content="Training environments, reproducible evaluations, and programmable computers for computer-use agents.">
 <meta property="og:image" content="./media/scenes/mac-freecad.jpg">
-<meta name="theme-color" content="#0c0b0a">
+<meta name="theme-color" content="#0c0b0a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#faf8f4" media="(prefers-color-scheme: light)">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0b0a'/%3E%3Cpath d='M9 20l4-8 3 5 2-3 5 6z' fill='%23ffb454'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="./style.css">
+<script>/* Before the first paint: the reader's stored choice, or the device's own setting. */
+(function(){try{var t=localStorage.getItem('cw-theme');if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t}catch(e){}})();</script>
 </head>
 <body>
 <a class="skip" href="#stage">Skip to the machines</a>
@@ -25,6 +28,7 @@
   <span>GitHub</span>
   <b id="stars" hidden></b>
 </a>
+<button class="theme" type="button" hidden aria-label="Switch theme"><svg class="sun" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="3.1"/><path d="M8 1.1v1.7M8 13.2v1.7M1.1 8h1.7M13.2 8h1.7M3.15 3.15l1.2 1.2M11.65 11.65l1.2 1.2M12.85 3.15l-1.2 1.2M4.35 11.65l-1.2 1.2"/></svg><svg class="moon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="currentColor"><path d="M13.6 10.4A6 6 0 0 1 5.6 2.4a6 6 0 1 0 8 8Z"/></svg></button>
 </nav>
 
 <main>
@@ -199,6 +203,7 @@ fetch('./data/policies.json').then(r => r.ok ? r.json() : Promise.reject(r.statu
   }));
 }).catch(() => {});
 </script>
+<script src="./theme.js" defer></script>
 <script type="module" src="./app.js"></script>
 </body>
 </html>

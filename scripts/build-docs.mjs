@@ -20,6 +20,13 @@ const out = join(root, 'site', 'docs');
 const repo = 'https://github.com/JacobFV/computerworld';
 const check = process.argv.includes('--check');
 
+// The light/dark switch in the top bar, and the snippet that settles the theme before
+// the first paint — the same control and the same storage key as the rest of the site.
+const sun = '<svg class="sun" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="3.1"/><path d="M8 1.1v1.7M8 13.2v1.7M1.1 8h1.7M13.2 8h1.7M3.15 3.15l1.2 1.2M11.65 11.65l1.2 1.2M12.85 3.15l-1.2 1.2M4.35 11.65l-1.2 1.2"/></svg>';
+const moon = '<svg class="moon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="currentColor"><path d="M13.6 10.4A6 6 0 0 1 5.6 2.4a6 6 0 1 0 8 8Z"/></svg>';
+const themeSnippet = `<script>/* Before the first paint: the reader's stored choice, or the device's own setting. */
+(function(){try{var t=localStorage.getItem('cw-theme');if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t}catch(e){}})();<\/script>`;
+
 // The sidebar, in reading order. A guide's title is its first heading.
 const sections = [
   { title: 'Start', pages: [
@@ -260,9 +267,11 @@ const layout = ({ title, body, headings, page, section }) => {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escape(title)} — ComputerWorld docs</title>
 <meta name="description" content="${escape(page.blurb ?? title)}">
-<meta name="theme-color" content="#0c0b0a">
+<meta name="theme-color" content="#0c0b0a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#faf8f4" media="(prefers-color-scheme: light)">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0b0a'/%3E%3Cpath d='M9 20l4-8 3 5 2-3 5 6z' fill='%23ffb454'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="./docs.css">
+${themeSnippet}
 </head>
 <body>
 <a class="skip" href="#content">Skip to content</a>
@@ -272,6 +281,7 @@ const layout = ({ title, body, headings, page, section }) => {
     <a href="./" aria-current="${page.slug === 'index' ? 'page' : 'false'}">Docs</a>
     <a href="${repo}">GitHub</a>
     <button class="menu" id="menu" aria-expanded="false" aria-controls="side">Menu</button>
+    <button class="icon-button theme" type="button" hidden aria-label="Switch theme">${sun}${moon}</button>
   </nav>
 </header>
 <div class="shell">
@@ -284,6 +294,7 @@ const layout = ({ title, body, headings, page, section }) => {
   </main>
   ${toc ? `<nav class="toc" aria-label="On this page"><div class="group-title">On this page</div>${toc}</nav>` : ''}
 </div>
+<script src="./theme.js" defer></script>
 <script>
 const menu = document.getElementById('menu'), side = document.getElementById('side');
 menu.addEventListener('click', () => { const open = side.classList.toggle('open'); menu.setAttribute('aria-expanded', String(open)); });
@@ -294,11 +305,13 @@ menu.addEventListener('click', () => { const open = side.classList.toggle('open'
 };
 
 const css = readFileSync(join(root, 'site', 'docs.css'), 'utf8');
+const themeJs = readFileSync(join(root, 'site', 'theme.js'), 'utf8');
 
 if (!check) {
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
   writeFileSync(join(out, 'docs.css'), css);
+  writeFileSync(join(out, 'theme.js'), themeJs);
 }
 
 let count = 0;

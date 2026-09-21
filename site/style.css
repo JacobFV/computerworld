@@ -1,21 +1,145 @@
-/* One warm neutral, one accent. The only colour on the page is what the machines draw. */
+/* One warm neutral, one accent. The only colour on the page is what the machines draw.
+
+   Two palettes are named below. Dark is the default; light is used when the device asks
+   for it, or when the reader picks it from the switch in the corner. A one-line script in
+   each page's <head> writes `data-theme` on <html> before the first paint, so a stored
+   choice never arrives as a flash of the wrong page. The light palette is written twice
+   because CSS has no way to say "the device asked, OR the reader picked" in one rule. */
 :root {
+  --radius: 10px;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0c0b0a;
   --bg-2: #131211;
   --line: #262320;
   --line-2: #3a3631;
   --ink: #ece7dd;
-  --dim: #8d877c;
-  --faint: #5f5a52;
+  --dim: #aaa395;
+  --faint: #948d80;
   --accent: #ffb454;
   /* A verdict is the one other thing on this page that draws, so it is the one other
      thing given a colour. Both are held back to the warm end and spent on a mark, a
      word or a rule down the side of a row — never on a fill. */
   --holds: #9bb07e;
   --breaks: #d4705a;
-  --radius: 10px;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* A machine whose still has not arrived: the darker stripe of the empty screen. */
+  --stripe: #0f0e0e;
+  /* The code block and the five colours written into its markup. */
+  --code-ink: #c9c3b7;
+  --syn-k: #a69f92;
+  --syn-s: #a9b88f;
+  --syn-t: #e0c9a0;
+  /* The window a figure is shown in: title bar, hairline, title, and the top highlight. */
+  --chrome: linear-gradient(#38352f, #27251f);
+  --chrome-line: #555047;
+  --chrome-ink: #d4cfc4;
+  --chrome-sheen: #ffffff16;
+  --win-shadow: 0 12px 28px #00000033;
+  /* Inside a figure: the sheet the small frames are laid on, and the frames themselves. */
+  --figure-bg: #171613;
+  --frame-bg: #26231e;
+  --frame-line: #696155;
+  --frame-shadow: 0 4px 10px #00000055;
+  --engine-bg: #241e15;
+  --engine-line: #79603c;
+  /* The two hero controls, finished like buttons on the machines in the strip. */
+  --btn: linear-gradient(#49463f, #302e29);
+  --btn-line: #57534c;
+  --btn-sheen: #ffffff22;
+  --btn-shadow: 0 2px 3px #00000055;
+  --btn-text-shadow: 0 1px 1px #00000088;
+  --primary: linear-gradient(#edbd76, #c78b3e);
+  --primary-line: #e9b265;
+  --primary-sheen: #ffffff40;
+  --primary-ink: #20170a;
+  /* A tile's own hairline and the shadow it drops when its slide is the running one. */
+  --tile-edge: rgba(255, 255, 255, .03);
+  --tile-shadow: rgba(0, 0, 0, .8);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg: #faf8f4;
+    --bg-2: #f2eee6;
+    --line: #e2ddd2;
+    --line-2: #cdc5b6;
+    --ink: #1b1917;
+    --dim: #5d584e;
+    --faint: #857f72;
+    --accent: #a4610c;
+    --holds: #4a6b3b;
+    --breaks: #ab4227;
+    --stripe: #e9e4d9;
+    --code-ink: #3a352e;
+    --syn-k: #6d665b;
+    --syn-s: #4c6236;
+    --syn-t: #8a5a12;
+    --chrome: linear-gradient(#f0ece5, #e2ded5);
+    --chrome-line: #cdc5b6;
+    --chrome-ink: #45413a;
+    --chrome-sheen: #ffffffcc;
+    --win-shadow: 0 12px 28px #00000026;
+    --figure-bg: #f2eee6;
+    --frame-bg: #ffffff;
+    --frame-line: #d8d1c3;
+    --frame-shadow: 0 3px 8px #0000001f;
+    --engine-bg: #fdf3e1;
+    --engine-line: #dfb676;
+    --btn: linear-gradient(#ffffff, #efebe3);
+    --btn-line: #cdc5b6;
+    --btn-sheen: #ffffff;
+    --btn-shadow: 0 1px 2px #00000024;
+    --btn-text-shadow: none;
+    --primary: linear-gradient(#e6ab5b, #c88a2c);
+    --primary-line: #b5761d;
+    --primary-sheen: #ffffff66;
+    --primary-ink: #20170a;
+    --tile-edge: rgba(0, 0, 0, .05);
+    --tile-shadow: rgba(46, 38, 26, .3);
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #faf8f4;
+  --bg-2: #f2eee6;
+  --line: #e2ddd2;
+  --line-2: #cdc5b6;
+  --ink: #1b1917;
+  --dim: #5d584e;
+  --faint: #857f72;
+  --accent: #a4610c;
+  --holds: #4a6b3b;
+  --breaks: #ab4227;
+  --stripe: #e9e4d9;
+  --code-ink: #3a352e;
+  --syn-k: #6d665b;
+  --syn-s: #4c6236;
+  --syn-t: #8a5a12;
+  --chrome: linear-gradient(#f0ece5, #e2ded5);
+  --chrome-line: #cdc5b6;
+  --chrome-ink: #45413a;
+  --chrome-sheen: #ffffffcc;
+  --win-shadow: 0 12px 28px #00000026;
+  --figure-bg: #f2eee6;
+  --frame-bg: #ffffff;
+  --frame-line: #d8d1c3;
+  --frame-shadow: 0 3px 8px #0000001f;
+  --engine-bg: #fdf3e1;
+  --engine-line: #dfb676;
+  --btn: linear-gradient(#ffffff, #efebe3);
+  --btn-line: #cdc5b6;
+  --btn-sheen: #ffffff;
+  --btn-shadow: 0 1px 2px #00000024;
+  --btn-text-shadow: none;
+  --primary: linear-gradient(#e6ab5b, #c88a2c);
+  --primary-line: #b5761d;
+  --primary-sheen: #ffffff66;
+  --primary-ink: #20170a;
+  --tile-edge: rgba(0, 0, 0, .05);
+  --tile-shadow: rgba(46, 38, 26, .3);
 }
 * { box-sizing: border-box; }
 body {
@@ -53,6 +177,19 @@ button { font: inherit; color: inherit; }
 }
 .gh:hover { color: var(--ink); }
 .gh b { font-weight: 400; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+/* THE LIGHT/DARK SWITCH. It starts on whatever the device asked for; a click stores the
+   reader's own answer and the page keeps it from then on. The button carries both icons
+   and shows the one for the theme it would switch TO, so the control says what it does.
+   theme.js unhides it, so a page without scripts never offers a switch that cannot work. */
+.theme {
+  display: inline-grid; place-items: center; width: 1.9rem; height: 1.9rem; padding: 0;
+  border: 1px solid var(--line-2); border-radius: 7px; background: none;
+  color: var(--dim); cursor: pointer; transition: color .15s ease, border-color .15s ease;
+}
+.theme:hover { color: var(--ink); border-color: var(--ink); }
+.theme svg { display: block; width: 15px; height: 15px; }
+:root[data-theme="dark"] .theme .moon, :root[data-theme="light"] .theme .sun { display: none; }
 
 main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
 
@@ -129,25 +266,25 @@ main { max-width: 1140px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
 .tile {
   position: relative; flex: none; height: var(--h-desk); aspect-ratio: 1280 / 800;
   border-radius: var(--radius); overflow: hidden; background: #000;
-  box-shadow: 0 0 0 1px var(--line), 0 1px 0 1px rgba(255, 255, 255, .03);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 0 1px var(--tile-edge);
   transition: box-shadow .55s ease;
 }
 .tile.phone { height: var(--h-phone); border-radius: clamp(16px, 2.2vw, 28px); }
 /* A machine whose still has not been rendered yet: an empty screen, not a broken image. */
-.tile.blank { background: repeating-linear-gradient(-45deg, #131211 0 10px, #0f0e0e 10px 20px); }
+.tile.blank { background: repeating-linear-gradient(-45deg, var(--bg-2) 0 10px, var(--stripe) 10px 20px); }
 .tile.blank img { display: none; }
 /* One shadow rule for every tile, lifted by its own size: app.js writes `--lift` from the
    height it gave the tile, so seven machines on one slide do not each drop the shadow of a
    laptop, and one machine on its own still does. */
 .slide.active .tile {
-  box-shadow: 0 0 0 1px var(--line), 0 1px 0 1px rgba(255, 255, 255, .03),
-              0 var(--lift, 40px) calc(var(--lift, 40px) * 2.25) calc(var(--lift, 40px) * -.5) rgba(0, 0, 0, .8);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 0 1px var(--tile-edge),
+              0 var(--lift, 40px) calc(var(--lift, 40px) * 2.25) calc(var(--lift, 40px) * -.5) var(--tile-shadow);
 }
 .tile img, .tile canvas { width: 100%; height: 100%; display: block; }
 .live-canvas { outline: none; touch-action: none; cursor: default; }
 .slide.active .tile:has(.live-canvas:focus-visible) {
   box-shadow: 0 0 0 1px var(--accent),
-              0 var(--lift, 40px) calc(var(--lift, 40px) * 2.25) calc(var(--lift, 40px) * -.5) rgba(0, 0, 0, .8);
+              0 var(--lift, 40px) calc(var(--lift, 40px) * 2.25) calc(var(--lift, 40px) * -.5) var(--tile-shadow);
 }
 
 /* WHILE THE SIMULATOR IS COMING DOWN. The still darkened, a spinner, and the download's
@@ -442,7 +579,7 @@ figcaption code { color: var(--dim); }
 .tabs button[aria-selected="true"] { color: var(--ink); box-shadow: inset 0 -1px 0 var(--ink); margin-bottom: -1px; }
 .tabs button:focus-visible, .copy:focus-visible { outline-offset: -4px; }
 .codebox pre { margin: 0; padding: 1.4rem 1.4rem; overflow-x: auto; }
-.codebox code { color: #c9c3b7; line-height: 1.7; font-size: .85rem; }
+.codebox code { color: var(--code-ink); line-height: 1.7; font-size: .85rem; }
 #install {
   padding-block: 1rem; border-bottom: 1px solid var(--line); cursor: copy;
 }
@@ -451,11 +588,11 @@ figcaption code { color: var(--dim); }
 #install code::after { content: attr(data-said); color: var(--accent); margin-left: 1.5em; }
 
 /* Syntax colours, written into the markup rather than fetched from a highlighter. */
-.k { color: #a69f92; font-style: italic; }   /* keywords */
-.s { color: #a9b88f; }                       /* strings */
+.k { color: var(--syn-k); font-style: italic; }   /* keywords */
+.s { color: var(--syn-s); }                       /* strings */
 .n { color: var(--accent); }                 /* numbers */
 .f { color: var(--ink); }                    /* calls and macros */
-.t { color: #e0c9a0; }                       /* types */
+.t { color: var(--syn-t); }                       /* types */
 .c { color: var(--faint); font-style: italic; }
 
 body > footer {
@@ -502,7 +639,6 @@ body > footer span { display: block; padding-top: 1.4rem; border-top: 1px solid 
 @media (max-width: 359px) { .caption { min-height: 8.4rem; } }
 
 /* Audience sections: capabilities first, measured evidence alongside. */
-:root { --dim: #aaa395; --faint: #948d80; }
 html { scroll-padding-top: 2rem; }
 .title { padding: clamp(5rem, 10vw, 8rem) 0 2.5rem; }
 .title .eyebrow, .eyebrow { margin: 0 0 1.4rem; font: 500 .72rem/1.5 var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--accent); }
@@ -532,7 +668,7 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .prose p { font-size: .94rem; line-height: 1.75; }
 .feature-grid figure { min-width: 0; margin: 0; }
 .feature-grid figure > img, .feature-grid video { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 0 0 8px 8px; }
-.figure-bar { display: flex; justify-content: space-between; gap: 1rem; padding: .85rem 1rem; border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; background: #1a1815; color: var(--dim); font: .63rem/1.5 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.figure-bar { display: flex; justify-content: space-between; gap: 1rem; padding: .85rem 1rem; border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--chrome); color: var(--chrome-ink); font: .63rem/1.5 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
 .figure-bar span:last-child { color: var(--accent); }
 .metrics { display: flex; flex-wrap: wrap; gap: 1.2rem 2.5rem; padding: 1.4rem 0; margin: 1.4rem 0 0; border-block: 1px solid var(--line); }
 .metrics dt { color: var(--dim); font: .66rem/1.5 var(--mono); }
@@ -568,7 +704,7 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .map-languages, .map-machines { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; text-align: center; }
 .map-languages span { padding: .6rem .2rem; border: 1px solid var(--line-2); border-radius: 4px; font: .7rem/1.4 var(--mono); }
 .map-link { text-align: center; color: var(--faint); height: 1.8rem; }
-.map-engine { padding: .8rem; border: 1px solid #79603c; border-radius: 5px; text-align: center; background: #241e15; }
+.map-engine { padding: .8rem; border: 1px solid var(--engine-line); border-radius: 5px; text-align: center; background: var(--engine-bg); }
 .map-engine b { color: var(--accent); font-size: 1rem; font-weight: 500; }
 .map-engine span, .map-machines span { display: block; color: var(--dim); font: .62rem/1.6 var(--mono); margin-top: .3rem; }
 .map-machines { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -602,13 +738,13 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .title h1 b { font-weight: 700; }
 .hero-actions .button {
   border-radius: 7px; padding: .55rem 1.05rem; gap: 1rem;
-  border: 1px solid #57534c; background: linear-gradient(#49463f, #302e29);
-  box-shadow: inset 0 1px 0 #ffffff22, 0 2px 3px #0005;
-  text-shadow: 0 1px 1px #0008; font-size: .88rem; font-weight: 500;
+  border: 1px solid var(--btn-line); background: var(--btn);
+  box-shadow: inset 0 1px 0 var(--btn-sheen), var(--btn-shadow);
+  text-shadow: var(--btn-text-shadow); font-size: .88rem; font-weight: 500;
 }
-.hero-actions .primary { background: linear-gradient(#edbd76, #c78b3e); border-color: #e9b265; color: #20170a; text-shadow: 0 1px 0 #ffffff40; }
+.hero-actions .primary { background: var(--primary); border-color: var(--primary-line); color: var(--primary-ink); text-shadow: 0 1px 0 var(--primary-sheen); }
 .hero-actions .button:hover { filter: brightness(1.12); }
-.hero-actions .button:active { transform: translateY(1px); box-shadow: inset 0 1px 3px #0005; }
+.hero-actions .button:active { transform: translateY(1px); box-shadow: inset 0 1px 3px #00000055; }
 .section-heading > p:last-child, .prose p, .prose .measure, .scope-note, .start-heading p { font: .96rem/1.7 var(--sans); color: var(--dim); letter-spacing: 0; }
 .prose .evidence-note { border: 0; padding: 0; }
 .metrics dt, .metrics small, .result-counts span, .results-heading a, .text-links a, .policy-details > summary { font: .85rem/1.6 var(--sans); letter-spacing: 0; }
@@ -616,15 +752,15 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .metrics small { color: var(--ink); }
 .scope-note { font-size: .85rem; }
 .feature-grid figcaption { font: .85rem/1.6 var(--sans); color: var(--dim); }
-.figure-bar { position: relative; justify-content: center; min-height: 36px; padding: .6rem 1rem .6rem 4.6rem; background: linear-gradient(#38352f, #27251f); border-color: #555047; box-shadow: inset 0 1px 0 #ffffff16; font: .72rem/1.4 var(--sans); text-transform: none; letter-spacing: 0; color: #d4cfc4; }
+.figure-bar { position: relative; justify-content: center; min-height: 36px; padding: .6rem 1rem .6rem 4.6rem; background: var(--chrome); border-color: var(--chrome-line); box-shadow: inset 0 1px 0 var(--chrome-sheen); font: .72rem/1.4 var(--sans); text-transform: none; letter-spacing: 0; color: var(--chrome-ink); }
 .figure-bar::before { content: ''; position: absolute; left: 14px; top: 13px; width: 9px; height: 9px; border-radius: 50%; background: #ce7162; box-shadow: 16px 0 #d3ad60, 32px 0 #89a475; }
 .figure-bar span:last-child { color: inherit; }
-.feature-grid figure > img, .feature-grid video, .map-content, .compare { border: 1px solid #555047; border-top: 0; border-radius: 0 0 8px 8px; box-shadow: 0 12px 28px #0003; }
+.feature-grid figure > img, .feature-grid video, .map-content, .compare { border: 1px solid var(--chrome-line); border-top: 0; border-radius: 0 0 8px 8px; box-shadow: var(--win-shadow); }
 .compare { overflow: hidden; }
 .compare > img { box-shadow: none; border-radius: 0; }
-.branch-scroll { overflow-x: auto; background: #171613; border: 1px solid #555047; border-top: 0; border-radius: 0 0 8px 8px; box-shadow: 0 12px 28px #0003; }
+.branch-scroll { overflow-x: auto; background: var(--figure-bg); border: 1px solid var(--chrome-line); border-top: 0; border-radius: 0 0 8px 8px; box-shadow: var(--win-shadow); }
 .branch-diagram { display: grid; grid-template-columns: minmax(140px,1fr) 36px minmax(140px,1fr) 38px 42px; grid-template-rows: 1fr 1fr; align-items: center; gap: 24px 0; min-width: 440px; padding: 26px 14px; }
-.branch-frame { overflow: hidden; border: 1px solid #696155; border-radius: 5px; background: #26231e; box-shadow: 0 4px 10px #0005; }
+.branch-frame { overflow: hidden; border: 1px solid var(--frame-line); border-radius: 5px; background: var(--frame-bg); box-shadow: var(--frame-shadow); }
 .branch-frame img { display: block; width: 100%; height: auto; }
 .branch-frame > span { display: block; padding: 5px 6px; color: var(--dim); font: .62rem/1.4 var(--sans); }
 .branch-root { grid-column: 1; grid-row: 1 / 3; }
@@ -632,7 +768,7 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .branch-fail { grid-column: 3; grid-row: 2; }
 .branch-connector { position: relative; height: 1px; background: var(--holds); }
 .branch-connector::after { content: ''; position: absolute; right: 0; top: -3px; border-block: 3px solid transparent; border-left: 5px solid var(--holds); }
-.branch-connector > span { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 17px; height: 17px; border-radius: 50%; background: #171613; text-align: center; color: var(--holds); font: 600 13px/17px var(--sans); }
+.branch-connector > span { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 17px; height: 17px; border-radius: 50%; background: var(--figure-bg); text-align: center; color: var(--holds); font: 600 13px/17px var(--sans); }
 .fork-pass { grid-column: 2; grid-row: 1; }
 .fork-fail { grid-column: 2; grid-row: 2; }
 .fork-pass::before, .fork-fail::before { content: ''; position: absolute; left: 0; width: 1px; height: 62px; background: var(--holds); }
@@ -655,6 +791,6 @@ h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; font-weight: 550; letter-s
 .study p, .study li { font: 1rem/1.8 var(--sans); color: var(--dim); }
 .study a { text-underline-offset: .2em; }
 .study-window { margin: 2rem 0; }
-.study-window > img { width: 100%; height: auto; display: block; border: 1px solid #555047; border-radius: 0 0 8px 8px; }
+.study-window > img { width: 100%; height: auto; display: block; border: 1px solid var(--chrome-line); border-radius: 0 0 8px 8px; }
 .study figcaption { font: .85rem/1.6 var(--sans); }
 .study pre { padding: 1.2rem; overflow-x: auto; border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg-2); font-size: .8rem; }
