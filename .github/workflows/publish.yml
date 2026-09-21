@@ -64,7 +64,7 @@ jobs:
         run: |
           mkdir -p target/assets
           cp target/candidates/python-*/*.whl target/assets/
-          cp target/candidates/wasm-and-browser-release-assets/* target/assets/
+          cp target/candidates/wasm-release-assets/* target/assets/
           python3 - <<'PY'
           import json, pathlib, sys
           root = pathlib.Path('target/candidates')
@@ -73,7 +73,7 @@ jobs:
                    'python-evidence-aarch64-apple-darwin': 'macos-arm64',
                    'python-evidence-x86_64-apple-darwin': 'macos-x86_64',
                    'python-evidence-x86_64-pc-windows-msvc': 'windows-x64',
-                   'wasm-browser-release-evidence': 'node-wasm'}
+                   'wasm-release-evidence': 'node-wasm'}
           parity = {}
           for artifact, name in names.items():
               summary = next((root / artifact).rglob('summary.json'), None)
