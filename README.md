@@ -79,7 +79,7 @@ The `Environment` is the agent's handle: its machines, action families and obser
 channels, nothing else. The `World` is the owner's: inspection, topology, snapshots.
 Give a model the environment. The same episode in
 [JavaScript and Rust](https://jacobfv.github.io/computerworld/docs/#a-first-episode),
-and runnable demos in [`examples/`](examples/).
+and runnable demos in [`examples/`](examples/README.md), one directory per language binding.
 
 ## What is in a world
 

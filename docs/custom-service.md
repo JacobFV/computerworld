@@ -1,6 +1,6 @@
 # Create a service
 
-The runnable [`examples/custom-service`](../examples/custom-service) is the starting
+The runnable [`examples/native/echo.rs`](../examples/native/echo.rs) is the starting
 point. Implement `Service` in your own crate; the kernel need not change.
 
 Choose a unique versioned kind, validate initialization, and define HTTP routes.

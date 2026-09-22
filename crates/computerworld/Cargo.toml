@@ -50,11 +50,11 @@ path = "../../examples/native/company.rs"
 
 [[example]]
 name = "custom-service"
-path = "../../examples/custom-service/echo.rs"
+path = "../../examples/native/echo.rs"
 
 [[example]]
 name = "custom-app"
-path = "../../examples/custom-app/counter.rs"
+path = "../../examples/native/counter.rs"
 
 [[example]]
 name = "os-gallery"

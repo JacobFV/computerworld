@@ -1,6 +1,6 @@
 # Create an application
 
-Start from [`examples/custom-app`](../examples/custom-app). Implement `Application`
+Start from [`examples/native/counter.rs`](../examples/native/counter.rs). Implement `Application`
 and register it independently of the kernel. Put persistent semantic state in its
 instance value; derive a native `Page` from immutable state.
 
