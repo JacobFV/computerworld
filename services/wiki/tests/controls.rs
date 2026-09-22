@@ -16,9 +16,18 @@ use cw_service_wiki::{WikiService, WikiState};
 use serde_json::Value;
 
 const SITES: &[(&str, &str)] = &[
-    ("wikipedia", include_str!("../../../worlds/company-2026/sites/wikipedia.json")),
-    ("archive", include_str!("../../../worlds/company-2026/sites/archive.json")),
-    ("imdb", include_str!("../../../worlds/company-2026/sites/imdb.json")),
+    (
+        "wikipedia",
+        include_str!("../../../worlds/company-2026/sites/wikipedia.json"),
+    ),
+    (
+        "archive",
+        include_str!("../../../worlds/company-2026/sites/archive.json"),
+    ),
+    (
+        "imdb",
+        include_str!("../../../worlds/company-2026/sites/imdb.json"),
+    ),
 ];
 
 fn ctx() -> ServiceContext {
@@ -61,7 +70,10 @@ fn no_control_on_any_of_the_three_sites_is_a_lie() {
             .initialize(file["initial_state"].clone(), &ctx())
             .expect("seed passes the service's own gate");
         let loaded: WikiState = serde_json::from_value(state.clone()).expect("typed state");
-        let origin = format!("http://{}", file["domains"][0].as_str().expect("a first domain"));
+        let origin = format!(
+            "http://{}",
+            file["domains"][0].as_str().expect("a first domain")
+        );
         let allow = self_links(&loaded);
         let allow: Vec<&str> = allow.iter().map(String::as_str).collect();
         // Every article, every one of its sections, its Talk and its History, so no page
@@ -81,9 +93,18 @@ fn no_control_on_any_of_the_three_sites_is_a_lie() {
             request.method = method.to_owned();
             // A POST probe edits an article, so it edits a copy.
             let mut scratch = state.clone();
-            let target = if method == "GET" { &mut state } else { &mut scratch };
-            let response = WikiService.handle(target, &ctx(), &request).expect("the service answers");
-            (response.status, String::from_utf8_lossy(&response.body).into_owned())
+            let target = if method == "GET" {
+                &mut state
+            } else {
+                &mut scratch
+            };
+            let response = WikiService
+                .handle(target, &ctx(), &request)
+                .expect("the service answers");
+            (
+                response.status,
+                String::from_utf8_lossy(&response.body).into_owned(),
+            )
         };
         let faults = audit::Sweep::new(&seeds, &mut call)
             .allow_self(&allow)
@@ -105,12 +126,20 @@ fn the_thin_pages_promise_nothing_either() {
             .expect("seed loads");
         for path in ["/search?q=zzzznothingmatches", "/search?q="] {
             let response = WikiService
-                .handle(&mut state, &ctx(), &HttpRequest::get(format!("http://wiki.example{path}")))
+                .handle(
+                    &mut state,
+                    &ctx(),
+                    &HttpRequest::get(format!("http://wiki.example{path}")),
+                )
                 .expect("the service answers");
             assert_eq!(response.status, 200, "{name}{path}");
             let html = String::from_utf8_lossy(&response.body).into_owned();
             let faults = audit::page(&html);
-            assert!(faults.is_empty(), "{name}{path}:\n  {}", faults.join("\n  "));
+            assert!(
+                faults.is_empty(),
+                "{name}{path}:\n  {}",
+                faults.join("\n  ")
+            );
         }
     }
     // One bare article on one skin each: no talk, no revisions, no references, one section.
@@ -121,14 +150,28 @@ fn the_thin_pages_promise_nothing_either() {
                                   "sections": [{"id": "s1", "heading": "Background", "body": "Nothing yet."}]}}
         });
         let mut state = WikiService.initialize(seed, &ctx()).expect("seed loads");
-        for path in ["/", "/wiki/Only", "/wiki/Talk:Only", "/wiki/Special:History/Only", "/wiki/Only?section=s1"] {
+        for path in [
+            "/",
+            "/wiki/Only",
+            "/wiki/Talk:Only",
+            "/wiki/Special:History/Only",
+            "/wiki/Only?section=s1",
+        ] {
             let response = WikiService
-                .handle(&mut state, &ctx(), &HttpRequest::get(format!("http://wiki.example{path}")))
+                .handle(
+                    &mut state,
+                    &ctx(),
+                    &HttpRequest::get(format!("http://wiki.example{path}")),
+                )
                 .expect("the service answers");
             assert_eq!(response.status, 200, "{skin}{path}");
             let html = String::from_utf8_lossy(&response.body).into_owned();
             let faults = audit::page(&html);
-            assert!(faults.is_empty(), "{skin}{path}:\n  {}", faults.join("\n  "));
+            assert!(
+                faults.is_empty(),
+                "{skin}{path}:\n  {}",
+                faults.join("\n  ")
+            );
         }
     }
 }
@@ -142,22 +185,35 @@ fn pressing_random_again_walks_on_instead_of_serving_the_same_article() {
         let mut state = WikiService
             .initialize(file["initial_state"].clone(), &ctx())
             .expect("seed loads");
-        let host = file["domains"][0].as_str().expect("a first domain").to_owned();
+        let host = file["domains"][0]
+            .as_str()
+            .expect("a first domain")
+            .to_owned();
         let mut path = "/wiki/Special:Random".to_owned();
         let mut seen: Vec<String> = Vec::new();
         for step in 0..3 {
             let response = WikiService
-                .handle(&mut state, &ctx(), &HttpRequest::get(format!("http://{host}{path}")))
+                .handle(
+                    &mut state,
+                    &ctx(),
+                    &HttpRequest::get(format!("http://{host}{path}")),
+                )
                 .expect("the service answers");
             assert_eq!(response.status, 200, "{name} {path}");
             let html = String::from_utf8_lossy(&response.body).into_owned();
             let doc = cw_web::html::parse(&html);
             let title = *doc.by_id("article-title").first().expect("a title");
             let title = doc.text_content(title);
-            assert!(!seen.contains(&title), "{name}: step {step} served {title} again");
+            assert!(
+                !seen.contains(&title),
+                "{name}: step {step} served {title} again"
+            );
             seen.push(title);
             let next = *doc.by_id("nav-random").first().expect("a Random control");
-            let next = doc.attr(next, "href").expect("Random has an href").to_owned();
+            let next = doc
+                .attr(next, "href")
+                .expect("Random has an href")
+                .to_owned();
             assert_ne!(next, path, "{name}: Random points at the page it is on");
             path = next;
         }
@@ -178,7 +234,10 @@ fn every_class_the_sheets_draw_as_pressable_lands_on_a_control() {
             .initialize(file["initial_state"].clone(), &ctx())
             .expect("seed loads");
         let loaded: WikiState = serde_json::from_value(state.clone()).expect("typed state");
-        let host = file["domains"][0].as_str().expect("a first domain").to_owned();
+        let host = file["domains"][0]
+            .as_str()
+            .expect("a first domain")
+            .to_owned();
         let mut paths = vec!["/".to_owned(), "/search?q=the".to_owned()];
         for article in loaded.articles.values() {
             paths.push(format!("/wiki/{}", article.id));
@@ -194,7 +253,11 @@ fn every_class_the_sheets_draw_as_pressable_lands_on_a_control() {
         let mut chips = 0usize;
         for path in &paths {
             let response = WikiService
-                .handle(&mut state, &ctx(), &HttpRequest::get(format!("http://{host}{path}")))
+                .handle(
+                    &mut state,
+                    &ctx(),
+                    &HttpRequest::get(format!("http://{host}{path}")),
+                )
                 .expect("the service answers");
             assert_eq!(response.status, 200, "{name}{path}");
             let html = String::from_utf8_lossy(&response.body).into_owned();
@@ -206,12 +269,17 @@ fn every_class_the_sheets_draw_as_pressable_lands_on_a_control() {
                 let tag = doc.tag(node).unwrap_or("");
                 let id = doc.attr(node, "id").unwrap_or("");
                 assert!(
-                    tag == "button" || tag == "a" && doc.attr(node, "href").is_some_and(|h| !h.trim().is_empty()),
+                    tag == "button"
+                        || tag == "a"
+                            && doc.attr(node, "href").is_some_and(|h| !h.trim().is_empty()),
                     "{name}{path}: <{tag} id={id:?}> is drawn as pressable but is not a control"
                 );
                 chips += 1;
             }
         }
-        assert!(chips > 0, "{name}: the sheets' pressable classes went unused");
+        assert!(
+            chips > 0,
+            "{name}: the sheets' pressable classes went unused"
+        );
     }
 }

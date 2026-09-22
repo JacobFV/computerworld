@@ -52,7 +52,9 @@ impl Tables {
             t.order.insert(n, i as u32);
             if doc.is(n, "label") {
                 if let Some(f) = doc.attr(n, "for") {
-                    t.labels_for.entry(f.to_owned()).or_insert_with(|| collapse(&doc.text_content(n)));
+                    t.labels_for
+                        .entry(f.to_owned())
+                        .or_insert_with(|| collapse(&doc.text_content(n)));
                 }
             }
         }
@@ -119,13 +121,20 @@ pub fn path_id(doc: &Document, node: NodeId) -> String {
 }
 
 fn input_type(doc: &Document, node: NodeId) -> String {
-    doc.attr(node, "type").unwrap_or("text").trim().to_ascii_lowercase()
+    doc.attr(node, "type")
+        .unwrap_or("text")
+        .trim()
+        .to_ascii_lowercase()
 }
 
 /// The ARIA role of an element, if it has one worth announcing.
 pub fn role_of(doc: &Document, node: NodeId) -> Option<String> {
     if let Some(r) = doc.attr(node, "role") {
-        let r = r.split_ascii_whitespace().next().unwrap_or("").to_ascii_lowercase();
+        let r = r
+            .split_ascii_whitespace()
+            .next()
+            .unwrap_or("")
+            .to_ascii_lowercase();
         if !r.is_empty() {
             return Some(r);
         }
@@ -218,7 +227,10 @@ pub fn label_of(doc: &Document, tables: &Tables, node: NodeId) -> String {
         }
     }
     let tag = doc.tag(node).unwrap_or("");
-    let is_control = matches!(tag, "input" | "select" | "textarea" | "button" | "meter" | "progress");
+    let is_control = matches!(
+        tag,
+        "input" | "select" | "textarea" | "button" | "meter" | "progress"
+    );
     if is_control {
         if let Some(id) = doc.attr(node, "id") {
             if let Some(l) = tables.labels_for.get(id) {
@@ -263,7 +275,11 @@ pub fn label_of(doc: &Document, tables: &Tables, node: NodeId) -> String {
         }
     }
     let text = collapse(&doc.text_content(node));
-    if let Some(level) = tag.strip_prefix('h').and_then(|l| l.parse::<u8>().ok()).filter(|l| (1..=6).contains(l)) {
+    if let Some(level) = tag
+        .strip_prefix('h')
+        .and_then(|l| l.parse::<u8>().ok())
+        .filter(|l| (1..=6).contains(l))
+    {
         return format!("h{level}: {text}");
     }
     text
@@ -284,7 +300,9 @@ pub(crate) fn value_of(p: &Painter, node: NodeId) -> Option<String> {
             }
         }
         "textarea" => Some(doc.text_content(node)),
-        "select" => selected_option(doc, node).map(|o| collapse(&doc.text_content(o))).or_else(|| Some(String::new())),
+        "select" => selected_option(doc, node)
+            .map(|o| collapse(&doc.text_content(o)))
+            .or_else(|| Some(String::new())),
         "progress" | "meter" => doc.attr(node, "value").map(str::to_owned),
         _ => None,
     }
@@ -292,15 +310,24 @@ pub(crate) fn value_of(p: &Painter, node: NodeId) -> Option<String> {
 
 /// The selected `<option>` of a select: the last with `selected`, else the first.
 pub fn selected_option(doc: &Document, select: NodeId) -> Option<NodeId> {
-    let options: Vec<NodeId> = doc.descendants(select).filter(|n| doc.is(*n, "option")).collect();
-    options.iter().rev().find(|o| doc.has_attr(**o, "selected")).or(options.first()).copied()
+    let options: Vec<NodeId> = doc
+        .descendants(select)
+        .filter(|n| doc.is(*n, "option"))
+        .collect();
+    options
+        .iter()
+        .rev()
+        .find(|o| doc.has_attr(**o, "selected"))
+        .or(options.first())
+        .copied()
 }
 
 pub fn is_disabled(doc: &Document, node: NodeId) -> bool {
     if doc.has_attr(node, "disabled") || doc.attr(node, "aria-disabled") == Some("true") {
         return true;
     }
-    doc.ancestors(node).any(|a| doc.is(a, "fieldset") && doc.has_attr(a, "disabled"))
+    doc.ancestors(node)
+        .any(|a| doc.is(a, "fieldset") && doc.has_attr(a, "disabled"))
 }
 
 pub fn is_focusable(doc: &Document, node: NodeId) -> bool {
@@ -311,7 +338,9 @@ pub fn is_focusable(doc: &Document, node: NodeId) -> bool {
         "a" | "area" => doc.has_attr(node, "href"),
         "button" | "select" | "textarea" | "summary" | "iframe" => true,
         "input" => input_type(doc, node) != "hidden",
-        _ => doc.attr(node, "contenteditable").is_some_and(|v| v != "false"),
+        _ => doc
+            .attr(node, "contenteditable")
+            .is_some_and(|v| v != "false"),
     }
 }
 
@@ -322,18 +351,37 @@ pub fn is_interactive(doc: &Document, node: NodeId) -> bool {
     }
     match doc.tag(node).unwrap_or("") {
         "form" | "label" | "option" | "details" => true,
-        _ => matches!(doc.attr(node, "role"), Some("button" | "link" | "checkbox" | "radio" | "tab" | "menuitem" | "switch" | "option")) || doc.has_attr(node, "onclick"),
+        _ => {
+            matches!(
+                doc.attr(node, "role"),
+                Some(
+                    "button"
+                        | "link"
+                        | "checkbox"
+                        | "radio"
+                        | "tab"
+                        | "menuitem"
+                        | "switch"
+                        | "option"
+                )
+            ) || doc.has_attr(node, "onclick")
+        }
     }
 }
 
 /// The checked/selected/expanded state of an element.
 pub fn state_of(doc: &Document, node: NodeId, focused: bool) -> Option<NodeState> {
-    let mut s = NodeState { focused, ..NodeState::default() };
+    let mut s = NodeState {
+        focused,
+        ..NodeState::default()
+    };
     match doc.tag(node).unwrap_or("") {
         "input" => {
             let t = input_type(doc, node);
             if t == "checkbox" || t == "radio" {
-                s.checked = Some(doc.has_attr(node, "checked") || doc.attr(node, "aria-checked") == Some("true"));
+                s.checked = Some(
+                    doc.has_attr(node, "checked") || doc.attr(node, "aria-checked") == Some("true"),
+                );
             }
         }
         "option" => {
@@ -355,7 +403,10 @@ pub fn state_of(doc: &Document, node: NodeId, focused: bool) -> Option<NodeState
 }
 
 /// What a fragment of `node` announces: the semantic, the interaction id and state.
-pub(crate) fn element(p: &Painter, node: NodeId) -> Option<(Semantic, Option<String>, Option<NodeState>)> {
+pub(crate) fn element(
+    p: &Painter,
+    node: NodeId,
+) -> Option<(Semantic, Option<String>, Option<NodeState>)> {
     let doc = p.doc?;
     if node.index() >= doc.len() {
         return None;
@@ -383,9 +434,19 @@ pub(crate) fn element(p: &Painter, node: NodeId) -> Option<(Semantic, Option<Str
 
 /// Emits the interaction region for an element's fragment and fills the scene focus
 /// when the element is focused.
-pub(crate) fn paint_region(p: &mut Painter, key: (NodeId, u32), state: &State, source: StyleSource, rect: SRect) {
-    let StyleSource::Element(node) = source else { return };
-    let Some((sem, interaction, node_state)) = element(p, node) else { return };
+pub(crate) fn paint_region(
+    p: &mut Painter,
+    key: (NodeId, u32),
+    state: &State,
+    source: StyleSource,
+    rect: SRect,
+) {
+    let StyleSource::Element(node) = source else {
+        return;
+    };
+    let Some((sem, interaction, node_state)) = element(p, node) else {
+        return;
+    };
     let id = p.id(key, parts::REGION);
     let i = p.emit(state, id, rect, Primitive::Region);
     let focused = p.ctx.focused == Some(node);
@@ -397,8 +458,22 @@ pub(crate) fn paint_region(p: &mut Painter, key: (NodeId, u32), state: &State, s
         let doc = p.doc.unwrap();
         let text_entry = match doc.tag(node) {
             Some("textarea") => true,
-            Some("input") => !matches!(input_type(doc, node).as_str(), "checkbox" | "radio" | "submit" | "button" | "reset" | "hidden" | "range" | "file" | "color" | "image"),
-            _ => doc.attr(node, "contenteditable").is_some_and(|v| v != "false"),
+            Some("input") => !matches!(
+                input_type(doc, node).as_str(),
+                "checkbox"
+                    | "radio"
+                    | "submit"
+                    | "button"
+                    | "reset"
+                    | "hidden"
+                    | "range"
+                    | "file"
+                    | "color"
+                    | "image"
+            ),
+            _ => doc
+                .attr(node, "contenteditable")
+                .is_some_and(|v| v != "false"),
         };
         p.focus = Some(cw_scene::Focus {
             window: None,
@@ -408,7 +483,12 @@ pub(crate) fn paint_region(p: &mut Painter, key: (NodeId, u32), state: &State, s
             label: sem.label.clone(),
             value: sem.value.clone(),
             caret: None,
-            keyboard: cw_scene::Keyboard { route: "page".into(), window: None, target: interaction, text_entry },
+            keyboard: cw_scene::Keyboard {
+                route: "page".into(),
+                window: None,
+                target: interaction,
+                text_entry,
+            },
         });
     }
 }
@@ -439,7 +519,13 @@ pub fn control_kind(doc: &Document, node: NodeId) -> Option<ControlKind> {
 /// Text semantic for a run.
 #[allow(dead_code)]
 pub fn text_semantic(text: &str) -> Semantic {
-    Semantic { role: "text".into(), label: text.to_owned(), value: None, disabled: false, focusable: false }
+    Semantic {
+        role: "text".into(),
+        label: text.to_owned(),
+        value: None,
+        disabled: false,
+        focusable: false,
+    }
 }
 
 #[allow(dead_code)]

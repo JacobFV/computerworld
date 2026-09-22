@@ -183,7 +183,10 @@ fn a_speakers_page_shows_the_session_and_its_controls_really_work() {
     assert!(text.contains("0:30 / 3:34"), "how far in: {text}");
     assert!(text.contains("From http://spotify.com/ (alice)"), "{text}");
     // The rest of the handed-over queue is "Up next", in the order it will be heard.
-    assert!(text.contains("Green Build") && text.contains("Rollback"), "{text}");
+    assert!(
+        text.contains("Green Build") && text.contains("Rollback"),
+        "{text}"
+    );
     let at = text.find("Green Build").unwrap();
     assert!(at < text.find("Rollback").unwrap(), "in queue order");
 

@@ -67,7 +67,11 @@ fn volume(level: u8) -> Html {
             "/volume",
             &[("level", &pct.to_string())],
             el("button")
-                .class(if pct <= u64::from(level) { "seg on" } else { "seg" })
+                .class(if pct <= u64::from(level) {
+                    "seg on"
+                } else {
+                    "seg"
+                })
                 .attr("aria-label", format!("Volume {pct}%"))
                 .attr("title", format!("Volume {pct}%")),
         )
@@ -76,17 +80,23 @@ fn volume(level: u8) -> Html {
 /// How far in, as a bar that cannot be dragged: the speaker is told where it is, it is
 /// not asked, so this is a readout rather than a control.
 fn scrubber(position_ms: u64, duration_ms: u64) -> Html {
-    let played = (position_ms * 100).checked_div(duration_ms.max(1)).unwrap_or(0).min(100);
+    let played = (position_ms * 100)
+        .checked_div(duration_ms.max(1))
+        .unwrap_or(0)
+        .min(100);
     div("scrub")
         .id("speaker-scrub")
         .child(span("fill").style(&format!("width: {played}%")))
 }
 /// The protocol badges: what this speaker will answer to.
 fn badges(speaker: &Speaker) -> Html {
-    div("chips").id("speaker-protocols").each(
-        speaker.protocols.iter(),
-        |p| span("chip").id(format!("speaker-proto-{p}")).text(protocol(p)),
-    )
+    div("chips")
+        .id("speaker-protocols")
+        .each(speaker.protocols.iter(), |p| {
+            span("chip")
+                .id(format!("speaker-proto-{p}"))
+                .text(protocol(p))
+        })
 }
 /// The header every state shows: the grille mark, the room's name, the model and the
 /// protocols.
@@ -96,7 +106,12 @@ fn header(speaker: &Speaker) -> Html {
         .class("head")
         .child(
             div("who")
-                .child(span("mark").attr("aria-hidden", "true").child(el("i")).child(el("i")))
+                .child(
+                    span("mark")
+                        .attr("aria-hidden", "true")
+                        .child(el("i"))
+                        .child(el("i")),
+                )
                 .child(
                     div("names")
                         .child(el("h1").id("speaker-name").text(speaker.name.as_str()))
@@ -123,7 +138,11 @@ fn volume_panel(speaker: &Speaker) -> Html {
     div("volume")
         .child(
             div("vhead")
-                .child(span("ic ic-volume").attr("aria-hidden", "true").child(el("i")))
+                .child(
+                    span("ic ic-volume")
+                        .attr("aria-hidden", "true")
+                        .child(el("i")),
+                )
                 .child(
                     el("p")
                         .id("speaker-volume")
@@ -170,11 +189,16 @@ fn stage(session: &Session, p: &Player, track: &Track, id: &str) -> Html {
                         .child(span("dot").attr("aria-hidden", "true"))
                         .child(span("word").text(if p.playing { "Playing" } else { "Paused" })),
                 )
-                .child(el("h2").id("speaker-now").class("track").text(if track.title.is_empty() {
-                    id.to_owned()
-                } else {
-                    track.title.clone()
-                }))
+                .child(
+                    el("h2")
+                        .id("speaker-now")
+                        .class("track")
+                        .text(if track.title.is_empty() {
+                            id.to_owned()
+                        } else {
+                            track.title.clone()
+                        }),
+                )
                 .child(
                     el("p")
                         .id("speaker-artist")
@@ -196,10 +220,12 @@ fn stage(session: &Session, p: &Player, track: &Track, id: &str) -> Html {
                         .class("source")
                         .text(format!("From {} ({})", session.source, session.controller)),
                 )
-                .child(
-                    div("actions")
-                        .child(act("speaker-stop", "/stop", &[], button("", "Stop").class("stop"))),
-                ),
+                .child(div("actions").child(act(
+                    "speaker-stop",
+                    "/stop",
+                    &[],
+                    button("", "Stop").class("stop"),
+                ))),
         )
 }
 /// The rest of the handed-over queue, in the order it will be heard.
@@ -216,7 +242,12 @@ fn up_next(session: &Session, p: &Player) -> Html {
             .id("speaker-queue")
             .class("queue empty")
             .child(el("h3").class("qhead").text("Up next"))
-            .child(el("p").id("speaker-queue-end").class("fine").text("Last in the queue"));
+            .child(
+                el("p")
+                    .id("speaker-queue-end")
+                    .class("fine")
+                    .text("Last in the queue"),
+            );
     }
     el("section")
         .id("speaker-queue")
@@ -275,7 +306,12 @@ fn idle(speaker: &Speaker) -> Html {
                         .child(span("dot").attr("aria-hidden", "true"))
                         .child(span("word").text("Idle")),
                 )
-                .child(el("h2").id("speaker-now").class("track").text("Nothing playing"))
+                .child(
+                    el("h2")
+                        .id("speaker-now")
+                        .class("track")
+                        .text("Nothing playing"),
+                )
                 .child(el("p").id("speaker-artist").class("artist").text(ready)),
         )
 }
@@ -304,10 +340,8 @@ pub fn page(speaker: &Speaker, now: u64) -> Document {
         } else {
             "speaker off"
         })
-        .body([
-            div("room")
-                .child(header(speaker))
-                .child(stage_)
-                .child(div("panel").child(volume_panel(speaker)).child(queue)),
-        ])
+        .body([div("room")
+            .child(header(speaker))
+            .child(stage_)
+            .child(div("panel").child(volume_panel(speaker)).child(queue))])
 }

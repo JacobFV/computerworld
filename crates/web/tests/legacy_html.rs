@@ -21,12 +21,21 @@ fn rect_of<'a>(d: &'a Dump, path: &str) -> &'a DumpRect {
             }
         }
     }
-    panic!("no element at {path}; have {:?}", d.nodes.iter().map(|n| n.path().to_owned()).collect::<Vec<_>>());
+    panic!(
+        "no element at {path}; have {:?}",
+        d.nodes
+            .iter()
+            .map(|n| n.path().to_owned())
+            .collect::<Vec<_>>()
+    );
 }
 
 fn computed<'a>(d: &'a Dump, path: &str, prop: &str) -> &'a str {
     for n in &d.nodes {
-        if let DumpNode::Element { path: p, computed, .. } = n {
+        if let DumpNode::Element {
+            path: p, computed, ..
+        } = n
+        {
             if p == path {
                 return computed.get(prop).map(String::as_str).unwrap_or("");
             }
@@ -61,23 +70,53 @@ fn center_element_centres_tables_and_sized_blocks() {
     assert_eq!(t.x, 8.0 + (1264.0 - 500.0) / 2.0);
     let b = rect_of(&d, "html>body>center:nth-child(1)>div:nth-child(2)");
     assert_eq!(b.x, 8.0 + (1264.0 - 100.0) / 2.0);
-    assert_eq!(computed(&d, "html>body>center:nth-child(1)", "text-align"), "-webkit-center");
+    assert_eq!(
+        computed(&d, "html>body>center:nth-child(1)", "text-align"),
+        "-webkit-center"
+    );
     // `align=center` on a cell is the same thing; `align=middle` is plain `center`.
     let d = dump("<!DOCTYPE html><html><body><table><tr><td align=center><div style=\"width:50px\">b</div></td><td align=middle>y</td></tr></table></body></html>");
     let cell = "html>body>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(1)";
     assert_eq!(computed(&d, cell, "text-align"), "-webkit-center");
-    assert_eq!(computed(&d, "html>body>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(2)", "text-align"), "center");
+    assert_eq!(
+        computed(
+            &d,
+            "html>body>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(2)",
+            "text-align"
+        ),
+        "center"
+    );
 }
 
 #[test]
 #[cfg_attr(not(feature = "pipeline"), ignore = "needs the pipeline")]
 fn quirks_mode_tables_reset_text_align_and_line_height_and_inputs_are_border_box() {
     let d = dump(&format!("{QUIRKS}<html><body style=\"line-height: 30px\"><center><table><tr><td>x</td></tr></table></center><input type=text size=20></body></html>"));
-    assert_eq!(computed(&d, "html>body>center:nth-child(1)>table:nth-child(1)", "text-align"), "start");
-    assert_eq!(computed(&d, "html>body>center:nth-child(1)>table:nth-child(1)", "line-height"), "normal");
-    assert_eq!(computed(&d, "html>body>input:nth-child(2)", "box-sizing"), "border-box");
+    assert_eq!(
+        computed(
+            &d,
+            "html>body>center:nth-child(1)>table:nth-child(1)",
+            "text-align"
+        ),
+        "start"
+    );
+    assert_eq!(
+        computed(
+            &d,
+            "html>body>center:nth-child(1)>table:nth-child(1)",
+            "line-height"
+        ),
+        "normal"
+    );
+    assert_eq!(
+        computed(&d, "html>body>input:nth-child(2)", "box-sizing"),
+        "border-box"
+    );
     let d = dump("<!DOCTYPE html><html><body><input type=text size=20></body></html>");
-    assert_eq!(computed(&d, "html>body>input:nth-child(1)", "box-sizing"), "content-box");
+    assert_eq!(
+        computed(&d, "html>body>input:nth-child(1)", "box-sizing"),
+        "content-box"
+    );
 }
 
 #[test]
@@ -104,9 +143,17 @@ fn text_input_width_follows_blink_formula() {
     let p = "html>body>input:nth-child(1)";
     assert_eq!(computed(&d, p, "width"), "531px");
     assert_eq!(rect_of(&d, p).width, 539.0);
-    assert_eq!(rect_of(&d, p).height, 24.0, "18px line (14 + 3 + the 0.52px gap rounded to 1) + 2px padding + 4px border");
+    assert_eq!(
+        rect_of(&d, p).height,
+        24.0,
+        "18px line (14 + 3 + the 0.52px gap rounded to 1) + 2px padding + 4px border"
+    );
     let p = "html>body>input:nth-child(2)";
-    assert!(close(rect_of(&d, p).width, 154.0, 1.0), "{}", rect_of(&d, p).width);
+    assert!(
+        close(rect_of(&d, p).width, 154.0, 1.0),
+        "{}",
+        rect_of(&d, p).width
+    );
     assert_eq!(rect_of(&d, p).height, 21.0);
 }
 
@@ -116,7 +163,10 @@ fn rows_and_row_groups_exclude_the_outer_border_spacing() {
     let d = dump("<!DOCTYPE html><html><body style=\"margin:16px\"><table style=\"border:1px solid; border-spacing:4px\"><tr><td style=\"width:100px; padding:0\">a</td><td style=\"width:50px; padding:0\">b</td></tr></table></body></html>");
     let table = rect_of(&d, "html>body>table:nth-child(1)");
     let tbody = rect_of(&d, "html>body>table:nth-child(1)>tbody:nth-child(1)");
-    let tr = rect_of(&d, "html>body>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)");
+    let tr = rect_of(
+        &d,
+        "html>body>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)",
+    );
     assert_eq!(table.x, 16.0);
     assert_eq!(tbody.x, 16.0 + 1.0 + 4.0);
     assert_eq!(tr.x, tbody.x);
@@ -134,7 +184,10 @@ fn table_rect_includes_its_caption() {
     assert_eq!(cap.height, 23.0, "15px line plus 8px padding");
     assert_eq!(t.y, 0.0);
     assert_eq!(t.height, 23.0 + 30.0);
-    assert_eq!(computed(&d, "html>body>table:nth-child(1)", "height"), "53px");
+    assert_eq!(
+        computed(&d, "html>body>table:nth-child(1)", "height"),
+        "53px"
+    );
 }
 
 #[test]
@@ -142,7 +195,9 @@ fn table_rect_includes_its_caption() {
 fn fixed_layout_uses_column_widths_as_border_boxes() {
     let d = dump("<!DOCTYPE html><html><body style=\"margin:16px\"><table style=\"table-layout:fixed; width:600px; border-collapse:collapse\"><col style=\"width:80px\"><col style=\"width:220px\"><col><col><tr><th style=\"border:1px solid; padding:2px 4px\">a</th><th style=\"border:1px solid; padding:2px 4px\">b</th><th style=\"border:1px solid; padding:2px 4px\">c</th><th style=\"border:1px solid; padding:2px 4px\">d</th></tr></table></body></html>");
     let row = "html>body>table:nth-child(1)>tbody:nth-child(2)>tr:nth-child(1)";
-    let w: Vec<f64> = (1..=4).map(|i| rect_of(&d, &format!("{row}>th:nth-child({i})")).width).collect();
+    let w: Vec<f64> = (1..=4)
+        .map(|i| rect_of(&d, &format!("{row}>th:nth-child({i})")).width)
+        .collect();
     assert_eq!(w, vec![80.0, 220.0, 149.5, 149.5]);
     assert_eq!(rect_of(&d, "html>body>table:nth-child(1)").width, 600.0);
 }
@@ -175,16 +230,29 @@ fn border_zero_draws_no_cell_borders_and_border_one_does() {
     let cell0 = "html>body>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(1)";
     let cell1 = "html>body>table:nth-child(2)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(1)";
     assert_eq!(computed(&d, cell0, "border-left-width"), "0px");
-    assert_eq!(computed(&d, "html>body>table:nth-child(1)", "border-left-width"), "0px");
+    assert_eq!(
+        computed(&d, "html>body>table:nth-child(1)", "border-left-width"),
+        "0px"
+    );
     assert_eq!(computed(&d, cell1, "border-left-width"), "1px");
-    assert_eq!(computed(&d, "html>body>table:nth-child(2)", "border-left-width"), "1px");
+    assert_eq!(
+        computed(&d, "html>body>table:nth-child(2)", "border-left-width"),
+        "1px"
+    );
 }
 
 #[test]
 #[cfg_attr(not(feature = "pipeline"), ignore = "needs the pipeline")]
 fn tables_do_not_inherit_webkit_center() {
     let d = dump("<!DOCTYPE html><html><body><center><table><tr><td>a</td></tr></table></center></body></html>");
-    assert_eq!(computed(&d, "html>body>center:nth-child(1)>table:nth-child(1)", "text-align"), "start");
+    assert_eq!(
+        computed(
+            &d,
+            "html>body>center:nth-child(1)>table:nth-child(1)",
+            "text-align"
+        ),
+        "start"
+    );
     assert_eq!(computed(&d, "html>body>center:nth-child(1)>table:nth-child(1)>tbody:nth-child(1)>tr:nth-child(1)>td:nth-child(1)", "text-align"), "start");
 }
 
@@ -211,7 +279,16 @@ fn quirks_mode_line_height_quirk() {
 #[cfg_attr(not(feature = "pipeline"), ignore = "needs the pipeline")]
 fn body_link_colours_anchors() {
     let d = dump("<!DOCTYPE html><html><body link=\"#0000cc\"><a href=x>a</a><a>b</a><a href=y style=\"color: red\">c</a></body></html>");
-    assert_eq!(computed(&d, "html>body>a:nth-child(1)", "color"), "rgb(0, 0, 204)");
-    assert_eq!(computed(&d, "html>body>a:nth-child(2)", "color"), "rgb(0, 0, 0)");
-    assert_eq!(computed(&d, "html>body>a:nth-child(3)", "color"), "rgb(255, 0, 0)");
+    assert_eq!(
+        computed(&d, "html>body>a:nth-child(1)", "color"),
+        "rgb(0, 0, 204)"
+    );
+    assert_eq!(
+        computed(&d, "html>body>a:nth-child(2)", "color"),
+        "rgb(0, 0, 0)"
+    );
+    assert_eq!(
+        computed(&d, "html>body>a:nth-child(3)", "color"),
+        "rgb(255, 0, 0)"
+    );
 }

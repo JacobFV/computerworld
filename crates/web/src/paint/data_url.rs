@@ -13,8 +13,16 @@ pub fn decode(url: &str) -> Option<(String, Vec<u8>)> {
     let mime = params.next().unwrap_or("").trim().to_ascii_lowercase();
     let base64 = params.any(|p| p.trim().eq_ignore_ascii_case("base64"));
     let bytes = percent_decode(data);
-    let bytes = if base64 { decode_base64(&bytes)? } else { bytes };
-    let mime = if mime.is_empty() { "text/plain".to_owned() } else { mime };
+    let bytes = if base64 {
+        decode_base64(&bytes)?
+    } else {
+        bytes
+    };
+    let mime = if mime.is_empty() {
+        "text/plain".to_owned()
+    } else {
+        mime
+    };
     Some((mime, bytes))
 }
 
@@ -97,9 +105,13 @@ mod tests {
 
     #[test]
     fn plain_text_with_percent_encoding() {
-        let (mime, bytes) = decode("data:text/css,.picture%20%7B%20background%3A%20none%3B%20%7D").unwrap();
+        let (mime, bytes) =
+            decode("data:text/css,.picture%20%7B%20background%3A%20none%3B%20%7D").unwrap();
         assert_eq!(mime, "text/css");
-        assert_eq!(String::from_utf8(bytes).unwrap(), ".picture { background: none; }");
+        assert_eq!(
+            String::from_utf8(bytes).unwrap(),
+            ".picture { background: none; }"
+        );
     }
 
     #[test]
@@ -115,7 +127,10 @@ mod tests {
         assert_eq!(mime, "image/png");
         assert_eq!(bytes, b"hello");
         assert_eq!(decode("data:;base64,aGVsbG8").unwrap().1, b"hello");
-        assert_eq!(decode("data:;base64,aGVs%2FbG8").unwrap().1, decode_base64(b"aGVs/bG8").unwrap());
+        assert_eq!(
+            decode("data:;base64,aGVs%2FbG8").unwrap().1,
+            decode_base64(b"aGVs/bG8").unwrap()
+        );
     }
 
     #[test]

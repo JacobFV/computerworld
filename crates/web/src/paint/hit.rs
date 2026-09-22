@@ -16,13 +16,29 @@ use crate::Viewport;
 
 /// The topmost element at `(x, y)` in scene pixels, with no scroll and no context.
 pub fn hit_test(tree: &FragmentTree, styles: &StyleSet, x_px: i32, y_px: i32) -> Option<NodeId> {
-    let viewport = Viewport { width: super::upx(tree.viewport_width).max(1), height: super::upx(tree.viewport_height).max(1), scale: 1, zoom: 100 };
+    let viewport = Viewport {
+        width: super::upx(tree.viewport_width).max(1),
+        height: super::upx(tree.viewport_height).max(1),
+        scale: 1,
+        zoom: 100,
+    };
     hit_test_with(tree, styles, viewport, &PaintContext::default(), x_px, y_px)
 }
 
 /// Hit test with the scroll offsets and state of a paint context.
-pub fn hit_test_with(tree: &FragmentTree, styles: &StyleSet, viewport: Viewport, ctx: &PaintContext, x_px: i32, y_px: i32) -> Option<NodeId> {
+pub fn hit_test_with(
+    tree: &FragmentTree,
+    styles: &StyleSet,
+    viewport: Viewport,
+    ctx: &PaintContext,
+    x_px: i32,
+    y_px: i32,
+) -> Option<NodeId> {
     let mut p = Painter::new(None, styles, tree, viewport, ctx);
     p.run();
-    p.hits.iter().rev().find(|h| !h.pointer_none && h.covers(x_px, y_px)).map(|h| h.node)
+    p.hits
+        .iter()
+        .rev()
+        .find(|h| !h.pointer_none && h.covers(x_px, y_px))
+        .map(|h| h.node)
 }

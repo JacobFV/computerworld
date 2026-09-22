@@ -60,8 +60,15 @@ pub(crate) fn draw_size(font: &Font, text: &str) -> u16 {
     if size <= 1 || font.size == crate::geom::Au::from_px_i32(i32::from(size)) {
         return size;
     }
-    let measured = i64::from(crate::layout::text::measure(font, text, crate::geom::Au::ZERO, crate::geom::Au::ZERO).0);
-    let drawn = i64::from(cw_scene::metrics::text_width(font.typeface, font.scene_style(), text, size)) * 64;
+    let measured = i64::from(
+        crate::layout::text::measure(font, text, crate::geom::Au::ZERO, crate::geom::Au::ZERO).0,
+    );
+    let drawn = i64::from(cw_scene::metrics::text_width(
+        font.typeface,
+        font.scene_style(),
+        text,
+        size,
+    )) * 64;
     // `text_width` rounds up to a whole pixel, so one pixel of slack is not overrun.
     if drawn > measured + 64 {
         size - 1
@@ -72,7 +79,12 @@ pub(crate) fn draw_size(font: &Font, text: &str) -> u16 {
 
 /// Width of `text` in `font`, whole pixels rounded up, at the size it is drawn at.
 pub(crate) fn width_px(font: &Font, text: &str) -> u32 {
-    cw_scene::metrics::text_width(font.typeface, font.scene_style(), text, draw_size(font, text))
+    cw_scene::metrics::text_width(
+        font.typeface,
+        font.scene_style(),
+        text,
+        draw_size(font, text),
+    )
 }
 
 /// The bounds a text node needs so the renderer draws its baseline at `baseline`.
@@ -82,11 +94,25 @@ pub(crate) fn text_bounds(x: i32, baseline: i32, width: u32, size: u16) -> SRect
 
 /// Emits one text node with its baseline at `baseline`; returns the node index.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn draw_text(p: &mut Painter, state: &State, id: u64, x: i32, baseline: i32, text: &str, font: &Font, color: Color) -> usize {
+pub(crate) fn draw_text(
+    p: &mut Painter,
+    state: &State,
+    id: u64,
+    x: i32,
+    baseline: i32,
+    text: &str,
+    font: &Font,
+    color: Color,
+) -> usize {
     let size = draw_size(font, text);
     let w = width_px(font, text);
     let bounds = text_bounds(x, baseline, w, size);
-    p.emit(state, id, bounds, Primitive::ui_text_face(text, color, size, font.scene_style(), font.typeface))
+    p.emit(
+        state,
+        id,
+        bounds,
+        Primitive::ui_text_face(text, color, size, font.scene_style(), font.typeface),
+    )
 }
 
 /// The decoration in force for a text run: the run's style, plus (when the DOM is
@@ -127,7 +153,9 @@ fn offset_px(font: &Font, text: &str, at: usize) -> i32 {
     let mut prev = None;
     let mut sum = 0i64;
     for c in text[..at.min(text.len())].chars() {
-        sum += prev.map_or(0, |p| cw_scene::metrics::kern(font.typeface, style, p, c, size)) + cw_scene::metrics::advance(font.typeface, style, c, size);
+        sum += prev.map_or(0, |p| {
+            cw_scene::metrics::kern(font.typeface, style, p, c, size)
+        }) + cw_scene::metrics::advance(font.typeface, style, c, size);
         prev = Some(c);
     }
     ((sum + 32) / 64) as i32
@@ -135,7 +163,17 @@ fn offset_px(font: &Font, text: &str, at: usize) -> i32 {
 
 /// Paints one text run fragment.
 pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
-    let FragmentKind::Text { source, text, node, range, baseline, ellipsis } = &f.kind else { return };
+    let FragmentKind::Text {
+        source,
+        text,
+        node,
+        range,
+        baseline,
+        ellipsis,
+    } = &f.kind
+    else {
+        return;
+    };
     if text.is_empty() && !*ellipsis {
         // A preserved newline's zero-width run: nothing to draw.
         return;
@@ -154,7 +192,16 @@ pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
     let size = draw_size(font, &shown);
     let width = width_px(font, &shown);
     let bounds = text_bounds(x, baseline_px, width, size);
-    p.record_hit(state, source.node(), srect, 0, matches!(style.pointer_events, crate::style::computed::PointerEvents::None));
+    p.record_hit(
+        state,
+        source.node(),
+        srect,
+        0,
+        matches!(
+            style.pointer_events,
+            crate::style::computed::PointerEvents::None
+        ),
+    );
 
     // Selection highlight.
     if let Some(n) = node {
@@ -164,7 +211,21 @@ pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
                 let x0 = x + offset_px(font, text, lo - range.0);
                 let x1 = x + offset_px(font, text, hi - range.0);
                 let id = p.id(key, parts::SELECTION);
-                p.emit(state, id, SRect::new(x0, srect.y, (x1 - x0).max(1) as u32, srect.height.max(line_height_px(size))), Primitive::Box { fill: SELECTION, border: None, border_width: 0 });
+                p.emit(
+                    state,
+                    id,
+                    SRect::new(
+                        x0,
+                        srect.y,
+                        (x1 - x0).max(1) as u32,
+                        srect.height.max(line_height_px(size)),
+                    ),
+                    Primitive::Box {
+                        fill: SELECTION,
+                        border: None,
+                        border_width: 0,
+                    },
+                );
             }
         }
     }
@@ -180,24 +241,62 @@ pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
         }
         let part = p.next_part(key);
         let id = p.id(key, part);
-        draw_spaced(p, state, key, id, x + px(sh.offset_x), baseline_px + px(sh.offset_y), &shown, font, color, style.letter_spacing, false);
+        draw_spaced(
+            p,
+            state,
+            key,
+            id,
+            x + px(sh.offset_x),
+            baseline_px + px(sh.offset_y),
+            &shown,
+            font,
+            color,
+            style.letter_spacing,
+            false,
+        );
     }
 
     // The text itself.
     let id = p.id(key, parts::TEXT);
-    let idx = draw_spaced(p, state, key, id, x, baseline_px, &shown, font, style.color, style.letter_spacing, true);
+    let idx = draw_spaced(
+        p,
+        state,
+        key,
+        id,
+        x,
+        baseline_px,
+        &shown,
+        font,
+        style.color,
+        style.letter_spacing,
+        true,
+    );
     if let Some(i) = idx {
-        p.nodes[i].semantic = Some(cw_scene::Semantic { role: "text".into(), label: shown.clone(), value: None, disabled: false, focusable: false });
+        p.nodes[i].semantic = Some(cw_scene::Semantic {
+            role: "text".into(),
+            label: shown.clone(),
+            value: None,
+            disabled: false,
+            focusable: false,
+        });
     }
 
     // Decorations.
     let thickness = (size as u32 / 16).max(1);
-    let total_width = if style.letter_spacing.is_zero() { width } else { (bounds.width - 2) + shown.chars().count() as u32 * px(style.letter_spacing).max(0) as u32 };
+    let total_width = if style.letter_spacing.is_zero() {
+        width
+    } else {
+        (bounds.width - 2) + shown.chars().count() as u32 * px(style.letter_spacing).max(0) as u32
+    };
     for deco in decoration_of(p, &style, *node) {
         let color = deco.color.unwrap_or(style.color);
         let lines = [
             (deco.underline, parts::UNDERLINE, baseline_px + 1),
-            (deco.line_through, parts::LINE_THROUGH, baseline_px - (size as i32 * 35 / 100)),
+            (
+                deco.line_through,
+                parts::LINE_THROUGH,
+                baseline_px - (size as i32 * 35 / 100),
+            ),
             (deco.overline, parts::OVERLINE, baseline_px - size as i32),
         ];
         for (on, part, y) in lines {
@@ -208,25 +307,65 @@ pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
             let first = p.id(key, part);
             match deco.style {
                 TextDecorationStyle::Double => {
-                    p.emit(state, first, line, Primitive::Box { fill: color, border: None, border_width: 0 });
+                    p.emit(
+                        state,
+                        first,
+                        line,
+                        Primitive::Box {
+                            fill: color,
+                            border: None,
+                            border_width: 0,
+                        },
+                    );
                     let second = p.next_part(key);
                     let id = p.id(key, second);
-                    p.emit(state, id, SRect::new(x, y + 2 * thickness as i32, total_width, thickness), Primitive::Box { fill: color, border: None, border_width: 0 });
+                    p.emit(
+                        state,
+                        id,
+                        SRect::new(x, y + 2 * thickness as i32, total_width, thickness),
+                        Primitive::Box {
+                            fill: color,
+                            border: None,
+                            border_width: 0,
+                        },
+                    );
                 }
                 TextDecorationStyle::Dotted | TextDecorationStyle::Dashed => {
-                    let dash = if deco.style == TextDecorationStyle::Dotted { thickness } else { 3 * thickness };
+                    let dash = if deco.style == TextDecorationStyle::Dotted {
+                        thickness
+                    } else {
+                        3 * thickness
+                    };
                     let mut at = 0;
                     let mut n = 0;
                     while at < total_width && n < 2048 {
                         let part = if n == 0 { part } else { p.next_part(key) };
                         let id = p.id(key, part);
-                        p.emit(state, id, SRect::new(x + at as i32, y, dash.min(total_width - at), thickness), Primitive::Box { fill: color, border: None, border_width: 0 });
+                        p.emit(
+                            state,
+                            id,
+                            SRect::new(x + at as i32, y, dash.min(total_width - at), thickness),
+                            Primitive::Box {
+                                fill: color,
+                                border: None,
+                                border_width: 0,
+                            },
+                        );
                         at += 2 * dash;
                         n += 1;
                     }
                 }
                 TextDecorationStyle::Solid | TextDecorationStyle::Wavy => {
-                    p.emit(state, first, line, Primitive::Box { fill: color, border: None, border_width: 0 });
+                    p.emit(
+                        state,
+                        first,
+                        line,
+                        Primitive::Box {
+                            fill: color,
+                            border: None,
+                            border_width: 0,
+                        },
+                    );
                 }
             }
         }
@@ -236,7 +375,19 @@ pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
 /// Draws `text` as one node, or one node per character when `spacing` is non-zero.
 /// Returns the index of the single node when there is one.
 #[allow(clippy::too_many_arguments)]
-fn draw_spaced(p: &mut Painter, state: &State, key: (NodeId, u32), id: u64, x: i32, baseline: i32, text: &str, font: &Font, color: Color, spacing: crate::geom::Au, main: bool) -> Option<usize> {
+fn draw_spaced(
+    p: &mut Painter,
+    state: &State,
+    key: (NodeId, u32),
+    id: u64,
+    x: i32,
+    baseline: i32,
+    text: &str,
+    font: &Font,
+    color: Color,
+    spacing: crate::geom::Au,
+    main: bool,
+) -> Option<usize> {
     if spacing.is_zero() {
         return Some(draw_text(p, state, id, x, baseline, text, font, color));
     }
@@ -247,14 +398,21 @@ fn draw_spaced(p: &mut Painter, state: &State, key: (NodeId, u32), id: u64, x: i
     let mut first = true;
     for ch in text.chars() {
         let s = ch.to_string();
-        let part_id = if first && main { id } else {
+        let part_id = if first && main {
+            id
+        } else {
             let part = p.next_part(key);
             p.id(key, part)
         };
         first = false;
         let gx = ((pen + 32) / 64) as i32;
         let w = cw_scene::metrics::text_width(font.typeface, style, &s, size);
-        p.emit(state, part_id, text_bounds(gx, baseline, w, size), Primitive::ui_text_face(s, color, size, style, font.typeface));
+        p.emit(
+            state,
+            part_id,
+            text_bounds(gx, baseline, w, size),
+            Primitive::ui_text_face(s, color, size, style, font.typeface),
+        );
         pen += cw_scene::metrics::advance(font.typeface, style, ch, size) + sp as i64 * 64;
     }
     None

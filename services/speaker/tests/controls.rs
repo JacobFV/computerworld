@@ -141,7 +141,10 @@ fn the_slider_and_stop_do_what_they_say() {
             .find(|n| doc.attr(*n, "name") == Some("level"))
             .expect("the step carries a level");
         assert_eq!(doc.attr(level, "value"), Some(pct.to_string().as_str()));
-        assert_eq!(submit(&mut state, "/volume", &format!("level={pct}")).status, 200);
+        assert_eq!(
+            submit(&mut state, "/volume", &format!("level={pct}")).status,
+            200
+        );
         let typed: Value = state.clone();
         assert_eq!(typed["volume"], pct, "step {pct}% did not set the volume");
     }

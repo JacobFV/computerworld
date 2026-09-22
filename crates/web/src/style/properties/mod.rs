@@ -19,7 +19,10 @@ pub enum Specified {
     CssWide(CssWide),
     /// A value containing `var()`, substituted and re-parsed at computed-value time.
     /// `property` is the declared name (a longhand or the shorthand it came from).
-    Pending { property: String, value: Vec<ComponentValue> },
+    Pending {
+        property: String,
+        value: Vec<ComponentValue>,
+    },
 
     Display(Display),
     Position(Position),
@@ -53,7 +56,11 @@ pub enum Specified {
     LineHeight(LineHeightSpec),
     TextAlign(TextAlign),
     TextTransform(TextTransform),
-    TextDecorationLine { underline: bool, overline: bool, line_through: bool },
+    TextDecorationLine {
+        underline: bool,
+        overline: bool,
+        line_through: bool,
+    },
     TextDecorationStyle(TextDecorationStyle),
     TextOverflow(TextOverflow),
     WhiteSpace(WhiteSpace),
@@ -468,7 +475,10 @@ impl LonghandId {
 /// shorthand name. Unknown names come back unchanged (lower-cased).
 pub fn normalize_property_name(name: &str) -> String {
     let lower = name.to_ascii_lowercase();
-    let stripped = lower.strip_prefix("-webkit-").or_else(|| lower.strip_prefix("-moz-")).unwrap_or(&lower);
+    let stripped = lower
+        .strip_prefix("-webkit-")
+        .or_else(|| lower.strip_prefix("-moz-"))
+        .unwrap_or(&lower);
     match stripped {
         "word-wrap" => "overflow-wrap",
         "grid-row-gap" => "row-gap",
@@ -476,7 +486,11 @@ pub fn normalize_property_name(name: &str) -> String {
         "grid-gap" => "gap",
         "box-orient" => "-webkit-box-orient",
         "box-align" | "box-pack" | "box-flex" => return lower,
-        "font-smoothing" | "osx-font-smoothing" | "tap-highlight-color" | "text-size-adjust" | "overflow-scrolling" => return lower,
+        "font-smoothing"
+        | "osx-font-smoothing"
+        | "tap-highlight-color"
+        | "text-size-adjust"
+        | "overflow-scrolling" => return lower,
         s => s,
     }
     .to_owned()
@@ -490,7 +504,10 @@ pub fn parse_longhand(id: LonghandId, value: &[ComponentValue]) -> Option<Specif
         return Some(Specified::CssWide(k));
     }
     if contains_var(value) {
-        return Some(Specified::Pending { property: id.name().to_owned(), value: value.to_vec() });
+        return Some(Specified::Pending {
+            property: id.name().to_owned(),
+            value: value.to_vec(),
+        });
     }
     p.parse_entirely(id.def().parse)
 }
@@ -515,10 +532,22 @@ mod tests {
             assert_eq!(LonghandId::by_name(d.name), Some(d.id));
             assert_eq!(d.id.name(), d.name);
         }
-        assert_eq!(LonghandId::by_name("-webkit-box-sizing"), Some(LonghandId::BoxSizing));
-        assert_eq!(LonghandId::by_name("-moz-appearance"), Some(LonghandId::Appearance));
-        assert_eq!(LonghandId::by_name("word-wrap"), Some(LonghandId::OverflowWrap));
-        assert_eq!(LonghandId::by_name("grid-row-gap"), Some(LonghandId::RowGap));
+        assert_eq!(
+            LonghandId::by_name("-webkit-box-sizing"),
+            Some(LonghandId::BoxSizing)
+        );
+        assert_eq!(
+            LonghandId::by_name("-moz-appearance"),
+            Some(LonghandId::Appearance)
+        );
+        assert_eq!(
+            LonghandId::by_name("word-wrap"),
+            Some(LonghandId::OverflowWrap)
+        );
+        assert_eq!(
+            LonghandId::by_name("grid-row-gap"),
+            Some(LonghandId::RowGap)
+        );
         assert_eq!(LonghandId::by_name("DISPLAY"), Some(LonghandId::Display));
         assert_eq!(LonghandId::by_name("margin"), None);
         assert_eq!(LonghandId::by_name("nonsense"), None);

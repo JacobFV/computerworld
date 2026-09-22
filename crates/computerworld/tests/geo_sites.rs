@@ -26,25 +26,43 @@ fn world() -> (World, String) {
 }
 fn act(world: &mut World, session: &str, channel: &str, op: &str, payload: Value) -> Value {
     let result = world
-        .step(session, vec![ActionEnvelope::new(channel, op, MACHINE, payload)])
+        .step(
+            session,
+            vec![ActionEnvelope::new(channel, op, MACHINE, payload)],
+        )
         .unwrap();
     assert!(result.outcomes[0].success, "{op}: {:?}", result.outcomes[0]);
     result.outcomes[0].value.clone()
 }
 fn navigate(world: &mut World, session: &str, url: &str) {
-    act(world, session, "browser.v1", "navigate", json!({ "url": url }));
+    act(
+        world,
+        session,
+        "browser.v1",
+        "navigate",
+        json!({ "url": url }),
+    );
 }
 fn click(world: &mut World, session: &str, id: &str) {
     act(world, session, "browser.v1", "click", json!({ "id": id }));
 }
 fn fill(world: &mut World, session: &str, id: &str, value: &str) {
-    act(world, session, "browser.v1", "fill", json!({ "id": id, "value": value }));
+    act(
+        world,
+        session,
+        "browser.v1",
+        "fill",
+        json!({ "id": id, "value": value }),
+    );
 }
 fn page(world: &World, session: &str) -> Value {
     world.observe(session).unwrap().channels["semantic.v1"][MACHINE].clone()
 }
 fn url(world: &World, session: &str) -> String {
-    world.observe(session).unwrap().channels["browser.v1"][MACHINE]["url"].as_str().unwrap().to_owned()
+    world.observe(session).unwrap().channels["browser.v1"][MACHINE]["url"]
+        .as_str()
+        .unwrap()
+        .to_owned()
 }
 /// Every element of the semantic tree, flattened.
 fn elements(page: &Value) -> Vec<Value> {
@@ -71,7 +89,9 @@ fn has_id(all: &[Value], id: &str) -> bool {
 /// Whether any element's text or label carries `needle`.
 fn says(all: &[Value], needle: &str) -> bool {
     all.iter().any(|e| {
-        ["text", "label", "value"].iter().any(|k| e[*k].as_str().is_some_and(|t| t.contains(needle)))
+        ["text", "label", "value"]
+            .iter()
+            .any(|k| e[*k].as_str().is_some_and(|t| t.contains(needle)))
     })
 }
 
@@ -87,8 +107,14 @@ fn google_maps_finds_a_place_gets_directions_and_saves_it() {
     assert_eq!(q["kind"], "input");
     assert_eq!(q["label"], "Search places");
     assert_eq!(by_id(&all, "hdr-search-go")["kind"], "button");
-    assert_eq!(by_id(&all, "nav-saved")["url"], "http://maps.google.com/maps/saved");
-    assert_eq!(by_id(&all, "nav-notes")["url"], "http://maps.google.com/maps/notes");
+    assert_eq!(
+        by_id(&all, "nav-saved")["url"],
+        "http://maps.google.com/maps/saved"
+    );
+    assert_eq!(
+        by_id(&all, "nav-notes")["url"],
+        "http://maps.google.com/maps/notes"
+    );
     assert_eq!(by_id(&all, "dir-form")["kind"], "form");
     for id in ["dir-from", "dir-to", "dir-mode"] {
         assert_eq!(by_id(&all, id)["kind"], "input", "{id}");
@@ -96,30 +122,51 @@ fn google_maps_finds_a_place_gets_directions_and_saves_it() {
     assert_eq!(by_id(&all, "dir-mode")["value"], "driving");
     assert_eq!(by_id(&all, "dir-form-go")["text"], "Directions");
     // alice's saved places and the nearby list are cards that are one link each.
-    assert_eq!(by_id(&all, "home-saved-0")["url"], "http://maps.google.com/maps/place/northstar-hq");
+    assert_eq!(
+        by_id(&all, "home-saved-0")["url"],
+        "http://maps.google.com/maps/place/northstar-hq"
+    );
     assert_eq!(by_id(&all, "home-place-0")["kind"], "link");
 
     // Search from the floating box: a GET, so the URL is the query.
     fill(&mut world, &session, "hdr-q", "coffee");
     click(&mut world, &session, "hdr-search-go");
-    assert_eq!(url(&world, &session), "http://maps.google.com/search?q=coffee");
+    assert_eq!(
+        url(&world, &session),
+        "http://maps.google.com/search?q=coffee"
+    );
     let all = elements(&page(&world, &session));
     assert_eq!(by_id(&all, "hdr-q")["value"], "coffee");
     let first = by_id(&all, "r-0");
     assert_eq!(first["kind"], "link");
-    assert_eq!(first["url"], "http://maps.google.com/maps/place/harborline-coffee");
-    assert!(first["text"].as_str().unwrap().contains("Harborline Coffee"), "{first:?}");
+    assert_eq!(
+        first["url"],
+        "http://maps.google.com/maps/place/harborline-coffee"
+    );
+    assert!(
+        first["text"]
+            .as_str()
+            .unwrap()
+            .contains("Harborline Coffee"),
+        "{first:?}"
+    );
 
     // Open the place and ask for directions from it.
     click(&mut world, &session, "r-0");
-    assert_eq!(url(&world, &session), "http://maps.google.com/maps/place/harborline-coffee");
+    assert_eq!(
+        url(&world, &session),
+        "http://maps.google.com/maps/place/harborline-coffee"
+    );
     let place = page(&world, &session);
     assert_eq!(place["title"], "Harborline Coffee");
     let all = elements(&place);
     assert!(says(&all, "128 Bayfront Ave, Seattle WA"));
     assert_eq!(by_id(&all, "place-dir-from")["value"], "harborline-coffee");
     // alice already keeps this cafe in Your places, so the button offers to remove it.
-    assert_eq!(by_id(&all, "save-form-go")["text"], "Remove from Your places");
+    assert_eq!(
+        by_id(&all, "save-form-go")["text"],
+        "Remove from Your places"
+    );
     fill(&mut world, &session, "place-dir-to", "devcon-center");
     click(&mut world, &session, "place-dir-go");
     assert_eq!(
@@ -138,12 +185,18 @@ fn google_maps_finds_a_place_gets_directions_and_saves_it() {
     );
     assert!(says(&elements(&page(&world, &session)), "walking"));
     click(&mut world, &session, "dir-to-place");
-    assert_eq!(url(&world, &session), "http://maps.google.com/maps/place/devcon-center");
+    assert_eq!(
+        url(&world, &session),
+        "http://maps.google.com/maps/place/devcon-center"
+    );
 
     // Saving is a one-button POST form; the page that comes back shows the new state.
     click(&mut world, &session, "save-form-go");
     let all = elements(&page(&world, &session));
-    assert_eq!(by_id(&all, "save-form-go")["text"], "Remove from Your places");
+    assert_eq!(
+        by_id(&all, "save-form-go")["text"],
+        "Remove from Your places"
+    );
     navigate(&mut world, &session, "http://maps.google.com/maps/saved");
     let all = elements(&page(&world, &session));
     assert!(says(&all, "Cascade Convention Center"));
@@ -162,12 +215,26 @@ fn openstreetmap_reads_the_notes_and_adds_one() {
     assert_eq!(url(&world, &session), "http://openstreetmap.org/maps/notes");
     let all = elements(&page(&world, &session));
     let note = by_id(&all, "n-0");
-    assert_eq!(note["url"], "http://openstreetmap.org/maps/place/bayfront-depot");
-    assert!(note["text"].as_str().unwrap().contains("southbound platform entrance"), "{note:?}");
+    assert_eq!(
+        note["url"],
+        "http://openstreetmap.org/maps/place/bayfront-depot"
+    );
+    assert!(
+        note["text"]
+            .as_str()
+            .unwrap()
+            .contains("southbound platform entrance"),
+        "{note:?}"
+    );
     click(&mut world, &session, "n-0");
     let all = elements(&page(&world, &session));
     assert_eq!(by_id(&all, "note-place")["value"], "bayfront-depot");
-    fill(&mut world, &session, "note-text", "Bike racks moved to the east entrance.");
+    fill(
+        &mut world,
+        &session,
+        "note-text",
+        "Bike racks moved to the east entrance.",
+    );
     click(&mut world, &session, "note-form-go");
     let all = elements(&page(&world, &session));
     assert!(says(&all, "Bike racks moved to the east entrance."));
@@ -189,7 +256,10 @@ fn weather_reads_the_forecast_switches_units_and_acknowledges_the_alert() {
     assert_eq!(home["title"], "Seattle, WA weather");
     let all = elements(&home);
     assert_eq!(by_id(&all, "hdr-q")["label"], "Search a city");
-    assert_eq!(by_id(&all, "nav-tenday")["url"], "http://weather.com/weather/tenday/l/seattle");
+    assert_eq!(
+        by_id(&all, "nav-tenday")["url"],
+        "http://weather.com/weather/tenday/l/seattle"
+    );
     assert_eq!(by_id(&all, "units-value")["value"], "f");
     assert_eq!(by_id(&all, "loc-city")["value"], "seattle");
     assert!(says(&all, "57°") && says(&all, "80% rain"));
@@ -197,7 +267,10 @@ fn weather_reads_the_forecast_switches_units_and_acknowledges_the_alert() {
     assert_eq!(by_id(&all, "alert-0-ack-go")["text"], "Got it");
 
     click(&mut world, &session, "wx-ten");
-    assert_eq!(url(&world, &session), "http://weather.com/weather/tenday/l/seattle");
+    assert_eq!(
+        url(&world, &session),
+        "http://weather.com/weather/tenday/l/seattle"
+    );
     let all = elements(&page(&world, &session));
     assert!(says(&all, "10 day forecast") && says(&all, "Partly cloudy"));
 
@@ -216,9 +289,15 @@ fn weather_reads_the_forecast_switches_units_and_acknowledges_the_alert() {
     // Search a city and open it.
     fill(&mut world, &session, "hdr-q", "portland");
     click(&mut world, &session, "hdr-search-go");
-    assert_eq!(url(&world, &session), "http://weather.com/search?q=portland");
+    assert_eq!(
+        url(&world, &session),
+        "http://weather.com/search?q=portland"
+    );
     let all = elements(&page(&world, &session));
-    assert_eq!(by_id(&all, "r-0")["url"], "http://weather.com/weather/today/l/portland");
+    assert_eq!(
+        by_id(&all, "r-0")["url"],
+        "http://weather.com/weather/today/l/portland"
+    );
     click(&mut world, &session, "r-0");
     assert_eq!(page(&world, &session)["title"], "Portland, OR weather");
 }

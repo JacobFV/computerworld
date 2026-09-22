@@ -130,7 +130,15 @@ fn avatar(id: &str, account: Option<&Account>, handle: &str, class: &str) -> Nod
         .text(initials(name))
 }
 /// A one-button form: a control that mutates and comes back to `view`.
-fn pill(id: &str, icon: &str, word: &str, count: Option<u64>, on: bool, url: &str, view: &str) -> Node {
+fn pill(
+    id: &str,
+    icon: &str,
+    word: &str,
+    count: Option<u64>,
+    on: bool,
+    url: &str,
+    view: &str,
+) -> Node {
     let label = match count {
         Some(n) => format!("{word} {n}"),
         None => word.to_owned(),
@@ -163,7 +171,12 @@ pub(crate) struct View<'a> {
     page: &'static str,
 }
 impl<'a> View<'a> {
-    pub(crate) fn new(s: &'a SocialState, ctx: &'a ServiceContext, here: &str, page: &'static str) -> Self {
+    pub(crate) fn new(
+        s: &'a SocialState,
+        ctx: &'a ServiceContext,
+        here: &str,
+        page: &'static str,
+    ) -> Self {
         Self {
             s,
             ctx,
@@ -204,22 +217,35 @@ impl<'a> View<'a> {
     fn nav(&self) -> Node {
         let mut items = vec![
             ("nav-home", "home", "Home", "/".to_owned()),
-            ("nav-explore", "explore", self.explore_title(), "/explore".to_owned()),
+            (
+                "nav-explore",
+                "explore",
+                self.explore_title(),
+                "/explore".to_owned(),
+            ),
             ("nav-search", "search", "Search", "/search".to_owned()),
-            ("nav-inbox", "inbox", "Messages", self.inbox_root().to_owned()),
+            (
+                "nav-inbox",
+                "inbox",
+                "Messages",
+                self.inbox_root().to_owned(),
+            ),
         ];
         if let Some(me) = self.me() {
             items.push(("nav-me", "me", "Profile", format!("/{}", me.handle)));
         }
-        el("nav").id("nav").class("nav").each(items, |(id, icon, label, url)| {
-            let current = url == self.here;
-            a(url.as_str())
-                .id(id)
-                .class(if current { "nav-item on" } else { "nav-item" })
-                .when(current, |n| n.attr("aria-current", "page"))
-                .child(ico(icon))
-                .child(span("nav-text").id(format!("{id}-text")).text(label))
-        })
+        el("nav")
+            .id("nav")
+            .class("nav")
+            .each(items, |(id, icon, label, url)| {
+                let current = url == self.here;
+                a(url.as_str())
+                    .id(id)
+                    .class(if current { "nav-item on" } else { "nav-item" })
+                    .when(current, |n| n.attr("aria-current", "page"))
+                    .child(ico(icon))
+                    .child(span("nav-text").id(format!("{id}-text")).text(label))
+            })
     }
     /// The search box the chrome carries on every page; the search page has its own.
     /// The magnifier is the submit button, because that is the thing on the page that
@@ -228,7 +254,11 @@ impl<'a> View<'a> {
         form("top-search", "/search", "post")
             .class("top-search")
             .attr("role", "search")
-            .child(button("top-search-go", "").attr("aria-label", "Search").child(ico("search")))
+            .child(
+                button("top-search-go", "")
+                    .attr("aria-label", "Search")
+                    .child(ico("search")),
+            )
             .child(
                 text_input("top-q", "q", "")
                     .attr("aria-label", format!("Search {}", self.s.brand))
@@ -274,7 +304,11 @@ impl<'a> View<'a> {
                     && !followed.is_some_and(|f| f.contains(&a.handle))
             })
             .collect();
-        rest.sort_by(|x, y| y.followers.cmp(&x.followers).then_with(|| x.handle.cmp(&y.handle)));
+        rest.sort_by(|x, y| {
+            y.followers
+                .cmp(&x.followers)
+                .then_with(|| x.handle.cmp(&y.handle))
+        });
         if rest.is_empty() {
             return None;
         }
@@ -283,7 +317,9 @@ impl<'a> View<'a> {
                 .id("suggest")
                 .class("panel")
                 .child(el("h2").class("panel-title").text(title))
-                .each(rest.into_iter().take(take).enumerate(), |(i, acct)| self.person(&format!("suggest-{i}"), acct, true)),
+                .each(rest.into_iter().take(take).enumerate(), |(i, acct)| {
+                    self.person(&format!("suggest-{i}"), acct, true)
+                }),
         )
     }
     /// One account as a row that opens its profile. `follow` adds the real Follow control
@@ -295,22 +331,33 @@ impl<'a> View<'a> {
                 a(format!("/{}", acct.handle))
                     .id(id)
                     .class("person-link")
-                    .child(avatar(&format!("{id}-avatar"), Some(acct), &acct.handle, "mid"))
+                    .child(avatar(
+                        &format!("{id}-avatar"),
+                        Some(acct),
+                        &acct.handle,
+                        "mid",
+                    ))
                     .child(
                         span("person-who")
                             .child(span("person-name").text(acct.name.as_str()))
-                            .child(span("person-handle").text(if self.s.professional() && !acct.headline.is_empty() {
-                                acct.headline.clone()
-                            } else {
-                                display(self.s, &acct.handle)
-                            })),
+                            .child(span("person-handle").text(
+                                if self.s.professional() && !acct.headline.is_empty() {
+                                    acct.headline.clone()
+                                } else {
+                                    display(self.s, &acct.handle)
+                                },
+                            )),
                     ),
             )
             .when(follow, |n| {
                 n.child(pill(
                     &format!("{id}-follow"),
                     "none",
-                    if self.s.professional() { "Connect" } else { "Follow" },
+                    if self.s.professional() {
+                        "Connect"
+                    } else {
+                        "Follow"
+                    },
                     None,
                     false,
                     &format!("/accounts/{}/follow", acct.handle),
@@ -338,7 +385,11 @@ impl<'a> View<'a> {
                 .child(el("h2").class("panel-title").text(title))
                 .each(top.iter().take(4).enumerate(), |(i, id)| {
                     let post = &self.s.posts[id];
-                    let name = self.s.accounts.get(&post.author).map_or(post.author.as_str(), |a| a.name.as_str());
+                    let name = self
+                        .s
+                        .accounts
+                        .get(&post.author)
+                        .map_or(post.author.as_str(), |a| a.name.as_str());
                     let mut words: String = post.text.chars().take(64).collect();
                     if words.len() < post.text.len() {
                         words.push('…');
@@ -380,18 +431,31 @@ impl<'a> View<'a> {
                     .id("left")
                     .class("left")
                     .maybe(self.me_card("short-me"))
-                    .child(self.shortcut("short-groups", "explore", "/explore", self.explore_title()))
+                    .child(self.shortcut(
+                        "short-groups",
+                        "explore",
+                        "/explore",
+                        self.explore_title(),
+                    ))
                     .child(self.shortcut("short-inbox", "inbox", self.inbox_root(), "Messenger"))
                     .child(self.shortcut("short-search", "search", "/search", "Find friends"))
                     .child(el("h2").class("left-title").text("Your shortcuts"))
                     .each(
-                        self.followed().into_iter().filter(|a| a.actor.is_none()).take(5).enumerate(),
+                        self.followed()
+                            .into_iter()
+                            .filter(|a| a.actor.is_none())
+                            .take(5)
+                            .enumerate(),
                         |(i, acct)| self.person(&format!("short-{i}"), acct, false),
                     ),
             ),
             "linkedin" => {
                 let me = self.me()?;
-                let links = self.s.connections.get(&self.ctx.actor).map_or(0, |c| c.len());
+                let links = self
+                    .s
+                    .connections
+                    .get(&self.ctx.actor)
+                    .map_or(0, |c| c.len());
                 Some(
                     el("aside").id("left").class("left").child(
                         el("section")
@@ -407,8 +471,16 @@ impl<'a> View<'a> {
                             )
                             .child(
                                 div("card-stats")
-                                    .child(div("card-stat").child(span("").text("Connections")).child(el("b").text(links.to_string())))
-                                    .child(div("card-stat").child(span("").text("Followers")).child(el("b").text(me.followers.to_string()))),
+                                    .child(
+                                        div("card-stat")
+                                            .child(span("").text("Connections"))
+                                            .child(el("b").text(links.to_string())),
+                                    )
+                                    .child(
+                                        div("card-stat")
+                                            .child(span("").text("Followers"))
+                                            .child(el("b").text(me.followers.to_string())),
+                                    ),
                             ),
                     ),
                 )
@@ -429,7 +501,9 @@ impl<'a> View<'a> {
                         .id("contacts")
                         .class("panel")
                         .child(el("h2").class("panel-title").text("Contacts"))
-                        .each(contacts.into_iter().take(10).enumerate(), |(i, acct)| self.person(&format!("contact-{i}"), acct, false)),
+                        .each(contacts.into_iter().take(10).enumerate(), |(i, acct)| {
+                            self.person(&format!("contact-{i}"), acct, false)
+                        }),
                 )
             }
             "instagram" => aside
@@ -441,7 +515,11 @@ impl<'a> View<'a> {
                 .child(el("p").class("side-foot").text(self.s.tagline.as_str())),
             _ => aside
                 .child(self.top_search())
-                .maybe(self.trends(if self.skin == "x" { "What's happening" } else { "Trending now" }))
+                .maybe(self.trends(if self.skin == "x" {
+                    "What's happening"
+                } else {
+                    "Trending now"
+                }))
                 .maybe(self.suggestions("Who to follow", 3))
                 .child(el("p").class("side-foot").text(self.s.tagline.as_str())),
         })
@@ -449,7 +527,8 @@ impl<'a> View<'a> {
     /// The page shell: the chrome around `main`, the two stylesheets, the palette, the skin.
     fn document(&self, title: &str, main: Vec<Node>) -> SimResult<HttpResponse> {
         let t = &self.s.theme;
-        let or = |v: &Option<String>, fallback: &str| v.clone().unwrap_or_else(|| fallback.to_owned());
+        let or =
+            |v: &Option<String>, fallback: &str| v.clone().unwrap_or_else(|| fallback.to_owned());
         let root = format!(
             "--accent: {}; --ink: {}; --muted: {}; --surface: {}; --paper: {}; --content: {}px",
             or(&t.accent, "#1d9bf0"),
@@ -468,7 +547,10 @@ impl<'a> View<'a> {
                         .child(self.brand())
                         .child(self.top_search())
                         .child(self.nav())
-                        .maybe(self.me().map(|me| avatar("top-me", Some(me), &me.handle, "small"))),
+                        .maybe(
+                            self.me()
+                                .map(|me| avatar("top-me", Some(me), &me.handle, "small")),
+                        ),
                 ),
                 shell.maybe(self.left()).child(main).maybe(self.right()),
             ]
@@ -491,7 +573,10 @@ impl<'a> View<'a> {
                 .stylesheet(BASE)
                 .stylesheet(sheet(self.skin))
                 .root_style(&root)
-                .body_class(&format!("skin-{} mode-{} page-{}", self.skin, self.s.mode, self.page))
+                .body_class(&format!(
+                    "skin-{} mode-{} page-{}",
+                    self.skin, self.s.mode, self.page
+                ))
                 .body(body),
         )
     }
@@ -507,60 +592,110 @@ impl<'a> View<'a> {
         let post = &s.posts[id];
         let acct = s.accounts.get(&post.author);
         let liked = s.likes.get(id).is_some_and(|l| l.contains(&self.ctx.actor));
-        let boosted = s.reposts.get(id).is_some_and(|r| r.contains(&self.ctx.actor));
+        let boosted = s
+            .reposts
+            .get(id)
+            .is_some_and(|r| r.contains(&self.ctx.actor));
         let thread = format!("/{}/status/{id}", post.author);
-        let head = el("header")
-            .id(format!("{id}-head"))
-            .class("post-head")
-            .child(avatar(&format!("{id}-avatar"), acct, &post.author, "mid"))
-            .child(
-                div("who")
-                    .child({
-                        // On the author's own profile the name is the page's own heading:
-                        // a link back to it would land the reader where they already are.
-                        let name = acct.map_or(post.author.clone(), |a| a.name.clone());
-                        if self.here == format!("/{}", post.author) {
-                            span("name").id(format!("{id}-name")).text(name)
-                        } else {
-                            link(&format!("{id}-name"), format!("/{}", post.author), name).class("name")
-                        }
-                    })
-                    .when(acct.is_some_and(|a| a.verified), |n| {
-                        n.child(span("verified").id(format!("{id}-verified")).attr("title", "Verified").text("✓"))
-                    })
-                    .child(span("handle").id(format!("{id}-handle")).text(if s.professional() {
-                        acct.map_or(String::new(), |a| a.headline.clone())
-                    } else {
-                        format!("{} · {}", display(s, &post.author), ago(self.ctx.tick, post.tick))
-                    })),
-            );
-        let open = if focused { div("post-link here") } else { a(thread.as_str()).id(format!("post-{id}")).class("post-link") }
-            .when(s.photos(), |n| {
-                // The picture itself: a tile in the author's tint, named after what it shows.
-                let shows = if post.image.is_empty() { "Photo" } else { post.image.as_str() };
-                n.child(
-                    span(&format!("photo shape-{}", hash(id) % 4))
-                        .id(format!("{id}-photo"))
-                        .style(&format!("background-color: {}", tint(&post.author)))
-                        .child(span("photo-label").text(shows)),
-                )
-            })
-            .child(span("post-text").id(format!("{id}-text")).text(post.text.as_str()));
-        let quote = post.quoted.as_ref().filter(|q| s.posts.contains_key(*q)).map(|q| {
-            let quoted = &s.posts[q];
-            div("quote")
-                .id(format!("{id}-quote"))
-                .child(span("quote-by").id(format!("{id}-quote-by")).text(display(s, &quoted.author)))
-                .child(span("quote-text").id(format!("{id}-quote-text")).text(quoted.text.as_str()))
-        });
+        let head =
+            el("header")
+                .id(format!("{id}-head"))
+                .class("post-head")
+                .child(avatar(&format!("{id}-avatar"), acct, &post.author, "mid"))
+                .child(
+                    div("who")
+                        .child({
+                            // On the author's own profile the name is the page's own heading:
+                            // a link back to it would land the reader where they already are.
+                            let name = acct.map_or(post.author.clone(), |a| a.name.clone());
+                            if self.here == format!("/{}", post.author) {
+                                span("name").id(format!("{id}-name")).text(name)
+                            } else {
+                                link(&format!("{id}-name"), format!("/{}", post.author), name)
+                                    .class("name")
+                            }
+                        })
+                        .when(acct.is_some_and(|a| a.verified), |n| {
+                            n.child(
+                                span("verified")
+                                    .id(format!("{id}-verified"))
+                                    .attr("title", "Verified")
+                                    .text("✓"),
+                            )
+                        })
+                        .child(span("handle").id(format!("{id}-handle")).text(
+                            if s.professional() {
+                                acct.map_or(String::new(), |a| a.headline.clone())
+                            } else {
+                                format!(
+                                    "{} · {}",
+                                    display(s, &post.author),
+                                    ago(self.ctx.tick, post.tick)
+                                )
+                            },
+                        )),
+                );
+        let open = if focused {
+            div("post-link here")
+        } else {
+            a(thread.as_str())
+                .id(format!("post-{id}"))
+                .class("post-link")
+        }
+        .when(s.photos(), |n| {
+            // The picture itself: a tile in the author's tint, named after what it shows.
+            let shows = if post.image.is_empty() {
+                "Photo"
+            } else {
+                post.image.as_str()
+            };
+            n.child(
+                span(&format!("photo shape-{}", hash(id) % 4))
+                    .id(format!("{id}-photo"))
+                    .style(&format!("background-color: {}", tint(&post.author)))
+                    .child(span("photo-label").text(shows)),
+            )
+        })
+        .child(
+            span("post-text")
+                .id(format!("{id}-text"))
+                .text(post.text.as_str()),
+        );
+        let quote = post
+            .quoted
+            .as_ref()
+            .filter(|q| s.posts.contains_key(*q))
+            .map(|q| {
+                let quoted = &s.posts[q];
+                div("quote")
+                    .id(format!("{id}-quote"))
+                    .child(
+                        span("quote-by")
+                            .id(format!("{id}-quote-by"))
+                            .text(display(s, &quoted.author)),
+                    )
+                    .child(
+                        span("quote-text")
+                            .id(format!("{id}-quote-text"))
+                            .text(quoted.text.as_str()),
+                    )
+            });
         let acts = div("acts")
             .id(format!("{id}-acts"))
             .child(
-                if focused { span("act replies here") } else { a(thread.as_str()).class("act replies") }
-                    .id(format!("{id}-replies"))
-                    .child(ico("reply"))
-                    .child(span("n").text(s.replies_to(id).len().to_string()))
-                    .child(span("lbl").text(if s.replies_to(id).len() == 1 { " reply" } else { " replies" })),
+                if focused {
+                    span("act replies here")
+                } else {
+                    a(thread.as_str()).class("act replies")
+                }
+                .id(format!("{id}-replies"))
+                .child(ico("reply"))
+                .child(span("n").text(s.replies_to(id).len().to_string()))
+                .child(span("lbl").text(if s.replies_to(id).len() == 1 {
+                    " reply"
+                } else {
+                    " replies"
+                })),
             )
             .child(pill(
                 &format!("{id}-repost"),
@@ -582,14 +717,29 @@ impl<'a> View<'a> {
             ));
         el("article")
             .id(format!("{id}-row"))
-            .class(if post.reply_to.is_some() { "post is-reply" } else { "post" })
+            .class(if post.reply_to.is_some() {
+                "post is-reply"
+            } else {
+                "post"
+            })
             .child(head)
-            .child(div("post-body").id(format!("{id}-body")).child(open).maybe(quote).child(acts))
+            .child(
+                div("post-body")
+                    .id(format!("{id}-body"))
+                    .child(open)
+                    .maybe(quote)
+                    .child(acts),
+            )
     }
     fn feed(&self, title: &str, ids: &[String]) -> Vec<Node> {
         let mut out = vec![el("h2").id("feed-title").class("feed-title").text(title)];
         if ids.is_empty() {
-            out.push(el("p").id("feed-empty").class("empty").text("Nothing here yet."));
+            out.push(
+                el("p")
+                    .id("feed-empty")
+                    .class("empty")
+                    .text("Nothing here yet."),
+            );
         }
         if !self.s.photos() {
             out.extend(ids.iter().map(|id| self.post(id)));
@@ -603,7 +753,9 @@ impl<'a> View<'a> {
             grid = grid.each(ids, |id| self.post(id));
         } else {
             for lane in 0..lanes {
-                grid = grid.child(div("lane").each(ids.iter().skip(lane).step_by(lanes), |id| self.post(id)));
+                grid = grid.child(
+                    div("lane").each(ids.iter().skip(lane).step_by(lanes), |id| self.post(id)),
+                );
             }
         }
         out.push(grid);
@@ -612,7 +764,10 @@ impl<'a> View<'a> {
     pub(crate) fn timeline(&self, home: bool) -> SimResult<HttpResponse> {
         let s = self.s;
         let (title, ids) = if home {
-            (if s.professional() { "Feed" } else { "Home" }, s.home(&self.ctx.actor))
+            (
+                if s.professional() { "Feed" } else { "Home" },
+                s.home(&self.ctx.actor),
+            )
         } else {
             (self.explore_title(), s.explore())
         };
@@ -622,9 +777,17 @@ impl<'a> View<'a> {
                 div("tabs")
                     .id("tabs")
                     .child(
-                        link("tab-home", "/", if self.skin == "x" { "For you" } else { "Following" })
-                            .class(if home { "tab on" } else { "tab" })
-                            .when(home, |n| n.attr("aria-current", "page")),
+                        link(
+                            "tab-home",
+                            "/",
+                            if self.skin == "x" {
+                                "For you"
+                            } else {
+                                "Following"
+                            },
+                        )
+                        .class(if home { "tab on" } else { "tab" })
+                        .when(home, |n| n.attr("aria-current", "page")),
                     )
                     .child(
                         link("tab-explore", "/explore", self.explore_title())
@@ -636,13 +799,21 @@ impl<'a> View<'a> {
         if home && self.skin == "instagram" {
             let stories = self.followed();
             if !stories.is_empty() {
-                main.push(div("stories").id("stories").each(stories.into_iter().take(8).enumerate(), |(i, acct)| {
-                    a(format!("/{}", acct.handle))
-                        .id(format!("story-{i}"))
-                        .class("story")
-                        .child(span("ring").child(avatar(&format!("story-{i}-avatar"), Some(acct), &acct.handle, "big")))
-                        .child(span("story-name").text(acct.handle.as_str()))
-                }));
+                main.push(div("stories").id("stories").each(
+                    stories.into_iter().take(8).enumerate(),
+                    |(i, acct)| {
+                        a(format!("/{}", acct.handle))
+                            .id(format!("story-{i}"))
+                            .class("story")
+                            .child(span("ring").child(avatar(
+                                &format!("story-{i}-avatar"),
+                                Some(acct),
+                                &acct.handle,
+                                "big",
+                            )))
+                            .child(span("story-name").text(acct.handle.as_str()))
+                    },
+                ));
             }
         }
         if let Some(me) = self.me() {
@@ -657,7 +828,10 @@ impl<'a> View<'a> {
                 "x" => "What is happening?!".to_owned(),
                 "bsky" => "What's up?".to_owned(),
                 "mastodon" => "What's on your mind?".to_owned(),
-                "facebook" => format!("What's on your mind, {}?", me.name.split_whitespace().next().unwrap_or("")),
+                "facebook" => format!(
+                    "What's on your mind, {}?",
+                    me.name.split_whitespace().next().unwrap_or("")
+                ),
                 "linkedin" => "Start a post".to_owned(),
                 _ => "Write a caption...".to_owned(),
             };
@@ -674,7 +848,12 @@ impl<'a> View<'a> {
                     .child(avatar("compose-avatar", Some(me), &me.handle, "mid"))
                     .child(
                         form("compose", "/posts", "post")
-                            .child(el("p").id("compose-title").class("compose-title").text(prompt))
+                            .child(
+                                el("p")
+                                    .id("compose-title")
+                                    .class("compose-title")
+                                    .text(prompt),
+                            )
                             .child(
                                 text_input("compose-text", "text", "")
                                     .attr("aria-label", "Post")
@@ -683,7 +862,13 @@ impl<'a> View<'a> {
                             )
                             .child(
                                 div("compose-bar")
-                                    .child(span("compose-tools").attr("aria-hidden", "true").child(ico("photo")).child(ico("gif")).child(ico("poll")))
+                                    .child(
+                                        span("compose-tools")
+                                            .attr("aria-hidden", "true")
+                                            .child(ico("photo"))
+                                            .child(ico("gif"))
+                                            .child(ico("poll")),
+                                    )
                                     .child(button("compose-submit", go).class("primary")),
                             ),
                     ),
@@ -697,8 +882,14 @@ impl<'a> View<'a> {
         let Some(acct) = s.accounts.get(handle) else {
             return web::error(404, "no such account");
         };
-        let following = s.follows.get(&self.ctx.actor).is_some_and(|f| f.contains(handle));
-        let connected = s.connections.get(&self.ctx.actor).is_some_and(|c| c.contains(handle));
+        let following = s
+            .follows
+            .get(&self.ctx.actor)
+            .is_some_and(|f| f.contains(handle));
+        let connected = s
+            .connections
+            .get(&self.ctx.actor)
+            .is_some_and(|c| c.contains(handle));
         let mine = self.me().is_some_and(|m| m.handle == *handle);
         let ids = s.by_author(handle);
         let acts = div("profile-acts")
@@ -718,58 +909,113 @@ impl<'a> View<'a> {
                 n.child(pill(
                     "connect",
                     "none",
-                    if connected { "Invitation sent" } else { "Connect" },
+                    if connected {
+                        "Invitation sent"
+                    } else {
+                        "Connect"
+                    },
                     None,
                     connected,
                     &format!("/accounts/{handle}/connect"),
                     &self.here,
                 ))
             });
-        let card = el("section")
-            .id("profile")
-            .class("profile")
-            .child(div("banner").style(&format!("background-color: {}", tint(handle))))
-            .child(
-                div("profile-row")
-                    .id("profile-row")
-                    .child(avatar("profile-avatar", Some(acct), handle, "huge"))
-                    .child(acts),
-            )
-            .child(
-                div("profile-body")
-                    .id("profile-body")
-                    .child(
-                        div("profile-title")
-                            .child(el("h1").id("name").class("profile-name").text(acct.name.as_str()))
-                            .when(acct.verified, |n| n.child(span("verified").id("verified").attr("title", "Verified").text("✓"))),
-                    )
-                    .child(el("p").id("handle").class("profile-handle").text(display(s, handle)))
-                    .when(!acct.headline.is_empty(), |n| n.child(el("p").id("headline").class("headline").text(acct.headline.as_str())))
-                    .child(el("p").id("bio").class("bio").text(acct.bio.as_str()))
-                    .child(
-                        div("meta")
-                            .id("meta")
-                            .when(!acct.location.is_empty(), |n| {
-                                n.child(span("meta-item").child(ico("place")).child(span("").id("location").text(acct.location.as_str())))
-                            })
-                            .when(!acct.site.is_empty(), |n| {
-                                n.child(span("meta-item").child(ico("link")).child(link("site", acct.site.as_str(), acct.site.as_str())))
-                            }),
-                    )
-                    .child(
-                        div("counts")
-                            .child(span("count").id("post-count").child(el("b").text(ids.len().to_string())).text(" posts"))
-                            .child(span("count").id("following-count").child(el("b").text(acct.following.to_string())).text(" following"))
-                            .child(span("count").id("followers").child(el("b").text(acct.followers.to_string())).text(" followers")),
-                    ),
-            );
+        let card =
+            el("section")
+                .id("profile")
+                .class("profile")
+                .child(div("banner").style(&format!("background-color: {}", tint(handle))))
+                .child(
+                    div("profile-row")
+                        .id("profile-row")
+                        .child(avatar("profile-avatar", Some(acct), handle, "huge"))
+                        .child(acts),
+                )
+                .child(
+                    div("profile-body")
+                        .id("profile-body")
+                        .child(
+                            div("profile-title")
+                                .child(
+                                    el("h1")
+                                        .id("name")
+                                        .class("profile-name")
+                                        .text(acct.name.as_str()),
+                                )
+                                .when(acct.verified, |n| {
+                                    n.child(
+                                        span("verified")
+                                            .id("verified")
+                                            .attr("title", "Verified")
+                                            .text("✓"),
+                                    )
+                                }),
+                        )
+                        .child(
+                            el("p")
+                                .id("handle")
+                                .class("profile-handle")
+                                .text(display(s, handle)),
+                        )
+                        .when(!acct.headline.is_empty(), |n| {
+                            n.child(
+                                el("p")
+                                    .id("headline")
+                                    .class("headline")
+                                    .text(acct.headline.as_str()),
+                            )
+                        })
+                        .child(el("p").id("bio").class("bio").text(acct.bio.as_str()))
+                        .child(
+                            div("meta")
+                                .id("meta")
+                                .when(!acct.location.is_empty(), |n| {
+                                    n.child(span("meta-item").child(ico("place")).child(
+                                        span("").id("location").text(acct.location.as_str()),
+                                    ))
+                                })
+                                .when(!acct.site.is_empty(), |n| {
+                                    n.child(span("meta-item").child(ico("link")).child(link(
+                                        "site",
+                                        acct.site.as_str(),
+                                        acct.site.as_str(),
+                                    )))
+                                }),
+                        )
+                        .child(
+                            div("counts")
+                                .child(
+                                    span("count")
+                                        .id("post-count")
+                                        .child(el("b").text(ids.len().to_string()))
+                                        .text(" posts"),
+                                )
+                                .child(
+                                    span("count")
+                                        .id("following-count")
+                                        .child(el("b").text(acct.following.to_string()))
+                                        .text(" following"),
+                                )
+                                .child(
+                                    span("count")
+                                        .id("followers")
+                                        .child(el("b").text(acct.followers.to_string()))
+                                        .text(" followers"),
+                                ),
+                        ),
+                );
         let mut main = vec![card];
         if !acct.experience.is_empty() {
             main.push(
                 el("section")
                     .id("experience")
                     .class("experience")
-                    .child(el("h2").id("exp-title").class("section-title").text("Experience"))
+                    .child(
+                        el("h2")
+                            .id("exp-title")
+                            .class("section-title")
+                            .text("Experience"),
+                    )
                     .each(acct.experience.iter().enumerate(), |(i, r)| {
                         div("exp")
                             .id(format!("exp-{i}"))
@@ -782,14 +1028,27 @@ impl<'a> View<'a> {
                             .child(
                                 div("exp-body")
                                     .id(format!("exp-{i}-body"))
-                                    .child(el("p").id(format!("exp-{i}-title")).class("exp-title").text(format!("{} · {}", r.title, r.company)))
-                                    .child(el("p").id(format!("exp-{i}-period")).class("exp-period").text(r.period.as_str())),
+                                    .child(
+                                        el("p")
+                                            .id(format!("exp-{i}-title"))
+                                            .class("exp-title")
+                                            .text(format!("{} · {}", r.title, r.company)),
+                                    )
+                                    .child(
+                                        el("p")
+                                            .id(format!("exp-{i}-period"))
+                                            .class("exp-period")
+                                            .text(r.period.as_str()),
+                                    ),
                             )
                     }),
             );
         }
         main.extend(self.feed("Posts", &ids));
-        self.document(&format!("{} ({}) / {}", acct.name, display(s, handle), s.brand), main)
+        self.document(
+            &format!("{} ({}) / {}", acct.name, display(s, handle), s.brand),
+            main,
+        )
     }
     pub(crate) fn thread(&self, handle: &str, id: &str) -> SimResult<HttpResponse> {
         let s = self.s;
@@ -807,34 +1066,58 @@ impl<'a> View<'a> {
             cursor = up.reply_to.clone();
         }
         chain.reverse();
-        let mut main = vec![div("crumb").child(link("thread-back", "/", "←").attr("aria-label", "Back to Home")).child(el("h2").class("crumb-title").text("Post"))];
+        let mut main = vec![div("crumb")
+            .child(link("thread-back", "/", "←").attr("aria-label", "Back to Home"))
+            .child(el("h2").class("crumb-title").text("Post"))];
         main.extend(chain.iter().map(|up| self.post(up).class("ancestor")));
         main.push(self.post_at(id, true).class("focus"));
         main.push(
             el("section")
                 .id("reply-box")
                 .class("compose reply-box")
-                .maybe(self.me().map(|me| avatar("reply-avatar", Some(me), &me.handle, "mid")))
+                .maybe(
+                    self.me()
+                        .map(|me| avatar("reply-avatar", Some(me), &me.handle, "mid")),
+                )
                 .child(
                     form("reply", format!("/posts/{id}/replies"), "post")
                         .child(
                             text_input("reply-text", "text", "")
                                 .attr("aria-label", "Reply")
-                                .attr("placeholder", if self.skin == "x" { "Post your reply" } else { "Write a reply" })
+                                .attr(
+                                    "placeholder",
+                                    if self.skin == "x" {
+                                        "Post your reply"
+                                    } else {
+                                        "Write a reply"
+                                    },
+                                )
                                 .attr("autocomplete", "off"),
                         )
-                        .child(div("compose-bar").child(button("reply-submit", "Reply").class("primary"))),
+                        .child(
+                            div("compose-bar")
+                                .child(button("reply-submit", "Reply").class("primary")),
+                        ),
                 ),
         );
         let replies = s.replies_to(id);
         let count = replies.len();
-        main.push(el("h2").id("replies-title").class("section-title").text(format!(
-            "{count} {}",
-            if count == 1 { "reply" } else { "replies" }
-        )));
+        main.push(
+            el("h2")
+                .id("replies-title")
+                .class("section-title")
+                .text(format!(
+                    "{count} {}",
+                    if count == 1 { "reply" } else { "replies" }
+                )),
+        );
         main.extend(replies.iter().map(|r| self.post(r)));
         self.document(
-            &format!("{} on {}", s.accounts.get(handle).map_or(handle, |a| a.name.as_str()), s.brand),
+            &format!(
+                "{} on {}",
+                s.accounts.get(handle).map_or(handle, |a| a.name.as_str()),
+                s.brand
+            ),
             main,
         )
     }
@@ -843,13 +1126,25 @@ impl<'a> View<'a> {
         let title = if q.trim().is_empty() {
             "Search".to_owned()
         } else {
-            format!("{} for \"{q}\"", if ids.len() == 1 { "1 result".to_owned() } else { format!("{} results", ids.len()) })
+            format!(
+                "{} for \"{q}\"",
+                if ids.len() == 1 {
+                    "1 result".to_owned()
+                } else {
+                    format!("{} results", ids.len())
+                }
+            )
         };
         let mut main = vec![form("search", "/search", "post")
             .class("search-form")
             .attr("role", "search")
             .child(ico("search"))
-            .child(text_input("search-q", "q", q).attr("aria-label", "Search").attr("placeholder", "Search").attr("autocomplete", "off"))
+            .child(
+                text_input("search-q", "q", q)
+                    .attr("aria-label", "Search")
+                    .attr("placeholder", "Search")
+                    .attr("autocomplete", "off"),
+            )
             .child(button("search-submit", "Search").class("primary"))];
         main.extend(self.feed(&title, &ids));
         self.document(&format!("{} / Search", self.s.brand), main)
@@ -857,30 +1152,59 @@ impl<'a> View<'a> {
     pub(crate) fn inbox(&self, root: &str, open: Option<&str>) -> SimResult<HttpResponse> {
         let s = self.s;
         let threads = s.inbox(&self.ctx.actor);
-        let mut list = div("threads")
-            .id("threads")
-            .child(el("h2").id("inbox-title").class("feed-title").text("Messages"));
+        let mut list = div("threads").id("threads").child(
+            el("h2")
+                .id("inbox-title")
+                .class("feed-title")
+                .text("Messages"),
+        );
         if threads.is_empty() {
-            list = list.child(el("p").id("inbox-empty").class("empty").text("No conversations."));
+            list = list.child(
+                el("p")
+                    .id("inbox-empty")
+                    .class("empty")
+                    .text("No conversations."),
+            );
         }
         let mine = self.me().map(|m| m.handle.clone());
         list = list.each(&threads, |c| {
             // The face of a thread is whoever else is in it.
-            let other = c.members.iter().find(|m| Some(*m) != mine.as_ref()).or_else(|| c.members.iter().next());
+            let other = c
+                .members
+                .iter()
+                .find(|m| Some(*m) != mine.as_ref())
+                .or_else(|| c.members.iter().next());
             let face = other.map_or("", String::as_str);
             a(format!("{root}/{}", c.id))
                 .id(format!("thread-{}", c.id))
-                .class(if open == Some(c.id.as_str()) { "thread on" } else { "thread" })
-                .when(open == Some(c.id.as_str()), |n| n.attr("aria-current", "page"))
-                .child(avatar(&format!("thread-{}-avatar", c.id), s.accounts.get(face), face, "mid"))
+                .class(if open == Some(c.id.as_str()) {
+                    "thread on"
+                } else {
+                    "thread"
+                })
+                .when(open == Some(c.id.as_str()), |n| {
+                    n.attr("aria-current", "page")
+                })
+                .child(avatar(
+                    &format!("thread-{}-avatar", c.id),
+                    s.accounts.get(face),
+                    face,
+                    "mid",
+                ))
                 .child(
                     span("thread-body")
                         .id(format!("thread-{}-body", c.id))
-                        .child(span("thread-title").id(format!("thread-{}-title", c.id)).text(c.title.as_str()))
+                        .child(
+                            span("thread-title")
+                                .id(format!("thread-{}-title", c.id))
+                                .text(c.title.as_str()),
+                        )
                         .child(
                             span("thread-last")
                                 .id(format!("thread-{}-last", c.id))
-                                .text(c.messages.last().map_or(String::new(), |m| format!("{}: {}", display(s, &m.from), m.text))),
+                                .text(c.messages.last().map_or(String::new(), |m| {
+                                    format!("{}: {}", display(s, &m.from), m.text)
+                                })),
                         ),
                 )
         });
@@ -894,22 +1218,47 @@ impl<'a> View<'a> {
                 el("section")
                     .id("convo")
                     .class("convo")
-                    .child(el("h2").id("open-title").class("convo-title").text(c.title.as_str()))
+                    .child(
+                        el("h2")
+                            .id("open-title")
+                            .class("convo-title")
+                            .text(c.title.as_str()),
+                    )
                     .child(div("bubbles").each(&c.messages, |m| {
                         let own = mine.as_deref() == Some(m.from.as_str());
                         div(if own { "dm own" } else { "dm" })
                             .id(format!("dm-{}", m.id))
-                            .child(span("dm-from").id(format!("dm-{}-from", m.id)).text(format!("{} · {}", display(s, &m.from), ago(self.ctx.tick, m.tick))))
-                            .child(span("dm-text").id(format!("dm-{}-text", m.id)).text(m.text.as_str()))
+                            .child(
+                                span("dm-from")
+                                    .id(format!("dm-{}-from", m.id))
+                                    .text(format!(
+                                        "{} · {}",
+                                        display(s, &m.from),
+                                        ago(self.ctx.tick, m.tick)
+                                    )),
+                            )
+                            .child(
+                                span("dm-text")
+                                    .id(format!("dm-{}-text", m.id))
+                                    .text(m.text.as_str()),
+                            )
                     }))
                     .child(
                         form("dm", format!("{root}/{id}/messages"), "post")
                             .class("dm-form")
-                            .child(text_input("dm-text", "text", "").attr("aria-label", "Message").attr("placeholder", "Start a new message").attr("autocomplete", "off"))
+                            .child(
+                                text_input("dm-text", "text", "")
+                                    .attr("aria-label", "Message")
+                                    .attr("placeholder", "Start a new message")
+                                    .attr("autocomplete", "off"),
+                            )
                             .child(button("dm-submit", "Send").class("primary")),
                     ),
             );
         }
-        self.document(&format!("{} / Messages", s.brand), vec![div("inbox").children(panes)])
+        self.document(
+            &format!("{} / Messages", s.brand),
+            vec![div("inbox").children(panes)],
+        )
     }
 }

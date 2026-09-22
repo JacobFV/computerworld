@@ -12,11 +12,23 @@ fn location_assign_navigates_host() {
     let mut r = run("", "location.assign('/next'); location.href='https://other.test/x'; location.replace('y'); location.reload(); location.search='?z=1'; document.location='/d';");
     r.run_until_idle(1);
     let state = r.snapshot();
-    assert!(state.journal.iter().filter(|e| matches!(e, crate::script::JournalEntry::Write)).count() >= 5);
+    assert!(
+        state
+            .journal
+            .iter()
+            .filter(|e| matches!(e, crate::script::JournalEntry::Write))
+            .count()
+            >= 5
+    );
 }
 
 check!(timers_ordering, "", "const out=[]; setTimeout(()=>out.push('t2'), 2); setTimeout(()=>out.push('t0'), 0); setTimeout(()=>out.push('t1'), 1); const id=setTimeout(()=>out.push('never'), 1); clearTimeout(id); Promise.resolve().then(()=>out.push('micro')); queueMicrotask(()=>out.push('qm')); let n=0; const iv=setInterval(()=>{ n++; if (n===3) { clearInterval(iv); out.push('iv3'); } }, 1); setTimeout(()=>console.log(out.join(), typeof id, typeof iv), 10); requestIdleCallback(d=>out.push('idle'+d.didTimeout+(d.timeRemaining()>=0)));", "micro,qm,t0,t1,idlefalsetrue,t2,iv3 number number");
-check!(timer_string_and_args, "", "setTimeout('console.log(\"str\")', 0); setTimeout((a,b)=>console.log(a+b), 0, 2, 3);", "str\n5");
+check!(
+    timer_string_and_args,
+    "",
+    "setTimeout('console.log(\"str\")', 0); setTimeout((a,b)=>console.log(a+b), 0, 2, 3);",
+    "str\n5"
+);
 check!(request_animation_frame, "", "let n=0; const id=requestAnimationFrame(t=>{ n++; console.log('frame', typeof t, t>=0); requestAnimationFrame(()=>console.log('next')); }); const c=requestAnimationFrame(()=>console.log('cancelled')); cancelAnimationFrame(c); console.log(typeof id, id>0);", "number true\nframe number true\nnext");
 check!(message_channel, "", "const mc=new MessageChannel(); mc.port1.onmessage=e=>console.log('p1', e.data, e instanceof MessageEvent, e.type); mc.port2.addEventListener('message', e=>console.log('p2', JSON.stringify(e.data))); mc.port2.start(); mc.port2.postMessage('hi'); mc.port1.postMessage({a:[1]}); console.log('sync'); const obj={x:1}; mc.port2.postMessage(obj); obj.x=2;", "sync\np1 hi true message\np2 {\"a\":[1]}\np1 { x: 1 } true message");
 check!(window_post_message, "", "addEventListener('message', e=>console.log(e.data, e.origin, e.source===window)); postMessage('m', '*');", "m https://example.test true");
@@ -36,9 +48,15 @@ fn storage_persists_across_realms_via_host() {
     let mut host2 = MemoryHost::new();
     host2.local.insert("seed".into(), "1".into());
     host2.local.insert("k".into(), "1x".into());
-    let r2 = realm_with("<script>console.log(localStorage.getItem('k'), sessionStorage.getItem('s'));</script>", host2);
+    let r2 = realm_with(
+        "<script>console.log(localStorage.getItem('k'), sessionStorage.getItem('s'));</script>",
+        host2,
+    );
     assert_eq!(logs(&r2), "1x null");
-    assert!(snapshot.journal.iter().any(|e| matches!(e, crate::script::JournalEntry::StorageGet(Some(v)) if v == "1")));
+    assert!(snapshot
+        .journal
+        .iter()
+        .any(|e| matches!(e, crate::script::JournalEntry::StorageGet(Some(v)) if v == "1")));
     let _ = StorageArea::Local;
 }
 
@@ -57,7 +75,10 @@ check!(console_levels, "", "console.info('i'); console.debug('d'); console.log('
 
 #[test]
 fn console_errors_go_to_error_level() {
-    let r = run("", "console.error('bad'); console.warn('warned'); console.assert(false, 'as');");
+    let r = run(
+        "",
+        "console.error('bad'); console.warn('warned'); console.assert(false, 'as');",
+    );
     assert_eq!(errors(&r), "bad\nwarned\nAssertion failed: as");
 }
 
@@ -65,8 +86,15 @@ check!(fetch_basic, "", "fetch('/api/data').then(r=>{ console.log(r.ok, r.status
 
 #[test]
 fn fetch_against_host_with_methods_and_bodies() {
-    let host = MemoryHost::new().with_response("https://example.test/api/data", "application/json", "{\"n\":7,\"s\":\"str\"}").with_response("https://example.test/echo", "text/plain", "echoed");
-    let mut r = realm_with(r#"<script>
+    let host = MemoryHost::new()
+        .with_response(
+            "https://example.test/api/data",
+            "application/json",
+            "{\"n\":7,\"s\":\"str\"}",
+        )
+        .with_response("https://example.test/echo", "text/plain", "echoed");
+    let mut r = realm_with(
+        r#"<script>
       fetch('/echo', { method: 'post', headers: { 'X-A': 'b' }, body: JSON.stringify({ q: 1 }) }).then(r => r.text()).then(t => console.log('post', t));
       fetch(new Request('/echo', { method: 'PUT', body: new URLSearchParams({ a: '1 2' }) })).then(r => r.arrayBuffer()).then(b => console.log('put', b.byteLength));
       const fd = new FormData(); fd.append('f', 'v'); fetch('/echo', { method: 'POST', body: fd }).then(r => r.blob()).then(b => console.log('form', b.size, b.type));
@@ -76,7 +104,9 @@ fn fetch_against_host_with_methods_and_bodies() {
       fetch('/echo', { method: 'GET', body: 'x' }).catch(e => console.log('getbody', e.name));
       const h = new Headers({ 'Content-Type': 'text/plain', b: '2' }); h.append('B', '3'); h.set('c', 'x'); h.delete('content-type'); console.log([...h].map(p => p.join(':')).join(), h.get('b'), h.has('B'), h.get('nope'));
       console.log(Response.json({ a: 1 }).headers.get('content-type'), Response.error().type, Response.redirect('/x').status, new Response('body', { status: 201 }).status, new Response(null).body);
-    </script>"#, host);
+    </script>"#,
+        host,
+    );
     r.run_until_idle(10);
     assert!(errors(&r).is_empty(), "{}", errors(&r));
     assert_eq!(logs(&r), "b:2, 3,c:x 2, 3 true null\napplication/json error 302 201 null\naborted AbortError\ngetbody TypeError\npost echoed\nput 6\nform 6 text/plain\nclone echoed|echoed\nused TypeError");
@@ -132,7 +162,17 @@ check!(dynamic_script_insertion, "", "const s=document.createElement('script'); 
 
 #[test]
 fn dynamic_script_src_loads_via_host() {
-    let host = MemoryHost::new().with_response("https://example.test/ext.js", "text/javascript", "console.log('EXT'); window.ext = 1;").with_response("https://example.test/api/data", "application/json", "{\"n\":7,\"s\":\"str\"}");
+    let host = MemoryHost::new()
+        .with_response(
+            "https://example.test/ext.js",
+            "text/javascript",
+            "console.log('EXT'); window.ext = 1;",
+        )
+        .with_response(
+            "https://example.test/api/data",
+            "application/json",
+            "{\"n\":7,\"s\":\"str\"}",
+        );
     let mut r = realm_with("<script>const e=document.createElement('script'); e.src='/ext.js'; e.onload=()=>console.log('loaded', window.ext); document.head.appendChild(e); const bad=document.createElement('script'); bad.src='/missing.js'; bad.onerror=()=>console.log('bad'); document.head.appendChild(bad);</script>", host);
     r.run_until_idle(5);
     assert_eq!(logs(&r), "EXT\nloaded 1\nbad");
@@ -145,7 +185,17 @@ check!(module_script, "", "console.log('classic');", "classic");
 
 #[test]
 fn module_scripts_run_with_imports() {
-    let host = MemoryHost::new().with_response("https://example.test/lib/util.js", "text/javascript", "export const x = 41; export default function f() { return x + 1; }").with_response("https://example.test/entry.js", "text/javascript", "import f, { x } from './lib/util.js'; console.log('module', f(), x, import.meta.url);");
+    let host = MemoryHost::new()
+        .with_response(
+            "https://example.test/lib/util.js",
+            "text/javascript",
+            "export const x = 41; export default function f() { return x + 1; }",
+        )
+        .with_response(
+            "https://example.test/entry.js",
+            "text/javascript",
+            "import f, { x } from './lib/util.js'; console.log('module', f(), x, import.meta.url);",
+        );
     let r = realm_with("<script type=module>import { x } from './lib/util.js'; console.log('inline module', x); window.fromModule = x;</script><script>console.log('classic first', typeof window.fromModule)</script><script type=module src=/entry.js></script><script type=module>console.log('order', window.fromModule)</script>", host);
     assert!(errors(&r).is_empty(), "{}", errors(&r));
     assert_eq!(logs(&r), "classic first undefined\ninline module 41\nmodule 42 41 file:///__modules/example.test/entry.js\norder 41");
@@ -153,7 +203,22 @@ fn module_scripts_run_with_imports() {
 
 #[test]
 fn script_types_and_order() {
-    let host = MemoryHost::new().with_response("https://example.test/d.js", "text/javascript", "console.log('defer', document.readyState)").with_response("https://example.test/a.js", "text/javascript", "console.log('async', document.readyState)").with_response("https://example.test/s.js", "text/javascript", "console.log('sync', document.documentElement.children.length)");
+    let host = MemoryHost::new()
+        .with_response(
+            "https://example.test/d.js",
+            "text/javascript",
+            "console.log('defer', document.readyState)",
+        )
+        .with_response(
+            "https://example.test/a.js",
+            "text/javascript",
+            "console.log('async', document.readyState)",
+        )
+        .with_response(
+            "https://example.test/s.js",
+            "text/javascript",
+            "console.log('sync', document.documentElement.children.length)",
+        );
     let r = realm_with("<script defer src=/d.js></script><script async src=/a.js></script><script src=/s.js></script><script type='text/template'>nope</script><script nomodule>console.log('nomodule')</script><script type='application/json'>{}</script><p></p><script>document.addEventListener('DOMContentLoaded', () => console.log('DCL', document.readyState)); addEventListener('load', () => console.log('load', document.readyState)); document.onreadystatechange = () => console.log('rs', document.readyState); console.log('inline', document.readyState);</script>", host);
     assert!(errors(&r).is_empty(), "{}", errors(&r));
     assert_eq!(logs(&r), "sync 1\ninline loading\nasync loading\nrs interactive\ndefer interactive\nDCL interactive\nrs complete\nload complete");
@@ -165,7 +230,11 @@ check!(document_write_during_parse, "<p id=a>1</p><script>document.write('<p id=
 fn snapshot_restore_reproduces_run() {
     let html = "<div id=d>start</div><script>let n = 0; const iv = setInterval(() => { n++; d.textContent = 'tick ' + n + ' ' + Math.random().toFixed(3) + ' ' + localStorage.getItem('k'); console.log('tick', n, Date.now()); if (n === 3) clearInterval(iv); }, 5); document.addEventListener('click', e => { d.setAttribute('clicked', e.target.id); console.log('clicked'); }); fetch('/api/data').then(r => r.json()).then(j => console.log('fetched', j.n));</script>";
     let make_host = || {
-        let mut h = MemoryHost::new().with_response("https://example.test/api/data", "application/json", "{\"n\":7}");
+        let mut h = MemoryHost::new().with_response(
+            "https://example.test/api/data",
+            "application/json",
+            "{\"n\":7}",
+        );
         h.local.insert("k".into(), "v".into());
         h.now_micros = 5_000_000;
         h
@@ -175,7 +244,11 @@ fn snapshot_restore_reproduces_run() {
     a.run_document();
     a.run_until_idle(6);
     let d = a.document().by_id("d")[0];
-    a.dispatch(crate::script::UiEvent::ClickNode { node: d, modifiers: Default::default(), detail: 1 });
+    a.dispatch(crate::script::UiEvent::ClickNode {
+        node: d,
+        modifiers: Default::default(),
+        detail: 1,
+    });
     a.run_until_idle(20);
     let a_dom = body_html(&a);
     let a_logs = logs(&a);
@@ -184,7 +257,11 @@ fn snapshot_restore_reproduces_run() {
     b.run_document();
     b.run_until_idle(6);
     let d = b.document().by_id("d")[0];
-    b.dispatch(crate::script::UiEvent::ClickNode { node: d, modifiers: Default::default(), detail: 1 });
+    b.dispatch(crate::script::UiEvent::ClickNode {
+        node: d,
+        modifiers: Default::default(),
+        detail: 1,
+    });
     let state = b.snapshot();
     let json = serde_json::to_string(&state).unwrap();
     let state2: crate::script::RealmState = serde_json::from_str(&json).unwrap();

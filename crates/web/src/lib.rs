@@ -45,7 +45,11 @@ pub enum UnsupportedKind {
 
 impl std::fmt::Display for Unsupported {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "unsupported {:?} `{}`: {}", self.kind, self.name, self.detail)
+        write!(
+            f,
+            "unsupported {:?} `{}`: {}",
+            self.kind, self.name, self.detail
+        )
     }
 }
 
@@ -62,6 +66,11 @@ pub struct Viewport {
 
 impl Default for Viewport {
     fn default() -> Self {
-        Self { width: 1280, height: 800, scale: 1, zoom: 100 }
+        Self {
+            width: 1280,
+            height: 800,
+            scale: 1,
+            zoom: 100,
+        }
     }
 }

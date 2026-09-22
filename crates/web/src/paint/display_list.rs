@@ -62,7 +62,11 @@ struct Item<'a> {
 
 impl<'a> Item<'a> {
     fn new(frag: &'a Fragment, state: &State) -> Item<'a> {
-        Item { frag, state: state.clone(), inner: None }
+        Item {
+            frag,
+            state: state.clone(),
+            inner: None,
+        }
     }
 }
 
@@ -97,7 +101,8 @@ pub(crate) fn establishes_context(f: &Fragment, style: &ComputedStyle) -> bool {
         return true;
     }
     if matches!(f.kind, FragmentKind::Box { .. }) {
-        return style.establishes_stacking_context(false) && !f.source().is_some_and(StyleSource::is_anonymous);
+        return style.establishes_stacking_context(false)
+            && !f.source().is_some_and(StyleSource::is_anonymous);
     }
     false
 }
@@ -153,9 +158,17 @@ pub(crate) fn enter(p: &mut Painter, f: &Fragment, state: &State, register_scrol
         s.opacity = super::mul_opacity(s.opacity, style.opacity);
     }
     apply_transform(&style, rect, &mut s);
-    if let FragmentKind::Box { padding, border, scroll, source, .. } = &f.kind {
+    if let FragmentKind::Box {
+        padding,
+        border,
+        scroll,
+        source,
+        ..
+    } = &f.kind
+    {
         let clips = !source.is_anonymous()
-            && (!matches!(style.overflow_x, Overflow::Visible) || !matches!(style.overflow_y, Overflow::Visible));
+            && (!matches!(style.overflow_x, Overflow::Visible)
+                || !matches!(style.overflow_y, Overflow::Visible));
         if clips {
             let padding_box = border.inset(rect);
             let mut clip = snap(padding_box);
@@ -166,7 +179,10 @@ pub(crate) fn enter(p: &mut Painter, f: &Fragment, state: &State, register_scrol
             let radii = border::radii_px(&style, snap(rect));
             if let Some(r) = border::uniform_radius(&radii) {
                 if r > 0 {
-                    s.rounded_clip = Some(RoundedClip { rect: snap(padding_box), radius: r });
+                    s.rounded_clip = Some(RoundedClip {
+                        rect: snap(padding_box),
+                        radius: r,
+                    });
                 }
             }
         }
@@ -174,10 +190,15 @@ pub(crate) fn enter(p: &mut Painter, f: &Fragment, state: &State, register_scrol
         // `PaintContext::scroll` and registered its scroll area, so applying the
         // offset layout recorded on the root would scroll the page twice (the root's
         // inner scroll area is still registered, at offset 0, as it always was).
-        let is_root = matches!(source, StyleSource::Anonymous(n) if *n == crate::dom::Document::ROOT);
+        let is_root =
+            matches!(source, StyleSource::Anonymous(n) if *n == crate::dom::Document::ROOT);
         if let Some(info) = scroll {
             let node = source.node();
-            let off = if is_root { Point::default() } else { p.scroll_of(node, info) };
+            let off = if is_root {
+                Point::default()
+            } else {
+                p.scroll_of(node, info)
+            };
             s.origin.x -= off.x;
             s.origin.y -= off.y;
             s.scrolled.x += off.x;
@@ -185,7 +206,12 @@ pub(crate) fn enter(p: &mut Painter, f: &Fragment, state: &State, register_scrol
             if register_scroll {
                 let padding_box = border.inset(rect);
                 let content_box = padding.inset(padding_box);
-                let target = format!("pane:{}", p.doc.map(|d| semantics::interaction_id(d, node)).unwrap_or_else(|| format!("n{}", node.0)));
+                let target = format!(
+                    "pane:{}",
+                    p.doc
+                        .map(|d| semantics::interaction_id(d, node))
+                        .unwrap_or_else(|| format!("n{}", node.0))
+                );
                 let view = snap(padding_box);
                 p.scrolls.push(ScrollArea {
                     target: target.clone(),
@@ -216,18 +242,52 @@ pub(crate) fn enter(p: &mut Painter, f: &Fragment, state: &State, register_scrol
 }
 
 /// The affine matrix of a `transform` list about `origin` (scene pixels).
-pub(crate) fn transform_matrix(ops: &[TransformOp], size: crate::geom::Size, origin: (i32, i32)) -> Transform {
+pub(crate) fn transform_matrix(
+    ops: &[TransformOp],
+    size: crate::geom::Size,
+    origin: (i32, i32),
+) -> Transform {
     let mut m = Transform::default();
     for op in ops {
         let t = match *op {
-            TransformOp::Translate(x, y) => Transform::translate(px(x.resolve(size.width)), px(y.resolve(size.height))),
-            TransformOp::Scale(sx, sy) => Transform { a: scale_1024(sx), b: 0, c: 0, d: scale_1024(sy), tx: 0, ty: 0 },
+            TransformOp::Translate(x, y) => {
+                Transform::translate(px(x.resolve(size.width)), px(y.resolve(size.height)))
+            }
+            TransformOp::Scale(sx, sy) => Transform {
+                a: scale_1024(sx),
+                b: 0,
+                c: 0,
+                d: scale_1024(sy),
+                tx: 0,
+                ty: 0,
+            },
             TransformOp::Rotate(deg) => {
                 let (s, c) = (super::trig::sin_1024(deg), super::trig::cos_1024(deg));
-                Transform { a: c, b: s, c: -s, d: c, tx: 0, ty: 0 }
+                Transform {
+                    a: c,
+                    b: s,
+                    c: -s,
+                    d: c,
+                    tx: 0,
+                    ty: 0,
+                }
             }
-            TransformOp::SkewX(deg) => Transform { a: 1024, b: 0, c: super::trig::tan_1024(deg), d: 1024, tx: 0, ty: 0 },
-            TransformOp::SkewY(deg) => Transform { a: 1024, b: super::trig::tan_1024(deg), c: 0, d: 1024, tx: 0, ty: 0 },
+            TransformOp::SkewX(deg) => Transform {
+                a: 1024,
+                b: 0,
+                c: super::trig::tan_1024(deg),
+                d: 1024,
+                tx: 0,
+                ty: 0,
+            },
+            TransformOp::SkewY(deg) => Transform {
+                a: 1024,
+                b: super::trig::tan_1024(deg),
+                c: 0,
+                d: 1024,
+                tx: 0,
+                ty: 0,
+            },
         };
         m = compose(&m, &t);
     }
@@ -242,8 +302,18 @@ fn scale_1024(v: i32) -> i32 {
 
 /// `outer ∘ inner`: apply `inner` first, then `outer`.
 pub(crate) fn compose(outer: &Transform, inner: &Transform) -> Transform {
-    let (oa, ob, oc, od) = (outer.a as i64, outer.b as i64, outer.c as i64, outer.d as i64);
-    let (ia, ib, ic, id) = (inner.a as i64, inner.b as i64, inner.c as i64, inner.d as i64);
+    let (oa, ob, oc, od) = (
+        outer.a as i64,
+        outer.b as i64,
+        outer.c as i64,
+        outer.d as i64,
+    );
+    let (ia, ib, ic, id) = (
+        inner.a as i64,
+        inner.b as i64,
+        inner.c as i64,
+        inner.d as i64,
+    );
     let (itx, ity) = (inner.tx as i64, inner.ty as i64);
     let div = |v: i64| (v + 512).div_euclid(1024);
     Transform {
@@ -262,7 +332,10 @@ pub(crate) fn paint_root(p: &mut Painter, root_state: &State) {
     let vp = SRect::new(0, 0, p.viewport.width, p.viewport.height);
     let scroll = p.ctx.scroll;
     let mut state = root_state.clone();
-    state.origin = Point { x: -scroll.x, y: -scroll.y };
+    state.origin = Point {
+        x: -scroll.x,
+        y: -scroll.y,
+    };
     state.scrolled = scroll;
     // Canvas background: from the root element, else from the body.
     background::paint_canvas(p, &state);
@@ -296,7 +369,13 @@ pub(crate) fn paint_root(p: &mut Painter, root_state: &State) {
     match tree.root.children.split_first() {
         Some((html, extra))
             if matches!(tree.root.kind, FragmentKind::Box { source: StyleSource::Anonymous(n), .. } if n == crate::dom::Document::ROOT)
-                && matches!(html.kind, FragmentKind::Box { source: StyleSource::Element(_), .. })
+                && matches!(
+                    html.kind,
+                    FragmentKind::Box {
+                        source: StyleSource::Element(_),
+                        ..
+                    }
+                )
                 && !extra.is_empty() =>
         {
             paint_own(p, &tree.root, &state);
@@ -315,12 +394,25 @@ pub(crate) fn paint_context<'a>(p: &mut Painter<'a>, f: &'a Fragment, state: &St
 
 /// `paint_context`, with `extra` fragments (positioned in `extra_state`'s space)
 /// collected into the same context after `f`'s own children.
-fn paint_context_with<'a>(p: &mut Painter<'a>, f: &'a Fragment, state: &State, extra: &'a [Fragment], extra_state: &State) {
+fn paint_context_with<'a>(
+    p: &mut Painter<'a>,
+    f: &'a Fragment,
+    state: &State,
+    extra: &'a [Fragment],
+    extra_state: &State,
+) {
     // 1. Own background and borders, then the replaced content of an atomic inline,
     //    floated, positioned or stacking-context replaced box (an `<img>` in a line, a
     //    positioned picture), which no child bucket would otherwise paint.
     paint_own(p, f, state);
-    if matches!(&f.kind, FragmentKind::Box { replaced: Some(_), .. }) && p.style_of(f).visibility == Visibility::Visible {
+    if matches!(
+        &f.kind,
+        FragmentKind::Box {
+            replaced: Some(_),
+            ..
+        }
+    ) && p.style_of(f).visibility == Visibility::Visible
+    {
         replaced::paint(p, f, &own_state(p, f, state));
     }
     let child_state = enter(p, f, state, true);
@@ -346,16 +438,32 @@ fn paint_context_with<'a>(p: &mut Painter<'a>, f: &'a Fragment, state: &State, e
 /// the scrollport.
 fn has_bars(f: &Fragment) -> bool {
     match &f.kind {
-        FragmentKind::Box { source, scroll: Some(info), .. } => {
-            !matches!(source, StyleSource::Anonymous(n) if *n == crate::dom::Document::ROOT) && (info.shows_x_bar || info.shows_y_bar)
+        FragmentKind::Box {
+            source,
+            scroll: Some(info),
+            ..
+        } => {
+            !matches!(source, StyleSource::Anonymous(n) if *n == crate::dom::Document::ROOT)
+                && (info.shows_x_bar || info.shows_y_bar)
         }
         _ => false,
     }
 }
 
 fn paint_scrollbars(p: &mut Painter, f: &Fragment, state: &State) {
-    let FragmentKind::Box { source, padding, border, scroll: Some(info), .. } = &f.kind else { return };
-    if matches!(source, StyleSource::Anonymous(n) if *n == crate::dom::Document::ROOT) || !(info.shows_x_bar || info.shows_y_bar) {
+    let FragmentKind::Box {
+        source,
+        padding,
+        border,
+        scroll: Some(info),
+        ..
+    } = &f.kind
+    else {
+        return;
+    };
+    if matches!(source, StyleSource::Anonymous(n) if *n == crate::dom::Document::ROOT)
+        || !(info.shows_x_bar || info.shows_y_bar)
+    {
         return;
     }
     let (source, info) = (*source, *info);
@@ -374,15 +482,42 @@ fn paint_scrollbars(p: &mut Painter, f: &Fragment, state: &State) {
     // The offset from the start of the scrollable area, which is what a thumb shows.
     let along = |track: SRect, horizontal: bool| -> (SRect, SRect) {
         let (len, content, off) = if horizontal {
-            (track.width, super::upx(info.content_width), px(info.scroll_x - info.origin_x))
+            (
+                track.width,
+                super::upx(info.content_width),
+                px(info.scroll_x - info.origin_x),
+            )
         } else {
-            (track.height, super::upx(info.content_height), px(info.scroll_y - info.origin_y))
+            (
+                track.height,
+                super::upx(info.content_height),
+                px(info.scroll_y - info.origin_y),
+            )
         };
         let span = content.max(len);
-        let thumb = ((u64::from(len) * u64::from(len) / u64::from(span.max(1))) as u32).clamp(bar.min(len), len);
+        let thumb = ((u64::from(len) * u64::from(len) / u64::from(span.max(1))) as u32)
+            .clamp(bar.min(len), len);
         let room = span - len;
-        let at = if room == 0 { 0 } else { ((len - thumb) as i64 * off.clamp(0, room as i32) as i64 / room as i64) as i32 };
-        let t = if horizontal { SRect::new(track.x + at, track.y + 2, thumb, track.height.saturating_sub(4)) } else { SRect::new(track.x + 2, track.y + at, track.width.saturating_sub(4), thumb) };
+        let at = if room == 0 {
+            0
+        } else {
+            ((len - thumb) as i64 * off.clamp(0, room as i32) as i64 / room as i64) as i32
+        };
+        let t = if horizontal {
+            SRect::new(
+                track.x + at,
+                track.y + 2,
+                thumb,
+                track.height.saturating_sub(4),
+            )
+        } else {
+            SRect::new(
+                track.x + 2,
+                track.y + at,
+                track.width.saturating_sub(4),
+                thumb,
+            )
+        };
         (track, t)
     };
     let emit = |p: &mut Painter, track: SRect, thumb: SRect| {
@@ -391,18 +526,47 @@ fn paint_scrollbars(p: &mut Painter, f: &Fragment, state: &State) {
         }
         let part = p.next_part(key);
         let id = p.id(key, part);
-        p.emit(state, id, track, cw_scene::Primitive::Box { fill: super::SCROLLBAR_TRACK, border: None, border_width: 0 });
+        p.emit(
+            state,
+            id,
+            track,
+            cw_scene::Primitive::Box {
+                fill: super::SCROLLBAR_TRACK,
+                border: None,
+                border_width: 0,
+            },
+        );
         let part = p.next_part(key);
         let id = p.id(key, part);
-        p.emit(state, id, thumb, cw_scene::Primitive::RoundedBox { fill: super::SCROLLBAR_THUMB, border: None, border_width: 0, radius: thumb.width.min(thumb.height) / 2 });
+        p.emit(
+            state,
+            id,
+            thumb,
+            cw_scene::Primitive::RoundedBox {
+                fill: super::SCROLLBAR_THUMB,
+                border: None,
+                border_width: 0,
+                radius: thumb.width.min(thumb.height) / 2,
+            },
+        );
     };
     if vbar {
-        let track = SRect::new(view.right() - bar as i32, view.y, bar, view.height.saturating_sub(corner_h));
+        let track = SRect::new(
+            view.right() - bar as i32,
+            view.y,
+            bar,
+            view.height.saturating_sub(corner_h),
+        );
         let (track, thumb) = along(track, false);
         emit(p, track, thumb);
     }
     if hbar {
-        let track = SRect::new(view.x, view.bottom() - bar as i32, view.width.saturating_sub(corner_w), bar);
+        let track = SRect::new(
+            view.x,
+            view.bottom() - bar as i32,
+            view.width.saturating_sub(corner_w),
+            bar,
+        );
         let (track, thumb) = along(track, true);
         emit(p, track, thumb);
     }
@@ -415,7 +579,14 @@ fn paint_item<'a>(p: &mut Painter<'a>, it: Item<'a>) {
         None => paint_context(p, it.frag, &it.state),
         Some(inner) => {
             paint_own(p, it.frag, &it.state);
-            if matches!(&it.frag.kind, FragmentKind::Box { replaced: Some(_), .. }) && p.style_of(it.frag).visibility == Visibility::Visible {
+            if matches!(
+                &it.frag.kind,
+                FragmentKind::Box {
+                    replaced: Some(_),
+                    ..
+                }
+            ) && p.style_of(it.frag).visibility == Visibility::Visible
+            {
                 replaced::paint(p, it.frag, &own_state(p, it.frag, &it.state));
             }
             paint_buckets(p, *inner);
@@ -485,7 +656,11 @@ fn paint_buckets<'a>(p: &mut Painter<'a>, mut b: Buckets<'a>) {
 /// Stable-sorts a stacking layer into document order. Only fragments the document
 /// places are compared; if any item has no position (a hand-built fragment tree, an
 /// anonymous box) the layer keeps the fragment-tree order it was collected in.
-fn sort_by_tree_order<'a, T>(p: &Painter<'a>, items: &mut Vec<T>, frag: impl Fn(&T) -> &'a Fragment) {
+fn sort_by_tree_order<'a, T>(
+    p: &Painter<'a>,
+    items: &mut Vec<T>,
+    frag: impl Fn(&T) -> &'a Fragment,
+) {
     if items.len() < 2 {
         return;
     }
@@ -501,7 +676,9 @@ fn has_outline(p: &Painter, f: &Fragment) -> bool {
         FragmentKind::Box { source, .. } | FragmentKind::InlineBox { source, .. } => {
             !source.is_anonymous() && {
                 let s = p.style(*source);
-                s.outline.style.is_visible() && s.outline.width > Au::ZERO && s.visibility == Visibility::Visible
+                s.outline.style.is_visible()
+                    && s.outline.width > Au::ZERO
+                    && s.visibility == Visibility::Visible
             }
         }
         _ => false,
@@ -517,7 +694,13 @@ fn paint_outline(p: &mut Painter, f: &Fragment, state: &State) {
 
 /// Sorts the subtree under `f` (the fragment itself included) into the buckets of the
 /// current stacking context. `inline` says whether we are inside a line box.
-fn collect<'a>(p: &mut Painter<'a>, f: &'a Fragment, state: &State, inline: bool, b: &mut Buckets<'a>) {
+fn collect<'a>(
+    p: &mut Painter<'a>,
+    f: &'a Fragment,
+    state: &State,
+    inline: bool,
+    b: &mut Buckets<'a>,
+) {
     // Laid out but not rendered (the lines after a `-webkit-line-clamp`).
     if f.hidden_for_paint {
         return;
@@ -596,9 +779,17 @@ fn collect<'a>(p: &mut Painter<'a>, f: &'a Fragment, state: &State, inline: bool
 /// and splits them into what it paints itself when its turn comes (the item) and the
 /// positioned and stacking-context descendants that belong to the enclosing context
 /// (the second value, which also carries the advanced `order` counter).
-fn atomic_item<'a>(p: &mut Painter<'a>, f: &'a Fragment, state: &State, order: usize) -> (Item<'a>, Buckets<'a>) {
+fn atomic_item<'a>(
+    p: &mut Painter<'a>,
+    f: &'a Fragment,
+    state: &State,
+    order: usize,
+) -> (Item<'a>, Buckets<'a>) {
     let child_state = enter(p, f, state, true);
-    let mut inner = Buckets { order, ..Buckets::default() };
+    let mut inner = Buckets {
+        order,
+        ..Buckets::default()
+    };
     for c in &f.children {
         collect(p, c, &child_state, false, &mut inner);
     }
@@ -612,15 +803,33 @@ fn atomic_item<'a>(p: &mut Painter<'a>, f: &'a Fragment, state: &State, order: u
         order: inner.order,
         ..Buckets::default()
     };
-    (Item { frag: f, state: state.clone(), inner: Some(Box::new(inner)) }, hoisted)
+    (
+        Item {
+            frag: f,
+            state: state.clone(),
+            inner: Some(Box::new(inner)),
+        },
+        hoisted,
+    )
 }
 
 /// Paints a box's or inline box's own decoration: the interaction region, outer
 /// shadows, background, inset shadows, borders. Records the hit-test item.
 pub(crate) fn paint_own(p: &mut Painter, f: &Fragment, state: &State) {
     let (source, padding, border, first, last) = match &f.kind {
-        FragmentKind::Box { source, padding, border, .. } => (*source, *padding, *border, true, true),
-        FragmentKind::InlineBox { source, padding, border, first, last } => (*source, *padding, *border, *first, *last),
+        FragmentKind::Box {
+            source,
+            padding,
+            border,
+            ..
+        } => (*source, *padding, *border, true, true),
+        FragmentKind::InlineBox {
+            source,
+            padding,
+            border,
+            first,
+            last,
+        } => (*source, *padding, *border, *first, *last),
         _ => return,
     };
     let Some(key) = p.key(f) else { return };
@@ -641,7 +850,17 @@ pub(crate) fn paint_own(p: &mut Painter, f: &Fragment, state: &State) {
         }
         let radii = border::radii_px(&style, srect);
         let radius = border::uniform_radius(&radii).unwrap_or(0);
-        p.record_hit(state, source.node(), srect, radius, hidden || matches!(style.pointer_events, crate::style::computed::PointerEvents::None));
+        p.record_hit(
+            state,
+            source.node(),
+            srect,
+            radius,
+            hidden
+                || matches!(
+                    style.pointer_events,
+                    crate::style::computed::PointerEvents::None
+                ),
+        );
     }
     if hidden || source.is_anonymous() {
         return;
@@ -649,7 +868,10 @@ pub(crate) fn paint_own(p: &mut Painter, f: &Fragment, state: &State) {
     // The element's own decoration belongs to its opacity group.
     let own_state;
     let state = if style.opacity < 255 {
-        own_state = State { opacity: super::mul_opacity(state.opacity, style.opacity), ..state.clone() };
+        own_state = State {
+            opacity: super::mul_opacity(state.opacity, style.opacity),
+            ..state.clone()
+        };
         &own_state
     } else {
         state
@@ -661,7 +883,17 @@ pub(crate) fn paint_own(p: &mut Painter, f: &Fragment, state: &State) {
     }
     let content_box = padding.inset(border.inset(rect));
     border::paint_box_shadows(p, key, state, &style, srect, false);
-    background::paint_background(p, key, state, &style, rect, border.inset(rect), content_box, first, last);
+    background::paint_background(
+        p,
+        key,
+        state,
+        &style,
+        rect,
+        border.inset(rect),
+        content_box,
+        first,
+        last,
+    );
     border::paint_box_shadows(p, key, state, &style, srect, true);
     border::paint_borders(p, key, state, &style, srect, border, first, last);
 }

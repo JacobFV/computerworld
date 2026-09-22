@@ -24,7 +24,8 @@ use crate::layout::boxes::{BoxId, BoxKind, LayoutBox, Level};
 use crate::layout::fragment::{Fragment, FragmentKind, StyleSource};
 use crate::layout::{intrinsic, text, LayoutContext};
 use crate::style::{
-    AlignContent, AlignItems, AlignSelf, AutoRepeat, ComputedStyle, Display, GridAutoFlow, GridLine, JustifyContent, LengthPercentage, LengthPercentageAuto, Sizing, TrackBreadth,
+    AlignContent, AlignItems, AlignSelf, AutoRepeat, ComputedStyle, Display, GridAutoFlow,
+    GridLine, JustifyContent, LengthPercentage, LengthPercentageAuto, Sizing, TrackBreadth,
     TrackList, TrackSize,
 };
 
@@ -41,17 +42,30 @@ pub fn is_grid_container(s: &ComputedStyle) -> bool {
 /// blockified, each contiguous run of text (with `<br>`/`<wbr>`) becomes one
 /// anonymous block item, and runs of collapsible white space are dropped. Absolutely
 /// positioned children stay as they are (the container positions them, §9).
-pub fn wrap_grid_items(boxes: &mut Vec<LayoutBox>, container: BoxId, kids: Vec<BoxId>) -> Vec<BoxId> {
+pub fn wrap_grid_items(
+    boxes: &mut Vec<LayoutBox>,
+    container: BoxId,
+    kids: Vec<BoxId>,
+) -> Vec<BoxId> {
     let parent_style = boxes[container.index()].style.clone();
     let anon = StyleSource::Anonymous(boxes[container.index()].source.node());
     let mut out = Vec::new();
     let mut run: Vec<BoxId> = Vec::new();
-    fn flush(boxes: &mut Vec<LayoutBox>, container: BoxId, run: &mut Vec<BoxId>, out: &mut Vec<BoxId>, parent_style: &Rc<ComputedStyle>, source: StyleSource) {
+    fn flush(
+        boxes: &mut Vec<LayoutBox>,
+        container: BoxId,
+        run: &mut Vec<BoxId>,
+        out: &mut Vec<BoxId>,
+        parent_style: &Rc<ComputedStyle>,
+        source: StyleSource,
+    ) {
         if run.is_empty() {
             return;
         }
         let has_content = run.iter().any(|k| match &boxes[k.index()].kind {
-            BoxKind::Text(t) => !text::is_collapsible_whitespace(&t.text, boxes[k.index()].style.white_space),
+            BoxKind::Text(t) => {
+                !text::is_collapsible_whitespace(&t.text, boxes[k.index()].style.white_space)
+            }
             _ => true,
         });
         if !has_content {
@@ -81,12 +95,18 @@ pub fn wrap_grid_items(boxes: &mut Vec<LayoutBox>, container: BoxId, kids: Vec<B
         out.push(id);
     }
     for k in kids {
-        if matches!(boxes[k.index()].kind, BoxKind::Text(_) | BoxKind::Br(_) | BoxKind::Wbr) {
+        if matches!(
+            boxes[k.index()].kind,
+            BoxKind::Text(_) | BoxKind::Br(_) | BoxKind::Wbr
+        ) {
             run.push(k);
             continue;
         }
         flush(boxes, container, &mut run, &mut out, &parent_style, anon);
-        let has_block_child = boxes[k.index()].children.iter().any(|c| boxes[c.index()].level == Level::Block && !boxes[c.index()].is_out_of_flow());
+        let has_block_child = boxes[k.index()]
+            .children
+            .iter()
+            .any(|c| boxes[c.index()].level == Level::Block && !boxes[c.index()].is_out_of_flow());
         let b = &mut boxes[k.index()];
         b.level = Level::Block;
         match b.kind {
@@ -149,7 +169,14 @@ struct Track {
 
 impl Track {
     fn new(min: MinFn, max: MaxFn) -> Track {
-        Track { min, max, base: Au::ZERO, limit: INF, inf_growable: false, collapsed: false }
+        Track {
+            min,
+            max,
+            base: Au::ZERO,
+            limit: INF,
+            inf_growable: false,
+            collapsed: false,
+        }
     }
     fn intrinsic_min(&self) -> bool {
         !matches!(self.min, MinFn::Fixed(_))
@@ -258,10 +285,21 @@ fn fixed_size(t: &TrackSize, base: Option<Au>) -> Au {
 
 /// The number of repetitions of an `auto-fill`/`auto-fit` repeat (§7.2.3.2) given the
 /// axis's definite (or max) size, else its min size, else 1.
-fn auto_repeat_count(tl: &TrackList, rep: &AutoRepeat, avail: Option<Au>, min_size: Option<Au>, gap: Au, base: Option<Au>) -> usize {
+fn auto_repeat_count(
+    tl: &TrackList,
+    rep: &AutoRepeat,
+    avail: Option<Au>,
+    min_size: Option<Au>,
+    gap: Au,
+    base: Option<Au>,
+) -> usize {
     let outside: i64 = tl.tracks.iter().map(|t| fixed_size(t, base).0 as i64).sum();
     let outside_n = tl.tracks.len() as i64;
-    let rep_sum: i64 = rep.tracks.iter().map(|t| fixed_size(t, base).0 as i64).sum();
+    let rep_sum: i64 = rep
+        .tracks
+        .iter()
+        .map(|t| fixed_size(t, base).0 as i64)
+        .sum();
     let rep_n = rep.tracks.len() as i64;
     let g = gap.0 as i64;
     let a = outside + g * (outside_n - 1);
@@ -275,7 +313,11 @@ fn auto_repeat_count(tl: &TrackList, rep: &AutoRepeat, avail: Option<Au>, min_si
     }
     if let Some(mn) = min_size {
         let need = mn.0 as i64 - a;
-        let n = if need <= 0 { 1 } else { (need + denom - 1) / denom };
+        let n = if need <= 0 {
+            1
+        } else {
+            (need + denom - 1) / denom
+        };
         return n.max(1) as usize;
     }
     1
@@ -333,7 +375,12 @@ struct Names {
 }
 
 impl Names {
-    fn build(axis: &ExplicitAxis, areas: &BTreeMap<String, (i32, i32, i32, i32)>, rows: bool, explicit: i32) -> Names {
+    fn build(
+        axis: &ExplicitAxis,
+        areas: &BTreeMap<String, (i32, i32, i32, i32)>,
+        rows: bool,
+        explicit: i32,
+    ) -> Names {
         let mut lines: BTreeMap<String, Vec<i32>> = BTreeMap::new();
         for (i, ns) in axis.names.iter().enumerate() {
             for n in ns {
@@ -450,7 +497,11 @@ fn resolve_axis(names: &Names, start: &GridLine, end: &GridLine) -> Res {
             GridLine::Line(n, nm) => P::Line(names.by_number(*n, nm.as_deref())),
             GridLine::Span(n, nm) => P::Span((*n).clamp(1, 10_000) as i32, nm.clone()),
             GridLine::Name(s) => {
-                let key = if is_start { format!("{s}-start") } else { format!("{s}-end") };
+                let key = if is_start {
+                    format!("{s}-start")
+                } else {
+                    format!("{s}-end")
+                };
                 if let Some(&x) = names.named(&key).first() {
                     return P::Line(x);
                 }
@@ -469,10 +520,14 @@ fn resolve_axis(names: &Names, start: &GridLine, end: &GridLine) -> Res {
             }
         }
         (P::Line(a), P::Span(n, nm)) => Res::Definite(a, names.nth_from(a, n, nm.as_deref(), true)),
-        (P::Span(n, nm), P::Line(b)) => Res::Definite(names.nth_from(b, n, nm.as_deref(), false), b),
+        (P::Span(n, nm), P::Line(b)) => {
+            Res::Definite(names.nth_from(b, n, nm.as_deref(), false), b)
+        }
         (P::Line(a), P::Auto) => Res::Definite(a, a + 1),
         (P::Auto, P::Line(b)) => Res::Definite(b - 1, b),
-        (P::Span(n, nm), P::Auto) | (P::Auto, P::Span(n, nm)) | (P::Span(n, nm), P::Span(_, _)) => Res::Span(if nm.is_some() { 1 } else { n }),
+        (P::Span(n, nm), P::Auto) | (P::Auto, P::Span(n, nm)) | (P::Span(n, nm), P::Span(_, _)) => {
+            Res::Span(if nm.is_some() { 1 } else { n })
+        }
         (P::Auto, P::Auto) => Res::Span(1),
     }
 }
@@ -489,7 +544,9 @@ impl Occupancy {
     fn free(&self, major: (i32, i32), minor: (i32, i32)) -> bool {
         for r in major.0..major.1 {
             let ri = (r - self.major0) as usize;
-            let Some(row) = self.cells.get(ri) else { continue };
+            let Some(row) = self.cells.get(ri) else {
+                continue;
+            };
             for c in minor.0..minor.1 {
                 let ci = (c - self.minor0) as usize;
                 if row.get(ci).copied().unwrap_or(false) {
@@ -543,7 +600,11 @@ fn auto_place(items: &[(Res, Res)], explicit_minor: i32, dense: bool) -> Vec<Pla
     if minor_end - minor0 < max_span {
         minor_end = minor0 + max_span;
     }
-    let mut occ = Occupancy { major0, minor0, cells: Vec::new() };
+    let mut occ = Occupancy {
+        major0,
+        minor0,
+        cells: Vec::new(),
+    };
     let mut out: Vec<Option<Placed>> = vec![None; items.len()];
     // Step 1: items with definite positions in both axes.
     for (i, (maj, min)) in items.iter().enumerate() {
@@ -556,7 +617,11 @@ fn auto_place(items: &[(Res, Res)], explicit_minor: i32, dense: bool) -> Vec<Pla
     let mut row_cursor: BTreeMap<i32, i32> = BTreeMap::new();
     for (i, (maj, min)) in items.iter().enumerate() {
         if let (Res::Definite(a, b), Res::Span(k)) = (*maj, *min) {
-            let mut c = if dense { minor0 } else { row_cursor.get(&a).copied().unwrap_or(minor0) };
+            let mut c = if dense {
+                minor0
+            } else {
+                row_cursor.get(&a).copied().unwrap_or(minor0)
+            };
             while !occ.free((a, b), (c, c + k)) {
                 c += 1;
             }
@@ -607,7 +672,9 @@ fn auto_place(items: &[(Res, Res)], explicit_minor: i32, dense: bool) -> Vec<Pla
             _ => {}
         }
     }
-    out.into_iter().map(|o| o.unwrap_or(((1, 2), (1, 2)))).collect()
+    out.into_iter()
+        .map(|o| o.unwrap_or(((1, 2), (1, 2))))
+        .collect()
 }
 
 // Alignment.
@@ -735,7 +802,15 @@ fn fixed_area(tracks: &[Track], gap: Au, s: usize, e: usize, allow_fit: bool) ->
     Some(sum + gaps_between(tracks, gap, s, e))
 }
 
-fn item_contrib(tracks: &[Track], gap: Au, s: usize, e: usize, idx: usize, kind: Contrib, contrib: &mut ContribFn) -> Au {
+fn item_contrib(
+    tracks: &[Track],
+    gap: Au,
+    s: usize,
+    e: usize,
+    idx: usize,
+    kind: Contrib,
+    contrib: &mut ContribFn,
+) -> Au {
     let fa = fixed_area(tracks, gap, s, e, false);
     let limited = |k: Contrib, contrib: &mut ContribFn| -> Au {
         let c = contrib(idx, k, fa);
@@ -756,19 +831,41 @@ fn item_contrib(tracks: &[Track], gap: Au, s: usize, e: usize, idx: usize, kind:
 /// (`to_limits == false`) or growth limits, among the spanned tracks accepted by
 /// `affected`.
 #[allow(clippy::too_many_arguments)]
-fn distribute(tracks: &mut [Track], gap: Au, items: &[(usize, usize, usize)], kind: Contrib, to_limits: bool, affected: &dyn Fn(&Track) -> bool, contrib: &mut ContribFn) {
+fn distribute(
+    tracks: &mut [Track],
+    gap: Au,
+    items: &[(usize, usize, usize)],
+    kind: Contrib,
+    to_limits: bool,
+    affected: &dyn Fn(&Track) -> bool,
+    contrib: &mut ContribFn,
+) {
     let n = tracks.len();
     let mut planned = vec![Au::ZERO; n];
     let mut incurred = vec![Au::ZERO; n];
     let mut rooms = vec![Au::ZERO; n];
     for &(s, e, idx) in items {
-        let aff: Vec<usize> = (s..e).filter(|&k| !tracks[k].collapsed && affected(&tracks[k])).collect();
+        let aff: Vec<usize> = (s..e)
+            .filter(|&k| !tracks[k].collapsed && affected(&tracks[k]))
+            .collect();
         if aff.is_empty() {
             continue;
         }
         let c = item_contrib(tracks, gap, s, e, idx, kind, contrib);
-        let size = |t: &Track| if to_limits { if t.limit == INF { t.base } else { t.limit } } else { t.base };
-        let mut space = c - tracks[s..e].iter().map(size).fold(Au::ZERO, |a, b| a + b) - gaps_between(tracks, gap, s, e);
+        let size = |t: &Track| {
+            if to_limits {
+                if t.limit == INF {
+                    t.base
+                } else {
+                    t.limit
+                }
+            } else {
+                t.base
+            }
+        };
+        let mut space = c
+            - tracks[s..e].iter().map(size).fold(Au::ZERO, |a, b| a + b)
+            - gaps_between(tracks, gap, s, e);
         if space <= Au::ZERO {
             continue;
         }
@@ -810,7 +907,11 @@ fn distribute(tracks: &mut [Track], gap: Au, items: &[(usize, usize, usize)], ki
             let mut progressed = false;
             for (i, &k) in active.iter().enumerate() {
                 let give = split(total, m, i);
-                let g = if rooms[k] == INF { give } else { give.min(rooms[k] - incurred[k]) };
+                let g = if rooms[k] == INF {
+                    give
+                } else {
+                    give.min(rooms[k] - incurred[k])
+                };
                 incurred[k] += g;
                 space -= g;
                 progressed |= g > Au::ZERO;
@@ -830,7 +931,9 @@ fn distribute(tracks: &mut [Track], gap: Au, items: &[(usize, usize, usize)], ki
                         true
                     } else {
                         match kind {
-                            Contrib::MaxContent | Contrib::LimitedMaxContent => t.max_content_max(incurred[k]),
+                            Contrib::MaxContent | Contrib::LimitedMaxContent => {
+                                t.max_content_max(incurred[k])
+                            }
                             _ => t.intrinsic_max(incurred[k]),
                         }
                     }
@@ -874,16 +977,34 @@ fn distribute(tracks: &mut [Track], gap: Au, items: &[(usize, usize, usize)], ki
 
 /// §11.5 step 4: items crossing flexible tracks grow the flexible tracks' base sizes
 /// in proportion to their flex factors (all other tracks treated as fixed).
-fn distribute_flex(tracks: &mut [Track], gap: Au, items: &[(usize, usize, usize)], kind: Contrib, contrib: &mut ContribFn) {
+fn distribute_flex(
+    tracks: &mut [Track],
+    gap: Au,
+    items: &[(usize, usize, usize)],
+    kind: Contrib,
+    contrib: &mut ContribFn,
+) {
     let n = tracks.len();
     let mut planned = vec![Au::ZERO; n];
     for &(s, e, idx) in items {
-        let aff: Vec<(usize, i64)> = (s..e).filter_map(|k| tracks[k].flex().filter(|_| !tracks[k].collapsed && tracks[k].min == MinFn::Auto).map(|f| (k, f as i64))).collect();
+        let aff: Vec<(usize, i64)> = (s..e)
+            .filter_map(|k| {
+                tracks[k]
+                    .flex()
+                    .filter(|_| !tracks[k].collapsed && tracks[k].min == MinFn::Auto)
+                    .map(|f| (k, f as i64))
+            })
+            .collect();
         if aff.is_empty() {
             continue;
         }
         let c = item_contrib(tracks, gap, s, e, idx, kind, contrib);
-        let space = c - tracks[s..e].iter().map(|t| t.base).fold(Au::ZERO, |a, b| a + b) - gaps_between(tracks, gap, s, e);
+        let space = c
+            - tracks[s..e]
+                .iter()
+                .map(|t| t.base)
+                .fold(Au::ZERO, |a, b| a + b)
+            - gaps_between(tracks, gap, s, e);
         if space <= Au::ZERO {
             continue;
         }
@@ -896,7 +1017,10 @@ fn distribute_flex(tracks: &mut [Track], gap: Au, items: &[(usize, usize, usize)
                 // Less than one fr in total: that proportion by ratio, the rest equally.
                 let by_ratio = (space.0 as i64) * f / 1000;
                 let rest = space.0 as i64 - (space.0 as i64) * sum_f / 1000;
-                Au((by_ratio + split(Au(rest as i32), m, i).0 as i64).clamp(0, Au::MAX.0 as i64) as i32)
+                Au(
+                    (by_ratio + split(Au(rest as i32), m, i).0 as i64).clamp(0, Au::MAX.0 as i64)
+                        as i32,
+                )
             };
             planned[k] = planned[k].max(inc);
         }
@@ -919,7 +1043,12 @@ fn find_fr(tracks: &[Track], gap: Au, s: usize, e: usize, space: Au) -> Au {
         }
     }
     loop {
-        let sum_f: i64 = tracks[s..e].iter().enumerate().filter(|(i, _)| !inflexible[*i]).map(|(_, t)| t.flex().unwrap_or(0) as i64).sum();
+        let sum_f: i64 = tracks[s..e]
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| !inflexible[*i])
+            .map(|(_, t)| t.flex().unwrap_or(0) as i64)
+            .sum();
         let sum_f = sum_f.max(1000);
         let hyp = leftover * 1000 / sum_f;
         let mut changed = false;
@@ -941,9 +1070,17 @@ fn find_fr(tracks: &[Track], gap: Au, s: usize, e: usize, space: Au) -> Au {
 }
 
 /// Expands flexible tracks (§11.7).
-fn expand_flex(tracks: &mut [Track], gap: Au, spans: &[(usize, usize)], avail: Avail, contrib: &mut ContribFn) {
+fn expand_flex(
+    tracks: &mut [Track],
+    gap: Au,
+    spans: &[(usize, usize)],
+    avail: Avail,
+    contrib: &mut ContribFn,
+) {
     let n = tracks.len();
-    let flex: Vec<usize> = (0..n).filter(|&k| tracks[k].flex().is_some() && !tracks[k].collapsed).collect();
+    let flex: Vec<usize> = (0..n)
+        .filter(|&k| tracks[k].flex().is_some() && !tracks[k].collapsed)
+        .collect();
     if flex.is_empty() {
         return;
     }
@@ -961,11 +1098,18 @@ fn expand_flex(tracks: &mut [Track], gap: Au, spans: &[(usize, usize)], avail: A
             let mut fr = Au::ZERO;
             for &k in &flex {
                 let f = tracks[k].flex().unwrap_or(0);
-                let v = if f > 1000 { tracks[k].base.scale(1000, f) } else { tracks[k].base };
+                let v = if f > 1000 {
+                    tracks[k].base.scale(1000, f)
+                } else {
+                    tracks[k].base
+                };
                 fr = fr.max(v);
             }
             for (idx, &(s, e)) in spans.iter().enumerate() {
-                if tracks[s..e].iter().any(|t| t.flex().is_some() && !t.collapsed) {
+                if tracks[s..e]
+                    .iter()
+                    .any(|t| t.flex().is_some() && !t.collapsed)
+                {
                     let c = item_contrib(tracks, gap, s, e, idx, Contrib::MaxContent, contrib);
                     fr = fr.max(find_fr(tracks, gap, s, e, c));
                 }
@@ -984,7 +1128,14 @@ fn expand_flex(tracks: &mut [Track], gap: Au, spans: &[(usize, usize)], avail: A
 
 /// The track sizing algorithm (§11.3–11.8) for one axis. `spans[i]` is item `i`'s
 /// track range; `stretch` says the axis's content distribution is `normal`/`stretch`.
-fn size_axis(tracks: &mut [Track], gap: Au, spans: &[(usize, usize)], avail: Avail, stretch: bool, contrib: &mut ContribFn) {
+fn size_axis(
+    tracks: &mut [Track],
+    gap: Au,
+    spans: &[(usize, usize)],
+    avail: Avail,
+    stretch: bool,
+    contrib: &mut ContribFn,
+) {
     // §11.4 Initialise track sizes.
     for t in tracks.iter_mut() {
         t.base = match t.min {
@@ -1045,22 +1196,77 @@ fn size_axis(tracks: &mut [Track], gap: Au, spans: &[(usize, usize)], avail: Ava
         if e < s + 2 {
             continue;
         }
-        if tracks[s..e].iter().any(|t| t.flex().is_some() && !t.collapsed) {
+        if tracks[s..e]
+            .iter()
+            .any(|t| t.flex().is_some() && !t.collapsed)
+        {
             flex_items.push((s, e, idx));
         } else {
             groups.entry(e - s).or_default().push((s, e, idx));
         }
     }
-    let min_kind = if constrained { Contrib::LimitedMinContent } else { Contrib::Minimum };
+    let min_kind = if constrained {
+        Contrib::LimitedMinContent
+    } else {
+        Contrib::Minimum
+    };
     for group in groups.values() {
-        distribute(tracks, gap, group, min_kind, false, &|t| t.intrinsic_min(), contrib);
-        distribute(tracks, gap, group, Contrib::MinContent, false, &|t| matches!(t.min, MinFn::MinContent | MinFn::MaxContent), contrib);
-        distribute(tracks, gap, group, Contrib::MaxContent, false, &|t| t.min == MinFn::MaxContent, contrib);
+        distribute(
+            tracks,
+            gap,
+            group,
+            min_kind,
+            false,
+            &|t| t.intrinsic_min(),
+            contrib,
+        );
+        distribute(
+            tracks,
+            gap,
+            group,
+            Contrib::MinContent,
+            false,
+            &|t| matches!(t.min, MinFn::MinContent | MinFn::MaxContent),
+            contrib,
+        );
+        distribute(
+            tracks,
+            gap,
+            group,
+            Contrib::MaxContent,
+            false,
+            &|t| t.min == MinFn::MaxContent,
+            contrib,
+        );
         if avail == Avail::MaxContent {
-            distribute(tracks, gap, group, Contrib::LimitedMaxContent, false, &|t| t.min == MinFn::Auto, contrib);
+            distribute(
+                tracks,
+                gap,
+                group,
+                Contrib::LimitedMaxContent,
+                false,
+                &|t| t.min == MinFn::Auto,
+                contrib,
+            );
         }
-        distribute(tracks, gap, group, Contrib::MinContent, true, &|t| t.intrinsic_max(Au::ZERO), contrib);
-        distribute(tracks, gap, group, Contrib::MaxContent, true, &|t| t.max_content_max(Au::ZERO), contrib);
+        distribute(
+            tracks,
+            gap,
+            group,
+            Contrib::MinContent,
+            true,
+            &|t| t.intrinsic_max(Au::ZERO),
+            contrib,
+        );
+        distribute(
+            tracks,
+            gap,
+            group,
+            Contrib::MaxContent,
+            true,
+            &|t| t.max_content_max(Au::ZERO),
+            contrib,
+        );
         for t in tracks.iter_mut() {
             t.inf_growable = false;
         }
@@ -1081,7 +1287,9 @@ fn size_axis(tracks: &mut [Track], gap: Au, spans: &[(usize, usize)], avail: Ava
         Avail::Definite(a) => {
             let mut free = a - total_size(tracks, gap);
             if free > Au::ZERO {
-                let mut active: Vec<usize> = (0..tracks.len()).filter(|&k| !tracks[k].collapsed).collect();
+                let mut active: Vec<usize> = (0..tracks.len())
+                    .filter(|&k| !tracks[k].collapsed)
+                    .collect();
                 loop {
                     active.retain(|&k| tracks[k].base < tracks[k].limit);
                     if active.is_empty() || free <= Au::ZERO {
@@ -1118,7 +1326,9 @@ fn size_axis(tracks: &mut [Track], gap: Au, spans: &[(usize, usize)], avail: Ava
         if let Avail::Definite(a) = avail {
             let free = a - total_size(tracks, gap);
             if free > Au::ZERO {
-                let auto: Vec<usize> = (0..tracks.len()).filter(|&k| tracks[k].max == MaxFn::Auto && !tracks[k].collapsed).collect();
+                let auto: Vec<usize> = (0..tracks.len())
+                    .filter(|&k| tracks[k].max == MaxFn::Auto && !tracks[k].collapsed)
+                    .collect();
                 let m = auto.len();
                 for (i, &k) in auto.iter().enumerate() {
                     tracks[k].base += split(free, m, i);
@@ -1240,7 +1450,15 @@ fn margins(s: &ComputedStyle, base: Au) -> (Edges, [bool; 4]) {
     let (r, ra) = f(s.margin.right);
     let (t, ta) = f(s.margin.top);
     let (b, ba) = f(s.margin.bottom);
-    (Edges { top: t, right: r, bottom: b, left: l }, [la, ra, ta, ba])
+    (
+        Edges {
+            top: t,
+            right: r,
+            bottom: b,
+            left: l,
+        },
+        [la, ra, ta, ba],
+    )
 }
 
 fn auto_track(auto: &[TrackSize], i: usize) -> TrackSize {
@@ -1254,7 +1472,15 @@ fn auto_track(auto: &[TrackSize], i: usize) -> TrackSize {
 /// Builds one axis's tracks: the explicit ones (template tracks, then `grid-auto-*`
 /// sizes for explicit tracks that only the areas define) and the implicit ones
 /// cycling the `grid-auto-*` list forwards after and backwards before (§7.6).
-fn build_tracks(exp: &ExplicitAxis, explicit: usize, auto: &[TrackSize], line_min: i32, count: usize, base: Option<Au>, spans: &[(usize, usize)]) -> Vec<Track> {
+fn build_tracks(
+    exp: &ExplicitAxis,
+    explicit: usize,
+    auto: &[TrackSize],
+    line_min: i32,
+    count: usize,
+    base: Option<Au>,
+    spans: &[(usize, usize)],
+) -> Vec<Track> {
     let first = (1 - line_min).max(0) as usize;
     let n_auto = auto.len().max(1);
     let mut out = Vec::with_capacity(count);
@@ -1304,8 +1530,16 @@ impl<'c, 'a> Grid<'c, 'a> {
         let s = &b.style;
         let cw = cb.map(|c| c.width);
         let ch = cb.and_then(|c| c.height);
-        let col_gap = s.column_gap.maybe_resolve(cw).unwrap_or(Au::ZERO).max(Au::ZERO);
-        let row_gap = s.row_gap.maybe_resolve(ch).unwrap_or(Au::ZERO).max(Au::ZERO);
+        let col_gap = s
+            .column_gap
+            .maybe_resolve(cw)
+            .unwrap_or(Au::ZERO)
+            .max(Au::ZERO);
+        let row_gap = s
+            .row_gap
+            .maybe_resolve(ch)
+            .unwrap_or(Au::ZERO)
+            .max(Au::ZERO);
 
         // The explicit grid, with auto repeats counted against the container's
         // definite size, else its max size, else its min size.
@@ -1318,11 +1552,20 @@ impl<'c, 'a> Grid<'c, 'a> {
         let max_h = block::resolve_size(s.max_height, None, ev, s.box_sizing);
         let min_h = block::resolve_size(s.min_height, None, ev, s.box_sizing);
         let col_count = match &s.grid_template_columns.auto_repeat {
-            Some(rep) => auto_repeat_count(&s.grid_template_columns, rep, cw.or(max_w), min_w, col_gap, cw),
+            Some(rep) => auto_repeat_count(
+                &s.grid_template_columns,
+                rep,
+                cw.or(max_w),
+                min_w,
+                col_gap,
+                cw,
+            ),
             None => 0,
         };
         let row_count = match &s.grid_template_rows.auto_repeat {
-            Some(rep) => auto_repeat_count(&s.grid_template_rows, rep, ch.or(max_h), min_h, row_gap, ch),
+            Some(rep) => {
+                auto_repeat_count(&s.grid_template_rows, rep, ch.or(max_h), min_h, row_gap, ch)
+            }
             None => 0,
         };
         let cols_exp = expand(&s.grid_template_columns, col_count);
@@ -1363,7 +1606,14 @@ impl<'c, 'a> Grid<'c, 'a> {
                 abs.push(c);
                 continue;
             }
-            if matches!(cb.kind, BoxKind::Col(_) | BoxKind::ColGroup(_) | BoxKind::Wbr | BoxKind::Br(_) | BoxKind::Text(_)) {
+            if matches!(
+                cb.kind,
+                BoxKind::Col(_)
+                    | BoxKind::ColGroup(_)
+                    | BoxKind::Wbr
+                    | BoxKind::Br(_)
+                    | BoxKind::Text(_)
+            ) {
                 continue;
             }
             kids.push((cb.style.order, i, c));
@@ -1387,8 +1637,19 @@ impl<'c, 'a> Grid<'c, 'a> {
                 }
             })
             .collect();
-        let placed = auto_place(&resolved, if row_major { explicit_cols as i32 } else { explicit_rows as i32 }, dense);
-        let placed: Vec<((i32, i32), (i32, i32))> = placed.into_iter().map(|(maj, min)| if row_major { (maj, min) } else { (min, maj) }).collect();
+        let placed = auto_place(
+            &resolved,
+            if row_major {
+                explicit_cols as i32
+            } else {
+                explicit_rows as i32
+            },
+            dense,
+        );
+        let placed: Vec<((i32, i32), (i32, i32))> = placed
+            .into_iter()
+            .map(|(maj, min)| if row_major { (maj, min) } else { (min, maj) })
+            .collect();
 
         let mut col_min = 1;
         let mut col_end = explicit_cols as i32 + 1;
@@ -1408,15 +1669,51 @@ impl<'c, 'a> Grid<'c, 'a> {
             .map(|(&(_, _, c), &((r0, r1), (c0, c1)))| {
                 let cs = ctx.style(c);
                 let row = ((r0 - row_min) as usize, (r1 - row_min) as usize);
-                let baseline_group = resolve_self(cs.align_self, s.align_items) == Align::Baseline && row.1 == row.0 + 1;
-                GItem { id: c, col: ((c0 - col_min) as usize, (c1 - col_min) as usize), row, baseline_group }
+                let baseline_group = resolve_self(cs.align_self, s.align_items) == Align::Baseline
+                    && row.1 == row.0 + 1;
+                GItem {
+                    id: c,
+                    col: ((c0 - col_min) as usize, (c1 - col_min) as usize),
+                    row,
+                    baseline_group,
+                }
             })
             .collect();
         let col_spans: Vec<(usize, usize)> = items.iter().map(|it| it.col).collect();
         let row_spans: Vec<(usize, usize)> = items.iter().map(|it| it.row).collect();
-        let cols = build_tracks(&cols_exp, explicit_cols, &s.grid_auto_columns, col_min, ncols, cw, &col_spans);
-        let rows = build_tracks(&rows_exp, explicit_rows, &s.grid_auto_rows, row_min, nrows, ch, &row_spans);
-        Grid { ctx, id, items, abs, cols, rows, col_gap, row_gap, col_names, row_names, col_min, row_min, cw }
+        let cols = build_tracks(
+            &cols_exp,
+            explicit_cols,
+            &s.grid_auto_columns,
+            col_min,
+            ncols,
+            cw,
+            &col_spans,
+        );
+        let rows = build_tracks(
+            &rows_exp,
+            explicit_rows,
+            &s.grid_auto_rows,
+            row_min,
+            nrows,
+            ch,
+            &row_spans,
+        );
+        Grid {
+            ctx,
+            id,
+            items,
+            abs,
+            cols,
+            rows,
+            col_gap,
+            row_gap,
+            col_names,
+            row_names,
+            col_min,
+            row_min,
+            cw,
+        }
     }
 
     fn style(&self) -> &ComputedStyle {
@@ -1458,7 +1755,12 @@ impl<'c, 'a> Grid<'c, 'a> {
             Contrib::MinContent | Contrib::LimitedMinContent => mn + mh,
             Contrib::MaxContent | Contrib::LimitedMaxContent => mx + mh,
             Contrib::Minimum => {
-                if matches!(s.width, Sizing::Set(LengthPercentage::Length(_)) | Sizing::MinContent | Sizing::MaxContent) {
+                if matches!(
+                    s.width,
+                    Sizing::Set(LengthPercentage::Length(_))
+                        | Sizing::MinContent
+                        | Sizing::MaxContent
+                ) {
                     return mn + mh;
                 }
                 let eh = intrinsic::edges_h(ctx, it.id);
@@ -1474,7 +1776,9 @@ impl<'c, 'a> Grid<'c, 'a> {
                             }
                         }
                     }
-                    other => block::resolve_size(other, None, eh, s.box_sizing).map(|v| v + eh + mh).unwrap_or(eh + mh),
+                    other => block::resolve_size(other, None, eh, s.box_sizing)
+                        .map(|v| v + eh + mh)
+                        .unwrap_or(eh + mh),
                 }
             }
         }
@@ -1502,7 +1806,9 @@ impl<'c, 'a> Grid<'c, 'a> {
                             }
                         }
                     }
-                    other => block::resolve_size(other, None, ms.ev, s.box_sizing).map(|v| v + ms.ev + mv).unwrap_or(ms.ev + mv),
+                    other => block::resolve_size(other, None, ms.ev, s.box_sizing)
+                        .map(|v| v + ms.ev + mv)
+                        .unwrap_or(ms.ev + mv),
                 }
             }
             _ => outer,
@@ -1514,7 +1820,9 @@ impl<'c, 'a> Grid<'c, 'a> {
         let mut cols = self.cols.clone();
         let spans: Vec<(usize, usize)> = self.items.iter().map(|it| it.col).collect();
         let stretch = dist_justify(self.style().justify_content) == Dist::Stretch;
-        let mut f = |i: usize, k: Contrib, fixed: Option<Au>| self.inline_contrib(&self.items[i], k, fixed, over.get(&i).copied());
+        let mut f = |i: usize, k: Contrib, fixed: Option<Au>| {
+            self.inline_contrib(&self.items[i], k, fixed, over.get(&i).copied())
+        };
         size_axis(&mut cols, self.col_gap, &spans, avail, stretch, &mut f);
         cols
     }
@@ -1523,14 +1831,22 @@ impl<'c, 'a> Grid<'c, 'a> {
         let mut rows = self.rows.clone();
         let spans: Vec<(usize, usize)> = self.items.iter().map(|it| it.row).collect();
         let stretch = dist_align(self.style().align_content) == Dist::Stretch;
-        let mut f = |i: usize, k: Contrib, fixed: Option<Au>| self.block_contrib(&self.items[i], &measures[i], k, fixed);
+        let mut f = |i: usize, k: Contrib, fixed: Option<Au>| {
+            self.block_contrib(&self.items[i], &measures[i], k, fixed)
+        };
         size_axis(&mut rows, self.row_gap, &spans, avail, stretch, &mut f);
         rows
     }
 
     /// The used inline size of an item in its grid area (css-align §6, §6.6):
     /// `(content width, margins, auto margin flags)`.
-    fn used_width(&self, it: &GItem, area_w: Au, area_h: Option<Au>, fixed: Option<Au>) -> (Au, Edges, [bool; 4]) {
+    fn used_width(
+        &self,
+        it: &GItem,
+        area_w: Au,
+        area_h: Option<Au>,
+        fixed: Option<Au>,
+    ) -> (Au, Edges, [bool; 4]) {
         let ctx = self.ctx;
         let b = &ctx.tree[it.id];
         let s = &b.style;
@@ -1539,7 +1855,15 @@ impl<'c, 'a> Grid<'c, 'a> {
         let eh = p.horizontal() + s.used_border_widths().horizontal();
         let free = area_w - m.horizontal();
         if let BoxKind::Replaced(rb) = &b.kind {
-            let size = block::replaced_size(ctx, it.id, rb, &Cb { width: area_w, height: area_h });
+            let size = block::replaced_size(
+                ctx,
+                it.id,
+                rb,
+                &Cb {
+                    width: area_w,
+                    height: area_h,
+                },
+            );
             return (size.width, m, auto);
         }
         let (mn, mx) = intrinsic::min_max(ctx, it.id);
@@ -1562,7 +1886,8 @@ impl<'c, 'a> Grid<'c, 'a> {
         .max(Au::ZERO);
         let min_w = match s.min_width {
             Sizing::Auto => {
-                if b.is_scroll_container() || !matches!(s.width, Sizing::Auto | Sizing::FitContent) {
+                if b.is_scroll_container() || !matches!(s.width, Sizing::Auto | Sizing::FitContent)
+                {
                     Au::ZERO
                 } else {
                     let c = (mn - eh).max(Au::ZERO);
@@ -1584,11 +1909,21 @@ impl<'c, 'a> Grid<'c, 'a> {
 
     /// Lays out an item at a content width in an area, at the origin. `forced_h` is a
     /// stretched content height.
-    fn layout_item(&self, id: BoxId, area_w: Au, area_h: Option<Au>, content_w: Au, forced_h: Option<Au>) -> (Fragment, Vec<AbsRequest>) {
+    fn layout_item(
+        &self,
+        id: BoxId,
+        area_w: Au,
+        area_h: Option<Au>,
+        content_w: Au,
+        forced_h: Option<Au>,
+    ) -> (Fragment, Vec<AbsRequest>) {
         let ctx = self.ctx;
         let b = &ctx.tree[id];
         let s = &b.style;
-        let cb = Cb { width: area_w, height: area_h };
+        let cb = Cb {
+            width: area_w,
+            height: area_h,
+        };
         match &b.kind {
             BoxKind::Replaced(rb) => {
                 let p = block::padding_edges(s, area_w);
@@ -1598,7 +1933,10 @@ impl<'c, 'a> Grid<'c, 'a> {
                     size.height = size.height.scale(content_w.0, size.width.0);
                 }
                 size.width = content_w;
-                (block::replaced_fragment(ctx, id, rb, size, p, bw), Vec::new())
+                (
+                    block::replaced_fragment(ctx, id, rb, size, p, bw),
+                    Vec::new(),
+                )
             }
             BoxKind::TableWrapper => {
                 let eh = intrinsic::edges_h(ctx, id);
@@ -1608,7 +1946,15 @@ impl<'c, 'a> Grid<'c, 'a> {
                 if let Some(h) = forced_h {
                     ctx.cache.borrow_mut().forced_height.insert(id, Some(h));
                 }
-                let r = block::layout_block_box(ctx, id, &cb, &mut Bfc::new(), Point::default(), Au::ZERO, Some(content_w));
+                let r = block::layout_block_box(
+                    ctx,
+                    id,
+                    &cb,
+                    &mut Bfc::new(),
+                    Point::default(),
+                    Au::ZERO,
+                    Some(content_w),
+                );
                 if forced_h.is_some() {
                     ctx.cache.borrow_mut().forced_height.remove(&id);
                 }
@@ -1633,10 +1979,20 @@ impl<'c, 'a> Grid<'c, 'a> {
             let height = frag.rect.size.height;
             let ascent = margin.top
                 + match &frag.kind {
-                    FragmentKind::Box { baseline: Some(bl), .. } => *bl,
+                    FragmentKind::Box {
+                        baseline: Some(bl), ..
+                    } => *bl,
                     _ => height,
                 };
-            out.push(Measure { margin, auto, content_w, ev, height, ascent, shim: Au::ZERO });
+            out.push(Measure {
+                margin,
+                auto,
+                content_w,
+                ev,
+                height,
+                ascent,
+                shim: Au::ZERO,
+            });
         }
         // Baseline alignment contexts per row (§11.5 step 1).
         let mut max_ascent: BTreeMap<usize, Au> = BTreeMap::new();
@@ -1656,11 +2012,21 @@ impl<'c, 'a> Grid<'c, 'a> {
 
     /// Second-pass column contributions (§12 step 3) for replaced items whose width
     /// depends on their now-definite row area height. Returns whether any changed.
-    fn replaced_overrides(&self, measures: &[Measure], row_starts: &[Au], row_ends: &[Au], col_starts: &[Au], col_ends: &[Au], over: &mut BTreeMap<usize, Au>) -> bool {
+    fn replaced_overrides(
+        &self,
+        measures: &[Measure],
+        row_starts: &[Au],
+        row_ends: &[Au],
+        col_starts: &[Au],
+        col_ends: &[Au],
+        over: &mut BTreeMap<usize, Au>,
+    ) -> bool {
         let mut changed = false;
         for (i, it) in self.items.iter().enumerate() {
             let b = &self.ctx.tree[it.id];
-            let BoxKind::Replaced(rb) = &b.kind else { continue };
+            let BoxKind::Replaced(rb) = &b.kind else {
+                continue;
+            };
             let s = &b.style;
             let pct = |z: Sizing| matches!(z, Sizing::Set(v) if v.has_percent());
             if !(pct(s.height) || pct(s.min_height) || pct(s.max_height)) {
@@ -1668,8 +2034,17 @@ impl<'c, 'a> Grid<'c, 'a> {
             }
             let area_w = col_ends[it.col.1 - 1] - col_starts[it.col.0];
             let area_h = row_ends[it.row.1 - 1] - row_starts[it.row.0];
-            let size = block::replaced_size(self.ctx, it.id, rb, &Cb { width: area_w, height: Some(area_h) });
-            let w = size.width + intrinsic::edges_h(self.ctx, it.id) + measures[i].margin.horizontal();
+            let size = block::replaced_size(
+                self.ctx,
+                it.id,
+                rb,
+                &Cb {
+                    width: area_w,
+                    height: Some(area_h),
+                },
+            );
+            let w =
+                size.width + intrinsic::edges_h(self.ctx, it.id) + measures[i].margin.horizontal();
             let before = self.inline_contrib(it, Contrib::MinContent, None, over.get(&i).copied());
             if w != before {
                 over.insert(i, w);
@@ -1729,8 +2104,16 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
         let y0 = row_starts[it.row.0];
         let area_h = row_ends[it.row.1 - 1] - y0;
         let align = g.align_self(it.id);
-        let stretch_h = align == Align::Stretch && is.height == Sizing::Auto && !ms.auto[2] && !ms.auto[3] && !matches!(b.kind, BoxKind::Replaced(_) | BoxKind::TableWrapper);
-        let forced = if stretch_h { Some((area_h - ms.margin.vertical() - ms.ev).max(Au::ZERO)) } else { None };
+        let stretch_h = align == Align::Stretch
+            && is.height == Sizing::Auto
+            && !ms.auto[2]
+            && !ms.auto[3]
+            && !matches!(b.kind, BoxKind::Replaced(_) | BoxKind::TableWrapper);
+        let forced = if stretch_h {
+            Some((area_h - ms.margin.vertical() - ms.ev).max(Au::ZERO))
+        } else {
+            None
+        };
         let (mut frag, mut abs) = g.layout_item(it.id, area_w, Some(area_h), ms.content_w, forced);
         let w = frag.rect.size.width;
         let h = frag.rect.size.height;
@@ -1763,8 +2146,17 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
                 }
             },
         } + ms.margin.top;
-        let off = block::relative_offset(is, &Cb { width: area_w, height: Some(area_h) });
-        frag.rect.origin = Point { x: x0 + x + off.x, y: y0 + y + off.y };
+        let off = block::relative_offset(
+            is,
+            &Cb {
+                width: area_w,
+                height: Some(area_h),
+            },
+        );
+        frag.rect.origin = Point {
+            x: x0 + x + off.x,
+            y: y0 + y + off.y,
+        };
         // Used margins: an `auto` side takes the free space of its area.
         let mut used = ms.margin;
         if ms.auto[0] {
@@ -1786,7 +2178,9 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
         abs_out.extend(abs);
         if it.row.0 == 0 {
             let bl = match &frag.kind {
-                FragmentKind::Box { baseline: Some(b), .. } => Some(frag.rect.origin.y + *b),
+                FragmentKind::Box {
+                    baseline: Some(b), ..
+                } => Some(frag.rect.origin.y + *b),
                 _ => None,
             };
             if it.baseline_group && row0_group.is_none() {
@@ -1807,50 +2201,115 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
         let ab = &ctx.tree[a];
         let fixed = ab.style.position == crate::style::Position::Fixed;
         if !s.is_positioned() || fixed {
-            abs_out.push(AbsRequest { id: a, static_pos: Point::default(), fixed });
+            abs_out.push(AbsRequest {
+                id: a,
+                static_pos: Point::default(),
+                fixed,
+            });
             continue;
         }
         let as_ = &ab.style;
-        let line_pos = |starts: &[Au], ends: &[Au], line: i32, min: i32, end: bool, lo: Au, hi: Au| -> Au {
-            let n = starts.len() as i32;
-            let idx = line - min;
-            if idx < 0 || idx > n {
-                return if end { hi } else { lo };
-            }
-            if end {
-                if idx == 0 {
-                    starts.first().copied().unwrap_or(Au::ZERO)
-                } else {
-                    ends[(idx - 1) as usize]
+        let line_pos =
+            |starts: &[Au], ends: &[Au], line: i32, min: i32, end: bool, lo: Au, hi: Au| -> Au {
+                let n = starts.len() as i32;
+                let idx = line - min;
+                if idx < 0 || idx > n {
+                    return if end { hi } else { lo };
                 }
-            } else if idx == n {
-                ends.last().copied().unwrap_or(Au::ZERO)
-            } else {
-                starts[idx as usize]
-            }
-        };
-        let (cx0, cx1) = match resolve_axis(&g.col_names, &as_.grid_column_start, &as_.grid_column_end) {
-            Res::Definite(l0, l1) => {
-                let x0 = if as_.grid_column_start == GridLine::Auto { -pad.left } else { line_pos(&col_starts, &col_ends, l0, g.col_min, false, -pad.left, cb.width + pad.right) };
-                let x1 = if as_.grid_column_end == GridLine::Auto { cb.width + pad.right } else { line_pos(&col_starts, &col_ends, l1, g.col_min, true, -pad.left, cb.width + pad.right) };
-                (x0, x1.max(x0))
-            }
-            Res::Span(_) => (-pad.left, cb.width + pad.right),
-        };
+                if end {
+                    if idx == 0 {
+                        starts.first().copied().unwrap_or(Au::ZERO)
+                    } else {
+                        ends[(idx - 1) as usize]
+                    }
+                } else if idx == n {
+                    ends.last().copied().unwrap_or(Au::ZERO)
+                } else {
+                    starts[idx as usize]
+                }
+            };
+        let (cx0, cx1) =
+            match resolve_axis(&g.col_names, &as_.grid_column_start, &as_.grid_column_end) {
+                Res::Definite(l0, l1) => {
+                    let x0 = if as_.grid_column_start == GridLine::Auto {
+                        -pad.left
+                    } else {
+                        line_pos(
+                            &col_starts,
+                            &col_ends,
+                            l0,
+                            g.col_min,
+                            false,
+                            -pad.left,
+                            cb.width + pad.right,
+                        )
+                    };
+                    let x1 = if as_.grid_column_end == GridLine::Auto {
+                        cb.width + pad.right
+                    } else {
+                        line_pos(
+                            &col_starts,
+                            &col_ends,
+                            l1,
+                            g.col_min,
+                            true,
+                            -pad.left,
+                            cb.width + pad.right,
+                        )
+                    };
+                    (x0, x1.max(x0))
+                }
+                Res::Span(_) => (-pad.left, cb.width + pad.right),
+            };
         let inner_h = cb.height.unwrap_or(height);
         let (cy0, cy1) = match resolve_axis(&g.row_names, &as_.grid_row_start, &as_.grid_row_end) {
             Res::Definite(l0, l1) => {
-                let y0 = if as_.grid_row_start == GridLine::Auto { -pad.top } else { line_pos(&row_starts, &row_ends, l0, g.row_min, false, -pad.top, inner_h + pad.bottom) };
-                let y1 = if as_.grid_row_end == GridLine::Auto { inner_h + pad.bottom } else { line_pos(&row_starts, &row_ends, l1, g.row_min, true, -pad.top, inner_h + pad.bottom) };
+                let y0 = if as_.grid_row_start == GridLine::Auto {
+                    -pad.top
+                } else {
+                    line_pos(
+                        &row_starts,
+                        &row_ends,
+                        l0,
+                        g.row_min,
+                        false,
+                        -pad.top,
+                        inner_h + pad.bottom,
+                    )
+                };
+                let y1 = if as_.grid_row_end == GridLine::Auto {
+                    inner_h + pad.bottom
+                } else {
+                    line_pos(
+                        &row_starts,
+                        &row_ends,
+                        l1,
+                        g.row_min,
+                        true,
+                        -pad.top,
+                        inner_h + pad.bottom,
+                    )
+                };
                 (y0, y1.max(y0))
             }
             Res::Span(_) => (-pad.top, inner_h + pad.bottom),
         };
         let cbf = Fragment::new(
-            FragmentKind::Box { source: ctx.tree[id].source, padding: Edges::ZERO, border: Edges::ZERO, replaced: None, scroll: None, baseline: None },
+            FragmentKind::Box {
+                source: ctx.tree[id].source,
+                padding: Edges::ZERO,
+                border: Edges::ZERO,
+                replaced: None,
+                scroll: None,
+                baseline: None,
+            },
             Rect::new(cx0, cy0, cx1 - cx0, cy1 - cy0),
         );
-        let req = AbsRequest { id: a, static_pos: Point { x: -cx0, y: -cy0 }, fixed: false };
+        let req = AbsRequest {
+            id: a,
+            static_pos: Point { x: -cx0, y: -cy0 },
+            fixed: false,
+        };
         let mut f = block::layout_absolute(ctx, &cbf, &req);
         f.rect.origin.x += cx0;
         f.rect.origin.y += cy0;

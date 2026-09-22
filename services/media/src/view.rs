@@ -51,7 +51,13 @@ pub fn skin(state: &Value, mode: &str) -> &'static str {
 }
 /// The page shell: title, language, the mode's base sheet then the skin's, the seed's
 /// palette as custom properties, and `skin-<name> <page class>` on `<body>`.
-pub fn document(state: &Value, mode: &str, title: &str, page_class: &str, body: Vec<Html>) -> Document {
+pub fn document(
+    state: &Value,
+    mode: &str,
+    title: &str,
+    page_class: &str,
+    body: Vec<Html>,
+) -> Document {
     let skin = skin(state, mode);
     let sheet = skins(mode)
         .iter()
@@ -78,7 +84,11 @@ pub fn document(state: &Value, mode: &str, title: &str, page_class: &str, body: 
     let mut doc = Document::new(title)
         .lang("en")
         .stylesheet(ICONS_CSS)
-        .stylesheet(if mode == "video" { VIDEO_CSS } else { MUSIC_CSS })
+        .stylesheet(if mode == "video" {
+            VIDEO_CSS
+        } else {
+            MUSIC_CSS
+        })
         .stylesheet(sheet)
         .body_class(&format!("skin-{skin} {page_class}"))
         .body(body);
@@ -97,12 +107,22 @@ pub fn act(id: &str, url: &str, fields: &[(&str, &str)], control: Html) -> Html 
 }
 /// The button of an [`act`]: a class and, for one that shows only a glyph, its name.
 pub fn press(class: &str, label: &str) -> Html {
-    el("button").class(class).when(!label.is_empty(), |b| b.attr("aria-label", label).attr("title", label))
+    el("button").class(class).when(!label.is_empty(), |b| {
+        b.attr("aria-label", label).attr("title", label)
+    })
 }
 /// A form with one visible text field and its submit button: the Page model's
 /// `form(id, url, [(field, label, value)])`, with the same `<id>-<field>` and
 /// `<id>-submit` ids.
-pub fn field_form(id: &str, url: &str, method: &str, field: &str, label: &str, value: &str, submit: &str) -> Html {
+pub fn field_form(
+    id: &str,
+    url: &str,
+    method: &str,
+    field: &str,
+    label: &str,
+    value: &str,
+    submit: &str,
+) -> Html {
     form(id, url, method)
         .class("field")
         .child(
@@ -123,17 +143,26 @@ pub fn here_aware(node: Html, url: &str, here: &str) -> Html {
 }
 /// A CSS-drawn glyph: `<span class="ic ic-play">`. The stylesheet draws it.
 pub fn icon(name: &str) -> Html {
-    span(&format!("ic ic-{name}")).attr("aria-hidden", "true").child(el("i"))
+    span(&format!("ic ic-{name}"))
+        .attr("aria-hidden", "true")
+        .child(el("i"))
 }
 /// Artwork: `cw_artwork`'s composition for `of`, served rasterised by this site at
 /// `/art/<of>` at the size it is shown. `radius` rounds the raster's own corners; a
 /// radius near half the side is a round avatar and is made exactly round.
 pub fn cover(id: &str, of: &str, label: &str, side: u32, radius: u32) -> Html {
-    let radius = if radius * 2 + 8 >= side { side / 2 } else { radius };
+    let radius = if radius * 2 + 8 >= side {
+        side / 2
+    } else {
+        radius
+    };
     el("img")
         .id(id)
         .class("cover")
-        .attr("src", format!("/art/{}?size={side}&radius={radius}", encode(of)))
+        .attr(
+            "src",
+            format!("/art/{}?size={side}&radius={radius}", encode(of)),
+        )
         .attr("alt", label)
         .attr("width", side.to_string())
         .attr("height", side.to_string())
@@ -149,7 +178,10 @@ pub fn still(id: &str, of: &str, label: &str, size: u32) -> Html {
 }
 /// The first letter of a name, upper-cased: what an avatar without a picture shows.
 pub fn initial(name: &str) -> String {
-    name.chars().next().map(|c| c.to_uppercase().to_string()).unwrap_or_default()
+    name.chars()
+        .next()
+        .map(|c| c.to_uppercase().to_string())
+        .unwrap_or_default()
 }
 /// `http://` links in a text become real links, `<prefix>-link-<word index>`.
 pub fn links(prefix: &str, text: &str) -> Vec<Html> {

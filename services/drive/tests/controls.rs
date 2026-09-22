@@ -42,9 +42,10 @@ fn get(state: &mut Value, actor: &str, url: &str) -> HttpResponse {
 fn post(state: &mut Value, actor: &str, url: &str, body: &str) -> HttpResponse {
     let mut request = HttpRequest::get(url);
     request.method = "POST".into();
-    request
-        .headers
-        .insert("content-type".into(), "application/x-www-form-urlencoded".into());
+    request.headers.insert(
+        "content-type".into(),
+        "application/x-www-form-urlencoded".into(),
+    );
     request.body = body.as_bytes().to_vec();
     DriveService.handle(state, &ctx(actor), &request).unwrap()
 }
@@ -73,7 +74,9 @@ impl Control {
             let mut out = String::new();
             for b in s.bytes() {
                 match b {
-                    b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => out.push(b as char),
+                    b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                        out.push(b as char)
+                    }
                     b' ' => out.push('+'),
                     _ => out.push_str(&format!("%{b:02X}")),
                 }
@@ -129,14 +132,37 @@ fn plain(actor: &str) -> Site {
 fn stirred(mut site: Site, star: &str, link: &str, delete: &str) -> (Site, String) {
     let (actor, host) = (site.actor.clone(), site.host.clone());
     let at = |path: &str| format!("http://{host}/api{path}");
-    assert_eq!(post(&mut site.state, &actor, &at(&format!("/nodes/{star}/star")), "").status, 200);
-    let minted = post(&mut site.state, &actor, &at(&format!("/nodes/{link}/link")), "");
+    assert_eq!(
+        post(
+            &mut site.state,
+            &actor,
+            &at(&format!("/nodes/{star}/star")),
+            ""
+        )
+        .status,
+        200
+    );
+    let minted = post(
+        &mut site.state,
+        &actor,
+        &at(&format!("/nodes/{link}/link")),
+        "",
+    );
     assert_eq!(minted.status, 200, "{}", site.label);
     let token = serde_json::from_slice::<Value>(&minted.body).unwrap()["link"]
         .as_str()
         .unwrap()
         .to_owned();
-    assert_eq!(post(&mut site.state, &actor, &at(&format!("/nodes/{delete}/trash")), "").status, 200);
+    assert_eq!(
+        post(
+            &mut site.state,
+            &actor,
+            &at(&format!("/nodes/{delete}/trash")),
+            ""
+        )
+        .status,
+        200
+    );
     (site, format!("/s/{token}"))
 }
 
@@ -145,9 +171,9 @@ fn stirred(mut site: Site, star: &str, link: &str, delete: &str) -> (Site, Strin
 fn controls_of_html(doc: &Document, host: &str) -> Vec<Control> {
     // An element with no id is named by its class, which is how the brand anchor is known.
     let name_of = |n: NodeId, fallback: &str| {
-        doc.attr(n, "id").map(str::to_owned).unwrap_or_else(|| {
-            format!("{fallback}.{}", doc.attr(n, "class").unwrap_or("-"))
-        })
+        doc.attr(n, "id")
+            .map(str::to_owned)
+            .unwrap_or_else(|| format!("{fallback}.{}", doc.attr(n, "class").unwrap_or("-")))
     };
     let fields_of = |form: NodeId| {
         doc.descendants(form)
@@ -204,7 +230,9 @@ fn controls_of_html(doc: &Document, host: &str) -> Vec<Control> {
             }
         }
     }
-    found.retain(|c| !c.target.starts_with("http") || c.target.starts_with(&format!("http://{host}/")));
+    found.retain(|c| {
+        !c.target.starts_with("http") || c.target.starts_with(&format!("http://{host}/"))
+    });
     for c in &mut found {
         if let Some(rest) = c.target.strip_prefix(&format!("http://{host}")) {
             c.target = rest.to_owned();
@@ -257,7 +285,12 @@ fn controls_of_page(page: &Value) -> Vec<Control> {
                             .collect()
                     })
                     .unwrap_or_default();
-                out.push(Control { what: id.to_owned(), method, target: url.to_owned(), fields });
+                out.push(Control {
+                    what: id.to_owned(),
+                    method,
+                    target: url.to_owned(),
+                    fields,
+                });
             }
             for child in map.values() {
                 walk(child, id, inputs, out);
@@ -298,7 +331,11 @@ fn crawl(site: &Site, seeds: &[&str]) -> usize {
     while let Some(path) = queue.pop_front() {
         let label = format!("{} {path}", site.label);
         let mut state = site.state.clone();
-        let response = get(&mut state, &site.actor, &format!("http://{}{path}", site.host));
+        let response = get(
+            &mut state,
+            &site.actor,
+            &format!("http://{}{path}", site.host),
+        );
         assert!(
             ![404, 405].contains(&response.status) && response.status < 500,
             "{label}: answered {}",
@@ -350,8 +387,7 @@ fn crawl(site: &Site, seeds: &[&str]) -> usize {
                 // A link back to the page it sits on is a control that does nothing — unless
                 // it is a jump to a place on that page, which is a control that does something.
                 assert!(
-                    jump
-                        || canonical(&target) != canonical(&path)
+                    jump || canonical(&target) != canonical(&path)
                         || SELF_LINKS_ALLOWED.contains(&control.what.as_str())
                         || control.what == "link.brand",
                     "{what} leads back to this same page"
@@ -371,7 +407,10 @@ fn crawl(site: &Site, seeds: &[&str]) -> usize {
             );
             // A blank field earns a 400; nothing the actor could type earns a 403, so a form
             // drawn for someone who may not use it is a lie about what the page can do.
-            assert_ne!(status, 403, "{what} was drawn for an actor who may not use it");
+            assert_ne!(
+                status, 403,
+                "{what} was drawn for an actor who may not use it"
+            );
             // Nothing was left to fill in, so nothing the actor did can explain a refusal.
             if control.fields.is_empty() || control.fields.iter().all(|(_, v)| !v.is_empty()) {
                 assert!(
@@ -389,7 +428,11 @@ fn crawl(site: &Site, seeds: &[&str]) -> usize {
             .map(|(_, body)| body.clone())
             .unwrap_or_else(|| {
                 let mut state = site.state.clone();
-                let response = get(&mut state, &site.actor, &format!("http://{}{target}", site.host));
+                let response = get(
+                    &mut state,
+                    &site.actor,
+                    &format!("http://{}{target}", site.host),
+                );
                 String::from_utf8(response.body).unwrap()
             });
         assert!(
@@ -413,10 +456,30 @@ const ENTRIES: [&str; 6] = [
 #[test]
 fn every_link_form_and_button_of_every_skin_is_answered_by_a_route() {
     let cases = [
-        stirred(boot(DRIVE, "alice", "gdrive"), "press-kit", "benchmarks", "faq"),
-        stirred(boot(DRIVE, "bob", "gdrive"), "press-kit", "benchmarks", "demo-script"),
-        stirred(boot(DROPBOX, "carol", "dropbox"), "press-kit", "benchmarks", "faq"),
-        stirred(boot(DROPBOX, "alice", "dropbox"), "press-kit", "benchmarks", "faq"),
+        stirred(
+            boot(DRIVE, "alice", "gdrive"),
+            "press-kit",
+            "benchmarks",
+            "faq",
+        ),
+        stirred(
+            boot(DRIVE, "bob", "gdrive"),
+            "press-kit",
+            "benchmarks",
+            "demo-script",
+        ),
+        stirred(
+            boot(DROPBOX, "carol", "dropbox"),
+            "press-kit",
+            "benchmarks",
+            "faq",
+        ),
+        stirred(
+            boot(DROPBOX, "alice", "dropbox"),
+            "press-kit",
+            "benchmarks",
+            "faq",
+        ),
         stirred(plain("alice"), "f-logo", "f-logo", "f-private"),
         stirred(plain("carol"), "f-atlas", "f-atlas", "d-launch"),
     ];

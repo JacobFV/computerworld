@@ -107,8 +107,15 @@ fn the_page_kinds_the_seed_does_not_reach_have_no_dead_controls_either() {
     }
     s.create("carol", "Solo", 2 * DAY_US, 2 * DAY_US + HOUR_US, vec![], 0)
         .unwrap();
-    s.create("alice", "Trip", 3 * DAY_US, 5 * DAY_US, vec!["carol".into()], 0)
-        .unwrap();
+    s.create(
+        "alice",
+        "Trip",
+        3 * DAY_US,
+        5 * DAY_US,
+        vec!["carol".into()],
+        0,
+    )
+    .unwrap();
     let crowded = serde_json::to_value(&s).unwrap();
     let mut faults = Vec::new();
     for actor in ["carol", "alice"] {
@@ -222,7 +229,10 @@ fn every_link_form_and_button_on_every_page_kind_reaches_a_route_that_answers() 
                     control.id, control.method
                 ));
             }
-            if control.method == "GET" && target == path && !SELF_LINKS.contains(&control.id.as_str()) {
+            if control.method == "GET"
+                && target == path
+                && !SELF_LINKS.contains(&control.id.as_str())
+            {
                 faults.push(format!(
                     "[{actor}] {path}: #{} links to the page it is on",
                     control.id
@@ -233,12 +243,38 @@ fn every_link_form_and_button_on_every_page_kind_reaches_a_route_that_answers() 
     assert!(faults.is_empty(), "dead controls:\n{}", faults.join("\n"));
     // The buttons and forms are covered, not only the links.
     for id in [
-        "today", "next", "prev", "view-week", "view-month", "create", "mini-20",
-        "calendar-carol", "day-0-event-1", "day-1-event-1", "day-0-head", "day-1-more",
-        "detail-permalink", "detail-back", "detail-join", "event", "event-title",
-        "event-start", "event-end", "event-attendees", "event-submit", "rsvp", "rsvp-yes",
-        "rsvp-no", "rsvp-maybe", "edit", "edit-title", "edit-start", "edit-end",
-        "edit-submit", "delete-form", "delete",
+        "today",
+        "next",
+        "prev",
+        "view-week",
+        "view-month",
+        "create",
+        "mini-20",
+        "calendar-carol",
+        "day-0-event-1",
+        "day-1-event-1",
+        "day-0-head",
+        "day-1-more",
+        "detail-permalink",
+        "detail-back",
+        "detail-join",
+        "event",
+        "event-title",
+        "event-start",
+        "event-end",
+        "event-attendees",
+        "event-submit",
+        "rsvp",
+        "rsvp-yes",
+        "rsvp-no",
+        "rsvp-maybe",
+        "edit",
+        "edit-title",
+        "edit-start",
+        "edit-end",
+        "edit-submit",
+        "delete-form",
+        "delete",
     ] {
         assert!(covered.contains(id), "no page kind drew #{id}");
     }

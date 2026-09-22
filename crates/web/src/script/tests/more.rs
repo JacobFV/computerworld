@@ -6,10 +6,20 @@ check!(html_collection_iteration, "<div id=a><b></b><u></u></div>", "const c=a.c
 check!(child_nodes_identity, "<div id=a></div>", "console.log(a.childNodes===a.childNodes, a.children===a.children, a.classList===a.classList, a.style===a.style, a.dataset===a.dataset, a.attributes===a.attributes);", "true true true true true true");
 check!(wrapper_identity, "<div id=a><b></b></div>", "console.log(document.getElementById('a')===document.querySelector('#a'), a.firstChild===a.children[0], a.firstChild.parentNode===a, document.body===document.body);", "true true true true");
 check!(expando_properties_persist, "<div id=a></div>", "a.myProp={x:1}; console.log(document.getElementById('a').myProp.x, 'myProp' in a, Object.keys(a).includes('myProp'));", "1 true true");
-check!(text_content_nested, "<div id=a>x<b>y<i>z</i></b><!--c--></div>", "console.log(a.textContent, a.firstChild.textContent, a.lastChild.textContent);", "xyz x c");
+check!(
+    text_content_nested,
+    "<div id=a>x<b>y<i>z</i></b><!--c--></div>",
+    "console.log(a.textContent, a.firstChild.textContent, a.lastChild.textContent);",
+    "xyz x c"
+);
 check!(insert_before_null_and_self, "<div id=a><b></b><i></i></div>", "const b=a.firstChild; a.insertBefore(b, null); console.log(a.innerHTML); a.insertBefore(b, b); console.log(a.innerHTML); try { a.insertBefore(b) } catch(e) { console.log(e.name) }", "<i></i><b></b>\n<i></i><b></b>\nTypeError");
 check!(replace_child_same_and_sibling, "<div id=a><b></b><i></i></div>", "const [b,i]=a.children; a.replaceChild(i, b); console.log(a.innerHTML); a.replaceChild(i, i); console.log(a.innerHTML);", "<i></i>\n<i></i>");
-check!(remove_detached_is_noop, "", "const d=document.createElement('div'); d.remove(); console.log(d.parentNode, d.isConnected);", "null false");
+check!(
+    remove_detached_is_noop,
+    "",
+    "const d=document.createElement('div'); d.remove(); console.log(d.parentNode, d.isConnected);",
+    "null false"
+);
 check!(clone_keeps_form_state, "<input id=i value=a><input id=c type=checkbox>", "i.value='typed'; c.checked=true; const i2=i.cloneNode(), c2=c.cloneNode(); console.log(i2.value, c2.checked, i2.id, i2===i);", "typed true i false");
 check!(create_element_case, "", "const e=document.createElement('DIV'); console.log(e.tagName, e.localName, e instanceof HTMLDivElement, document.createElementNS('http://www.w3.org/1999/xhtml','span').constructor.name);", "DIV div true HTMLSpanElement");
 check!(attribute_case_insensitive_html, "<div id=a></div>", "a.setAttribute('DATA-Foo','1'); console.log(a.getAttribute('data-foo'), a.hasAttribute('DATA-FOO'), a.attributes[1].name);", "1 true data-foo");
@@ -21,7 +31,12 @@ check!(query_complex_selectors, "<ul><li class=a>1</li><li>2</li><li class=a>3</
 check!(query_selector_on_fragment_and_detached, "", "const d=document.createElement('div'); d.innerHTML='<p class=x><b id=q>1</b></p>'; console.log(d.querySelector('.x b').id, d.querySelectorAll('b').length, d.querySelector('#q').textContent, d.getElementsByTagName('b').length, document.querySelector('#q'));", "q 1 1 1 null");
 check!(inner_html_entities, "<div id=a></div>", "a.innerHTML='&lt;b&gt; &amp; &quot;q&quot; &nbsp;'; console.log(a.textContent.length, a.innerHTML, a.childNodes.length);", "11 &lt;b&gt; &amp; \"q\" &nbsp; 1");
 check!(inner_html_script_does_not_run, "<div id=a></div>", "a.innerHTML='<script>console.log(\"ran\")</scr'+'ipt><p>x</p>'; console.log(a.children.length);", "2");
-check!(outer_html_of_void_and_nested, "<p id=p><br><img src=x alt='a\"b'></p>", "console.log(p.outerHTML);", "<p id=\"p\"><br><img src=\"x\" alt=\"a&quot;b\"></p>");
+check!(
+    outer_html_of_void_and_nested,
+    "<p id=p><br><img src=x alt='a\"b'></p>",
+    "console.log(p.outerHTML);",
+    "<p id=\"p\"><br><img src=\"x\" alt=\"a&quot;b\"></p>"
+);
 check!(insert_adjacent_html_in_table, "<table><tbody id=tb><tr id=r><td>1</td></tr></tbody></table>", "r.insertAdjacentHTML('afterend','<tr><td>2</td></tr>'); console.log(tb.rows.length, tb.innerHTML);", "2 <tr id=\"r\"><td>1</td></tr><tr><td>2</td></tr>");
 check!(document_fragment_query_and_clone, "", "const f=document.createDocumentFragment(); f.append(document.createElement('a'), 't'); const c=f.cloneNode(true); console.log(c.childNodes.length, c.firstChild.tagName, f.firstElementChild.tagName, f.childElementCount, f.textContent);", "2 A A 1 t");
 check!(comment_and_doctype_props, "<!--hello-->", "const c=document.body.firstChild; console.log(c.data, c.length, c.nodeValue, document.doctype.publicId===''&&document.doctype.systemId==='', document.doctype instanceof DocumentType); c.data='x'; console.log(document.body.innerHTML.startsWith('<!--x-->'));", "hello 5 hello true true\ntrue");
@@ -33,7 +48,12 @@ check!(exception_in_listener_does_not_stop_others, "<b id=b></b>", "window.onerr
 check!(redispatch_same_event, "<b id=b></b>", "const e=new Event('x'); let n=0; b.addEventListener('x', ()=>n++); b.dispatchEvent(e); b.dispatchEvent(e); console.log(n, e.target===b); b.addEventListener('y', ev=>{ try { b.dispatchEvent(ev) } catch(err) { console.log(err.name) } }); b.dispatchEvent(new Event('y'));", "2 true\nInvalidStateError");
 check!(event_target_constructible, "", "const t=new EventTarget(); let got; t.addEventListener('ping', e=>got=e.target===t); t.dispatchEvent(new CustomEvent('ping')); class Bus extends EventTarget {} const b=new Bus(); b.addEventListener('m', e=>console.log('bus', e.detail)); b.dispatchEvent(new CustomEvent('m', {detail:7})); console.log(got, b instanceof EventTarget);", "bus 7\ntrue true");
 check!(dom_content_loaded_and_load_order, "", "const o=[]; document.addEventListener('DOMContentLoaded', e=>o.push('dcl:'+e.bubbles+':'+e.target.nodeName)); window.addEventListener('DOMContentLoaded', ()=>o.push('dcl-win')); window.addEventListener('load', e=>{ o.push('load:'+(e.target===document)); console.log(o.join()); }); document.addEventListener('load', ()=>o.push('never'));", "dcl:true:#document,dcl-win,load:true");
-check!(ready_state_complete_in_load, "", "window.onload=()=>console.log(document.readyState); console.log(document.readyState);", "loading\ncomplete");
+check!(
+    ready_state_complete_in_load,
+    "",
+    "window.onload=()=>console.log(document.readyState); console.log(document.readyState);",
+    "loading\ncomplete"
+);
 check!(timers_nested_and_clear_in_callback, "", "let n=0; const iv=setInterval(()=>{ n++; if(n===2){ clearInterval(iv); setTimeout(()=>console.log('done', n), 0); } }, 3);", "done 2");
 check!(set_timeout_returns_distinct_ids, "", "const a=setTimeout(()=>{},100), b=setTimeout(()=>{},100); console.log(a!==b, Number.isInteger(a), a>0); clearTimeout(a); clearTimeout(b); clearTimeout(undefined); clearTimeout(99999);", "true true true");
 check!(promise_and_async_await, "", "(async()=>{ const v=await new Promise(r=>setTimeout(()=>r(5), 1)); console.log('awaited', v); const r=await fetch('/api/data'); console.log((await r.json()).s); })();", "awaited 5\nstr");
@@ -60,20 +80,60 @@ check!(styled_components_text_node_pattern, "<i id=d class=sc-a></i>", "const ta
 check!(jquery_style_show_hide, "<style>#d{display:none}</style><div id=d></div>", "console.log(d.offsetWidth, getComputedStyle(d).display); d.style.display='block'; console.log(d.offsetWidth>0, getComputedStyle(d).display); d.style.display=''; console.log(d.offsetWidth);", "0 none\ntrue block\n0");
 check!(bounding_rect_with_scroll, "<style>body{margin:0}</style><div style='height:2000px'></div><div id=t style='height:10px'></div>", "console.log(t.getBoundingClientRect().top); scrollTo(0,500); console.log(t.getBoundingClientRect().top, t.offsetTop, scrollY);", "2000\n1500 2000 500");
 check!(offset_parent_positioned, "<style>body{margin:0} #o{position:relative;margin:10px;padding:5px;border:2px solid} #i{position:absolute;top:3px;left:4px;width:6px;height:7px}</style><div id=o><div id=i></div></div>", "console.log(i.offsetParent===o, i.offsetTop, i.offsetLeft, i.getBoundingClientRect().top, i.getBoundingClientRect().left);", "true 3 4 15 16");
-check!(fixed_has_no_offset_parent, "<div id=f style='position:fixed;top:5px;left:6px;width:1px;height:1px'></div>", "console.log(f.offsetParent, f.getBoundingClientRect().top, f.getBoundingClientRect().left);", "null 5 6");
+check!(
+    fixed_has_no_offset_parent,
+    "<div id=f style='position:fixed;top:5px;left:6px;width:1px;height:1px'></div>",
+    "console.log(f.offsetParent, f.getBoundingClientRect().top, f.getBoundingClientRect().left);",
+    "null 5 6"
+);
 check!(table_layout_reads, "<style>body{margin:0} td{padding:0;width:50px;height:20px} table{border-spacing:0}</style><table id=t><tr><td id=a></td><td id=b></td></tr></table>", "console.log(a.offsetWidth, b.offsetLeft, t.offsetWidth, a.offsetHeight, b.getBoundingClientRect().left);", "50 50 100 20 50");
 check!(form_elements_live, "<form id=f><input name=a></form>", "const els=f.elements; const n=els.length; const i=document.createElement('input'); i.name='b'; f.appendChild(i); console.log(n, els.length, els.b===i, f.b===i, f.length); i.remove(); console.log(els.length, f.b);", "1 2 true true 2\n1 undefined");
-check!(form_attribute_association, "<form id=f></form><input id=i form=f name=x value=v>", "console.log(i.form===f, f.elements.length, new FormData(f).get('x'));", "true 1 v");
+check!(
+    form_attribute_association,
+    "<form id=f></form><input id=i form=f name=x value=v>",
+    "console.log(i.form===f, f.elements.length, new FormData(f).get('x'));",
+    "true 1 v"
+);
 check!(form_data_checkbox_radio_select_multiple, "<form id=f><input type=checkbox name=c value=1 checked><input type=checkbox name=c value=2><input type=radio name=r value=a><input type=radio name=r value=b checked><select name=s multiple><option selected>x</option><option selected>y</option><option>z</option></select><input type=submit name=go value=Go><input name=noval></form>", "console.log([...new FormData(f)].map(e=>e.join('=')).join('&'), [...new FormData(f, f.querySelector('[type=submit]'))].map(e=>e[0]).join());", "c=1&r=b&s=x&s=y&noval= c,r,s,s,go,noval");
-check!(input_value_sanitization, "<input id=i>", "i.value='a\\nb\\rc'; console.log(JSON.stringify(i.value));", "\"abc\"");
-check!(textarea_value_keeps_newlines, "<textarea id=t></textarea>", "t.value='a\\nb'; console.log(JSON.stringify(t.value), t.textLength, t.textContent);", "\"a\\nb\" 3 ");
+check!(
+    input_value_sanitization,
+    "<input id=i>",
+    "i.value='a\\nb\\rc'; console.log(JSON.stringify(i.value));",
+    "\"abc\""
+);
+check!(
+    textarea_value_keeps_newlines,
+    "<textarea id=t></textarea>",
+    "t.value='a\\nb'; console.log(JSON.stringify(t.value), t.textLength, t.textContent);",
+    "\"a\\nb\" 3 "
+);
 check!(checkbox_attribute_vs_property, "<input id=c type=checkbox>", "c.setAttribute('checked',''); console.log(c.checked); c.checked=false; c.setAttribute('checked',''); console.log(c.checked, c.defaultChecked); c.removeAttribute('checked'); console.log(c.checked);", "true\nfalse true\nfalse");
 check!(placeholder_shown_selector, "<input id=i placeholder=p>", "console.log(i.matches(':placeholder-shown')); i.value='x'; console.log(i.matches(':placeholder-shown'));", "true\nfalse");
-check!(required_optional_valid_invalid_selectors, "<input id=a required><input id=b>", "console.log(a.matches(':required'), b.matches(':optional'), a.matches(':optional'));", "true true false");
+check!(
+    required_optional_valid_invalid_selectors,
+    "<input id=a required><input id=b>",
+    "console.log(a.matches(':required'), b.matches(':optional'), a.matches(':optional'));",
+    "true true false"
+);
 check!(label_click_toggles_checkbox, "<label id=l><input id=c type=checkbox> text</label>", "let n=0; c.addEventListener('change', ()=>n++); l.click(); console.log(c.checked, n); l.click(); console.log(c.checked, n);", "true 1\nfalse 2");
-check!(button_type_button_does_not_submit, "<form id=f><button id=b type=button>x</button></form>", "let s=0; f.onsubmit=()=>{ s++; return false; }; b.click(); console.log(s);", "0");
-check!(submit_handler_return_false, "<form id=f action='/x'><button id=b>x</button></form>", "let s=0; f.onsubmit=()=>{ s++; return false; }; b.click(); f.requestSubmit(); console.log(s);", "2");
-check!(dialog_form_method, "<dialog id=d open><form method=dialog><button id=ok value=yes>OK</button></form></dialog>", "ok.click(); console.log(d.open, d.returnValue);", "false yes");
+check!(
+    button_type_button_does_not_submit,
+    "<form id=f><button id=b type=button>x</button></form>",
+    "let s=0; f.onsubmit=()=>{ s++; return false; }; b.click(); console.log(s);",
+    "0"
+);
+check!(
+    submit_handler_return_false,
+    "<form id=f action='/x'><button id=b>x</button></form>",
+    "let s=0; f.onsubmit=()=>{ s++; return false; }; b.click(); f.requestSubmit(); console.log(s);",
+    "2"
+);
+check!(
+    dialog_form_method,
+    "<dialog id=d open><form method=dialog><button id=ok value=yes>OK</button></form></dialog>",
+    "ok.click(); console.log(d.open, d.returnValue);",
+    "false yes"
+);
 check!(custom_element_attribute_before_connect, "", "class A extends HTMLElement { static observedAttributes=['x']; attributeChangedCallback(n,o,v){ console.log(n,o,v,this.isConnected); } } customElements.define('a-b', A); const e=document.createElement('a-b'); e.setAttribute('x','1'); e.setAttribute('y','2'); document.body.append(e); e.removeAttribute('x');", "x null 1 false\nx 1 null true");
 check!(custom_element_shadow_and_template, "<template id=t><style>p{color:red}</style><p>shadow <slot></slot></p></template>", "class C extends HTMLElement { connectedCallback(){ const r=this.attachShadow({mode:'open'}); r.appendChild(t.content.cloneNode(true)); } } customElements.define('c-el', C); const c=document.createElement('c-el'); document.body.append(c); console.log(c.shadowRoot.querySelector('p').textContent, c.shadowRoot.host===c);", "shadow  true");
 check!(custom_element_when_defined_pending, "", "customElements.whenDefined('late-el').then(()=>console.log('late defined')); console.log(customElements.get('late-el')); setTimeout(()=>customElements.define('late-el', class extends HTMLElement{}), 1);", "undefined\nlate defined");
@@ -96,11 +156,21 @@ check!(range_compare_boundary_points, "<p id=p>abcdef</p>", "const t=p.firstChil
 check!(create_contextual_fragment, "<div id=d></div>", "const f=document.createRange().createContextualFragment('<i>1</i><b>2</b>'); console.log(f.childNodes.length, f.nodeType); d.appendChild(f); console.log(d.innerHTML);", "2 11\n<i>1</i><b>2</b>");
 check!(named_access_on_window, "<div id=myBox></div><form name=myForm></form>", "console.log(window.myBox===document.getElementById('myBox'), typeof myBox, myForm.tagName, window.nothingHere, 'myBox' in window); var myBox='shadowed'; console.log(myBox);", "true object FORM undefined true\nshadowed");
 check!(globals_shared_between_scripts, "<script>var a=1; let b=2; const c=3; function f(){ return a+b+c; } class K { static v=4 }</script>", "console.log(a, b, c, f(), K.v, window.a, typeof window.f); a=10; console.log(f());", "1 2 3 6 4 1 function\n15");
-check!(strict_mode_script_globals, "<script>'use strict'; let q=5; function g(){ return q; }</script>", "console.log(q, g());", "5 5");
+check!(
+    strict_mode_script_globals,
+    "<script>'use strict'; let q=5; function g(){ return q; }</script>",
+    "console.log(q, g());",
+    "5 5"
+);
 check!(document_write_inline_text, "<div id=before></div><script>document.write('<b id=w>written</b>')</script><div id=after></div>", "console.log(w.previousElementSibling.tagName, w.nextElementSibling.id, document.querySelectorAll('b').length);", "SCRIPT after 1");
 check!(current_script_null_in_callbacks, "", "console.log(document.currentScript!==null); setTimeout(()=>console.log(document.currentScript),0);", "true\nnull");
 check!(inline_onload_body_attribute, "<span id=s onclick=\"this.dataset.hit=event.type\"></span>", "s.click(); console.log(s.dataset.hit, typeof s.onclick); s.setAttribute('onclick','this.dataset.hit=2'); s.click(); console.log(s.dataset.hit); s.removeAttribute('onclick'); console.log(s.onclick);", "click function\n2\nnull");
 check!(get_selection_and_window_props, "", "console.log(getSelection().rangeCount, typeof scrollX, typeof pageYOffset, innerWidth===document.documentElement.clientWidth, typeof screenX, typeof outerHeight);", "0 number number true number number");
 check!(to_string_tags, "<canvas id=c></canvas>", "const t=o=>Object.prototype.toString.call(o); console.log(t(localStorage), t(location), t(history), t(document.body.style), t(document.body.classList), t(document.body.dataset), t(document.body.attributes), t(new DOMParser()), t(c.getContext('2d')), t(new MutationObserver(()=>{})), t(new FormData()), t(new Headers()), t(document.createRange()), t(document.styleSheets), t(CSS));", "[object Storage] [object Location] [object History] [object CSSStyleDeclaration] [object DOMTokenList] [object DOMStringMap] [object NamedNodeMap] [object DOMParser] [object CanvasRenderingContext2D] [object MutationObserver] [object FormData] [object Headers] [object Range] [object StyleSheetList] [object Object]");
 check!(constructor_names, "<a id=a></a><img id=i><td></td>", "console.log(a.constructor.name, i.constructor.name, document.createElement('td').constructor.name, document.createElement('h3').constructor.name, document.createElement('section').constructor.name, document.createTextNode('').constructor.name, document.createDocumentFragment().constructor.name, document.createElement('ul').constructor===HTMLUListElement, HTMLElement.prototype.isPrototypeOf(a), Object.getPrototypeOf(HTMLAnchorElement)===HTMLElement, Object.getPrototypeOf(HTMLElement.prototype)===Element.prototype);", "HTMLAnchorElement HTMLImageElement HTMLTableCellElement HTMLHeadingElement HTMLElement Text DocumentFragment true true true true");
-check!(property_enumeration_order, "", "const o={b:1, 2:1, a:1, 1:1}; o.c=1; console.log(Object.keys(o).join(), JSON.stringify(o));", "1,2,b,a,c {\"1\":1,\"2\":1,\"b\":1,\"a\":1,\"c\":1}");
+check!(
+    property_enumeration_order,
+    "",
+    "const o={b:1, 2:1, a:1, 1:1}; o.c=1; console.log(Object.keys(o).join(), JSON.stringify(o));",
+    "1,2,b,a,c {\"1\":1,\"2\":1,\"b\":1,\"a\":1,\"c\":1}"
+);

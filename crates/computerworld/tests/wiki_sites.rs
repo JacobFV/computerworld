@@ -25,7 +25,10 @@ fn world() -> (World, String) {
 }
 fn act(world: &mut World, session: &str, channel: &str, op: &str, payload: Value) -> Value {
     let result = world
-        .step(session, vec![ActionEnvelope::new(channel, op, MACHINE, payload)])
+        .step(
+            session,
+            vec![ActionEnvelope::new(channel, op, MACHINE, payload)],
+        )
         .unwrap();
     assert!(result.outcomes[0].success, "{op}: {:?}", result.outcomes[0]);
     result.outcomes[0].value.clone()
@@ -72,7 +75,12 @@ fn says(all: &[Value], needle: &str) -> bool {
 #[test]
 fn wikipedia_is_searched_read_edited_and_discussed_through_the_agent_api() {
     let (mut world, session) = world();
-    browse(&mut world, &session, "navigate", json!({"url":"http://wikipedia.org/"}));
+    browse(
+        &mut world,
+        &session,
+        "navigate",
+        json!({"url":"http://wikipedia.org/"}),
+    );
     let home = page(&world, &session);
     assert_eq!(home["title"], "Wikipedia — The free encyclopedia");
     let all = elements(&home);
@@ -82,14 +90,29 @@ fn wikipedia_is_searched_read_edited_and_discussed_through_the_agent_api() {
     assert_eq!(by_id(&all, "search-submit")["kind"], "button");
     let featured = by_id(&all, "featured-title");
     assert_eq!(featured["kind"], "link");
-    assert_eq!(featured["url"], "http://wikipedia.org/wiki/Deterministic_simulation");
+    assert_eq!(
+        featured["url"],
+        "http://wikipedia.org/wiki/Deterministic_simulation"
+    );
     assert_eq!(by_id(&all, "all-0")["kind"], "link");
-    assert_eq!(by_id(&all, "portal-random")["url"], "http://wikipedia.org/wiki/Special:Random");
-    assert_eq!(by_id(&all, "news-0")["url"], "http://theverge.com/2026/atlas-determinism");
+    assert_eq!(
+        by_id(&all, "portal-random")["url"],
+        "http://wikipedia.org/wiki/Special:Random"
+    );
+    assert_eq!(
+        by_id(&all, "news-0")["url"],
+        "http://theverge.com/2026/atlas-determinism"
+    );
 
     // Type into the box and press Enter: the form posts `q` to /search.
     browse(&mut world, &session, "click", json!({"id":"search-q"}));
-    act(&mut world, &session, "keyboard.v1", "type", json!({"text":"simulation"}));
+    act(
+        &mut world,
+        &session,
+        "keyboard.v1",
+        "type",
+        json!({"text":"simulation"}),
+    );
     browse(&mut world, &session, "key", json!({"key":"Enter"}));
     assert_eq!(url(&world, &session), "http://wikipedia.org/search");
     let results = page(&world, &session);
@@ -103,16 +126,30 @@ fn wikipedia_is_searched_read_edited_and_discussed_through_the_agent_api() {
     // The first hit is the article; its tabs, contents and edit links are all links.
     browse(&mut world, &session, "click", json!({"id":"hit-0"}));
     assert_eq!(url(&world, &session), target);
-    browse(&mut world, &session, "navigate", json!({"url":"http://wikipedia.org/wiki/Deterministic_simulation"}));
+    browse(
+        &mut world,
+        &session,
+        "navigate",
+        json!({"url":"http://wikipedia.org/wiki/Deterministic_simulation"}),
+    );
     let article = page(&world, &session);
     assert_eq!(article["title"], "Deterministic simulation — Wikipedia");
     let all = elements(&article);
-    assert_eq!(by_id(&all, "tab-1")["url"], "http://wikipedia.org/wiki/Talk:Deterministic_simulation");
-    assert_eq!(by_id(&all, "tab-2")["url"], "http://wikipedia.org/wiki/Special:History/Deterministic_simulation");
+    assert_eq!(
+        by_id(&all, "tab-1")["url"],
+        "http://wikipedia.org/wiki/Talk:Deterministic_simulation"
+    );
+    assert_eq!(
+        by_id(&all, "tab-2")["url"],
+        "http://wikipedia.org/wiki/Special:History/Deterministic_simulation"
+    );
     assert_eq!(by_id(&all, "toc-1")["kind"], "link");
     assert_eq!(by_id(&all, "ref-0")["kind"], "link");
     assert_eq!(by_id(&all, "see-0")["kind"], "link");
-    assert_eq!(by_id(&all, "sec-1-edit")["url"], "http://wikipedia.org/wiki/Deterministic_simulation?section=history");
+    assert_eq!(
+        by_id(&all, "sec-1-edit")["url"],
+        "http://wikipedia.org/wiki/Deterministic_simulation?section=history"
+    );
 
     // Edit the History section: fill the textarea and the summary, publish.
     browse(&mut world, &session, "click", json!({"id":"sec-1-edit"}));
@@ -120,27 +157,56 @@ fn wikipedia_is_searched_read_edited_and_discussed_through_the_agent_api() {
     assert_eq!(by_id(&all, "edit")["kind"], "form");
     assert_eq!(by_id(&all, "edit-comment")["kind"], "input");
     assert_eq!(by_id(&all, "edit-submit")["kind"], "button");
-    browse(&mut world, &session, "fill", json!({"id":"edit-body","value":"Rewritten through the browser."}));
-    browse(&mut world, &session, "fill", json!({"id":"edit-comment","value":"agent copyedit"}));
+    browse(
+        &mut world,
+        &session,
+        "fill",
+        json!({"id":"edit-body","value":"Rewritten through the browser."}),
+    );
+    browse(
+        &mut world,
+        &session,
+        "fill",
+        json!({"id":"edit-comment","value":"agent copyedit"}),
+    );
     browse(&mut world, &session, "click", json!({"id":"edit-submit"}));
-    assert_eq!(url(&world, &session), "http://wikipedia.org/articles/Deterministic_simulation/sections/history");
+    assert_eq!(
+        url(&world, &session),
+        "http://wikipedia.org/articles/Deterministic_simulation/sections/history"
+    );
     let all = elements(&page(&world, &session));
     assert!(says(&all, "Rewritten through the browser."), "{all:?}");
 
     // History shows the edit, signed with alice's wiki username and marked current.
-    browse(&mut world, &session, "navigate", json!({"url":"http://wikipedia.org/wiki/Special:History/Deterministic_simulation"}));
+    browse(
+        &mut world,
+        &session,
+        "navigate",
+        json!({"url":"http://wikipedia.org/wiki/Special:History/Deterministic_simulation"}),
+    );
     let all = elements(&page(&world, &session));
     let edit = all
         .iter()
         .find(|e| e["kind"] == "link" && e["text"] == "agent copyedit")
         .unwrap_or_else(|| panic!("the edit is not in History: {all:?}"));
-    assert_eq!(edit["url"], "http://wikipedia.org/wiki/Deterministic_simulation?section=history");
+    assert_eq!(
+        edit["url"],
+        "http://wikipedia.org/wiki/Deterministic_simulation?section=history"
+    );
     assert!(says(&all, "alicechen"));
 
     // Talk: add a topic.
     browse(&mut world, &session, "click", json!({"id":"tab-1"}));
-    assert_eq!(url(&world, &session), "http://wikipedia.org/wiki/Talk:Deterministic_simulation");
-    browse(&mut world, &session, "fill", json!({"id":"reply-text","value":"Sources for the rewrite, please."}));
+    assert_eq!(
+        url(&world, &session),
+        "http://wikipedia.org/wiki/Talk:Deterministic_simulation"
+    );
+    browse(
+        &mut world,
+        &session,
+        "fill",
+        json!({"id":"reply-text","value":"Sources for the rewrite, please."}),
+    );
     browse(&mut world, &session, "click", json!({"id":"reply-submit"}));
     let all = elements(&page(&world, &session));
     assert!(says(&all, "Sources for the rewrite, please."), "{all:?}");
@@ -149,22 +215,47 @@ fn wikipedia_is_searched_read_edited_and_discussed_through_the_agent_api() {
 #[test]
 fn imdb_goes_from_the_featured_title_to_its_cast_and_the_chart() {
     let (mut world, session) = world();
-    browse(&mut world, &session, "navigate", json!({"url":"http://imdb.com/"}));
+    browse(
+        &mut world,
+        &session,
+        "navigate",
+        json!({"url":"http://imdb.com/"}),
+    );
     let home = page(&world, &session);
     let all = elements(&home);
     assert_eq!(by_id(&all, "search-q")["label"], "Search IMDb");
     assert_eq!(by_id(&all, "masthead-logo")["url"], "http://imdb.com/");
-    assert_eq!(by_id(&all, "nav-top")["url"], "http://imdb.com/wiki/Top_rated");
-    assert_eq!(by_id(&all, "featured-title")["url"], "http://imdb.com/wiki/Northbound_Signal");
+    assert_eq!(
+        by_id(&all, "nav-top")["url"],
+        "http://imdb.com/wiki/Top_rated"
+    );
+    assert_eq!(
+        by_id(&all, "featured-title")["url"],
+        "http://imdb.com/wiki/Northbound_Signal"
+    );
 
-    browse(&mut world, &session, "click", json!({"id":"featured-title"}));
-    assert_eq!(url(&world, &session), "http://imdb.com/wiki/Northbound_Signal");
+    browse(
+        &mut world,
+        &session,
+        "click",
+        json!({"id":"featured-title"}),
+    );
+    assert_eq!(
+        url(&world, &session),
+        "http://imdb.com/wiki/Northbound_Signal"
+    );
     let title = page(&world, &session);
     assert_eq!(title["title"], "Northbound Signal — IMDb");
     let all = elements(&title);
     assert!(says(&all, "8.1"), "the rating is on the page");
-    assert_eq!(by_id(&all, "cast-0")["url"], "http://imdb.com/wiki/Tobias_Renard");
-    assert_eq!(by_id(&all, "info-1-value-link-0")["url"], "http://imdb.com/wiki/Ilse_Marchetti");
+    assert_eq!(
+        by_id(&all, "cast-0")["url"],
+        "http://imdb.com/wiki/Tobias_Renard"
+    );
+    assert_eq!(
+        by_id(&all, "info-1-value-link-0")["url"],
+        "http://imdb.com/wiki/Ilse_Marchetti"
+    );
 
     browse(&mut world, &session, "click", json!({"id":"cast-0"}));
     assert_eq!(url(&world, &session), "http://imdb.com/wiki/Tobias_Renard");
@@ -173,42 +264,80 @@ fn imdb_goes_from_the_featured_title_to_its_cast_and_the_chart() {
     assert_eq!(page(&world, &session)["title"], "Top rated — IMDb");
 
     // The search box finds a title by a word of its name.
-    browse(&mut world, &session, "fill", json!({"id":"search-q","value":"clockwork"}));
+    browse(
+        &mut world,
+        &session,
+        "fill",
+        json!({"id":"search-q","value":"clockwork"}),
+    );
     browse(&mut world, &session, "click", json!({"id":"search-submit"}));
     let all = elements(&page(&world, &session));
-    assert_eq!(by_id(&all, "hit-0")["url"], "http://imdb.com/wiki/Saltwater_Clockwork");
+    assert_eq!(
+        by_id(&all, "hit-0")["url"],
+        "http://imdb.com/wiki/Saltwater_Clockwork"
+    );
 }
 
 #[test]
 fn the_archive_goes_from_a_collection_to_an_item_and_searches() {
     let (mut world, session) = world();
-    browse(&mut world, &session, "navigate", json!({"url":"http://archive.org/"}));
+    browse(
+        &mut world,
+        &session,
+        "navigate",
+        json!({"url":"http://archive.org/"}),
+    );
     let home = page(&world, &session);
     let all = elements(&home);
     assert_eq!(by_id(&all, "search-q")["label"], "Search Internet Archive");
-    assert_eq!(by_id(&all, "featured-title")["url"], "http://archive.org/wiki/Wayback_Machine");
+    assert_eq!(
+        by_id(&all, "featured-title")["url"],
+        "http://archive.org/wiki/Wayback_Machine"
+    );
     let software = all
         .iter()
-        .find(|e| e["kind"] == "link" && e["text"] == "Software Library" && e["id"].as_str().is_some_and(|i| i.starts_with("nav-col-")))
+        .find(|e| {
+            e["kind"] == "link"
+                && e["text"] == "Software Library"
+                && e["id"].as_str().is_some_and(|i| i.starts_with("nav-col-"))
+        })
         .unwrap_or_else(|| panic!("no Software Library in the top navigation: {all:?}"))["id"]
         .as_str()
         .unwrap()
         .to_owned();
 
     browse(&mut world, &session, "click", json!({"id": software}));
-    assert_eq!(url(&world, &session), "http://archive.org/wiki/Software_Library");
+    assert_eq!(
+        url(&world, &session),
+        "http://archive.org/wiki/Software_Library"
+    );
     let all = elements(&page(&world, &session));
-    assert_eq!(by_id(&all, "see-0")["url"], "http://archive.org/wiki/Cavern_Runner_98");
+    assert_eq!(
+        by_id(&all, "see-0")["url"],
+        "http://archive.org/wiki/Cavern_Runner_98"
+    );
     browse(&mut world, &session, "click", json!({"id":"see-0"}));
     let item = page(&world, &session);
     assert_eq!(item["title"], "Cavern Runner 98 — Internet Archive");
     let all = elements(&item);
     assert!(says(&all, "Lodestone Software"));
-    assert_eq!(by_id(&all, "info-0-value-link-0")["url"], "http://archive.org/wiki/Software_Library");
+    assert_eq!(
+        by_id(&all, "info-0-value-link-0")["url"],
+        "http://archive.org/wiki/Software_Library"
+    );
 
     browse(&mut world, &session, "click", json!({"id":"search-q"}));
-    act(&mut world, &session, "keyboard.v1", "type", json!({"text":"transistor"}));
+    act(
+        &mut world,
+        &session,
+        "keyboard.v1",
+        "type",
+        json!({"text":"transistor"}),
+    );
     browse(&mut world, &session, "key", json!({"key":"Enter"}));
     let all = elements(&page(&world, &session));
-    assert_eq!(by_id(&all, "hit-0")["url"], "http://archive.org/wiki/Our_Friend_the_Transistor");
+    assert_eq!(
+        by_id(&all, "hit-0")["url"],
+        "http://archive.org/wiki/Our_Friend_the_Transistor"
+    );
 }

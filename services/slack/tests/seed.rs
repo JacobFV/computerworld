@@ -160,7 +160,10 @@ fn the_workspace_is_laid_out_like_slack() {
     let mut state = seeded();
     let body = get(&mut state, "bob", "/channels/eng").1;
     let p = page(&body);
-    let title = p.descendants(Dom::ROOT).find(|n| p.is(*n, "title")).unwrap();
+    let title = p
+        .descendants(Dom::ROOT)
+        .find(|n| p.is(*n, "title"))
+        .unwrap();
     assert_eq!(p.text_content(title), "#eng (Channel) - Northstar - Slack");
     // An app shell: the top bar over the frame, the frame holding the rail and the
     // panel, the panel the sidebar and the conversation, whose list scrolls alone
@@ -199,7 +202,10 @@ fn the_workspace_is_laid_out_like_slack() {
     // The header: name, topic, member count opening the member list, pins.
     assert_eq!(text_of(&p, "channel-title"), "# eng");
     assert_eq!(tag_of(&p, "channel-members"), "a");
-    assert_eq!(attr_of(&p, "channel-members", "href"), "/channels/eng?members=1");
+    assert_eq!(
+        attr_of(&p, "channel-members", "href"),
+        "/channels/eng?members=1"
+    );
     assert_eq!(text_of(&p, "channel-members-count"), "4");
     assert_eq!(text_of(&p, "channel-pins"), "2 Pinned");
     assert!(has(&p, "chat-5-pinned") && has(&p, "channel-topic"));
@@ -208,7 +214,10 @@ fn the_workspace_is_laid_out_like_slack() {
     assert_eq!(attr_of(&p, "nav-eng", "href"), "/channels/eng");
     assert!(has_class(&p, "nav-eng", "current") && !has_class(&p, "nav-random", "current"));
     assert!(has(&p, "dm-alice|bob-presence"));
-    assert_eq!(attr_of(&p, "dm-alice|bob|carol", "href"), "/channels/alice|bob|carol");
+    assert_eq!(
+        attr_of(&p, "dm-alice|bob|carol", "href"),
+        "/channels/alice|bob|carol"
+    );
     assert_eq!(attr_of(&p, "rail-home", "href"), "/");
     assert_eq!(attr_of(&p, "rail-dms", "href"), "/dms");
     assert!(has(&p, "rail-mark"));
@@ -240,7 +249,8 @@ fn the_workspace_is_laid_out_like_slack() {
         .descendants(Dom::ROOT)
         .any(|n| p.has_class(n, "mention") && p.text_content(n) == "@admin"));
     assert!(p.descendants(Dom::ROOT).any(|n| p.is(n, "a")
-        && p.attr(n, "id").is_some_and(|id| id.starts_with("chat-12-text"))
+        && p.attr(n, "id")
+            .is_some_and(|id| id.starts_with("chat-12-text"))
         && p.attr(n, "href") == Some("http://github.com/northstar/atlas/pull/15")));
     // A message is one block of text the page wraps, beside a pane or not.
     assert!(has(&p, "chat-2-text") && !has(&p, "chat-2-text-1"));
@@ -258,12 +268,18 @@ fn the_workspace_is_laid_out_like_slack() {
     assert_eq!(attr_of(&p, "chat-2-react-eyes", "name"), "reaction");
     assert_eq!(attr_of(&p, "chat-2-react-eyes", "value"), "eyes");
     let chips = form_of(&p, "chat-2-react-eyes");
-    assert_eq!(p.attr(chips, "action"), Some("/channels/eng/messages/chat-2/reactions"));
+    assert_eq!(
+        p.attr(chips, "action"),
+        Some("/channels/eng/messages/chat-2/reactions")
+    );
     assert_eq!(p.attr(chips, "method"), Some("post"));
     assert!(!has_class(&p, "chat-14-react-eyes", "mine"));
     // Threads collapse to a link row.
     assert_eq!(text_of(&p, "chat-1-replies"), "3 replies");
-    assert_eq!(attr_of(&p, "chat-1-replies", "href"), "/channels/eng?thread=chat-1");
+    assert_eq!(
+        attr_of(&p, "chat-1-replies", "href"),
+        "/channels/eng?thread=chat-1"
+    );
     assert!(has(&p, "chat-1-thread-avatar-bob") && has(&p, "chat-1-last-reply"));
     assert!(!has(&p, "chat-1-reply-body") && !has(&p, "chat-3-text"));
     // Every message carries the toolbar the pointer brings up; the last one's shows.
@@ -305,14 +321,20 @@ fn threads_open_in_a_pane_and_replies_land_back_in_it() {
     assert!(has(&p, "thread-chat-1-text") && has(&p, "chat-1-text"));
     assert_eq!(text_of(&p, "thread-count-text"), "3 replies");
     assert_eq!(tag_of(&p, "chat-1-reply"), "form");
-    assert_eq!(attr_of(&p, "chat-1-reply", "action"), "/channels/eng/messages");
+    assert_eq!(
+        attr_of(&p, "chat-1-reply", "action"),
+        "/channels/eng/messages"
+    );
     assert_eq!(attr_of(&p, "chat-1-reply", "method"), "post");
     assert_eq!(
         hidden_fields(&p, p.by_id("chat-1-reply")[0]),
         [("parent".to_owned(), "chat-1".to_owned())]
     );
     assert_eq!(attr_of(&p, "chat-1-reply-body", "name"), "text");
-    assert_eq!(form_of(&p, "chat-1-reply-submit"), p.by_id("chat-1-reply")[0]);
+    assert_eq!(
+        form_of(&p, "chat-1-reply-submit"),
+        p.by_id("chat-1-reply")[0]
+    );
     // An unknown thread is the plain conversation.
     assert!(!has(
         &page(&get(&mut state, "carol", "/channels/eng?thread=chat-999").1),
@@ -323,7 +345,10 @@ fn threads_open_in_a_pane_and_replies_land_back_in_it() {
         &mut state,
         "carol",
         "/channels/eng/messages",
-        &[("parent", "chat-1"), ("text", "Accepted answer is the hash order.")],
+        &[
+            ("parent", "chat-1"),
+            ("text", "Accepted answer is the hash order."),
+        ],
     );
     assert_eq!(status, 200);
     let p = page(&threaded);
@@ -359,7 +384,10 @@ fn the_member_list_and_the_dm_view() {
         .contains("member-carol-status"));
     let dm = get(&mut state, "alice", "/channels/alice|bob").1;
     let p = page(&dm);
-    let title = p.descendants(Dom::ROOT).find(|n| p.is(*n, "title")).unwrap();
+    let title = p
+        .descendants(Dom::ROOT)
+        .find(|n| p.is(*n, "title"))
+        .unwrap();
     assert_eq!(p.text_content(title), "bob (DM) - Northstar - Slack");
     assert!(has(&p, "channel-presence") && has(&p, "channel-avatar"));
     assert!(text_of(&p, "channel-status").contains("Windows CI"));
@@ -375,7 +403,8 @@ fn the_member_list_and_the_dm_view() {
     assert_eq!(status, 200);
     assert!(page(&sent)
         .descendants(Dom::ROOT)
-        .any(|n| page(&sent).has_class(n, "text") && page(&sent).text_content(n) == "see you at standup"));
+        .any(|n| page(&sent).has_class(n, "text")
+            && page(&sent).text_content(n) == "see you at standup"));
     let last = state["dms"]["alice|bob"]["messages"]
         .as_array()
         .unwrap()
@@ -497,7 +526,10 @@ fn pins_status_and_group_dms() {
     let start = form_of(&home, "start-bob");
     assert_eq!(home.attr(start, "action"), Some("/dms"));
     assert_eq!(home.attr(start, "method"), Some("post"));
-    assert_eq!(hidden_fields(&home, start), [("to".to_owned(), "bob".to_owned())]);
+    assert_eq!(
+        hidden_fields(&home, start),
+        [("to".to_owned(), "bob".to_owned())]
+    );
     let (status, opened) = post_form(&mut state, "admin", "/dms", &[("to", "bob")]);
     assert_eq!(status, 200);
     let opened = page(&opened);
@@ -507,7 +539,12 @@ fn pins_status_and_group_dms() {
         .unwrap();
     assert_eq!(opened.text_content(title), "bob (DM) - Northstar - Slack");
     // Pinning from the toolbar and reacting from a chip are form posts too.
-    let (status, pinned) = post_form(&mut state, "alice", "/channels/eng/messages/chat-8/pin", &[]);
+    let (status, pinned) = post_form(
+        &mut state,
+        "alice",
+        "/channels/eng/messages/chat-8/pin",
+        &[],
+    );
     assert_eq!(status, 200);
     assert!(has(&page(&pinned), "chat-8-pinned"));
     assert!(state["channels"]["eng"]["pins"]
@@ -536,7 +573,9 @@ fn search_and_activity_answer_the_controls_that_lead_to_them() {
     // Every hit links to the conversation it is in, and says where it is from.
     assert_eq!(text_of(&found, "hit-0-where"), "#eng");
     assert_eq!(attr_of(&found, "hit-0", "href"), "/channels/eng");
-    assert!(text_of(&found, "hit-0-text").to_lowercase().contains("windows"));
+    assert!(text_of(&found, "hit-0-text")
+        .to_lowercase()
+        .contains("windows"));
     // Nothing matching says so, in prose, rather than showing an empty list.
     let none = page(&get(&mut state, "bob", "/search?q=zzzznothing").1);
     assert_eq!(
@@ -553,18 +592,31 @@ fn search_and_activity_answer_the_controls_that_lead_to_them() {
     // Search only reaches the conversations the caller is in: admin is not in the
     // private release channel, so what was said there is not among their hits.
     let private = "Windows laptop for the install run";
-    assert!(get(&mut state, "alice", "/search?q=windows").1.contains(private));
-    assert!(!get(&mut state, "admin", "/search?q=windows").1.contains(private));
+    assert!(get(&mut state, "alice", "/search?q=windows")
+        .1
+        .contains(private));
+    assert!(!get(&mut state, "admin", "/search?q=windows")
+        .1
+        .contains(private));
     // Activity: alice's two unread mentions, counted the way the rail badges them,
     // newest first; bob's single one reads as one, not "1 mentions".
     let activity = page(&get(&mut state, "alice", "/activity").1);
-    assert_eq!(text_of(&activity, "activity-summary"), "2 mentions waiting for you");
+    assert_eq!(
+        text_of(&activity, "activity-summary"),
+        "2 mentions waiting for you"
+    );
     assert_eq!(text_of(&activity, "rail-activity-count"), "2");
     assert_eq!(text_of(&activity, "mention-0-where"), "#atlas-release");
-    assert_eq!(attr_of(&activity, "mention-0", "href"), "/channels/atlas-release");
+    assert_eq!(
+        attr_of(&activity, "mention-0", "href"),
+        "/channels/atlas-release"
+    );
     assert!(has(&activity, "mention-1") && !has(&activity, "mention-2"));
     assert_eq!(
-        text_of(&page(&get(&mut state, "bob", "/activity").1), "activity-summary"),
+        text_of(
+            &page(&get(&mut state, "bob", "/activity").1),
+            "activity-summary"
+        ),
         "1 mention waiting for you"
     );
     // Carol is mentioned nowhere, and the page says that rather than lying with a list.

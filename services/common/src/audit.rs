@@ -87,7 +87,11 @@ fn encoded_fields(doc: &Dom, form: NodeId) -> String {
                 .descendants(node)
                 .find(|o| doc.is(*o, "option") && doc.has_attr(*o, "selected"))
                 .or_else(|| doc.descendants(node).find(|o| doc.is(*o, "option")))
-                .map(|o| doc.attr(o, "value").map(str::to_owned).unwrap_or_else(|| doc.text_content(o)))
+                .map(|o| {
+                    doc.attr(o, "value")
+                        .map(str::to_owned)
+                        .unwrap_or_else(|| doc.text_content(o))
+                })
                 .unwrap_or_default(),
             _ => continue,
         };
@@ -99,7 +103,9 @@ fn encoded_fields(doc: &Dom, form: NodeId) -> String {
 }
 
 fn input_kind(doc: &Dom, node: NodeId) -> String {
-    doc.attr(node, "type").unwrap_or("text").to_ascii_lowercase()
+    doc.attr(node, "type")
+        .unwrap_or("text")
+        .to_ascii_lowercase()
 }
 
 /// The method a form or a submit button uses, upper-cased, `GET` when unwritten.
@@ -125,15 +131,22 @@ pub fn controls(doc: &Dom) -> Vec<Control> {
         }
         let mut form_for_fields = None;
         let (method, target) = match tag.as_str() {
-            "a" | "area" => ("GET".to_owned(), doc.attr(node, "href").unwrap_or_default().to_owned()),
+            "a" | "area" => (
+                "GET".to_owned(),
+                doc.attr(node, "href").unwrap_or_default().to_owned(),
+            ),
             "form" => {
                 form_for_fields = Some(node);
-                (method_of(doc, node), doc.attr(node, "action").unwrap_or_default().to_owned())
+                (
+                    method_of(doc, node),
+                    doc.attr(node, "action").unwrap_or_default().to_owned(),
+                )
             }
             "button" | "input" => {
                 let submits = tag == "button"
                     && !matches!(doc.attr(node, "type"), Some("button") | Some("reset"))
-                    || tag == "input" && matches!(input_kind(doc, node).as_str(), "submit" | "image");
+                    || tag == "input"
+                        && matches!(input_kind(doc, node).as_str(), "submit" | "image");
                 match (submits, doc.attr(node, "formaction")) {
                     // `formmethod` wins, else the form's own method: a button that
                     // posts elsewhere still posts.
@@ -179,7 +192,9 @@ pub fn controls(doc: &Dom) -> Vec<Control> {
 
 /// Roles that make a plain element clickable in the semantic tree. An element carrying
 /// one of these had better be able to act.
-const CLICKABLE_ROLES: &[&str] = &["button", "link", "checkbox", "radio", "tab", "menuitem", "switch", "option"];
+const CLICKABLE_ROLES: &[&str] = &[
+    "button", "link", "checkbox", "radio", "tab", "menuitem", "switch", "option",
+];
 
 /// The affordances an inert element must not have.
 ///
@@ -205,19 +220,32 @@ fn affordance_lies(doc: &Dom) -> Vec<String> {
         }
     }
     let media = Media::default();
-    let Ok(resting) = cw_web::style::cascade(doc, &sheets, &media, &MatchContext::new(), Strictness::Lenient) else {
+    let Ok(resting) = cw_web::style::cascade(
+        doc,
+        &sheets,
+        &media,
+        &MatchContext::new(),
+        Strictness::Lenient,
+    ) else {
         return Vec::new();
     };
     // Every element hovered at once: the union of what the sheet promises under the pointer.
     let mut hovered_ctx = MatchContext::new();
-    hovered_ctx.hovered = doc.descendants(Dom::ROOT).filter(|n| doc.is_element(*n)).collect();
-    let hovered = cw_web::style::cascade(doc, &sheets, &media, &hovered_ctx, Strictness::Lenient).ok();
+    hovered_ctx.hovered = doc
+        .descendants(Dom::ROOT)
+        .filter(|n| doc.is_element(*n))
+        .collect();
+    let hovered =
+        cw_web::style::cascade(doc, &sheets, &media, &hovered_ctx, Strictness::Lenient).ok();
     let mut out = Vec::new();
     for node in doc.descendants(Dom::ROOT) {
         if !doc.is_element(node) || is_interactive(doc, node) {
             continue;
         }
-        if doc.ancestors(node).any(|a| doc.is_element(a) && is_interactive(doc, a)) {
+        if doc
+            .ancestors(node)
+            .any(|a| doc.is_element(a) && is_interactive(doc, a))
+        {
             continue;
         }
         let at_rest = resting.get(node);
@@ -229,7 +257,10 @@ fn affordance_lies(doc: &Dom) -> Vec<String> {
             continue;
         }
         // A row that reveals the controls inside it is honest; one with nothing inside it is not.
-        if doc.descendants(node).any(|d| doc.is_element(d) && is_interactive(doc, d)) {
+        if doc
+            .descendants(node)
+            .any(|d| doc.is_element(d) && is_interactive(doc, d))
+        {
             continue;
         }
         let under_pointer = hovered.as_ref().and_then(|set| set.get(node));
@@ -269,8 +300,13 @@ pub fn clothes(html: &str) -> Vec<String> {
             }
         }
     }
-    let Ok(styles) = cw_web::style::cascade(&doc, &sheets, &Media::default(), &MatchContext::new(), Strictness::Lenient)
-    else {
+    let Ok(styles) = cw_web::style::cascade(
+        &doc,
+        &sheets,
+        &Media::default(),
+        &MatchContext::new(),
+        Strictness::Lenient,
+    ) else {
         return Vec::new();
     };
     let worn: Vec<&cw_web::style::computed::ComputedStyle> = doc
@@ -281,13 +317,20 @@ pub fn clothes(html: &str) -> Vec<String> {
         .collect();
     let mut out = Vec::new();
     for node in doc.descendants(Dom::ROOT) {
-        if !doc.is_element(node) || is_interactive(&doc, node) || doc.has_attr(node, "aria-current") {
+        if !doc.is_element(node) || is_interactive(&doc, node) || doc.has_attr(node, "aria-current")
+        {
             continue;
         }
-        if doc.ancestors(node).any(|a| doc.is_element(a) && is_interactive(&doc, a)) {
+        if doc
+            .ancestors(node)
+            .any(|a| doc.is_element(a) && is_interactive(&doc, a))
+        {
             continue;
         }
-        if doc.descendants(node).any(|d| doc.is_element(d) && is_interactive(&doc, d)) {
+        if doc
+            .descendants(node)
+            .any(|d| doc.is_element(d) && is_interactive(&doc, d))
+        {
             continue;
         }
         let Some(style) = styles.get(node).filter(|s| dressed_as_a_control(s)) else {
@@ -308,7 +351,8 @@ pub fn clothes(html: &str) -> Vec<String> {
 fn dressed_as_a_control(style: &cw_web::style::computed::ComputedStyle) -> bool {
     use cw_web::style::computed::BorderStyle;
     let border = &style.border.top;
-    style.background_color.3 > 0 || (border.width > cw_web::geom::Au::ZERO && border.style != BorderStyle::None)
+    style.background_color.3 > 0
+        || (border.width > cw_web::geom::Au::ZERO && border.style != BorderStyle::None)
 }
 
 /// Whether two elements are painted in the same box: same fill, same drawn border, same
@@ -377,19 +421,35 @@ pub fn page(html: &str) -> Vec<String> {
         let tag = doc.tag(node).unwrap_or("");
         let name = named(&doc, node);
         if doc.has_attr(node, "onclick") {
-            out.push(format!("{name} has an onclick, and this world runs no page script"));
+            out.push(format!(
+                "{name} has an onclick, and this world runs no page script"
+            ));
         }
-        if let Some(role) = doc.attr(node, "role").filter(|r| CLICKABLE_ROLES.contains(r)) {
+        if let Some(role) = doc
+            .attr(node, "role")
+            .filter(|r| CLICKABLE_ROLES.contains(r))
+        {
             let real = matches!(tag, "a" | "area") && doc.has_attr(node, "href")
-                || matches!(tag, "button" | "input" | "select" | "textarea" | "summary" | "option");
+                || matches!(
+                    tag,
+                    "button" | "input" | "select" | "textarea" | "summary" | "option"
+                );
             if !real {
                 out.push(format!("{name} claims role={role:?} but is not a control"));
             }
         }
-        if let Some(index) = doc.attr(node, "tabindex").and_then(|t| t.trim().parse::<i32>().ok()) {
-            let focusable = matches!(tag, "a" | "area" | "button" | "input" | "select" | "textarea" | "summary");
+        if let Some(index) = doc
+            .attr(node, "tabindex")
+            .and_then(|t| t.trim().parse::<i32>().ok())
+        {
+            let focusable = matches!(
+                tag,
+                "a" | "area" | "button" | "input" | "select" | "textarea" | "summary"
+            );
             if index >= 0 && !focusable {
-                out.push(format!("{name} is focusable by tabindex but is not a control"));
+                out.push(format!(
+                    "{name} is focusable by tabindex but is not a control"
+                ));
             }
         }
         match tag {
@@ -398,13 +458,17 @@ pub fn page(html: &str) -> Vec<String> {
                 if href.is_empty() {
                     // Without an href it is not a link at all; with an empty one it reloads.
                     if doc.has_attr(node, "href") {
-                        out.push(format!("{name} has an empty href, so it only reloads the page"));
+                        out.push(format!(
+                            "{name} has an empty href, so it only reloads the page"
+                        ));
                     }
                 } else if href == "#" {
                     out.push(format!("{name} links to \"#\", which goes nowhere"));
                 } else if let Some(fragment) = href.strip_prefix('#') {
                     if !ids.contains(fragment) {
-                        out.push(format!("{name} links to #{fragment}, which is not on the page"));
+                        out.push(format!(
+                            "{name} links to #{fragment}, which is not on the page"
+                        ));
                     }
                 }
                 if label_of(&doc, node).is_empty() {
@@ -412,29 +476,49 @@ pub fn page(html: &str) -> Vec<String> {
                 }
             }
             "button" => {
-                let kind = doc.attr(node, "type").unwrap_or("submit").to_ascii_lowercase();
+                let kind = doc
+                    .attr(node, "type")
+                    .unwrap_or("submit")
+                    .to_ascii_lowercase();
                 if kind == "button" || kind == "reset" {
-                    out.push(format!("{name} is type={kind:?}, which needs a script this world does not run"));
+                    out.push(format!(
+                        "{name} is type={kind:?}, which needs a script this world does not run"
+                    ));
                 } else if ancestor_form(&doc, node).is_none() && !doc.has_attr(node, "formaction") {
-                    out.push(format!("{name} is a button in no form, so pressing it does nothing"));
+                    out.push(format!(
+                        "{name} is a button in no form, so pressing it does nothing"
+                    ));
                 }
                 if label_of(&doc, node).is_empty() {
                     out.push(format!("{name} is a button with no readable label"));
                 }
             }
             "input" | "select" | "textarea" => {
-                let kind = if tag == "input" { input_kind(&doc, node) } else { String::new() };
+                let kind = if tag == "input" {
+                    input_kind(&doc, node)
+                } else {
+                    String::new()
+                };
                 if kind == "hidden" {
                     continue;
                 }
                 if ancestor_form(&doc, node).is_none() {
-                    out.push(format!("{name} is a field in no form, so what is typed into it goes nowhere"));
-                } else if kind != "submit" && kind != "image" && kind != "reset" && !doc.has_attr(node, "name") {
-                    out.push(format!("{name} is a field with no name, so its value is never submitted"));
+                    out.push(format!(
+                        "{name} is a field in no form, so what is typed into it goes nowhere"
+                    ));
+                } else if kind != "submit"
+                    && kind != "image"
+                    && kind != "reset"
+                    && !doc.has_attr(node, "name")
+                {
+                    out.push(format!(
+                        "{name} is a field with no name, so its value is never submitted"
+                    ));
                 }
                 let labelled = doc.has_attr(node, "aria-label")
                     || doc.attr(node, "id").is_some_and(|id| {
-                        doc.descendants(Dom::ROOT).any(|n| doc.is(n, "label") && doc.attr(n, "for") == Some(id))
+                        doc.descendants(Dom::ROOT)
+                            .any(|n| doc.is(n, "label") && doc.attr(n, "for") == Some(id))
                     });
                 if !labelled && kind != "submit" && kind != "image" && kind != "reset" {
                     out.push(format!("{name} is a field with no label an agent can read"));
@@ -448,15 +532,26 @@ pub fn page(html: &str) -> Vec<String> {
                 }
             }
             "form" => {
-                if doc.attr(node, "action").unwrap_or_default().trim().is_empty() {
-                    out.push(format!("{name} has no action, so submitting it reloads the same page"));
+                if doc
+                    .attr(node, "action")
+                    .unwrap_or_default()
+                    .trim()
+                    .is_empty()
+                {
+                    out.push(format!(
+                        "{name} has no action, so submitting it reloads the same page"
+                    ));
                 }
                 let submits = doc.descendants(node).any(|n| {
-                    doc.is(n, "button") && !matches!(doc.attr(n, "type"), Some("button") | Some("reset"))
-                        || doc.is(n, "input") && matches!(input_kind(&doc, n).as_str(), "submit" | "image")
+                    doc.is(n, "button")
+                        && !matches!(doc.attr(n, "type"), Some("button") | Some("reset"))
+                        || doc.is(n, "input")
+                            && matches!(input_kind(&doc, n).as_str(), "submit" | "image")
                 });
                 if !submits {
-                    out.push(format!("{name} has no submit control, so nothing can send it"));
+                    out.push(format!(
+                        "{name} has no submit control, so nothing can send it"
+                    ));
                 }
             }
             _ => {}
@@ -574,7 +669,11 @@ impl<'a> Sweep<'a> {
                 // `/search?q=…`, which is the request the box actually makes.
                 let target = match control.query.is_empty() {
                     true => target,
-                    false => format!("{target}{}{}", if target.contains('?') { '&' } else { '?' }, control.query),
+                    false => format!(
+                        "{target}{}{}",
+                        if target.contains('?') { '&' } else { '?' },
+                        control.query
+                    ),
                 };
                 if self.skip.contains(&target) {
                     continue;
@@ -629,7 +728,11 @@ fn looks_like_html(body: &str) -> bool {
 /// absolute URL — a link off the site is the world's problem, not the service's.
 fn resolve(from: &str, target: &str) -> Option<String> {
     let target = target.trim();
-    if target.is_empty() || target.starts_with('#') || target.contains("://") || target.starts_with("//") {
+    if target.is_empty()
+        || target.starts_with('#')
+        || target.contains("://")
+        || target.starts_with("//")
+    {
         return None;
     }
     if target.starts_with('/') {
@@ -669,7 +772,10 @@ mod tests {
             "<div id=\"click\"> has an onclick",
             "<input id=\"stray\"> is a field in no form",
         ] {
-            assert!(joined.contains(expected), "missing {expected} in:\n{joined}");
+            assert!(
+                joined.contains(expected),
+                "missing {expected} in:\n{joined}"
+            );
         }
         // The live form and its field and button are not complained about.
         assert!(!joined.contains("id=\"q\""), "{joined}");
@@ -704,10 +810,16 @@ mod tests {
         let faults = page(html);
         // The member row promises something it cannot do.
         assert_eq!(faults.len(), 1, "{faults:?}");
-        assert!(faults[0].contains("id=\"member\"") && faults[0].contains("under the pointer"), "{faults:?}");
+        assert!(
+            faults[0].contains("id=\"member\"") && faults[0].contains("under the pointer"),
+            "{faults:?}"
+        );
         // The revealer wrapping real buttons, and the link, are both honest.
         let joined = faults.join("\n");
-        assert!(!joined.contains("picker") && !joined.contains("real"), "{joined}");
+        assert!(
+            !joined.contains("picker") && !joined.contains("real"),
+            "{joined}"
+        );
     }
 
     /// The lie with no cursor and no hover: a tile beside tiles that are links.
@@ -727,7 +839,10 @@ mod tests {
         assert!(faults[0].contains("id=\"bang\""), "{faults:?}");
         // The link wears it honestly, the tab says it is where you are, prose wears nothing.
         let joined = faults.join("\n");
-        assert!(!joined.contains("trend") && !joined.contains("\"tab\"") && !joined.contains("prose"), "{joined}");
+        assert!(
+            !joined.contains("trend") && !joined.contains("\"tab\"") && !joined.contains("prose"),
+            "{joined}"
+        );
     }
 
     #[test]
@@ -738,7 +853,10 @@ mod tests {
         ));
         let joined = faults.join("\n");
         assert!(joined.contains("<form id=\"a\"> has no action"), "{joined}");
-        assert!(joined.contains("<form id=\"c\"> has no submit control"), "{joined}");
+        assert!(
+            joined.contains("<form id=\"c\"> has no submit control"),
+            "{joined}"
+        );
     }
 
     #[test]
@@ -746,8 +864,10 @@ mod tests {
         let pages = |path: &str| match path {
             "/" => (
                 200,
-                wrap(r#"<a id="ok" href="/next">Next</a><a id="bad" href="/ghost">Ghost</a>
-                        <a id="self" href="/">Home</a>"#),
+                wrap(
+                    r#"<a id="ok" href="/next">Next</a><a id="bad" href="/ghost">Ghost</a>
+                        <a id="self" href="/">Home</a>"#,
+                ),
             ),
             "/next" => (200, wrap("<p>end</p>")),
             _ => (404, String::new()),
@@ -756,10 +876,16 @@ mod tests {
         let faults = Sweep::new(&["/"], &mut call).run();
         assert_eq!(
             faults,
-            ["/: #bad sends GET /ghost, which answers 404", "/: #self links to the page it is on"]
+            [
+                "/: #bad sends GET /ghost, which answers 404",
+                "/: #self links to the page it is on"
+            ]
         );
         let mut call = |_method: &str, path: &str| pages(path);
-        let allowed = Sweep::new(&["/"], &mut call).allow_self(&["self"]).skip(&["/ghost"]).run();
+        let allowed = Sweep::new(&["/"], &mut call)
+            .allow_self(&["self"])
+            .skip(&["/ghost"])
+            .run();
         assert_eq!(allowed, Vec::<String>::new());
     }
 
@@ -779,7 +905,14 @@ mod tests {
         let form = found.iter().find(|c| c.id == "find").expect("the form");
         assert_eq!(form.query, "q=atlas&scope=all");
         // The button submits the same request its form does.
-        assert_eq!(found.iter().find(|c| c.id == "go").expect("the button").query, "q=atlas&scope=all");
+        assert_eq!(
+            found
+                .iter()
+                .find(|c| c.id == "go")
+                .expect("the button")
+                .query,
+            "q=atlas&scope=all"
+        );
         // And the sweep asks for that, not for the bare action.
         let mut asked: Vec<String> = Vec::new();
         let mut call = |_method: &str, path: &str| {
@@ -800,7 +933,10 @@ mod tests {
                 "/: #go sends GET /search?q=atlas&scope=all, which answers 404",
             ]
         );
-        assert!(asked.iter().any(|p| p == "/search?q=atlas&scope=all"), "{asked:?}");
+        assert!(
+            asked.iter().any(|p| p == "/search?q=atlas&scope=all"),
+            "{asked:?}"
+        );
     }
 
     #[test]

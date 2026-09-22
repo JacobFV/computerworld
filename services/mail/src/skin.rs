@@ -20,7 +20,8 @@
 use crate::{stamp, MailState, Message, Nav};
 use cw_protocol::{HttpResponse, Result};
 use cw_service_common::html::{
-    button, div, el, empty, form, fragment, hidden, href, label, link, span, text_input, Document, Html,
+    button, div, el, empty, form, fragment, hidden, href, label, link, span, text_input, Document,
+    Html,
 };
 
 /// One product's surface. Nothing here reaches a record: names, colours and the sheet.
@@ -47,7 +48,12 @@ const GMAIL: Look = Look {
     send: "Send",
     // "All Mail" is Gmail's word for a view this mailbox does not serve: `archive` holds what
     // has been archived, so it is called Archive and the label tells the truth.
-    folders: &[("inbox", "Inbox"), ("starred", "Starred"), ("sent", "Sent"), ("archive", "Archive")],
+    folders: &[
+        ("inbox", "Inbox"),
+        ("starred", "Starred"),
+        ("sent", "Sent"),
+        ("archive", "Archive"),
+    ],
 };
 const OUTLOOK: Look = Look {
     skin: "outlook",
@@ -58,7 +64,12 @@ const OUTLOOK: Look = Look {
     compose: "New mail",
     new_message: "New message",
     send: "Send",
-    folders: &[("inbox", "Inbox"), ("starred", "Favourites"), ("sent", "Sent Items"), ("archive", "Archive")],
+    folders: &[
+        ("inbox", "Inbox"),
+        ("starred", "Favourites"),
+        ("sent", "Sent Items"),
+        ("archive", "Archive"),
+    ],
 };
 const MAILCOM: Look = Look {
     skin: "mailcom",
@@ -69,7 +80,12 @@ const MAILCOM: Look = Look {
     compose: "Compose E-mail",
     new_message: "Compose E-mail",
     send: "Send",
-    folders: &[("inbox", "Inbox"), ("starred", "Favorites"), ("sent", "Sent"), ("archive", "Archive")],
+    folders: &[
+        ("inbox", "Inbox"),
+        ("starred", "Favorites"),
+        ("sent", "Sent"),
+        ("archive", "Archive"),
+    ],
 };
 
 /// Six avatar fills (`.av0`..`.av5` in the sheets), picked by name so one person keeps one
@@ -83,7 +99,10 @@ fn avatar(id: &str, name: &str) -> Html {
         .filter_map(|w| w.chars().next())
         .flat_map(char::to_uppercase)
         .collect();
-    span(&format!("avatar av{tint}")).id(id).attr("aria-hidden", "true").text(initials)
+    span(&format!("avatar av{tint}"))
+        .id(id)
+        .attr("aria-hidden", "true")
+        .text(initials)
 }
 fn at(folder: &str, thread: Option<&str>, compose: bool) -> String {
     let mut params = vec![("folder", folder)];
@@ -119,7 +138,9 @@ fn prose(prefix: &str, body: &str) -> Html {
             let url = w.trim_end_matches(['.', ',', ';', ')', ']']);
             let is_link = url.starts_with("http://") || url.starts_with("https://");
             if is_link {
-                p = p.child(link(&format!("{prefix}-link-{word}"), url, url)).text(&w[url.len()..]);
+                p = p
+                    .child(link(&format!("{prefix}-link-{word}"), url, url))
+                    .text(&w[url.len()..]);
             } else {
                 p = p.text(w);
             }
@@ -138,9 +159,12 @@ fn field(form_id: &str, name: &str, text: &str, value: &str) -> Html {
 }
 fn area(form_id: &str, name: &str, text: &str) -> Html {
     let id = format!("{form_id}-{name}");
-    div("field body")
-        .child(label(&id, text))
-        .child(el("textarea").id(id.as_str()).attr("name", name).attr("rows", "8"))
+    div("field body").child(label(&id, text)).child(
+        el("textarea")
+            .id(id.as_str())
+            .attr("name", name)
+            .attr("rows", "8"),
+    )
 }
 
 struct View<'a> {
@@ -205,7 +229,14 @@ impl View<'_> {
             .child(
                 text_input("search-q", "q", &query)
                     .attr("aria-label", "Search mail")
-                    .attr("placeholder", if self.look.skin == "outlook" { "Search" } else { "Search mail" })
+                    .attr(
+                        "placeholder",
+                        if self.look.skin == "outlook" {
+                            "Search"
+                        } else {
+                            "Search mail"
+                        },
+                    )
                     .attr("autocomplete", "off"),
             )
             .child(button("search-submit", "Search"));
@@ -229,16 +260,24 @@ impl View<'_> {
                     .child(span("logo").attr("aria-hidden", "true").child(el("i")))
                     .child(span("name").text(self.brand())),
             )
-            .child(div("search-box").id("search-box").child(search).child(clear))
+            .child(
+                div("search-box")
+                    .id("search-box")
+                    .child(search)
+                    .child(clear),
+            )
             .child(
                 div("account")
                     .id("account")
+                    .child(span("unread").id("account-folder").text(format!(
+                        "{} unread",
+                        self.s.unread(self.actor, &self.folder)
+                    )))
                     .child(
-                        span("unread")
-                            .id("account-folder")
-                            .text(format!("{} unread", self.s.unread(self.actor, &self.folder))),
+                        span("address")
+                            .id("account-address")
+                            .text(self.s.address(self.actor)),
                     )
-                    .child(span("address").id("account-address").text(self.s.address(self.actor)))
                     .child(avatar("account-avatar", &name)),
             )
     }
@@ -264,27 +303,37 @@ impl View<'_> {
                     .child(span("pen").attr("aria-hidden", "true"))
                     .child(span("").id("compose-label").text(self.look.compose)),
             )
-            .child(div("folders").id("sidebar-items").each(self.look.folders, |(key, text)| {
-                let count = self.s.unread(self.actor, key);
-                let on = *key == self.folder;
-                el("a")
-                    .id(format!("folder-{key}"))
-                    .class(if on { "folder on" } else { "folder" })
-                    .when(count > 0, |a| a.class("fresh"))
-                    .attr("href", at(key, None, false))
-                    .child(span(&format!("ico ico-{key}")).attr("aria-hidden", "true"))
-                    .child(span("label").id(format!("folder-{key}-label")).text(*text))
-                    .child(
-                        span("count")
-                            .id(format!("folder-{key}-count"))
-                            .text(if count > 0 { count.to_string() } else { String::new() }),
-                    )
-            }))
+            .child(
+                div("folders")
+                    .id("sidebar-items")
+                    .each(self.look.folders, |(key, text)| {
+                        let count = self.s.unread(self.actor, key);
+                        let on = *key == self.folder;
+                        el("a")
+                            .id(format!("folder-{key}"))
+                            .class(if on { "folder on" } else { "folder" })
+                            .when(count > 0, |a| a.class("fresh"))
+                            .attr("href", at(key, None, false))
+                            .child(span(&format!("ico ico-{key}")).attr("aria-hidden", "true"))
+                            .child(span("label").id(format!("folder-{key}-label")).text(*text))
+                            .child(span("count").id(format!("folder-{key}-count")).text(
+                                if count > 0 {
+                                    count.to_string()
+                                } else {
+                                    String::new()
+                                },
+                            ))
+                    }),
+            )
             .when(!labels.is_empty(), |nav| {
                 nav.child(
                     div("tags")
                         .id("sidebar-labels")
-                        .child(div("tags-title").text(if self.look.skin == "outlook" { "Categories" } else { "Labels" }))
+                        .child(div("tags-title").text(if self.look.skin == "outlook" {
+                            "Categories"
+                        } else {
+                            "Labels"
+                        }))
                         // A label is a filter over everything this mailbox holds, which is
                         // what a label means; the rail shows which one is on.
                         .each(labels.iter().enumerate(), |(i, name)| {
@@ -292,7 +341,9 @@ impl View<'_> {
                                 .id(format!("label-{i}"))
                                 .class(if *name == self.label { "tag on" } else { "tag" })
                                 .attr("href", href("/", &[("folder", "all"), ("label", name)]))
-                                .child(span(&format!("dot av{}", i % 6)).attr("aria-hidden", "true"))
+                                .child(
+                                    span(&format!("dot av{}", i % 6)).attr("aria-hidden", "true"),
+                                )
                                 .child(span("label").id(format!("label-{i}-name")).text(*name))
                         }),
                 )
@@ -322,9 +373,13 @@ impl View<'_> {
         let head = div("list-head")
             .id("list-head")
             .child(
-                link("list-refresh", self.here(self.nav.thread.as_deref(), self.nav.compose), "↻")
-                    .class("refresh")
-                    .attr("aria-label", "Refresh"),
+                link(
+                    "list-refresh",
+                    self.here(self.nav.thread.as_deref(), self.nav.compose),
+                    "↻",
+                )
+                .class("refresh")
+                .attr("aria-label", "Refresh"),
             )
             .child(el("h1").id("list-title").text(title.as_str()))
             .child(span("count").id("list-count").text(count));
@@ -335,54 +390,82 @@ impl View<'_> {
             .child(span("c-from").text("From"))
             .child(span("c-subject").text("Subject"))
             .child(span("c-date").text("Date"));
-        let rows = div("rows").id("list-rows").each(conversations, |(m, count)| {
-            let box_ = &m.mailboxes[self.actor];
-            let open = self.nav.thread.as_deref() == Some(m.thread());
-            let id = &m.id;
-            let mut class = String::from("row");
-            class.push_str(if box_.read { " read" } else { " unread" });
-            if open {
-                class.push_str(" open");
-            }
-            // The star is a submit button of its own small form rather than an icon inside the
-            // row link: it posts the same `star=toggle` the reading pane posts, and the hidden
-            // fields bring the reader back to the view they pressed it in.
-            let star = form(&format!("row-{id}-star-form"), format!("/messages/{id}"), "post")
+        let rows = div("rows")
+            .id("list-rows")
+            .each(conversations, |(m, count)| {
+                let box_ = &m.mailboxes[self.actor];
+                let open = self.nav.thread.as_deref() == Some(m.thread());
+                let id = &m.id;
+                let mut class = String::from("row");
+                class.push_str(if box_.read { " read" } else { " unread" });
+                if open {
+                    class.push_str(" open");
+                }
+                // The star is a submit button of its own small form rather than an icon inside the
+                // row link: it posts the same `star=toggle` the reading pane posts, and the hidden
+                // fields bring the reader back to the view they pressed it in.
+                let star = form(
+                    &format!("row-{id}-star-form"),
+                    format!("/messages/{id}"),
+                    "post",
+                )
                 .class("star-form")
                 .child(hidden("folder", &self.folder))
                 .child(hidden("filter", &self.label))
                 .child(hidden("thread", self.nav.thread.as_deref().unwrap_or("")))
                 .child(
-                    button(&format!("row-{id}-star"), if box_.starred { "★" } else { "☆" })
-                        .class(if box_.starred { "star on" } else { "star" })
-                        .attr("name", "star")
-                        .attr("value", "toggle")
-                        .attr("aria-label", if box_.starred { "Unstar" } else { "Star" }),
+                    button(
+                        &format!("row-{id}-star"),
+                        if box_.starred { "★" } else { "☆" },
+                    )
+                    .class(if box_.starred { "star on" } else { "star" })
+                    .attr("name", "star")
+                    .attr("value", "toggle")
+                    .attr("aria-label", if box_.starred { "Unstar" } else { "Star" }),
                 );
-            let row = el("a")
-                .id(format!("row-{id}"))
-                .class(&class)
-                .attr("href", self.here(Some(m.thread()), false))
-                .child(avatar(&format!("row-{id}-avatar"), &self.s.display(&m.sender)))
-                .child(
-                    span("who")
-                        .child(span("sender").id(format!("row-{id}-sender")).text(self.s.display(&m.sender)))
-                        .child(
-                            span("n")
-                                .id(format!("row-{id}-count"))
-                                .text(if count > 1 { count.to_string() } else { String::new() }),
-                        ),
-                )
-                .child(
-                    span("line")
-                        .each(self.labels(m), |name| span("chip").text(name))
-                        .child(span("subject").id(format!("row-{id}-subject")).text(m.subject.as_str()))
-                        .child(span("dash").attr("aria-hidden", "true").text(" - "))
-                        .child(span("snippet").id(format!("row-{id}-snippet")).text(snippet(&m.body, 110))),
-                )
-                .child(span("time").id(format!("row-{id}-time")).text(stamp(m.time)));
-            div("row-wrap").child(row).child(star)
-        });
+                let row = el("a")
+                    .id(format!("row-{id}"))
+                    .class(&class)
+                    .attr("href", self.here(Some(m.thread()), false))
+                    .child(avatar(
+                        &format!("row-{id}-avatar"),
+                        &self.s.display(&m.sender),
+                    ))
+                    .child(
+                        span("who")
+                            .child(
+                                span("sender")
+                                    .id(format!("row-{id}-sender"))
+                                    .text(self.s.display(&m.sender)),
+                            )
+                            .child(span("n").id(format!("row-{id}-count")).text(if count > 1 {
+                                count.to_string()
+                            } else {
+                                String::new()
+                            })),
+                    )
+                    .child(
+                        span("line")
+                            .each(self.labels(m), |name| span("chip").text(name))
+                            .child(
+                                span("subject")
+                                    .id(format!("row-{id}-subject"))
+                                    .text(m.subject.as_str()),
+                            )
+                            .child(span("dash").attr("aria-hidden", "true").text(" - "))
+                            .child(
+                                span("snippet")
+                                    .id(format!("row-{id}-snippet"))
+                                    .text(snippet(&m.body, 110)),
+                            ),
+                    )
+                    .child(
+                        span("time")
+                            .id(format!("row-{id}-time"))
+                            .text(stamp(m.time)),
+                    );
+                div("row-wrap").child(row).child(star)
+            });
         el("section")
             .id("list")
             .class("list")
@@ -390,24 +473,32 @@ impl View<'_> {
             .child(head)
             .when(self.look.skin == "mailcom", |l| l.child(cols))
             .child(rows)
-            .when(n == 0, |l| l.child(el("p").id("list-empty").class("none").text("Nothing here.")))
+            .when(n == 0, |l| {
+                l.child(el("p").id("list-empty").class("none").text("Nothing here."))
+            })
     }
     fn reading(&self) -> Html {
         let pane = el("section").id("reading").class("reading");
         if self.nav.compose {
             return pane.class("composing").child(self.compose());
         }
-        match self.nav.thread.as_deref().map(|t| (t, self.s.thread(self.actor, t))) {
-            Some((thread, messages)) if !messages.is_empty() => pane.child(self.conversation(thread, &messages)),
+        match self
+            .nav
+            .thread
+            .as_deref()
+            .map(|t| (t, self.s.thread(self.actor, t)))
+        {
+            Some((thread, messages)) if !messages.is_empty() => {
+                pane.child(self.conversation(thread, &messages))
+            }
             _ => pane.class("vacant").child(
                 div("vacant-note")
                     .child(span("envelope").attr("aria-hidden", "true").child(el("i")))
                     .child(el("p").id("reading-empty").text("Select a conversation"))
-                    .child(
-                        el("p")
-                            .id("reading-hint")
-                            .text(format!("Pick a message on the left, or start a new one with {}.", self.look.compose)),
-                    ),
+                    .child(el("p").id("reading-hint").text(format!(
+                        "Pick a message on the left, or start a new one with {}.",
+                        self.look.compose
+                    ))),
             ),
         }
     }
@@ -417,16 +508,27 @@ impl View<'_> {
             .child(
                 div("window-head")
                     .child(el("h2").id("compose-title").text(self.look.new_message))
-                    .child(link("compose-close", self.here(None, false), "×").attr("aria-label", "Discard and close")),
+                    .child(
+                        link("compose-close", self.here(None, false), "×")
+                            .attr("aria-label", "Discard and close"),
+                    ),
             )
-            .child(el("p").id("compose-from").class("from").text(format!("From {}", self.s.address(self.actor))))
+            .child(
+                el("p")
+                    .id("compose-from")
+                    .class("from")
+                    .text(format!("From {}", self.s.address(self.actor))),
+            )
             .child(
                 form("new", "/send", "post")
                     .child(field("new", "to", "To", ""))
                     .child(field("new", "cc", "Cc", ""))
                     .child(field("new", "subject", "Subject", ""))
                     .child(area("new", "body", "Message"))
-                    .child(div("send-row").child(button("new-submit", self.look.send).class("primary"))),
+                    .child(
+                        div("send-row")
+                            .child(button("new-submit", self.look.send).class("primary")),
+                    ),
             )
     }
     fn conversation(&self, thread: &str, messages: &[&Message]) -> Html {
@@ -440,20 +542,33 @@ impl View<'_> {
         labels.dedup();
         let head = div("thread-head")
             .id("thread-head")
-            .child(link("thread-back", self.here(None, false), "←").class("back").attr("aria-label", "Back to the list"))
+            .child(
+                link("thread-back", self.here(None, false), "←")
+                    .class("back")
+                    .attr("aria-label", "Back to the list"),
+            )
             .child(
                 el("h2")
                     .id("thread-subject")
                     .text(last.subject.as_str())
                     .each(labels, |name| span("chip").text(name)),
             )
-            .child(span("size").id("thread-size").text(format!("{} in thread", messages.len())));
+            .child(
+                span("size")
+                    .id("thread-size")
+                    .text(format!("{} in thread", messages.len())),
+            );
         let cards = fragment([]).each(messages, |m| {
             let box_ = &m.mailboxes[self.actor];
             let id = &m.id;
             let name = s.display(&m.sender);
             let route = format!("/messages/{id}");
-            let to = m.to.iter().chain(&m.cc).map(|r| s.address(r)).collect::<Vec<_>>().join(", ");
+            let to =
+                m.to.iter()
+                    .chain(&m.cc)
+                    .map(|r| s.address(r))
+                    .collect::<Vec<_>>()
+                    .join(", ");
             el("article")
                 .id(format!("read-{id}"))
                 .class("msg")
@@ -463,34 +578,73 @@ impl View<'_> {
                         .child(avatar(&format!("read-{id}-avatar"), &name))
                         .child(
                             div("msg-who")
-                                .child(span("name").id(format!("read-{id}-name")).text(name.as_str()))
-                                .child(span("route").id(format!("read-{id}-line")).text(format!("{} → {}", s.address(&m.sender), to))),
+                                .child(
+                                    span("name")
+                                        .id(format!("read-{id}-name"))
+                                        .text(name.as_str()),
+                                )
+                                .child(span("route").id(format!("read-{id}-line")).text(format!(
+                                    "{} → {}",
+                                    s.address(&m.sender),
+                                    to
+                                ))),
                         )
-                        .child(span("time").id(format!("read-{id}-time")).text(stamp(m.time))),
+                        .child(
+                            span("time")
+                                .id(format!("read-{id}-time"))
+                                .text(stamp(m.time)),
+                        ),
                 )
                 .when(!box_.labels.is_empty(), |a| {
-                    a.child(div("msg-labels").id(format!("read-{id}-labels")).each(box_.labels.iter().enumerate(), |(i, name)| {
-                        span("chip").id(format!("read-{id}-label-{i}")).text(name.as_str())
-                    }))
+                    a.child(div("msg-labels").id(format!("read-{id}-labels")).each(
+                        box_.labels.iter().enumerate(),
+                        |(i, name)| {
+                            span("chip")
+                                .id(format!("read-{id}-label-{i}"))
+                                .text(name.as_str())
+                        },
+                    ))
                 })
-                .child(div("msg-body").id(format!("read-{id}-body")).child(prose(&format!("read-{id}"), &m.body)))
+                .child(
+                    div("msg-body")
+                        .id(format!("read-{id}-body"))
+                        .child(prose(&format!("read-{id}"), &m.body)),
+                )
                 .child(
                     form(&format!("read-{id}-actions"), route.as_str(), "post")
                         .class("msg-actions")
                         .child(hidden("folder", &self.folder))
                         .child(hidden("filter", &self.label))
                         .child(
-                            button(&format!("read-{id}-star"), if box_.starred { "Unstar" } else { "Star" })
-                                .attr("name", "star")
-                                .attr("value", "toggle"),
+                            button(
+                                &format!("read-{id}-star"),
+                                if box_.starred { "Unstar" } else { "Star" },
+                            )
+                            .attr("name", "star")
+                            .attr("value", "toggle"),
                         )
                         .child(
-                            button(&format!("read-{id}-read"), if box_.read { "Mark unread" } else { "Mark read" })
-                                .attr("name", "read")
-                                .attr("value", if box_.read { "false" } else { "true" }),
+                            button(
+                                &format!("read-{id}-read"),
+                                if box_.read {
+                                    "Mark unread"
+                                } else {
+                                    "Mark read"
+                                },
+                            )
+                            .attr("name", "read")
+                            .attr("value", if box_.read { "false" } else { "true" }),
                         )
-                        .child(button(&format!("read-{id}-archive"), "Archive").attr("name", "archive").attr("value", "true"))
-                        .child(link(&format!("read-{id}-permalink"), format!("/threads/{thread}"), "Permalink")),
+                        .child(
+                            button(&format!("read-{id}-archive"), "Archive")
+                                .attr("name", "archive")
+                                .attr("value", "true"),
+                        )
+                        .child(link(
+                            &format!("read-{id}-permalink"),
+                            format!("/threads/{thread}"),
+                            "Permalink",
+                        )),
                 )
                 .child(
                     form(&format!("read-{id}-label"), route.as_str(), "post")
@@ -507,7 +661,10 @@ impl View<'_> {
                 )
         });
         let reply_to = if last.sender == self.actor {
-            last.to.first().cloned().unwrap_or_else(|| self.actor.to_owned())
+            last.to
+                .first()
+                .cloned()
+                .unwrap_or_else(|| self.actor.to_owned())
         } else {
             last.sender.clone()
         };
@@ -518,12 +675,20 @@ impl View<'_> {
         };
         let reply = form("reply", "/send", "post")
             .class("reply")
-            .child(div("reply-title").child(span("arrow").attr("aria-hidden", "true").text("↩")).text("Reply"))
+            .child(
+                div("reply-title")
+                    .child(span("arrow").attr("aria-hidden", "true").text("↩"))
+                    .text("Reply"),
+            )
             .child(field("reply", "to", "To", &s.address(&reply_to)))
             .child(field("reply", "subject", "Subject", &subject))
             .child(area("reply", "body", "Message"))
             .child(div("send-row").child(button("reply-submit", self.look.send).class("primary")));
-        div("thread").id("reading-body").child(head).child(cards).child(reply)
+        div("thread")
+            .id("reading-body")
+            .child(head)
+            .child(cards)
+            .child(reply)
     }
 }
 pub(crate) fn mailbox(s: &MailState, actor: &str, nav: &Nav) -> Result<HttpResponse> {
@@ -532,13 +697,26 @@ pub(crate) fn mailbox(s: &MailState, actor: &str, nav: &Nav) -> Result<HttpRespo
         "mailcom" => &MAILCOM,
         _ => &GMAIL,
     };
-    let view = View { s, actor, nav, look, folder: nav.folder().to_owned(), label: nav.label.clone() };
+    let view = View {
+        s,
+        actor,
+        nav,
+        look,
+        folder: nav.folder().to_owned(),
+        label: nav.label.clone(),
+    };
     let theme = s.theme.clone().unwrap_or_default();
     let [accent, paper, surface, ink, muted] = look.palette;
-    let or = |value: &Option<String>, fallback: &str| value.clone().unwrap_or_else(|| fallback.to_owned());
+    let or = |value: &Option<String>, fallback: &str| {
+        value.clone().unwrap_or_else(|| fallback.to_owned())
+    };
     let mode = if nav.compose {
         "view-compose"
-    } else if nav.thread.as_deref().is_some_and(|t| !s.thread(actor, t).is_empty()) {
+    } else if nav
+        .thread
+        .as_deref()
+        .is_some_and(|t| !s.thread(actor, t).is_empty())
+    {
         "view-thread"
     } else {
         "view-list"
@@ -557,7 +735,11 @@ pub(crate) fn mailbox(s: &MailState, actor: &str, nav: &Nav) -> Result<HttpRespo
         .body_class(&format!("skin-{} {mode}", look.skin))
         .body([
             view.header(),
-            div("panes").id("panes").child(view.sidebar()).child(view.list()).child(view.reading()),
+            div("panes")
+                .id("panes")
+                .child(view.sidebar())
+                .child(view.list())
+                .child(view.reading()),
         ]);
     cw_service_common::html::page(&document)
 }

@@ -130,7 +130,11 @@ pub fn is_shorthand(name: &str) -> bool {
 }
 
 /// Expands a shorthand declaration into `(longhand, specified)` pairs.
-pub fn expand(name: &str, value: &[ComponentValue], dir: Direction) -> Result<Vec<(LonghandId, Specified)>, ShorthandError> {
+pub fn expand(
+    name: &str,
+    value: &[ComponentValue],
+    dir: Direction,
+) -> Result<Vec<(LonghandId, Specified)>, ShorthandError> {
     let n = normalize_property_name(name);
     let longhands = shorthand_longhands(&n, dir).ok_or(ShorthandError::NotShorthand)?;
     if n == "columns" {
@@ -138,15 +142,31 @@ pub fn expand(name: &str, value: &[ComponentValue], dir: Direction) -> Result<Ve
     }
     let mut parser = Parser::new(value);
     if let Some(k) = parse_css_wide(&mut parser) {
-        return Ok(longhands.iter().map(|id| (*id, Specified::CssWide(k))).collect());
+        return Ok(longhands
+            .iter()
+            .map(|id| (*id, Specified::CssWide(k)))
+            .collect());
     }
     if n == "all" {
         return Err(ShorthandError::Invalid);
     }
     if contains_var(value) {
-        return Ok(longhands.iter().map(|id| (*id, Specified::Pending { property: n.clone(), value: value.to_vec() })).collect());
+        return Ok(longhands
+            .iter()
+            .map(|id| {
+                (
+                    *id,
+                    Specified::Pending {
+                        property: n.clone(),
+                        value: value.to_vec(),
+                    },
+                )
+            })
+            .collect());
     }
-    let out = parser.parse_entirely(|p| expand_value(&n, p, dir)).ok_or(ShorthandError::Invalid)?;
+    let out = parser
+        .parse_entirely(|p| expand_value(&n, p, dir))
+        .ok_or(ShorthandError::Invalid)?;
     Ok(out)
 }
 
@@ -157,8 +177,19 @@ pub fn shorthand_longhands(name: &str, dir: Direction) -> Option<Vec<LonghandId>
         computed::Direction::Ltr => ("left", "right"),
         computed::Direction::Rtl => ("right", "left"),
     };
-    let by = |names: &[String]| -> Vec<LonghandId> { names.iter().filter_map(|n| LonghandId::by_name(n)).collect() };
-    let side_border = |side: &str| vec![format!("border-{side}-width"), format!("border-{side}-style"), format!("border-{side}-color")];
+    let by = |names: &[String]| -> Vec<LonghandId> {
+        names
+            .iter()
+            .filter_map(|n| LonghandId::by_name(n))
+            .collect()
+    };
+    let side_border = |side: &str| {
+        vec![
+            format!("border-{side}-width"),
+            format!("border-{side}-style"),
+            format!("border-{side}-color"),
+        ]
+    };
     Some(match name {
         "all" => LonghandId::all().collect(),
         "margin" => vec![MarginTop, MarginRight, MarginBottom, MarginLeft],
@@ -181,10 +212,30 @@ pub fn shorthand_longhands(name: &str, dir: Direction) -> Option<Vec<LonghandId>
         "border-right" => vec![BorderRightWidth, BorderRightStyle, BorderRightColor],
         "border-bottom" => vec![BorderBottomWidth, BorderBottomStyle, BorderBottomColor],
         "border-left" => vec![BorderLeftWidth, BorderLeftStyle, BorderLeftColor],
-        "border-width" => vec![BorderTopWidth, BorderRightWidth, BorderBottomWidth, BorderLeftWidth],
-        "border-style" => vec![BorderTopStyle, BorderRightStyle, BorderBottomStyle, BorderLeftStyle],
-        "border-color" => vec![BorderTopColor, BorderRightColor, BorderBottomColor, BorderLeftColor],
-        "border-radius" => vec![BorderTopLeftRadius, BorderTopRightRadius, BorderBottomRightRadius, BorderBottomLeftRadius],
+        "border-width" => vec![
+            BorderTopWidth,
+            BorderRightWidth,
+            BorderBottomWidth,
+            BorderLeftWidth,
+        ],
+        "border-style" => vec![
+            BorderTopStyle,
+            BorderRightStyle,
+            BorderBottomStyle,
+            BorderLeftStyle,
+        ],
+        "border-color" => vec![
+            BorderTopColor,
+            BorderRightColor,
+            BorderBottomColor,
+            BorderLeftColor,
+        ],
+        "border-radius" => vec![
+            BorderTopLeftRadius,
+            BorderTopRightRadius,
+            BorderBottomRightRadius,
+            BorderBottomLeftRadius,
+        ],
         "inset" => vec![Top, Right, Bottom, Left],
         "background" => vec![
             BackgroundColor,
@@ -198,12 +249,26 @@ pub fn shorthand_longhands(name: &str, dir: Direction) -> Option<Vec<LonghandId>
             BackgroundAttachment,
         ],
         "background-position" => vec![BackgroundPositionX, BackgroundPositionY],
-        "font" => vec![FontStyle, FontVariant, FontWeight, FontSize, LineHeight, FontFamily],
+        "font" => vec![
+            FontStyle,
+            FontVariant,
+            FontWeight,
+            FontSize,
+            LineHeight,
+            FontFamily,
+        ],
         "flex" => vec![FlexGrow, FlexShrink, FlexBasis],
         "flex-flow" => vec![FlexDirection, FlexWrap],
         "gap" => vec![RowGap, ColumnGap],
         "grid-template" => vec![GridTemplateRows, GridTemplateColumns, GridTemplateAreas],
-        "grid" => vec![GridTemplateRows, GridTemplateColumns, GridTemplateAreas, GridAutoRows, GridAutoColumns, GridAutoFlow],
+        "grid" => vec![
+            GridTemplateRows,
+            GridTemplateColumns,
+            GridTemplateAreas,
+            GridAutoRows,
+            GridAutoColumns,
+            GridAutoFlow,
+        ],
         "grid-area" => vec![GridRowStart, GridColumnStart, GridRowEnd, GridColumnEnd],
         "grid-row" => vec![GridRowStart, GridRowEnd],
         "grid-column" => vec![GridColumnStart, GridColumnEnd],
@@ -214,7 +279,12 @@ pub fn shorthand_longhands(name: &str, dir: Direction) -> Option<Vec<LonghandId>
         "outline" => vec![OutlineWidth, OutlineStyle, OutlineColor],
         "text-decoration" => vec![TextDecorationLine, TextDecorationStyle, TextDecorationColor],
         "overflow" => vec![OverflowX, OverflowY],
-        "transition" => vec![TransitionProperty, TransitionDuration, TransitionTimingFunction, TransitionDelay],
+        "transition" => vec![
+            TransitionProperty,
+            TransitionDuration,
+            TransitionTimingFunction,
+            TransitionDelay,
+        ],
         "animation" => vec![
             AnimationName,
             AnimationDuration,
@@ -287,15 +357,27 @@ fn expand_value(name: &str, p: &mut Parser, dir: Direction) -> Option<Out> {
             ids.into_iter().zip(v).collect()
         }
         "border-style" => {
-            let v = four(p, |p| p::border_style_keyword(p).map(Specified::BorderStyle))?;
+            let v = four(p, |p| {
+                p::border_style_keyword(p).map(Specified::BorderStyle)
+            })?;
             ids.into_iter().zip(v).collect()
         }
         "border-color" => {
             let v = four(p, |p| parse_color(p).map(Specified::Color))?;
             ids.into_iter().zip(v).collect()
         }
-        "border" | "border-top" | "border-right" | "border-bottom" | "border-left" | "border-inline" | "border-block" | "border-inline-start" | "border-inline-end" | "border-block-start"
-        | "border-block-end" | "outline" => {
+        "border"
+        | "border-top"
+        | "border-right"
+        | "border-bottom"
+        | "border-left"
+        | "border-inline"
+        | "border-block"
+        | "border-inline-start"
+        | "border-inline-end"
+        | "border-block-start"
+        | "border-block-end"
+        | "outline" => {
             let (w, s, c) = border_triple(p, name == "outline")?;
             let mut out = Vec::new();
             for id in ids {
@@ -313,14 +395,24 @@ fn expand_value(name: &str, p: &mut Parser, dir: Direction) -> Option<Out> {
         }
         "border-radius" => {
             let h = four(p, |p| parse_lp(p, Allow::NON_NEGATIVE))?;
-            let v = if p.expect_delim('/').is_some() { four(p, |p| parse_lp(p, Allow::NON_NEGATIVE))? } else { h.clone() };
-            ids.into_iter().zip(h.into_iter().zip(v)).map(|(id, (a, b))| (id, Specified::LpPair(a, b))).collect()
+            let v = if p.expect_delim('/').is_some() {
+                four(p, |p| parse_lp(p, Allow::NON_NEGATIVE))?
+            } else {
+                h.clone()
+            };
+            ids.into_iter()
+                .zip(h.into_iter().zip(v))
+                .map(|(id, (a, b))| (id, Specified::LpPair(a, b)))
+                .collect()
         }
         "background" => background(p)?,
         "background-position" => {
             let list = p.comma_list(parse_position)?;
             let (xs, ys): (Vec<_>, Vec<_>) = list.into_iter().unzip();
-            vec![(BackgroundPositionX, Specified::LpList(xs)), (BackgroundPositionY, Specified::LpList(ys))]
+            vec![
+                (BackgroundPositionX, Specified::LpList(xs)),
+                (BackgroundPositionY, Specified::LpList(ys)),
+            ]
         }
         "font" => font(p)?,
         "flex" => flex(p)?,
@@ -345,7 +437,16 @@ fn expand_value(name: &str, p: &mut Parser, dir: Direction) -> Option<Out> {
             if d.is_none() && w.is_none() {
                 return None;
             }
-            vec![(FlexDirection, d.unwrap_or(Specified::FlexDirection(computed::FlexDirection::Row))), (FlexWrap, w.unwrap_or(Specified::FlexWrap(computed::FlexWrap::NoWrap)))]
+            vec![
+                (
+                    FlexDirection,
+                    d.unwrap_or(Specified::FlexDirection(computed::FlexDirection::Row)),
+                ),
+                (
+                    FlexWrap,
+                    w.unwrap_or(Specified::FlexWrap(computed::FlexWrap::NoWrap)),
+                ),
+            ]
         }
         "gap" => {
             let a = p::gap(p)?;
@@ -373,7 +474,12 @@ fn expand_value(name: &str, p: &mut Parser, dir: Direction) -> Option<Out> {
             let col_start = lines.get(1).cloned().unwrap_or_else(|| implied(&row_start));
             let row_end = lines.get(2).cloned().unwrap_or_else(|| implied(&row_start));
             let col_end = lines.get(3).cloned().unwrap_or_else(|| implied(&col_start));
-            vec![(GridRowStart, Specified::GridLine(row_start)), (GridColumnStart, Specified::GridLine(col_start)), (GridRowEnd, Specified::GridLine(row_end)), (GridColumnEnd, Specified::GridLine(col_end))]
+            vec![
+                (GridRowStart, Specified::GridLine(row_start)),
+                (GridColumnStart, Specified::GridLine(col_start)),
+                (GridRowEnd, Specified::GridLine(row_end)),
+                (GridColumnEnd, Specified::GridLine(col_end)),
+            ]
         }
         "grid-row" | "grid-column" => {
             let a = p::grid_line_spec(p)?;
@@ -385,7 +491,10 @@ fn expand_value(name: &str, p: &mut Parser, dir: Direction) -> Option<Out> {
                     _ => GridLine::Auto,
                 }
             };
-            vec![(ids[0], Specified::GridLine(a)), (ids[1], Specified::GridLine(b))]
+            vec![
+                (ids[0], Specified::GridLine(a)),
+                (ids[1], Specified::GridLine(b)),
+            ]
         }
         "place-items" => {
             let a = p::align_items(p)?;
@@ -446,15 +555,33 @@ fn expand_value(name: &str, p: &mut Parser, dir: Direction) -> Option<Out> {
                 return None;
             }
             vec![
-                (TextDecorationLine, line.unwrap_or(Specified::TextDecorationLine { underline: false, overline: false, line_through: false })),
-                (TextDecorationStyle, style.unwrap_or(Specified::TextDecorationStyle(computed::TextDecorationStyle::Solid))),
-                (TextDecorationColor, color.unwrap_or(Specified::Color(ColorSpec::CurrentColor))),
+                (
+                    TextDecorationLine,
+                    line.unwrap_or(Specified::TextDecorationLine {
+                        underline: false,
+                        overline: false,
+                        line_through: false,
+                    }),
+                ),
+                (
+                    TextDecorationStyle,
+                    style.unwrap_or(Specified::TextDecorationStyle(
+                        computed::TextDecorationStyle::Solid,
+                    )),
+                ),
+                (
+                    TextDecorationColor,
+                    color.unwrap_or(Specified::Color(ColorSpec::CurrentColor)),
+                ),
             ]
         }
         "overflow" => {
             let a = p::overflow_keyword(p)?;
             let b = p::overflow_keyword(p).unwrap_or(a);
-            vec![(OverflowX, Specified::Overflow(a)), (OverflowY, Specified::Overflow(b))]
+            vec![
+                (OverflowX, Specified::Overflow(a)),
+                (OverflowY, Specified::Overflow(b)),
+            ]
         }
         "transition" => transition(p)?,
         "animation" => animation(p)?,
@@ -462,7 +589,10 @@ fn expand_value(name: &str, p: &mut Parser, dir: Direction) -> Option<Out> {
     })
 }
 
-fn border_triple(p: &mut Parser, outline: bool) -> Option<(BorderWidthSpec, BorderStyle, ColorSpec)> {
+fn border_triple(
+    p: &mut Parser,
+    outline: bool,
+) -> Option<(BorderWidthSpec, BorderStyle, ColorSpec)> {
     let mut w = None;
     let mut s = None;
     let mut c = None;
@@ -491,7 +621,11 @@ fn border_triple(p: &mut Parser, outline: bool) -> Option<(BorderWidthSpec, Bord
             }
         }
         if c.is_none() {
-            let v = if outline && p.expect_ident_matching("invert").is_some() { Some(ColorSpec::CurrentColor) } else { parse_color(p) };
+            let v = if outline && p.expect_ident_matching("invert").is_some() {
+                Some(ColorSpec::CurrentColor)
+            } else {
+                parse_color(p)
+            };
             if let Some(v) = v {
                 c = Some(v);
                 continue;
@@ -502,7 +636,11 @@ fn border_triple(p: &mut Parser, outline: bool) -> Option<(BorderWidthSpec, Bord
     if w.is_none() && s.is_none() && c.is_none() {
         return None;
     }
-    Some((w.unwrap_or(BorderWidthSpec::Medium), s.unwrap_or(BorderStyle::None), c.unwrap_or(ColorSpec::CurrentColor)))
+    Some((
+        w.unwrap_or(BorderWidthSpec::Medium),
+        s.unwrap_or(BorderStyle::None),
+        c.unwrap_or(ColorSpec::CurrentColor),
+    ))
 }
 
 fn background(p: &mut Parser) -> Option<Out> {
@@ -518,7 +656,14 @@ fn background(p: &mut Parser) -> Option<Out> {
     let mut layers: Vec<Layer> = Vec::new();
     let mut color: Option<ColorSpec> = None;
     loop {
-        let mut layer = Layer { image: None, position: None, size: None, repeat: None, attachment: None, boxes: Vec::new() };
+        let mut layer = Layer {
+            image: None,
+            position: None,
+            size: None,
+            repeat: None,
+            attachment: None,
+            boxes: Vec::new(),
+        };
         let mut any = false;
         loop {
             if layer.image.is_none() {
@@ -598,13 +743,24 @@ fn background(p: &mut Parser) -> Option<Out> {
         sizes.push(l.size.unwrap_or(BgSizeSpec::Auto));
         repeats.push(l.repeat.unwrap_or(computed::BackgroundRepeat::Repeat));
         attachments.push(l.attachment.unwrap_or(false));
-        let origin = l.boxes.first().copied().unwrap_or(BackgroundBox::PaddingBox);
-        let clip = l.boxes.get(1).copied().unwrap_or(if l.boxes.is_empty() { BackgroundBox::BorderBox } else { origin });
+        let origin = l
+            .boxes
+            .first()
+            .copied()
+            .unwrap_or(BackgroundBox::PaddingBox);
+        let clip = l.boxes.get(1).copied().unwrap_or(if l.boxes.is_empty() {
+            BackgroundBox::BorderBox
+        } else {
+            origin
+        });
         origins.push(origin);
         clips.push(clip);
     }
     Some(vec![
-        (BackgroundColor, Specified::Color(color.unwrap_or(ColorSpec::Rgba(cw_scene::Color::TRANSPARENT)))),
+        (
+            BackgroundColor,
+            Specified::Color(color.unwrap_or(ColorSpec::Rgba(cw_scene::Color::TRANSPARENT))),
+        ),
         (BackgroundImage, Specified::Images(images)),
         (BackgroundPositionX, Specified::LpList(xs)),
         (BackgroundPositionY, Specified::LpList(ys)),
@@ -621,17 +777,30 @@ fn font(p: &mut Parser) -> Option<Out> {
     // System fonts: accepted, mapped to the UI font at 13.333px (what Chromium reports).
     if let Some(()) = p.try_parse(|p| {
         let s = p.expect_ident_lower()?;
-        if matches!(s.as_str(), "caption" | "icon" | "menu" | "message-box" | "small-caption" | "status-bar") && p.is_done() {
+        if matches!(
+            s.as_str(),
+            "caption" | "icon" | "menu" | "message-box" | "small-caption" | "status-bar"
+        ) && p.is_done()
+        {
             Some(())
         } else {
             None
         }
     }) {
-        let size = LpSpec::Length(Length { value: Number { micro: 13_333_333, int: false }, unit: LengthUnit::Px });
+        let size = LpSpec::Length(Length {
+            value: Number {
+                micro: 13_333_333,
+                int: false,
+            },
+            unit: LengthUnit::Px,
+        });
         return Some(vec![
             (FontStyle, Specified::FontStyle(computed::FontStyle::Normal)),
             (FontVariant, Specified::Bool(false)),
-            (FontWeight, Specified::FontWeight(FontWeightSpec::Absolute(400))),
+            (
+                FontWeight,
+                Specified::FontWeight(FontWeightSpec::Absolute(400)),
+            ),
             (FontSize, Specified::FontSize(FontSizeSpec::Lp(size))),
             (LineHeight, Specified::LineHeight(LineHeightSpec::Normal)),
             (FontFamily, Specified::FontFamily(vec!["system-ui".into()])),
@@ -658,7 +827,13 @@ fn font(p: &mut Parser) -> Option<Out> {
         if weight.is_none() {
             if let Some(v) = p.try_parse(|p| {
                 // A bare number here must be a weight, not a size.
-                if matches!(p.peek(), Some(ComponentValue::Token(crate::css::token::Token::Number { .. }))) || p.peek_ident_lower().is_some() {
+                if matches!(
+                    p.peek(),
+                    Some(ComponentValue::Token(
+                        crate::css::token::Token::Number { .. }
+                    ))
+                ) || p.peek_ident_lower().is_some()
+                {
                     p::font_weight_spec(p)
                 } else {
                     None
@@ -668,28 +843,47 @@ fn font(p: &mut Parser) -> Option<Out> {
                 continue;
             }
         }
-        if p
-            .try_parse(|p| {
-                let s = p.expect_ident_lower()?;
-                if matches!(s.as_str(), "ultra-condensed" | "extra-condensed" | "condensed" | "semi-condensed" | "semi-expanded" | "expanded" | "extra-expanded" | "ultra-expanded") {
-                    Some(())
-                } else {
-                    None
-                }
-            })
-            .is_some()
+        if p.try_parse(|p| {
+            let s = p.expect_ident_lower()?;
+            if matches!(
+                s.as_str(),
+                "ultra-condensed"
+                    | "extra-condensed"
+                    | "condensed"
+                    | "semi-condensed"
+                    | "semi-expanded"
+                    | "expanded"
+                    | "extra-expanded"
+                    | "ultra-expanded"
+            ) {
+                Some(())
+            } else {
+                None
+            }
+        })
+        .is_some()
         {
             continue;
         }
         break;
     }
     let size = p::font_size_spec(p)?;
-    let line_height = if p.expect_delim('/').is_some() { p::line_height_spec(p)? } else { LineHeightSpec::Normal };
+    let line_height = if p.expect_delim('/').is_some() {
+        p::line_height_spec(p)?
+    } else {
+        LineHeightSpec::Normal
+    };
     let family = p::font_family_list(p)?;
     Some(vec![
-        (FontStyle, Specified::FontStyle(style.unwrap_or(computed::FontStyle::Normal))),
+        (
+            FontStyle,
+            Specified::FontStyle(style.unwrap_or(computed::FontStyle::Normal)),
+        ),
         (FontVariant, Specified::Bool(variant.unwrap_or(false))),
-        (FontWeight, Specified::FontWeight(weight.unwrap_or(FontWeightSpec::Absolute(400)))),
+        (
+            FontWeight,
+            Specified::FontWeight(weight.unwrap_or(FontWeightSpec::Absolute(400))),
+        ),
         (FontSize, Specified::FontSize(size)),
         (LineHeight, Specified::LineHeight(line_height)),
         (FontFamily, Specified::FontFamily(family)),
@@ -700,7 +894,13 @@ fn flex(p: &mut Parser) -> Option<Out> {
     use LonghandId::*;
     let one = Number::from_i64(1);
     let zero = Number::ZERO;
-    let out = |g: Number, s: Number, b: SizingSpec| vec![(FlexGrow, Specified::Number(g)), (FlexShrink, Specified::Number(s)), (FlexBasis, Specified::Sizing(b))];
+    let out = |g: Number, s: Number, b: SizingSpec| {
+        vec![
+            (FlexGrow, Specified::Number(g)),
+            (FlexShrink, Specified::Number(s)),
+            (FlexBasis, Specified::Sizing(b)),
+        ]
+    };
     if p.expect_ident_matching("none").is_some() {
         return Some(out(zero, zero, SizingSpec::Auto));
     }
@@ -748,7 +948,9 @@ fn flex(p: &mut Parser) -> Option<Out> {
 }
 
 /// `grid-template`'s areas form: `[ <line-names>? <string> <track-size>? <line-names>? ]+ [ / <explicit-track-list> ]?`.
-fn grid_template_areas_form(p: &mut Parser) -> Option<(TrackListSpec, TrackListSpec, Vec<Vec<String>>)> {
+fn grid_template_areas_form(
+    p: &mut Parser,
+) -> Option<(TrackListSpec, TrackListSpec, Vec<Vec<String>>)> {
     p.try_parse(|p| {
         let mut rows = Vec::new();
         let mut areas: Vec<Vec<String>> = Vec::new();
@@ -771,7 +973,9 @@ fn grid_template_areas_form(p: &mut Parser) -> Option<(TrackListSpec, TrackListS
             }
             let Some(s) = p.expect_string() else { break };
             let row = Parser::new(&[tok_string(s)]).parse_entirely(p::grid_template_areas)?;
-            let Specified::GridAreas(mut r) = row else { return None };
+            let Specified::GridAreas(mut r) = row else {
+                return None;
+            };
             let r = r.pop()?;
             if let Some(first) = areas.first() {
                 if first.len() != r.len() {
@@ -791,7 +995,11 @@ fn grid_template_areas_form(p: &mut Parser) -> Option<(TrackListSpec, TrackListS
         if !pending_names.is_empty() {
             rows.push(TrackEntry::LineNames(pending_names));
         }
-        let cols = if p.expect_delim('/').is_some() { p::track_list_spec(p)? } else { TrackListSpec::default() };
+        let cols = if p.expect_delim('/').is_some() {
+            p::track_list_spec(p)?
+        } else {
+            TrackListSpec::default()
+        };
         Some((TrackListSpec { entries: rows }, cols, areas))
     })
 }
@@ -799,12 +1007,20 @@ fn grid_template_areas_form(p: &mut Parser) -> Option<(TrackListSpec, TrackListS
 fn grid_template(p: &mut Parser) -> Option<Out> {
     use LonghandId::*;
     let (rows, cols, areas) = grid_template_parts(p)?;
-    Some(vec![(GridTemplateRows, Specified::TrackList(rows)), (GridTemplateColumns, Specified::TrackList(cols)), (GridTemplateAreas, Specified::GridAreas(areas))])
+    Some(vec![
+        (GridTemplateRows, Specified::TrackList(rows)),
+        (GridTemplateColumns, Specified::TrackList(cols)),
+        (GridTemplateAreas, Specified::GridAreas(areas)),
+    ])
 }
 
 fn grid_template_parts(p: &mut Parser) -> Option<(TrackListSpec, TrackListSpec, Vec<Vec<String>>)> {
     if p.expect_ident_matching("none").is_some() {
-        return Some((TrackListSpec::default(), TrackListSpec::default(), Vec::new()));
+        return Some((
+            TrackListSpec::default(),
+            TrackListSpec::default(),
+            Vec::new(),
+        ));
     }
     if let Some(v) = grid_template_areas_form(p) {
         return Some(v);
@@ -866,7 +1082,18 @@ fn grid(p: &mut Parser) -> Option<Out> {
         }
         p.expect_delim('/')?;
         let cols = p::track_list_spec(p)?;
-        return Some(base(TrackListSpec::default(), cols, Vec::new(), rows, auto, if dense { computed::GridAutoFlow::RowDense } else { computed::GridAutoFlow::Row }));
+        return Some(base(
+            TrackListSpec::default(),
+            cols,
+            Vec::new(),
+            rows,
+            auto,
+            if dense {
+                computed::GridAutoFlow::RowDense
+            } else {
+                computed::GridAutoFlow::Row
+            },
+        ));
     }
     // `<rows> / [auto-flow && dense?] <auto-columns>?`
     if let Some(v) = p.try_parse(|p| {
@@ -877,12 +1104,30 @@ fn grid(p: &mut Parser) -> Option<Out> {
         if cols.is_empty() {
             cols = auto.clone();
         }
-        Some(base(rows, TrackListSpec::default(), Vec::new(), auto.clone(), cols, if dense { computed::GridAutoFlow::ColumnDense } else { computed::GridAutoFlow::Column }))
+        Some(base(
+            rows,
+            TrackListSpec::default(),
+            Vec::new(),
+            auto.clone(),
+            cols,
+            if dense {
+                computed::GridAutoFlow::ColumnDense
+            } else {
+                computed::GridAutoFlow::Column
+            },
+        ))
     }) {
         return Some(v);
     }
     let (rows, cols, areas) = grid_template_parts(p)?;
-    Some(base(rows, cols, areas, auto.clone(), auto, computed::GridAutoFlow::Row))
+    Some(base(
+        rows,
+        cols,
+        areas,
+        auto.clone(),
+        auto,
+        computed::GridAutoFlow::Row,
+    ))
 }
 
 fn list_style(p: &mut Parser) -> Option<Out> {
@@ -934,9 +1179,18 @@ fn list_style(p: &mut Parser) -> Option<Out> {
         }
     }
     Some(vec![
-        (ListStyleType, Specified::ListStyleType(ty.unwrap_or(computed::ListStyleType::Disc))),
-        (ListStylePosition, Specified::ListStylePosition(pos.unwrap_or(computed::ListStylePosition::Outside))),
-        (ListStyleImage, Specified::Images(vec![image.unwrap_or(ImageSpec::None)])),
+        (
+            ListStyleType,
+            Specified::ListStyleType(ty.unwrap_or(computed::ListStyleType::Disc)),
+        ),
+        (
+            ListStylePosition,
+            Specified::ListStylePosition(pos.unwrap_or(computed::ListStylePosition::Outside)),
+        ),
+        (
+            ListStyleImage,
+            Specified::Images(vec![image.unwrap_or(ImageSpec::None)]),
+        ),
     ])
 }
 
@@ -949,7 +1203,12 @@ fn transition(p: &mut Parser) -> Option<Out> {
         delay: Option<i32>,
     }
     let items = p.comma_list(|p| {
-        let mut it = Item { property: None, duration: None, timing: None, delay: None };
+        let mut it = Item {
+            property: None,
+            duration: None,
+            timing: None,
+            delay: None,
+        };
         let mut any = false;
         for _ in 0..4 {
             if let Some(t) = parse_time(p) {
@@ -989,10 +1248,32 @@ fn transition(p: &mut Parser) -> Option<Out> {
         return None;
     }
     Some(vec![
-        (TransitionProperty, Specified::Idents(items.iter().map(|i| i.property.clone().unwrap_or_else(|| "all".into())).collect())),
-        (TransitionDuration, Specified::Times(items.iter().map(|i| i.duration.unwrap_or(0)).collect())),
-        (TransitionTimingFunction, Specified::Timings(items.iter().map(|i| i.timing.unwrap_or(TimingFunction::Ease)).collect())),
-        (TransitionDelay, Specified::Times(items.iter().map(|i| i.delay.unwrap_or(0)).collect())),
+        (
+            TransitionProperty,
+            Specified::Idents(
+                items
+                    .iter()
+                    .map(|i| i.property.clone().unwrap_or_else(|| "all".into()))
+                    .collect(),
+            ),
+        ),
+        (
+            TransitionDuration,
+            Specified::Times(items.iter().map(|i| i.duration.unwrap_or(0)).collect()),
+        ),
+        (
+            TransitionTimingFunction,
+            Specified::Timings(
+                items
+                    .iter()
+                    .map(|i| i.timing.unwrap_or(TimingFunction::Ease))
+                    .collect(),
+            ),
+        ),
+        (
+            TransitionDelay,
+            Specified::Times(items.iter().map(|i| i.delay.unwrap_or(0)).collect()),
+        ),
     ])
 }
 
@@ -1085,14 +1366,60 @@ fn animation(p: &mut Parser) -> Option<Out> {
         }
     })?;
     Some(vec![
-        (AnimationName, Specified::Idents(items.iter().map(|i| i.name.clone().unwrap_or_else(|| "none".into())).collect())),
-        (AnimationDuration, Specified::Times(items.iter().map(|i| i.duration.unwrap_or(0)).collect())),
-        (AnimationTimingFunction, Specified::Timings(items.iter().map(|i| i.timing.unwrap_or(TimingFunction::Ease)).collect())),
-        (AnimationDelay, Specified::Times(items.iter().map(|i| i.delay.unwrap_or(0)).collect())),
-        (AnimationIterationCount, Specified::IterationCounts(items.iter().map(|i| i.count.unwrap_or(Some(1000))).collect())),
-        (AnimationDirection, Specified::AnimationDirections(items.iter().map(|i| i.direction.unwrap_or_default()).collect())),
-        (AnimationFillMode, Specified::AnimationFillModes(items.iter().map(|i| i.fill.unwrap_or_default()).collect())),
-        (AnimationPlayState, Specified::Bools(items.iter().map(|i| i.play.unwrap_or(true)).collect())),
+        (
+            AnimationName,
+            Specified::Idents(
+                items
+                    .iter()
+                    .map(|i| i.name.clone().unwrap_or_else(|| "none".into()))
+                    .collect(),
+            ),
+        ),
+        (
+            AnimationDuration,
+            Specified::Times(items.iter().map(|i| i.duration.unwrap_or(0)).collect()),
+        ),
+        (
+            AnimationTimingFunction,
+            Specified::Timings(
+                items
+                    .iter()
+                    .map(|i| i.timing.unwrap_or(TimingFunction::Ease))
+                    .collect(),
+            ),
+        ),
+        (
+            AnimationDelay,
+            Specified::Times(items.iter().map(|i| i.delay.unwrap_or(0)).collect()),
+        ),
+        (
+            AnimationIterationCount,
+            Specified::IterationCounts(
+                items
+                    .iter()
+                    .map(|i| i.count.unwrap_or(Some(1000)))
+                    .collect(),
+            ),
+        ),
+        (
+            AnimationDirection,
+            Specified::AnimationDirections(
+                items
+                    .iter()
+                    .map(|i| i.direction.unwrap_or_default())
+                    .collect(),
+            ),
+        ),
+        (
+            AnimationFillMode,
+            Specified::AnimationFillModes(
+                items.iter().map(|i| i.fill.unwrap_or_default()).collect(),
+            ),
+        ),
+        (
+            AnimationPlayState,
+            Specified::Bools(items.iter().map(|i| i.play.unwrap_or(true)).collect()),
+        ),
     ])
 }
 
@@ -1124,12 +1451,18 @@ mod tests {
         assert_eq!(get(&m, MarginLeft), &Specified::Lpa(LpaSpec::Lp(px(2))));
         let m = ex("margin", "0 auto").unwrap();
         assert_eq!(get(&m, MarginLeft), &Specified::Lpa(LpaSpec::Auto));
-        assert_eq!(ex("margin", "1px 2px 3px 4px 5px"), Err(ShorthandError::Invalid));
+        assert_eq!(
+            ex("margin", "1px 2px 3px 4px 5px"),
+            Err(ShorthandError::Invalid)
+        );
         assert_eq!(ex("padding", "auto"), Err(ShorthandError::Invalid));
         assert_eq!(ex("padding", "-1px"), Err(ShorthandError::Invalid));
         let pd = ex("padding", "1em").unwrap();
         assert_eq!(pd.len(), 4);
-        assert_eq!(ex("margin", "inherit").unwrap()[0].1, Specified::CssWide(CssWide::Inherit));
+        assert_eq!(
+            ex("margin", "inherit").unwrap()[0].1,
+            Specified::CssWide(CssWide::Inherit)
+        );
         assert_eq!(ex("nope", "1px"), Err(ShorthandError::NotShorthand));
         assert_eq!(ex("columns", "2"), Err(ShorthandError::Unsupported));
     }
@@ -1138,36 +1471,80 @@ mod tests {
     fn borders() {
         let b = ex("border", "1px solid red").unwrap();
         assert_eq!(b.len(), 12);
-        assert_eq!(get(&b, BorderLeftStyle), &Specified::BorderStyle(computed::BorderStyle::Solid));
-        assert_eq!(get(&b, BorderTopWidth), &Specified::BorderWidth(BorderWidthSpec::Length(px(1))));
+        assert_eq!(
+            get(&b, BorderLeftStyle),
+            &Specified::BorderStyle(computed::BorderStyle::Solid)
+        );
+        assert_eq!(
+            get(&b, BorderTopWidth),
+            &Specified::BorderWidth(BorderWidthSpec::Length(px(1)))
+        );
         let b = ex("border", "red").unwrap();
-        assert_eq!(get(&b, BorderTopWidth), &Specified::BorderWidth(BorderWidthSpec::Medium));
-        assert_eq!(get(&b, BorderTopStyle), &Specified::BorderStyle(computed::BorderStyle::None));
+        assert_eq!(
+            get(&b, BorderTopWidth),
+            &Specified::BorderWidth(BorderWidthSpec::Medium)
+        );
+        assert_eq!(
+            get(&b, BorderTopStyle),
+            &Specified::BorderStyle(computed::BorderStyle::None)
+        );
         let b = ex("border-top", "dotted").unwrap();
         assert_eq!(b.len(), 3);
-        assert_eq!(get(&b, BorderTopColor), &Specified::Color(ColorSpec::CurrentColor));
+        assert_eq!(
+            get(&b, BorderTopColor),
+            &Specified::Color(ColorSpec::CurrentColor)
+        );
         let b = ex("border-width", "1px 2px").unwrap();
-        assert_eq!(get(&b, BorderBottomWidth), &Specified::BorderWidth(BorderWidthSpec::Length(px(1))));
+        assert_eq!(
+            get(&b, BorderBottomWidth),
+            &Specified::BorderWidth(BorderWidthSpec::Length(px(1)))
+        );
         let b = ex("border-color", "red green blue").unwrap();
-        assert_eq!(get(&b, BorderLeftColor), &Specified::Color(ColorSpec::Rgba(cw_scene::Color(0, 128, 0, 255))));
+        assert_eq!(
+            get(&b, BorderLeftColor),
+            &Specified::Color(ColorSpec::Rgba(cw_scene::Color(0, 128, 0, 255)))
+        );
         assert_eq!(ex("border", "1px 2px"), Err(ShorthandError::Invalid));
         assert_eq!(ex("border", "solid dashed"), Err(ShorthandError::Invalid));
         let o = ex("outline", "2px auto blue").unwrap();
-        assert_eq!(get(&o, OutlineStyle), &Specified::BorderStyle(computed::BorderStyle::Solid));
+        assert_eq!(
+            get(&o, OutlineStyle),
+            &Specified::BorderStyle(computed::BorderStyle::Solid)
+        );
         let l = ex("border-inline-start", "1px solid").unwrap();
         assert_eq!(l[0].0, BorderLeftWidth);
-        let r = expand("border-inline-start", &tokenize("1px solid"), computed::Direction::Rtl).unwrap();
+        let r = expand(
+            "border-inline-start",
+            &tokenize("1px solid"),
+            computed::Direction::Rtl,
+        )
+        .unwrap();
         assert_eq!(r[0].0, BorderRightWidth);
     }
 
     #[test]
     fn border_radius_with_slash() {
         let r = ex("border-radius", "1px 2px / 3px").unwrap();
-        assert_eq!(get(&r, BorderTopLeftRadius), &Specified::LpPair(px(1), px(3)));
-        assert_eq!(get(&r, BorderTopRightRadius), &Specified::LpPair(px(2), px(3)));
-        assert_eq!(get(&r, BorderBottomLeftRadius), &Specified::LpPair(px(2), px(3)));
+        assert_eq!(
+            get(&r, BorderTopLeftRadius),
+            &Specified::LpPair(px(1), px(3))
+        );
+        assert_eq!(
+            get(&r, BorderTopRightRadius),
+            &Specified::LpPair(px(2), px(3))
+        );
+        assert_eq!(
+            get(&r, BorderBottomLeftRadius),
+            &Specified::LpPair(px(2), px(3))
+        );
         let r = ex("border-radius", "50%").unwrap();
-        assert_eq!(get(&r, BorderBottomRightRadius), &Specified::LpPair(LpSpec::Percent(Number::from_i64(50)), LpSpec::Percent(Number::from_i64(50))));
+        assert_eq!(
+            get(&r, BorderBottomRightRadius),
+            &Specified::LpPair(
+                LpSpec::Percent(Number::from_i64(50)),
+                LpSpec::Percent(Number::from_i64(50))
+            )
+        );
         assert_eq!(ex("border-radius", "1px /"), Err(ShorthandError::Invalid));
         assert_eq!(ex("border-radius", "-1px"), Err(ShorthandError::Invalid));
     }
@@ -1179,18 +1556,36 @@ mod tests {
         let i = ex("inset-inline", "1px 2px").unwrap();
         assert_eq!(i[0].0, Left);
         assert_eq!(i[1].0, Right);
-        assert_eq!(resolve_longhand("inset-inline-end", computed::Direction::Rtl), Some(Left));
-        assert_eq!(resolve_longhand("margin-block-start", computed::Direction::Ltr), Some(MarginTop));
-        assert_eq!(resolve_longhand("border-inline-end-width", computed::Direction::Ltr), Some(BorderRightWidth));
-        assert_eq!(resolve_longhand("inline-size", computed::Direction::Ltr), Some(Width));
-        assert_eq!(resolve_longhand("-webkit-border-radius", computed::Direction::Ltr), None);
+        assert_eq!(
+            resolve_longhand("inset-inline-end", computed::Direction::Rtl),
+            Some(Left)
+        );
+        assert_eq!(
+            resolve_longhand("margin-block-start", computed::Direction::Ltr),
+            Some(MarginTop)
+        );
+        assert_eq!(
+            resolve_longhand("border-inline-end-width", computed::Direction::Ltr),
+            Some(BorderRightWidth)
+        );
+        assert_eq!(
+            resolve_longhand("inline-size", computed::Direction::Ltr),
+            Some(Width)
+        );
+        assert_eq!(
+            resolve_longhand("-webkit-border-radius", computed::Direction::Ltr),
+            None
+        );
         assert!(is_shorthand("-webkit-border-radius"));
     }
 
     #[test]
     fn background_layers() {
         let b = ex("background", "url(a.png) no-repeat center / cover, linear-gradient(red, blue) padding-box content-box, #fff").unwrap();
-        assert_eq!(get(&b, BackgroundColor), &Specified::Color(ColorSpec::Rgba(cw_scene::Color(255, 255, 255, 255))));
+        assert_eq!(
+            get(&b, BackgroundColor),
+            &Specified::Color(ColorSpec::Rgba(cw_scene::Color(255, 255, 255, 255)))
+        );
         match get(&b, BackgroundImage) {
             Specified::Images(v) => {
                 assert_eq!(v.len(), 3);
@@ -1199,21 +1594,60 @@ mod tests {
             }
             o => panic!("{o:?}"),
         }
-        assert_eq!(get(&b, BackgroundRepeat), &Specified::Repeats(vec![computed::BackgroundRepeat::NoRepeat, computed::BackgroundRepeat::Repeat, computed::BackgroundRepeat::Repeat]));
-        assert_eq!(get(&b, BackgroundSize), &Specified::BgSizes(vec![BgSizeSpec::Cover, BgSizeSpec::Auto, BgSizeSpec::Auto]));
-        assert_eq!(get(&b, BackgroundOrigin), &Specified::BgBoxes(vec![computed::BackgroundBox::PaddingBox, computed::BackgroundBox::PaddingBox, computed::BackgroundBox::PaddingBox]));
-        assert_eq!(get(&b, BackgroundClip), &Specified::BgBoxes(vec![computed::BackgroundBox::BorderBox, computed::BackgroundBox::ContentBox, computed::BackgroundBox::BorderBox]));
+        assert_eq!(
+            get(&b, BackgroundRepeat),
+            &Specified::Repeats(vec![
+                computed::BackgroundRepeat::NoRepeat,
+                computed::BackgroundRepeat::Repeat,
+                computed::BackgroundRepeat::Repeat
+            ])
+        );
+        assert_eq!(
+            get(&b, BackgroundSize),
+            &Specified::BgSizes(vec![BgSizeSpec::Cover, BgSizeSpec::Auto, BgSizeSpec::Auto])
+        );
+        assert_eq!(
+            get(&b, BackgroundOrigin),
+            &Specified::BgBoxes(vec![
+                computed::BackgroundBox::PaddingBox,
+                computed::BackgroundBox::PaddingBox,
+                computed::BackgroundBox::PaddingBox
+            ])
+        );
+        assert_eq!(
+            get(&b, BackgroundClip),
+            &Specified::BgBoxes(vec![
+                computed::BackgroundBox::BorderBox,
+                computed::BackgroundBox::ContentBox,
+                computed::BackgroundBox::BorderBox
+            ])
+        );
         let b = ex("background", "red").unwrap();
-        assert_eq!(get(&b, BackgroundImage), &Specified::Images(vec![ImageSpec::None]));
+        assert_eq!(
+            get(&b, BackgroundImage),
+            &Specified::Images(vec![ImageSpec::None])
+        );
         let b = ex("background", "none").unwrap();
-        assert_eq!(get(&b, BackgroundColor), &Specified::Color(ColorSpec::Rgba(cw_scene::Color::TRANSPARENT)));
+        assert_eq!(
+            get(&b, BackgroundColor),
+            &Specified::Color(ColorSpec::Rgba(cw_scene::Color::TRANSPARENT))
+        );
         let b = ex("background", "url(x) fixed border-box").unwrap();
         assert_eq!(get(&b, BackgroundAttachment), &Specified::Bools(vec![true]));
-        assert_eq!(get(&b, BackgroundClip), &Specified::BgBoxes(vec![computed::BackgroundBox::BorderBox]));
+        assert_eq!(
+            get(&b, BackgroundClip),
+            &Specified::BgBoxes(vec![computed::BackgroundBox::BorderBox])
+        );
         // Colour only in the last layer.
-        assert_eq!(ex("background", "red, url(x)"), Err(ShorthandError::Invalid));
+        assert_eq!(
+            ex("background", "red, url(x)"),
+            Err(ShorthandError::Invalid)
+        );
         assert_eq!(ex("background", "red red"), Err(ShorthandError::Invalid));
-        assert_eq!(ex("background", "url(x) / cover"), Err(ShorthandError::Invalid));
+        assert_eq!(
+            ex("background", "url(x) / cover"),
+            Err(ShorthandError::Invalid)
+        );
         let bp = ex("background-position", "right 10px top, center").unwrap();
         match get(&bp, BackgroundPositionX) {
             Specified::LpList(v) => assert_eq!(v.len(), 2),
@@ -1223,20 +1657,58 @@ mod tests {
 
     #[test]
     fn font_shorthand() {
-        let f = ex("font", "italic small-caps bold 12px/1.5 \"Helvetica Neue\", Arial, sans-serif").unwrap();
-        assert_eq!(get(&f, FontStyle), &Specified::FontStyle(computed::FontStyle::Italic));
+        let f = ex(
+            "font",
+            "italic small-caps bold 12px/1.5 \"Helvetica Neue\", Arial, sans-serif",
+        )
+        .unwrap();
+        assert_eq!(
+            get(&f, FontStyle),
+            &Specified::FontStyle(computed::FontStyle::Italic)
+        );
         assert_eq!(get(&f, FontVariant), &Specified::Bool(true));
-        assert_eq!(get(&f, FontWeight), &Specified::FontWeight(FontWeightSpec::Absolute(700)));
-        assert_eq!(get(&f, FontSize), &Specified::FontSize(FontSizeSpec::Lp(px(12))));
-        assert_eq!(get(&f, LineHeight), &Specified::LineHeight(LineHeightSpec::Number(Number { micro: 1_500_000, int: false })));
-        assert_eq!(get(&f, FontFamily), &Specified::FontFamily(vec!["Helvetica Neue".into(), "Arial".into(), "sans-serif".into()]));
+        assert_eq!(
+            get(&f, FontWeight),
+            &Specified::FontWeight(FontWeightSpec::Absolute(700))
+        );
+        assert_eq!(
+            get(&f, FontSize),
+            &Specified::FontSize(FontSizeSpec::Lp(px(12)))
+        );
+        assert_eq!(
+            get(&f, LineHeight),
+            &Specified::LineHeight(LineHeightSpec::Number(Number {
+                micro: 1_500_000,
+                int: false
+            }))
+        );
+        assert_eq!(
+            get(&f, FontFamily),
+            &Specified::FontFamily(vec![
+                "Helvetica Neue".into(),
+                "Arial".into(),
+                "sans-serif".into()
+            ])
+        );
         let f = ex("font", "16px serif").unwrap();
-        assert_eq!(get(&f, FontWeight), &Specified::FontWeight(FontWeightSpec::Absolute(400)));
-        assert_eq!(get(&f, LineHeight), &Specified::LineHeight(LineHeightSpec::Normal));
+        assert_eq!(
+            get(&f, FontWeight),
+            &Specified::FontWeight(FontWeightSpec::Absolute(400))
+        );
+        assert_eq!(
+            get(&f, LineHeight),
+            &Specified::LineHeight(LineHeightSpec::Normal)
+        );
         let f = ex("font", "700 medium Georgia").unwrap();
-        assert_eq!(get(&f, FontSize), &Specified::FontSize(FontSizeSpec::Absolute(3)));
+        assert_eq!(
+            get(&f, FontSize),
+            &Specified::FontSize(FontSizeSpec::Absolute(3))
+        );
         let f = ex("font", "menu").unwrap();
-        assert_eq!(get(&f, FontFamily), &Specified::FontFamily(vec!["system-ui".into()]));
+        assert_eq!(
+            get(&f, FontFamily),
+            &Specified::FontFamily(vec!["system-ui".into()])
+        );
         assert_eq!(ex("font", "12px"), Err(ShorthandError::Invalid));
         assert_eq!(ex("font", "serif"), Err(ShorthandError::Invalid));
         assert_eq!(ex("font", "bold 12px"), Err(ShorthandError::Invalid));
@@ -1249,7 +1721,10 @@ mod tests {
         let f = ex("flex", "1").unwrap();
         assert_eq!(get(&f, FlexGrow), &Specified::Number(one));
         assert_eq!(get(&f, FlexShrink), &Specified::Number(one));
-        assert_eq!(get(&f, FlexBasis), &Specified::Sizing(SizingSpec::Lp(LpSpec::Percent(Number::ZERO))));
+        assert_eq!(
+            get(&f, FlexBasis),
+            &Specified::Sizing(SizingSpec::Lp(LpSpec::Percent(Number::ZERO)))
+        );
         let f = ex("flex", "none").unwrap();
         assert_eq!(get(&f, FlexGrow), &Specified::Number(Number::ZERO));
         assert_eq!(get(&f, FlexBasis), &Specified::Sizing(SizingSpec::Auto));
@@ -1257,15 +1732,24 @@ mod tests {
         assert_eq!(get(&f, FlexGrow), &Specified::Number(one));
         let f = ex("flex", "2 3 10px").unwrap();
         assert_eq!(get(&f, FlexShrink), &Specified::Number(Number::from_i64(3)));
-        assert_eq!(get(&f, FlexBasis), &Specified::Sizing(SizingSpec::Lp(px(10))));
+        assert_eq!(
+            get(&f, FlexBasis),
+            &Specified::Sizing(SizingSpec::Lp(px(10)))
+        );
         let f = ex("flex", "10px 2").unwrap();
         assert_eq!(get(&f, FlexGrow), &Specified::Number(Number::from_i64(2)));
         assert_eq!(ex("flex", "-1"), Err(ShorthandError::Invalid));
         assert_eq!(ex("flex", "1 2 3 4"), Err(ShorthandError::Invalid));
         let ff = ex("flex-flow", "column wrap").unwrap();
-        assert_eq!(get(&ff, FlexDirection), &Specified::FlexDirection(computed::FlexDirection::Column));
+        assert_eq!(
+            get(&ff, FlexDirection),
+            &Specified::FlexDirection(computed::FlexDirection::Column)
+        );
         let ff = ex("flex-flow", "wrap-reverse").unwrap();
-        assert_eq!(get(&ff, FlexDirection), &Specified::FlexDirection(computed::FlexDirection::Row));
+        assert_eq!(
+            get(&ff, FlexDirection),
+            &Specified::FlexDirection(computed::FlexDirection::Row)
+        );
         let g = ex("gap", "10px 20px").unwrap();
         assert_eq!(get(&g, ColumnGap), &Specified::Lp(px(20)));
         let g = ex("gap", "normal").unwrap();
@@ -1280,29 +1764,65 @@ mod tests {
             o => panic!("{o:?}"),
         }
         let g = ex("grid-template", "[a] \"x y\" 1fr [b] \"z z\" / auto 1fr").unwrap();
-        assert_eq!(get(&g, GridTemplateAreas), &Specified::GridAreas(vec![vec!["x".into(), "y".into()], vec!["z".into(), "z".into()]]));
+        assert_eq!(
+            get(&g, GridTemplateAreas),
+            &Specified::GridAreas(vec![
+                vec!["x".into(), "y".into()],
+                vec!["z".into(), "z".into()]
+            ])
+        );
         match get(&g, GridTemplateRows) {
             Specified::TrackList(t) => assert_eq!(t.entries.len(), 4),
             o => panic!("{o:?}"),
         }
         let g = ex("grid", "auto-flow dense 40px / 1fr 1fr").unwrap();
-        assert_eq!(get(&g, GridAutoFlow), &Specified::GridAutoFlow(computed::GridAutoFlow::RowDense));
-        assert_eq!(get(&g, GridAutoRows), &Specified::AutoTracks(vec![TrackSizeSpec::Breadth(TrackBreadthSpec::Lp(px(40)))]));
+        assert_eq!(
+            get(&g, GridAutoFlow),
+            &Specified::GridAutoFlow(computed::GridAutoFlow::RowDense)
+        );
+        assert_eq!(
+            get(&g, GridAutoRows),
+            &Specified::AutoTracks(vec![TrackSizeSpec::Breadth(TrackBreadthSpec::Lp(px(40)))])
+        );
         let g = ex("grid", "1fr / auto-flow").unwrap();
-        assert_eq!(get(&g, GridAutoFlow), &Specified::GridAutoFlow(computed::GridAutoFlow::Column));
+        assert_eq!(
+            get(&g, GridAutoFlow),
+            &Specified::GridAutoFlow(computed::GridAutoFlow::Column)
+        );
         let g = ex("grid", "none").unwrap();
-        assert_eq!(get(&g, GridTemplateRows), &Specified::TrackList(TrackListSpec::default()));
+        assert_eq!(
+            get(&g, GridTemplateRows),
+            &Specified::TrackList(TrackListSpec::default())
+        );
         let a = ex("grid-area", "1 / 2 / 3 / 4").unwrap();
-        assert_eq!(get(&a, GridColumnEnd), &Specified::GridLine(GridLine::Line(4, None)));
+        assert_eq!(
+            get(&a, GridColumnEnd),
+            &Specified::GridLine(GridLine::Line(4, None))
+        );
         let a = ex("grid-area", "header").unwrap();
-        assert_eq!(get(&a, GridColumnEnd), &Specified::GridLine(GridLine::Name("header".into())));
+        assert_eq!(
+            get(&a, GridColumnEnd),
+            &Specified::GridLine(GridLine::Name("header".into()))
+        );
         let a = ex("grid-area", "2").unwrap();
-        assert_eq!(get(&a, GridColumnStart), &Specified::GridLine(GridLine::Auto));
+        assert_eq!(
+            get(&a, GridColumnStart),
+            &Specified::GridLine(GridLine::Auto)
+        );
         let r = ex("grid-row", "span 2 / 5").unwrap();
-        assert_eq!(get(&r, GridRowStart), &Specified::GridLine(GridLine::Span(2, None)));
+        assert_eq!(
+            get(&r, GridRowStart),
+            &Specified::GridLine(GridLine::Span(2, None))
+        );
         let c = ex("grid-column", "1 / -1").unwrap();
-        assert_eq!(get(&c, GridColumnEnd), &Specified::GridLine(GridLine::Line(-1, None)));
-        assert_eq!(ex("grid-area", "1 / 2 / 3 / 4 / 5"), Err(ShorthandError::Invalid));
+        assert_eq!(
+            get(&c, GridColumnEnd),
+            &Specified::GridLine(GridLine::Line(-1, None))
+        );
+        assert_eq!(
+            ex("grid-area", "1 / 2 / 3 / 4 / 5"),
+            Err(ShorthandError::Invalid)
+        );
         assert_eq!(ex("grid-template", "100px"), Err(ShorthandError::Invalid));
         let g = ex("grid-template", "none").unwrap();
         assert_eq!(get(&g, GridTemplateAreas), &Specified::GridAreas(vec![]));
@@ -1311,64 +1831,166 @@ mod tests {
     #[test]
     fn place_list_outline_text_decoration_overflow() {
         let pl = ex("place-items", "center").unwrap();
-        assert_eq!(get(&pl, JustifyItems), &Specified::AlignItems(computed::AlignItems::Center));
+        assert_eq!(
+            get(&pl, JustifyItems),
+            &Specified::AlignItems(computed::AlignItems::Center)
+        );
         let pl = ex("place-content", "center space-between").unwrap();
-        assert_eq!(get(&pl, JustifyContent), &Specified::JustifyContent(computed::JustifyContent::SpaceBetween));
+        assert_eq!(
+            get(&pl, JustifyContent),
+            &Specified::JustifyContent(computed::JustifyContent::SpaceBetween)
+        );
         let pl = ex("place-self", "end").unwrap();
-        assert_eq!(get(&pl, JustifySelf), &Specified::AlignSelf(computed::AlignSelf::End));
+        assert_eq!(
+            get(&pl, JustifySelf),
+            &Specified::AlignSelf(computed::AlignSelf::End)
+        );
         let ls = ex("list-style", "none").unwrap();
-        assert_eq!(get(&ls, ListStyleType), &Specified::ListStyleType(computed::ListStyleType::None));
+        assert_eq!(
+            get(&ls, ListStyleType),
+            &Specified::ListStyleType(computed::ListStyleType::None)
+        );
         let ls = ex("list-style", "inside square").unwrap();
-        assert_eq!(get(&ls, ListStyleType), &Specified::ListStyleType(computed::ListStyleType::Square));
-        assert_eq!(get(&ls, ListStylePosition), &Specified::ListStylePosition(computed::ListStylePosition::Inside));
+        assert_eq!(
+            get(&ls, ListStyleType),
+            &Specified::ListStyleType(computed::ListStyleType::Square)
+        );
+        assert_eq!(
+            get(&ls, ListStylePosition),
+            &Specified::ListStylePosition(computed::ListStylePosition::Inside)
+        );
         let ls = ex("list-style", "url(x.png) none").unwrap();
-        assert_eq!(get(&ls, ListStyleType), &Specified::ListStyleType(computed::ListStyleType::None));
-        assert_eq!(ex("list-style", "none none none"), Err(ShorthandError::Invalid));
+        assert_eq!(
+            get(&ls, ListStyleType),
+            &Specified::ListStyleType(computed::ListStyleType::None)
+        );
+        assert_eq!(
+            ex("list-style", "none none none"),
+            Err(ShorthandError::Invalid)
+        );
         let td = ex("text-decoration", "underline dotted red").unwrap();
-        assert_eq!(get(&td, TextDecorationLine), &Specified::TextDecorationLine { underline: true, overline: false, line_through: false });
-        assert_eq!(get(&td, TextDecorationStyle), &Specified::TextDecorationStyle(computed::TextDecorationStyle::Dotted));
+        assert_eq!(
+            get(&td, TextDecorationLine),
+            &Specified::TextDecorationLine {
+                underline: true,
+                overline: false,
+                line_through: false
+            }
+        );
+        assert_eq!(
+            get(&td, TextDecorationStyle),
+            &Specified::TextDecorationStyle(computed::TextDecorationStyle::Dotted)
+        );
         let td = ex("text-decoration", "none").unwrap();
-        assert_eq!(get(&td, TextDecorationColor), &Specified::Color(ColorSpec::CurrentColor));
+        assert_eq!(
+            get(&td, TextDecorationColor),
+            &Specified::Color(ColorSpec::CurrentColor)
+        );
         let td = ex("text-decoration", "underline line-through").unwrap();
-        assert_eq!(get(&td, TextDecorationLine), &Specified::TextDecorationLine { underline: true, overline: false, line_through: true });
-        assert_eq!(ex("text-decoration", "underline underline"), Err(ShorthandError::Invalid));
+        assert_eq!(
+            get(&td, TextDecorationLine),
+            &Specified::TextDecorationLine {
+                underline: true,
+                overline: false,
+                line_through: true
+            }
+        );
+        assert_eq!(
+            ex("text-decoration", "underline underline"),
+            Err(ShorthandError::Invalid)
+        );
         let ov = ex("overflow", "hidden auto").unwrap();
-        assert_eq!(get(&ov, OverflowY), &Specified::Overflow(computed::Overflow::Auto));
+        assert_eq!(
+            get(&ov, OverflowY),
+            &Specified::Overflow(computed::Overflow::Auto)
+        );
         let ov = ex("overflow", "scroll").unwrap();
-        assert_eq!(get(&ov, OverflowX), &Specified::Overflow(computed::Overflow::Scroll));
-        assert_eq!(get(&ov, OverflowY), &Specified::Overflow(computed::Overflow::Scroll));
+        assert_eq!(
+            get(&ov, OverflowX),
+            &Specified::Overflow(computed::Overflow::Scroll)
+        );
+        assert_eq!(
+            get(&ov, OverflowY),
+            &Specified::Overflow(computed::Overflow::Scroll)
+        );
     }
 
     #[test]
     fn transition_and_animation() {
         let t = ex("transition", "opacity 0.3s ease-in 100ms, transform 1s").unwrap();
-        assert_eq!(get(&t, TransitionProperty), &Specified::Idents(vec!["opacity".into(), "transform".into()]));
-        assert_eq!(get(&t, TransitionDuration), &Specified::Times(vec![300, 1000]));
-        assert_eq!(get(&t, TransitionTimingFunction), &Specified::Timings(vec![computed::TimingFunction::EaseIn, computed::TimingFunction::Ease]));
+        assert_eq!(
+            get(&t, TransitionProperty),
+            &Specified::Idents(vec!["opacity".into(), "transform".into()])
+        );
+        assert_eq!(
+            get(&t, TransitionDuration),
+            &Specified::Times(vec![300, 1000])
+        );
+        assert_eq!(
+            get(&t, TransitionTimingFunction),
+            &Specified::Timings(vec![
+                computed::TimingFunction::EaseIn,
+                computed::TimingFunction::Ease
+            ])
+        );
         assert_eq!(get(&t, TransitionDelay), &Specified::Times(vec![100, 0]));
         let t = ex("transition", "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)").unwrap();
-        assert_eq!(get(&t, TransitionTimingFunction), &Specified::Timings(vec![computed::TimingFunction::CubicBezier(400, 0, 200, 1000)]));
+        assert_eq!(
+            get(&t, TransitionTimingFunction),
+            &Specified::Timings(vec![computed::TimingFunction::CubicBezier(
+                400, 0, 200, 1000
+            )])
+        );
         let t = ex("transition", "none").unwrap();
-        assert_eq!(get(&t, TransitionProperty), &Specified::Idents(vec!["none".into()]));
+        assert_eq!(
+            get(&t, TransitionProperty),
+            &Specified::Idents(vec!["none".into()])
+        );
         assert_eq!(ex("transition", "1s 2s 3s"), Err(ShorthandError::Invalid));
         let a = ex("animation", "spin 2s linear infinite").unwrap();
-        assert_eq!(get(&a, AnimationName), &Specified::Idents(vec!["spin".into()]));
-        assert_eq!(get(&a, AnimationIterationCount), &Specified::IterationCounts(vec![None]));
-        assert_eq!(get(&a, AnimationTimingFunction), &Specified::Timings(vec![computed::TimingFunction::Linear]));
+        assert_eq!(
+            get(&a, AnimationName),
+            &Specified::Idents(vec!["spin".into()])
+        );
+        assert_eq!(
+            get(&a, AnimationIterationCount),
+            &Specified::IterationCounts(vec![None])
+        );
+        assert_eq!(
+            get(&a, AnimationTimingFunction),
+            &Specified::Timings(vec![computed::TimingFunction::Linear])
+        );
         let a = ex("animation", "1s steps(4, start) alternate both paused fade").unwrap();
-        assert_eq!(get(&a, AnimationName), &Specified::Idents(vec!["fade".into()]));
-        assert_eq!(get(&a, AnimationDirection), &Specified::AnimationDirections(vec![computed::AnimationDirection::Alternate]));
-        assert_eq!(get(&a, AnimationFillMode), &Specified::AnimationFillModes(vec![computed::AnimationFillMode::Both]));
+        assert_eq!(
+            get(&a, AnimationName),
+            &Specified::Idents(vec!["fade".into()])
+        );
+        assert_eq!(
+            get(&a, AnimationDirection),
+            &Specified::AnimationDirections(vec![computed::AnimationDirection::Alternate])
+        );
+        assert_eq!(
+            get(&a, AnimationFillMode),
+            &Specified::AnimationFillModes(vec![computed::AnimationFillMode::Both])
+        );
         assert_eq!(get(&a, AnimationPlayState), &Specified::Bools(vec![false]));
-        assert_eq!(get(&a, AnimationTimingFunction), &Specified::Timings(vec![computed::TimingFunction::Steps(4, true)]));
+        assert_eq!(
+            get(&a, AnimationTimingFunction),
+            &Specified::Timings(vec![computed::TimingFunction::Steps(4, true)])
+        );
         let a = ex("animation", "none").unwrap();
-        assert_eq!(get(&a, AnimationName), &Specified::Idents(vec!["none".into()]));
+        assert_eq!(
+            get(&a, AnimationName),
+            &Specified::Idents(vec!["none".into()])
+        );
     }
 
     #[test]
     fn css_wide_and_var_on_shorthands() {
         let b = ex("border", "unset").unwrap();
-        assert!(b.iter().all(|(_, v)| *v == Specified::CssWide(CssWide::Unset)));
+        assert!(b
+            .iter()
+            .all(|(_, v)| *v == Specified::CssWide(CssWide::Unset)));
         let a = ex("all", "revert").unwrap();
         assert_eq!(a.len(), LonghandId::COUNT);
         assert_eq!(ex("all", "1px"), Err(ShorthandError::Invalid));

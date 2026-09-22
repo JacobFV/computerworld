@@ -10,12 +10,19 @@ use serde_json::{Map, Value};
 const CSS: &str = include_str!("plain.css");
 
 fn document(title: &str) -> Document {
-    Document::new(title).lang("en").stylesheet(CSS).body_class("skin-plain")
+    Document::new(title)
+        .lang("en")
+        .stylesheet(CSS)
+        .body_class("skin-plain")
 }
 fn masthead(trail: Option<&str>) -> html::Html {
-    let mut bar = el("header").class("masthead").child(link("home", "/", "git").class("brand"));
+    let mut bar = el("header")
+        .class("masthead")
+        .child(link("home", "/", "git").class("brand"));
     if let Some(name) = trail {
-        bar = bar.child(span("sep").text("/")).child(span("here").text(name));
+        bar = bar
+            .child(span("sep").text("/"))
+            .child(span("here").text(name));
     }
     bar.child(span("tagline").text("repositories on this server"))
 }
@@ -37,7 +44,11 @@ pub(crate) fn index(repos: &Map<String, Value>, visible: &[String]) -> Result<Ht
         let commits = repo["objects"].as_object().map_or(0, Map::len);
         rows = rows.child(
             el("tr")
-                .child(el("td").class("name").child(link(&format!("repo-{name}"), format!("/repos/{name}"), name.as_str())))
+                .child(el("td").class("name").child(link(
+                    &format!("repo-{name}"),
+                    format!("/repos/{name}"),
+                    name.as_str(),
+                )))
                 .child(el("td").class("muted").text(text("description")))
                 .child(el("td").text(text("owner")))
                 .child(el("td").class("num").text(commits.to_string())),
@@ -49,7 +60,9 @@ pub(crate) fn index(repos: &Map<String, Value>, visible: &[String]) -> Result<Ht
         el("main")
             .child(el("h1").id("title").text("Git repositories"))
             .child(table)
-            .when(visible.is_empty(), |n| n.child(el("p").id("empty").class("muted").text("No repositories."))),
+            .when(visible.is_empty(), |n| {
+                n.child(el("p").id("empty").class("muted").text("No repositories."))
+            }),
         el("footer").text("Clone over HTTP: git clone http://<host>/repos/<name>"),
     ]);
     html::page(&doc)
@@ -58,7 +71,13 @@ pub(crate) fn index(repos: &Map<String, Value>, visible: &[String]) -> Result<Ht
 pub(crate) fn repository(name: &str, repo: &Value) -> Result<HttpResponse> {
     let mut main = el("main").child(el("h1").id("repo-title").text(name));
     let refs = repo["refs"].as_object();
-    let mut list = el("table").class("list refs").child(el("thead").child(el("tr").child(el("th").text("Ref")).child(el("th").text("Commit"))));
+    let mut list = el("table").class("list refs").child(
+        el("thead").child(
+            el("tr")
+                .child(el("th").text("Ref"))
+                .child(el("th").text("Commit")),
+        ),
+    );
     let mut rows = el("tbody");
     for (refname, id) in refs.into_iter().flatten() {
         rows = rows.child(
@@ -66,13 +85,19 @@ pub(crate) fn repository(name: &str, repo: &Value) -> Result<HttpResponse> {
                 .id(format!("ref-{refname}"))
                 .child(el("td").class("mono").text(refname.as_str()))
                 // A space keeps "name id" readable as text, the way the row always read.
-                .child(el("td").class("mono muted").text(format!(" {}", id.as_str().unwrap_or("")))),
+                .child(
+                    el("td")
+                        .class("mono muted")
+                        .text(format!(" {}", id.as_str().unwrap_or(""))),
+                ),
         );
     }
     list = list.child(rows);
     main = main.child(el("h2").text("Refs")).child(list);
     // The default branch: main when there is one, the first ref otherwise.
-    let head = refs.and_then(|r| r.get("refs/heads/main").or_else(|| r.values().next())).and_then(Value::as_str);
+    let head = refs
+        .and_then(|r| r.get("refs/heads/main").or_else(|| r.values().next()))
+        .and_then(Value::as_str);
     if let Some(files) = head.and_then(|id| repo["objects"][id]["files"].as_object()) {
         main = main.child(el("h2").text("Files"));
         for (path, content) in files {

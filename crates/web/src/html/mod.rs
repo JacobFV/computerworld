@@ -142,7 +142,12 @@ pub fn parse_fragment(doc: &mut Document, context: NodeId, source: &str) -> Vec<
     parse_fragment_with_options(doc, context, source, &ParseOptions::default())
 }
 
-pub fn parse_fragment_with_options(doc: &mut Document, context: NodeId, source: &str, options: &ParseOptions) -> Vec<NodeId> {
+pub fn parse_fragment_with_options(
+    doc: &mut Document,
+    context: NodeId,
+    source: &str,
+    options: &ParseOptions,
+) -> Vec<NodeId> {
     let mutations = doc.mutations.len();
     let fragment = doc.create(NodeKind::DocumentFragment);
     let tok = Tokenizer::new(preprocess(source));
@@ -158,7 +163,27 @@ pub fn parse_fragment_with_options(doc: &mut Document, context: NodeId, source: 
 }
 
 fn serializes_as_void(tag: &str) -> bool {
-    matches!(tag, "area" | "base" | "basefont" | "bgsound" | "br" | "col" | "embed" | "frame" | "hr" | "img" | "input" | "keygen" | "link" | "meta" | "param" | "source" | "track" | "wbr")
+    matches!(
+        tag,
+        "area"
+            | "base"
+            | "basefont"
+            | "bgsound"
+            | "br"
+            | "col"
+            | "embed"
+            | "frame"
+            | "hr"
+            | "img"
+            | "input"
+            | "keygen"
+            | "link"
+            | "meta"
+            | "param"
+            | "source"
+            | "track"
+            | "wbr"
+    )
 }
 
 fn escape_into(out: &mut String, s: &str, attribute: bool) {
@@ -191,8 +216,16 @@ pub fn serialize_node(doc: &Document, node: NodeId) -> String {
 
 fn serialize_children(doc: &Document, node: NodeId, out: &mut String) {
     let node = match doc.kind(node) {
-        NodeKind::Element { ns: Namespace::Html, tag, .. } if serializes_as_void(tag) => return,
-        NodeKind::Element { ns: Namespace::Html, tag, .. } if tag == "template" => doc.template_contents(node).unwrap_or(node),
+        NodeKind::Element {
+            ns: Namespace::Html,
+            tag,
+            ..
+        } if serializes_as_void(tag) => return,
+        NodeKind::Element {
+            ns: Namespace::Html,
+            tag,
+            ..
+        } if tag == "template" => doc.template_contents(node).unwrap_or(node),
         _ => node,
     };
     for child in doc.children(node) {
@@ -261,15 +294,27 @@ mod tests {
     fn entity_table_edges() {
         assert_eq!(entities::COUNT, 2231);
         assert_eq!(entities::ENTITIES.len(), 2231);
-        assert_eq!(entities::ENTITIES.iter().filter(|(n, _)| !n.ends_with(';')).count(), 106);
-        assert!(entities::ENTITIES.windows(2).all(|w| w[0].0 < w[1].0), "sorted");
+        assert_eq!(
+            entities::ENTITIES
+                .iter()
+                .filter(|(n, _)| !n.ends_with(';'))
+                .count(),
+            106
+        );
+        assert!(
+            entities::ENTITIES.windows(2).all(|w| w[0].0 < w[1].0),
+            "sorted"
+        );
         assert_eq!(entities::lookup("amp;"), Some("&"));
         assert_eq!(entities::lookup("amp"), Some("&"));
         assert_eq!(entities::lookup("AMP"), Some("&"));
         assert_eq!(entities::lookup("nbsp"), Some("\u{A0}"));
         assert_eq!(entities::lookup("zwnj;"), Some("\u{200C}"));
         assert_eq!(entities::lookup("zwnj"), None);
-        assert_eq!(entities::lookup("CounterClockwiseContourIntegral;"), Some("\u{2233}"));
+        assert_eq!(
+            entities::lookup("CounterClockwiseContourIntegral;"),
+            Some("\u{2233}")
+        );
         assert_eq!(entities::lookup("ngE;"), Some("\u{2267}\u{338}"));
         assert_eq!(longest_named_reference("notin;x"), Some((6, "\u{2209}")));
         assert_eq!(longest_named_reference("notit;"), Some((3, "\u{AC}")));
@@ -295,37 +340,78 @@ mod tests {
     fn document_structure_and_quirks() {
         let doc = parse("<!DOCTYPE html><title>t</title><p>hi");
         assert_eq!(doc.quirks, QuirksMode::NoQuirks);
-        assert!(matches!(doc.kind(doc.first_child(Document::ROOT).unwrap()), NodeKind::DocType { name, .. } if name == "html"));
+        assert!(
+            matches!(doc.kind(doc.first_child(Document::ROOT).unwrap()), NodeKind::DocType { name, .. } if name == "html")
+        );
         assert_eq!(doc.text_content(doc.head().unwrap()), "t");
         assert_eq!(serialize(&doc, doc.body().unwrap()), "<p>hi</p>");
         assert_eq!(parse("<p>x").quirks, QuirksMode::Quirks);
-        assert_eq!(parse("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">").quirks, QuirksMode::Quirks);
+        assert_eq!(
+            parse("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">").quirks,
+            QuirksMode::Quirks
+        );
         assert_eq!(parse("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">").quirks, QuirksMode::LimitedQuirks);
-        assert_eq!(parse("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"x\">").quirks, QuirksMode::NoQuirks);
+        assert_eq!(
+            parse("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"x\">").quirks,
+            QuirksMode::NoQuirks
+        );
         let doc = parse_with_url("<p>", "https://example.test/");
         assert_eq!(doc.url, "https://example.test/");
     }
 
     #[test]
     fn error_recovery() {
-        assert_eq!(body_html("<p>a<p>b<ul><li>1<li>2</ul>"), "<p>a</p><p>b</p><ul><li>1</li><li>2</li></ul>");
+        assert_eq!(
+            body_html("<p>a<p>b<ul><li>1<li>2</ul>"),
+            "<p>a</p><p>b</p><ul><li>1</li><li>2</li></ul>"
+        );
         assert_eq!(body_html("<b>1<i>2</b>3</i>"), "<b>1<i>2</i></b><i>3</i>");
-        assert_eq!(body_html("<table><tr><td>x</table>"), "<table><tbody><tr><td>x</td></tr></tbody></table>");
-        assert_eq!(body_html("<table>foo<tr><td>x</table>"), "foo<table><tbody><tr><td>x</td></tr></tbody></table>");
-        assert_eq!(body_html("<a href=x>1<div>2</a>3"), "<a href=\"x\">1</a><div><a href=\"x\">2</a>3</div>");
-        assert_eq!(body_html("<select><option>a<option>b</select>"), "<select><option>a</option><option>b</option></select>");
+        assert_eq!(
+            body_html("<table><tr><td>x</table>"),
+            "<table><tbody><tr><td>x</td></tr></tbody></table>"
+        );
+        assert_eq!(
+            body_html("<table>foo<tr><td>x</table>"),
+            "foo<table><tbody><tr><td>x</td></tr></tbody></table>"
+        );
+        assert_eq!(
+            body_html("<a href=x>1<div>2</a>3"),
+            "<a href=\"x\">1</a><div><a href=\"x\">2</a>3</div>"
+        );
+        assert_eq!(
+            body_html("<select><option>a<option>b</select>"),
+            "<select><option>a</option><option>b</option></select>"
+        );
     }
 
     #[test]
     fn raw_text_and_noscript() {
-        assert_eq!(body_html("<body><script>if (a < b && c) {}</script>"), "<script>if (a < b && c) {}</script>");
-        assert_eq!(body_html("<body><style>a > b { }</style>"), "<style>a > b { }</style>");
-        assert_eq!(body_html("<textarea>\n<b>&amp;</textarea>"), "<textarea>&lt;b&gt;&amp;</textarea>");
-        assert_eq!(body_html("<body><noscript><p>x</p></noscript>"), "<noscript><p>x</p></noscript>");
-        let doc = parse_with_options("<body><noscript><p>x</p></noscript>", &ParseOptions { scripting: false });
+        assert_eq!(
+            body_html("<body><script>if (a < b && c) {}</script>"),
+            "<script>if (a < b && c) {}</script>"
+        );
+        assert_eq!(
+            body_html("<body><style>a > b { }</style>"),
+            "<style>a > b { }</style>"
+        );
+        assert_eq!(
+            body_html("<textarea>\n<b>&amp;</textarea>"),
+            "<textarea>&lt;b&gt;&amp;</textarea>"
+        );
+        assert_eq!(
+            body_html("<body><noscript><p>x</p></noscript>"),
+            "<noscript><p>x</p></noscript>"
+        );
+        let doc = parse_with_options(
+            "<body><noscript><p>x</p></noscript>",
+            &ParseOptions { scripting: false },
+        );
         let noscript = doc.first_child(doc.body().unwrap()).unwrap();
         assert!(doc.is(doc.first_child(noscript).unwrap(), "p"));
-        let doc = parse_with_options("<head><noscript><link><p>x</noscript>", &ParseOptions { scripting: false });
+        let doc = parse_with_options(
+            "<head><noscript><link><p>x</noscript>",
+            &ParseOptions { scripting: false },
+        );
         let noscript = doc.last_child(doc.head().unwrap()).unwrap();
         assert!(doc.is(noscript, "noscript"));
         assert!(doc.is(doc.first_child(noscript).unwrap(), "link"));
@@ -340,23 +426,42 @@ mod tests {
         let contents = doc.template_contents(template).unwrap();
         assert!(doc.is(doc.first_child(contents).unwrap(), "tr"));
         assert_eq!(serialize(&doc, template), "<tr><td>x</td></tr>");
-        let doc = parse("<svg viewbox='0 0 1 1'><lineargradient xlink:href='#a'/></svg><math><mi>x</mi></math>");
+        let doc = parse(
+            "<svg viewbox='0 0 1 1'><lineargradient xlink:href='#a'/></svg><math><mi>x</mi></math>",
+        );
         let body = doc.body().unwrap();
         let svg = doc.first_child(body).unwrap();
-        assert!(matches!(doc.kind(svg), NodeKind::Element { ns: Namespace::Svg, tag, .. } if tag == "svg"));
+        assert!(
+            matches!(doc.kind(svg), NodeKind::Element { ns: Namespace::Svg, tag, .. } if tag == "svg")
+        );
         assert_eq!(doc.attr(svg, "viewBox"), Some("0 0 1 1"));
         let grad = doc.first_child(svg).unwrap();
         assert_eq!(doc.tag(grad), Some("linearGradient"));
-        assert_eq!(foreign_attribute_namespace("xlink:href"), Some(("xlink", "href")));
+        assert_eq!(
+            foreign_attribute_namespace("xlink:href"),
+            Some(("xlink", "href"))
+        );
         let math = doc.last_child(body).unwrap();
-        assert!(matches!(doc.kind(math), NodeKind::Element { ns: Namespace::MathMl, .. }));
+        assert!(matches!(
+            doc.kind(math),
+            NodeKind::Element {
+                ns: Namespace::MathMl,
+                ..
+            }
+        ));
         assert_eq!(serialize(&doc, body), "<svg viewBox=\"0 0 1 1\"><linearGradient xlink:href=\"#a\"></linearGradient></svg><math><mi>x</mi></math>");
     }
 
     #[test]
     fn serializer_escaping() {
         let mut doc = Document::new();
-        let div = doc.create_element("div", vec![Attribute { name: "title".into(), value: "a\"b<c>&\u{A0}".into() }]);
+        let div = doc.create_element(
+            "div",
+            vec![Attribute {
+                name: "title".into(),
+                value: "a\"b<c>&\u{A0}".into(),
+            }],
+        );
         let t = doc.create_text("x<y>&z\u{A0}\"");
         doc.append(div, t);
         let br = doc.create_element("br", vec![]);
@@ -365,10 +470,16 @@ mod tests {
         doc.append(br, junk);
         let c = doc.create(NodeKind::Comment(" c ".into()));
         doc.append(div, c);
-        assert_eq!(serialize_node(&doc, div), "<div title=\"a&quot;b<c>&amp;&nbsp;\">x&lt;y&gt;&amp;z&nbsp;\"<br><!-- c --></div>");
+        assert_eq!(
+            serialize_node(&doc, div),
+            "<div title=\"a&quot;b<c>&amp;&nbsp;\">x&lt;y&gt;&amp;z&nbsp;\"<br><!-- c --></div>"
+        );
         assert_eq!(serialize(&doc, br), "");
         let doc = parse("<!DOCTYPE html><p>x");
-        assert_eq!(serialize(&doc, Document::ROOT), "<!DOCTYPE html><html><head></head><body><p>x</p></body></html>");
+        assert_eq!(
+            serialize(&doc, Document::ROOT),
+            "<!DOCTYPE html><html><head></head><body><p>x</p></body></html>"
+        );
     }
 
     #[test]

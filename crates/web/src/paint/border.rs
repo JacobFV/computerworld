@@ -39,13 +39,21 @@ use crate::style::computed::{BorderSide, BorderStyle, ComputedStyle, Corners};
 pub(crate) fn radii_px(style: &ComputedStyle, rect: SRect) -> Corners<u32> {
     let w = crate::geom::Au::from_px_i32(rect.width as i32);
     let h = crate::geom::Au::from_px_i32(rect.height as i32);
-    let one = |(a, b): (crate::style::computed::LengthPercentage, crate::style::computed::LengthPercentage)| {
+    let one = |(a, b): (
+        crate::style::computed::LengthPercentage,
+        crate::style::computed::LengthPercentage,
+    )| {
         let ra = upx(a.resolve(w));
         let rb = upx(b.resolve(h));
         ra.min(rb)
     };
     let r = style.border_radius;
-    let mut c = Corners { top_left: one(r.top_left), top_right: one(r.top_right), bottom_right: one(r.bottom_right), bottom_left: one(r.bottom_left) };
+    let mut c = Corners {
+        top_left: one(r.top_left),
+        top_right: one(r.top_right),
+        bottom_right: one(r.bottom_right),
+        bottom_left: one(r.bottom_left),
+    };
     // Scale so adjacent radii never exceed the side length.
     let limit = |a: &mut u32, b: &mut u32, len: u32| {
         let sum = *a + *b;
@@ -59,12 +67,18 @@ pub(crate) fn radii_px(style: &ComputedStyle, rect: SRect) -> Corners<u32> {
     limit(&mut bl, &mut br, rect.width);
     limit(&mut tl, &mut bl, rect.height);
     limit(&mut tr, &mut br, rect.height);
-    c = Corners { top_left: tl, top_right: tr, bottom_right: br, bottom_left: bl };
+    c = Corners {
+        top_left: tl,
+        top_right: tr,
+        bottom_right: br,
+        bottom_left: bl,
+    };
     c
 }
 
 pub(crate) fn uniform_radius(c: &Corners<u32>) -> Option<u32> {
-    if c.top_left == c.top_right && c.top_right == c.bottom_right && c.bottom_right == c.bottom_left {
+    if c.top_left == c.top_right && c.top_right == c.bottom_right && c.bottom_right == c.bottom_left
+    {
         Some(c.top_left)
     } else {
         None
@@ -80,7 +94,12 @@ pub(crate) fn any_radius(c: &Corners<u32>) -> bool {
 pub(crate) fn rounded_polygon(r: SRect, c: Corners<u32>) -> Vec<(i32, i32)> {
     let (x0, y0, x1, y1) = (r.x, r.y, r.right(), r.bottom());
     let mut pts = Vec::new();
-    let corner = |pts: &mut Vec<(i32, i32)>, radius: u32, cx: i32, cy: i32, start: i32, fallback: (i32, i32)| {
+    let corner = |pts: &mut Vec<(i32, i32)>,
+                  radius: u32,
+                  cx: i32,
+                  cy: i32,
+                  start: i32,
+                  fallback: (i32, i32)| {
         if radius == 0 {
             pts.push(fallback);
         } else {
@@ -89,13 +108,27 @@ pub(crate) fn rounded_polygon(r: SRect, c: Corners<u32>) -> Vec<(i32, i32)> {
     };
     // Top-right: centre (x1 - r, y0 + r), from 270 to 360.
     let tr = c.top_right;
-    corner(&mut pts, tr, x1 - tr as i32, y0 + tr as i32, 27_000, (x1, y0));
+    corner(
+        &mut pts,
+        tr,
+        x1 - tr as i32,
+        y0 + tr as i32,
+        27_000,
+        (x1, y0),
+    );
     let br = c.bottom_right;
     corner(&mut pts, br, x1 - br as i32, y1 - br as i32, 0, (x1, y1));
     let bl = c.bottom_left;
     corner(&mut pts, bl, x0 + bl as i32, y1 - bl as i32, 9000, (x0, y1));
     let tl = c.top_left;
-    corner(&mut pts, tl, x0 + tl as i32, y0 + tl as i32, 18_000, (x0, y0));
+    corner(
+        &mut pts,
+        tl,
+        x0 + tl as i32,
+        y0 + tl as i32,
+        18_000,
+        (x0, y0),
+    );
     pts.dedup();
     pts
 }
@@ -138,14 +171,24 @@ fn side_strip(rect: SRect, widths: [u32; 4], side: Side) -> SRect {
     let [t, r, b, l] = widths;
     match side {
         Side::Top => SRect::new(rect.x, rect.y, rect.width, t.min(rect.height)),
-        Side::Bottom => SRect::new(rect.x, rect.bottom() - b.min(rect.height) as i32, rect.width, b.min(rect.height)),
+        Side::Bottom => SRect::new(
+            rect.x,
+            rect.bottom() - b.min(rect.height) as i32,
+            rect.width,
+            b.min(rect.height),
+        ),
         Side::Left => {
             let inner = rect.height.saturating_sub(t + b);
             SRect::new(rect.x, rect.y + t as i32, l.min(rect.width), inner)
         }
         Side::Right => {
             let inner = rect.height.saturating_sub(t + b);
-            SRect::new(rect.right() - r.min(rect.width) as i32, rect.y + t as i32, r.min(rect.width), inner)
+            SRect::new(
+                rect.right() - r.min(rect.width) as i32,
+                rect.y + t as i32,
+                r.min(rect.width),
+                inner,
+            )
         }
     }
 }
@@ -157,8 +200,14 @@ fn side_strip(rect: SRect, widths: [u32; 4], side: Side) -> SRect {
 /// arrows are drawn with.
 fn mitre_quad(rect: SRect, widths: [u32; 4], side: Side) -> Vec<(i32, i32)> {
     let [t, r, b, l] = widths;
-    let (t, b) = (t.min(rect.height), b.min(rect.height.saturating_sub(t.min(rect.height))));
-    let (l, r) = (l.min(rect.width), r.min(rect.width.saturating_sub(l.min(rect.width))));
+    let (t, b) = (
+        t.min(rect.height),
+        b.min(rect.height.saturating_sub(t.min(rect.height))),
+    );
+    let (l, r) = (
+        l.min(rect.width),
+        r.min(rect.width.saturating_sub(l.min(rect.width))),
+    );
     let (x0, y0, x1, y1) = (rect.x, rect.y, rect.right(), rect.bottom());
     let (li, ri) = (x0 + l as i32, x1 - r as i32);
     let (ti, bi) = (y0 + t as i32, y1 - b as i32);
@@ -171,30 +220,64 @@ fn mitre_quad(rect: SRect, widths: [u32; 4], side: Side) -> Vec<(i32, i32)> {
 }
 
 fn box_node(fill: Color) -> Primitive {
-    Primitive::Box { fill, border: None, border_width: 0 }
+    Primitive::Box {
+        fill,
+        border: None,
+        border_width: 0,
+    }
 }
 
 /// Paints the four borders of a box. `first`/`last` say whether an inline box
 /// fragment is the first/last piece on its line: the left/right borders are omitted
 /// on open ends.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_borders(p: &mut Painter, key: (NodeId, u32), state: &State, style: &ComputedStyle, rect: SRect, border: Edges, first: bool, last: bool) {
+pub(crate) fn paint_borders(
+    p: &mut Painter,
+    key: (NodeId, u32),
+    state: &State,
+    style: &ComputedStyle,
+    rect: SRect,
+    border: Edges,
+    first: bool,
+    last: bool,
+) {
     let sides = [
         (Side::Top, style.border.top, upx(border.top)),
-        (Side::Right, style.border.right, if last { upx(border.right) } else { 0 }),
+        (
+            Side::Right,
+            style.border.right,
+            if last { upx(border.right) } else { 0 },
+        ),
         (Side::Bottom, style.border.bottom, upx(border.bottom)),
-        (Side::Left, style.border.left, if first { upx(border.left) } else { 0 }),
+        (
+            Side::Left,
+            style.border.left,
+            if first { upx(border.left) } else { 0 },
+        ),
     ];
     let widths = [sides[0].2, sides[1].2, sides[2].2, sides[3].2];
     if widths.iter().all(|w| *w == 0) || rect.width == 0 || rect.height == 0 {
         return;
     }
     let radii = radii_px(style, rect);
-    let uniform = sides.iter().all(|(_, s, w)| *w == widths[0] && s.style == sides[0].1.style && s.color == sides[0].1.color);
-    if let (Some(r), true, BorderStyle::Solid) = (uniform_radius(&radii), uniform, sides[0].1.style) {
+    let uniform = sides.iter().all(|(_, s, w)| {
+        *w == widths[0] && s.style == sides[0].1.style && s.color == sides[0].1.color
+    });
+    if let (Some(r), true, BorderStyle::Solid) = (uniform_radius(&radii), uniform, sides[0].1.style)
+    {
         if r > 0 && sides[0].1.style.is_visible() {
             let id = p.id(key, parts::BORDER_TOP);
-            p.emit(state, id, rect, Primitive::RoundedBox { fill: Color::TRANSPARENT, border: Some(sides[0].1.color), border_width: widths[0], radius: r });
+            p.emit(
+                state,
+                id,
+                rect,
+                Primitive::RoundedBox {
+                    fill: Color::TRANSPARENT,
+                    border: Some(sides[0].1.color),
+                    border_width: widths[0],
+                    radius: r,
+                },
+            );
             return;
         }
     }
@@ -204,10 +287,16 @@ pub(crate) fn paint_borders(p: &mut Painter, key: (NodeId, u32), state: &State, 
     // sides differ — a frame in two colours, one transparent side, or the zero-sized
     // box with three borders that draws a CSS triangle — each side is the trapezoid
     // between its own outer edge and the diagonals to its neighbours.
-    let drawn: Vec<(Side, BorderSide, u32)> = sides.iter().copied().filter(|(_, bs, w)| *w > 0 && bs.style.is_visible()).collect();
+    let drawn: Vec<(Side, BorderSide, u32)> = sides
+        .iter()
+        .copied()
+        .filter(|(_, bs, w)| *w > 0 && bs.style.is_visible())
+        .collect();
     let mitred = !rounded
         && drawn.len() > 1
-        && drawn.iter().all(|(_, bs, _)| bs.style == BorderStyle::Solid)
+        && drawn
+            .iter()
+            .all(|(_, bs, _)| bs.style == BorderStyle::Solid)
         && drawn.iter().any(|(_, bs, _)| bs.color != drawn[0].1.color);
     for (side, bs, w) in sides {
         if w == 0 || !bs.style.is_visible() || bs.color.3 == 0 {
@@ -222,12 +311,23 @@ pub(crate) fn paint_borders(p: &mut Painter, key: (NodeId, u32), state: &State, 
         };
         if mitred && has_neighbour {
             let id = p.id(key, side.part());
-            p.emit_path(state, id, rect, mitre_quad(rect, widths, side), Some(bs.color), None, 0, true);
+            p.emit_path(
+                state,
+                id,
+                rect,
+                mitre_quad(rect, widths, side),
+                Some(bs.color),
+                None,
+                0,
+                true,
+            );
             continue;
         }
         if rounded {
             match bs.style {
-                BorderStyle::Dashed | BorderStyle::Dotted => paint_dashed_side(p, key, state, rect, radii, side, bs, w),
+                BorderStyle::Dashed | BorderStyle::Dotted => {
+                    paint_dashed_side(p, key, state, rect, radii, side, bs, w)
+                }
                 _ => paint_rounded_side(p, key, state, rect, radii, side, bs, w),
             }
             continue;
@@ -251,16 +351,38 @@ pub(crate) fn paint_borders(p: &mut Painter, key: (NodeId, u32), state: &State, 
                 let dotted = bs.style == BorderStyle::Dotted;
                 let (dash, gap) = if dotted { (w, w) } else { (3 * w, w) };
                 let horizontal = matches!(side, Side::Top | Side::Bottom);
-                let len = if horizontal { strip.width } else { strip.height };
+                let len = if horizontal {
+                    strip.width
+                } else {
+                    strip.height
+                };
                 let mut at = 0u32;
                 let mut count = 0;
                 while at < len && count < 4096 {
                     let d = dash.min(len - at);
-                    let r = if horizontal { SRect::new(strip.x + at as i32, strip.y, d, strip.height) } else { SRect::new(strip.x, strip.y + at as i32, strip.width, d) };
-                    let part = if count == 0 { side.part() } else { p.next_part(key) };
+                    let r = if horizontal {
+                        SRect::new(strip.x + at as i32, strip.y, d, strip.height)
+                    } else {
+                        SRect::new(strip.x, strip.y + at as i32, strip.width, d)
+                    };
+                    let part = if count == 0 {
+                        side.part()
+                    } else {
+                        p.next_part(key)
+                    };
                     let id = p.id(key, part);
                     if dotted && w > 1 {
-                        p.emit(state, id, r, Primitive::RoundedBox { fill: bs.color, border: None, border_width: 0, radius: w / 2 });
+                        p.emit(
+                            state,
+                            id,
+                            r,
+                            Primitive::RoundedBox {
+                                fill: bs.color,
+                                border: None,
+                                border_width: 0,
+                                radius: w / 2,
+                            },
+                        );
                     } else {
                         p.emit(state, id, r, box_node(bs.color));
                     }
@@ -297,10 +419,22 @@ fn two_tone(bs: BorderSide, side: Side) -> (Color, Color) {
     let dark = darken(bs.color, 40);
     let top_left = side.is_top_left();
     match bs.style {
-        BorderStyle::Inset => (if top_left { dark } else { light }, if top_left { dark } else { light }),
-        BorderStyle::Outset => (if top_left { light } else { dark }, if top_left { light } else { dark }),
-        BorderStyle::Groove => (if top_left { dark } else { light }, if top_left { light } else { dark }),
-        BorderStyle::Ridge => (if top_left { light } else { dark }, if top_left { dark } else { light }),
+        BorderStyle::Inset => (
+            if top_left { dark } else { light },
+            if top_left { dark } else { light },
+        ),
+        BorderStyle::Outset => (
+            if top_left { light } else { dark },
+            if top_left { light } else { dark },
+        ),
+        BorderStyle::Groove => (
+            if top_left { dark } else { light },
+            if top_left { light } else { dark },
+        ),
+        BorderStyle::Ridge => (
+            if top_left { light } else { dark },
+            if top_left { dark } else { light },
+        ),
         _ => (bs.color, bs.color),
     }
 }
@@ -308,24 +442,56 @@ fn two_tone(bs: BorderSide, side: Side) -> (Color, Color) {
 /// The outer and inner strips of a side, each `t` thick.
 fn split_strip(strip: SRect, side: Side, t: u32) -> (SRect, SRect) {
     match side {
-        Side::Top => (SRect::new(strip.x, strip.y, strip.width, t), SRect::new(strip.x, strip.bottom() - t as i32, strip.width, t)),
-        Side::Bottom => (SRect::new(strip.x, strip.bottom() - t as i32, strip.width, t), SRect::new(strip.x, strip.y, strip.width, t)),
-        Side::Left => (SRect::new(strip.x, strip.y, t, strip.height), SRect::new(strip.right() - t as i32, strip.y, t, strip.height)),
-        Side::Right => (SRect::new(strip.right() - t as i32, strip.y, t, strip.height), SRect::new(strip.x, strip.y, t, strip.height)),
+        Side::Top => (
+            SRect::new(strip.x, strip.y, strip.width, t),
+            SRect::new(strip.x, strip.bottom() - t as i32, strip.width, t),
+        ),
+        Side::Bottom => (
+            SRect::new(strip.x, strip.bottom() - t as i32, strip.width, t),
+            SRect::new(strip.x, strip.y, strip.width, t),
+        ),
+        Side::Left => (
+            SRect::new(strip.x, strip.y, t, strip.height),
+            SRect::new(strip.right() - t as i32, strip.y, t, strip.height),
+        ),
+        Side::Right => (
+            SRect::new(strip.right() - t as i32, strip.y, t, strip.height),
+            SRect::new(strip.x, strip.y, t, strip.height),
+        ),
     }
 }
 
 /// One side of a rounded border as a stroked path along the middle of the border
 /// strip: the straight edge plus half of each adjacent corner arc.
 #[allow(clippy::too_many_arguments)]
-fn paint_rounded_side(p: &mut Painter, key: (NodeId, u32), state: &State, rect: SRect, radii: Corners<u32>, side: Side, bs: BorderSide, w: u32) {
+fn paint_rounded_side(
+    p: &mut Painter,
+    key: (NodeId, u32),
+    state: &State,
+    rect: SRect,
+    radii: Corners<u32>,
+    side: Side,
+    bs: BorderSide,
+    w: u32,
+) {
     let pts = rounded_side_points(rect, radii, side, w);
     let color = match bs.style {
-        BorderStyle::Groove | BorderStyle::Ridge | BorderStyle::Inset | BorderStyle::Outset => two_tone(bs, side).0,
+        BorderStyle::Groove | BorderStyle::Ridge | BorderStyle::Inset | BorderStyle::Outset => {
+            two_tone(bs, side).0
+        }
         _ => bs.color,
     };
     let id = p.id(key, side.part());
-    p.emit_path(state, id, rect, pts, None, Some(color), w.min(u16::MAX as u32) as u16, false);
+    p.emit_path(
+        state,
+        id,
+        rect,
+        pts,
+        None,
+        Some(color),
+        w.min(u16::MAX as u32) as u16,
+        false,
+    );
 }
 
 /// Dots or dashes laid along the same centre line, so a dotted or dashed border
@@ -333,7 +499,16 @@ fn paint_rounded_side(p: &mut Painter, key: (NodeId, u32), state: &State, rect: 
 /// polyline is walked by length, `w` square dots every other `w` (a dot is a round
 /// box, as the straight path draws them) and dashes `3w` long every `4w`.
 #[allow(clippy::too_many_arguments)]
-fn paint_dashed_side(p: &mut Painter, key: (NodeId, u32), state: &State, rect: SRect, radii: Corners<u32>, side: Side, bs: BorderSide, w: u32) {
+fn paint_dashed_side(
+    p: &mut Painter,
+    key: (NodeId, u32),
+    state: &State,
+    rect: SRect,
+    radii: Corners<u32>,
+    side: Side,
+    bs: BorderSide,
+    w: u32,
+) {
     let pts = rounded_side_points(rect, radii, side, w);
     if pts.len() < 2 || w == 0 {
         return;
@@ -350,16 +525,39 @@ fn paint_dashed_side(p: &mut Painter, key: (NodeId, u32), state: &State, rect: S
             run.clear();
             return;
         }
-        let part = if *count == 0 { side.part() } else { p.next_part(key) };
+        let part = if *count == 0 {
+            side.part()
+        } else {
+            p.next_part(key)
+        };
         *count += 1;
         let id = p.id(key, part);
         if dotted {
             let (cx, cy) = run[run.len() / 2];
             let r = SRect::new(cx - (w / 2) as i32, cy - (w / 2) as i32, w, w);
-            p.emit(state, id, r, Primitive::RoundedBox { fill: bs.color, border: None, border_width: 0, radius: w / 2 });
+            p.emit(
+                state,
+                id,
+                r,
+                Primitive::RoundedBox {
+                    fill: bs.color,
+                    border: None,
+                    border_width: 0,
+                    radius: w / 2,
+                },
+            );
         } else {
             let pts = std::mem::take(run);
-            p.emit_path(state, id, rect, pts, None, Some(bs.color), w.min(u16::MAX as u32) as u16, false);
+            p.emit_path(
+                state,
+                id,
+                rect,
+                pts,
+                None,
+                Some(bs.color),
+                w.min(u16::MAX as u32) as u16,
+                false,
+            );
         }
         run.clear();
     };
@@ -368,7 +566,14 @@ fn paint_dashed_side(p: &mut Painter, key: (NodeId, u32), state: &State, rect: S
         let seg = (((b.0 - a.0) as f64).hypot((b.1 - a.1) as f64).round() as i64).max(0);
         for k in 0..=seg {
             let phase = (at + k) % step;
-            let point = if seg == 0 { a } else { (a.0 + ((b.0 - a.0) as i64 * k / seg) as i32, a.1 + ((b.1 - a.1) as i64 * k / seg) as i32) };
+            let point = if seg == 0 {
+                a
+            } else {
+                (
+                    a.0 + ((b.0 - a.0) as i64 * k / seg) as i32,
+                    a.1 + ((b.1 - a.1) as i64 * k / seg) as i32,
+                )
+            };
             if phase < on as i64 {
                 if run.last() != Some(&point) {
                     run.push(point);
@@ -391,7 +596,12 @@ fn paint_dashed_side(p: &mut Painter, key: (NodeId, u32), state: &State, rect: S
 /// adjacent corner arc, inset by half the border width.
 fn rounded_side_points(rect: SRect, radii: Corners<u32>, side: Side, w: u32) -> Vec<(i32, i32)> {
     let half = (w / 2) as i32;
-    let inset = SRect::new(rect.x + half, rect.y + half, rect.width.saturating_sub(w), rect.height.saturating_sub(w));
+    let inset = SRect::new(
+        rect.x + half,
+        rect.y + half,
+        rect.width.saturating_sub(w),
+        rect.height.saturating_sub(w),
+    );
     let shrink = |r: u32| r.saturating_sub(w / 2);
     let (x0, y0, x1, y1) = (inset.x, inset.y, inset.right(), inset.bottom());
     let half_arc = |cx: i32, cy: i32, r: u32, start: i32| -> Vec<(i32, i32)> {
@@ -462,7 +672,13 @@ fn rounded_side_points(rect: SRect, radii: Corners<u32>, side: Side, w: u32) -> 
 }
 
 /// `outline` around the border box, offset outwards by `outline-offset`.
-pub(crate) fn paint_outline(p: &mut Painter, key: (NodeId, u32), state: &State, style: &ComputedStyle, rect: SRect) {
+pub(crate) fn paint_outline(
+    p: &mut Painter,
+    key: (NodeId, u32),
+    state: &State,
+    style: &ComputedStyle,
+    rect: SRect,
+) {
     let o = style.outline;
     if !o.style.is_visible() || o.width <= crate::geom::Au::ZERO || o.color.3 == 0 {
         return;
@@ -470,7 +686,12 @@ pub(crate) fn paint_outline(p: &mut Painter, key: (NodeId, u32), state: &State, 
     let w = upx(o.width).max(1);
     let off = px(style.outline_offset);
     let grow = w as i32 + off;
-    let outer = SRect::new(rect.x - grow, rect.y - grow, (rect.width as i64 + 2 * grow as i64).max(0) as u32, (rect.height as i64 + 2 * grow as i64).max(0) as u32);
+    let outer = SRect::new(
+        rect.x - grow,
+        rect.y - grow,
+        (rect.width as i64 + 2 * grow as i64).max(0) as u32,
+        (rect.height as i64 + 2 * grow as i64).max(0) as u32,
+    );
     if outer.width == 0 || outer.height == 0 {
         return;
     }
@@ -478,14 +699,28 @@ pub(crate) fn paint_outline(p: &mut Painter, key: (NodeId, u32), state: &State, 
     let id = p.id(key, parts::OUTLINE);
     match uniform_radius(&radii) {
         Some(r) if r > 0 => {
-            p.emit(state, id, outer, Primitive::RoundedBox { fill: Color::TRANSPARENT, border: Some(o.color), border_width: w, radius: r + grow.max(0) as u32 });
+            p.emit(
+                state,
+                id,
+                outer,
+                Primitive::RoundedBox {
+                    fill: Color::TRANSPARENT,
+                    border: Some(o.color),
+                    border_width: w,
+                    radius: r + grow.max(0) as u32,
+                },
+            );
         }
         _ => {
             let widths = [w; 4];
             let mut first = true;
             for side in [Side::Top, Side::Right, Side::Bottom, Side::Left] {
                 let strip = side_strip(outer, widths, side);
-                let part = if first { parts::OUTLINE } else { p.next_part(key) };
+                let part = if first {
+                    parts::OUTLINE
+                } else {
+                    p.next_part(key)
+                };
                 first = false;
                 let id = p.id(key, part);
                 match o.style {
@@ -493,12 +728,20 @@ pub(crate) fn paint_outline(p: &mut Painter, key: (NodeId, u32), state: &State, 
                         let dotted = o.style == BorderStyle::Dotted;
                         let (dash, gap) = if dotted { (w, w) } else { (3 * w, w) };
                         let horizontal = matches!(side, Side::Top | Side::Bottom);
-                        let len = if horizontal { strip.width } else { strip.height };
+                        let len = if horizontal {
+                            strip.width
+                        } else {
+                            strip.height
+                        };
                         let mut at = 0u32;
                         let mut n = 0;
                         while at < len && n < 4096 {
                             let d = dash.min(len - at);
-                            let r = if horizontal { SRect::new(strip.x + at as i32, strip.y, d, strip.height) } else { SRect::new(strip.x, strip.y + at as i32, strip.width, d) };
+                            let r = if horizontal {
+                                SRect::new(strip.x + at as i32, strip.y, d, strip.height)
+                            } else {
+                                SRect::new(strip.x, strip.y + at as i32, strip.width, d)
+                            };
                             let part = p.next_part(key);
                             let id = p.id(key, part);
                             p.emit(state, id, r, box_node(o.color));
@@ -517,9 +760,22 @@ pub(crate) fn paint_outline(p: &mut Painter, key: (NodeId, u32), state: &State, 
 
 /// `box-shadow`: the outer shadows when `inset` is false, the inset ones when true.
 /// Shadows are painted last-to-first so the first listed ends up on top.
-pub(crate) fn paint_box_shadows(p: &mut Painter, key: (NodeId, u32), state: &State, style: &ComputedStyle, rect: SRect, inset: bool) {
+pub(crate) fn paint_box_shadows(
+    p: &mut Painter,
+    key: (NodeId, u32),
+    state: &State,
+    style: &ComputedStyle,
+    rect: SRect,
+    inset: bool,
+) {
     let radii = radii_px(style, rect);
-    let radius = uniform_radius(&radii).unwrap_or(radii.top_left.max(radii.top_right).max(radii.bottom_left).max(radii.bottom_right));
+    let radius = uniform_radius(&radii).unwrap_or(
+        radii
+            .top_left
+            .max(radii.top_right)
+            .max(radii.bottom_left)
+            .max(radii.bottom_right),
+    );
     for sh in style.box_shadow.iter().rev() {
         if sh.inset != inset || sh.color.3 == 0 {
             continue;
@@ -528,14 +784,33 @@ pub(crate) fn paint_box_shadows(p: &mut Painter, key: (NodeId, u32), state: &Sta
         let spread = px(sh.spread);
         let (dx, dy) = (px(sh.offset_x), px(sh.offset_y));
         if !inset {
-            let grown = SRect::new(rect.x + dx - spread, rect.y + dy - spread, (rect.width as i64 + 2 * spread as i64).max(0) as u32, (rect.height as i64 + 2 * spread as i64).max(0) as u32);
+            let grown = SRect::new(
+                rect.x + dx - spread,
+                rect.y + dy - spread,
+                (rect.width as i64 + 2 * spread as i64).max(0) as u32,
+                (rect.height as i64 + 2 * spread as i64).max(0) as u32,
+            );
             if grown.width == 0 || grown.height == 0 {
                 continue;
             }
-            let bounds = SRect::new(grown.x - blur as i32, grown.y - blur as i32, grown.width + 2 * blur, grown.height + 2 * blur);
+            let bounds = SRect::new(
+                grown.x - blur as i32,
+                grown.y - blur as i32,
+                grown.width + 2 * blur,
+                grown.height + 2 * blur,
+            );
             let part = p.next_part(key);
             let id = p.id(key, part);
-            p.emit(state, id, bounds, Primitive::Shadow { color: sh.color, radius: (radius as i64 + spread as i64).max(0) as u32, blur });
+            p.emit(
+                state,
+                id,
+                bounds,
+                Primitive::Shadow {
+                    color: sh.color,
+                    radius: (radius as i64 + spread as i64).max(0) as u32,
+                    blur,
+                },
+            );
         } else {
             // An inset shadow darkens the ring between the box and the box moved by
             // the offset and pulled in by the spread. Unblurred and unoffset, that
@@ -550,7 +825,17 @@ pub(crate) fn paint_box_shadows(p: &mut Painter, key: (NodeId, u32), state: &Sta
             if blur == 0 && dx == 0 && dy == 0 && spread > 0 {
                 let part = p.next_part(key);
                 let id = p.id(key, part);
-                p.emit(state, id, rect, Primitive::RoundedBox { fill: Color::TRANSPARENT, border: Some(sh.color), border_width: spread as u32, radius });
+                p.emit(
+                    state,
+                    id,
+                    rect,
+                    Primitive::RoundedBox {
+                        fill: Color::TRANSPARENT,
+                        border: Some(sh.color),
+                        border_width: spread as u32,
+                        radius,
+                    },
+                );
                 continue;
             }
             // The inner rect is the box moved by the offset and pulled in by the
@@ -563,9 +848,17 @@ pub(crate) fn paint_box_shadows(p: &mut Painter, key: (NodeId, u32), state: &Sta
                 (rect.width as i64 - 2 * spread as i64).max(0) as u32,
                 (rect.height as i64 - 2 * spread as i64).max(0) as u32,
             );
-            let (ix0, iy0) = (inner.x.clamp(rect.x, rect.right()), inner.y.clamp(rect.y, rect.bottom()));
-            let (ix1, iy1) = (inner.right().clamp(rect.x, rect.right()), inner.bottom().clamp(rect.y, rect.bottom()));
-            let band = |x: i32, y: i32, x2: i32, y2: i32| SRect::new(x, y, (x2 - x).max(0) as u32, (y2 - y).max(0) as u32);
+            let (ix0, iy0) = (
+                inner.x.clamp(rect.x, rect.right()),
+                inner.y.clamp(rect.y, rect.bottom()),
+            );
+            let (ix1, iy1) = (
+                inner.right().clamp(rect.x, rect.right()),
+                inner.bottom().clamp(rect.y, rect.bottom()),
+            );
+            let band = |x: i32, y: i32, x2: i32, y2: i32| {
+                SRect::new(x, y, (x2 - x).max(0) as u32, (y2 - y).max(0) as u32)
+            };
             let bands = [
                 band(rect.x, rect.y, rect.right(), iy0),
                 band(rect.x, iy1, rect.right(), rect.bottom()),
@@ -578,10 +871,24 @@ pub(crate) fn paint_box_shadows(p: &mut Painter, key: (NodeId, u32), state: &Sta
                 }
                 // Grown by the blur so the soft edge falls on the inner rect and the
                 // outer edges stay solid; the clip keeps it inside the box.
-                let bounds = SRect::new(b.x - blur as i32, b.y - blur as i32, b.width + 2 * blur, b.height + 2 * blur);
+                let bounds = SRect::new(
+                    b.x - blur as i32,
+                    b.y - blur as i32,
+                    b.width + 2 * blur,
+                    b.height + 2 * blur,
+                );
                 let part = p.next_part(key);
                 let id = p.id(key, part);
-                p.emit(&clipped, id, bounds, Primitive::Shadow { color: sh.color, radius: 0, blur });
+                p.emit(
+                    &clipped,
+                    id,
+                    bounds,
+                    Primitive::Shadow {
+                        color: sh.color,
+                        radius: 0,
+                        blur,
+                    },
+                );
             }
         }
     }

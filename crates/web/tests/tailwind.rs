@@ -43,7 +43,10 @@ mod cases {
     fn inlined() -> String {
         let html = fixture();
         let link = "<link rel=\"stylesheet\" href=\"/vendor/tailwind-3.4.17.css\">";
-        assert!(html.contains(link), "the fixture no longer links the stylesheet");
+        assert!(
+            html.contains(link),
+            "the fixture no longer links the stylesheet"
+        );
         html.replace(link, &format!("<style>{}</style>", stylesheet()))
     }
 
@@ -52,7 +55,9 @@ mod cases {
         dump.nodes
             .iter()
             .filter_map(|n| match n {
-                DumpNode::Element { id, computed, .. } if !id.is_empty() => Some((id.clone(), computed.clone())),
+                DumpNode::Element { id, computed, .. } if !id.is_empty() => {
+                    Some((id.clone(), computed.clone()))
+                }
                 _ => None,
             })
             .collect()
@@ -61,10 +66,23 @@ mod cases {
     #[test]
     fn the_stylesheet_is_a_real_tailwind_build() {
         let css = stylesheet();
-        let rules = css.matches('{').count() - css.matches("@media").count() - css.matches("@keyframes").count();
-        assert!(rules > 3000, "only {rules} rules: this is not a full Tailwind build");
+        let rules = css.matches('{').count()
+            - css.matches("@media").count()
+            - css.matches("@keyframes").count();
+        assert!(
+            rules > 3000,
+            "only {rules} rules: this is not a full Tailwind build"
+        );
         // Preflight, the utilities, a responsive block and the custom-property chains.
-        for marker in ["box-sizing: border-box", ".space-x-4 > :not([hidden]) ~ :not([hidden])", ".divide-y-2 > :not([hidden]) ~ :not([hidden])", "@media (min-width: 768px)", "--tw-ring-offset-shadow", ".group:hover .group-hover\\:", ".focus\\:"] {
+        for marker in [
+            "box-sizing: border-box",
+            ".space-x-4 > :not([hidden]) ~ :not([hidden])",
+            ".divide-y-2 > :not([hidden]) ~ :not([hidden])",
+            "@media (min-width: 768px)",
+            "--tw-ring-offset-shadow",
+            ".group:hover .group-hover\\:",
+            ".focus\\:",
+        ] {
             assert!(css.contains(marker), "the stylesheet has no {marker:?}");
         }
     }
@@ -76,23 +94,54 @@ mod cases {
         let html = inlined();
         // Warm the parse out of the measurement: only the cascade is timed.
         let doc = cw_web::html::parse(&html);
-        let sheet = cw_web::css::parse_stylesheet(&stylesheet(), cw_web::css::Origin::Author, cw_web::Strictness::Lenient).expect("tailwind parses");
-        let elements = doc.descendants(cw_web::dom::Document::ROOT).filter(|n| doc.is_element(*n)).count();
+        let sheet = cw_web::css::parse_stylesheet(
+            &stylesheet(),
+            cw_web::css::Origin::Author,
+            cw_web::Strictness::Lenient,
+        )
+        .expect("tailwind parses");
+        let elements = doc
+            .descendants(cw_web::dom::Document::ROOT)
+            .filter(|n| doc.is_element(*n))
+            .count();
         assert!(elements >= 500, "the fixture has only {elements} elements");
-        let media = cw_web::css::Media { fonts: cw_web::css::FontEnvironment::LinuxBaseline, ..cw_web::css::Media::with_size(WIDTH as i32, HEIGHT as i32) };
+        let media = cw_web::css::Media {
+            fonts: cw_web::css::FontEnvironment::LinuxBaseline,
+            ..cw_web::css::Media::with_size(WIDTH as i32, HEIGHT as i32)
+        };
         let ctx = cw_web::css::MatchContext::new();
         // One untimed run to fault in the sheet's selector index, then five timed.
-        let _ = cw_web::style::cascade(&doc, std::slice::from_ref(&sheet), &media, &ctx, cw_web::Strictness::Lenient).expect("cascade");
+        let _ = cw_web::style::cascade(
+            &doc,
+            std::slice::from_ref(&sheet),
+            &media,
+            &ctx,
+            cw_web::Strictness::Lenient,
+        )
+        .expect("cascade");
         let mut best = f64::MAX;
         for _ in 0..5 {
             let t = Instant::now();
-            let styles = cw_web::style::cascade(&doc, std::slice::from_ref(&sheet), &media, &ctx, cw_web::Strictness::Lenient).expect("cascade");
+            let styles = cw_web::style::cascade(
+                &doc,
+                std::slice::from_ref(&sheet),
+                &media,
+                &ctx,
+                cw_web::Strictness::Lenient,
+            )
+            .expect("cascade");
             best = best.min(t.elapsed().as_secs_f64() * 1000.0);
             std::hint::black_box(&styles);
         }
-        eprintln!("tailwind cascade: {elements} elements x {} rules, best of 5: {best:.1} ms", sheet.rules.len());
+        eprintln!(
+            "tailwind cascade: {elements} elements x {} rules, best of 5: {best:.1} ms",
+            sheet.rules.len()
+        );
         let limit = if cfg!(debug_assertions) { 1500.0 } else { 50.0 };
-        assert!(best < limit, "the cascade took {best:.1} ms for {elements} elements (limit {limit} ms)");
+        assert!(
+            best < limit,
+            "the cascade took {best:.1} ms for {elements} elements (limit {limit} ms)"
+        );
     }
 
     /// Preflight, `space-x-*`, `divide-*`, `md:`, arbitrary values and the geometry
@@ -102,11 +151,19 @@ mod cases {
         let vp = viewport();
         let expected = read_dump(&script_dir().join("tailwind.chromium.json"));
         assert_eq!(expected.engine, "chromium");
-        assert_eq!((expected.viewport.width, expected.viewport.height), (WIDTH, HEIGHT));
+        assert_eq!(
+            (expected.viewport.width, expected.viewport.height),
+            (WIDTH, HEIGHT)
+        );
         let rendered = run(&inlined(), vp);
         let got = engine_dump("tailwind.html", &rendered, vp);
         let report = compare(&expected, &got);
-        assert_eq!(report.missing, 0, "nodes Chromium has that the engine does not: {:?}", report.worst(5));
+        assert_eq!(
+            report.missing,
+            0,
+            "nodes Chromium has that the engine does not: {:?}",
+            report.worst(5)
+        );
 
         // Every computed property of every element, exactly as Chromium computes it.
         // `width` and `height` are left out: for these boxes they are *used* values
@@ -119,7 +176,9 @@ mod cases {
             .nodes
             .iter()
             .filter_map(|n| match n {
-                DumpNode::Element { id, computed, .. } if !id.is_empty() => Some((id.clone(), computed.clone())),
+                DumpNode::Element { id, computed, .. } if !id.is_empty() => {
+                    Some((id.clone(), computed.clone()))
+                }
                 _ => None,
             })
             .collect();
@@ -127,7 +186,9 @@ mod cases {
         let mut mismatches: Vec<String> = Vec::new();
         let mut checked = 0usize;
         for (element, want) in &chromium {
-            let Some(mine) = engine.get(element) else { panic!("the engine rendered no #{element}") };
+            let Some(mine) = engine.get(element) else {
+                panic!("the engine rendered no #{element}")
+            };
             for p in PROPERTIES {
                 if skip.contains(p) {
                     continue;
@@ -135,14 +196,29 @@ mod cases {
                 let e = normalise(p, want.get(*p).map(String::as_str).unwrap_or(""));
                 let g = normalise(p, mine.get(*p).map(String::as_str).unwrap_or(""));
                 checked += 1;
-                let close = LENGTH_PROPERTIES.contains(p) && matches!((parse_px(&e), parse_px(&g)), (Some(a), Some(b)) if (a - b).abs() <= 1.0);
+                let close = LENGTH_PROPERTIES.contains(p)
+                    && matches!((parse_px(&e), parse_px(&g)), (Some(a), Some(b)) if (a - b).abs() <= 1.0);
                 if e != g && !close {
                     mismatches.push(format!("#{element} {p}: Chromium {e:?}, engine {g:?}"));
                 }
             }
         }
-        eprintln!("tailwind: {checked} computed values over {} elements, {} mismatched", chromium.len(), mismatches.len());
-        assert!(mismatches.is_empty(), "{} of {checked} computed values differ:\n{}", mismatches.len(), mismatches.iter().take(20).cloned().collect::<Vec<_>>().join("\n"));
+        eprintln!(
+            "tailwind: {checked} computed values over {} elements, {} mismatched",
+            chromium.len(),
+            mismatches.len()
+        );
+        assert!(
+            mismatches.is_empty(),
+            "{} of {checked} computed values differ:\n{}",
+            mismatches.len(),
+            mismatches
+                .iter()
+                .take(20)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
 
         // The boxes the arbitrary values produce, where nothing depends on the text:
         // `w-[137px]` and the three tracks of `grid-cols-[repeat(3,minmax(0,1fr))]`.
@@ -165,9 +241,21 @@ mod cases {
                 })
                 .unwrap_or_else(|| panic!("no #{element} in Chromium's dump"))
         };
-        for element in ["tw-arbitrary-width", "tw-arbitrary-grid-a", "tw-arbitrary-grid-b", "tw-arbitrary-grid-c"] {
+        for element in [
+            "tw-arbitrary-width",
+            "tw-arbitrary-grid-a",
+            "tw-arbitrary-grid-b",
+            "tw-arbitrary-grid-c",
+        ] {
             let (w, g) = (want_rect(element), rect(element));
-            assert!((w.width - g.width).abs() <= 1.0 && (w.x - g.x).abs() <= 1.0, "#{element}: Chromium x {} w {}, engine x {} w {}", w.x, w.width, g.x, g.width);
+            assert!(
+                (w.width - g.width).abs() <= 1.0 && (w.x - g.x).abs() <= 1.0,
+                "#{element}: Chromium x {} w {}, engine x {} w {}",
+                w.x,
+                w.width,
+                g.x,
+                g.width
+            );
         }
 
         // The properties beyond the shared set, asserted by id off the same dump:
@@ -175,35 +263,76 @@ mod cases {
         // arbitrary values and the `--tw-*` chains.
         let mut r = realm();
         for (id, props) in [
-            ("tw-h1", &["margin-top", "margin-bottom", "font-size", "font-weight"][..]),
-            ("tw-ul", &["list-style-type", "padding-left", "margin-top"][..]),
-            ("tw-btn-preflight", &["border-top-width", "background-color", "font-family", "box-sizing"][..]),
+            (
+                "tw-h1",
+                &["margin-top", "margin-bottom", "font-size", "font-weight"][..],
+            ),
+            (
+                "tw-ul",
+                &["list-style-type", "padding-left", "margin-top"][..],
+            ),
+            (
+                "tw-btn-preflight",
+                &[
+                    "border-top-width",
+                    "background-color",
+                    "font-family",
+                    "box-sizing",
+                ][..],
+            ),
             // (`height` is preflight's `auto` over the SVG data URL's intrinsic size,
             // which this engine does not decode; the cascaded `display` is the point.)
             ("tw-img", &["display", "border-top-width"][..]),
             ("tw-blockquote", &["margin-top", "margin-left"][..]),
             ("tw-space-x-item-2", &["margin-left"][..]),
             ("tw-space-y-item-2", &["margin-top"][..]),
-            ("tw-divide-x-item-2", &["border-left-width", "border-left-color"][..]),
-            ("tw-divide-y-item-2", &["border-top-width", "border-top-color"][..]),
+            (
+                "tw-divide-x-item-2",
+                &["border-left-width", "border-left-color"][..],
+            ),
+            (
+                "tw-divide-y-item-2",
+                &["border-top-width", "border-top-color"][..],
+            ),
             ("tw-md-responsive", &["display"][..]),
             ("tw-arbitrary-width", &["width"][..]),
             ("tw-arbitrary-color", &["color"][..]),
             ("tw-arbitrary-margin", &["margin-top"][..]),
             ("tw-arbitrary-bg", &["background-color"][..]),
-            ("tw-arbitrary-grid", &["display", "gap", "column-gap", "row-gap"][..]),
+            (
+                "tw-arbitrary-grid",
+                &["display", "gap", "column-gap", "row-gap"][..],
+            ),
             ("tw-shadow", &["box-shadow", "--tw-shadow"][..]),
-            ("tw-ring", &["box-shadow", "--tw-ring-color", "--tw-ring-offset-width"][..]),
-            ("tw-bg-opacity", &["background-color", "--tw-bg-opacity"][..]),
+            (
+                "tw-ring",
+                &["box-shadow", "--tw-ring-color", "--tw-ring-offset-width"][..],
+            ),
+            (
+                "tw-bg-opacity",
+                &["background-color", "--tw-bg-opacity"][..],
+            ),
             ("tw-text-opacity", &["color", "--tw-text-opacity"][..]),
-            ("tw-border-opacity", &["border-top-color", "--tw-border-opacity"][..]),
-            ("tw-transform", &["transform", "--tw-translate-x", "--tw-scale-x"][..]),
+            (
+                "tw-border-opacity",
+                &["border-top-color", "--tw-border-opacity"][..],
+            ),
+            (
+                "tw-transform",
+                &["transform", "--tw-translate-x", "--tw-scale-x"][..],
+            ),
             ("tw-arbitrary-grid-b", &["background-color"][..]),
             ("tw-backdrop-blur", &["--tw-backdrop-blur"][..]),
         ] {
-            let want = chromium.get(id).unwrap_or_else(|| panic!("#{id} is not in Chromium's dump"));
+            let want = chromium
+                .get(id)
+                .unwrap_or_else(|| panic!("#{id} is not in Chromium's dump"));
             for p in props {
-                let expected = normalise(p, want.get(*p).unwrap_or_else(|| panic!("#{id}: Chromium dumped no {p}")));
+                let expected = normalise(
+                    p,
+                    want.get(*p)
+                        .unwrap_or_else(|| panic!("#{id}: Chromium dumped no {p}")),
+                );
                 let got = normalise(p, &computed(&mut r, id, p));
                 assert_eq!(got, expected, "#{id} {p}");
             }
@@ -213,8 +342,16 @@ mod cases {
     /// A realm over the fixture, with the stylesheet served from `tests/vendor/`, so
     /// `:hover` and `:focus` can be driven and `getComputedStyle` asked for anything.
     fn realm() -> Realm {
-        let host = MemoryHost::new().with_response("https://example.test/vendor/tailwind-3.4.17.css", "text/css", &stylesheet());
-        let mut r = Realm::new(&fixture(), "https://example.test/tailwind.html", Box::new(host));
+        let host = MemoryHost::new().with_response(
+            "https://example.test/vendor/tailwind-3.4.17.css",
+            "text/css",
+            &stylesheet(),
+        );
+        let mut r = Realm::new(
+            &fixture(),
+            "https://example.test/tailwind.html",
+            Box::new(host),
+        );
         r.run_document();
         r.run_until_idle(20);
         assert!(r.logs().is_empty(), "the fixture logged: {:?}", r.logs());
@@ -222,19 +359,32 @@ mod cases {
     }
 
     fn computed(r: &mut Realm, id: &str, prop: &str) -> String {
-        r.eval(&format!("getComputedStyle(document.getElementById('{id}')).getPropertyValue('{prop}')")).unwrap_or_else(|e| panic!("#{id} {prop}: {e}"))
+        r.eval(&format!(
+            "getComputedStyle(document.getElementById('{id}')).getPropertyValue('{prop}')"
+        ))
+        .unwrap_or_else(|e| panic!("#{id} {prop}: {e}"))
     }
 
     /// `group-hover:` and `focus:` variants: the states Chromium was put into for
     /// `tailwind-hover.chromium.json` (`tailwind-state.json`), reproduced here.
     #[test]
     fn group_hover_and_focus_variants_match_chromium() {
-        let hovered = by_id(&read_dump(&script_dir().join("tailwind-hover.chromium.json")));
+        let hovered = by_id(&read_dump(
+            &script_dir().join("tailwind-hover.chromium.json"),
+        ));
         let plain = by_id(&read_dump(&script_dir().join("tailwind.chromium.json")));
         let mut r = realm();
         // Not hovered, not focused: the base values.
-        for (id, p) in [("tw-group-hover-target", "color"), ("tw-group-hover-target", "text-decoration-line"), ("tw-focus-btn", "box-shadow")] {
-            assert_eq!(normalise(p, &computed(&mut r, id, p)), normalise(p, &plain[id][p]), "#{id} {p} before the interaction");
+        for (id, p) in [
+            ("tw-group-hover-target", "color"),
+            ("tw-group-hover-target", "text-decoration-line"),
+            ("tw-focus-btn", "box-shadow"),
+        ] {
+            assert_eq!(
+                normalise(p, &computed(&mut r, id, p)),
+                normalise(p, &plain[id][p]),
+                "#{id} {p} before the interaction"
+            );
         }
         // Hover the group: only the descendant's `group-hover:` utilities change.
         let group = {
@@ -246,10 +396,18 @@ mod cases {
             let mut it = rect.split(',').map(|v| v.parse::<f64>().unwrap() as i32);
             (it.next().unwrap(), it.next().unwrap())
         };
-        r.dispatch(UiEvent::PointerMove { x, y, modifiers: Modifiers::default() });
+        r.dispatch(UiEvent::PointerMove {
+            x,
+            y,
+            modifiers: Modifiers::default(),
+        });
         let _ = group;
         for p in ["color", "outline-color", "text-decoration-line"] {
-            assert_eq!(normalise(p, &computed(&mut r, "tw-group-hover-target", p)), normalise(p, &hovered["tw-group-hover-target"][p]), "#tw-group-hover-target {p} while the group is hovered");
+            assert_eq!(
+                normalise(p, &computed(&mut r, "tw-group-hover-target", p)),
+                normalise(p, &hovered["tw-group-hover-target"][p]),
+                "#tw-group-hover-target {p} while the group is hovered"
+            );
         }
         // Focus the button: `focus:` and `focus-visible:` and the ring chain.
         let btn = {
@@ -257,11 +415,28 @@ mod cases {
             d.by_id("tw-focus-btn")[0]
         };
         r.dispatch(UiEvent::Focus { node: Some(btn) });
-        for p in ["box-shadow", "outline-width", "outline-color", "--tw-ring-color", "--tw-ring-offset-width"] {
-            assert_eq!(normalise(p, &computed(&mut r, "tw-focus-btn", p)), normalise(p, &hovered["tw-focus-btn"][p]), "#tw-focus-btn {p} while focused");
+        for p in [
+            "box-shadow",
+            "outline-width",
+            "outline-color",
+            "--tw-ring-color",
+            "--tw-ring-offset-width",
+        ] {
+            assert_eq!(
+                normalise(p, &computed(&mut r, "tw-focus-btn", p)),
+                normalise(p, &hovered["tw-focus-btn"][p]),
+                "#tw-focus-btn {p} while focused"
+            );
         }
         // Moving the pointer away puts the group's descendant back.
-        r.dispatch(UiEvent::PointerMove { x: 1, y: 1, modifiers: Modifiers::default() });
-        assert_eq!(normalise("color", &computed(&mut r, "tw-group-hover-target", "color")), normalise("color", &plain["tw-group-hover-target"]["color"]));
+        r.dispatch(UiEvent::PointerMove {
+            x: 1,
+            y: 1,
+            modifiers: Modifiers::default(),
+        });
+        assert_eq!(
+            normalise("color", &computed(&mut r, "tw-group-hover-target", "color")),
+            normalise("color", &plain["tw-group-hover-target"]["color"])
+        );
     }
 }

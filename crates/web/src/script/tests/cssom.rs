@@ -23,14 +23,22 @@ check!(checked_disabled_styles_via_state, "<style>#c:checked + span { color: rgb
 
 #[test]
 fn link_sheet_from_host() {
-    let host = MemoryHost::new().with_response("https://example.test/s.css", "text/css", "#d { color: red }");
+    let host = MemoryHost::new().with_response(
+        "https://example.test/s.css",
+        "text/css",
+        "#d { color: red }",
+    );
     let r = realm_with("<link rel=stylesheet href=/s.css><div id=d></div><script>console.log(getComputedStyle(d).color)</script>", host);
     assert_eq!(logs(&r), "rgb(255, 0, 0)");
 }
 
 #[test]
 fn import_rule_expands() {
-    let host = MemoryHost::new().with_response("https://example.test/imp.css", "text/css", "#d { font-size: 33px }");
+    let host = MemoryHost::new().with_response(
+        "https://example.test/imp.css",
+        "text/css",
+        "#d { font-size: 33px }",
+    );
     let r = realm_with("<style>@import url(/imp.css); #d { color: red }</style><div id=d></div><script>console.log(getComputedStyle(d).fontSize, getComputedStyle(d).color, document.styleSheets.length)</script>", host);
     assert_eq!(logs(&r), "33px rgb(255, 0, 0) 1");
 }

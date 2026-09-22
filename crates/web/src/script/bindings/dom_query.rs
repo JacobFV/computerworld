@@ -5,7 +5,9 @@ use cw_jsvm::value::{Args, HostHooks, JsResult, Key, Obj, Value};
 use cw_jsvm::vm::Vm;
 
 use super::dom::{after_children_changed, insert, is_connected, wrap_node};
-use super::{arg_node, arg_num, arg_str, dom_exception, inner, node_array, node_of, opt_node, string_val};
+use super::{
+    arg_node, arg_num, arg_str, dom_exception, inner, node_array, node_of, opt_node, string_val,
+};
 use crate::css;
 use crate::dom::{Document, NodeId, NodeKind};
 use crate::script::inner::Inner;
@@ -15,7 +17,11 @@ use crate::script::inner::Inner;
 fn parse_selectors(vm: &mut Vm, sel: &str) -> JsResult<css::SelectorList> {
     match css::parse_selector_list(sel) {
         Ok(l) => Ok(l),
-        Err(_) => Err(dom_exception(vm, "SyntaxError", &format!("'{sel}' is not a valid selector."))),
+        Err(_) => Err(dom_exception(
+            vm,
+            "SyntaxError",
+            &format!("'{sel}' is not a valid selector."),
+        )),
     }
 }
 
@@ -26,7 +32,11 @@ fn with_ctx<R>(i: &Inner, scope: NodeId, f: impl FnOnce(&css::MatchContext) -> R
     ctx.focused = i.focused;
     ctx.focus_visible = i.focus_visible;
     ctx.target_id = i.target_id.clone();
-    ctx.scope = if i.doc.is_element(scope) { Some(scope) } else { None };
+    ctx.scope = if i.doc.is_element(scope) {
+        Some(scope)
+    } else {
+        None
+    };
     ctx.form = Some(&i.form);
     f(&ctx)
 }
@@ -41,7 +51,12 @@ enum Simple<'a> {
 
 fn simple(sel: &str) -> Simple<'_> {
     let s = sel.trim();
-    let ident = |x: &str| !x.is_empty() && x.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_') && !x.as_bytes()[0].is_ascii_digit();
+    let ident = |x: &str| {
+        !x.is_empty()
+            && x.bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+            && !x.as_bytes()[0].is_ascii_digit()
+    };
     if let Some(r) = s.strip_prefix('#') {
         if ident(r) {
             return Simple::Id(r);
@@ -61,13 +76,27 @@ fn query(vm: &mut Vm, root: NodeId, sel: &str, first_only: bool) -> JsResult<Vec
         Simple::Id(id) => {
             let rc = inner(vm);
             let i = rc.borrow();
-            let mut out: Vec<NodeId> = i.doc.by_id(id).iter().copied().filter(|n| !i.doc.node(*n).detached && i.doc.ancestors(*n).any(|x| x == root)).collect();
+            let mut out: Vec<NodeId> = i
+                .doc
+                .by_id(id)
+                .iter()
+                .copied()
+                .filter(|n| !i.doc.node(*n).detached && i.doc.ancestors(*n).any(|x| x == root))
+                .collect();
             if out.is_empty() && !is_connected(&i.doc, root) {
-                out = i.doc.descendants(root).filter(|n| *n != root && i.doc.attr(*n, "id") == Some(id)).collect();
+                out = i
+                    .doc
+                    .descendants(root)
+                    .filter(|n| *n != root && i.doc.attr(*n, "id") == Some(id))
+                    .collect();
             }
             if out.len() > 1 {
                 // Document order, not insertion order.
-                let order: Vec<NodeId> = i.doc.descendants(root).filter(|n| out.contains(n)).collect();
+                let order: Vec<NodeId> = i
+                    .doc
+                    .descendants(root)
+                    .filter(|n| out.contains(n))
+                    .collect();
                 out = order;
             }
             if first_only {
@@ -78,15 +107,28 @@ fn query(vm: &mut Vm, root: NodeId, sel: &str, first_only: bool) -> JsResult<Vec
         Simple::Class(c) => {
             let rc = inner(vm);
             let i = rc.borrow();
-            let it = i.doc.descendants(root).filter(|n| *n != root && i.doc.is_element(*n) && i.doc.has_class(*n, c));
-            return Ok(if first_only { it.take(1).collect() } else { it.collect() });
+            let it = i
+                .doc
+                .descendants(root)
+                .filter(|n| *n != root && i.doc.is_element(*n) && i.doc.has_class(*n, c));
+            return Ok(if first_only {
+                it.take(1).collect()
+            } else {
+                it.collect()
+            });
         }
         Simple::Tag(t) => {
             let rc = inner(vm);
             let i = rc.borrow();
             let lower = t.to_ascii_lowercase();
-            let it = i.doc.descendants(root).filter(|n| *n != root && i.doc.tag(*n).map(|x| x == lower || x == t).unwrap_or(false));
-            return Ok(if first_only { it.take(1).collect() } else { it.collect() });
+            let it = i.doc.descendants(root).filter(|n| {
+                *n != root && i.doc.tag(*n).map(|x| x == lower || x == t).unwrap_or(false)
+            });
+            return Ok(if first_only {
+                it.take(1).collect()
+            } else {
+                it.collect()
+            });
         }
         Simple::No => {}
     }
@@ -94,7 +136,9 @@ fn query(vm: &mut Vm, root: NodeId, sel: &str, first_only: bool) -> JsResult<Vec
     let rc = inner(vm);
     let i = rc.borrow();
     Ok(with_ctx(&i, root, |ctx| {
-        let it = i.doc.descendants(root).filter(|n| *n != root && i.doc.is_element(*n) && css::matches_list(&i.doc, *n, &list, ctx));
+        let it = i.doc.descendants(root).filter(|n| {
+            *n != root && i.doc.is_element(*n) && css::matches_list(&i.doc, *n, &list, ctx)
+        });
         if first_only {
             it.take(1).collect()
         } else {
@@ -123,7 +167,9 @@ fn matches(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let list = parse_selectors(vm, &sel)?;
     let rc = inner(vm);
     let i = rc.borrow();
-    Ok(Value::Bool(with_ctx(&i, n, |ctx| css::matches_list(&i.doc, n, &list, ctx))))
+    Ok(Value::Bool(with_ctx(&i, n, |ctx| {
+        css::matches_list(&i.doc, n, &list, ctx)
+    })))
 }
 
 fn closest(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
@@ -133,7 +179,11 @@ fn closest(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let found = {
         let rc = inner(vm);
         let i = rc.borrow();
-        with_ctx(&i, n, |ctx| std::iter::once(n).chain(i.doc.ancestors(n)).find(|x| i.doc.is_element(*x) && css::matches_list(&i.doc, *x, &list, ctx)))
+        with_ctx(&i, n, |ctx| {
+            std::iter::once(n)
+                .chain(i.doc.ancestors(n))
+                .find(|x| i.doc.is_element(*x) && css::matches_list(&i.doc, *x, &list, ctx))
+        })
     };
     Ok(opt_node(vm, found))
 }
@@ -145,11 +195,21 @@ fn get_element_by_id(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         let rc = inner(vm);
         let i = rc.borrow();
         let cands = i.doc.by_id(&id);
-        let live: Vec<NodeId> = cands.iter().copied().filter(|n| !i.doc.node(*n).detached && (root == Document::ROOT && is_connected(&i.doc, *n) || i.doc.ancestors(*n).any(|x| x == root))).collect();
+        let live: Vec<NodeId> = cands
+            .iter()
+            .copied()
+            .filter(|n| {
+                !i.doc.node(*n).detached
+                    && (root == Document::ROOT && is_connected(&i.doc, *n)
+                        || i.doc.ancestors(*n).any(|x| x == root))
+            })
+            .collect();
         match live.len() {
             0 => {
                 if root != Document::ROOT {
-                    i.doc.descendants(root).find(|n| i.doc.attr(*n, "id") == Some(id.as_str()))
+                    i.doc
+                        .descendants(root)
+                        .find(|n| i.doc.attr(*n, "id") == Some(id.as_str()))
                 } else {
                     None
                 }
@@ -166,9 +226,18 @@ fn get_element_by_id(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 /// The nodes of a collection kind under `root`.
 pub fn collect(i: &Inner, root: NodeId, kind: &str, arg: &str) -> Vec<NodeId> {
     let d = &i.doc;
-    let desc = |pred: &dyn Fn(NodeId) -> bool| -> Vec<NodeId> { d.descendants(root).filter(|n| *n != root && d.is_element(*n) && pred(*n)).collect() };
+    let desc = |pred: &dyn Fn(NodeId) -> bool| -> Vec<NodeId> {
+        d.descendants(root)
+            .filter(|n| *n != root && d.is_element(*n) && pred(*n))
+            .collect()
+    };
     match kind {
-        "childNodes" => d.children(root).filter(|c| !(matches!(d.kind(*c), NodeKind::DocumentFragment) && d.is(root, "template"))).collect(),
+        "childNodes" => d
+            .children(root)
+            .filter(|c| {
+                !(matches!(d.kind(*c), NodeKind::DocumentFragment) && d.is(root, "template"))
+            })
+            .collect(),
         "children" => d.element_children(root).collect(),
         "tag" => {
             if arg == "*" {
@@ -198,7 +267,9 @@ pub fn collect(i: &Inner, root: NodeId, kind: &str, arg: &str) -> Vec<NodeId> {
         "rows" => {
             if d.is(root, "table") {
                 let mut out = Vec::new();
-                let sections = |tag: &str| -> Vec<NodeId> { d.element_children(root).filter(|c| d.is(*c, tag)).collect() };
+                let sections = |tag: &str| -> Vec<NodeId> {
+                    d.element_children(root).filter(|c| d.is(*c, tag)).collect()
+                };
                 for s in sections("thead") {
                     out.extend(d.element_children(s).filter(|c| d.is(*c, "tr")));
                 }
@@ -214,14 +285,28 @@ pub fn collect(i: &Inner, root: NodeId, kind: &str, arg: &str) -> Vec<NodeId> {
                 }
                 out
             } else {
-                d.element_children(root).filter(|c| d.is(*c, "tr")).collect()
+                d.element_children(root)
+                    .filter(|c| d.is(*c, "tr"))
+                    .collect()
             }
         }
-        "cells" => d.element_children(root).filter(|c| d.is(*c, "td") || d.is(*c, "th")).collect(),
-        "tBodies" => d.element_children(root).filter(|c| d.is(*c, "tbody")).collect(),
+        "cells" => d
+            .element_children(root)
+            .filter(|c| d.is(*c, "td") || d.is(*c, "th"))
+            .collect(),
+        "tBodies" => d
+            .element_children(root)
+            .filter(|c| d.is(*c, "tbody"))
+            .collect(),
         "labels" => {
             let id = d.attr(root, "id").unwrap_or("");
-            d.descendants(Document::ROOT).filter(|n| d.is(*n, "label") && ((!id.is_empty() && d.attr(*n, "for") == Some(id)) || (!d.has_attr(*n, "for") && d.descendants(*n).any(|x| x == root)))).collect()
+            d.descendants(Document::ROOT)
+                .filter(|n| {
+                    d.is(*n, "label")
+                        && ((!id.is_empty() && d.attr(*n, "for") == Some(id))
+                            || (!d.has_attr(*n, "for") && d.descendants(*n).any(|x| x == root)))
+                })
+                .collect()
         }
         "areas" => desc(&|n| d.is(n, "area")),
         "datalist" => desc(&|n| d.is(n, "option")),
@@ -233,7 +318,13 @@ pub fn collect(i: &Inner, root: NodeId, kind: &str, arg: &str) -> Vec<NodeId> {
 fn collection_nodes(vm: &mut Vm, o: &Obj) -> Option<Obj> {
     let rc = inner(vm);
     let (root, kind, arg, gen, cache) = match &o.borrow().kind {
-        cw_jsvm::value::Kind::Host(h) => (h.data.first().cloned()?, h.data.get(1).cloned()?, h.data.get(2).cloned()?, h.data.get(3).cloned()?, h.data.get(4).cloned()),
+        cw_jsvm::value::Kind::Host(h) => (
+            h.data.first().cloned()?,
+            h.data.get(1).cloned()?,
+            h.data.get(2).cloned()?,
+            h.data.get(3).cloned()?,
+            h.data.get(4).cloned(),
+        ),
         _ => return None,
     };
     let current = rc.borrow().generation;
@@ -242,7 +333,9 @@ fn collection_nodes(vm: &mut Vm, o: &Obj) -> Option<Obj> {
             return Some(c.clone());
         }
     }
-    let (Value::Num(root), Value::Str(kind), Value::Str(arg)) = (root, kind, arg) else { return None };
+    let (Value::Num(root), Value::Str(kind), Value::Str(arg)) = (root, kind, arg) else {
+        return None;
+    };
     let nodes = collect(&rc.borrow(), NodeId(root as u32), &kind, &arg);
     let arr = match node_array(vm, &nodes) {
         Value::Obj(a) => a,
@@ -256,7 +349,9 @@ fn collection_nodes(vm: &mut Vm, o: &Obj) -> Option<Obj> {
 fn collection_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
     let Key::Str(s) = k else { return Ok(None) };
     if let Some(idx) = k.array_index() {
-        let Some(arr) = collection_nodes(vm, o) else { return Ok(None) };
+        let Some(arr) = collection_nodes(vm, o) else {
+            return Ok(None);
+        };
         let v = match &arr.borrow().kind {
             cw_jsvm::value::Kind::Array(items) => items.get(idx as usize).cloned(),
             _ => None,
@@ -264,25 +359,57 @@ fn collection_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
         return Ok(v);
     }
     if s.as_str() == "length" {
-        let Some(arr) = collection_nodes(vm, o) else { return Ok(Some(Value::Num(0.0))) };
+        let Some(arr) = collection_nodes(vm, o) else {
+            return Ok(Some(Value::Num(0.0)));
+        };
         let n = vm.array_len(&arr).unwrap_or(0);
         return Ok(Some(Value::Num(n as f64)));
     }
     // Named access (HTMLCollection only, by id then name), never shadowing members.
     let is_node_list = matches!(o.host_slot(1), Some(Value::Str(k)) if k.as_str() == "childNodes");
-    if is_node_list || s.is_empty() || matches!(s.as_str(), "item" | "namedItem" | "forEach" | "constructor" | "then" | "entries" | "keys" | "values" | "add" | "remove" | "selectedIndex" | "toString") {
+    if is_node_list
+        || s.is_empty()
+        || matches!(
+            s.as_str(),
+            "item"
+                | "namedItem"
+                | "forEach"
+                | "constructor"
+                | "then"
+                | "entries"
+                | "keys"
+                | "values"
+                | "add"
+                | "remove"
+                | "selectedIndex"
+                | "toString"
+        )
+    {
         return Ok(None);
     }
-    let Some(arr) = collection_nodes(vm, o) else { return Ok(None) };
+    let Some(arr) = collection_nodes(vm, o) else {
+        return Ok(None);
+    };
     let items: Vec<Value> = match &arr.borrow().kind {
         cw_jsvm::value::Kind::Array(items) => items.clone(),
         _ => Vec::new(),
     };
-    let is_form_controls = matches!(o.host_slot(1), Some(Value::Str(k)) if k.as_str() == "elements");
+    let is_form_controls =
+        matches!(o.host_slot(1), Some(Value::Str(k)) if k.as_str() == "elements");
     let matches: Vec<Value> = {
         let rc = inner(vm);
         let i = rc.borrow();
-        items.into_iter().filter(|it| node_of(it).map(|n| i.doc.attr(n, "id") == Some(s.as_str()) || i.doc.attr(n, "name") == Some(s.as_str())).unwrap_or(false)).collect()
+        items
+            .into_iter()
+            .filter(|it| {
+                node_of(it)
+                    .map(|n| {
+                        i.doc.attr(n, "id") == Some(s.as_str())
+                            || i.doc.attr(n, "name") == Some(s.as_str())
+                    })
+                    .unwrap_or(false)
+            })
+            .collect()
     };
     if matches.is_empty() {
         return Ok(None);
@@ -302,20 +429,32 @@ fn collection_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
 }
 
 fn collection_keys(vm: &mut Vm, o: &Obj) -> JsResult<Vec<Key>> {
-    let Some(arr) = collection_nodes(vm, o) else { return Ok(Vec::new()) };
+    let Some(arr) = collection_nodes(vm, o) else {
+        return Ok(Vec::new());
+    };
     let n = vm.array_len(&arr).unwrap_or(0);
     Ok((0..n).map(|i| Key::str(&i.to_string())).collect())
 }
 
 fn ro_set(_vm: &mut Vm, _o: &Obj, k: &Key, _v: &Value) -> JsResult<Option<bool>> {
     // `length` falls through so a prototype setter (`options.length = n`) runs.
-    Ok(if k.array_index().is_some() { Some(true) } else { None })
+    Ok(if k.array_index().is_some() {
+        Some(true)
+    } else {
+        None
+    })
 }
 fn no_delete(_vm: &mut Vm, _o: &Obj, _k: &Key) -> JsResult<Option<bool>> {
     Ok(None)
 }
 
-pub static COLLECTION_HOOKS: HostHooks = HostHooks { class: "HTMLCollection", get: collection_get, set: ro_set, delete: no_delete, keys: collection_keys };
+pub static COLLECTION_HOOKS: HostHooks = HostHooks {
+    class: "HTMLCollection",
+    get: collection_get,
+    set: ro_set,
+    delete: no_delete,
+    keys: collection_keys,
+};
 
 /// `W.collection(root, kind, arg, protoName)`: a live collection object.
 fn collection(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
@@ -324,7 +463,17 @@ fn collection(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let arg = arg_str(vm, a, 2)?;
     let proto_name = arg_str(vm, a, 3)?;
     let proto = inner(vm).borrow().protos.get(&proto_name).cloned();
-    let o = vm.host_obj(proto, &COLLECTION_HOOKS, vec![Value::Num(root.0 as f64), string_val(kind), string_val(arg), Value::Num(-1.0), Value::Undefined]);
+    let o = vm.host_obj(
+        proto,
+        &COLLECTION_HOOKS,
+        vec![
+            Value::Num(root.0 as f64),
+            string_val(kind),
+            string_val(arg),
+            Value::Num(-1.0),
+            Value::Undefined,
+        ],
+    );
     Ok(Value::Obj(o))
 }
 
@@ -339,7 +488,9 @@ fn collect_now(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 
 /// A static list (`querySelectorAll`): slot 0 is the backing array.
 fn static_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
-    let Some(Value::Obj(arr)) = o.host_slot(0) else { return Ok(None) };
+    let Some(Value::Obj(arr)) = o.host_slot(0) else {
+        return Ok(None);
+    };
     if let Some(idx) = k.array_index() {
         let v = match &arr.borrow().kind {
             cw_jsvm::value::Kind::Array(items) => items.get(idx as usize).cloned(),
@@ -353,24 +504,41 @@ fn static_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
     Ok(None)
 }
 fn static_keys(vm: &mut Vm, o: &Obj) -> JsResult<Vec<Key>> {
-    let Some(Value::Obj(arr)) = o.host_slot(0) else { return Ok(Vec::new()) };
+    let Some(Value::Obj(arr)) = o.host_slot(0) else {
+        return Ok(Vec::new());
+    };
     let n = vm.array_len(&arr).unwrap_or(0);
     Ok((0..n).map(|i| Key::str(&i.to_string())).collect())
 }
-pub static STATIC_LIST_HOOKS: HostHooks = HostHooks { class: "NodeList", get: static_get, set: ro_set, delete: no_delete, keys: static_keys };
+pub static STATIC_LIST_HOOKS: HostHooks = HostHooks {
+    class: "NodeList",
+    get: static_get,
+    set: ro_set,
+    delete: no_delete,
+    keys: static_keys,
+};
 
 /// `W.staticList(array, protoName)`.
 fn static_list(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let arr = a.arg(0);
     let proto_name = arg_str(vm, a, 1)?;
     let proto = inner(vm).borrow().protos.get(&proto_name).cloned();
-    Ok(Value::Obj(vm.host_obj(proto, &STATIC_LIST_HOOKS, vec![arr])))
+    Ok(Value::Obj(vm.host_obj(
+        proto,
+        &STATIC_LIST_HOOKS,
+        vec![arr],
+    )))
 }
 
 /// `W.listItems(list)`: the backing array of a live or static list.
 fn list_items(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
-    let Value::Obj(o) = a.arg(0) else { return Ok(vm.arr(vec![])) };
-    let is_static = o.host_hooks().map(|h| std::ptr::eq(h, &STATIC_LIST_HOOKS)).unwrap_or(false);
+    let Value::Obj(o) = a.arg(0) else {
+        return Ok(vm.arr(vec![]));
+    };
+    let is_static = o
+        .host_hooks()
+        .map(|h| std::ptr::eq(h, &STATIC_LIST_HOOKS))
+        .unwrap_or(false);
     if is_static {
         return Ok(o.host_slot(0).unwrap_or(Value::Undefined));
     }
@@ -422,9 +590,17 @@ fn parse_into(vm: &mut Vm, ctx: NodeId, html: &str) -> Vec<NodeId> {
 fn set_inner_html(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = arg_node(vm, a, 0)?;
     let v = a.arg(1);
-    let html = if matches!(v, Value::Null) { String::new() } else { vm.to_string(&v)?.to_string() };
+    let html = if matches!(v, Value::Null) {
+        String::new()
+    } else {
+        vm.to_string(&v)?.to_string()
+    };
     let target = markup_root(&inner(vm).borrow().doc, n);
-    let fast_text = !html.contains(['<', '&', '\r']) && !matches!(inner(vm).borrow().doc.tag(n), Some("table" | "tbody" | "thead" | "tfoot" | "tr" | "select" | "template"));
+    let fast_text = !html.contains(['<', '&', '\r'])
+        && !matches!(
+            inner(vm).borrow().doc.tag(n),
+            Some("table" | "tbody" | "thead" | "tfoot" | "tr" | "select" | "template")
+        );
     if fast_text {
         super::dom::replace_children_with_text(vm, target, &html)?;
         return Ok(Value::Undefined);
@@ -435,7 +611,11 @@ fn set_inner_html(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         let mut i = rc.borrow_mut();
         // Scripts inserted through innerHTML never execute.
         for c in &nodes {
-            let scripts: Vec<NodeId> = i.doc.descendants(*c).filter(|x| i.doc.is(*x, "script")).collect();
+            let scripts: Vec<NodeId> = i
+                .doc
+                .descendants(*c)
+                .filter(|x| i.doc.is(*x, "script"))
+                .collect();
             i.executed_scripts.extend(scripts);
         }
         let kids: Vec<NodeId> = i.doc.children(target).collect();
@@ -515,7 +695,10 @@ fn doc_part(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
             "html" => i.doc.document_element(),
             "head" => i.doc.head(),
             "body" => i.doc.body(),
-            "doctype" => i.doc.children(Document::ROOT).find(|c| matches!(i.doc.kind(*c), NodeKind::DocType { .. })),
+            "doctype" => i
+                .doc
+                .children(Document::ROOT)
+                .find(|c| matches!(i.doc.kind(*c), NodeKind::DocType { .. })),
             "currentScript" => i.current_script,
             "focused" => i.focused,
             "hovered" => i.hovered,
@@ -534,7 +717,11 @@ fn doc_info(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         "url" => Value::str(&i.url),
         "readyState" => Value::str(&i.ready_state),
         "referrer" => Value::str(&i.referrer),
-        "compatMode" => Value::str(if i.doc.quirks == crate::dom::QuirksMode::Quirks { "BackCompat" } else { "CSS1Compat" }),
+        "compatMode" => Value::str(if i.doc.quirks == crate::dom::QuirksMode::Quirks {
+            "BackCompat"
+        } else {
+            "CSS1Compat"
+        }),
         "hidden" => Value::Bool(i.hidden),
         "cookie" => string_val(i.host_cookie_get()),
         "parsing" => Value::Bool(i.parsing),
@@ -547,7 +734,15 @@ fn doctype_info(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let rc = inner(vm);
     let i = rc.borrow();
     Ok(match i.doc.kind(n) {
-        NodeKind::DocType { name, public_id, system_id } => vm.arr(vec![Value::str(name), Value::str(public_id), Value::str(system_id)]),
+        NodeKind::DocType {
+            name,
+            public_id,
+            system_id,
+        } => vm.arr(vec![
+            Value::str(name),
+            Value::str(public_id),
+            Value::str(system_id),
+        ]),
         _ => Value::Null,
     })
 }
@@ -606,12 +801,30 @@ fn run_script(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let (src, text, ty, done, connected) = {
         let rc = inner(vm);
         let i = rc.borrow();
-        (i.doc.attr(n, "src").map(str::to_owned), i.doc.text_content(n), i.doc.attr(n, "type").unwrap_or("").trim().to_ascii_lowercase(), i.executed_scripts.contains(&n), is_connected(&i.doc, n))
+        (
+            i.doc.attr(n, "src").map(str::to_owned),
+            i.doc.text_content(n),
+            i.doc
+                .attr(n, "type")
+                .unwrap_or("")
+                .trim()
+                .to_ascii_lowercase(),
+            i.executed_scripts.contains(&n),
+            is_connected(&i.doc, n),
+        )
     };
     if done || !connected || inner(vm).borrow().parsing && false {
         return Ok(Value::Undefined);
     }
-    let is_js = ty.is_empty() || matches!(ty.as_str(), "text/javascript" | "application/javascript" | "module" | "text/ecmascript" | "application/ecmascript");
+    let is_js = ty.is_empty()
+        || matches!(
+            ty.as_str(),
+            "text/javascript"
+                | "application/javascript"
+                | "module"
+                | "text/ecmascript"
+                | "application/ecmascript"
+        );
     if !is_js {
         return Ok(Value::Undefined);
     }
@@ -641,7 +854,12 @@ fn define_custom(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         let rc = inner(vm);
         let mut i = rc.borrow_mut();
         i.custom_defined.insert(name.clone());
-        i.doc.descendants(Document::ROOT).filter(|n| i.doc.tag(*n) == Some(name.as_str()) || i.doc.attr(*n, "is") == Some(name.as_str())).collect()
+        i.doc
+            .descendants(Document::ROOT)
+            .filter(|n| {
+                i.doc.tag(*n) == Some(name.as_str()) || i.doc.attr(*n, "is") == Some(name.as_str())
+            })
+            .collect()
     };
     Ok(node_array(vm, &nodes))
 }
@@ -667,7 +885,10 @@ fn subtree_elements(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let nodes: Vec<NodeId> = {
         let rc = inner(vm);
         let i = rc.borrow();
-        i.doc.descendants(n).filter(|x| i.doc.is_element(*x)).collect()
+        i.doc
+            .descendants(n)
+            .filter(|x| i.doc.is_element(*x))
+            .collect()
     };
     Ok(node_array(vm, &nodes))
 }
@@ -716,7 +937,9 @@ fn insert_adjacent(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
             }
         }
     };
-    let Some(parent) = parent else { return Ok(Value::Null) };
+    let Some(parent) = parent else {
+        return Ok(Value::Null);
+    };
     insert_node(vm, parent, node, before)?;
     Ok(a.arg(2))
 }
@@ -729,7 +952,11 @@ fn element_index(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         let rc = inner(vm);
         let i = rc.borrow();
         match root {
-            Some(r) => collect(&i, r, &kind, "").iter().position(|x| *x == n).map(|p| p as f64).unwrap_or(-1.0),
+            Some(r) => collect(&i, r, &kind, "")
+                .iter()
+                .position(|x| *x == n)
+                .map(|p| p as f64)
+                .unwrap_or(-1.0),
             None => -1.0,
         }
     };
@@ -765,8 +992,20 @@ fn global_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
         if i.doc.len() <= 1 {
             None
         } else {
-            let by_id = i.doc.by_id(s).iter().copied().find(|n| is_connected(&i.doc, *n));
-            by_id.or_else(|| i.doc.descendants(Document::ROOT).find(|n| matches!(i.doc.tag(*n), Some("form" | "img" | "iframe" | "embed" | "object")) && i.doc.attr(*n, "name") == Some(s.as_str())))
+            let by_id = i
+                .doc
+                .by_id(s)
+                .iter()
+                .copied()
+                .find(|n| is_connected(&i.doc, *n));
+            by_id.or_else(|| {
+                i.doc.descendants(Document::ROOT).find(|n| {
+                    matches!(
+                        i.doc.tag(*n),
+                        Some("form" | "img" | "iframe" | "embed" | "object")
+                    ) && i.doc.attr(*n, "name") == Some(s.as_str())
+                })
+            })
         }
     };
     Ok(found.map(|n| wrap_node(vm, n)))
@@ -780,10 +1019,19 @@ fn global_delete(_vm: &mut Vm, _o: &Obj, _k: &Key) -> JsResult<Option<bool>> {
 fn global_keys(_vm: &mut Vm, _o: &Obj) -> JsResult<Vec<Key>> {
     Ok(Vec::new())
 }
-pub static GLOBAL_HOOKS: HostHooks = HostHooks { class: "Window", get: global_get, set: global_set, delete: global_delete, keys: global_keys };
+pub static GLOBAL_HOOKS: HostHooks = HostHooks {
+    class: "Window",
+    get: global_get,
+    set: global_set,
+    delete: global_delete,
+    keys: global_keys,
+};
 
 pub fn install(vm: &mut Vm, w: &Obj) {
-    vm.global.borrow_mut().kind = cw_jsvm::value::Kind::Host(Box::new(cw_jsvm::value::HostData { hooks: &GLOBAL_HOOKS, data: Vec::new() }));
+    vm.global.borrow_mut().kind = cw_jsvm::value::Kind::Host(Box::new(cw_jsvm::value::HostData {
+        hooks: &GLOBAL_HOOKS,
+        data: Vec::new(),
+    }));
     vm.method(w, "querySelector", 2, query_selector);
     vm.method(w, "querySelectorAll", 2, query_selector_all);
     vm.method(w, "matches", 2, matches);

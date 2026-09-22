@@ -1,8 +1,8 @@
 //! The two drives this crate ships with must load and draw. A seed typo that only shows up when
 //! a world boots is the failure this test exists to move forward to `cargo test`.
 use cw_protocol::HttpRequest;
-use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_sdk::{Service, ServiceContext};
+use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_service_drive::{DriveService, DriveState, NodeKind};
 use serde_json::Value;
 const DRIVE: &str = include_str!("../../../worlds/company-2026/sites/google-drive.json");
@@ -65,11 +65,22 @@ fn every_indexed_page_of_both_drives_renders() {
                 .handle(&mut state, &ctx(actor), &HttpRequest::get(url))
                 .unwrap();
             assert_eq!(response.status, 200, "{url}");
-            assert_eq!(response.header("content-type"), Some(HTML_MEDIA_TYPE), "{url}");
+            assert_eq!(
+                response.header("content-type"),
+                Some(HTML_MEDIA_TYPE),
+                "{url}"
+            );
             let html = String::from_utf8(response.body).unwrap();
             validate_strict(&html).unwrap_or_else(|e| panic!("{url}: {e:?}"));
             let page = cw_web::html::parse(&html);
-            for id in ["chrome-brand", "find", "find-q", "nav-drive", "nav-trash", "head-title"] {
+            for id in [
+                "chrome-brand",
+                "find",
+                "find-q",
+                "nav-drive",
+                "nav-trash",
+                "head-title",
+            ] {
                 assert_eq!(page.by_id(id).len(), 1, "{url}: #{id}");
             }
         }
@@ -96,6 +107,12 @@ fn the_dropbox_share_reaches_alice_and_the_public_link_works() {
     let html = String::from_utf8(response.body).unwrap();
     validate_strict(&html).unwrap();
     let page = cw_web::html::parse(&html);
-    assert_eq!(page.text_content(page.by_id("public")[0]), "Opened with a share link");
-    assert_eq!(page.text_content(page.by_id("head-title")[0]), "Atlas assets");
+    assert_eq!(
+        page.text_content(page.by_id("public")[0]),
+        "Opened with a share link"
+    );
+    assert_eq!(
+        page.text_content(page.by_id("head-title")[0]),
+        "Atlas assets"
+    );
 }

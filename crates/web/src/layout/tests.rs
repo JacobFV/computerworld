@@ -31,7 +31,11 @@ fn lp(n: i32) -> LengthPercentage {
     LengthPercentage::Length(px(n))
 }
 fn side(w: i32) -> BorderSide {
-    BorderSide { width: px(w), style: BorderStyle::Solid, color: cw_scene::Color(0, 0, 0, 255) }
+    BorderSide {
+        width: px(w),
+        style: BorderStyle::Solid,
+        color: cw_scene::Color(0, 0, 0, 255),
+    }
 }
 fn font() -> Font {
     ComputedStyle::initial().font
@@ -69,17 +73,37 @@ impl T {
         let mut bs = ComputedStyle::inherit_from(&hs);
         bs.display = Display::Block;
         styles.set(body, Rc::new(bs));
-        T { doc, styles, html, body }
+        T {
+            doc,
+            styles,
+            html,
+            body,
+        }
     }
     fn style_of(&self, n: NodeId) -> ComputedStyle {
-        self.styles.get(n).cloned().unwrap_or_else(ComputedStyle::initial)
+        self.styles
+            .get(n)
+            .cloned()
+            .unwrap_or_else(ComputedStyle::initial)
     }
     /// A block element inheriting from its parent.
     fn el(&mut self, parent: NodeId, tag: &str, f: impl FnOnce(&mut ComputedStyle)) -> NodeId {
         self.el_attrs(parent, tag, vec![], f)
     }
-    fn el_attrs(&mut self, parent: NodeId, tag: &str, attrs: Vec<(&str, &str)>, f: impl FnOnce(&mut ComputedStyle)) -> NodeId {
-        let attrs = attrs.into_iter().map(|(n, v)| Attribute { name: n.into(), value: v.into() }).collect();
+    fn el_attrs(
+        &mut self,
+        parent: NodeId,
+        tag: &str,
+        attrs: Vec<(&str, &str)>,
+        f: impl FnOnce(&mut ComputedStyle),
+    ) -> NodeId {
+        let attrs = attrs
+            .into_iter()
+            .map(|(n, v)| Attribute {
+                name: n.into(),
+                value: v.into(),
+            })
+            .collect();
         let n = self.doc.create_element(tag, attrs);
         self.doc.append(parent, n);
         let mut s = ComputedStyle::inherit_from(&self.style_of(parent));
@@ -109,14 +133,36 @@ impl T {
         self.styles.set_before(n, Rc::new(s));
     }
     fn layout(&self) -> FragmentTree {
-        layout(&self.doc, &self.styles, Viewport { width: 800, height: 600, scale: 1, zoom: 100 })
+        layout(
+            &self.doc,
+            &self.styles,
+            Viewport {
+                width: 800,
+                height: 600,
+                scale: 1,
+                zoom: 100,
+            },
+        )
     }
     fn layout_sized(&self, w: u32, h: u32) -> FragmentTree {
-        layout(&self.doc, &self.styles, Viewport { width: w, height: h, scale: 1, zoom: 100 })
+        layout(
+            &self.doc,
+            &self.styles,
+            Viewport {
+                width: w,
+                height: h,
+                scale: 1,
+                zoom: 100,
+            },
+        )
     }
     fn rect(&self, tree: &FragmentTree, n: NodeId) -> Rect {
         let r = tree.rects_of(n);
-        assert!(!r.is_empty(), "no fragment for node {n:?}\n{}", debug::dump_doc(&self.doc, tree));
+        assert!(
+            !r.is_empty(),
+            "no fragment for node {n:?}\n{}",
+            debug::dump_doc(&self.doc, tree)
+        );
         r[0]
     }
     fn rects(&self, tree: &FragmentTree, n: NodeId) -> Vec<Rect> {
@@ -457,7 +503,10 @@ fn margin_set_arithmetic() {
     s.add(px(7));
     s.add(px(-9));
     assert_eq!(s.collapse(), px(1));
-    assert_eq!(MarginSet::of(px(3)).union(MarginSet::of(px(5))).collapse(), px(5));
+    assert_eq!(
+        MarginSet::of(px(3)).union(MarginSet::of(px(5))).collapse(),
+        px(5)
+    );
 }
 
 #[test]
@@ -491,7 +540,10 @@ fn floats_shorten_lines_and_following_blocks_flow_under() {
     let tree = t.layout();
     assert_eq!(t.rect(&tree, f), r(0, 0, 100, 50));
     // The block itself spans the full width; its line box starts after the float.
-    assert_eq!(t.rect(&tree, p), Rect::new(Au::ZERO, Au::ZERO, px(800), lh()));
+    assert_eq!(
+        t.rect(&tree, p),
+        Rect::new(Au::ZERO, Au::ZERO, px(800), lh())
+    );
     let ls = lines(&tree);
     assert_eq!(ls[0].origin.x, px(100));
     assert_eq!(ls[0].size.width, px(700));
@@ -643,7 +695,11 @@ fn text_wraps_at_soft_wrap_opportunities() {
         assert!(!txt.starts_with(' ') && !txt.ends_with(' '), "{txt:?}");
     }
     assert_eq!(t.rect(&tree, p).size.height, lh() * ls.len() as i32);
-    let all: String = texts(&tree).iter().map(|(s, _)| s.as_str()).collect::<Vec<_>>().join(" ");
+    let all: String = texts(&tree)
+        .iter()
+        .map(|(s, _)| s.as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
     assert_eq!(all, "one two three four");
 }
 
@@ -671,7 +727,10 @@ fn pre_preserves_newlines_and_spaces_nowrap_does_not_wrap() {
     let tree = t.layout();
     let ls = lines(&tree);
     assert_eq!(ls.len(), 2);
-    let ts: Vec<_> = texts(&tree).into_iter().filter(|(s, _)| !s.is_empty()).collect();
+    let ts: Vec<_> = texts(&tree)
+        .into_iter()
+        .filter(|(s, _)| !s.is_empty())
+        .collect();
     assert_eq!(ts[0].0, "a  b");
     assert_eq!(ts[1].0, "cd");
     let mut t = T::new();
@@ -693,7 +752,10 @@ fn pre_line_breaks_at_newlines_and_collapses_spaces() {
     let tree = t.layout();
     let ts = texts(&tree);
     // The segment break is a zero-width run of its own, as in Chromium's client rects.
-    assert_eq!(ts.iter().map(|t| t.0.as_str()).collect::<Vec<_>>(), vec!["a b", "", "c"]);
+    assert_eq!(
+        ts.iter().map(|t| t.0.as_str()).collect::<Vec<_>>(),
+        vec!["a b", "", "c"]
+    );
     assert_eq!(ts[1].1.size.width, Au::ZERO);
 }
 
@@ -750,12 +812,23 @@ fn justify_spreads_words_over_the_line_except_the_last() {
     let ts = texts(&tree);
     // Words on the first line: the last one ends exactly at the right edge.
     let first_line_bottom = ls[0].bottom();
-    let on_first: Vec<_> = ts.iter().filter(|(_, r)| r.origin.y < first_line_bottom).collect();
+    let on_first: Vec<_> = ts
+        .iter()
+        .filter(|(_, r)| r.origin.y < first_line_bottom)
+        .collect();
     let last = on_first.iter().rev().find(|(s, _)| s != " ").unwrap();
-    assert_eq!(last.1.right(), px(100), "{}", debug::dump_doc(&t.doc, &tree));
+    assert_eq!(
+        last.1.right(),
+        px(100),
+        "{}",
+        debug::dump_doc(&t.doc, &tree)
+    );
     // The last line is not justified.
     let last_line_top = ls.last().unwrap().origin.y;
-    let on_last: Vec<_> = ts.iter().filter(|(_, r)| r.origin.y >= last_line_top).collect();
+    let on_last: Vec<_> = ts
+        .iter()
+        .filter(|(_, r)| r.origin.y >= last_line_top)
+        .collect();
     assert!(on_last.last().unwrap().1.right() < px(100));
 }
 
@@ -771,7 +844,10 @@ fn line_height_and_vertical_align_of_inline_boxes() {
     // floored to a whole pixel (19 px content: 10 px above, 11 below).
     let fm = text::font_metrics(&font());
     let half = text::half_leading(px(40), fm.content_height());
-    assert_eq!(half, Au::from_px_i32(((px(40) - fm.content_height()) / 2).to_px_floor()));
+    assert_eq!(
+        half,
+        Au::from_px_i32(((px(40) - fm.content_height()) / 2).to_px_floor())
+    );
     assert_eq!(ts[0].1.origin.y, half);
 
     // A taller inline child with vertical-align: baseline raises the line.
@@ -802,7 +878,10 @@ fn line_height_and_vertical_align_of_inline_boxes() {
     let top_rect = t.rect(&tree, top);
     // The inline box's top (content area) is at the line top plus its half-leading
     // (floored to a whole pixel).
-    assert_eq!(top_rect.origin.y, text::half_leading(px(20), fm.content_height()));
+    assert_eq!(
+        top_rect.origin.y,
+        text::half_leading(px(20), fm.content_height())
+    );
     let ts = texts(&tree);
     let x_y = ts[0].1.origin.y;
     let s_y = ts.iter().find(|(s, _)| s == "s").unwrap().1.origin.y;
@@ -893,7 +972,10 @@ fn ellipsis_truncates_overflowing_nowrap_text() {
     assert_eq!(ts.len(), 1);
     assert!(ts[0].0.ends_with('\u{2026}'), "{}", ts[0].0);
     assert!(ts[0].1.right() <= px(60));
-    let f = find(&tree.root, &|f| matches!(f.kind, FragmentKind::Text { ellipsis: true, .. })).unwrap();
+    let f = find(&tree.root, &|f| {
+        matches!(f.kind, FragmentKind::Text { ellipsis: true, .. })
+    })
+    .unwrap();
     assert!(matches!(f.kind, FragmentKind::Text { .. }));
 }
 
@@ -911,7 +993,11 @@ fn letter_and_word_spacing_and_transform() {
     assert_eq!(ts[0].0, "AB CD");
     let expect = text::measure(&font(), "AB CD", px(2), px(5));
     assert_eq!(ts[0].1.size.width, expect);
-    if let FragmentKind::Text { range, .. } = &find(&tree.root, &|f| matches!(f.kind, FragmentKind::Text { .. })).unwrap().kind {
+    if let FragmentKind::Text { range, .. } =
+        &find(&tree.root, &|f| matches!(f.kind, FragmentKind::Text { .. }))
+            .unwrap()
+            .kind
+    {
         assert_eq!(*range, (0, 5));
     }
 }
@@ -933,7 +1019,11 @@ fn long_word_overflows_unless_overflow_wrap_breaks_it() {
     t.text(c, "unbreakableword");
     let tree = t.layout();
     assert_eq!(t.rect(&tree, a).size.height, lh());
-    assert!(t.rect(&tree, b).size.height > lh() * 2, "{}", debug::dump_doc(&t.doc, &tree));
+    assert!(
+        t.rect(&tree, b).size.height > lh() * 2,
+        "{}",
+        debug::dump_doc(&t.doc, &tree)
+    );
     assert!(t.rect(&tree, c).size.height > lh() * 2);
     for (s, rect) in texts(&tree) {
         if rect.origin.y >= t.rect(&tree, b).origin.y {
@@ -992,7 +1082,10 @@ fn anonymous_blocks_wrap_inline_runs_and_blocks_split_inlines() {
     let tree = t.layout();
     let pieces = t.rects(&tree, sp);
     assert_eq!(pieces.len(), 2, "{}", debug::dump_doc(&t.doc, &tree));
-    assert_eq!(t.rect(&tree, blk), Rect::new(Au::ZERO, lh(), px(800), px(10)));
+    assert_eq!(
+        t.rect(&tree, blk),
+        Rect::new(Au::ZERO, lh(), px(800), px(10))
+    );
     // Only the first piece carries the left border.
     assert_eq!(pieces[0].size.width, tw("x") + px(3));
     assert_eq!(pieces[1].size.width, tw("y"));
@@ -1034,7 +1127,11 @@ fn list_item_markers_outside_and_inside() {
     let tree = t.layout();
     let m1 = find(&tree.root, &|f| matches!(&f.kind, FragmentKind::Box { source: StyleSource::Marker(n), .. } if *n == li1)).unwrap();
     assert_eq!(m1.kind.clone(), m1.kind.clone());
-    if let FragmentKind::Box { replaced: Some(Replaced::Marker(txt)), .. } = &m1.kind {
+    if let FragmentKind::Box {
+        replaced: Some(Replaced::Marker(txt)),
+        ..
+    } = &m1.kind
+    {
         assert_eq!(txt, "1. ");
     } else {
         panic!("no marker");
@@ -1070,7 +1167,10 @@ fn ol_start_and_li_value_drive_the_counter() {
     let marker = |n: NodeId| -> String {
         let f = find(&tree.root, &|f| matches!(&f.kind, FragmentKind::Box { source: StyleSource::Marker(m), .. } if *m == n)).unwrap();
         match &f.kind {
-            FragmentKind::Box { replaced: Some(Replaced::Marker(t)), .. } => t.clone(),
+            FragmentKind::Box {
+                replaced: Some(Replaced::Marker(t)),
+                ..
+            } => t.clone(),
             _ => String::new(),
         }
     };
@@ -1082,15 +1182,32 @@ fn ol_start_and_li_value_drive_the_counter() {
 #[test]
 fn before_content_with_attr_counter_and_quotes() {
     let mut t = T::new();
-    let p = t.el_attrs(t.body, "div", vec![("data-x", "Z")], |s| s.counter_increment = vec![("n".into(), 3)]);
+    let p = t.el_attrs(t.body, "div", vec![("data-x", "Z")], |s| {
+        s.counter_increment = vec![("n".into(), 3)]
+    });
     t.before(p, |s| {
-        s.content = Content::Items(vec![ContentItem::OpenQuote, ContentItem::Text("v".into()), ContentItem::Attr("data-x".into()), ContentItem::Counter("n".into(), ListStyleType::Decimal), ContentItem::CloseQuote]);
+        s.content = Content::Items(vec![
+            ContentItem::OpenQuote,
+            ContentItem::Text("v".into()),
+            ContentItem::Attr("data-x".into()),
+            ContentItem::Counter("n".into(), ListStyleType::Decimal),
+            ContentItem::CloseQuote,
+        ]);
     });
     t.text(p, "body");
     let tree = t.layout();
     let ts = texts(&tree);
     assert_eq!(ts[0].0, "\u{201C}vZ3\u{201D}");
-    let f = find(&tree.root, &|f| matches!(f.kind, FragmentKind::Text { source: StyleSource::Before(_), .. })).unwrap();
+    let f = find(&tree.root, &|f| {
+        matches!(
+            f.kind,
+            FragmentKind::Text {
+                source: StyleSource::Before(_),
+                ..
+            }
+        )
+    })
+    .unwrap();
     assert!(matches!(f.kind, FragmentKind::Text { node: None, .. }));
     assert_eq!(ts[1].1.origin.x, ts[0].1.right());
 }
@@ -1115,9 +1232,15 @@ fn block_before_pseudo_is_a_block_child() {
 fn images_use_attributes_intrinsic_sizes_and_placeholders() {
     let mut t = T::new();
     let p = t.div(t.body, |_| {});
-    let a = t.el_attrs(p, "img", vec![("src", "a.png"), ("width", "40")], |s| s.display = Display::Inline);
-    let b = t.el_attrs(p, "img", vec![("src", "b.png")], |s| s.display = Display::Inline);
-    let c = t.el_attrs(p, "img", vec![("src", "none.png")], |s| s.display = Display::Inline);
+    let a = t.el_attrs(p, "img", vec![("src", "a.png"), ("width", "40")], |s| {
+        s.display = Display::Inline
+    });
+    let b = t.el_attrs(p, "img", vec![("src", "b.png")], |s| {
+        s.display = Display::Inline
+    });
+    let c = t.el_attrs(p, "img", vec![("src", "none.png")], |s| {
+        s.display = Display::Inline
+    });
     let d = t.el_attrs(p, "img", vec![("src", "a.png")], |s| {
         s.display = Display::Block;
         s.height = len(10);
@@ -1127,12 +1250,50 @@ fn images_use_attributes_intrinsic_sizes_and_placeholders() {
     images.0.insert("b.png".into(), (30, 60));
     let scroll = ScrollState::new();
     let mut cache = LayoutCache::default();
-    let tree = layout_with(&t.doc, &t.styles, Viewport { width: 800, height: 600, scale: 1, zoom: 100 }, LayoutOptions { images: &images, scroll: &scroll }, &mut cache);
+    let tree = layout_with(
+        &t.doc,
+        &t.styles,
+        Viewport {
+            width: 800,
+            height: 600,
+            scale: 1,
+            zoom: 100,
+        },
+        LayoutOptions {
+            images: &images,
+            scroll: &scroll,
+        },
+        &mut cache,
+    );
     // width attribute keeps the aspect ratio.
-    assert_eq!(t.rect(&tree, a).size, Size { width: px(40), height: px(20) });
-    assert_eq!(t.rect(&tree, b).size, Size { width: px(30), height: px(60) });
-    assert_eq!(t.rect(&tree, c).size, Size { width: px(16), height: px(16) });
-    assert_eq!(t.rect(&tree, d).size, Size { width: px(20), height: px(10) });
+    assert_eq!(
+        t.rect(&tree, a).size,
+        Size {
+            width: px(40),
+            height: px(20)
+        }
+    );
+    assert_eq!(
+        t.rect(&tree, b).size,
+        Size {
+            width: px(30),
+            height: px(60)
+        }
+    );
+    assert_eq!(
+        t.rect(&tree, c).size,
+        Size {
+            width: px(16),
+            height: px(16)
+        }
+    );
+    assert_eq!(
+        t.rect(&tree, d).size,
+        Size {
+            width: px(20),
+            height: px(10)
+        }
+    );
     // Inline images sit on the baseline: the tallest one sets the line height.
     let line = lines(&tree)[0];
     assert!(line.size.height >= px(60));
@@ -1147,8 +1308,12 @@ fn form_controls_have_intrinsic_sizes() {
         s.padding = Sides::uniform(lp(2));
         s.border = Sides::uniform(side(1));
     });
-    let cb = t.el_attrs(p, "input", vec![("type", "checkbox")], |s| s.display = Display::InlineBlock);
-    let ta = t.el_attrs(p, "textarea", vec![("cols", "10"), ("rows", "3")], |s| s.display = Display::InlineBlock);
+    let cb = t.el_attrs(p, "input", vec![("type", "checkbox")], |s| {
+        s.display = Display::InlineBlock
+    });
+    let ta = t.el_attrs(p, "textarea", vec![("cols", "10"), ("rows", "3")], |s| {
+        s.display = Display::InlineBlock
+    });
     let sel = t.el(p, "select", |s| s.display = Display::InlineBlock);
     let _opt = t.el(sel, "option", |s| s.display = Display::Block);
     let btn = t.el(p, "button", |s| {
@@ -1157,21 +1322,74 @@ fn form_controls_have_intrinsic_sizes() {
     });
     t.text(btn, "Go");
     let ifr = t.el(p, "iframe", |s| s.display = Display::Inline);
-    let cv = t.el_attrs(p, "canvas", vec![("width", "10"), ("height", "20")], |s| s.display = Display::Inline);
+    let cv = t.el_attrs(p, "canvas", vec![("width", "10"), ("height", "20")], |s| {
+        s.display = Display::Inline
+    });
     let tree = t.layout();
     let ch = text::ch_unit(&font());
     // A text input is `size` average characters plus the widest glyph's excess
     // (Blink's formula, `boxes::text_control_width`), not `size` advances of `0`.
-    assert_eq!(t.rect(&tree, ti).size, Size { width: super::boxes::text_control_width(&font(), 20) + px(6), height: lh() + px(6) });
-    assert!(t.rect(&tree, ti).size.width > ch * 20, "wider than 20 zeros");
-    assert_eq!(t.rect(&tree, cb).size, Size { width: px(13), height: px(13) });
-    assert_eq!(t.rect(&tree, ta).size, Size { width: ch * 10, height: lh() * 3 });
-    assert_eq!(t.rect(&tree, sel).size, Size { width: ch * 20, height: lh() });
-    assert_eq!(t.rect(&tree, btn).size, Size { width: tw("Go") + px(6), height: lh() + px(6) });
-    assert_eq!(t.rect(&tree, ifr).size, Size { width: px(300), height: px(150) });
-    assert_eq!(t.rect(&tree, cv).size, Size { width: px(10), height: px(20) });
+    assert_eq!(
+        t.rect(&tree, ti).size,
+        Size {
+            width: super::boxes::text_control_width(&font(), 20) + px(6),
+            height: lh() + px(6)
+        }
+    );
+    assert!(
+        t.rect(&tree, ti).size.width > ch * 20,
+        "wider than 20 zeros"
+    );
+    assert_eq!(
+        t.rect(&tree, cb).size,
+        Size {
+            width: px(13),
+            height: px(13)
+        }
+    );
+    assert_eq!(
+        t.rect(&tree, ta).size,
+        Size {
+            width: ch * 10,
+            height: lh() * 3
+        }
+    );
+    assert_eq!(
+        t.rect(&tree, sel).size,
+        Size {
+            width: ch * 20,
+            height: lh()
+        }
+    );
+    assert_eq!(
+        t.rect(&tree, btn).size,
+        Size {
+            width: tw("Go") + px(6),
+            height: lh() + px(6)
+        }
+    );
+    assert_eq!(
+        t.rect(&tree, ifr).size,
+        Size {
+            width: px(300),
+            height: px(150)
+        }
+    );
+    assert_eq!(
+        t.rect(&tree, cv).size,
+        Size {
+            width: px(10),
+            height: px(20)
+        }
+    );
     let bf = find(&tree.root, &|f| matches!(&f.kind, FragmentKind::Box { source: StyleSource::Element(n), .. } if *n == btn)).unwrap();
-    assert!(matches!(&bf.kind, FragmentKind::Box { replaced: Some(Replaced::Control(super::fragment::ControlKind::Button)), .. }));
+    assert!(matches!(
+        &bf.kind,
+        FragmentKind::Box {
+            replaced: Some(Replaced::Control(super::fragment::ControlKind::Button)),
+            ..
+        }
+    ));
 }
 
 // Absolute and fixed positioning (§10.3.7, §10.6.4).
@@ -1248,8 +1466,14 @@ fn absolute_static_position_and_shrink_to_fit() {
     t.text(b, "hi");
     let tree = t.layout();
     // Static position: where it would have been (y = 20); width shrink-to-fit.
-    assert_eq!(t.rect(&tree, a), Rect::new(px(0), px(20), tw("hi") + px(4), lh() + px(4)));
-    assert_eq!(t.rect(&tree, b), Rect::new(px(790) - tw("hi"), px(40), tw("hi"), lh()));
+    assert_eq!(
+        t.rect(&tree, a),
+        Rect::new(px(0), px(20), tw("hi") + px(4), lh() + px(4))
+    );
+    assert_eq!(
+        t.rect(&tree, b),
+        Rect::new(px(790) - tw("hi"), px(40), tw("hi"), lh())
+    );
 }
 
 #[test]
@@ -1310,13 +1534,29 @@ fn overflow_auto_reserves_a_scrollbar_when_content_overflows() {
     let mut scroll = ScrollState::new();
     scroll.insert(sc, (Au::ZERO, px(1000)));
     let mut cache = LayoutCache::default();
-    let tree = layout_with(&t.doc, &t.styles, Viewport { width: 800, height: 600, scale: 1, zoom: 100 }, LayoutOptions { images: &super::NoImages, scroll: &scroll }, &mut cache);
+    let tree = layout_with(
+        &t.doc,
+        &t.styles,
+        Viewport {
+            width: 800,
+            height: 600,
+            scale: 1,
+            zoom: 100,
+        },
+        LayoutOptions {
+            images: &super::NoImages,
+            scroll: &scroll,
+        },
+        &mut cache,
+    );
     // The vertical bar takes 15 px from the content width.
     assert_eq!(t.rect(&tree, inner).size.width, px(185));
     assert_eq!(t.rect(&tree, pin).size.width, px(185));
     let f = find(&tree.root, &|f| matches!(&f.kind, FragmentKind::Box { source: StyleSource::Element(n), .. } if *n == sc)).unwrap();
     match &f.kind {
-        FragmentKind::Box { scroll: Some(info), .. } => {
+        FragmentKind::Box {
+            scroll: Some(info), ..
+        } => {
             assert_eq!(info.content_height, px(500));
             assert!(info.shows_y_bar && !info.shows_x_bar);
             // Clamped to the scrollable range.
@@ -1346,7 +1586,9 @@ fn root_scrollable_size_and_body_overflow_propagation() {
     // The viewport's scrollbar is an overlay bar: the body stays 800 wide.
     assert_eq!(t.rect(&tree, t.body).size.width, px(800));
     match &tree.root.kind {
-        FragmentKind::Box { scroll: Some(info), .. } => assert!(info.shows_y_bar),
+        FragmentKind::Box {
+            scroll: Some(info), ..
+        } => assert!(info.shows_y_bar),
         _ => panic!(),
     }
     // overflow: hidden on body propagates to the viewport: no bar.
@@ -1356,7 +1598,9 @@ fn root_scrollable_size_and_body_overflow_propagation() {
     let tree = t.layout();
     assert_eq!(t.rect(&tree, t.body).size.width, px(800));
     match &tree.root.kind {
-        FragmentKind::Box { scroll: Some(info), .. } => assert!(!info.shows_y_bar && info.scroll_y.is_zero()),
+        FragmentKind::Box {
+            scroll: Some(info), ..
+        } => assert!(!info.shows_y_bar && info.scroll_y.is_zero()),
         _ => panic!(),
     }
 }
@@ -1374,12 +1618,35 @@ fn sticky_sticks_within_its_containing_block() {
     let mut scroll = ScrollState::new();
     scroll.insert(Document::ROOT, (Au::ZERO, px(100)));
     let mut cache = LayoutCache::default();
-    let vp = Viewport { width: 800, height: 600, scale: 1, zoom: 100 };
-    let tree = layout_with(&t.doc, &t.styles, vp, LayoutOptions { images: &super::NoImages, scroll: &scroll }, &mut cache);
+    let vp = Viewport {
+        width: 800,
+        height: 600,
+        scale: 1,
+        zoom: 100,
+    };
+    let tree = layout_with(
+        &t.doc,
+        &t.styles,
+        vp,
+        LayoutOptions {
+            images: &super::NoImages,
+            scroll: &scroll,
+        },
+        &mut cache,
+    );
     // Scrolled by 100: the box moves to 110 to keep 10 px from the top.
     assert_eq!(t.rect(&tree, sticky).origin.y, px(110));
     scroll.insert(Document::ROOT, (Au::ZERO, px(1000)));
-    let tree = layout_with(&t.doc, &t.styles, vp, LayoutOptions { images: &super::NoImages, scroll: &scroll }, &mut cache);
+    let tree = layout_with(
+        &t.doc,
+        &t.styles,
+        vp,
+        LayoutOptions {
+            images: &super::NoImages,
+            scroll: &scroll,
+        },
+        &mut cache,
+    );
     // Clamped by the containing block's bottom (500 - 20).
     assert_eq!(t.rect(&tree, sticky).origin.y, px(480));
 }
@@ -1423,14 +1690,30 @@ fn auto_table_columns_from_content_with_anonymous_row_group() {
     let wa = tw("aaaa") + px(2);
     let wd = tw("dddddd") + px(2);
     assert_eq!(t.rect(&tree, a), Rect::new(px(2), px(2), wa, lh() + px(2)));
-    assert_eq!(t.rect(&tree, b), Rect::new(px(4) + wa, px(2), wd, lh() + px(2)));
+    assert_eq!(
+        t.rect(&tree, b),
+        Rect::new(px(4) + wa, px(2), wd, lh() + px(2))
+    );
     assert_eq!(t.rect(&tree, c).size.width, wa);
     assert_eq!(t.rect(&tree, d).origin.y, px(4) + lh() + px(2));
     // Table width shrinks to fit: spacing 3 x 2 + columns.
     assert_eq!(t.rect(&tree, tb).size.width, wa + wd + px(6));
     assert_eq!(t.rect(&tree, tb).size.height, (lh() + px(2)) * 2 + px(6));
-    let anon = find(&tree.root, &|f| matches!(f.kind, FragmentKind::Box { source: StyleSource::Anonymous(_), .. }) && f.rect.size.height > Au::ZERO && f.children.len() == 2);
-    assert!(anon.is_some(), "anonymous row group\n{}", debug::dump_doc(&t.doc, &tree));
+    let anon = find(&tree.root, &|f| {
+        matches!(
+            f.kind,
+            FragmentKind::Box {
+                source: StyleSource::Anonymous(_),
+                ..
+            }
+        ) && f.rect.size.height > Au::ZERO
+            && f.children.len() == 2
+    });
+    assert!(
+        anon.is_some(),
+        "anonymous row group\n{}",
+        debug::dump_doc(&t.doc, &tree)
+    );
 }
 
 #[test]
@@ -1468,8 +1751,18 @@ fn percent_columns_and_fixed_layout() {
     let a = cell(&mut t, r1, "a", |s| s.width = pct(25));
     let b = cell(&mut t, r1, "b", |_| {});
     let tree = t.layout();
-    assert_eq!(t.rect(&tree, a).size.width, px(100), "{}", debug::dump_doc(&t.doc, &tree));
-    assert_eq!(t.rect(&tree, b).size.width, px(300), "{}", debug::dump_doc(&t.doc, &tree));
+    assert_eq!(
+        t.rect(&tree, a).size.width,
+        px(100),
+        "{}",
+        debug::dump_doc(&t.doc, &tree)
+    );
+    assert_eq!(
+        t.rect(&tree, b).size.width,
+        px(300),
+        "{}",
+        debug::dump_doc(&t.doc, &tree)
+    );
 
     let mut t = T::new();
     let tb = table(&mut t, body, |s| {
@@ -1520,7 +1813,10 @@ fn colspan_and_rowspan_distribute_sizes() {
     assert_eq!(t.rect(&tree, b).origin.x, px(100));
     // The rowspan cell's 100 px is spread over both rows.
     assert_eq!(t.rect(&tree, tall).size.height, px(100));
-    assert_eq!(t.rect(&tree, r1).size.height + t.rect(&tree, r2).size.height, px(100));
+    assert_eq!(
+        t.rect(&tree, r1).size.height + t.rect(&tree, r2).size.height,
+        px(100)
+    );
     assert_eq!(t.rect(&tree, tb).size.height, px(100));
 }
 
@@ -1535,8 +1831,12 @@ fn cell_vertical_align_and_row_baseline() {
         s.padding = Sides::uniform(LengthPercentage::ZERO);
     });
     let top = cell(&mut t, r1, "t", |s| s.vertical_align = VerticalAlign::Top);
-    let mid = cell(&mut t, r1, "m", |s| s.vertical_align = VerticalAlign::Middle);
-    let bot = cell(&mut t, r1, "b", |s| s.vertical_align = VerticalAlign::Bottom);
+    let mid = cell(&mut t, r1, "m", |s| {
+        s.vertical_align = VerticalAlign::Middle
+    });
+    let bot = cell(&mut t, r1, "b", |s| {
+        s.vertical_align = VerticalAlign::Bottom
+    });
     let big = cell(&mut t, r1, "B", |s| s.font.size = px(32));
     let base = cell(&mut t, r1, "s", |_| {});
     let tree = t.layout();
@@ -1578,7 +1878,11 @@ fn collapsed_borders_resolve_conflicts_and_halve_geometry() {
     });
     let b = cell(&mut t, r1, "b", |s| {
         s.border = Sides::uniform(side(4));
-        s.border.top = BorderSide { width: px(6), style: BorderStyle::Hidden, color: cw_scene::Color(0, 0, 0, 255) };
+        s.border.top = BorderSide {
+            width: px(6),
+            style: BorderStyle::Hidden,
+            color: cw_scene::Color(0, 0, 0, 255),
+        };
         s.padding = Sides::uniform(LengthPercentage::ZERO);
         s.width = len(50);
         s.height = len(20);
@@ -1597,12 +1901,18 @@ fn collapsed_borders_resolve_conflicts_and_halve_geometry() {
     assert_eq!(cbb.top.style, BorderStyle::Hidden);
     assert_eq!(ca.top.width, px(10));
     // Half widths inside the cells; padding and spacing are gone.
-    if let FragmentKind::Box { border, padding, .. } = &fa.kind {
+    if let FragmentKind::Box {
+        border, padding, ..
+    } = &fa.kind
+    {
         assert_eq!(border.left, px(5));
         assert_eq!(border.right, px(2));
         assert_eq!(padding.left, Au::ZERO);
     }
-    if let FragmentKind::Box { border, padding, .. } = &ft.kind {
+    if let FragmentKind::Box {
+        border, padding, ..
+    } = &ft.kind
+    {
         assert_eq!(border.left, px(5));
         assert_eq!(padding.left, Au::ZERO);
     }
@@ -1663,7 +1973,14 @@ fn inline_table_is_atomic_in_a_line() {
     t.text(p, " y");
     let tree = t.layout();
     let ts = texts(&tree);
-    let y_of = |s: &str| ts.iter().find(|(x, _)| x.trim() == s).unwrap_or_else(|| panic!("{s}: {}", debug::dump_doc(&t.doc, &tree))).1.origin.y;
+    let y_of = |s: &str| {
+        ts.iter()
+            .find(|(x, _)| x.trim() == s)
+            .unwrap_or_else(|| panic!("{s}: {}", debug::dump_doc(&t.doc, &tree)))
+            .1
+            .origin
+            .y
+    };
     // "x" and "y" share the line the table sits on; the table's baseline is its
     // first row's, so the line grows by the cell padding.
     assert_eq!(y_of("x"), y_of("y"));
@@ -1694,7 +2011,10 @@ fn shrink_to_fit_uses_min_and_max_content() {
     assert_eq!(t.rect(&tree, f).size.width, tw("one two"));
     assert_eq!(t.rect(&tree, g).size.width, px(400));
     // Available width 40 < max-content: the float wraps to the widest word.
-    assert_eq!(t.rect(&tree, h).size.width, tw("one").max(tw("two")).max(px(40).min(tw("one two"))));
+    assert_eq!(
+        t.rect(&tree, h).size.width,
+        tw("one").max(tw("two")).max(px(40).min(tw("one two")))
+    );
     assert_eq!(t.rect(&tree, h).size.height, lh() * 2);
 }
 
@@ -1738,14 +2058,19 @@ fn hit_testing_and_rects_of() {
     let tree = t.layout();
     let hits = tree.hit(px(10), px(60));
     let last = hits.last().unwrap();
-    assert!(matches!(&last.0.kind, FragmentKind::Box { source: StyleSource::Element(n), .. } if *n == b));
+    assert!(
+        matches!(&last.0.kind, FragmentKind::Box { source: StyleSource::Element(n), .. } if *n == b)
+    );
     assert_eq!(tree.rects_of(a).len(), 1);
 }
 
 #[test]
 fn float_context_placement_rules() {
     let mut bfc = Bfc::new();
-    let s = |w, h| Size { width: px(w), height: px(h) };
+    let s = |w, h| Size {
+        width: px(w),
+        height: px(h),
+    };
     let p1 = bfc.place(Float::Left, s(100, 50), Au::ZERO, Au::ZERO, px(300));
     let p2 = bfc.place(Float::Right, s(100, 30), Au::ZERO, Au::ZERO, px(300));
     // 100 + 100 + 150 > 300: goes below the shorter right float.
@@ -1798,7 +2123,16 @@ fn large_document_lays_out_quickly() {
 fn zoom_scales_the_viewport() {
     let mut t = T::new();
     let d = t.div(t.body, |s| s.height = len(10));
-    let tree = layout(&t.doc, &t.styles, Viewport { width: 800, height: 600, scale: 1, zoom: 200 });
+    let tree = layout(
+        &t.doc,
+        &t.styles,
+        Viewport {
+            width: 800,
+            height: 600,
+            scale: 1,
+            zoom: 200,
+        },
+    );
     assert_eq!(t.rect(&tree, d).size.width, px(400));
     assert_eq!(tree.viewport_width, px(400));
     let _ = t.layout_sized(100, 100);
@@ -1890,9 +2224,19 @@ fn a_cleared_float_keeps_the_floats_above_it_live() {
     // A right float, then a `clear: right` float placed below it: the in-flow lines
     // that follow the second float are still laid out from the top, beside the first.
     let mut bfc = Bfc::new();
-    let s = |w, h| Size { width: px(w), height: px(h) };
+    let s = |w, h| Size {
+        width: px(w),
+        height: px(h),
+    };
     bfc.place(Float::Right, s(100, 200), Au::ZERO, Au::ZERO, px(300));
-    let p = bfc.place_from(Float::Right, s(50, 50), px(200), Au::ZERO, Au::ZERO, px(300));
+    let p = bfc.place_from(
+        Float::Right,
+        s(50, 50),
+        px(200),
+        Au::ZERO,
+        Au::ZERO,
+        px(300),
+    );
     assert_eq!((p.x, p.y), (px(250), px(200)));
     assert_eq!(bfc.available(px(50), Au::ZERO, px(300)), (px(0), px(200)));
     assert_eq!(bfc.available(px(220), Au::ZERO, px(300)), (px(0), px(250)));
@@ -1915,7 +2259,12 @@ fn a_cleared_float_keeps_the_floats_above_it_live() {
     let tree = t.layout();
     for (_, r) in texts(&tree) {
         if r.origin.y < px(300) {
-            assert!(r.size.width <= px(400), "line at {:?} is {:?} wide beside a 400 px float", r.origin.y, r.size.width);
+            assert!(
+                r.size.width <= px(400),
+                "line at {:?} is {:?} wide beside a 400 px float",
+                r.origin.y,
+                r.size.width
+            );
         }
     }
 }
@@ -1943,7 +2292,13 @@ fn spanning_cell_minimum_goes_to_columns_with_slack() {
     // The spanning cell's minimum exceeds the columns' minimums but not their
     // maximums, and the table is between the two sums, so slack decides.
     let inner = px(400) - px(6);
-    assert!(tw(span_text) + px(2) < inner && tw(th_text) + tw(td_text) + px(4) > inner, "{:?} {:?} {:?}", tw(span_text), tw(th_text), tw(td_text));
+    assert!(
+        tw(span_text) + px(2) < inner && tw(th_text) + tw(td_text) + px(4) > inner,
+        "{:?} {:?} {:?}",
+        tw(span_text),
+        tw(th_text),
+        tw(td_text)
+    );
     let tree = t.layout();
     assert_eq!(t.rect(&tree, th).size.width, tw(th_text) + px(2));
     assert_eq!(t.rect(&tree, td).size.width, inner - tw(th_text) - px(2));
@@ -1956,10 +2311,18 @@ fn preserved_newlines_are_zero_width_runs_at_line_ends() {
     t.text(pre, "ab\n\ncd");
     let tree = t.layout();
     let runs = texts(&tree);
-    let shapes: Vec<(String, Au, Au)> = runs.iter().map(|(s, r)| (s.clone(), r.origin.y, r.size.width)).collect();
+    let shapes: Vec<(String, Au, Au)> = runs
+        .iter()
+        .map(|(s, r)| (s.clone(), r.origin.y, r.size.width))
+        .collect();
     assert_eq!(
         shapes,
-        vec![("ab".into(), Au::ZERO, tw("ab")), (String::new(), Au::ZERO, Au::ZERO), (String::new(), lh(), Au::ZERO), ("cd".into(), lh() * 2, tw("cd"))]
+        vec![
+            ("ab".into(), Au::ZERO, tw("ab")),
+            (String::new(), Au::ZERO, Au::ZERO),
+            (String::new(), lh(), Au::ZERO),
+            ("cd".into(), lh() * 2, tw("cd"))
+        ]
     );
     assert_eq!(runs[1].1.origin.x, tw("ab"));
     assert_eq!(t.rect(&tree, pre).size.height, lh() * 3);
@@ -1973,7 +2336,9 @@ fn viewport_scrollbars_are_overlay() {
     assert_eq!(t.rect(&tree, tall).size.width, px(800));
     assert_eq!(tree.content_height, px(5000));
     match &tree.root.kind {
-        FragmentKind::Box { scroll: Some(info), .. } => assert!(info.shows_y_bar && !info.shows_x_bar),
+        FragmentKind::Box {
+            scroll: Some(info), ..
+        } => assert!(info.shows_y_bar && !info.shows_x_bar),
         _ => panic!("no root scroll info"),
     }
 }
@@ -2001,13 +2366,29 @@ fn multibyte_text_wraps_on_char_boundaries() {
     }
     assert_eq!(joined.chars().filter(|c| *c == 'é').count(), 15 + 3);
     assert_eq!(joined.chars().filter(|c| *c == '日').count(), 1);
-    assert!(tree.rects_of(cjk)[0].size.height > lh() * 3, "CJK did not wrap:\n{}", debug::dump_doc(&t.doc, &tree));
-    assert!(tree.rects_of(forced)[0].size.height > lh() * 2, "forced split did not wrap:\n{}", debug::dump_doc(&t.doc, &tree));
+    assert!(
+        tree.rects_of(cjk)[0].size.height > lh() * 3,
+        "CJK did not wrap:\n{}",
+        debug::dump_doc(&t.doc, &tree)
+    );
+    assert!(
+        tree.rects_of(forced)[0].size.height > lh() * 2,
+        "forced split did not wrap:\n{}",
+        debug::dump_doc(&t.doc, &tree)
+    );
     // Every run's byte range is a char boundary of its text node.
     tree.root.walk(Default::default(), &mut |f, _| {
-        if let FragmentKind::Text { node: Some(n), range, .. } = &f.kind {
+        if let FragmentKind::Text {
+            node: Some(n),
+            range,
+            ..
+        } = &f.kind
+        {
             if let crate::dom::NodeKind::Text(src) = t.doc.kind(*n) {
-                assert!(src.is_char_boundary(range.0) && src.is_char_boundary(range.1), "{range:?} in {src:?}");
+                assert!(
+                    src.is_char_boundary(range.0) && src.is_char_boundary(range.1),
+                    "{range:?} in {src:?}"
+                );
             }
         }
     });

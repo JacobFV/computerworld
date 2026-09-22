@@ -617,14 +617,21 @@ mod tests {
     /// A page response parsed as the browser would parse it, and checked strictly.
     struct Dom(cw_web::dom::Document);
     fn dom(r: &HttpResponse) -> Dom {
-        assert_eq!(r.header("content-type"), Some(cw_service_common::html::HTML_MEDIA_TYPE));
+        assert_eq!(
+            r.header("content-type"),
+            Some(cw_service_common::html::HTML_MEDIA_TYPE)
+        );
         let html = String::from_utf8(r.body.clone()).unwrap();
         cw_service_common::html::validate_strict(&html).unwrap_or_else(|e| panic!("{e}"));
         Dom(cw_web::html::parse(&html))
     }
     impl Dom {
         fn node(&self, id: &str) -> cw_web::dom::NodeId {
-            *self.0.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"))
+            *self
+                .0
+                .by_id(id)
+                .first()
+                .unwrap_or_else(|| panic!("no #{id}"))
         }
         fn has(&self, id: &str) -> bool {
             !self.0.by_id(id).is_empty()
@@ -633,7 +640,10 @@ mod tests {
             cw_web::paint::semantics::collapse(&self.0.text_content(self.node(id)))
         }
         fn attr(&self, id: &str, name: &str) -> String {
-            self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+            self.0
+                .attr(self.node(id), name)
+                .unwrap_or_default()
+                .to_owned()
         }
         fn tag(&self, id: &str) -> String {
             self.0.tag(self.node(id)).unwrap_or_default().to_owned()
@@ -644,12 +654,19 @@ mod tests {
             self.0
                 .descendants(root)
                 .filter(|n| self.0.is(*n, "input"))
-                .map(|n| (self.0.attr(n, "name").unwrap_or_default().to_owned(), self.0.attr(n, "value").unwrap_or_default().to_owned()))
+                .map(|n| {
+                    (
+                        self.0.attr(n, "name").unwrap_or_default().to_owned(),
+                        self.0.attr(n, "value").unwrap_or_default().to_owned(),
+                    )
+                })
                 .collect()
         }
     }
     fn pairs(v: &[(&str, &str)]) -> Vec<(String, String)> {
-        v.iter().map(|(k, v)| ((*k).to_owned(), (*v).to_owned())).collect()
+        v.iter()
+            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+            .collect()
     }
     #[test]
     fn seed_shape_is_gated_at_load() {
@@ -703,9 +720,21 @@ mod tests {
         let cart = dom(&get(&mut state, "http://amazon.com/cart"));
         assert_eq!(cart.text("line-mon27-p"), "$429.99");
         assert_eq!(cart.text("subtotal"), "Subtotal (1 item): $429.99");
-        assert_eq!(cart.fields("qty-mon27"), pairs(&[("product", "mon27"), ("qty", "1")]));
-        assert_eq!(cart.fields("rm-mon27"), pairs(&[("product", "mon27"), ("qty", "0")]));
-        assert_eq!((cart.attr("checkout", "action"), cart.attr("checkout", "method")), ("/api/checkout".into(), "post".into()));
+        assert_eq!(
+            cart.fields("qty-mon27"),
+            pairs(&[("product", "mon27"), ("qty", "1")])
+        );
+        assert_eq!(
+            cart.fields("rm-mon27"),
+            pairs(&[("product", "mon27"), ("qty", "0")])
+        );
+        assert_eq!(
+            (
+                cart.attr("checkout", "action"),
+                cart.attr("checkout", "method")
+            ),
+            ("/api/checkout".into(), "post".into())
+        );
         let placed = post(&mut state, "http://amazon.com/api/checkout", &[]);
         assert_eq!(placed.status, 200);
         assert_eq!(dom(&placed).text("lead"), "Order 1001");
@@ -777,7 +806,11 @@ mod tests {
         seed["carts"] = json!({"alice": {"mon27": 5}});
         let mut state = ShopService.initialize(seed, &ctx()).unwrap();
         let cart = dom(&get(&mut state, "http://amazon.com/cart"));
-        assert!(cart.text("line-mon27-row").contains("Only 2 left"), "{}", cart.text("line-mon27-row"));
+        assert!(
+            cart.text("line-mon27-row").contains("Only 2 left"),
+            "{}",
+            cart.text("line-mon27-row")
+        );
         assert_eq!(
             post(&mut state, "http://amazon.com/api/checkout", &[]).status,
             400,
@@ -860,14 +893,32 @@ mod tests {
         assert_eq!(s.orders["TM-2210"].total_cents, 24900);
         assert_eq!(s.products["devcon-2026"].tiers[0].remaining, 233);
         assert_eq!(dom(&bought).text("seat-0"), "Seat A-14-7");
-        assert_eq!(dom(&get(&mut state, "http://ticketmaster.com/my-tickets")).text("o-TM-2210-id"), "Order TM-2210");
-        let event = dom(&get(&mut state, "http://ticketmaster.com/event/devcon-2026"));
+        assert_eq!(
+            dom(&get(&mut state, "http://ticketmaster.com/my-tickets")).text("o-TM-2210-id"),
+            "Order TM-2210"
+        );
+        let event = dom(&get(
+            &mut state,
+            "http://ticketmaster.com/event/devcon-2026",
+        ));
         assert_eq!(event.text("tier-floor-p"), "$249.00");
         assert_eq!(event.text("tier-floor-r"), "233 left");
-        assert_eq!(event.fields("buy-floor"), pairs(&[("event", "devcon-2026"), ("tier", "floor"), ("qty", "1")]));
-        assert_eq!((event.attr("buy-floor", "action"), event.attr("buy-floor", "method")), ("/api/checkout".into(), "post".into()));
+        assert_eq!(
+            event.fields("buy-floor"),
+            pairs(&[("event", "devcon-2026"), ("tier", "floor"), ("qty", "1")])
+        );
+        assert_eq!(
+            (
+                event.attr("buy-floor", "action"),
+                event.attr("buy-floor", "method")
+            ),
+            ("/api/checkout".into(), "post".into())
+        );
         assert_eq!(event.tag("buy-floor-go"), "button");
-        assert_eq!(event.attr("venue-map", "href"), "http://maps.google.com/maps/place/devcon-center");
+        assert_eq!(
+            event.attr("venue-map", "href"),
+            "http://maps.google.com/maps/place/devcon-center"
+        );
         assert_eq!(
             post(
                 &mut state,
@@ -883,45 +934,139 @@ mod tests {
     fn the_agent_ids_forms_and_links_survive_the_move_to_html() {
         let mut state = ShopService.initialize(retail(), &ctx()).unwrap();
         let home = dom(&get(&mut state, "http://amazon.com/"));
-        for id in ["chrome", "wordmark", "hdr-search", "hdr-k", "hdr-search-go", "nav-basket", "nav-orders", "cats", "cat-electronics", "lead", "deals", "p-mon27", "t-mon27", "n-mon27", "r-mon27", "tags-mon27", "pr-mon27", "so-cbl", "foot"] {
+        for id in [
+            "chrome",
+            "wordmark",
+            "hdr-search",
+            "hdr-k",
+            "hdr-search-go",
+            "nav-basket",
+            "nav-orders",
+            "cats",
+            "cat-electronics",
+            "lead",
+            "deals",
+            "p-mon27",
+            "t-mon27",
+            "n-mon27",
+            "r-mon27",
+            "tags-mon27",
+            "pr-mon27",
+            "so-cbl",
+            "foot",
+        ] {
             assert!(home.has(id), "home lacks #{id}");
         }
-        assert_eq!((home.attr("hdr-search", "action"), home.attr("hdr-search", "method")), ("/s".into(), "get".into()));
+        assert_eq!(
+            (
+                home.attr("hdr-search", "action"),
+                home.attr("hdr-search", "method")
+            ),
+            ("/s".into(), "get".into())
+        );
         assert_eq!(home.attr("hdr-k", "name"), "k");
         assert_eq!(home.attr("hdr-k", "aria-label"), "Search the catalogue");
         assert_eq!(home.text("hdr-search-go"), "Search");
-        assert_eq!((home.attr("nav-basket", "href"), home.attr("nav-basket", "aria-label")), ("/cart".into(), "Cart".into()));
-        assert_eq!((home.attr("nav-orders", "href"), home.attr("nav-orders", "aria-label")), ("/orders".into(), "Orders".into()));
+        assert_eq!(
+            (
+                home.attr("nav-basket", "href"),
+                home.attr("nav-basket", "aria-label")
+            ),
+            ("/cart".into(), "Cart".into())
+        );
+        assert_eq!(
+            (
+                home.attr("nav-orders", "href"),
+                home.attr("nav-orders", "aria-label")
+            ),
+            ("/orders".into(), "Orders".into())
+        );
         assert_eq!(home.attr("cat-electronics", "href"), "/s?c=electronics");
         assert_eq!(home.text("pr-mon27"), "$429.99");
         assert_eq!(home.tag("p-mon27"), "a");
         let detail = dom(&get(&mut state, "http://amazon.com/dp/mon27"));
-        for id in ["hero", "gallery", "shot", "strip", "shot-1", "shot-3", "buybox", "title", "rating", "price-row", "price", "stock", "bul-0", "desc-head", "desc", "seller", "rev-head", "write-go", "ask-go", "fav-go", "add-go"] {
+        for id in [
+            "hero",
+            "gallery",
+            "shot",
+            "strip",
+            "shot-1",
+            "shot-3",
+            "buybox",
+            "title",
+            "rating",
+            "price-row",
+            "price",
+            "stock",
+            "bul-0",
+            "desc-head",
+            "desc",
+            "seller",
+            "rev-head",
+            "write-go",
+            "ask-go",
+            "fav-go",
+            "add-go",
+        ] {
             assert!(detail.has(id), "detail lacks #{id}");
         }
         assert_eq!(detail.text("price"), "$429.99");
         assert_eq!(detail.text("rating"), "4.4 out of 5 · 41 reviews");
         assert_eq!(detail.text("stock"), "2 in stock");
-        assert_eq!((detail.attr("add", "action"), detail.attr("add", "method")), ("/api/cart".into(), "post".into()));
-        assert_eq!(detail.fields("add"), pairs(&[("product", "mon27"), ("qty", "1")]));
+        assert_eq!(
+            (detail.attr("add", "action"), detail.attr("add", "method")),
+            ("/api/cart".into(), "post".into())
+        );
+        assert_eq!(
+            detail.fields("add"),
+            pairs(&[("product", "mon27"), ("qty", "1")])
+        );
         assert_eq!(detail.attr("add-qty", "name"), "qty");
         assert_eq!(detail.attr("fav", "action"), "/api/products/mon27/favorite");
         assert!(detail.fields("fav").is_empty());
         assert_eq!(detail.text("fav-go"), "Save to favourites");
         assert_eq!(detail.attr("ask", "action"), "/api/messages");
-        assert_eq!(detail.fields("ask"), pairs(&[("product", "mon27"), ("text", "")]));
-        assert_eq!(detail.attr("write", "action"), "/api/products/mon27/reviews");
-        assert_eq!(detail.fields("write"), pairs(&[("stars", "5"), ("title", ""), ("body", "")]));
+        assert_eq!(
+            detail.fields("ask"),
+            pairs(&[("product", "mon27"), ("text", "")])
+        );
+        assert_eq!(
+            detail.attr("write", "action"),
+            "/api/products/mon27/reviews"
+        );
+        assert_eq!(
+            detail.fields("write"),
+            pairs(&[("stars", "5"), ("title", ""), ("body", "")])
+        );
         // A sold-out product offers no add form; a posted review appears with its ids.
         let sold = dom(&get(&mut state, "http://amazon.com/dp/cbl"));
         assert!(!sold.has("add") && sold.text("stock") == "Sold out");
-        let after = dom(&post(&mut state, "http://amazon.com/api/products/mon27/reviews", &[("stars", "4"), ("title", "Good <b>"), ("body", "Crisp & clear.")]));
-        assert_eq!(after.text("rev-rv1-t"), "4★ Good <b>", "seed text is escaped, never markup");
+        let after = dom(&post(
+            &mut state,
+            "http://amazon.com/api/products/mon27/reviews",
+            &[
+                ("stars", "4"),
+                ("title", "Good <b>"),
+                ("body", "Crisp & clear."),
+            ],
+        ));
+        assert_eq!(
+            after.text("rev-rv1-t"),
+            "4★ Good <b>",
+            "seed text is escaped, never markup"
+        );
         assert_eq!(after.text("rev-rv1-b"), "Crisp & clear.");
         assert_eq!(after.text("rev-rv1-a"), "alice · tick 7");
-        let favs = dom(&post(&mut state, "http://amazon.com/api/products/mon27/favorite", &[]));
+        let favs = dom(&post(
+            &mut state,
+            "http://amazon.com/api/products/mon27/favorite",
+            &[],
+        ));
         assert!(favs.has("favs") && favs.has("p-mon27"));
-        assert_eq!(dom(&get(&mut state, "http://amazon.com/dp/mon27")).text("fav-go"), "Remove favourite");
+        assert_eq!(
+            dom(&get(&mut state, "http://amazon.com/dp/mon27")).text("fav-go"),
+            "Remove favourite"
+        );
     }
     /// Every page of every skin is HTML the engine renders: strict CSS, unique ids.
     #[test]
@@ -934,7 +1079,17 @@ mod tests {
             seed["products"]["mon27"]["fast_shipping"] = json!(true);
             seed["products"]["mon27"]["reviews"] = json!([{"id": "rv-1", "author": "bob", "stars": 4, "title": "Fine", "body": "Works.", "tick": 2}]);
             let mut state = ShopService.initialize(seed, &ctx()).unwrap();
-            for path in ["/", "/s?k=monitor", "/s?c=electronics", "/s?k=zzz", "/dp/mon27", "/dp/cbl", "/cart", "/orders", "/favorites"] {
+            for path in [
+                "/",
+                "/s?k=monitor",
+                "/s?c=electronics",
+                "/s?k=zzz",
+                "/dp/mon27",
+                "/dp/cbl",
+                "/cart",
+                "/orders",
+                "/favorites",
+            ] {
                 let page = dom(&get(&mut state, &format!("http://shop.test{path}")));
                 assert_eq!(page.attr("hdr-search", "action"), "/s", "{skin} {path}");
             }

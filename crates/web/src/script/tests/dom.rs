@@ -36,7 +36,12 @@ check!(inner_html_table_context, "<table id=t></table>", "const t=document.getEl
 check!(outer_html, "<div id=a><b id=b>1</b></div>", "const b=document.getElementById('b'); console.log(b.outerHTML); b.outerHTML='<i>2</i><u>3</u>'; console.log(document.getElementById('a').innerHTML, b.parentNode);", "<b id=\"b\">1</b>\n<i>2</i><u>3</u> null");
 check!(insert_adjacent, "<div id=a><b>1</b></div>", "const b=document.querySelector('b'); b.insertAdjacentHTML('beforebegin','<i>0</i>'); b.insertAdjacentHTML('afterbegin','<u>a</u>'); b.insertAdjacentHTML('beforeend','<u>z</u>'); b.insertAdjacentHTML('afterend','<i>2</i>'); b.insertAdjacentText('afterend','T'); b.insertAdjacentElement('beforebegin', document.createElement('s')); console.log(document.getElementById('a').innerHTML); try { b.insertAdjacentHTML('x','') } catch(e) { console.log(e.name) }", "<i>0</i><s></s><b><u>a</u>1<u>z</u></b>T<i>2</i>\nSyntaxError");
 check!(inner_text_blocks, "<div id=a>Hello <b>bold</b><p>para</p><span style='display:none'>hidden</span>line<br>next   spaces</div>", "console.log(JSON.stringify(document.getElementById('a').innerText));", "\"Hello bold\\n\\npara\\n\\nline\\nnext spaces\"");
-check!(inner_text_set, "<div id=a></div>", "const a=document.getElementById('a'); a.innerText='a\\nb'; console.log(a.innerHTML);", "a<br>b");
+check!(
+    inner_text_set,
+    "<div id=a></div>",
+    "const a=document.getElementById('a'); a.innerText='a\\nb'; console.log(a.innerHTML);",
+    "a<br>b"
+);
 check!(text_node_ops, "<div id=a>hello world</div>", "const t=document.getElementById('a').firstChild; console.log(t.length, t.substringData(0,5), t.wholeText); t.appendData('!'); t.insertData(0,'>'); t.deleteData(1,6); t.replaceData(0,1,'<'); console.log(t.data); const s=t.splitText(3); console.log(t.data, s.data, s.previousSibling===t, t.wholeText); try { t.substringData(99,1) } catch(e) { console.log(e.name) }", "11 hello hello world\n<world!\n<wo rld! true <world!\nIndexSizeError");
 check!(text_and_comment_ctors, "<div id=a></div>", "const t=new Text('x'), c=new Comment('y'); document.getElementById('a').append(t,c); console.log(document.getElementById('a').innerHTML, t instanceof Text, t instanceof CharacterData, t instanceof Node, c instanceof Comment, Object.prototype.toString.call(t), t.constructor.name);", "x<!--y--> true true true true [object Text] Text");
 check!(append_prepend_before_after, "<div id=a><b>1</b></div>", "const a=document.getElementById('a'), b=a.firstChild; a.append('x', document.createElement('i')); a.prepend('p'); b.before('B'); b.after(document.createElement('u'), 'A'); b.replaceWith('R'); console.log(a.innerHTML); a.replaceChildren('only'); console.log(a.innerHTML);", "pBR<u></u>Ax<i></i>\nonly");
@@ -70,11 +75,21 @@ check!(unknown_and_custom_tags, "<foo id=f></foo><my-el id=m></my-el>", "console
 check!(node_constants_and_illegal_ctor, "", "console.log(Node.ELEMENT_NODE, document.body.TEXT_NODE); try { new Node() } catch(e) { console.log(e.constructor.name) } try { new HTMLDivElement() } catch(e) { console.log(e.name) }", "1 3\nTypeError\nTypeError");
 check!(document_props, "", "console.log(document.URL, document.documentURI, document.location.href, document.readyState, document.compatMode, document.characterSet, document.charset, document.contentType, document.referrer, document.hidden, document.visibilityState, document.defaultView===window, document.title, document.doctype.name, document.scrollingElement===document.documentElement, document.hasFocus(), document.execCommand('bold'), document.currentScript.tagName);", "https://example.test/page.html https://example.test/page.html https://example.test/page.html loading CSS1Compat UTF-8 UTF-8 text/html  false visible true t html true true false SCRIPT");
 check!(document_title_set, "", "document.title='New'; console.log(document.title, document.head.querySelector('title').textContent); document.querySelector('title').remove(); console.log(document.title); document.title='Z'; console.log(document.title);", "New New\n\nZ");
-check!(quirks_mode, "", "console.log(document.compatMode);", "CSS1Compat");
+check!(
+    quirks_mode,
+    "",
+    "console.log(document.compatMode);",
+    "CSS1Compat"
+);
 check!(base_uri, "", "const b=document.createElement('base'); b.href='https://other.test/dir/'; document.head.appendChild(b); console.log(document.baseURI, document.body.baseURI); const a=document.createElement('a'); a.setAttribute('href','x'); console.log(a.href);", "https://other.test/dir/ https://other.test/dir/\nhttps://other.test/dir/x");
 check!(create_event_legacy, "", "const e=document.createEvent('MouseEvents'); e.initMouseEvent('click', true, true, window, 1, 0,0,0,0,false,false,false,false,0,null); console.log(e.type, e.bubbles, e instanceof MouseEvent); const c=document.createEvent('CustomEvent'); c.initCustomEvent('x', false, false, 5); console.log(c.detail); try { document.createEvent('Nope') } catch(err) { console.log(err.name) }", "click true true\n5\nNotSupportedError");
 check!(document_fragment_ctor, "", "const f=new DocumentFragment(); f.append('a', document.createElement('b')); console.log(f.childNodes.length, f.querySelector('b').tagName, f.children.length, f instanceof DocumentFragment);", "2 B 1 true");
-check!(xml_serializer, "<div id=a><b>x</b></div>", "console.log(new XMLSerializer().serializeToString(document.getElementById('a')));", "<div id=\"a\"><b>x</b></div>");
+check!(
+    xml_serializer,
+    "<div id=a><b>x</b></div>",
+    "console.log(new XMLSerializer().serializeToString(document.getElementById('a')));",
+    "<div id=\"a\"><b>x</b></div>"
+);
 check!(dom_rect, "", "const r=new DOMRect(1,2,3,4); console.log(r.x, r.right, r.bottom, JSON.stringify(r.toJSON()), r instanceof DOMRectReadOnly, DOMRect.fromRect({x:1,width:2}).width, new DOMPoint(1,2).y);", "1 4 6 {\"x\":1,\"y\":2,\"width\":3,\"height\":4,\"top\":2,\"right\":4,\"bottom\":6,\"left\":1} true 2 2");
 check!(dom_exception, "", "const e=new DOMException('m','NotFoundError'); console.log(e.name, e.code, e.message, e instanceof Error, DOMException.name);", "NotFoundError 8 m true DOMException");
 check!(element_children_of_document, "", "console.log(document.children.length, document.firstElementChild.tagName, document.childElementCount);", "1 HTML 1");

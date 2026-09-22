@@ -3,7 +3,10 @@
 //! index bucketed by the rightmost compound so the cascade tests only candidates, and
 //! the dependency sets the style track uses for invalidation.
 
-use super::selector::{AttrCase, AttrOp, Combinator, ComplexSelector, CompoundSelector, Direction, NthKind, PseudoClass, RelativeSelector, SelectorList, SimpleSelector};
+use super::selector::{
+    AttrCase, AttrOp, Combinator, ComplexSelector, CompoundSelector, Direction, NthKind,
+    PseudoClass, RelativeSelector, SelectorList, SimpleSelector,
+};
 use crate::dom::{Document, Namespace, NodeId, NodeKind};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -119,7 +122,12 @@ fn inclusive_ancestors(doc: &Document, element: Option<NodeId>) -> BTreeSet<Node
 
 /// Whether `element` matches `selector` (its pseudo-element, if any, is ignored: the
 /// caller decides what to do with `selector.pseudo_element`).
-pub fn matches(doc: &Document, element: NodeId, selector: &ComplexSelector, ctx: &MatchContext) -> bool {
+pub fn matches(
+    doc: &Document,
+    element: NodeId,
+    selector: &ComplexSelector,
+    ctx: &MatchContext,
+) -> bool {
     if !doc.is_element(element) || selector.compounds.is_empty() {
         return false;
     }
@@ -128,7 +136,12 @@ pub fn matches(doc: &Document, element: NodeId, selector: &ComplexSelector, ctx:
 }
 
 /// Whether `element` matches any selector of the list.
-pub fn matches_list(doc: &Document, element: NodeId, list: &SelectorList, ctx: &MatchContext) -> bool {
+pub fn matches_list(
+    doc: &Document,
+    element: NodeId,
+    list: &SelectorList,
+    ctx: &MatchContext,
+) -> bool {
     list.0.iter().any(|s| matches(doc, element, s, ctx))
 }
 
@@ -140,7 +153,14 @@ struct Anchor {
     combinator: Combinator,
 }
 
-fn match_from(doc: &Document, element: NodeId, sel: &ComplexSelector, idx: usize, ctx: &MatchContext, anchor: Option<Anchor>) -> bool {
+fn match_from(
+    doc: &Document,
+    element: NodeId,
+    sel: &ComplexSelector,
+    idx: usize,
+    ctx: &MatchContext,
+    anchor: Option<Anchor>,
+) -> bool {
     if !matches_compound(doc, element, &sel.compounds[idx], ctx) {
         return false;
     }
@@ -228,17 +248,83 @@ fn next_element_sibling(doc: &Document, element: NodeId) -> Option<NodeId> {
 }
 
 fn is_html(doc: &Document, element: NodeId) -> bool {
-    matches!(doc.kind(element), NodeKind::Element { ns: Namespace::Html, .. })
+    matches!(
+        doc.kind(element),
+        NodeKind::Element {
+            ns: Namespace::Html,
+            ..
+        }
+    )
 }
 
 /// Attributes whose values HTML compares case-insensitively in selectors.
-const CASE_INSENSITIVE_ATTRS: &[&str] = &["accept", "accept-charset", "align", "alink", "axis", "bgcolor", "charset", "checked", "clear", "codetype", "color", "compact", "declare", "defer", "dir", "direction", "disabled", "enctype", "face", "frame", "hreflang", "http-equiv", "lang", "language", "link", "media", "method", "multiple", "nohref", "noresize", "noshade", "nowrap", "readonly", "rel", "rev", "rules", "scope", "scrolling", "selected", "shape", "target", "text", "type", "valign", "valuetype", "vlink"];
+const CASE_INSENSITIVE_ATTRS: &[&str] = &[
+    "accept",
+    "accept-charset",
+    "align",
+    "alink",
+    "axis",
+    "bgcolor",
+    "charset",
+    "checked",
+    "clear",
+    "codetype",
+    "color",
+    "compact",
+    "declare",
+    "defer",
+    "dir",
+    "direction",
+    "disabled",
+    "enctype",
+    "face",
+    "frame",
+    "hreflang",
+    "http-equiv",
+    "lang",
+    "language",
+    "link",
+    "media",
+    "method",
+    "multiple",
+    "nohref",
+    "noresize",
+    "noshade",
+    "nowrap",
+    "readonly",
+    "rel",
+    "rev",
+    "rules",
+    "scope",
+    "scrolling",
+    "selected",
+    "shape",
+    "target",
+    "text",
+    "type",
+    "valign",
+    "valuetype",
+    "vlink",
+];
 
-pub fn matches_compound(doc: &Document, element: NodeId, compound: &CompoundSelector, ctx: &MatchContext) -> bool {
-    compound.simple.iter().all(|s| matches_simple(doc, element, s, ctx))
+pub fn matches_compound(
+    doc: &Document,
+    element: NodeId,
+    compound: &CompoundSelector,
+    ctx: &MatchContext,
+) -> bool {
+    compound
+        .simple
+        .iter()
+        .all(|s| matches_simple(doc, element, s, ctx))
 }
 
-fn matches_simple(doc: &Document, element: NodeId, simple: &SimpleSelector, ctx: &MatchContext) -> bool {
+fn matches_simple(
+    doc: &Document,
+    element: NodeId,
+    simple: &SimpleSelector,
+    ctx: &MatchContext,
+) -> bool {
     match simple {
         SimpleSelector::Universal => true,
         SimpleSelector::Type(name) => {
@@ -251,7 +337,12 @@ fn matches_simple(doc: &Document, element: NodeId, simple: &SimpleSelector, ctx:
         }
         SimpleSelector::Id(id) => doc.attr(element, "id") == Some(id.as_str()),
         SimpleSelector::Class(c) => doc.has_class(element, c),
-        SimpleSelector::Attribute { name, op, value, case } => {
+        SimpleSelector::Attribute {
+            name,
+            op,
+            value,
+            case,
+        } => {
             let html = is_html(doc, element);
             let attr = if html {
                 let lname = name.to_ascii_lowercase();
@@ -267,17 +358,30 @@ fn matches_simple(doc: &Document, element: NodeId, simple: &SimpleSelector, ctx:
             };
             attr_matches(&attr.value, *op, value, insensitive)
         }
-        SimpleSelector::Nesting => matches_simple(doc, element, &SimpleSelector::PseudoClass(PseudoClass::Scope), ctx),
+        SimpleSelector::Nesting => matches_simple(
+            doc,
+            element,
+            &SimpleSelector::PseudoClass(PseudoClass::Scope),
+            ctx,
+        ),
         SimpleSelector::PseudoClass(pc) => matches_pseudo(doc, element, pc, ctx),
     }
 }
 
 fn attr_matches(actual: &str, op: AttrOp, wanted: &str, insensitive: bool) -> bool {
-    let (a, w) = if insensitive { (actual.to_ascii_lowercase(), wanted.to_ascii_lowercase()) } else { (actual.to_owned(), wanted.to_owned()) };
+    let (a, w) = if insensitive {
+        (actual.to_ascii_lowercase(), wanted.to_ascii_lowercase())
+    } else {
+        (actual.to_owned(), wanted.to_owned())
+    };
     match op {
         AttrOp::Exists => true,
         AttrOp::Equals => a == w,
-        AttrOp::Includes => !w.is_empty() && !w.contains(|c: char| c.is_ascii_whitespace()) && a.split_ascii_whitespace().any(|t| t == w),
+        AttrOp::Includes => {
+            !w.is_empty()
+                && !w.contains(|c: char| c.is_ascii_whitespace())
+                && a.split_ascii_whitespace().any(|t| t == w)
+        }
         AttrOp::DashMatch => a == w || a.starts_with(&format!("{w}-")),
         AttrOp::Prefix => !w.is_empty() && a.starts_with(&w),
         AttrOp::Suffix => !w.is_empty() && a.ends_with(&w),
@@ -286,7 +390,10 @@ fn attr_matches(actual: &str, op: AttrOp, wanted: &str, insensitive: bool) -> bo
 }
 
 fn is_form_control(doc: &Document, el: NodeId) -> bool {
-    matches!(doc.tag(el), Some("button" | "input" | "select" | "textarea" | "optgroup" | "option" | "fieldset"))
+    matches!(
+        doc.tag(el),
+        Some("button" | "input" | "select" | "textarea" | "optgroup" | "option" | "fieldset")
+    )
 }
 
 fn input_type(doc: &Document, el: NodeId) -> String {
@@ -307,7 +414,10 @@ fn is_disabled(doc: &Document, el: NodeId) -> bool {
             }
         }
     }
-    if matches!(doc.tag(el), Some("button" | "input" | "select" | "textarea")) {
+    if matches!(
+        doc.tag(el),
+        Some("button" | "input" | "select" | "textarea")
+    ) {
         // Inside a disabled fieldset, unless inside that fieldset's first legend.
         let mut child = el;
         for anc in doc.ancestors(el) {
@@ -339,7 +449,21 @@ fn is_read_write(doc: &Document, el: NodeId) -> bool {
     match doc.tag(el) {
         Some("input") => {
             let t = input_type(doc, el);
-            let textual = matches!(t.as_str(), "text" | "search" | "url" | "tel" | "email" | "password" | "date" | "month" | "week" | "time" | "datetime-local" | "number");
+            let textual = matches!(
+                t.as_str(),
+                "text"
+                    | "search"
+                    | "url"
+                    | "tel"
+                    | "email"
+                    | "password"
+                    | "date"
+                    | "month"
+                    | "week"
+                    | "time"
+                    | "datetime-local"
+                    | "number"
+            );
             textual && !doc.has_attr(el, "readonly") && !is_disabled(doc, el)
         }
         Some("textarea") => !doc.has_attr(el, "readonly") && !is_disabled(doc, el),
@@ -421,7 +545,13 @@ fn element_dir(doc: &Document, el: NodeId) -> Direction {
 
 /// Position among siblings (1-based) counting elements, optionally of the same type
 /// or matching `of`, from the start or the end.
-fn nth_index(doc: &Document, el: NodeId, kind: NthKind, of: Option<&SelectorList>, ctx: &MatchContext) -> usize {
+fn nth_index(
+    doc: &Document,
+    el: NodeId,
+    kind: NthKind,
+    of: Option<&SelectorList>,
+    ctx: &MatchContext,
+) -> usize {
     let from_end = matches!(kind, NthKind::LastChild | NthKind::LastOfType);
     let of_type = matches!(kind, NthKind::OfType | NthKind::LastOfType);
     let tag = doc.tag(el).unwrap_or("");
@@ -441,12 +571,20 @@ fn nth_index(doc: &Document, el: NodeId, kind: NthKind, of: Option<&SelectorList
         }
     };
     let mut i = 1;
-    let mut cur = if from_end { next_element_sibling(doc, el) } else { prev_element_sibling(doc, el) };
+    let mut cur = if from_end {
+        next_element_sibling(doc, el)
+    } else {
+        prev_element_sibling(doc, el)
+    };
     while let Some(s) = cur {
         if counts(s) {
             i += 1;
         }
-        cur = if from_end { next_element_sibling(doc, s) } else { prev_element_sibling(doc, s) };
+        cur = if from_end {
+            next_element_sibling(doc, s)
+        } else {
+            prev_element_sibling(doc, s)
+        };
     }
     i
 }
@@ -463,18 +601,36 @@ fn anb_matches(a: i32, b: i32, index: usize) -> bool {
 
 fn matches_pseudo(doc: &Document, el: NodeId, pc: &PseudoClass, ctx: &MatchContext) -> bool {
     match pc {
-        PseudoClass::Root => doc.parent(el).is_some_and(|p| matches!(doc.kind(p), NodeKind::Document)),
+        PseudoClass::Root => doc
+            .parent(el)
+            .is_some_and(|p| matches!(doc.kind(p), NodeKind::Document)),
         PseudoClass::Empty => doc.children(el).all(|c| match doc.kind(c) {
             NodeKind::Element { .. } => false,
             NodeKind::Text(t) => t.is_empty(),
             _ => true,
         }),
-        PseudoClass::FirstChild => doc.parent(el).is_some() && prev_element_sibling(doc, el).is_none(),
-        PseudoClass::LastChild => doc.parent(el).is_some() && next_element_sibling(doc, el).is_none(),
-        PseudoClass::OnlyChild => doc.parent(el).is_some() && prev_element_sibling(doc, el).is_none() && next_element_sibling(doc, el).is_none(),
-        PseudoClass::FirstOfType => doc.parent(el).is_some() && nth_index(doc, el, NthKind::OfType, None, ctx) == 1,
-        PseudoClass::LastOfType => doc.parent(el).is_some() && nth_index(doc, el, NthKind::LastOfType, None, ctx) == 1,
-        PseudoClass::OnlyOfType => doc.parent(el).is_some() && nth_index(doc, el, NthKind::OfType, None, ctx) == 1 && nth_index(doc, el, NthKind::LastOfType, None, ctx) == 1,
+        PseudoClass::FirstChild => {
+            doc.parent(el).is_some() && prev_element_sibling(doc, el).is_none()
+        }
+        PseudoClass::LastChild => {
+            doc.parent(el).is_some() && next_element_sibling(doc, el).is_none()
+        }
+        PseudoClass::OnlyChild => {
+            doc.parent(el).is_some()
+                && prev_element_sibling(doc, el).is_none()
+                && next_element_sibling(doc, el).is_none()
+        }
+        PseudoClass::FirstOfType => {
+            doc.parent(el).is_some() && nth_index(doc, el, NthKind::OfType, None, ctx) == 1
+        }
+        PseudoClass::LastOfType => {
+            doc.parent(el).is_some() && nth_index(doc, el, NthKind::LastOfType, None, ctx) == 1
+        }
+        PseudoClass::OnlyOfType => {
+            doc.parent(el).is_some()
+                && nth_index(doc, el, NthKind::OfType, None, ctx) == 1
+                && nth_index(doc, el, NthKind::LastOfType, None, ctx) == 1
+        }
         PseudoClass::Nth { kind, a, b, of } => {
             if doc.parent(el).is_none() {
                 return false;
@@ -493,23 +649,41 @@ fn matches_pseudo(doc: &Document, el: NodeId, pc: &PseudoClass, ctx: &MatchConte
         PseudoClass::Active => ctx.active.contains(&el),
         PseudoClass::Focus => ctx.focused == Some(el),
         PseudoClass::FocusVisible => ctx.focused == Some(el) && ctx.focus_visible,
-        PseudoClass::FocusWithin => ctx.focused.is_some_and(|f| f == el || doc.ancestors(f).any(|a| a == el)),
+        PseudoClass::FocusWithin => ctx
+            .focused
+            .is_some_and(|f| f == el || doc.ancestors(f).any(|a| a == el)),
         PseudoClass::Visited => is_any_link(doc, el) && is_visited(doc, el, ctx),
         PseudoClass::Link => is_any_link(doc, el) && !is_visited(doc, el, ctx),
         PseudoClass::AnyLink => is_any_link(doc, el),
-        PseudoClass::Target => ctx.target_id.as_deref().is_some_and(|t| doc.attr(el, "id") == Some(t)),
+        PseudoClass::Target => ctx
+            .target_id
+            .as_deref()
+            .is_some_and(|t| doc.attr(el, "id") == Some(t)),
         PseudoClass::Checked => match doc.tag(el) {
-            Some("input") => matches!(input_type(doc, el).as_str(), "checkbox" | "radio") && ctx.form_checked(doc, el),
+            Some("input") => {
+                matches!(input_type(doc, el).as_str(), "checkbox" | "radio")
+                    && ctx.form_checked(doc, el)
+            }
             Some("option") => ctx.form_checked(doc, el),
             _ => false,
         },
         PseudoClass::Disabled => is_disabled(doc, el),
         PseudoClass::Enabled => is_form_control(doc, el) && !is_disabled(doc, el),
-        PseudoClass::Required => matches!(doc.tag(el), Some("input" | "select" | "textarea")) && doc.has_attr(el, "required"),
-        PseudoClass::Optional => matches!(doc.tag(el), Some("input" | "select" | "textarea")) && !doc.has_attr(el, "required"),
+        PseudoClass::Required => {
+            matches!(doc.tag(el), Some("input" | "select" | "textarea"))
+                && doc.has_attr(el, "required")
+        }
+        PseudoClass::Optional => {
+            matches!(doc.tag(el), Some("input" | "select" | "textarea"))
+                && !doc.has_attr(el, "required")
+        }
         PseudoClass::ReadWrite => is_read_write(doc, el),
         PseudoClass::ReadOnly => !is_read_write(doc, el),
-        PseudoClass::PlaceholderShown => matches!(doc.tag(el), Some("input" | "textarea")) && doc.attr(el, "placeholder").is_some_and(|p| !p.is_empty()) && ctx.form_value(doc, el).is_empty(),
+        PseudoClass::PlaceholderShown => {
+            matches!(doc.tag(el), Some("input" | "textarea"))
+                && doc.attr(el, "placeholder").is_some_and(|p| !p.is_empty())
+                && ctx.form_value(doc, el).is_empty()
+        }
         PseudoClass::Indeterminate => match doc.tag(el) {
             Some("input") => match input_type(doc, el).as_str() {
                 "checkbox" => ctx.form_indeterminate(doc, el),
@@ -525,7 +699,14 @@ fn matches_pseudo(doc: &Document, el: NodeId, pc: &PseudoClass, ctx: &MatchConte
                 "submit" | "image" => is_default_submit(doc, el),
                 _ => false,
             },
-            Some("button") => !matches!(doc.attr(el, "type").map(|t| t.to_ascii_lowercase()).as_deref(), Some("button" | "reset")) && is_default_submit(doc, el),
+            Some("button") => {
+                !matches!(
+                    doc.attr(el, "type")
+                        .map(|t| t.to_ascii_lowercase())
+                        .as_deref(),
+                    Some("button" | "reset")
+                ) && is_default_submit(doc, el)
+            }
             Some("option") => doc.has_attr(el, "selected"),
             _ => false,
         },
@@ -558,18 +739,31 @@ fn radio_group_has_checked(doc: &Document, el: NodeId, ctx: &MatchContext) -> bo
     }
     let owner = form_owner(doc, el);
     let root = owner.unwrap_or(Document::ROOT);
-    doc.descendants(root).any(|d| doc.is(d, "input") && input_type(doc, d) == "radio" && doc.attr(d, "name") == Some(name) && form_owner(doc, d) == owner && ctx.form_checked(doc, d))
+    doc.descendants(root).any(|d| {
+        doc.is(d, "input")
+            && input_type(doc, d) == "radio"
+            && doc.attr(d, "name") == Some(name)
+            && form_owner(doc, d) == owner
+            && ctx.form_checked(doc, d)
+    })
 }
 
 fn is_default_submit(doc: &Document, el: NodeId) -> bool {
-    let Some(form) = form_owner(doc, el) else { return false };
+    let Some(form) = form_owner(doc, el) else {
+        return false;
+    };
     let first = doc.descendants(form).find(|d| {
         if *d == form || !doc.is_element(*d) {
             return false;
         }
         let submit = match doc.tag(*d) {
             Some("input") => matches!(input_type(doc, *d).as_str(), "submit" | "image"),
-            Some("button") => !matches!(doc.attr(*d, "type").map(|t| t.to_ascii_lowercase()).as_deref(), Some("button" | "reset")),
+            Some("button") => !matches!(
+                doc.attr(*d, "type")
+                    .map(|t| t.to_ascii_lowercase())
+                    .as_deref(),
+                Some("button" | "reset")
+            ),
             _ => false,
         };
         submit && form_owner(doc, *d) == Some(form)
@@ -583,13 +777,22 @@ fn has_matches(doc: &Document, anchor: NodeId, rel: &RelativeSelector, ctx: &Mat
         return false;
     }
     let idx = sel.compounds.len() - 1;
-    let a = Some(Anchor { element: anchor, combinator: rel.combinator });
+    let a = Some(Anchor {
+        element: anchor,
+        combinator: rel.combinator,
+    });
     match rel.combinator {
-        Combinator::Descendant | Combinator::Child => doc.descendants(anchor).skip(1).any(|d| doc.is_element(d) && match_from(doc, d, sel, idx, ctx, a)),
+        Combinator::Descendant | Combinator::Child => doc
+            .descendants(anchor)
+            .skip(1)
+            .any(|d| doc.is_element(d) && match_from(doc, d, sel, idx, ctx, a)),
         Combinator::NextSibling | Combinator::SubsequentSibling => {
             let mut cur = next_element_sibling(doc, anchor);
             while let Some(s) = cur {
-                if doc.descendants(s).any(|d| doc.is_element(d) && match_from(doc, d, sel, idx, ctx, a)) {
+                if doc
+                    .descendants(s)
+                    .any(|d| doc.is_element(d) && match_from(doc, d, sel, idx, ctx, a))
+                {
                     return true;
                 }
                 cur = next_element_sibling(doc, s);
@@ -665,19 +868,31 @@ impl AncestorKeys {
         }
         classes.sort_unstable();
         classes.dedup();
-        AncestorKeys { bloom, classes: std::rc::Rc::new(classes) }
+        AncestorKeys {
+            bloom,
+            classes: std::rc::Rc::new(classes),
+        }
     }
     /// The keys of a child of `parent`, given `parent`'s own ancestor keys.
     pub fn under(&self, doc: &Document, parent: NodeId) -> AncestorKeys {
         let bloom = self.bloom | element_bits(doc, parent);
-        if doc.classes(parent).all(|c| self.classes.binary_search_by(|x| x.as_str().cmp(c)).is_ok()) {
-            return AncestorKeys { bloom, classes: self.classes.clone() };
+        if doc
+            .classes(parent)
+            .all(|c| self.classes.binary_search_by(|x| x.as_str().cmp(c)).is_ok())
+        {
+            return AncestorKeys {
+                bloom,
+                classes: self.classes.clone(),
+            };
         }
         let mut classes = (*self.classes).clone();
         classes.extend(doc.classes(parent).map(str::to_owned));
         classes.sort_unstable();
         classes.dedup();
-        AncestorKeys { bloom, classes: std::rc::Rc::new(classes) }
+        AncestorKeys {
+            bloom,
+            classes: std::rc::Rc::new(classes),
+        }
     }
     pub fn bloom(&self) -> u64 {
         self.bloom
@@ -761,7 +976,14 @@ pub struct SelectorIndex<T> {
 
 impl<T> Default for SelectorIndex<T> {
     fn default() -> Self {
-        SelectorIndex { entries: Vec::new(), ids: BTreeMap::new(), classes: BTreeMap::new(), tags: BTreeMap::new(), ancestor_classes: BTreeMap::new(), other: Vec::new() }
+        SelectorIndex {
+            entries: Vec::new(),
+            ids: BTreeMap::new(),
+            classes: BTreeMap::new(),
+            tags: BTreeMap::new(),
+            ancestor_classes: BTreeMap::new(),
+            other: Vec::new(),
+        }
     }
 }
 
@@ -794,16 +1016,29 @@ impl<T> SelectorIndex<T> {
             self.other.push(i);
         }
         let ancestors = ancestor_requirements(&selector);
-        self.entries.push(IndexEntry { selector, data, ancestors });
+        self.entries.push(IndexEntry {
+            selector,
+            data,
+            ancestors,
+        });
         i
     }
     /// Every entry whose bucket the element falls in, in insertion order. Matching is
     /// still required; pseudo-elements are not filtered.
-    pub fn candidates<'a>(&'a self, doc: &Document, element: NodeId) -> impl Iterator<Item = &'a IndexEntry<T>> + 'a {
+    pub fn candidates<'a>(
+        &'a self,
+        doc: &Document,
+        element: NodeId,
+    ) -> impl Iterator<Item = &'a IndexEntry<T>> + 'a {
         self.candidates_with(doc, element, &AncestorKeys::of(doc, element))
     }
     /// `candidates`, with the element's ancestor keys already built.
-    pub fn candidates_with<'a>(&'a self, doc: &Document, element: NodeId, keys: &AncestorKeys) -> impl Iterator<Item = &'a IndexEntry<T>> + 'a {
+    pub fn candidates_with<'a>(
+        &'a self,
+        doc: &Document,
+        element: NodeId,
+        keys: &AncestorKeys,
+    ) -> impl Iterator<Item = &'a IndexEntry<T>> + 'a {
         let mut idx: Vec<usize> = Vec::new();
         if let Some(id) = doc.attr(element, "id") {
             if let Some(v) = self.ids.get(id) {
@@ -833,14 +1068,29 @@ impl<T> SelectorIndex<T> {
         idx.into_iter().map(move |i| &self.entries[i])
     }
     /// The candidates that match, in insertion order.
-    pub fn matching<'a>(&'a self, doc: &Document, element: NodeId, ctx: &MatchContext) -> Vec<&'a IndexEntry<T>> {
+    pub fn matching<'a>(
+        &'a self,
+        doc: &Document,
+        element: NodeId,
+        ctx: &MatchContext,
+    ) -> Vec<&'a IndexEntry<T>> {
         self.matching_with(doc, element, ctx, &AncestorKeys::of(doc, element))
     }
     /// `matching`, with the element's ancestor keys already built (a cascade walking
     /// the tree carries them down instead of rebuilding them per node).
-    pub fn matching_with<'a>(&'a self, doc: &Document, element: NodeId, ctx: &MatchContext, keys: &AncestorKeys) -> Vec<&'a IndexEntry<T>> {
+    pub fn matching_with<'a>(
+        &'a self,
+        doc: &Document,
+        element: NodeId,
+        ctx: &MatchContext,
+        keys: &AncestorKeys,
+    ) -> Vec<&'a IndexEntry<T>> {
         let bloom = keys.bloom;
-        self.candidates_with(doc, element, keys).filter(|e| e.ancestors & bloom == e.ancestors && matches(doc, element, &e.selector, ctx)).collect()
+        self.candidates_with(doc, element, keys)
+            .filter(|e| {
+                e.ancestors & bloom == e.ancestors && matches(doc, element, &e.selector, ctx)
+            })
+            .collect()
     }
 }
 
@@ -887,7 +1137,11 @@ impl SelectorDeps {
 impl ComplexSelector {
     pub fn dependencies(&self) -> SelectorDeps {
         let mut d = SelectorDeps::default();
-        if self.combinators.iter().any(|c| matches!(c, Combinator::NextSibling | Combinator::SubsequentSibling)) {
+        if self
+            .combinators
+            .iter()
+            .any(|c| matches!(c, Combinator::NextSibling | Combinator::SubsequentSibling))
+        {
             d.structural = true;
         }
         for s in self.simple_selectors() {
@@ -932,31 +1186,62 @@ fn simple_deps(s: &SimpleSelector) -> SelectorDeps {
             let name = name.split('(').next().unwrap_or(name);
             d.pseudo_classes.insert(name.to_owned());
             match pc {
-                PseudoClass::Root | PseudoClass::Empty | PseudoClass::FirstChild | PseudoClass::LastChild | PseudoClass::OnlyChild | PseudoClass::FirstOfType | PseudoClass::LastOfType | PseudoClass::OnlyOfType => d.structural = true,
+                PseudoClass::Root
+                | PseudoClass::Empty
+                | PseudoClass::FirstChild
+                | PseudoClass::LastChild
+                | PseudoClass::OnlyChild
+                | PseudoClass::FirstOfType
+                | PseudoClass::LastOfType
+                | PseudoClass::OnlyOfType => d.structural = true,
                 PseudoClass::Nth { of, .. } => {
                     d.structural = true;
                     if let Some(l) = of {
                         d.merge(l.dependencies());
                     }
                 }
-                PseudoClass::Not(l) | PseudoClass::Is(l) | PseudoClass::Where(l) => d.merge(l.dependencies()),
+                PseudoClass::Not(l) | PseudoClass::Is(l) | PseudoClass::Where(l) => {
+                    d.merge(l.dependencies())
+                }
                 PseudoClass::Has(rel) => {
                     d.has = true;
                     for r in rel {
-                        if matches!(r.combinator, Combinator::NextSibling | Combinator::SubsequentSibling) {
+                        if matches!(
+                            r.combinator,
+                            Combinator::NextSibling | Combinator::SubsequentSibling
+                        ) {
                             d.structural = true;
                         }
                         d.merge(r.selector.dependencies());
                     }
                 }
-                PseudoClass::Hover | PseudoClass::Active | PseudoClass::Focus | PseudoClass::FocusVisible | PseudoClass::FocusWithin | PseudoClass::Target | PseudoClass::Scope => d.state = true,
+                PseudoClass::Hover
+                | PseudoClass::Active
+                | PseudoClass::Focus
+                | PseudoClass::FocusVisible
+                | PseudoClass::FocusWithin
+                | PseudoClass::Target
+                | PseudoClass::Scope => d.state = true,
                 PseudoClass::Visited | PseudoClass::Link | PseudoClass::AnyLink => {
                     d.state = true;
                     d.attributes.insert("href".into());
                 }
-                PseudoClass::Checked | PseudoClass::Indeterminate | PseudoClass::PlaceholderShown | PseudoClass::Default => {
+                PseudoClass::Checked
+                | PseudoClass::Indeterminate
+                | PseudoClass::PlaceholderShown
+                | PseudoClass::Default => {
                     d.form = true;
-                    d.attributes.extend(["checked", "selected", "value", "type", "placeholder", "name"].map(String::from));
+                    d.attributes.extend(
+                        [
+                            "checked",
+                            "selected",
+                            "value",
+                            "type",
+                            "placeholder",
+                            "name",
+                        ]
+                        .map(String::from),
+                    );
                 }
                 PseudoClass::Disabled | PseudoClass::Enabled => {
                     d.form = true;
@@ -967,7 +1252,9 @@ fn simple_deps(s: &SimpleSelector) -> SelectorDeps {
                 }
                 PseudoClass::ReadOnly | PseudoClass::ReadWrite => {
                     d.form = true;
-                    d.attributes.extend(["readonly", "disabled", "contenteditable", "type"].map(String::from));
+                    d.attributes.extend(
+                        ["readonly", "disabled", "contenteditable", "type"].map(String::from),
+                    );
                 }
                 PseudoClass::Lang(_) => {
                     d.attributes.insert("lang".into());
@@ -1021,7 +1308,8 @@ mod tests {
                 continue;
             }
             let start = *pos;
-            while *pos < c.len() && (c[*pos].is_alphanumeric() || c[*pos] == '-' || c[*pos] == ':') {
+            while *pos < c.len() && (c[*pos].is_alphanumeric() || c[*pos] == '-' || c[*pos] == ':')
+            {
                 *pos += 1;
             }
             let tag: String = c[start..*pos].iter().collect();
@@ -1032,17 +1320,28 @@ mod tests {
                         let kind = c[*pos];
                         *pos += 1;
                         let s = *pos;
-                        while *pos < c.len() && (c[*pos].is_alphanumeric() || c[*pos] == '-' || c[*pos] == '_') {
+                        while *pos < c.len()
+                            && (c[*pos].is_alphanumeric() || c[*pos] == '-' || c[*pos] == '_')
+                        {
                             *pos += 1;
                         }
                         let v: String = c[s..*pos].iter().collect();
                         if kind == '#' {
-                            attrs.push(Attribute { name: "id".into(), value: v });
-                        } else if let Some(a) = attrs.iter_mut().find(|a: &&mut Attribute| a.name == "class") {
+                            attrs.push(Attribute {
+                                name: "id".into(),
+                                value: v,
+                            });
+                        } else if let Some(a) = attrs
+                            .iter_mut()
+                            .find(|a: &&mut Attribute| a.name == "class")
+                        {
                             a.value.push(' ');
                             a.value.push_str(&v);
                         } else {
-                            attrs.push(Attribute { name: "class".into(), value: v });
+                            attrs.push(Attribute {
+                                name: "class".into(),
+                                value: v,
+                            });
                         }
                     }
                     Some('[') => {
@@ -1054,7 +1353,10 @@ mod tests {
                         let body: String = c[s..*pos].iter().collect();
                         *pos += 1;
                         let (n, v) = body.split_once('=').unwrap_or((&body, ""));
-                        attrs.push(Attribute { name: n.to_ascii_lowercase(), value: v.to_owned() });
+                        attrs.push(Attribute {
+                            name: n.to_ascii_lowercase(),
+                            value: v.to_owned(),
+                        });
                     }
                     _ => break,
                 }
@@ -1088,7 +1390,10 @@ mod tests {
     fn all(doc: &Document, s: &str) -> Vec<String> {
         let ctx = MatchContext::new();
         let list = parse_selector_list(s).unwrap();
-        doc.descendants(Document::ROOT).filter(|n| doc.is_element(*n) && matches_list(doc, *n, &list, &ctx)).filter_map(|n| doc.attr(n, "id").map(str::to_owned)).collect()
+        doc.descendants(Document::ROOT)
+            .filter(|n| doc.is_element(*n) && matches_list(doc, *n, &list, &ctx))
+            .filter_map(|n| doc.attr(n, "id").map(str::to_owned))
+            .collect()
     }
 
     const DOC: &str = r#"html#html{ head#head{} body#body{ div#a.x.y[data-foo=Bar] { p#p1.first{"t"} p#p2{} span#s1{} p#p3.last{} } div#b { "" } div#c { p#c1{} "x" } ul#list{ li#l1{} li#l2{} li#l3.imp{} li#l4{} li#l5.imp{} li#l6{} li#l7{} } a#link[href=/x]{} a#nolink{} } }"#;
@@ -1109,7 +1414,11 @@ mod tests {
         assert!(!m(&d, "a", "[data-foo=bar]"));
         assert!(m(&d, "a", "[data-foo=bar i]"));
         assert!(!m(&d, "a", "[data-foo=bar s]"));
-        assert!(m(&d, "a", "[data-foo^=B][data-foo$=r][data-foo*=a][data-foo~=Bar][data-foo|=Bar]"));
+        assert!(m(
+            &d,
+            "a",
+            "[data-foo^=B][data-foo$=r][data-foo*=a][data-foo~=Bar][data-foo|=Bar]"
+        ));
         assert!(!m(&d, "a", "[data-foo^='']"));
         assert!(m(&d, "a", "[class~=x][class^='x y'][class$=y]"));
         assert!(!m(&d, "a", "[class~='x y']"));
@@ -1118,7 +1427,14 @@ mod tests {
         assert!(m(&d, "html", "svg|html"));
         // SVG elements keep case and match case-sensitively.
         let mut d2 = Document::new();
-        let svg = d2.create(NodeKind::Element { ns: Namespace::Svg, tag: "linearGradient".into(), attrs: vec![Attribute { name: "viewBox".into(), value: "0".into() }] });
+        let svg = d2.create(NodeKind::Element {
+            ns: Namespace::Svg,
+            tag: "linearGradient".into(),
+            attrs: vec![Attribute {
+                name: "viewBox".into(),
+                value: "0".into(),
+            }],
+        });
         d2.append(Document::ROOT, svg);
         let ctx = MatchContext::new();
         assert!(matches(&d2, svg, &sel("linearGradient"), &ctx));
@@ -1284,7 +1600,9 @@ mod tests {
 
     #[test]
     fn form_pseudo_classes() {
-        let d = build(r#"form#f{ input#t[type=text][required]{} input#cb[type=checkbox][checked]{} input#cb2[type=checkbox]{} input#r1[type=radio][name=g]{} input#r2[type=radio][name=g]{} input#r3[type=radio][name=h][checked]{} input#r4[type=radio][name=h]{} select#sel{ option#o1[selected]{} optgroup#og[disabled]{ option#o2{} } } fieldset#fs[disabled]{ legend#lg{ input#in-legend{} } input#in-fs{} } input#dis[disabled]{} button#btn{} button#btn2{} input#ro[readonly]{} input#ph[placeholder=Name]{} input#ph2[placeholder=Name][value=x]{} textarea#ta[placeholder=x]{} textarea#ta2{"filled"} progress#pr{} progress#pr2[value=1]{} div#ce[contenteditable]{ span#ce-child{} } div#ce2[contenteditable=false]{} custom-el#ce3{} p#plain{} }"#);
+        let d = build(
+            r#"form#f{ input#t[type=text][required]{} input#cb[type=checkbox][checked]{} input#cb2[type=checkbox]{} input#r1[type=radio][name=g]{} input#r2[type=radio][name=g]{} input#r3[type=radio][name=h][checked]{} input#r4[type=radio][name=h]{} select#sel{ option#o1[selected]{} optgroup#og[disabled]{ option#o2{} } } fieldset#fs[disabled]{ legend#lg{ input#in-legend{} } input#in-fs{} } input#dis[disabled]{} button#btn{} button#btn2{} input#ro[readonly]{} input#ph[placeholder=Name]{} input#ph2[placeholder=Name][value=x]{} textarea#ta[placeholder=x]{} textarea#ta2{"filled"} progress#pr{} progress#pr2[value=1]{} div#ce[contenteditable]{ span#ce-child{} } div#ce2[contenteditable=false]{} custom-el#ce3{} p#plain{} }"#,
+        );
         assert!(m(&d, "cb", ":checked"));
         assert!(!m(&d, "cb2", ":checked"));
         assert!(m(&d, "o1", ":checked"));
@@ -1346,7 +1664,10 @@ mod tests {
             }
         }
         let s = S;
-        let ctx = MatchContext { form: Some(&s), ..MatchContext::new() };
+        let ctx = MatchContext {
+            form: Some(&s),
+            ..MatchContext::new()
+        };
         assert!(mc(&d, "cb2", ":checked", &ctx));
         assert!(!mc(&d, "cb", ":checked", &ctx));
         assert!(mc(&d, "cb", ":indeterminate", &ctx));
@@ -1356,7 +1677,9 @@ mod tests {
 
     #[test]
     fn lang_and_dir() {
-        let d = build(r#"html#h[lang=en-US]{ body#b{ p#p{} div#de[lang=de-CH]{ span#s{} } div#none[lang=]{} bdo#r[dir=rtl]{ i#ri{} } bdo#l[dir=LTR]{} } }"#);
+        let d = build(
+            r#"html#h[lang=en-US]{ body#b{ p#p{} div#de[lang=de-CH]{ span#s{} } div#none[lang=]{} bdo#r[dir=rtl]{ i#ri{} } bdo#l[dir=LTR]{} } }"#,
+        );
         assert!(m(&d, "p", ":lang(en)"));
         assert!(m(&d, "p", ":lang(EN-us)"));
         assert!(!m(&d, "p", ":lang(en-GB)"));
@@ -1389,7 +1712,21 @@ mod tests {
     fn selector_index_candidates() {
         let d = build(DOC);
         let mut idx: SelectorIndex<u32> = SelectorIndex::new();
-        for (i, s) in ["#a", ".x", "div", "p", "*", ":hover", "body .first", "div > span#s1", ".x.y", "P"].iter().enumerate() {
+        for (i, s) in [
+            "#a",
+            ".x",
+            "div",
+            "p",
+            "*",
+            ":hover",
+            "body .first",
+            "div > span#s1",
+            ".x.y",
+            "P",
+        ]
+        .iter()
+        .enumerate()
+        {
             idx.insert(sel(s), i as u32);
         }
         let cands: Vec<u32> = idx.candidates(&d, find(&d, "a")).map(|e| e.data).collect();
@@ -1398,9 +1735,17 @@ mod tests {
         assert_eq!(cands, vec![3, 4, 5, 6, 9]);
         let cands: Vec<u32> = idx.candidates(&d, find(&d, "s1")).map(|e| e.data).collect();
         assert_eq!(cands, vec![4, 5, 7]);
-        let matched: Vec<u32> = idx.matching(&d, find(&d, "p1"), &MatchContext::new()).iter().map(|e| e.data).collect();
+        let matched: Vec<u32> = idx
+            .matching(&d, find(&d, "p1"), &MatchContext::new())
+            .iter()
+            .map(|e| e.data)
+            .collect();
         assert_eq!(matched, vec![3, 4, 6, 9]);
-        let matched: Vec<u32> = idx.matching(&d, find(&d, "s1"), &MatchContext::new()).iter().map(|e| e.data).collect();
+        let matched: Vec<u32> = idx
+            .matching(&d, find(&d, "s1"), &MatchContext::new())
+            .iter()
+            .map(|e| e.data)
+            .collect();
         assert_eq!(matched, vec![4, 7]);
         assert_eq!(idx.len(), 10);
         // A pseudo-element selector is bucketed by its originating compound.
@@ -1412,10 +1757,25 @@ mod tests {
     fn dependencies() {
         let d = sel("div.a#b[data-x]:hover > p:nth-child(2 of .c):not(.d)").dependencies();
         assert_eq!(d.tags, ["div", "p"].map(String::from).into_iter().collect());
-        assert_eq!(d.classes, ["a", "c", "d"].map(String::from).into_iter().collect());
+        assert_eq!(
+            d.classes,
+            ["a", "c", "d"].map(String::from).into_iter().collect()
+        );
         assert_eq!(d.ids, ["b"].map(String::from).into_iter().collect());
-        assert_eq!(d.attributes, ["class", "data-x", "id"].map(String::from).into_iter().collect());
-        assert_eq!(d.pseudo_classes, ["hover", "not", "nth-child"].map(String::from).into_iter().collect());
+        assert_eq!(
+            d.attributes,
+            ["class", "data-x", "id"]
+                .map(String::from)
+                .into_iter()
+                .collect()
+        );
+        assert_eq!(
+            d.pseudo_classes,
+            ["hover", "not", "nth-child"]
+                .map(String::from)
+                .into_iter()
+                .collect()
+        );
         assert!(d.structural);
         assert!(d.state);
         assert!(!d.has);

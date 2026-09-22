@@ -1031,7 +1031,10 @@ fn covers_and_icons_are_real_on_the_music_sites() {
     let was = liked(&mut world);
     assert_eq!(like_label(&world), if was { "Remove like" } else { "Like" });
     let before = thumb(&world);
-    assert!(before.len() >= 3, "the thumb is drawn from boxes: {before:?}");
+    assert!(
+        before.len() >= 3,
+        "the thumb is drawn from boxes: {before:?}"
+    );
     click(&mut world, &actor, screen, "bar-like");
     assert_eq!(liked(&mut world), !was);
     assert_eq!(like_label(&world), if was { "Like" } else { "Remove like" });

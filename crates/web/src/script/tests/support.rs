@@ -3,9 +3,21 @@ pub use crate::script::{LogLevel, MemoryHost, Realm};
 /// The host the area tests share: a few canned URLs and in-memory storage.
 pub fn default_host() -> MemoryHost {
     MemoryHost::new()
-        .with_response("https://example.test/api/data", "application/json", "{\"n\":7,\"s\":\"str\"}")
-        .with_response("https://example.test/s.css", "text/css", "#d { color: red }")
-        .with_response("https://example.test/ext.js", "text/javascript", "console.log('EXT'); window.ext = 1;")
+        .with_response(
+            "https://example.test/api/data",
+            "application/json",
+            "{\"n\":7,\"s\":\"str\"}",
+        )
+        .with_response(
+            "https://example.test/s.css",
+            "text/css",
+            "#d { color: red }",
+        )
+        .with_response(
+            "https://example.test/ext.js",
+            "text/javascript",
+            "console.log('EXT'); window.ext = 1;",
+        )
         .with_response("https://example.test/pic.png", "image/png", "")
         .with_response("https://example.test/x", "text/plain", "x")
         .with_response("https://example.test/echo", "text/plain", "echoed")
@@ -32,12 +44,22 @@ pub fn run(body_html: &str, script: &str) -> Realm {
 
 /// Console output lines (log level), joined with newlines.
 pub fn logs(r: &Realm) -> String {
-    r.logs().iter().filter(|l| l.level == LogLevel::Log || l.level == LogLevel::Info).map(|l| l.text.clone()).collect::<Vec<_>>().join("\n")
+    r.logs()
+        .iter()
+        .filter(|l| l.level == LogLevel::Log || l.level == LogLevel::Info)
+        .map(|l| l.text.clone())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Console error lines.
 pub fn errors(r: &Realm) -> String {
-    r.logs().iter().filter(|l| l.level == LogLevel::Error || l.level == LogLevel::Warn).map(|l| l.text.clone()).collect::<Vec<_>>().join("\n")
+    r.logs()
+        .iter()
+        .filter(|l| l.level == LogLevel::Error || l.level == LogLevel::Warn)
+        .map(|l| l.text.clone())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Runs `script` and returns what it logged; panics on a page error.

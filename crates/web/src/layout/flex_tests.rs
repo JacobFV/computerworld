@@ -29,7 +29,11 @@ fn lp(n: i32) -> LengthPercentage {
     LengthPercentage::Length(px(n))
 }
 fn side(w: i32) -> BorderSide {
-    BorderSide { width: px(w), style: BorderStyle::Solid, color: cw_scene::Color(0, 0, 0, 255) }
+    BorderSide {
+        width: px(w),
+        style: BorderStyle::Solid,
+        color: cw_scene::Color(0, 0, 0, 255),
+    }
 }
 fn font() -> Font {
     ComputedStyle::initial().font
@@ -68,7 +72,10 @@ impl T {
         T { doc, styles, body }
     }
     fn style_of(&self, n: NodeId) -> ComputedStyle {
-        self.styles.get(n).cloned().unwrap_or_else(ComputedStyle::initial)
+        self.styles
+            .get(n)
+            .cloned()
+            .unwrap_or_else(ComputedStyle::initial)
     }
     fn el(&mut self, parent: NodeId, tag: &str, f: impl FnOnce(&mut ComputedStyle)) -> NodeId {
         let n = self.doc.create_element(tag, vec![]);
@@ -83,7 +90,13 @@ impl T {
         self.el(parent, "div", f)
     }
     /// A `display: flex` container with this width and height (`None` = auto).
-    fn flex(&mut self, parent: NodeId, w: i32, h: Option<i32>, f: impl FnOnce(&mut ComputedStyle)) -> NodeId {
+    fn flex(
+        &mut self,
+        parent: NodeId,
+        w: i32,
+        h: Option<i32>,
+        f: impl FnOnce(&mut ComputedStyle),
+    ) -> NodeId {
         self.div(parent, |s| {
             s.display = Display::Flex;
             s.width = len(w);
@@ -94,7 +107,13 @@ impl T {
         })
     }
     /// An item with a fixed size.
-    fn item(&mut self, parent: NodeId, w: i32, h: i32, f: impl FnOnce(&mut ComputedStyle)) -> NodeId {
+    fn item(
+        &mut self,
+        parent: NodeId,
+        w: i32,
+        h: i32,
+        f: impl FnOnce(&mut ComputedStyle),
+    ) -> NodeId {
         self.div(parent, |s| {
             s.width = len(w);
             s.height = len(h);
@@ -107,11 +126,24 @@ impl T {
         n
     }
     fn layout(&self) -> FragmentTree {
-        layout(&self.doc, &self.styles, Viewport { width: 800, height: 600, scale: 1, zoom: 100 })
+        layout(
+            &self.doc,
+            &self.styles,
+            Viewport {
+                width: 800,
+                height: 600,
+                scale: 1,
+                zoom: 100,
+            },
+        )
     }
     fn rect(&self, tree: &FragmentTree, n: NodeId) -> Rect {
         let rs = tree.rects_of(n);
-        assert!(!rs.is_empty(), "no fragment for node {n:?}\n{}", debug::dump_doc(&self.doc, tree));
+        assert!(
+            !rs.is_empty(),
+            "no fragment for node {n:?}\n{}",
+            debug::dump_doc(&self.doc, tree)
+        );
         rs[0]
     }
 }
@@ -135,7 +167,12 @@ fn texts(tree: &FragmentTree) -> Vec<(String, Rect, Au)> {
 }
 
 fn box_of(tree: &FragmentTree, n: NodeId) -> Fragment {
-    find(&tree.root, &|f| matches!(f.kind, FragmentKind::Box { source: StyleSource::Element(x), .. } if x == n)).cloned().expect("box fragment")
+    find(
+        &tree.root,
+        &|f| matches!(f.kind, FragmentKind::Box { source: StyleSource::Element(x), .. } if x == n),
+    )
+    .cloned()
+    .expect("box fragment")
 }
 
 fn box_baseline(f: &Fragment) -> Option<Au> {
@@ -271,7 +308,10 @@ fn flex_basis_content_ignores_width() {
     let tree = t.layout();
     assert_eq!(t.rect(&tree, a).size.width, tw("Hello"));
     // `min-width: auto` is min(specified 10, content): the specified size wins.
-    assert_eq!(t.rect(&tree, b), Rect::new(tw("Hello"), Au::ZERO, px(10), px(20)));
+    assert_eq!(
+        t.rect(&tree, b),
+        Rect::new(tw("Hello"), Au::ZERO, px(10), px(20))
+    );
 }
 
 #[test]
@@ -336,7 +376,11 @@ fn wrap_into_three_lines_with_gaps() {
     let tree = t.layout();
     for (i, &n) in items.iter().enumerate() {
         let (col, row) = (i % 2, i / 2);
-        assert_eq!(t.rect(&tree, n), r(col as i32 * 110, row as i32 * 55, 100, 50), "item {i}");
+        assert_eq!(
+            t.rect(&tree, n),
+            r(col as i32 * 110, row as i32 * 55, 100, 50),
+            "item {i}"
+        );
     }
     assert_eq!(t.rect(&tree, c), r(0, 0, 300, 160));
 }
@@ -360,7 +404,14 @@ fn align_content_values_on_two_lines() {
         let items: Vec<NodeId> = (0..4).map(|_| t.item(c, 150, 50, |_| {})).collect();
         let tree = t.layout();
         assert_eq!(t.rect(&tree, items[0]).origin.y, px(y0), "{ac:?}");
-        assert_eq!(t.rect(&tree, items[3]).origin, crate::geom::Point { x: px(150), y: px(y1) }, "{ac:?}");
+        assert_eq!(
+            t.rect(&tree, items[3]).origin,
+            crate::geom::Point {
+                x: px(150),
+                y: px(y1)
+            },
+            "{ac:?}"
+        );
     }
     // space-evenly: 200/3 between the edges and the lines.
     let mut t = T::new();
@@ -389,7 +440,9 @@ fn align_content_stretch_grows_lines_and_stretched_items() {
 #[test]
 fn wrap_reverse_stacks_lines_from_the_bottom() {
     let mut t = T::new();
-    let c = t.flex(t.body, 300, Some(200), |s| s.flex_wrap = FlexWrap::WrapReverse);
+    let c = t.flex(t.body, 300, Some(200), |s| {
+        s.flex_wrap = FlexWrap::WrapReverse
+    });
     let items: Vec<NodeId> = (0..4).map(|_| t.item(c, 150, 50, |_| {})).collect();
     let tree = t.layout();
     // Lines stretched to 100 each; the first line sits at the cross-start (bottom)
@@ -422,7 +475,9 @@ fn justify_content_values_with_positive_free_space() {
         }
     }
     let mut t = T::new();
-    let c = t.flex(t.body, 300, Some(20), |s| s.justify_content = JustifyContent::SpaceEvenly);
+    let c = t.flex(t.body, 300, Some(20), |s| {
+        s.justify_content = JustifyContent::SpaceEvenly
+    });
     let items: Vec<NodeId> = (0..3).map(|_| t.item(c, 50, 20, |_| {})).collect();
     let tree = t.layout();
     assert_eq!(t.rect(&tree, items[0]).origin.x, Au(2400)); // 37.5 px
@@ -444,7 +499,9 @@ fn justify_content_with_negative_free_space_uses_fallbacks() {
     for (jc, xs) in cases {
         let mut t = T::new();
         let c = t.flex(t.body, 300, Some(20), |s| s.justify_content = jc);
-        let items: Vec<NodeId> = (0..3).map(|_| t.item(c, 150, 20, |s| s.flex_shrink = 0)).collect();
+        let items: Vec<NodeId> = (0..3)
+            .map(|_| t.item(c, 150, 20, |s| s.flex_shrink = 0))
+            .collect();
         let tree = t.layout();
         for (i, &n) in items.iter().enumerate() {
             assert_eq!(t.rect(&tree, n).origin.x, px(xs[i]), "{jc:?} item {i}");
@@ -454,7 +511,12 @@ fn justify_content_with_negative_free_space_uses_fallbacks() {
 
 #[test]
 fn justify_start_end_left_right_in_row_reverse() {
-    let cases: [(JustifyContent, i32); 4] = [(JustifyContent::Start, 0), (JustifyContent::End, 250), (JustifyContent::Left, 0), (JustifyContent::Right, 250)];
+    let cases: [(JustifyContent, i32); 4] = [
+        (JustifyContent::Start, 0),
+        (JustifyContent::End, 250),
+        (JustifyContent::Left, 0),
+        (JustifyContent::Right, 250),
+    ];
     for (jc, x) in cases {
         let mut t = T::new();
         let c = t.flex(t.body, 300, Some(20), |s| {
@@ -470,7 +532,9 @@ fn justify_start_end_left_right_in_row_reverse() {
 #[test]
 fn row_reverse_lays_items_from_the_right() {
     let mut t = T::new();
-    let c = t.flex(t.body, 300, Some(20), |s| s.flex_direction = FlexDirection::RowReverse);
+    let c = t.flex(t.body, 300, Some(20), |s| {
+        s.flex_direction = FlexDirection::RowReverse
+    });
     let a = t.item(c, 50, 20, |_| {});
     let b = t.item(c, 50, 20, |_| {});
     let d = t.item(c, 50, 20, |_| {});
@@ -483,7 +547,9 @@ fn row_reverse_lays_items_from_the_right() {
 #[test]
 fn auto_margins_absorb_main_free_space_before_justify() {
     let mut t = T::new();
-    let c = t.flex(t.body, 300, Some(20), |s| s.justify_content = JustifyContent::Center);
+    let c = t.flex(t.body, 300, Some(20), |s| {
+        s.justify_content = JustifyContent::Center
+    });
     let a = t.item(c, 50, 20, |_| {});
     let b = t.item(c, 50, 20, |s| s.margin.left = LengthPercentageAuto::Auto);
     let d = t.item(c, 50, 20, |_| {});
@@ -524,7 +590,9 @@ fn auto_margins_in_the_cross_axis_center_or_push() {
 #[test]
 fn align_items_and_align_self_positions() {
     let mut t = T::new();
-    let c = t.flex(t.body, 300, Some(100), |s| s.align_items = AlignItems::FlexEnd);
+    let c = t.flex(t.body, 300, Some(100), |s| {
+        s.align_items = AlignItems::FlexEnd
+    });
     let a = t.item(c, 50, 50, |_| {});
     let b = t.item(c, 50, 50, |s| s.align_self = AlignSelf::Center);
     let d = t.item(c, 50, 50, |s| s.align_self = AlignSelf::FlexStart);
@@ -574,7 +642,12 @@ fn baseline_alignment_with_different_font_sizes() {
     let ts = texts(&tree);
     let small = ts.iter().find(|(s, _, _)| s == "small").unwrap();
     let big = ts.iter().find(|(s, _, _)| s == "big").unwrap();
-    assert_eq!(small.2, big.2, "baselines line up\n{}", debug::dump_doc(&t.doc, &tree));
+    assert_eq!(
+        small.2,
+        big.2,
+        "baselines line up\n{}",
+        debug::dump_doc(&t.doc, &tree)
+    );
     assert_eq!(t.rect(&tree, b).origin.y, px(0));
     assert!(t.rect(&tree, a).origin.y > px(0));
     // The line is as tall as the tallest baseline-aligned extent; the container's
@@ -596,7 +669,10 @@ fn baseline_of_item_without_text_is_its_bottom_edge() {
     // The empty box's synthesized baseline (its bottom, 40) is the lowest.
     assert_eq!(t.rect(&tree, b).origin.y, px(0));
     assert_eq!(x.2, px(40));
-    assert_eq!(t.rect(&tree, c).size.height, px(40).max(t.rect(&tree, a).bottom()));
+    assert_eq!(
+        t.rect(&tree, c).size.height,
+        px(40).max(t.rect(&tree, a).bottom())
+    );
 }
 
 #[test]
@@ -625,14 +701,20 @@ fn order_sorts_items_stably_for_layout_and_painting() {
     assert_eq!(t.rect(&tree, d).origin.x, px(100));
     assert_eq!(t.rect(&tree, a).origin.x, px(150));
     let cf = box_of(&tree, c);
-    let order: Vec<NodeId> = cf.children.iter().map(|f| f.source().unwrap().node()).collect();
+    let order: Vec<NodeId> = cf
+        .children
+        .iter()
+        .map(|f| f.source().unwrap().node())
+        .collect();
     assert_eq!(order, vec![b, e, d, a]);
 }
 
 #[test]
 fn column_with_definite_height_grows_and_stretches_widths() {
     let mut t = T::new();
-    let c = t.flex(t.body, 200, Some(300), |s| s.flex_direction = FlexDirection::Column);
+    let c = t.flex(t.body, 200, Some(300), |s| {
+        s.flex_direction = FlexDirection::Column
+    });
     let a = t.div(c, |s| {
         s.height = len(50);
         s.flex_grow = 1000;
@@ -682,7 +764,9 @@ fn column_max_height_shrinks_items_but_content_minimum_holds() {
     assert_eq!(t.rect(&tree, c).size.height, px(100));
     // With content, `min-height: auto` stops the shrink at the content height.
     let mut t = T::new();
-    let c = t.flex(t.body, 200, Some(100), |s| s.flex_direction = FlexDirection::Column);
+    let c = t.flex(t.body, 200, Some(100), |s| {
+        s.flex_direction = FlexDirection::Column
+    });
     let a = t.div(c, |_| {});
     t.div(a, |s| s.height = len(80));
     let b = t.div(c, |s| s.overflow_y = Overflow::Hidden);
@@ -696,14 +780,18 @@ fn column_max_height_shrinks_items_but_content_minimum_holds() {
 #[test]
 fn column_reverse_and_percent_basis_without_definite_height() {
     let mut t = T::new();
-    let c = t.flex(t.body, 200, Some(300), |s| s.flex_direction = FlexDirection::ColumnReverse);
+    let c = t.flex(t.body, 200, Some(300), |s| {
+        s.flex_direction = FlexDirection::ColumnReverse
+    });
     let a = t.div(c, |s| s.height = len(50));
     let b = t.div(c, |s| s.height = len(50));
     let tree = t.layout();
     assert_eq!(t.rect(&tree, a).origin.y, px(250));
     assert_eq!(t.rect(&tree, b).origin.y, px(200));
     let mut t = T::new();
-    let c = t.flex(t.body, 200, None, |s| s.flex_direction = FlexDirection::Column);
+    let c = t.flex(t.body, 200, None, |s| {
+        s.flex_direction = FlexDirection::Column
+    });
     let a = t.div(c, |s| s.flex_basis = pct(50));
     t.div(a, |s| s.height = len(30));
     let tree = t.layout();
@@ -735,7 +823,13 @@ fn text_runs_become_anonymous_items_and_white_space_is_dropped() {
     let tree = t.layout();
     let cf = box_of(&tree, c);
     assert_eq!(cf.children.len(), 2, "{}", debug::dump_doc(&t.doc, &tree));
-    assert!(matches!(cf.children[0].kind, FragmentKind::Box { source: StyleSource::Anonymous(_), .. }));
+    assert!(matches!(
+        cf.children[0].kind,
+        FragmentKind::Box {
+            source: StyleSource::Anonymous(_),
+            ..
+        }
+    ));
     assert_eq!(cf.children[0].rect.size.width, tw("hello"));
     assert_eq!(t.rect(&tree, a).origin.x, tw("hello"));
     assert_eq!(t.rect(&tree, c).size.height, lh());
@@ -858,7 +952,10 @@ fn inline_flex_sits_on_the_line_with_its_first_item_baseline() {
     let one = ts.iter().find(|(s, _, _)| s == "one").unwrap();
     assert_eq!(x.2, one.2, "{}", debug::dump_doc(&t.doc, &tree));
     let cr = t.rect(&tree, c);
-    assert_eq!(cr.size.width, tw("one") + tw("two").max(tw("lines")) + px(10));
+    assert_eq!(
+        cr.size.width,
+        tw("one") + tw("two").max(tw("lines")) + px(10)
+    );
     assert_eq!(cr.size.height, lh() * 2 + px(10));
     assert_eq!(cr.origin.x, tw("x"));
 }
@@ -936,7 +1033,9 @@ fn overflow_makes_the_container_a_scroll_container() {
     let tree = t.layout();
     let cf = box_of(&tree, c);
     let info = match &cf.kind {
-        FragmentKind::Box { scroll: Some(i), .. } => *i,
+        FragmentKind::Box {
+            scroll: Some(i), ..
+        } => *i,
         _ => panic!("no scroll info\n{}", debug::dump_doc(&t.doc, &tree)),
     };
     assert_eq!(info.content_width, px(400));
@@ -949,7 +1048,9 @@ fn overflow_makes_the_container_a_scroll_container() {
 #[test]
 fn relative_offsets_apply_after_alignment_and_items_stack_with_z_index() {
     let mut t = T::new();
-    let c = t.flex(t.body, 300, Some(100), |s| s.align_items = AlignItems::Center);
+    let c = t.flex(t.body, 300, Some(100), |s| {
+        s.align_items = AlignItems::Center
+    });
     let a = t.item(c, 50, 50, |s| {
         s.position = Position::Relative;
         s.inset.left = m(10);
@@ -967,7 +1068,13 @@ fn relative_offsets_apply_after_alignment_and_items_stack_with_z_index() {
 fn replaced_item_grows_and_keeps_its_height() {
     let mut t = T::new();
     let c = t.flex(t.body, 300, None, |_| {});
-    let img = t.doc.create_element("img", vec![crate::dom::Attribute { name: "src".into(), value: "a.png".into() }]);
+    let img = t.doc.create_element(
+        "img",
+        vec![crate::dom::Attribute {
+            name: "src".into(),
+            value: "a.png".into(),
+        }],
+    );
     t.doc.append(c, img);
     let mut s = ComputedStyle::inherit_from(&t.style_of(c));
     s.display = Display::Inline;
@@ -977,7 +1084,21 @@ fn replaced_item_grows_and_keeps_its_height() {
     images.0.insert("a.png".into(), (100, 50));
     let scroll = ScrollState::new();
     let mut cache = LayoutCache::default();
-    let tree = layout_with(&t.doc, &t.styles, Viewport { width: 800, height: 600, scale: 1, zoom: 100 }, LayoutOptions { images: &images, scroll: &scroll }, &mut cache);
+    let tree = layout_with(
+        &t.doc,
+        &t.styles,
+        Viewport {
+            width: 800,
+            height: 600,
+            scale: 1,
+            zoom: 100,
+        },
+        LayoutOptions {
+            images: &images,
+            scroll: &scroll,
+        },
+        &mut cache,
+    );
     // Grown to the line; the hypothetical cross size follows the aspect ratio from
     // the used main size (§9.4 step 7): 300 * 50 / 100.
     assert_eq!(t.rect(&tree, img), r(0, 0, 300, 150));
@@ -1021,8 +1142,17 @@ fn line_breaking_counts_margins_and_never_splits_a_single_item() {
     let b = t.item(c, 140, 10, |_| {});
     let d = t.item(c, 400, 10, |_| {});
     let tree = t.layout();
-    assert_eq!(t.rect(&tree, a).origin, crate::geom::Point { x: px(0), y: px(0) });
-    assert_eq!(t.rect(&tree, b).origin, crate::geom::Point { x: px(0), y: px(10) });
+    assert_eq!(
+        t.rect(&tree, a).origin,
+        crate::geom::Point { x: px(0), y: px(0) }
+    );
+    assert_eq!(
+        t.rect(&tree, b).origin,
+        crate::geom::Point {
+            x: px(0),
+            y: px(10)
+        }
+    );
     // Too wide for any line: alone on its own line, shrunk to the container.
     assert_eq!(t.rect(&tree, d), r(0, 20, 300, 10));
 }
@@ -1044,7 +1174,9 @@ fn rtl_row_starts_at_the_right() {
 #[test]
 fn align_self_start_and_end_follow_the_writing_mode_under_wrap_reverse() {
     let mut t = T::new();
-    let c = t.flex(t.body, 300, Some(100), |s| s.flex_wrap = FlexWrap::WrapReverse);
+    let c = t.flex(t.body, 300, Some(100), |s| {
+        s.flex_wrap = FlexWrap::WrapReverse
+    });
     let a = t.item(c, 50, 20, |s| s.align_self = AlignSelf::Start);
     let b = t.item(c, 50, 20, |s| s.align_self = AlignSelf::FlexStart);
     let d = t.item(c, 50, 20, |s| s.align_self = AlignSelf::End);

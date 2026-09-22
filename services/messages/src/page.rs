@@ -64,7 +64,10 @@ fn sidebar(state: &MessagesState, actor: &str, me: &str, open: Option<&str>) -> 
             .class("new")
             .child(
                 text_input("new-to", "to", "")
-                    .attr("aria-label", "To (number, address or name; comma for a group)")
+                    .attr(
+                        "aria-label",
+                        "To (number, address or name; comma for a group)",
+                    )
                     .attr("placeholder", "To: name, number or address"),
             )
             .child(
@@ -72,7 +75,11 @@ fn sidebar(state: &MessagesState, actor: &str, me: &str, open: Option<&str>) -> 
                     .attr("aria-label", "Group name")
                     .attr("placeholder", "Group name (optional)"),
             )
-            .child(button("new-submit", "✎").attr("aria-label", "New message").attr("title", "New message"))
+            .child(
+                button("new-submit", "✎")
+                    .attr("aria-label", "New message")
+                    .attr("title", "New message"),
+            )
     });
     let mut list = el("nav").class("list").attr("aria-label", "Conversations");
     if inbox.is_empty() {
@@ -102,36 +109,62 @@ fn sidebar(state: &MessagesState, actor: &str, me: &str, open: Option<&str>) -> 
             .when(unread > 0, |n| n.class("unread"))
             .attr("href", format!("/conversations/{id}"))
             .child(if unread > 0 {
-                span("dot").id(format!("row-{id}-unread")).attr("title", format!("{unread} unread")).text("●")
+                span("dot")
+                    .id(format!("row-{id}-unread"))
+                    .attr("title", format!("{unread} unread"))
+                    .text("●")
             } else {
                 span("dot")
             })
-            .child(avatar(&format!("row-{id}-avatar"), &title, if c.participants.len() > 2 { "group" } else { "" }))
+            .child(avatar(
+                &format!("row-{id}-avatar"),
+                &title,
+                if c.participants.len() > 2 {
+                    "group"
+                } else {
+                    ""
+                },
+            ))
             .child(
                 span("row-text")
                     .id(format!("row-{id}-text"))
                     .child(
                         span("row-head")
                             .id(format!("row-{id}-head"))
-                            .child(span("row-title").id(format!("row-{id}-title")).text(title.as_str()))
                             .child(
-                                span("row-time")
-                                    .id(format!("row-{id}-time"))
-                                    .text(last.map(|m| format!("tick {}", m.time)).unwrap_or_default()),
-                            ),
+                                span("row-title")
+                                    .id(format!("row-{id}-title"))
+                                    .text(title.as_str()),
+                            )
+                            .child(span("row-time").id(format!("row-{id}-time")).text(
+                                last.map(|m| format!("tick {}", m.time)).unwrap_or_default(),
+                            )),
                     )
-                    .child(span("row-preview").id(format!("row-{id}-preview")).text(preview)),
+                    .child(
+                        span("row-preview")
+                            .id(format!("row-{id}-preview"))
+                            .text(preview),
+                    ),
             );
         list = list.child(row);
     }
-    el("aside").id("sidebar").class("sidebar").child(head).maybe(new).child(list)
+    el("aside")
+        .id("sidebar")
+        .class("sidebar")
+        .child(head)
+        .maybe(new)
+        .child(list)
 }
 
 fn document(title: &str, thread: bool, children: Vec<Html>) -> SimResult<HttpResponse> {
     let doc = Document::new(title)
         .lang("en")
         .stylesheet(CSS)
-        .body_class(if thread { "app on-thread" } else { "app on-inbox" })
+        .body_class(if thread {
+            "app on-thread"
+        } else {
+            "app on-inbox"
+        })
         .body([div("phone").id("phone").children(children)]);
     html::page(&doc)
 }
@@ -145,11 +178,21 @@ pub fn inbox(state: &MessagesState, actor: &str) -> SimResult<HttpResponse> {
             .class("blank-text")
             .text("No Conversation Selected"),
     );
-    document("Messages", false, vec![sidebar(state, actor, &me, None), blank])
+    document(
+        "Messages",
+        false,
+        vec![sidebar(state, actor, &me, None), blank],
+    )
 }
 
 /// The tapbacks a bubble carries, and the picker that gives or takes one back.
-fn tapbacks(id: &str, conversation: &str, m: &Message, state: &MessagesState, me: &str) -> (Html, Html) {
+fn tapbacks(
+    id: &str,
+    conversation: &str,
+    m: &Message,
+    state: &MessagesState,
+    me: &str,
+) -> (Html, Html) {
     let given = div("tapbacks").each(&m.tapbacks, |(name, who)| {
         let names: Vec<String> = who.iter().map(|h| state.display(h)).collect();
         let label = format!("{name} · {}", names.join(", "));
@@ -160,7 +203,9 @@ fn tapbacks(id: &str, conversation: &str, m: &Message, state: &MessagesState, me
             .attr("title", label.as_str())
             .attr("aria-label", label.as_str())
             .text(tapback_glyph(name))
-            .when(who.len() > 1, |n| n.child(span("n").text(who.len().to_string())))
+            .when(who.len() > 1, |n| {
+                n.child(span("n").text(who.len().to_string()))
+            })
     });
     let picker = form(
         &format!("{id}-tapbacks"),
@@ -197,18 +242,24 @@ fn bubble(
     let (given, picker) = tapbacks(id, conversation, m, state, me);
     let mut stack = div("stack").id(format!("{id}-stack"));
     if !mine && group {
-        stack = stack.child(span("from").id(format!("{id}-from")).text(state.display(&m.from)));
+        stack = stack.child(
+            span("from")
+                .id(format!("{id}-from"))
+                .text(state.display(&m.from)),
+        );
     }
     stack = stack.child(
-        div("bubble-line").child(
-            div("bubble")
-                .id(format!("{id}-bubble"))
-                .class(tone)
-                .when(tail, |n| n.class("tail"))
-                .when(!m.tapbacks.is_empty(), |n| n.class("tapped"))
-                .child(span("text").id(format!("{id}-text")).text(m.text.as_str()))
-                .child(given),
-        ).child(picker),
+        div("bubble-line")
+            .child(
+                div("bubble")
+                    .id(format!("{id}-bubble"))
+                    .class(tone)
+                    .when(tail, |n| n.class("tail"))
+                    .when(!m.tapbacks.is_empty(), |n| n.class("tapped"))
+                    .child(span("text").id(format!("{id}-text")).text(m.text.as_str()))
+                    .child(given),
+            )
+            .child(picker),
     );
     if mine && last_outgoing {
         let status = if m.service == "sms" {
@@ -259,17 +310,29 @@ pub fn thread(state: &MessagesState, actor: &str, id: &str) -> SimResult<HttpRes
             .collect();
         transcript = transcript.child(el("p").id("members").class("note").text(names.join(" · ")));
     }
-    transcript = transcript.child(
-        el("p")
-            .id("service")
-            .class("note")
-            .text(if imessage { "iMessage" } else { "Text Message · SMS" }),
-    );
-    let last_outgoing = c.messages.iter().rev().find(|m| m.from == me).map(|m| m.id.as_str());
+    transcript = transcript.child(el("p").id("service").class("note").text(if imessage {
+        "iMessage"
+    } else {
+        "Text Message · SMS"
+    }));
+    let last_outgoing = c
+        .messages
+        .iter()
+        .rev()
+        .find(|m| m.from == me)
+        .map(|m| m.id.as_str());
     for (n, m) in c.messages.iter().enumerate() {
         // The last bubble of a run by one sender carries the tail.
         let tail = c.messages.get(n + 1).is_none_or(|next| next.from != m.from);
-        transcript = transcript.child(bubble(id, state, m, &me, group, last_outgoing == Some(m.id.as_str()), tail));
+        transcript = transcript.child(bubble(
+            id,
+            state,
+            m,
+            &me,
+            group,
+            last_outgoing == Some(m.id.as_str()),
+            tail,
+        ));
     }
     if c.messages.is_empty() {
         transcript = transcript.child(el("p").id("empty").class("note").text("Say something."));
@@ -288,7 +351,11 @@ pub fn thread(state: &MessagesState, actor: &str, id: &str) -> SimResult<HttpRes
                         .attr("placeholder", placeholder)
                         .attr("autocomplete", "off"),
                 )
-                .child(button("send-submit", "↑").attr("aria-label", "Send").attr("title", "Send")),
+                .child(
+                    button("send-submit", "↑")
+                        .attr("aria-label", "Send")
+                        .attr("title", "Send"),
+                ),
         );
     // Reading is a real route: the receipt the other side sees comes from here.
     let unread = MessagesState::unread(c, &me);
@@ -309,15 +376,28 @@ pub fn thread(state: &MessagesState, actor: &str, id: &str) -> SimResult<HttpRes
         .child(
             div("who")
                 .id("bar-title-stack")
-                .child(avatar("bar-avatar", &title, if group { "group" } else { "" }))
+                .child(avatar(
+                    "bar-avatar",
+                    &title,
+                    if group { "group" } else { "" },
+                ))
                 .child(span("name").id("bar-title").text(title.as_str())),
         )
         .child(
             div("bar-end")
-                .child(span("service").class(service).id("bar-service").text(if imessage { "iMessage" } else { "SMS" }))
+                .child(
+                    span("service")
+                        .class(service)
+                        .id("bar-service")
+                        .text(if imessage { "iMessage" } else { "SMS" }),
+                )
                 .child(read),
         );
-    let pane = el("main").class("pane").child(bar).child(transcript).child(composer);
+    let pane = el("main")
+        .class("pane")
+        .child(bar)
+        .child(transcript)
+        .child(composer);
     document(
         &format!("{title} · Messages"),
         true,

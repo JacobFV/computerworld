@@ -43,7 +43,8 @@ fn seeded() -> Value {
         .handle(
             &mut state,
             &ctx("alice"),
-            &HttpRequest::json("POST", "http://chat.internal/api/dms", &json!({"to":"bob"})).unwrap(),
+            &HttpRequest::json("POST", "http://chat.internal/api/dms", &json!({"to":"bob"}))
+                .unwrap(),
         )
         .unwrap();
     assert_eq!(opened.status, 200);
@@ -159,21 +160,27 @@ fn a_reaction_pill_joins_that_reaction_and_a_quote_leads_to_its_parent() {
     assert_eq!(page.tag(node(&page, "chat-2-reacted-tada")), Some("button"));
     assert_eq!(attr(&page, "chat-2-reacted-tada", "name"), "reaction");
     assert_eq!(attr(&page, "chat-2-reacted-tada", "value"), "tada");
-    assert_eq!(attr(&page, "chat-2-reacted-tada", "aria-label"), "tada · carol");
+    assert_eq!(
+        attr(&page, "chat-2-reacted-tada", "aria-label"),
+        "tada · carol"
+    );
     assert_eq!(
         attr(&page, "chat-2-reactions", "action"),
         "/channels/eng/messages/chat-2/reactions"
     );
     assert_eq!(attr(&page, "chat-2-reactions", "method"), "post");
     // Pressing the pill the way the browser does: bob joins the reaction it shows.
-    let mut request = HttpRequest::get("http://chat.internal/channels/eng/messages/chat-2/reactions");
+    let mut request =
+        HttpRequest::get("http://chat.internal/channels/eng/messages/chat-2/reactions");
     request.method = "POST".into();
     request.headers.insert(
         "content-type".into(),
         "application/x-www-form-urlencoded".into(),
     );
     request.body = b"reaction=tada".to_vec();
-    let r = ChatService.handle(&mut state, &ctx("bob"), &request).unwrap();
+    let r = ChatService
+        .handle(&mut state, &ctx("bob"), &request)
+        .unwrap();
     assert_eq!(r.status, 200);
     let after = dom(&String::from_utf8(r.body).unwrap());
     assert_eq!(
@@ -183,5 +190,8 @@ fn a_reaction_pill_joins_that_reaction_and_a_quote_leads_to_its_parent() {
     // The reply's quote goes to the parent, which is on the page with that very id.
     assert_eq!(attr(&page, "chat-3-parent", "href"), "#chat-1");
     assert_eq!(page.tag(node(&page, "chat-3-parent")), Some("a"));
-    assert!(!page.by_id("chat-1").is_empty(), "the quoted message is here");
+    assert!(
+        !page.by_id("chat-1").is_empty(),
+        "the quoted message is here"
+    );
 }

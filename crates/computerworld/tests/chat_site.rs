@@ -24,7 +24,10 @@ fn world() -> (World, String) {
 }
 fn act(world: &mut World, session: &str, channel: &str, op: &str, payload: Value) -> Value {
     let result = world
-        .step(session, vec![ActionEnvelope::new(channel, op, MACHINE, payload)])
+        .step(
+            session,
+            vec![ActionEnvelope::new(channel, op, MACHINE, payload)],
+        )
         .unwrap();
     assert!(result.outcomes[0].success, "{op}: {:?}", result.outcomes[0]);
     result.outcomes[0].value.clone()
@@ -58,7 +61,13 @@ fn by_id<'a>(all: &'a [Value], id: &str) -> &'a Value {
 #[test]
 fn a_channel_is_opened_a_message_is_sent_and_reacted_to_through_the_agent_api() {
     let (mut world, session) = world();
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url":"http://chat.internal/"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url":"http://chat.internal/"}),
+    );
     let home = page(&world, &session);
     assert_eq!(home["title"], "Chat");
     let all = elements(&home);
@@ -68,8 +77,17 @@ fn a_channel_is_opened_a_message_is_sent_and_reacted_to_through_the_agent_api() 
     assert!(all.iter().any(|e| e["id"] == "title"));
     assert_eq!(by_id(&all, "dm")["kind"], "form");
 
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"general"}));
-    assert_eq!(browser(&world, &session)["url"], "http://chat.internal/channels/general");
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"general"}),
+    );
+    assert_eq!(
+        browser(&world, &session)["url"],
+        "http://chat.internal/channels/general"
+    );
     let all = elements(&page(&world, &session));
     assert_eq!(by_id(&all, "send")["kind"], "form");
     let field = by_id(&all, "send-text");
@@ -78,27 +96,78 @@ fn a_channel_is_opened_a_message_is_sent_and_reacted_to_through_the_agent_api() 
     assert_eq!(by_id(&all, "send-submit")["kind"], "button");
 
     // Type into the composer and press Enter: the form posts and the page is the channel.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"send-text"}));
-    act(&mut world, &session, "keyboard.v1", "type", json!({"text":"standup moved to 10"}));
-    act(&mut world, &session, "browser.v1", "key", json!({"key":"Enter"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"send-text"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "keyboard.v1",
+        "type",
+        json!({"text":"standup moved to 10"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "key",
+        json!({"key":"Enter"}),
+    );
     let sent = page(&world, &session);
     let all = elements(&sent);
     assert!(
-        all.iter().any(|e| e["text"].as_str().is_some_and(|t| t.contains("standup moved to 10"))),
+        all.iter().any(|e| e["text"]
+            .as_str()
+            .is_some_and(|t| t.contains("standup moved to 10"))),
         "{all:?}"
     );
     assert_eq!(by_id(&all, "chat-1-react")["kind"], "form");
 
     // React through the message's form, with fill and a click on its button.
-    act(&mut world, &session, "browser.v1", "fill", json!({"id":"chat-1-react-reaction","value":"tada"}));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"chat-1-react-submit"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "fill",
+        json!({"id":"chat-1-react-reaction","value":"tada"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"chat-1-react-submit"}),
+    );
     let all = elements(&page(&world, &session));
-    assert!(all.iter().any(|e| e["text"].as_str().is_some_and(|t| t.contains("tada"))), "{all:?}");
+    assert!(
+        all.iter()
+            .any(|e| e["text"].as_str().is_some_and(|t| t.contains("tada"))),
+        "{all:?}"
+    );
 
     // Open a DM from the sidebar; it lands on the conversation and is listed by its key.
-    act(&mut world, &session, "browser.v1", "fill", json!({"id":"dm-to","value":"bob"}));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"dm-submit"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "fill",
+        json!({"id":"dm-to","value":"bob"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"dm-submit"}),
+    );
     let all = elements(&page(&world, &session));
-    assert_eq!(by_id(&all, "dm-alice|bob")["url"], "http://chat.internal/channels/alice|bob");
+    assert_eq!(
+        by_id(&all, "dm-alice|bob")["url"],
+        "http://chat.internal/channels/alice|bob"
+    );
     assert_eq!(by_id(&all, "send")["kind"], "form");
 }

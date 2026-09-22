@@ -233,7 +233,12 @@ const SCENARIOS: &[Scenario] = &[
         seed: 31337,
         actor: "ada",
         machines: &["workstation"],
-        families: &["terminal.v1", "filesystem.v1", "application.v1", "keyboard.v1"],
+        families: &[
+            "terminal.v1",
+            "filesystem.v1",
+            "application.v1",
+            "keyboard.v1",
+        ],
         observations: &["terminal.v1", "semantic.v1"],
         steps: 300,
         fork_at: 150,
@@ -384,7 +389,12 @@ fn terminal_action(rng: &mut Rng, machine: &str, i: usize) -> ActionEnvelope {
         14 => format!("stat {SCRATCH}/log.txt"),
         _ => format!("grep -c line {SCRATCH}/log.txt"),
     };
-    ActionEnvelope::new("terminal.v1", "execute", machine, json!({"command": command}))
+    ActionEnvelope::new(
+        "terminal.v1",
+        "execute",
+        machine,
+        json!({"command": command}),
+    )
 }
 
 fn filesystem_action(rng: &mut Rng, machine: &str, i: usize) -> ActionEnvelope {
@@ -505,7 +515,12 @@ fn keyboard_action(rng: &mut Rng, machine: &str, i: usize) -> ActionEnvelope {
             json!({"text": format!("note {i} ")}),
         )
     } else {
-        ActionEnvelope::new("keyboard.v1", "key", machine, json!({"key": rng.pick(KEYS)}))
+        ActionEnvelope::new(
+            "keyboard.v1",
+            "key",
+            machine,
+            json!({"key": rng.pick(KEYS)}),
+        )
     }
 }
 
@@ -571,7 +586,12 @@ fn one_action(rng: &mut Rng, scenario: &Scenario, i: usize) -> ActionEnvelope {
 
 /// The whole program for a scenario: the main run, then branch A, then branch B.
 /// `salt` separates the two branches so the forks are driven apart.
-fn steps_for(scenario: &Scenario, salt: u64, count: usize, start: usize) -> Vec<Vec<ActionEnvelope>> {
+fn steps_for(
+    scenario: &Scenario,
+    salt: u64,
+    count: usize,
+    start: usize,
+) -> Vec<Vec<ActionEnvelope>> {
     let mut rng = Rng::new(
         name_seed(scenario.name) ^ scenario.seed.rotate_left(17) ^ salt.wrapping_mul(0x2545_f491),
     );
@@ -598,7 +618,11 @@ fn steps_for(scenario: &Scenario, salt: u64, count: usize, start: usize) -> Vec<
     while program.len() < count {
         let i = start + program.len();
         let batch = 1 + rng.below(3);
-        program.push((0..batch).map(|_| one_action(&mut rng, scenario, i)).collect());
+        program.push(
+            (0..batch)
+                .map(|_| one_action(&mut rng, scenario, i))
+                .collect(),
+        );
     }
     program
 }
@@ -649,7 +673,11 @@ fn sampled(index: usize, len: usize, stride: usize) -> bool {
 
 /// The semantic scene the actor would see at the desktop viewport.
 fn scene_digest(world: &World, session: &str) -> String {
-    short(&world.scene(session, 1280, 800).expect("the session may see the scene"))
+    short(
+        &world
+            .scene(session, 1280, 800)
+            .expect("the session may see the scene"),
+    )
 }
 
 /// Drive `program`, sampling a state hash on the stride. `offset` is the step
@@ -910,7 +938,6 @@ fn observe(scenario: &Scenario) -> Observed {
     }
 }
 
-
 // ---------------------------------------------------------------------------
 // Golden files
 // ---------------------------------------------------------------------------
@@ -956,7 +983,12 @@ impl Report {
             problems: Vec::new(),
         }
     }
-    fn field(&mut self, what: &str, observed: impl std::fmt::Display, golden: impl std::fmt::Display) {
+    fn field(
+        &mut self,
+        what: &str,
+        observed: impl std::fmt::Display,
+        golden: impl std::fmt::Display,
+    ) {
         let (observed, golden) = (observed.to_string(), golden.to_string());
         if observed != golden {
             self.problems
@@ -1091,7 +1123,11 @@ fn check(scenario: &Scenario) {
         observed.journal_entries,
         golden.journal_entries,
     );
-    report.field("journal head hash", &observed.journal_head, &golden.journal_head);
+    report.field(
+        "journal head hash",
+        &observed.journal_head,
+        &golden.journal_head,
+    );
     report.field("event count", observed.events.count, golden.events.count);
     report.field(
         "event log chain hash",
@@ -1271,7 +1307,9 @@ fn a_snapshot_from_a_different_world_is_still_refused() {
         "checkpoint belongs to a different world definition",
     );
     // And the other way round, so neither direction is accidentally permissive.
-    let company_export = company.export_snapshot().expect("the company world exports");
+    let company_export = company
+        .export_snapshot()
+        .expect("the company world exports");
     let (mut small, _) = small_world();
     expect_refusal(
         "an agent-desktop world importing a company-2026 checkpoint",
@@ -1330,7 +1368,9 @@ fn a_machine_grant_that_is_not_in_the_world_is_still_refused() {
     expect_refusal(
         "a checkpoint granting a machine the world does not have",
         target.import_snapshot(&tampered(&world, |v| {
-            let sessions = v["sessions"].as_object_mut().expect("sessions is an object");
+            let sessions = v["sessions"]
+                .as_object_mut()
+                .expect("sessions is an object");
             let session = sessions.values_mut().next().expect("there is one session");
             let machine = session["machines"]["workstation"].take();
             session["machines"] = json!({ "ghost-machine": machine });

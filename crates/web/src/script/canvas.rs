@@ -13,22 +13,48 @@ use cw_scene::Color;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Paint {
     Solid(Color),
-    Linear { x0: f64, y0: f64, x1: f64, y1: f64, stops: Vec<(f64, Color)> },
-    Radial { x: f64, y: f64, r: f64, stops: Vec<(f64, Color)> },
+    Linear {
+        x0: f64,
+        y0: f64,
+        x1: f64,
+        y1: f64,
+        stops: Vec<(f64, Color)>,
+    },
+    Radial {
+        x: f64,
+        y: f64,
+        r: f64,
+        stops: Vec<(f64, Color)>,
+    },
 }
 
 impl Paint {
     fn at(&self, x: f64, y: f64) -> Color {
         match self {
             Paint::Solid(c) => *c,
-            Paint::Linear { x0, y0, x1, y1, stops } => {
+            Paint::Linear {
+                x0,
+                y0,
+                x1,
+                y1,
+                stops,
+            } => {
                 let dx = x1 - x0;
                 let dy = y1 - y0;
                 let len2 = dx * dx + dy * dy;
-                let t = if len2 == 0.0 { 0.0 } else { ((x - x0) * dx + (y - y0) * dy) / len2 };
+                let t = if len2 == 0.0 {
+                    0.0
+                } else {
+                    ((x - x0) * dx + (y - y0) * dy) / len2
+                };
                 stop_color(stops, t)
             }
-            Paint::Radial { x: cx, y: cy, r, stops } => {
+            Paint::Radial {
+                x: cx,
+                y: cy,
+                r,
+                stops,
+            } => {
                 let d = ((x - cx) * (x - cx) + (y - cy) * (y - cy)).sqrt();
                 let t = if *r <= 0.0 { 1.0 } else { d / r };
                 stop_color(stops, t)
@@ -50,8 +76,17 @@ fn stop_color(stops: &[(f64, Color)], t: f64) -> Color {
         let (t1, c1) = w[1];
         if t <= t1 {
             let f = if t1 > t0 { (t - t0) / (t1 - t0) } else { 1.0 };
-            let mix = |a: u8, b: u8| ((a as f64) + (b as f64 - a as f64) * f).round().clamp(0.0, 255.0) as u8;
-            return Color(mix(c0.0, c1.0), mix(c0.1, c1.1), mix(c0.2, c1.2), mix(c0.3, c1.3));
+            let mix = |a: u8, b: u8| {
+                ((a as f64) + (b as f64 - a as f64) * f)
+                    .round()
+                    .clamp(0.0, 255.0) as u8
+            };
+            return Color(
+                mix(c0.0, c1.0),
+                mix(c0.1, c1.1),
+                mix(c0.2, c1.2),
+                mix(c0.3, c1.3),
+            );
         }
     }
     stops[stops.len() - 1].1
@@ -134,7 +169,12 @@ impl CanvasState {
     pub fn new(width: u32, height: u32) -> CanvasState {
         let w = width.clamp(0, 16384);
         let h = height.clamp(0, 16384);
-        CanvasState { width: w, height: h, pixels: vec![0; (w * h * 4) as usize], ..Default::default() }
+        CanvasState {
+            width: w,
+            height: h,
+            pixels: vec![0; (w * h * 4) as usize],
+            ..Default::default()
+        }
     }
 
     pub fn image(&self) -> RgbaImage {
@@ -155,7 +195,14 @@ impl CanvasState {
 
     pub fn transform(&mut self, m: [f64; 6]) {
         let t = self.state.transform;
-        self.state.transform = [t[0] * m[0] + t[2] * m[1], t[1] * m[0] + t[3] * m[1], t[0] * m[2] + t[2] * m[3], t[1] * m[2] + t[3] * m[3], t[0] * m[4] + t[2] * m[5] + t[4], t[1] * m[4] + t[3] * m[5] + t[5]];
+        self.state.transform = [
+            t[0] * m[0] + t[2] * m[1],
+            t[1] * m[0] + t[3] * m[1],
+            t[0] * m[2] + t[2] * m[3],
+            t[1] * m[2] + t[3] * m[3],
+            t[0] * m[4] + t[2] * m[5] + t[4],
+            t[1] * m[4] + t[3] * m[5] + t[5],
+        ];
     }
     pub fn set_transform(&mut self, m: [f64; 6]) {
         self.state.transform = m;
@@ -228,7 +275,17 @@ impl CanvasState {
         self.ellipse(cx, cy, r, r, 0.0, start, end, anticlockwise);
     }
     #[allow(clippy::too_many_arguments)]
-    pub fn ellipse(&mut self, cx: f64, cy: f64, rx: f64, ry: f64, rotation: f64, start: f64, end: f64, anticlockwise: bool) {
+    pub fn ellipse(
+        &mut self,
+        cx: f64,
+        cy: f64,
+        rx: f64,
+        ry: f64,
+        rotation: f64,
+        start: f64,
+        end: f64,
+        anticlockwise: bool,
+    ) {
         let tau = std::f64::consts::PI * 2.0;
         let mut sweep = end - start;
         if anticlockwise {
@@ -298,7 +355,12 @@ impl CanvasState {
     }
 
     pub fn fill(&mut self, even_odd: bool) {
-        let polys: Vec<Vec<(f64, f64)>> = self.path.iter().filter(|(p, _)| p.len() >= 3).map(|(p, _)| p.clone()).collect();
+        let polys: Vec<Vec<(f64, f64)>> = self
+            .path
+            .iter()
+            .filter(|(p, _)| p.len() >= 3)
+            .map(|(p, _)| p.clone())
+            .collect();
         let paint = self.state.fill.clone();
         self.fill_polygons(&polys, even_odd, &paint);
     }
@@ -334,12 +396,27 @@ impl CanvasState {
                 }
                 let nx = -dy / len * hw;
                 let ny = dx / len * hw;
-                quads.push(vec![(x0 + nx, y0 + ny), (x1 + nx, y1 + ny), (x1 - nx, y1 - ny), (x0 - nx, y0 - ny)]);
+                quads.push(vec![
+                    (x0 + nx, y0 + ny),
+                    (x1 + nx, y1 + ny),
+                    (x1 - nx, y1 - ny),
+                    (x0 - nx, y0 - ny),
+                ]);
                 // A square joint at each vertex fills the gap between segments.
                 if hw > 0.75 {
-                    quads.push(vec![(x1 - hw, y1 - hw), (x1 + hw, y1 - hw), (x1 + hw, y1 + hw), (x1 - hw, y1 + hw)]);
+                    quads.push(vec![
+                        (x1 - hw, y1 - hw),
+                        (x1 + hw, y1 - hw),
+                        (x1 + hw, y1 + hw),
+                        (x1 - hw, y1 + hw),
+                    ]);
                     if i == 0 && !*closed {
-                        quads.push(vec![(x0 - hw, y0 - hw), (x0 + hw, y0 - hw), (x0 + hw, y0 + hw), (x0 - hw, y0 + hw)]);
+                        quads.push(vec![
+                            (x0 - hw, y0 - hw),
+                            (x0 + hw, y0 - hw),
+                            (x0 + hw, y0 + hw),
+                            (x0 - hw, y0 + hw),
+                        ]);
                     }
                 }
             }
@@ -366,7 +443,12 @@ impl CanvasState {
         }
         if min_x < max_x && min_y < max_y {
             let c = match self.state.clip {
-                Some((cx0, cy0, cx1, cy1)) => (cx0.max(min_x), cy0.max(min_y), cx1.min(max_x), cy1.min(max_y)),
+                Some((cx0, cy0, cx1, cy1)) => (
+                    cx0.max(min_x),
+                    cy0.max(min_y),
+                    cx1.min(max_x),
+                    cy1.min(max_y),
+                ),
                 None => (min_x, min_y, max_x, max_y),
             };
             self.state.clip = Some(c);
@@ -374,7 +456,12 @@ impl CanvasState {
     }
 
     pub fn is_point_in_path(&self, x: f64, y: f64, even_odd: bool) -> bool {
-        let polys: Vec<&Vec<(f64, f64)>> = self.path.iter().filter(|(p, _)| p.len() >= 3).map(|(p, _)| p).collect();
+        let polys: Vec<&Vec<(f64, f64)>> = self
+            .path
+            .iter()
+            .filter(|(p, _)| p.len() >= 3)
+            .map(|(p, _)| p)
+            .collect();
         let mut winding = 0i32;
         let mut crossings = 0u32;
         for poly in polys {
@@ -401,7 +488,12 @@ impl CanvasState {
     // ------------------------------------------------------------ rectangles
 
     pub fn fill_rect(&mut self, x: f64, y: f64, w: f64, h: f64) {
-        let poly = vec![self.apply(x, y), self.apply(x + w, y), self.apply(x + w, y + h), self.apply(x, y + h)];
+        let poly = vec![
+            self.apply(x, y),
+            self.apply(x + w, y),
+            self.apply(x + w, y + h),
+            self.apply(x, y + h),
+        ];
         let paint = self.state.fill.clone();
         self.fill_polygons(&[poly], false, &paint);
     }
@@ -415,23 +507,39 @@ impl CanvasState {
         self.cur = cur;
     }
     pub fn clear_rect(&mut self, x: f64, y: f64, w: f64, h: f64) {
-        let poly = vec![self.apply(x, y), self.apply(x + w, y), self.apply(x + w, y + h), self.apply(x, y + h)];
+        let poly = vec![
+            self.apply(x, y),
+            self.apply(x + w, y),
+            self.apply(x + w, y + h),
+            self.apply(x, y + h),
+        ];
         self.fill_polygons_with(&[poly], false, &mut |_, _| Some(Color(0, 0, 0, 0)), true);
     }
 
     fn fill_polygons(&mut self, polys: &[Vec<(f64, f64)>], even_odd: bool, paint: &Paint) {
         let alpha = self.state.global_alpha.clamp(0.0, 1.0);
         let p = paint.clone();
-        self.fill_polygons_with(polys, even_odd, &mut |x, y| {
-            let c = p.at(x, y);
-            let a = (c.3 as f64 * alpha).round().clamp(0.0, 255.0) as u8;
-            Some(Color(c.0, c.1, c.2, a))
-        }, false);
+        self.fill_polygons_with(
+            polys,
+            even_odd,
+            &mut |x, y| {
+                let c = p.at(x, y);
+                let a = (c.3 as f64 * alpha).round().clamp(0.0, 255.0) as u8;
+                Some(Color(c.0, c.1, c.2, a))
+            },
+            false,
+        );
     }
 
     /// Scanline fill: for each row, the crossings of every edge with the row's
     /// centre line, sorted; spans are filled by the winding rule.
-    fn fill_polygons_with(&mut self, polys: &[Vec<(f64, f64)>], even_odd: bool, color: &mut dyn FnMut(f64, f64) -> Option<Color>, replace: bool) {
+    fn fill_polygons_with(
+        &mut self,
+        polys: &[Vec<(f64, f64)>],
+        even_odd: bool,
+        color: &mut dyn FnMut(f64, f64) -> Option<Color>,
+        replace: bool,
+    ) {
         if self.width == 0 || self.height == 0 {
             return;
         }
@@ -447,7 +555,10 @@ impl CanvasState {
         if min_y >= max_y {
             return;
         }
-        let (cx0, cy0, cx1, cy1) = self.state.clip.unwrap_or((0.0, 0.0, self.width as f64, self.height as f64));
+        let (cx0, cy0, cx1, cy1) =
+            self.state
+                .clip
+                .unwrap_or((0.0, 0.0, self.width as f64, self.height as f64));
         let row0 = (min_y.max(cy0).max(0.0)).floor() as i64;
         let row1 = (max_y.min(cy1).min(self.height as f64)).ceil() as i64;
         let mut xs: Vec<(f64, i32)> = Vec::new();
@@ -472,7 +583,11 @@ impl CanvasState {
             let mut winding = 0i32;
             for i in 0..xs.len() - 1 {
                 winding += if even_odd { 1 } else { xs[i].1 };
-                let inside = if even_odd { winding % 2 == 1 } else { winding != 0 };
+                let inside = if even_odd {
+                    winding % 2 == 1
+                } else {
+                    winding != 0
+                };
                 if !inside {
                     continue;
                 }
@@ -484,7 +599,9 @@ impl CanvasState {
                     if px < 0 || px >= self.width as i64 {
                         continue;
                     }
-                    let Some(c) = color(px as f64 + 0.5, y) else { continue };
+                    let Some(c) = color(px as f64 + 0.5, y) else {
+                        continue;
+                    };
                     let idx = ((row as u32 * self.width + px as u32) * 4) as usize;
                     if replace {
                         self.pixels[idx..idx + 4].copy_from_slice(&[c.0, c.1, c.2, c.3]);
@@ -500,11 +617,27 @@ impl CanvasState {
 
     /// Draws `src` (nearest-neighbour) into the destination rectangle.
     #[allow(clippy::too_many_arguments)]
-    pub fn draw_image(&mut self, src: &RgbaImage, sx: f64, sy: f64, sw: f64, sh: f64, dx: f64, dy: f64, dw: f64, dh: f64) {
+    pub fn draw_image(
+        &mut self,
+        src: &RgbaImage,
+        sx: f64,
+        sy: f64,
+        sw: f64,
+        sh: f64,
+        dx: f64,
+        dy: f64,
+        dw: f64,
+        dh: f64,
+    ) {
         if src.width == 0 || src.height == 0 || sw <= 0.0 || sh <= 0.0 || dw == 0.0 || dh == 0.0 {
             return;
         }
-        let poly = vec![self.apply(dx, dy), self.apply(dx + dw, dy), self.apply(dx + dw, dy + dh), self.apply(dx, dy + dh)];
+        let poly = vec![
+            self.apply(dx, dy),
+            self.apply(dx + dw, dy),
+            self.apply(dx + dw, dy + dh),
+            self.apply(dx, dy + dh),
+        ];
         let t = self.state.transform;
         let det = t[0] * t[3] - t[1] * t[2];
         if det == 0.0 {
@@ -512,21 +645,26 @@ impl CanvasState {
         }
         let alpha = self.state.global_alpha.clamp(0.0, 1.0);
         let img = src.clone();
-        self.fill_polygons_with(&[poly], false, &mut |x, y| {
-            // Device to user space, then to source pixels.
-            let ux = ((x - t[4]) * t[3] - (y - t[5]) * t[2]) / det;
-            let uy = ((y - t[5]) * t[0] - (x - t[4]) * t[1]) / det;
-            let fx = (ux - dx) / dw;
-            let fy = (uy - dy) / dh;
-            let px = (sx + fx * sw).floor();
-            let py = (sy + fy * sh).floor();
-            if px < 0.0 || py < 0.0 || px >= img.width as f64 || py >= img.height as f64 {
-                return None;
-            }
-            let i = ((py as u32 * img.width + px as u32) * 4) as usize;
-            let a = (img.rgba[i + 3] as f64 * alpha).round() as u8;
-            Some(Color(img.rgba[i], img.rgba[i + 1], img.rgba[i + 2], a))
-        }, false);
+        self.fill_polygons_with(
+            &[poly],
+            false,
+            &mut |x, y| {
+                // Device to user space, then to source pixels.
+                let ux = ((x - t[4]) * t[3] - (y - t[5]) * t[2]) / det;
+                let uy = ((y - t[5]) * t[0] - (x - t[4]) * t[1]) / det;
+                let fx = (ux - dx) / dw;
+                let fy = (uy - dy) / dh;
+                let px = (sx + fx * sw).floor();
+                let py = (sy + fy * sh).floor();
+                if px < 0.0 || py < 0.0 || px >= img.width as f64 || py >= img.height as f64 {
+                    return None;
+                }
+                let i = ((py as u32 * img.width + px as u32) * 4) as usize;
+                let a = (img.rgba[i + 3] as f64 * alpha).round() as u8;
+                Some(Color(img.rgba[i], img.rgba[i + 1], img.rgba[i + 2], a))
+            },
+            false,
+        );
     }
 
     pub fn get_image_data(&self, x: i64, y: i64, w: u32, h: u32) -> RgbaImage {
@@ -566,7 +704,14 @@ impl CanvasState {
 
     fn typeface(&self) -> (cw_scene::Typeface, cw_scene::Style) {
         let tf = cw_scene::fonts::resolve_family(&self.state.font_family);
-        (tf, cw_scene::Style::new(self.state.font_bold, self.state.font_italic, cw_scene::Lang::default()))
+        (
+            tf,
+            cw_scene::Style::new(
+                self.state.font_bold,
+                self.state.font_italic,
+                cw_scene::Lang::default(),
+            ),
+        )
     }
 
     /// The advance width of `text` in the current font, in CSS px.
@@ -601,18 +746,36 @@ impl CanvasState {
             "bottom" | "ideographic" => y - descent,
             _ => y,
         };
-        let paint = if stroke { self.state.stroke.clone() } else { self.state.fill.clone() };
+        let paint = if stroke {
+            self.state.stroke.clone()
+        } else {
+            self.state.fill.clone()
+        };
         let mut cx = start_x;
         for ch in text.chars() {
             let adv = cw_scene::metrics::advance(tf, st, ch, size_px) as f64 / 64.0 * scale;
             if !ch.is_whitespace() {
                 let inset = (adv * 0.12).min(1.0);
-                let glyph_h = if ch.is_lowercase() { size * 0.5 } else { size * 0.7 };
+                let glyph_h = if ch.is_lowercase() {
+                    size * 0.5
+                } else {
+                    size * 0.7
+                };
                 let x0 = cx + inset;
                 let x1 = cx + adv - inset;
                 let y0 = baseline - glyph_h;
-                let y1 = baseline + if matches!(ch, 'g' | 'j' | 'p' | 'q' | 'y') { descent * 0.8 } else { 0.0 };
-                let poly = vec![self.apply(x0, y0), self.apply(x1, y0), self.apply(x1, y1), self.apply(x0, y1)];
+                let y1 = baseline
+                    + if matches!(ch, 'g' | 'j' | 'p' | 'q' | 'y') {
+                        descent * 0.8
+                    } else {
+                        0.0
+                    };
+                let poly = vec![
+                    self.apply(x0, y0),
+                    self.apply(x1, y0),
+                    self.apply(x1, y1),
+                    self.apply(x0, y1),
+                ];
                 if stroke {
                     let saved = std::mem::take(&mut self.path);
                     let cur = self.cur;
@@ -650,7 +813,9 @@ fn blend(dst: &mut [u8], src: Color) {
         dst.copy_from_slice(&[0, 0, 0, 0]);
         return;
     }
-    let ch = |s: u8, d: u8| -> u8 { ((s as u32 * sa + d as u32 * da * (255 - sa) / 255) / out_a).min(255) as u8 };
+    let ch = |s: u8, d: u8| -> u8 {
+        ((s as u32 * sa + d as u32 * da * (255 - sa) / 255) / out_a).min(255) as u8
+    };
     dst[0] = ch(src.0, dst[0]);
     dst[1] = ch(src.1, dst[1]);
     dst[2] = ch(src.2, dst[2]);
@@ -786,7 +951,11 @@ fn crc32(data: &[u8]) -> u32 {
     for (i, t) in table.iter_mut().enumerate() {
         let mut c = i as u32;
         for _ in 0..8 {
-            c = if c & 1 != 0 { 0xEDB8_8320 ^ (c >> 1) } else { c >> 1 };
+            c = if c & 1 != 0 {
+                0xEDB8_8320 ^ (c >> 1)
+            } else {
+                c >> 1
+            };
         }
         *t = c;
     }
@@ -861,8 +1030,16 @@ pub fn base64(data: &[u8]) -> String {
         let n = (b[0] as u32) << 16 | (b[1] as u32) << 8 | b[2] as u32;
         out.push(T[(n >> 18) as usize & 63] as char);
         out.push(T[(n >> 12) as usize & 63] as char);
-        out.push(if c.len() > 1 { T[(n >> 6) as usize & 63] as char } else { '=' });
-        out.push(if c.len() > 2 { T[n as usize & 63] as char } else { '=' });
+        out.push(if c.len() > 1 {
+            T[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if c.len() > 2 {
+            T[n as usize & 63] as char
+        } else {
+            '='
+        });
     }
     out
 }

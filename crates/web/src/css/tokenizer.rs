@@ -30,7 +30,10 @@ pub fn preprocess(src: &str) -> String {
 /// Tokenizes a whole stylesheet or fragment. Comments are removed.
 pub fn tokenize(src: &str) -> Vec<Token> {
     let text = preprocess(src);
-    let mut t = Tokenizer { chars: text.chars().collect(), pos: 0 };
+    let mut t = Tokenizer {
+        chars: text.chars().collect(),
+        pos: 0,
+    };
     let mut out = Vec::new();
     while let Some(tok) = t.next_token() {
         out.push(tok);
@@ -182,7 +185,10 @@ impl Tokenizer {
             ':' => Token::Colon,
             ';' => Token::Semicolon,
             '<' => {
-                if self.peek(0) == Some('!') && self.peek(1) == Some('-') && self.peek(2) == Some('-') {
+                if self.peek(0) == Some('!')
+                    && self.peek(1) == Some('-')
+                    && self.peek(2) == Some('-')
+                {
                     self.pos += 3;
                     Token::Cdo
                 } else {
@@ -277,7 +283,9 @@ impl Tokenizer {
         loop {
             match self.next() {
                 Some(c) if is_name_char(c) => s.push(c),
-                Some('\\') if valid_escape(Some('\\'), self.peek(0)) => s.push(self.consume_escape()),
+                Some('\\') if valid_escape(Some('\\'), self.peek(0)) => {
+                    s.push(self.consume_escape())
+                }
                 Some(_) => {
                     self.reconsume();
                     return s;
@@ -291,7 +299,9 @@ impl Tokenizer {
         let name = self.consume_name();
         if name.eq_ignore_ascii_case("url") && self.peek(0) == Some('(') {
             self.pos += 1;
-            while matches!(self.peek(0), Some(w) if is_whitespace(w)) && matches!(self.peek(1), Some(w) if is_whitespace(w)) {
+            while matches!(self.peek(0), Some(w) if is_whitespace(w))
+                && matches!(self.peek(1), Some(w) if is_whitespace(w))
+            {
                 self.pos += 1;
             }
             let quoted = match self.peek(0) {
@@ -506,7 +516,9 @@ pub fn serialize_token(tok: &Token, out: &mut String) {
             // A unit that could be read as an exponent (`e-2`, `e5`, or a bare `e` that a
             // following signed number would join) has its `e` escaped; after the escape
             // the rest of the name follows literally.
-            let needs_escape = unit.starts_with(['e', 'E']) && (unit.len() == 1 || unit[1..].starts_with(|c: char| c.is_ascii_digit() || c == '-' || c == '+'));
+            let needs_escape = unit.starts_with(['e', 'E'])
+                && (unit.len() == 1
+                    || unit[1..].starts_with(|c: char| c.is_ascii_digit() || c == '-' || c == '+'));
             if needs_escape {
                 out.push_str(&format!("\\{:x} ", unit.chars().next().unwrap() as u32));
                 for c in unit[1..].chars() {
@@ -553,30 +565,72 @@ mod tests {
     #[test]
     fn preprocessing() {
         assert_eq!(preprocess("a\r\nb\rc\x0Cd\0e"), "a\nb\nc\nd\u{FFFD}e");
-        assert_eq!(tokenize("a\r\n\r\nb"), vec![Token::Ident("a".into()), Token::Whitespace, Token::Ident("b".into())]);
+        assert_eq!(
+            tokenize("a\r\n\r\nb"),
+            vec![
+                Token::Ident("a".into()),
+                Token::Whitespace,
+                Token::Ident("b".into())
+            ]
+        );
     }
 
     #[test]
     fn comments_are_dropped_and_unterminated_ok() {
-        assert_eq!(tokenize("/* x */a/**/b/* eof"), vec![Token::Ident("a".into()), Token::Ident("b".into())]);
-        assert_eq!(tokenize("/*/*///** /* **/*//* "), vec![Token::Delim('/'), Token::Delim('*'), Token::Delim('/')]);
+        assert_eq!(
+            tokenize("/* x */a/**/b/* eof"),
+            vec![Token::Ident("a".into()), Token::Ident("b".into())]
+        );
+        assert_eq!(
+            tokenize("/*/*///** /* **/*//* "),
+            vec![Token::Delim('/'), Token::Delim('*'), Token::Delim('/')]
+        );
     }
 
     #[test]
     fn escapes() {
-        assert_eq!(idents("\\30red \\00030 red \\30\r\nred"), vec!["0red", "0red", "0red"]);
-        assert_eq!(idents("\\0000000red \\1100000red \\D800red"), vec!["\u{FFFD}0red", "\u{FFFD}0red", "\u{FFFD}red"]);
+        assert_eq!(
+            idents("\\30red \\00030 red \\30\r\nred"),
+            vec!["0red", "0red", "0red"]
+        );
+        assert_eq!(
+            idents("\\0000000red \\1100000red \\D800red"),
+            vec!["\u{FFFD}0red", "\u{FFFD}0red", "\u{FFFD}red"]
+        );
         assert_eq!(idents("\\red \\.red \\ red"), vec!["red", ".red", " red"]);
-        assert_eq!(idents("\\376\\37 6\\000376\\0000376\\"), vec!["Ͷ76Ͷ76\u{FFFD}"]);
-        assert_eq!(tokenize("\\\nred"), vec![Token::Delim('\\'), Token::Whitespace, Token::Ident("red".into())]);
-        assert_eq!(idents("\\-red -\\-red --red"), vec!["-red", "--red", "--red"]);
+        assert_eq!(
+            idents("\\376\\37 6\\000376\\0000376\\"),
+            vec!["Ͷ76Ͷ76\u{FFFD}"]
+        );
+        assert_eq!(
+            tokenize("\\\nred"),
+            vec![
+                Token::Delim('\\'),
+                Token::Whitespace,
+                Token::Ident("red".into())
+            ]
+        );
+        assert_eq!(
+            idents("\\-red -\\-red --red"),
+            vec!["-red", "--red", "--red"]
+        );
     }
 
     #[test]
     fn strings_and_bad_strings() {
         assert_eq!(tokenize("'a\\\nb'"), vec![Token::String("ab".into())]);
-        assert_eq!(tokenize("\"Lo\\rem \\130 ps\\u m\""), vec![Token::String("Lorem İpsu m".into())]);
-        assert_eq!(tokenize("'a\nb"), vec![Token::BadString, Token::Whitespace, Token::Ident("b".into())]);
+        assert_eq!(
+            tokenize("\"Lo\\rem \\130 ps\\u m\""),
+            vec![Token::String("Lorem İpsu m".into())]
+        );
+        assert_eq!(
+            tokenize("'a\nb"),
+            vec![
+                Token::BadString,
+                Token::Whitespace,
+                Token::Ident("b".into())
+            ]
+        );
         assert_eq!(tokenize("'eof"), vec![Token::String("eof".into())]);
         assert_eq!(tokenize("''"), vec![Token::String(String::new())]);
     }
@@ -587,64 +641,299 @@ mod tests {
         assert_eq!(tokenize("URL( \t foo \n)"), vec![Token::Url("foo".into())]);
         assert_eq!(tokenize("url()"), vec![Token::Url(String::new())]);
         assert_eq!(tokenize("url("), vec![Token::Url(String::new())]);
-        assert_eq!(tokenize("url(a b) x"), vec![Token::BadUrl, Token::Whitespace, Token::Ident("x".into())]);
+        assert_eq!(
+            tokenize("url(a b) x"),
+            vec![Token::BadUrl, Token::Whitespace, Token::Ident("x".into())]
+        );
         assert_eq!(tokenize("url(a(b)"), vec![Token::BadUrl]);
         assert_eq!(tokenize("url(a\\(b)"), vec![Token::Url("a(b".into())]);
         assert_eq!(tokenize("url(a'b)"), vec![Token::BadUrl]);
-        assert_eq!(tokenize("url(a\\\nb) c"), vec![Token::BadUrl, Token::Whitespace, Token::Ident("c".into())]);
+        assert_eq!(
+            tokenize("url(a\\\nb) c"),
+            vec![Token::BadUrl, Token::Whitespace, Token::Ident("c".into())]
+        );
         assert_eq!(tokenize("url(a\\a b)"), vec![Token::Url("a\nb".into())]);
         assert_eq!(tokenize("url(\x01)"), vec![Token::BadUrl]);
-        assert_eq!(tokenize("url( 'x' )"), vec![Token::Function("url".into()), Token::Whitespace, Token::String("x".into()), Token::Whitespace, Token::CloseParen]);
-        assert_eq!(tokenize("url('x')"), vec![Token::Function("url".into()), Token::String("x".into()), Token::CloseParen]);
-        assert_eq!(tokenize("url\\ (foo)"), vec![Token::Function("url ".into()), Token::Ident("foo".into()), Token::CloseParen]);
-        assert_eq!(tokenize("url (foo)"), vec![Token::Ident("url".into()), Token::Whitespace, Token::OpenParen, Token::Ident("foo".into()), Token::CloseParen]);
+        assert_eq!(
+            tokenize("url( 'x' )"),
+            vec![
+                Token::Function("url".into()),
+                Token::Whitespace,
+                Token::String("x".into()),
+                Token::Whitespace,
+                Token::CloseParen
+            ]
+        );
+        assert_eq!(
+            tokenize("url('x')"),
+            vec![
+                Token::Function("url".into()),
+                Token::String("x".into()),
+                Token::CloseParen
+            ]
+        );
+        assert_eq!(
+            tokenize("url\\ (foo)"),
+            vec![
+                Token::Function("url ".into()),
+                Token::Ident("foo".into()),
+                Token::CloseParen
+            ]
+        );
+        assert_eq!(
+            tokenize("url (foo)"),
+            vec![
+                Token::Ident("url".into()),
+                Token::Whitespace,
+                Token::OpenParen,
+                Token::Ident("foo".into()),
+                Token::CloseParen
+            ]
+        );
         assert_eq!(tokenize("url(a\\"), vec![Token::Url("a\u{FFFD}".into())]);
     }
 
     #[test]
     fn numbers_percentages_dimensions() {
-        let n = |t: &str, v: i64, int: bool| Token::Number { text: t.into(), value: Number { micro: v, int } };
-        assert_eq!(tokenize("12 +34 -45 .67 +.89 -.01"), vec![n("12", 12_000_000, true), Token::Whitespace, n("+34", 34_000_000, true), Token::Whitespace, n("-45", -45_000_000, true), Token::Whitespace, n(".67", 670_000, false), Token::Whitespace, n("+.89", 890_000, false), Token::Whitespace, n("-.01", -10_000, false)]);
+        let n = |t: &str, v: i64, int: bool| Token::Number {
+            text: t.into(),
+            value: Number { micro: v, int },
+        };
+        assert_eq!(
+            tokenize("12 +34 -45 .67 +.89 -.01"),
+            vec![
+                n("12", 12_000_000, true),
+                Token::Whitespace,
+                n("+34", 34_000_000, true),
+                Token::Whitespace,
+                n("-45", -45_000_000, true),
+                Token::Whitespace,
+                n(".67", 670_000, false),
+                Token::Whitespace,
+                n("+.89", 890_000, false),
+                Token::Whitespace,
+                n("-.01", -10_000, false)
+            ]
+        );
         assert_eq!(tokenize("12e2"), vec![n("12e2", 1_200_000_000, false)]);
         assert_eq!(tokenize("-45E-0"), vec![n("-45E-0", -45_000_000, false)]);
-        assert_eq!(tokenize("3."), vec![n("3", 3_000_000, true), Token::Delim('.')]);
-        assert_eq!(tokenize("3e-2.1"), vec![n("3e-2", 30_000, false), n(".1", 100_000, false)]);
-        assert_eq!(tokenize("3\\65-2"), vec![Token::Dimension { text: "3".into(), value: Number::from_i64(3), unit: "e-2".into() }]);
-        assert_eq!(tokenize("12%"), vec![Token::Percentage { text: "12".into(), value: Number::from_i64(12) }]);
-        assert_eq!(tokenize("12\\%"), vec![Token::Dimension { text: "12".into(), value: Number::from_i64(12), unit: "%".into() }]);
-        assert_eq!(tokenize("1.5px"), vec![Token::Dimension { text: "1.5".into(), value: Number { micro: 1_500_000, int: false }, unit: "px".into() }]);
-        assert_eq!(tokenize("12-0red"), vec![n("12", 12_000_000, true), Token::Dimension { text: "-0".into(), value: Number::from_i64(0), unit: "red".into() }]);
-        assert_eq!(tokenize("12.0-red"), vec![Token::Dimension { text: "12.0".into(), value: Number { micro: 12_000_000, int: false }, unit: "-red".into() }]);
-        assert_eq!(tokenize("+ 2"), vec![Token::Delim('+'), Token::Whitespace, n("2", 2_000_000, true)]);
+        assert_eq!(
+            tokenize("3."),
+            vec![n("3", 3_000_000, true), Token::Delim('.')]
+        );
+        assert_eq!(
+            tokenize("3e-2.1"),
+            vec![n("3e-2", 30_000, false), n(".1", 100_000, false)]
+        );
+        assert_eq!(
+            tokenize("3\\65-2"),
+            vec![Token::Dimension {
+                text: "3".into(),
+                value: Number::from_i64(3),
+                unit: "e-2".into()
+            }]
+        );
+        assert_eq!(
+            tokenize("12%"),
+            vec![Token::Percentage {
+                text: "12".into(),
+                value: Number::from_i64(12)
+            }]
+        );
+        assert_eq!(
+            tokenize("12\\%"),
+            vec![Token::Dimension {
+                text: "12".into(),
+                value: Number::from_i64(12),
+                unit: "%".into()
+            }]
+        );
+        assert_eq!(
+            tokenize("1.5px"),
+            vec![Token::Dimension {
+                text: "1.5".into(),
+                value: Number {
+                    micro: 1_500_000,
+                    int: false
+                },
+                unit: "px".into()
+            }]
+        );
+        assert_eq!(
+            tokenize("12-0red"),
+            vec![
+                n("12", 12_000_000, true),
+                Token::Dimension {
+                    text: "-0".into(),
+                    value: Number::from_i64(0),
+                    unit: "red".into()
+                }
+            ]
+        );
+        assert_eq!(
+            tokenize("12.0-red"),
+            vec![Token::Dimension {
+                text: "12.0".into(),
+                value: Number {
+                    micro: 12_000_000,
+                    int: false
+                },
+                unit: "-red".into()
+            }]
+        );
+        assert_eq!(
+            tokenize("+ 2"),
+            vec![
+                Token::Delim('+'),
+                Token::Whitespace,
+                n("2", 2_000_000, true)
+            ]
+        );
     }
 
     #[test]
     fn hashes_at_keywords_functions() {
-        assert_eq!(tokenize("#red0 #0red #-Red #.red"), vec![Token::Hash { value: "red0".into(), id: true }, Token::Whitespace, Token::Hash { value: "0red".into(), id: false }, Token::Whitespace, Token::Hash { value: "-Red".into(), id: true }, Token::Whitespace, Token::Delim('#'), Token::Delim('.'), Token::Ident("red".into())]);
-        assert_eq!(tokenize("@media @0media @-\\-x"), vec![Token::AtKeyword("media".into()), Token::Whitespace, Token::Delim('@'), Token::Dimension { text: "0".into(), value: Number::ZERO, unit: "media".into() }, Token::Whitespace, Token::AtKeyword("--x".into())]);
-        assert_eq!(tokenize("rgba(0rgba() rgba ()"), vec![Token::Function("rgba".into()), Token::Dimension { text: "0".into(), value: Number::ZERO, unit: "rgba".into() }, Token::OpenParen, Token::CloseParen, Token::Whitespace, Token::Ident("rgba".into()), Token::Whitespace, Token::OpenParen, Token::CloseParen]);
+        assert_eq!(
+            tokenize("#red0 #0red #-Red #.red"),
+            vec![
+                Token::Hash {
+                    value: "red0".into(),
+                    id: true
+                },
+                Token::Whitespace,
+                Token::Hash {
+                    value: "0red".into(),
+                    id: false
+                },
+                Token::Whitespace,
+                Token::Hash {
+                    value: "-Red".into(),
+                    id: true
+                },
+                Token::Whitespace,
+                Token::Delim('#'),
+                Token::Delim('.'),
+                Token::Ident("red".into())
+            ]
+        );
+        assert_eq!(
+            tokenize("@media @0media @-\\-x"),
+            vec![
+                Token::AtKeyword("media".into()),
+                Token::Whitespace,
+                Token::Delim('@'),
+                Token::Dimension {
+                    text: "0".into(),
+                    value: Number::ZERO,
+                    unit: "media".into()
+                },
+                Token::Whitespace,
+                Token::AtKeyword("--x".into())
+            ]
+        );
+        assert_eq!(
+            tokenize("rgba(0rgba() rgba ()"),
+            vec![
+                Token::Function("rgba".into()),
+                Token::Dimension {
+                    text: "0".into(),
+                    value: Number::ZERO,
+                    unit: "rgba".into()
+                },
+                Token::OpenParen,
+                Token::CloseParen,
+                Token::Whitespace,
+                Token::Ident("rgba".into()),
+                Token::Whitespace,
+                Token::OpenParen,
+                Token::CloseParen
+            ]
+        );
     }
 
     #[test]
     fn cdo_cdc_and_delims() {
-        assert_eq!(tokenize("<!-- --> <!- -- ->"), vec![Token::Cdo, Token::Whitespace, Token::Cdc, Token::Whitespace, Token::Delim('<'), Token::Delim('!'), Token::Delim('-'), Token::Whitespace, Token::Ident("--".into()), Token::Whitespace, Token::Delim('-'), Token::Delim('>')]);
-        assert_eq!(tokenize("red-->"), vec![Token::Ident("red--".into()), Token::Delim('>')]);
-        assert_eq!(tokenize("~=|=^=$=*=||"), "~=|=^=$=*=||".chars().map(Token::Delim).collect::<Vec<_>>());
-        assert_eq!(tokenize("{}[]();:,"), vec![Token::OpenCurly, Token::CloseCurly, Token::OpenSquare, Token::CloseSquare, Token::OpenParen, Token::CloseParen, Token::Semicolon, Token::Colon, Token::Comma]);
-        assert_eq!(tokenize("\u{7F}\u{80}\u{81}"), vec![Token::Delim('\u{7F}'), Token::Ident("\u{80}\u{81}".into())]);
+        assert_eq!(
+            tokenize("<!-- --> <!- -- ->"),
+            vec![
+                Token::Cdo,
+                Token::Whitespace,
+                Token::Cdc,
+                Token::Whitespace,
+                Token::Delim('<'),
+                Token::Delim('!'),
+                Token::Delim('-'),
+                Token::Whitespace,
+                Token::Ident("--".into()),
+                Token::Whitespace,
+                Token::Delim('-'),
+                Token::Delim('>')
+            ]
+        );
+        assert_eq!(
+            tokenize("red-->"),
+            vec![Token::Ident("red--".into()), Token::Delim('>')]
+        );
+        assert_eq!(
+            tokenize("~=|=^=$=*=||"),
+            "~=|=^=$=*=||".chars().map(Token::Delim).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            tokenize("{}[]();:,"),
+            vec![
+                Token::OpenCurly,
+                Token::CloseCurly,
+                Token::OpenSquare,
+                Token::CloseSquare,
+                Token::OpenParen,
+                Token::CloseParen,
+                Token::Semicolon,
+                Token::Colon,
+                Token::Comma
+            ]
+        );
+        assert_eq!(
+            tokenize("\u{7F}\u{80}\u{81}"),
+            vec![Token::Delim('\u{7F}'), Token::Ident("\u{80}\u{81}".into())]
+        );
     }
 
     #[test]
     fn serialization_round_trips() {
-        for s in ["a", "-a", "--a", "1a", "-1a", "a b", "a\"b", "é", "-", "a\u{1}b", "a.b"] {
+        for s in [
+            "a", "-a", "--a", "1a", "-1a", "a b", "a\"b", "é", "-", "a\u{1}b", "a.b",
+        ] {
             let ser = serialize_identifier(s);
-            assert_eq!(tokenize(&ser), vec![Token::Ident(s.to_owned())], "{s:?} -> {ser:?}");
+            assert_eq!(
+                tokenize(&ser),
+                vec![Token::Ident(s.to_owned())],
+                "{s:?} -> {ser:?}"
+            );
         }
         for s in ["", "a\"b", "a\\b", "line\nbreak", "é"] {
             let ser = serialize_string(s);
-            assert_eq!(tokenize(&ser), vec![Token::String(s.to_owned())], "{s:?} -> {ser:?}");
+            assert_eq!(
+                tokenize(&ser),
+                vec![Token::String(s.to_owned())],
+                "{s:?} -> {ser:?}"
+            );
         }
-        for src in ["3\\65-2", "3\\65 5", "3\\45+1", "1e3", "10px", "50%", "#abc", "#0a", "url(\"x y\")", "a(", "@x", "-\\31 a", "\\-", "a\\.b"] {
+        for src in [
+            "3\\65-2",
+            "3\\65 5",
+            "3\\45+1",
+            "1e3",
+            "10px",
+            "50%",
+            "#abc",
+            "#0a",
+            "url(\"x y\")",
+            "a(",
+            "@x",
+            "-\\31 a",
+            "\\-",
+            "a\\.b",
+        ] {
             let toks = tokenize(src);
             let mut out = String::new();
             for t in &toks {

@@ -1896,7 +1896,8 @@ impl Environment {
         let Some((window, bounds)) = scene.scrolls_at(None, x, y).into_iter().find_map(|a| {
             let (prefix, pane) = a.target.split_once(":content:pane:")?;
             let window: u64 = prefix.strip_prefix("window:")?.parse().ok()?;
-            (pane == "page" && (hit_window.is_none() || hit_window == Some(window))).then_some((window, a.bounds))
+            (pane == "page" && (hit_window.is_none() || hit_window == Some(window)))
+                .then_some((window, a.bounds))
         }) else {
             return Ok(None);
         };
@@ -1922,7 +1923,13 @@ impl Environment {
         };
         let mut http = |r| runtime.http(machine, &actor, r);
         let cursor = browser
-            .hover_at_with(x - bounds.x, y - bounds.y, bounds.width, bounds.height, &mut http)
+            .hover_at_with(
+                x - bounds.x,
+                y - bounds.y,
+                bounds.width,
+                bounds.height,
+                &mut http,
+            )
             .map(|css| CursorKind::from_css(css).css_name().to_owned());
         if cursor.is_some() {
             m.pointer_cursor = cursor.clone();
@@ -1937,7 +1944,11 @@ impl Environment {
         let m = self.session(id).ok()?.machines.get(machine)?;
         let window = window.or(m.active_browser_window)?;
         let area = work_area(theme, width, height);
-        let rect = if theme.mobile() { area } else { m.desktop.effective_frame(window, area) };
+        let rect = if theme.mobile() {
+            area
+        } else {
+            m.desktop.effective_frame(window, area)
+        };
         let content = window_content_rect_for_kind(theme, rect, "browser");
         Some((content.width.max(1), content.height.max(1)))
     }
@@ -2437,7 +2448,9 @@ impl Environment {
             "reload" => machine.browser.reload(&mut http)?,
             "fill" => {
                 let input = string(&a.payload, "id")?;
-                machine.browser.fill_with(input, string(&a.payload, "value")?, &mut http)?;
+                machine
+                    .browser
+                    .fill_with(input, string(&a.payload, "value")?, &mut http)?;
                 machine.focused_input = Some(input.into());
             }
             "key" => machine.browser.key(string(&a.payload, "key")?, &mut http)?,
@@ -2472,15 +2485,22 @@ impl Environment {
                 let pane = a.payload.get("pane").and_then(Value::as_str);
                 match (row, pane) {
                     (Some(row), _) => {
-                        machine
-                            .browser
-                            .scroll_pane_with(&format!("row:{row}"), to("x"), true, &mut http);
+                        machine.browser.scroll_pane_with(
+                            &format!("row:{row}"),
+                            to("x"),
+                            true,
+                            &mut http,
+                        );
                     }
                     (None, Some(pane)) => {
-                        machine.browser.scroll_pane_with(pane, to("y"), false, &mut http);
+                        machine
+                            .browser
+                            .scroll_pane_with(pane, to("y"), false, &mut http);
                     }
                     (None, None) => {
-                        machine.browser.scroll_pane_with("page", to("y"), false, &mut http);
+                        machine
+                            .browser
+                            .scroll_pane_with("page", to("y"), false, &mut http);
                     }
                 }
             }

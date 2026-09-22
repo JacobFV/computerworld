@@ -56,11 +56,20 @@ pub fn command(id: &str, fields: &[(&str, &str)], control: Html) -> Html {
 }
 /// A round icon button that posts a player command.
 pub fn control(id: &str, glyph: &str, label: &str, class: &str, fields: &[(&str, &str)]) -> Html {
-    command(id, fields, press(&format!("ctl {class}"), label).child(icon(glyph)))
+    command(
+        id,
+        fields,
+        press(&format!("ctl {class}"), label).child(icon(glyph)),
+    )
 }
 /// A control that cannot act now: its glyph, faint, named with the reason.
 pub fn inert(id: &str, glyph: &str, label: &str) -> Html {
-    span("ctl inert").id(id).attr("role", "img").attr("aria-label", label).attr("title", label).child(icon(glyph))
+    span("ctl inert")
+        .id(id)
+        .attr("role", "img")
+        .attr("aria-label", label)
+        .attr("title", label)
+        .child(icon(glyph))
 }
 /// `hex` darkened to `pct` percent of itself: the dim wash behind a header's artwork.
 pub fn shade(hex: &str, pct: u32) -> String {
@@ -81,11 +90,21 @@ pub fn transport(p: &Player, back: &str) -> Vec<Html> {
         control(
             "player-shuffle",
             "shuffle",
-            if p.shuffle { "Disable shuffle" } else { "Enable shuffle" },
+            if p.shuffle {
+                "Disable shuffle"
+            } else {
+                "Enable shuffle"
+            },
             lit(p.shuffle),
             &[("action", "shuffle"), ("return", back)],
         ),
-        control("player-previous", "previous", "Previous", "", &[("action", "previous"), ("return", back)]),
+        control(
+            "player-previous",
+            "previous",
+            "Previous",
+            "",
+            &[("action", "previous"), ("return", back)],
+        ),
         control(
             "player-toggle",
             if p.playing { "pause" } else { "play" },
@@ -94,9 +113,19 @@ pub fn transport(p: &Player, back: &str) -> Vec<Html> {
             &[("action", "toggle"), ("return", back)],
         ),
         if at_end {
-            inert("player-next", "next", "Next (nothing is queued after this song)")
+            inert(
+                "player-next",
+                "next",
+                "Next (nothing is queued after this song)",
+            )
         } else {
-            control("player-next", "next", "Next", "", &[("action", "next"), ("return", back)])
+            control(
+                "player-next",
+                "next",
+                "Next",
+                "",
+                &[("action", "next"), ("return", back)],
+            )
         },
         control(
             "player-repeat",
@@ -121,16 +150,26 @@ pub fn like(id: &str, item: &str, liked: bool, back: &str) -> Html {
         id,
         &format!("/items/{item}/like"),
         &[("return", back)],
-        press(if liked { "ctl like on" } else { "ctl like" }, if liked { "Remove like" } else { "Like" })
-            .child(icon(if liked { "like-fill" } else { "like" })),
+        press(
+            if liked { "ctl like on" } else { "ctl like" },
+            if liked { "Remove like" } else { "Like" },
+        )
+        .child(icon(if liked { "like-fill" } else { "like" })),
     )
 }
 /// While the listener's music plays, a page asks the browser to fetch it again every
 /// second of world time (`refresh: 1; url=<this page>`), so its player bar's position,
 /// scrubber and lit lyric line move with the clock rather than only on a click.
-pub fn live(mut response: HttpResponse, state: &Value, ctx: &ServiceContext, back: &str) -> HttpResponse {
+pub fn live(
+    mut response: HttpResponse,
+    state: &Value,
+    ctx: &ServiceContext,
+    back: &str,
+) -> HttpResponse {
     if catalog::player(state, &ctx.actor, ctx.tick).is_some_and(|p| p.playing) {
-        response.headers.insert("refresh".into(), format!("1; url={back}"));
+        response
+            .headers
+            .insert("refresh".into(), format!("1; url={back}"));
     }
     response
 }
@@ -153,15 +192,27 @@ pub fn volume(p: &Player, back: &str) -> Html {
             let pct = i * 100 / VOLUME_STEPS;
             command(
                 &format!("player-volume-{pct}"),
-                &[("action", "volume"), ("level", &pct.to_string()), ("return", back)],
-                press(if pct <= level { "seg on" } else { "seg" }, &format!("Volume {pct}%")),
+                &[
+                    ("action", "volume"),
+                    ("level", &pct.to_string()),
+                    ("return", back),
+                ],
+                press(
+                    if pct <= level { "seg on" } else { "seg" },
+                    &format!("Volume {pct}%"),
+                ),
             )
         }))
 }
 /// A song's lyrics as a column of lines, each a control that seeks to where it is sung;
 /// `at` is the line being sung now (`now`), those already sung are `sung` and those to
 /// come `ahead`.
-pub fn lyric_lines(prefix: &str, lines: &[(u64, String)], at: Option<usize>, back: &str) -> Vec<Html> {
+pub fn lyric_lines(
+    prefix: &str,
+    lines: &[(u64, String)],
+    at: Option<usize>,
+    back: &str,
+) -> Vec<Html> {
     lines
         .iter()
         .enumerate()
@@ -173,22 +224,39 @@ pub fn lyric_lines(prefix: &str, lines: &[(u64, String)], at: Option<usize>, bac
             };
             command(
                 &format!("{prefix}-{i}"),
-                &[("action", "seek"), ("position_ms", &ms.to_string()), ("return", back)],
-                press(class, "").child(span("").id(format!("{prefix}-{i}-text")).text(line.as_str())),
+                &[
+                    ("action", "seek"),
+                    ("position_ms", &ms.to_string()),
+                    ("return", back),
+                ],
+                press(class, "").child(
+                    span("")
+                        .id(format!("{prefix}-{i}-text"))
+                        .text(line.as_str()),
+                ),
             )
         })
         .collect()
 }
 /// The scrubber: every segment seeks to where it sits, the played ones lit.
 pub fn scrubber(p: &Player, length_ms: u64, back: &str) -> Html {
-    let played = (p.position_ms * SEGMENTS).checked_div(length_ms).unwrap_or(0);
+    let played = (p.position_ms * SEGMENTS)
+        .checked_div(length_ms)
+        .unwrap_or(0);
     div("scrub").each(0..SEGMENTS, |i| {
         let at = length_ms * i / SEGMENTS;
         let on = i < played || (i == 0 && p.position_ms > 0);
         command(
             &format!("player-seek-{i}"),
-            &[("action", "seek"), ("position_ms", &at.to_string()), ("return", back)],
-            press(if on { "seg on" } else { "seg" }, &format!("Seek to {}", clock_ms(at))),
+            &[
+                ("action", "seek"),
+                ("position_ms", &at.to_string()),
+                ("return", back),
+            ],
+            press(
+                if on { "seg on" } else { "seg" },
+                &format!("Seek to {}", clock_ms(at)),
+            ),
         )
     })
 }
@@ -231,8 +299,21 @@ pub struct Row<'a> {
 /// One row of a track list: number (or a playing mark), cover, title and artist, an
 /// extra column, then like and duration. The whole row plays the track within its
 /// context; like is its own control.
-pub fn track_row(state: &Value, actor: &str, row: &Row, id: &str, number: usize, extra: Option<String>) -> Html {
-    let Row { prefix, context, playing, back, art } = *row;
+pub fn track_row(
+    state: &Value,
+    actor: &str,
+    row: &Row,
+    id: &str,
+    number: usize,
+    extra: Option<String>,
+) -> Html {
+    let Row {
+        prefix,
+        context,
+        playing,
+        back,
+        art,
+    } = *row;
     let item = record(state, "items", id).cloned().unwrap_or(Value::Null);
     let artist = catalog::artist_name(state, &web::text(&item, "channel"));
     let current = playing == Some(id);
@@ -244,32 +325,66 @@ pub fn track_row(state: &Value, actor: &str, row: &Row, id: &str, number: usize,
             .attr("aria-label", "Now playing")
             .child(icon("bars"))
     } else {
-        span("num").id(format!("{prefix}-{id}-number")).text(number.to_string())
+        span("num")
+            .id(format!("{prefix}-{id}-number"))
+            .text(number.to_string())
     };
     let cells = span(if art { "cells with-art" } else { "cells" })
         .id(format!("{prefix}-{id}-cells"))
         .child(number_cell)
-        .when(art, |c| c.child(cover(&format!("{prefix}-{id}-art"), &catalog::album_id(&item), "", 40, 4)))
+        .when(art, |c| {
+            c.child(cover(
+                &format!("{prefix}-{id}-art"),
+                &catalog::album_id(&item),
+                "",
+                40,
+                4,
+            ))
+        })
         .child(
             span("names")
                 .id(format!("{prefix}-{id}-text"))
-                .child(span("title").id(format!("{prefix}-{id}-title")).text(web::text(&item, "title")))
-                .child(span("artist").id(format!("{prefix}-{id}-artist")).text(artist)),
+                .child(
+                    span("title")
+                        .id(format!("{prefix}-{id}-title"))
+                        .text(web::text(&item, "title")),
+                )
+                .child(
+                    span("artist")
+                        .id(format!("{prefix}-{id}-artist"))
+                        .text(artist),
+                ),
         )
-        .child(span("extra").id(format!("{prefix}-{id}-extra")).text(extra.unwrap_or_default()));
+        .child(
+            span("extra")
+                .id(format!("{prefix}-{id}-extra"))
+                .text(extra.unwrap_or_default()),
+        );
     div(if current { "trow current" } else { "trow" })
         .id(format!("{prefix}-line-{id}"))
         .child(command(
             &format!("{prefix}-{id}"),
-            &[("action", "play"), ("item", id), ("context", context), ("return", back)],
+            &[
+                ("action", "play"),
+                ("item", id),
+                ("context", context),
+                ("return", back),
+            ],
             press("rowplay", "").child(cells),
         ))
         .child(like(&format!("{prefix}-{id}-like"), id, liked, back))
-        .child(span("dur").id(format!("{prefix}-{id}-duration")).text(clock(num(&item, "duration_s"))))
+        .child(
+            span("dur")
+                .id(format!("{prefix}-{id}-duration"))
+                .text(clock(num(&item, "duration_s"))),
+        )
 }
 /// Total running time as players print it: "11 min 25 sec" or "1 hr 4 min".
 pub fn running(state: &Value, ids: &[String]) -> String {
-    let seconds: u64 = ids.iter().map(|id| catalog::duration_ms(state, id) / 1_000).sum();
+    let seconds: u64 = ids
+        .iter()
+        .map(|id| catalog::duration_ms(state, id) / 1_000)
+        .sum();
     match (seconds / 3600, (seconds / 60) % 60, seconds % 60) {
         (0, m, s) => format!("{m} min {s} sec"),
         (h, m, _) => format!("{h} hr {m} min"),

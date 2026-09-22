@@ -117,7 +117,11 @@ fn desktop_browser_address_and_page_hit_targets_use_canonical_network() {
             // A link, not merely something addressable: every element the page gives an
             // `id` now carries an interaction string so an agent can read it, so the
             // first one under the content is as likely to be a masthead as a link.
-            let role = node.semantic.as_ref().map(|s| s.role.as_str()).unwrap_or("");
+            let role = node
+                .semantic
+                .as_ref()
+                .map(|s| s.role.as_str())
+                .unwrap_or("");
             if !matches!(role, "link" | "button") {
                 return None;
             }
@@ -127,7 +131,11 @@ fn desktop_browser_address_and_page_hit_targets_use_canonical_network() {
             let bounds = node.transform.bounds(node.bounds);
             let x = bounds.x + (bounds.width / 2) as i32;
             let y = bounds.y + (bounds.height / 2) as i32;
-            (scene.hit_test(x, y).and_then(|hit| hit.interaction.as_deref()) == Some(id)).then(|| id.to_owned())
+            (scene
+                .hit_test(x, y)
+                .and_then(|hit| hit.interaction.as_deref())
+                == Some(id))
+            .then(|| id.to_owned())
         })
         .next()
         .expect("network response page has links");

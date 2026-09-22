@@ -150,10 +150,14 @@ fn matches(state: &Value, id: &str, needle: &str) -> bool {
         web::text(item, "description"),
         web::text(item, "album"),
         web::strings(item, "tags").join(" "),
-        record(state, "channels", &web::text(item, "channel")).map(|c| web::text(c, "name")).unwrap_or_default()
+        record(state, "channels", &web::text(item, "channel"))
+            .map(|c| web::text(c, "name"))
+            .unwrap_or_default()
     )
     .to_lowercase();
-    needle.split_whitespace().all(|word| hay.contains(&word.to_lowercase()))
+    needle
+        .split_whitespace()
+        .all(|word| hay.contains(&word.to_lowercase()))
 }
 fn item_mut<'a>(state: &'a mut Value, id: &str) -> Option<&'a mut Value> {
     state.get_mut("items")?.as_object_mut()?.get_mut(id)
@@ -324,7 +328,10 @@ impl Service for MediaService {
                     Err("item not found".into())
                 } else {
                     play(state, id, None, ctx, true);
-                    Ok((json!({"views": num(&state["items"][id], "views")}), item_at(id)))
+                    Ok((
+                        json!({"views": num(&state["items"][id], "views")}),
+                        item_at(id),
+                    ))
                 }
             }
             // Both music modes play through the listener's player; its reply is the player.
@@ -345,7 +352,12 @@ impl Service for MediaService {
                         ctx,
                         &json!({"action": "play", "item": id, "context": context}),
                     )
-                    .map(|_| (json!({"plays": num(&state["items"][id], "plays")}), item_at(id)))
+                    .map(|_| {
+                        (
+                            json!({"plays": num(&state["items"][id], "plays")}),
+                            item_at(id),
+                        )
+                    })
                 }
             }
             ["items", id, "queue"] if !video => {
@@ -388,7 +400,10 @@ impl Service for MediaService {
                         ctx,
                         false,
                     );
-                    Ok((json!({"plays": num(&state["items"][id], "plays")}), item_at(id)))
+                    Ok((
+                        json!({"plays": num(&state["items"][id], "plays")}),
+                        item_at(id),
+                    ))
                 }
             }
             ["items", id, "like"] => match record(state, "items", id) {
@@ -396,7 +411,10 @@ impl Service for MediaService {
                 Some(_) => {
                     let liked = toggle(state, "likes", &ctx.actor, id);
                     bump(state, id, "likes", if liked { 1 } else { -1 });
-                    Ok((json!({"liked": liked}), if video { item_at(id) } else { "/".to_owned() }))
+                    Ok((
+                        json!({"liked": liked}),
+                        if video { item_at(id) } else { "/".to_owned() },
+                    ))
                 }
             },
             ["items", id, "comments"] => {

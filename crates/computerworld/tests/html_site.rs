@@ -100,7 +100,12 @@ fn an_html_site_is_rendered_read_and_driven_through_the_agent_api() {
     act(&mut world, &session, "back", json!({}));
     assert_eq!(page(&world, &session)["title"], "Atlas HTML");
 
-    act(&mut world, &session, "fill", json!({"id":"q","value":"maps"}));
+    act(
+        &mut world,
+        &session,
+        "fill",
+        json!({"id":"q","value":"maps"}),
+    );
     act(&mut world, &session, "key", json!({"key":"Enter"}));
     let browser = world.observe(&session).unwrap().channels["browser.v1"][MACHINE].clone();
     assert_eq!(browser["url"], "http://html.example:8090/docs/?q=maps");
@@ -112,7 +117,12 @@ fn an_html_site_is_rendered_read_and_driven_through_the_agent_api() {
     let result = world
         .step(
             &session,
-            vec![ActionEnvelope::new("keyboard.v1", "type", MACHINE, json!({"text":"hello"}))],
+            vec![ActionEnvelope::new(
+                "keyboard.v1",
+                "type",
+                MACHINE,
+                json!({"text":"hello"}),
+            )],
         )
         .unwrap();
     assert!(result.outcomes[0].success, "{:?}", result.outcomes[0]);
@@ -124,5 +134,8 @@ fn an_html_site_is_rendered_read_and_driven_through_the_agent_api() {
         .flat_map(|e| e["children"].as_array().cloned().unwrap_or_default())
         .find(|e| e["id"] == "q")
         .expect("the input");
-    assert_eq!((input["label"].as_str(), input["value"].as_str()), (Some("Search"), Some("hello")));
+    assert_eq!(
+        (input["label"].as_str(), input["value"].as_str()),
+        (Some("Search"), Some("hello"))
+    );
 }

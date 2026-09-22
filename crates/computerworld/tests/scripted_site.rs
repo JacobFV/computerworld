@@ -166,7 +166,13 @@ fn console(world: &World, session: &str) -> Vec<String> {
         .as_array()
         .map(|a| {
             a.iter()
-                .map(|e| format!("{}: {}", e["level"].as_str().unwrap_or(""), e["text"].as_str().unwrap_or("")))
+                .map(|e| {
+                    format!(
+                        "{}: {}",
+                        e["level"].as_str().unwrap_or(""),
+                        e["text"].as_str().unwrap_or("")
+                    )
+                })
                 .collect()
         })
         .unwrap_or_default()
@@ -180,16 +186,30 @@ fn a_scripted_static_site_runs_end_to_end_through_the_agent_api() {
     // The page ran: its `fetch` filled the list, `localStorage` counted the visit,
     // the SPA router drew the home view, and the hidden panel is not in the reading.
     assert_eq!(browser(&world, &session)["page"]["title"], "Ledger");
-    assert!(shows(&world, &session, "no entries yet"), "{:?}", texts(&page(&world, &session)));
+    assert!(
+        shows(&world, &session, "no entries yet"),
+        "{:?}",
+        texts(&page(&world, &session))
+    );
     assert!(shows(&world, &session, "Recent entries"));
     assert!(shows(&world, &session, "visits 1"));
-    assert!(!shows(&world, &session, "loading"), "the fetch replaced the placeholder");
-    assert!(!shows(&world, &session, "Name"), "the Add panel is display:none");
+    assert!(
+        !shows(&world, &session, "loading"),
+        "the fetch replaced the placeholder"
+    );
+    assert!(
+        !shows(&world, &session, "Name"),
+        "the Add panel is display:none"
+    );
     assert_eq!(console(&world, &session), vec!["log: entries 0"]);
 
     // A click on a tab is a DOM event; the panel it shows is what the reader sees.
     act(&mut world, &session, "click", json!({"id":"tab-add"}));
-    assert!(shows(&world, &session, "Name"), "{:?}", texts(&page(&world, &session)));
+    assert!(
+        shows(&world, &session, "Name"),
+        "{:?}",
+        texts(&page(&world, &session))
+    );
     assert!(!shows(&world, &session, "no entries yet"));
 
     // Typing goes to the focused control and fires `input`; the submit handler calls
@@ -198,26 +218,52 @@ fn a_scripted_static_site_runs_end_to_end_through_the_agent_api() {
     let typed = world
         .step(
             &session,
-            vec![ActionEnvelope::new("keyboard.v1", "type", MACHINE, json!({"text":"rent"}))],
+            vec![ActionEnvelope::new(
+                "keyboard.v1",
+                "type",
+                MACHINE,
+                json!({"text":"rent"}),
+            )],
         )
         .unwrap();
     assert!(typed.outcomes[0].success, "{:?}", typed.outcomes[0]);
     assert_eq!(browser(&world, &session)["fields"]["who"], "rent");
     act(&mut world, &session, "click", json!({"id":"save"}));
-    assert_eq!(browser(&world, &session)["url"], HOME, "preventDefault: no navigation");
-    assert!(shows(&world, &session, "saved rent"), "{:?}", texts(&page(&world, &session)));
+    assert_eq!(
+        browser(&world, &session)["url"],
+        HOME,
+        "preventDefault: no navigation"
+    );
+    assert!(
+        shows(&world, &session, "saved rent"),
+        "{:?}",
+        texts(&page(&world, &session))
+    );
     act(&mut world, &session, "click", json!({"id":"tab-list"}));
-    assert!(shows(&world, &session, "note: rent"), "the POST reached the service");
-    assert_eq!(console(&world, &session), vec!["log: entries 0", "log: entries 1"]);
+    assert!(
+        shows(&world, &session, "note: rent"),
+        "the POST reached the service"
+    );
+    assert_eq!(
+        console(&world, &session),
+        vec!["log: entries 0", "log: entries 1"]
+    );
 
     // The `setInterval` counter advances with the world clock, not with actions.
     assert!(shows(&world, &session, "ticks 0"));
     wait(&mut world, &session, 3 * S);
-    assert!(shows(&world, &session, "ticks 3"), "{:?}", texts(&page(&world, &session)));
+    assert!(
+        shows(&world, &session, "ticks 3"),
+        "{:?}",
+        texts(&page(&world, &session))
+    );
 
     // The router pushes a same-document entry: no request, and `back` fires popstate.
     act(&mut world, &session, "click", json!({"id":"about"}));
-    assert_eq!(browser(&world, &session)["url"], "http://ledger.example:8091/about");
+    assert_eq!(
+        browser(&world, &session)["url"],
+        "http://ledger.example:8091/about"
+    );
     assert!(shows(&world, &session, "About this ledger"));
     act(&mut world, &session, "back", json!({}));
     assert_eq!(browser(&world, &session)["url"], HOME);
@@ -230,14 +276,33 @@ fn a_scripted_static_site_runs_end_to_end_through_the_agent_api() {
     assert!(shows(&world, &session, "ticks 5"));
     let mut restored = World::new(definition(), 42).unwrap();
     restored.import_snapshot(&snapshot).unwrap();
-    assert!(shows(&restored, &session, "ticks 3"), "{:?}", texts(&page(&restored, &session)));
+    assert!(
+        shows(&restored, &session, "ticks 3"),
+        "{:?}",
+        texts(&page(&restored, &session))
+    );
     assert!(shows(&restored, &session, "note: rent"));
     wait(&mut restored, &session, 2 * S);
-    assert!(shows(&restored, &session, "ticks 5"), "{:?}", texts(&page(&restored, &session)));
-    assert_eq!(page(&restored, &session), page(&world, &session), "the restored world shows what the live one does");
+    assert!(
+        shows(&restored, &session, "ticks 5"),
+        "{:?}",
+        texts(&page(&restored, &session))
+    );
+    assert_eq!(
+        page(&restored, &session),
+        page(&world, &session),
+        "the restored world shows what the live one does"
+    );
 
     // A reload re-runs the page against the storage it left behind.
     act(&mut world, &session, "reload", json!({}));
-    assert!(shows(&world, &session, "visits 2"), "{:?}", texts(&page(&world, &session)));
-    assert!(shows(&world, &session, "note: rent"), "the list comes back from the service");
+    assert!(
+        shows(&world, &session, "visits 2"),
+        "{:?}",
+        texts(&page(&world, &session))
+    );
+    assert!(
+        shows(&world, &session, "note: rent"),
+        "the list comes back from the service"
+    );
 }

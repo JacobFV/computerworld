@@ -7,10 +7,22 @@ use cw_service_issues::IssuesService;
 use serde_json::Value;
 
 fn ctx(actor: &str) -> ServiceContext {
-    ServiceContext { actor: actor.into(), source: "alice-mac".into(), tick: 60, seed: 1, instance: "linear".into() }
+    ServiceContext {
+        actor: actor.into(),
+        source: "alice-mac".into(),
+        tick: 60,
+        seed: 1,
+        instance: "linear".into(),
+    }
 }
 fn fetch(state: &mut Value, path: &str) -> support::Page {
-    let r = IssuesService.handle(state, &ctx("alice"), &HttpRequest::get(format!("http://linear.app{path}"))).unwrap();
+    let r = IssuesService
+        .handle(
+            state,
+            &ctx("alice"),
+            &HttpRequest::get(format!("http://linear.app{path}")),
+        )
+        .unwrap();
     assert_eq!(r.status, 200, "{path}");
     support::Page::parse(path, String::from_utf8(r.body).unwrap())
 }
@@ -21,11 +33,18 @@ fn linear_seed_initialises_and_every_view_renders_in_both_skins() {
     for skin in ["linear", "plain"] {
         let mut initial = site["initial_state"].clone();
         initial["skin"] = skin.into();
-        let mut state = IssuesService.initialize(initial, &ctx("alice")).expect("linear seed initialises");
+        let mut state = IssuesService
+            .initialize(initial, &ctx("alice"))
+            .expect("linear seed initialises");
         let projects = state["projects"].as_object().unwrap().clone();
         let mut paths = vec!["/".to_owned(), "/projects/OPS?assignee=alice".to_owned()];
         for (key, project) in &projects {
-            for view in ["", "?view=board", "?view=cycle", "?view=board&assignee=alice"] {
+            for view in [
+                "",
+                "?view=board",
+                "?view=cycle",
+                "?view=board&assignee=alice",
+            ] {
                 paths.push(format!("/projects/{key}{view}"));
             }
             for id in project["issues"].as_object().unwrap().keys() {
@@ -38,11 +57,15 @@ fn linear_seed_initialises_and_every_view_renders_in_both_skins() {
         }
         for entry in site["search_entries"].as_array().unwrap() {
             let url = entry["url"].as_str().unwrap();
-            let r = IssuesService.handle(&mut state, &ctx("alice"), &HttpRequest::get(url)).unwrap();
+            let r = IssuesService
+                .handle(&mut state, &ctx("alice"), &HttpRequest::get(url))
+                .unwrap();
             assert_eq!(r.status, 200, "search entry {url}");
         }
     }
-    let mut state = IssuesService.initialize(site["initial_state"].clone(), &ctx("alice")).unwrap();
+    let mut state = IssuesService
+        .initialize(site["initial_state"].clone(), &ctx("alice"))
+        .unwrap();
     // The projects table lists every team; the list groups a team's issues by status.
     let home = fetch(&mut state, "/");
     assert_eq!(home.title(), "Northstar · Linear");
@@ -56,14 +79,29 @@ fn linear_seed_initialises_and_every_view_renders_in_both_skins() {
     assert_eq!(ops.attr("card-state-7", "data-status"), "in_progress");
     assert_eq!(ops.attr("card-priority-7", "title"), "Urgent");
     let (action, method, fields) = ops.form("new-issue");
-    assert_eq!((action.as_str(), method.as_str()), ("/projects/OPS/issues", "post"));
-    assert_eq!(fields.iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>(), vec!["title", "body"]);
+    assert_eq!(
+        (action.as_str(), method.as_str()),
+        ("/projects/OPS/issues", "post")
+    );
+    assert_eq!(
+        fields.iter().map(|(k, _)| k.as_str()).collect::<Vec<_>>(),
+        vec!["title", "body"]
+    );
     let (action, _, fields) = ops.form("move-7-blocked-form");
     assert_eq!(action, "/projects/OPS/issues/7");
-    assert_eq!(fields[..2], [("status".to_owned(), "blocked".to_owned()), ("view".to_owned(), "board".to_owned())]);
+    assert_eq!(
+        fields[..2],
+        [
+            ("status".to_owned(), "blocked".to_owned()),
+            ("view".to_owned(), "board".to_owned())
+        ]
+    );
     // An issue links what its body mentions.
     let seven = fetch(&mut state, "/projects/OPS/issues/7");
-    assert_eq!(seven.attr("body-link-8", "href"), "http://status.northstar.example/incidents/inc-4");
+    assert_eq!(
+        seven.attr("body-link-8", "href"),
+        "http://status.northstar.example/incidents/inc-4"
+    );
     assert_eq!(seven.text("comment-author-1"), "carol");
     // Storylines 1 and 10 name these two by number; the bible depends on them staying put.
     let ops = &state["projects"]["OPS"]["issues"];

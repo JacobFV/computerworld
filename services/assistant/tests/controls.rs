@@ -44,7 +44,11 @@ fn sweep(initial: &Value, actor: &str, origin: &str) -> Vec<String> {
     // The open conversation keeps its row in the history, marked `.on` and still a
     // link to itself, which is what both products do.
     let state: AssistantState = serde_json::from_value(base.clone()).unwrap();
-    let mut current: Vec<String> = state.conversations.keys().map(|id| format!("side-{id}")).collect();
+    let mut current: Vec<String> = state
+        .conversations
+        .keys()
+        .map(|id| format!("side-{id}"))
+        .collect();
     // Both products keep "New chat" in the sidebar of the new-chat page itself.
     current.push("side-new".into());
     let current: Vec<&str> = current.iter().map(String::as_str).collect();
@@ -73,15 +77,23 @@ fn sweep(initial: &Value, actor: &str, origin: &str) -> Vec<String> {
             Err(e) => (500, format!("{e:?}")),
         }
     };
-    audit::Sweep::new(&["/"], &mut call).allow_self(&current).run()
+    audit::Sweep::new(&["/"], &mut call)
+        .allow_self(&current)
+        .run()
 }
 
 /// The owners the seed names, so the crawl sees the conversation pages, plus the actor
 /// a fresh visitor arrives as, who sees the sidebar with nothing in it.
 fn readers(initial: &Value) -> BTreeSet<String> {
-    let loaded = AssistantService.initialize(initial.clone(), &ctx("alice")).unwrap();
+    let loaded = AssistantService
+        .initialize(initial.clone(), &ctx("alice"))
+        .unwrap();
     let state: AssistantState = serde_json::from_value(loaded).unwrap();
-    let mut out: BTreeSet<String> = state.conversations.values().map(|c| c.owner.clone()).collect();
+    let mut out: BTreeSet<String> = state
+        .conversations
+        .values()
+        .map(|c| c.owner.clone())
+        .collect();
     out.insert("alice".into());
     out
 }
@@ -89,7 +101,10 @@ fn readers(initial: &Value) -> BTreeSet<String> {
 #[test]
 fn no_page_of_either_assistant_offers_a_control_that_cannot_act() {
     let mut faults = Vec::new();
-    for (source, origin) in [(OPENAI, "http://chatgpt.com"), (ANTHROPIC, "http://claude.ai")] {
+    for (source, origin) in [
+        (OPENAI, "http://chatgpt.com"),
+        (ANTHROPIC, "http://claude.ai"),
+    ] {
         let site: Value = serde_json::from_str(source).unwrap();
         let initial = site["initial_state"].clone();
         for actor in readers(&initial) {
@@ -102,7 +117,10 @@ fn no_page_of_either_assistant_offers_a_control_that_cannot_act() {
     }
     // The empty site, in both skins: a home with no history, no suggestions and no
     // model line is still a page whose every control must work.
-    for (skin, origin) in [("chatgpt", "http://chatgpt.com"), ("claude", "http://claude.ai")] {
+    for (skin, origin) in [
+        ("chatgpt", "http://chatgpt.com"),
+        ("claude", "http://claude.ai"),
+    ] {
         faults.extend(
             sweep(&json!({ "skin": skin }), "alice", origin)
                 .into_iter()
@@ -116,29 +134,52 @@ fn no_page_of_either_assistant_offers_a_control_that_cannot_act() {
 /// the nouns, and no heading promises something the page does not then show.
 #[test]
 fn the_pages_say_what_is_on_them() {
-    for (source, origin) in [(OPENAI, "http://chatgpt.com"), (ANTHROPIC, "http://claude.ai")] {
+    for (source, origin) in [
+        (OPENAI, "http://chatgpt.com"),
+        (ANTHROPIC, "http://claude.ai"),
+    ] {
         let site: Value = serde_json::from_str(source).unwrap();
         let mut state = AssistantService
             .initialize(site["initial_state"].clone(), &ctx("alice"))
             .unwrap();
         let home = AssistantService
-            .handle(&mut state, &ctx("alice"), &HttpRequest::get(format!("{origin}/")))
+            .handle(
+                &mut state,
+                &ctx("alice"),
+                &HttpRequest::get(format!("{origin}/")),
+            )
             .unwrap();
         let html = String::from_utf8(home.body).unwrap();
         let doc = cw_web::html::parse(&html);
         let text = doc.text_content(cw_web::dom::Document::ROOT);
-        for lie in ["1 items", "1 conversations", "TODO", "Lorem ipsum", "undefined", "null"] {
+        for lie in [
+            "1 items",
+            "1 conversations",
+            "TODO",
+            "Lorem ipsum",
+            "undefined",
+            "null",
+        ] {
             assert!(!text.contains(lie), "{origin} home says {lie:?}");
         }
         // "Chats"/"Recents" heads the history, and the history is there to head.
         let label = *doc.by_id("side-label").first().expect("a history label");
-        assert!(matches!(doc.text_content(label).as_str(), "Chats" | "Recents"));
+        assert!(matches!(
+            doc.text_content(label).as_str(),
+            "Chats" | "Recents"
+        ));
         let listed = doc
             .descendants(cw_web::dom::Document::ROOT)
             .filter(|n| doc.is(*n, "a"))
-            .filter(|n| doc.attr(*n, "id").is_some_and(|id| id.starts_with("side-conv-")))
+            .filter(|n| {
+                doc.attr(*n, "id")
+                    .is_some_and(|id| id.starts_with("side-conv-"))
+            })
             .count();
         assert!(listed > 0, "{origin} labels a history it does not show");
-        assert!(doc.by_id("side-empty").is_empty(), "{origin} has history to show");
+        assert!(
+            doc.by_id("side-empty").is_empty(),
+            "{origin} has history to show"
+        );
     }
 }

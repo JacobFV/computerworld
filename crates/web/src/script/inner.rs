@@ -79,8 +79,16 @@ impl FormState for FormData {
                 return true;
             }
             // The first option of a single-select is selected by default.
-            let Some(select) = doc.ancestors(element).find(|a| doc.is(*a, "select")) else { return false };
-            if doc.has_attr(select, "multiple") || doc.attr(select, "size").and_then(|s| s.trim().parse::<u32>().ok()).unwrap_or(1) > 1 {
+            let Some(select) = doc.ancestors(element).find(|a| doc.is(*a, "select")) else {
+                return false;
+            };
+            if doc.has_attr(select, "multiple")
+                || doc
+                    .attr(select, "size")
+                    .and_then(|s| s.trim().parse::<u32>().ok())
+                    .unwrap_or(1)
+                    > 1
+            {
                 return false;
             }
             let mut first = None;
@@ -325,7 +333,10 @@ impl Inner {
             observed_generation: 0,
             observing: false,
             custom_defined: BTreeSet::new(),
-            history: vec![HistoryEntry { url: url.to_owned(), state: None }],
+            history: vec![HistoryEntry {
+                url: url.to_owned(),
+                state: None,
+            }],
             history_index: 0,
             hidden: false,
             alerts: Vec::new(),
@@ -338,7 +349,10 @@ impl Inner {
         };
         inner.doc.url = url.to_owned();
         inner.viewport = inner.host_viewport();
-        inner.target_id = url.split_once('#').map(|(_, h)| h.to_owned()).filter(|h| !h.is_empty());
+        inner.target_id = url
+            .split_once('#')
+            .map(|(_, h)| h.to_owned())
+            .filter(|h| !h.is_empty());
         inner
     }
 
@@ -364,10 +378,16 @@ impl Inner {
 
     pub fn host_viewport(&mut self) -> Viewport {
         if let Some(JournalEntry::Viewport(w, h, s, z)) = self.journal.next_replayed() {
-            return Viewport { width: *w, height: *h, scale: *s, zoom: *z };
+            return Viewport {
+                width: *w,
+                height: *h,
+                scale: *s,
+                zoom: *z,
+            };
         }
         let v = self.host.viewport();
-        self.journal.record(JournalEntry::Viewport(v.width, v.height, v.scale, v.zoom));
+        self.journal
+            .record(JournalEntry::Viewport(v.width, v.height, v.scale, v.zoom));
         v
     }
 
@@ -428,12 +448,21 @@ impl Inner {
     pub fn host_navigate(&mut self, url: &str) {
         self.host_write(|h| h.navigate(url));
     }
-    pub fn host_submit_form(&mut self, action: &str, method: &str, enctype: &str, data: &[(String, String)]) {
+    pub fn host_submit_form(
+        &mut self,
+        action: &str,
+        method: &str,
+        enctype: &str,
+        data: &[(String, String)],
+    ) {
         self.host_write(|h| h.submit_form(action, method, enctype, data));
     }
 
     pub fn log(&mut self, level: LogLevel, text: &str) {
-        self.logs.push(LogEntry { level, text: text.to_owned() });
+        self.logs.push(LogEntry {
+            level,
+            text: text.to_owned(),
+        });
         self.host.log(level, text);
     }
 
@@ -446,7 +475,10 @@ impl Inner {
     }
 
     pub fn title(&self) -> String {
-        let t = self.doc.descendants(Document::ROOT).find(|n| self.doc.is(*n, "title"));
+        let t = self
+            .doc
+            .descendants(Document::ROOT)
+            .find(|n| self.doc.is(*n, "title"));
         match t {
             Some(t) => collapse_ws(&self.doc.text_content(t)),
             None => String::new(),
@@ -489,10 +521,19 @@ impl Inner {
     fn rebuild_sheets(&mut self) {
         let mut old: Vec<SheetEntry> = std::mem::take(&mut self.sheets);
         let mut out: Vec<SheetEntry> = Vec::new();
-        let nodes: Vec<NodeId> = self.doc.descendants(Document::ROOT).filter(|n| self.doc.is(*n, "style") || self.doc.is(*n, "link")).collect();
+        let nodes: Vec<NodeId> = self
+            .doc
+            .descendants(Document::ROOT)
+            .filter(|n| self.doc.is(*n, "style") || self.doc.is(*n, "link"))
+            .collect();
         for n in nodes {
             if self.doc.is(n, "style") {
-                let ty = self.doc.attr(n, "type").unwrap_or("text/css").trim().to_ascii_lowercase();
+                let ty = self
+                    .doc
+                    .attr(n, "type")
+                    .unwrap_or("text/css")
+                    .trim()
+                    .to_ascii_lowercase();
                 if !ty.is_empty() && ty != "text/css" {
                     continue;
                 }
@@ -501,37 +542,73 @@ impl Inner {
                 if let Some(pos) = old.iter().position(|e| e.owner == SheetOwner::Element(n)) {
                     let mut e = old.remove(pos);
                     if e.source != text {
-                        e.sheet = css::parse_stylesheet(&text, Origin::Author, Strictness::Lenient).unwrap_or_default();
+                        e.sheet = css::parse_stylesheet(&text, Origin::Author, Strictness::Lenient)
+                            .unwrap_or_default();
                         e.source = text;
                     }
                     e.media = media;
                     self.push_with_imports(&mut out, e);
                 } else {
-                    let sheet = css::parse_stylesheet(&text, Origin::Author, Strictness::Lenient).unwrap_or_default();
+                    let sheet = css::parse_stylesheet(&text, Origin::Author, Strictness::Lenient)
+                        .unwrap_or_default();
                     let id = self.alloc_sheet_id();
-                    self.push_with_imports(&mut out, SheetEntry { id, owner: SheetOwner::Element(n), sheet, disabled: false, media, href: None, source: text });
+                    self.push_with_imports(
+                        &mut out,
+                        SheetEntry {
+                            id,
+                            owner: SheetOwner::Element(n),
+                            sheet,
+                            disabled: false,
+                            media,
+                            href: None,
+                            source: text,
+                        },
+                    );
                 }
             } else {
                 let rel = self.doc.attr(n, "rel").unwrap_or("").to_ascii_lowercase();
                 if !rel.split_ascii_whitespace().any(|r| r == "stylesheet") {
                     continue;
                 }
-                let Some(href) = self.doc.attr(n, "href").map(|h| self.resolve_url(h)) else { continue };
+                let Some(href) = self.doc.attr(n, "href").map(|h| self.resolve_url(h)) else {
+                    continue;
+                };
                 let media = self.doc.attr(n, "media").unwrap_or("").to_owned();
-                if let Some(pos) = old.iter().position(|e| e.owner == SheetOwner::Element(n) && e.href.as_deref() == Some(href.as_str())) {
+                if let Some(pos) = old.iter().position(|e| {
+                    e.owner == SheetOwner::Element(n) && e.href.as_deref() == Some(href.as_str())
+                }) {
                     let mut e = old.remove(pos);
                     e.media = media;
                     self.push_with_imports(&mut out, e);
                 } else {
-                    let r = self.host_fetch(&FetchRequest { url: href.clone(), method: "GET".into(), headers: vec![], body: None });
+                    let r = self.host_fetch(&FetchRequest {
+                        url: href.clone(),
+                        method: "GET".into(),
+                        headers: vec![],
+                        body: None,
+                    });
                     let text = match r {
-                        Ok(resp) if resp.status < 400 => String::from_utf8_lossy(&resp.body).into_owned(),
+                        Ok(resp) if resp.status < 400 => {
+                            String::from_utf8_lossy(&resp.body).into_owned()
+                        }
                         _ => String::new(),
                     };
-                    let sheet = css::parse_stylesheet(&text, Origin::Author, Strictness::Lenient).unwrap_or_default();
+                    let sheet = css::parse_stylesheet(&text, Origin::Author, Strictness::Lenient)
+                        .unwrap_or_default();
                     let id = self.alloc_sheet_id();
                     let disabled = self.doc.has_attr(n, "disabled");
-                    self.push_with_imports(&mut out, SheetEntry { id, owner: SheetOwner::Element(n), sheet, disabled, media, href: Some(href), source: text });
+                    self.push_with_imports(
+                        &mut out,
+                        SheetEntry {
+                            id,
+                            owner: SheetOwner::Element(n),
+                            sheet,
+                            disabled,
+                            media,
+                            href: Some(href),
+                            source: text,
+                        },
+                    );
                 }
             }
         }
@@ -542,20 +619,38 @@ impl Inner {
     }
 
     fn push_with_imports(&mut self, out: &mut Vec<SheetEntry>, entry: SheetEntry) {
-        let imports: Vec<(String, String)> = entry.sheet.imports().map(|(u, m)| (u.to_owned(), m.to_string())).collect();
+        let imports: Vec<(String, String)> = entry
+            .sheet
+            .imports()
+            .map(|(u, m)| (u.to_owned(), m.to_string()))
+            .collect();
         for (url, media) in imports {
             let url = resolve_url(entry.href.as_deref().unwrap_or(&self.url), &url);
             if out.iter().any(|e| e.href.as_deref() == Some(url.as_str())) {
                 continue;
             }
-            let r = self.host_fetch(&FetchRequest { url: url.clone(), method: "GET".into(), headers: vec![], body: None });
+            let r = self.host_fetch(&FetchRequest {
+                url: url.clone(),
+                method: "GET".into(),
+                headers: vec![],
+                body: None,
+            });
             let text = match r {
                 Ok(resp) if resp.status < 400 => String::from_utf8_lossy(&resp.body).into_owned(),
                 _ => String::new(),
             };
-            let sheet = css::parse_stylesheet(&text, Origin::Author, Strictness::Lenient).unwrap_or_default();
+            let sheet = css::parse_stylesheet(&text, Origin::Author, Strictness::Lenient)
+                .unwrap_or_default();
             let id = self.alloc_sheet_id();
-            let imported = SheetEntry { id, owner: SheetOwner::Import(entry.id), sheet, disabled: false, media, href: Some(url), source: text };
+            let imported = SheetEntry {
+                id,
+                owner: SheetOwner::Import(entry.id),
+                sheet,
+                disabled: false,
+                media,
+                href: Some(url),
+                source: text,
+            };
             self.push_with_imports(out, imported);
         }
         out.push(entry);
@@ -563,7 +658,10 @@ impl Inner {
 
     /// The sheet with this id, in the document list or the constructed map.
     pub fn sheet(&self, id: u32) -> Option<&SheetEntry> {
-        self.sheets.iter().find(|s| s.id == id).or_else(|| self.constructed.get(&id))
+        self.sheets
+            .iter()
+            .find(|s| s.id == id)
+            .or_else(|| self.constructed.get(&id))
     }
     pub fn sheet_mut(&mut self, id: u32) -> Option<&mut SheetEntry> {
         if let Some(i) = self.sheets.iter().position(|s| s.id == id) {
@@ -576,19 +674,38 @@ impl Inner {
         if self.sheets_dirty {
             self.rebuild_sheets();
         }
-        self.sheets.iter().find(|s| s.owner == SheetOwner::Element(node)).map(|s| s.id)
+        self.sheets
+            .iter()
+            .find(|s| s.owner == SheetOwner::Element(node))
+            .map(|s| s.id)
     }
     /// The document's sheets (`document.styleSheets`): element-owned ones in order.
     pub fn document_sheet_ids(&mut self) -> Vec<u32> {
         if self.sheets_dirty {
             self.rebuild_sheets();
         }
-        self.sheets.iter().filter(|s| matches!(s.owner, SheetOwner::Element(_))).map(|s| s.id).collect()
+        self.sheets
+            .iter()
+            .filter(|s| matches!(s.owner, SheetOwner::Element(_)))
+            .map(|s| s.id)
+            .collect()
     }
     pub fn new_constructed_sheet(&mut self, text: &str) -> u32 {
         let id = self.alloc_sheet_id();
-        let sheet = css::parse_stylesheet(text, Origin::Author, Strictness::Lenient).unwrap_or_default();
-        self.constructed.insert(id, SheetEntry { id, owner: SheetOwner::Constructed, sheet, disabled: false, media: String::new(), href: None, source: text.to_owned() });
+        let sheet =
+            css::parse_stylesheet(text, Origin::Author, Strictness::Lenient).unwrap_or_default();
+        self.constructed.insert(
+            id,
+            SheetEntry {
+                id,
+                owner: SheetOwner::Constructed,
+                sheet,
+                disabled: false,
+                media: String::new(),
+                href: None,
+                source: text.to_owned(),
+            },
+        );
         id
     }
     /// Marks a sheet edited through the CSSOM: a full cascade follows.
@@ -608,7 +725,8 @@ impl Inner {
             if e.disabled {
                 continue;
             }
-            if !e.media.trim().is_empty() && !css::MediaQueryList::parse(&e.media).evaluate(&media) {
+            if !e.media.trim().is_empty() && !css::MediaQueryList::parse(&e.media).evaluate(&media)
+            {
                 continue;
             }
             out.push(e.sheet.clone());
@@ -631,7 +749,10 @@ impl Inner {
             self.rebuild_sheets();
             self.styles_valid = false;
         }
-        let up_to_date = self.styles_valid && self.doc.mutations.is_empty() && self.state_changed.is_empty() && self.styles_generation == self.generation;
+        let up_to_date = self.styles_valid
+            && self.doc.mutations.is_empty()
+            && self.state_changed.is_empty()
+            && self.styles_generation == self.generation;
         if up_to_date {
             return;
         }
@@ -646,7 +767,12 @@ impl Inner {
             ctx.focused = self.focused;
             ctx.focus_visible = self.focus_visible;
             ctx.target_id = self.target_id.clone();
-            ctx.document_lang = self.doc.document_element().and_then(|h| self.doc.attr(h, "lang")).unwrap_or("").to_owned();
+            ctx.document_lang = self
+                .doc
+                .document_element()
+                .and_then(|h| self.doc.attr(h, "lang"))
+                .unwrap_or("")
+                .to_owned();
             ctx.form = Some(&self.form);
             ctx
         };
@@ -658,10 +784,26 @@ impl Inner {
             self.styles_valid = true;
         } else {
             if !mutations.is_empty() {
-                let _ = style::restyle(&self.doc, &mut self.styles, &mutations, &sheets, &media, &ctx, Strictness::Lenient);
+                let _ = style::restyle(
+                    &self.doc,
+                    &mut self.styles,
+                    &mutations,
+                    &sheets,
+                    &media,
+                    &ctx,
+                    Strictness::Lenient,
+                );
             }
             if !changed.is_empty() {
-                let _ = style::restyle_state(&self.doc, &mut self.styles, &changed, &sheets, &media, &ctx, Strictness::Lenient);
+                let _ = style::restyle_state(
+                    &self.doc,
+                    &mut self.styles,
+                    &changed,
+                    &sheets,
+                    &media,
+                    &ctx,
+                    Strictness::Lenient,
+                );
             }
         }
         self.styles_generation = self.generation;
@@ -678,14 +820,24 @@ impl Inner {
         let mut fresh: BTreeMap<NodeId, AnimState> = BTreeMap::new();
         let mut props: Vec<(String, String)> = Vec::new();
         for idx in 0..self.styles.styles.len() {
-            let Some(style) = self.styles.styles[idx].clone() else { continue };
+            let Some(style) = self.styles.styles[idx].clone() else {
+                continue;
+            };
             let transitions = style.transitions.duration.iter().any(|d| *d > 0);
             let animations = style.animations.name.iter().any(|n| n != "none");
             let node = NodeId(idx as u32);
             if !transitions && !animations {
                 if let Some(p) = self.anim_state.remove(&node) {
                     for gone in p.names {
-                        self.pending_animations.push(AnimationStart { node, name: gone, is_animation: true, delay_ms: 0, duration_ms: 0, iterations: None, cancelled: true });
+                        self.pending_animations.push(AnimationStart {
+                            node,
+                            name: gone,
+                            is_animation: true,
+                            delay_ms: 0,
+                            duration_ms: 0,
+                            iterations: None,
+                            cancelled: true,
+                        });
                     }
                 }
                 continue;
@@ -710,15 +862,23 @@ impl Inner {
                     if t.duration_ms <= 0 {
                         continue;
                     }
-                    let names: &[&str] = if t.property == "all" { TRANSITION_ALL } else { &[t.property.as_str()] };
+                    let names: &[&str] = if t.property == "all" {
+                        TRANSITION_ALL
+                    } else {
+                        &[t.property.as_str()]
+                    };
                     for name in names {
                         if props.iter().any(|(p, _)| p == name) {
                             continue;
                         }
-                        let Some(value) = style.serialize(name) else { continue };
-                        if let Some(old) = prev.and_then(|p| p.values.iter().find(|(p, _)| p == name)) {
+                        let Some(value) = style.serialize(name) else {
+                            continue;
+                        };
+                        if let Some(old) =
+                            prev.and_then(|p| p.values.iter().find(|(p, _)| p == name))
+                        {
                             if old.1 != value {
-                                                self.pending_animations.push(AnimationStart {
+                                self.pending_animations.push(AnimationStart {
                                     node,
                                     name: (*name).to_owned(),
                                     is_animation: false,
@@ -739,7 +899,9 @@ impl Inner {
                     if a.name == "none" || names.contains(&a.name) {
                         continue;
                     }
-                    if !prev.map(|p| p.names.contains(&a.name)).unwrap_or(false) && a.duration_ms > 0 {
+                    if !prev.map(|p| p.names.contains(&a.name)).unwrap_or(false)
+                        && a.duration_ms > 0
+                    {
                         self.pending_animations.push(AnimationStart {
                             node,
                             name: a.name.clone(),
@@ -756,10 +918,25 @@ impl Inner {
             // An animation whose name is gone stops: CSS Animations §4 cancels it.
             if let Some(p) = prev {
                 for gone in p.names.iter().filter(|n| !names.contains(n)) {
-                    self.pending_animations.push(AnimationStart { node, name: gone.clone(), is_animation: true, delay_ms: 0, duration_ms: 0, iterations: None, cancelled: true });
+                    self.pending_animations.push(AnimationStart {
+                        node,
+                        name: gone.clone(),
+                        is_animation: true,
+                        delay_ms: 0,
+                        duration_ms: 0,
+                        iterations: None,
+                        cancelled: true,
+                    });
                 }
             }
-            fresh.insert(node, AnimState { style, values: std::mem::take(&mut props), names });
+            fresh.insert(
+                node,
+                AnimState {
+                    style,
+                    values: std::mem::take(&mut props),
+                    names,
+                },
+            );
         }
         self.anim_state = fresh;
     }
@@ -770,8 +947,17 @@ impl Inner {
         if self.tree.is_some() && self.tree_generation == self.generation {
             return;
         }
-        let opts = LayoutOptions { images: &self.images, scroll: &self.scroll };
-        let tree = layout::layout_with(&self.doc, &self.styles, self.viewport, opts, &mut self.layout_cache);
+        let opts = LayoutOptions {
+            images: &self.images,
+            scroll: &self.scroll,
+        };
+        let tree = layout::layout_with(
+            &self.doc,
+            &self.styles,
+            self.viewport,
+            opts,
+            &mut self.layout_cache,
+        );
         self.clamp_scroll(&tree);
         self.tree = Some(tree);
         self.tree_generation = self.generation;
@@ -782,16 +968,34 @@ impl Inner {
         let mut changed = false;
         for (node, (x, y)) in self.scroll.iter_mut() {
             let (max_x, max_y) = if *node == Document::ROOT {
-                ((tree.content_width - tree.viewport_width).max(Au::ZERO), (tree.content_height - tree.viewport_height).max(Au::ZERO))
+                (
+                    (tree.content_width - tree.viewport_width).max(Au::ZERO),
+                    (tree.content_height - tree.viewport_height).max(Au::ZERO),
+                )
             } else {
                 match fragment_of(tree, *node) {
                     Some((f, _)) => match &f.kind {
-                        layout::FragmentKind::Box { scroll: Some(s), border, .. } => {
-                            let bar_w = if s.shows_y_bar { Au::from_px_i32(15) } else { Au::ZERO };
-                            let bar_h = if s.shows_x_bar { Au::from_px_i32(15) } else { Au::ZERO };
+                        layout::FragmentKind::Box {
+                            scroll: Some(s),
+                            border,
+                            ..
+                        } => {
+                            let bar_w = if s.shows_y_bar {
+                                Au::from_px_i32(15)
+                            } else {
+                                Au::ZERO
+                            };
+                            let bar_h = if s.shows_x_bar {
+                                Au::from_px_i32(15)
+                            } else {
+                                Au::ZERO
+                            };
                             let inner_w = f.rect.size.width - border.horizontal() - bar_w;
                             let inner_h = f.rect.size.height - border.vertical() - bar_h;
-                            ((s.content_width - inner_w).max(Au::ZERO), (s.content_height - inner_h).max(Au::ZERO))
+                            (
+                                (s.content_width - inner_w).max(Au::ZERO),
+                                (s.content_height - inner_h).max(Au::ZERO),
+                            )
                         }
                         _ => (Au::ZERO, Au::ZERO),
                     },
@@ -810,8 +1014,17 @@ impl Inner {
             // The clamped offsets are what the next layout should use; this layout
             // already placed content with the requested ones, so redo it.
             self.generation += 1;
-            let opts = LayoutOptions { images: &self.images, scroll: &self.scroll };
-            let t2 = layout::layout_with(&self.doc, &self.styles, self.viewport, opts, &mut self.layout_cache);
+            let opts = LayoutOptions {
+                images: &self.images,
+                scroll: &self.scroll,
+            };
+            let t2 = layout::layout_with(
+                &self.doc,
+                &self.styles,
+                self.viewport,
+                opts,
+                &mut self.layout_cache,
+            );
             self.tree = Some(t2);
             self.tree_generation = self.generation;
         }
@@ -820,16 +1033,26 @@ impl Inner {
     /// Absolute border-box rects of the element's fragments (document coordinates).
     pub fn rects_of(&mut self, node: NodeId) -> Vec<crate::geom::Rect> {
         self.ensure_layout();
-        self.tree.as_ref().map(|t| t.rects_of(node)).unwrap_or_default()
+        self.tree
+            .as_ref()
+            .map(|t| t.rects_of(node))
+            .unwrap_or_default()
     }
 
     /// The document scroll offset in Au.
     pub fn window_scroll(&self) -> (Au, Au) {
-        self.scroll.get(&Document::ROOT).copied().unwrap_or((Au::ZERO, Au::ZERO))
+        self.scroll
+            .get(&Document::ROOT)
+            .copied()
+            .unwrap_or((Au::ZERO, Au::ZERO))
     }
 
     pub fn set_scroll(&mut self, node: NodeId, x: Au, y: Au) {
-        let cur = self.scroll.get(&node).copied().unwrap_or((Au::ZERO, Au::ZERO));
+        let cur = self
+            .scroll
+            .get(&node)
+            .copied()
+            .unwrap_or((Au::ZERO, Au::ZERO));
         let nx = x.max(Au::ZERO);
         let ny = y.max(Au::ZERO);
         if cur == (nx, ny) {
@@ -851,7 +1074,8 @@ impl Inner {
         ctx.scroll = crate::geom::Point { x: sx, y: sy };
         for (n, (ox, oy)) in &self.scroll {
             if *n != Document::ROOT {
-                ctx.scroll_offsets.insert(*n, crate::geom::Point { x: *ox, y: *oy });
+                ctx.scroll_offsets
+                    .insert(*n, crate::geom::Point { x: *ox, y: *oy });
             }
         }
         let hit = crate::paint::hit::hit_test_with(tree, &self.styles, self.viewport, &ctx, x, y);
@@ -884,7 +1108,10 @@ impl Inner {
         match self.doc.kind(node) {
             NodeKind::Text(t) => {
                 let parent = self.doc.parent(node);
-                let ws = parent.and_then(|p| self.styles.get(p)).map(|s| s.white_space).unwrap_or(style::WhiteSpace::Normal);
+                let ws = parent
+                    .and_then(|p| self.styles.get(p))
+                    .map(|s| s.white_space)
+                    .unwrap_or(style::WhiteSpace::Normal);
                 if ws.collapses() {
                     let collapsed = collapse_ws_keep_edges(t);
                     if out.ends_with('\n') || out.is_empty() {
@@ -899,7 +1126,12 @@ impl Inner {
             NodeKind::Element { tag, .. } => {
                 let style = self.styles.get(node);
                 let display = style.map(|s| s.display).unwrap_or(style::Display::Inline);
-                if display.is_none() || matches!(tag.as_str(), "script" | "style" | "template" | "noscript" | "head") {
+                if display.is_none()
+                    || matches!(
+                        tag.as_str(),
+                        "script" | "style" | "template" | "noscript" | "head"
+                    )
+                {
                     return;
                 }
                 if tag == "br" {
@@ -946,7 +1178,10 @@ impl Inner {
         }
         if self.doc.is(node, "select") {
             let selected = self.selected_options(node);
-            return selected.first().map(|o| self.option_value(*o)).unwrap_or_default();
+            return selected
+                .first()
+                .map(|o| self.option_value(*o))
+                .unwrap_or_default();
         }
         if self.doc.is(node, "option") {
             return self.option_value(node);
@@ -962,7 +1197,10 @@ impl Inner {
     }
 
     pub fn options_of(&self, select: NodeId) -> Vec<NodeId> {
-        self.doc.descendants(select).filter(|n| *n != select && self.doc.is(*n, "option")).collect()
+        self.doc
+            .descendants(select)
+            .filter(|n| *n != select && self.doc.is(*n, "option"))
+            .collect()
     }
 
     pub fn is_checked(&self, node: NodeId) -> bool {
@@ -974,7 +1212,11 @@ impl Inner {
     pub fn selected_options(&self, select: NodeId) -> Vec<NodeId> {
         let options = self.options_of(select);
         let multiple = self.doc.has_attr(select, "multiple");
-        let selected: Vec<NodeId> = options.iter().copied().filter(|o| self.is_checked(*o)).collect();
+        let selected: Vec<NodeId> = options
+            .iter()
+            .copied()
+            .filter(|o| self.is_checked(*o))
+            .collect();
         if multiple {
             return selected;
         }
@@ -985,12 +1227,30 @@ impl Inner {
     }
 
     pub fn set_checked(&mut self, node: NodeId, checked: bool) {
-        let ty = self.doc.attr(node, "type").unwrap_or("").to_ascii_lowercase();
+        let ty = self
+            .doc
+            .attr(node, "type")
+            .unwrap_or("")
+            .to_ascii_lowercase();
         if checked && ty == "radio" {
             let name = self.doc.attr(node, "name").map(str::to_owned);
             if let Some(name) = name {
                 let form = self.form_owner(node);
-                let group: Vec<NodeId> = self.doc.descendants(Document::ROOT).filter(|n| *n != node && self.doc.is(*n, "input") && self.doc.attr(*n, "type").map(|t| t.eq_ignore_ascii_case("radio")).unwrap_or(false) && self.doc.attr(*n, "name") == Some(name.as_str()) && self.form_owner(*n) == form).collect();
+                let group: Vec<NodeId> = self
+                    .doc
+                    .descendants(Document::ROOT)
+                    .filter(|n| {
+                        *n != node
+                            && self.doc.is(*n, "input")
+                            && self
+                                .doc
+                                .attr(*n, "type")
+                                .map(|t| t.eq_ignore_ascii_case("radio"))
+                                .unwrap_or(false)
+                            && self.doc.attr(*n, "name") == Some(name.as_str())
+                            && self.form_owner(*n) == form
+                    })
+                    .collect();
                 for g in group {
                     self.form.checked.insert(g, false);
                     self.state_changed.push(g);
@@ -1003,7 +1263,10 @@ impl Inner {
     }
 
     pub fn set_option_selected(&mut self, option: NodeId, selected: bool) {
-        let select = self.doc.ancestors(option).find(|a| self.doc.is(*a, "select"));
+        let select = self
+            .doc
+            .ancestors(option)
+            .find(|a| self.doc.is(*a, "select"));
         if selected {
             if let Some(select) = select {
                 if !self.doc.has_attr(select, "multiple") {
@@ -1021,7 +1284,15 @@ impl Inner {
     }
 
     pub fn set_value(&mut self, node: NodeId, value: &str) {
-        let value = if self.doc.is(node, "input") && !matches!(self.doc.attr(node, "type").unwrap_or("").to_ascii_lowercase().as_str(), "hidden" | "textarea") {
+        let value = if self.doc.is(node, "input")
+            && !matches!(
+                self.doc
+                    .attr(node, "type")
+                    .unwrap_or("")
+                    .to_ascii_lowercase()
+                    .as_str(),
+                "hidden" | "textarea"
+            ) {
             value.replace(['\n', '\r'], "")
         } else {
             value.to_owned()
@@ -1052,11 +1323,20 @@ impl Inner {
                 continue;
             }
             let tag = self.doc.tag(n).unwrap_or("");
-            let listed = matches!(tag, "button" | "fieldset" | "input" | "object" | "output" | "select" | "textarea") || self.custom_defined.contains(tag);
+            let listed = matches!(
+                tag,
+                "button" | "fieldset" | "input" | "object" | "output" | "select" | "textarea"
+            ) || self.custom_defined.contains(tag);
             if !listed {
                 continue;
             }
-            if tag == "input" && self.doc.attr(n, "type").map(|t| t.eq_ignore_ascii_case("image")).unwrap_or(false) {
+            if tag == "input"
+                && self
+                    .doc
+                    .attr(n, "type")
+                    .map(|t| t.eq_ignore_ascii_case("image"))
+                    .unwrap_or(false)
+            {
                 continue;
             }
             if self.form_owner(n) == Some(form) {
@@ -1074,22 +1354,34 @@ impl Inner {
             if self.is_disabled(n) {
                 continue;
             }
-            let Some(name) = self.doc.attr(n, "name").map(str::to_owned) else { continue };
+            let Some(name) = self.doc.attr(n, "name").map(str::to_owned) else {
+                continue;
+            };
             if name.is_empty() {
                 continue;
             }
             match tag {
                 "input" => {
-                    let ty = self.doc.attr(n, "type").unwrap_or("text").to_ascii_lowercase();
+                    let ty = self
+                        .doc
+                        .attr(n, "type")
+                        .unwrap_or("text")
+                        .to_ascii_lowercase();
                     match ty.as_str() {
                         "checkbox" | "radio" => {
                             if self.is_checked(n) {
-                                out.push((name, self.doc.attr(n, "value").unwrap_or("on").to_owned()));
+                                out.push((
+                                    name,
+                                    self.doc.attr(n, "value").unwrap_or("on").to_owned(),
+                                ));
                             }
                         }
                         "submit" | "reset" | "button" | "image" => {
                             if Some(n) == submitter {
-                                out.push((name, self.doc.attr(n, "value").unwrap_or("").to_owned()));
+                                out.push((
+                                    name,
+                                    self.doc.attr(n, "value").unwrap_or("").to_owned(),
+                                ));
                             }
                         }
                         "file" => {}
@@ -1117,7 +1409,10 @@ impl Inner {
             if self.doc.tag(s) == Some("button") || self.doc.tag(s) == Some("input") {
                 let name = self.doc.attr(s, "name").unwrap_or("");
                 if !name.is_empty() && !self.form_elements(form).contains(&s) {
-                    out.push((name.to_owned(), self.doc.attr(s, "value").unwrap_or("").to_owned()));
+                    out.push((
+                        name.to_owned(),
+                        self.doc.attr(s, "value").unwrap_or("").to_owned(),
+                    ));
                 }
             }
         }
@@ -1129,9 +1424,21 @@ impl Inner {
             return true;
         }
         if self.doc.is(node, "option") {
-            return self.doc.ancestors(node).any(|a| self.doc.is(a, "optgroup") && self.doc.has_attr(a, "disabled"));
+            return self
+                .doc
+                .ancestors(node)
+                .any(|a| self.doc.is(a, "optgroup") && self.doc.has_attr(a, "disabled"));
         }
-        self.doc.ancestors(node).any(|a| self.doc.is(a, "fieldset") && self.doc.has_attr(a, "disabled") && !self.doc.children(a).find(|c| self.doc.is(*c, "legend")).map(|l| self.doc.ancestors(node).any(|x| x == l)).unwrap_or(false))
+        self.doc.ancestors(node).any(|a| {
+            self.doc.is(a, "fieldset")
+                && self.doc.has_attr(a, "disabled")
+                && !self
+                    .doc
+                    .children(a)
+                    .find(|c| self.doc.is(*c, "legend"))
+                    .map(|l| self.doc.ancestors(node).any(|x| x == l))
+                    .unwrap_or(false)
+        })
     }
 
     /// Whether the element can take focus.
@@ -1146,10 +1453,18 @@ impl Inner {
             }
         }
         match tag {
-            "input" => !self.doc.attr(node, "type").map(|t| t.eq_ignore_ascii_case("hidden")).unwrap_or(false),
+            "input" => !self
+                .doc
+                .attr(node, "type")
+                .map(|t| t.eq_ignore_ascii_case("hidden"))
+                .unwrap_or(false),
             "textarea" | "select" | "button" | "summary" | "iframe" => true,
             "a" | "area" => self.doc.has_attr(node, "href"),
-            _ => self.doc.attr(node, "contenteditable").map(|c| c != "false").unwrap_or(false),
+            _ => self
+                .doc
+                .attr(node, "contenteditable")
+                .map(|c| c != "false")
+                .unwrap_or(false),
         }
     }
 
@@ -1158,10 +1473,34 @@ impl Inner {
             return true;
         }
         if self.doc.is(node, "input") {
-            let ty = self.doc.attr(node, "type").unwrap_or("text").to_ascii_lowercase();
-            return matches!(ty.as_str(), "text" | "search" | "url" | "tel" | "email" | "password" | "number" | "date" | "time" | "datetime-local" | "month" | "week" | "color" | "range" | "");
+            let ty = self
+                .doc
+                .attr(node, "type")
+                .unwrap_or("text")
+                .to_ascii_lowercase();
+            return matches!(
+                ty.as_str(),
+                "text"
+                    | "search"
+                    | "url"
+                    | "tel"
+                    | "email"
+                    | "password"
+                    | "number"
+                    | "date"
+                    | "time"
+                    | "datetime-local"
+                    | "month"
+                    | "week"
+                    | "color"
+                    | "range"
+                    | ""
+            );
         }
-        self.doc.attr(node, "contenteditable").map(|c| c != "false").unwrap_or(false)
+        self.doc
+            .attr(node, "contenteditable")
+            .map(|c| c != "false")
+            .unwrap_or(false)
     }
 
     /// Focusable elements in document order (for Tab).
@@ -1171,7 +1510,11 @@ impl Inner {
             if !self.is_focusable(n) {
                 continue;
             }
-            let ti: i32 = self.doc.attr(n, "tabindex").and_then(|t| t.trim().parse().ok()).unwrap_or(0);
+            let ti: i32 = self
+                .doc
+                .attr(n, "tabindex")
+                .and_then(|t| t.trim().parse().ok())
+                .unwrap_or(0);
             if ti < 0 {
                 continue;
             }
@@ -1183,14 +1526,20 @@ impl Inner {
 }
 
 /// The fragment of an element (its first box), with its absolute rect.
-pub fn fragment_of(tree: &FragmentTree, node: NodeId) -> Option<(&layout::Fragment, crate::geom::Rect)> {
+pub fn fragment_of(
+    tree: &FragmentTree,
+    node: NodeId,
+) -> Option<(&layout::Fragment, crate::geom::Rect)> {
     let mut out = None;
     tree.root.walk(crate::geom::Point::default(), &mut |f, r| {
         if out.is_some() {
             return;
         }
         if let Some(s) = f.source() {
-            if !s.is_anonymous() && s.node() == node && matches!(f.kind, layout::FragmentKind::Box { .. }) {
+            if !s.is_anonymous()
+                && s.node() == node
+                && matches!(f.kind, layout::FragmentKind::Box { .. })
+            {
                 out = Some((f, r));
             }
         }

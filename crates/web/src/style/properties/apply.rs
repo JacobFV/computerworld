@@ -36,7 +36,11 @@ fn lp_value(v: &Specified, c: &ComputeCtx, non_negative: bool) -> Option<LengthP
     match v {
         Specified::Lp(l) => {
             let r = l.compute(&c.lengths)?;
-            Some(if non_negative { clamp_non_negative(r) } else { r })
+            Some(if non_negative {
+                clamp_non_negative(r)
+            } else {
+                r
+            })
         }
         _ => None,
     }
@@ -87,7 +91,9 @@ fn sizing_value(v: &Specified, c: &ComputeCtx) -> Option<Sizing> {
         Specified::Sizing(SizingSpec::MinContent) => Sizing::MinContent,
         Specified::Sizing(SizingSpec::MaxContent) => Sizing::MaxContent,
         Specified::Sizing(SizingSpec::FitContent) => Sizing::FitContent,
-        Specified::Sizing(SizingSpec::Lp(l)) => Sizing::Set(clamp_non_negative(l.compute(&c.lengths)?)),
+        Specified::Sizing(SizingSpec::Lp(l)) => {
+            Sizing::Set(clamp_non_negative(l.compute(&c.lengths)?))
+        }
         _ => return None,
     })
 }
@@ -111,7 +117,9 @@ fn border_width_value(v: &Specified, c: &ComputeCtx) -> Option<Au> {
         Specified::BorderWidth(BorderWidthSpec::Thin) => Au::from_px_i32(1),
         Specified::BorderWidth(BorderWidthSpec::Medium) => Au::from_px_i32(3),
         Specified::BorderWidth(BorderWidthSpec::Thick) => Au::from_px_i32(5),
-        Specified::BorderWidth(BorderWidthSpec::Length(l)) => l.compute_length(&c.lengths)?.max(Au::ZERO),
+        Specified::BorderWidth(BorderWidthSpec::Length(l)) => {
+            l.compute_length(&c.lengths)?.max(Au::ZERO)
+        }
         _ => return None,
     })
 }
@@ -156,7 +164,9 @@ macro_rules! color_prop {
 // --- Fonts -----------------------------------------------------------------------
 
 pub fn font_family(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::FontFamily(list) = v else { return false };
+    let Specified::FontFamily(list) = v else {
+        return false;
+    };
     let was_mono = is_monospace_family(&s.font.family);
     s.font.family = fonts::serialize_family_list(list);
     s.font.typeface = fonts::resolve_family_in(list, c.fonts);
@@ -175,7 +185,9 @@ pub fn is_monospace_family(family: &str) -> bool {
 }
 
 pub fn font_size(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::FontSize(spec) = v else { return false };
+    let Specified::FontSize(spec) = v else {
+        return false;
+    };
     let mono = is_monospace_family(&s.font.family);
     let parent = c.parent.font.size;
     s.font_size_keyword = None;
@@ -195,7 +207,9 @@ pub fn font_size(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
 }
 
 pub fn font_weight(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::FontWeight(spec) = v else { return false };
+    let Specified::FontWeight(spec) = v else {
+        return false;
+    };
     let p = c.parent.font.weight;
     s.font.weight = match spec {
         FontWeightSpec::Absolute(w) => *w,
@@ -229,7 +243,9 @@ simple!(font_style, FontStyle, |s, x| s.font.style = x);
 simple!(font_variant, Bool, |s, x| s.font.small_caps = x);
 
 pub fn line_height(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::LineHeight(spec) = v else { return false };
+    let Specified::LineHeight(spec) = v else {
+        return false;
+    };
     s.line_height = match spec {
         LineHeightSpec::Normal => LineHeight::Normal,
         LineHeightSpec::Number(n) => LineHeight::Number(micro_to_milli(n.micro).max(0)),
@@ -242,7 +258,9 @@ pub fn line_height(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool
 }
 
 pub fn color(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::Color(spec) = v else { return false };
+    let Specified::Color(spec) = v else {
+        return false;
+    };
     s.color = spec.resolve(c.parent.color);
     true
 }
@@ -281,9 +299,16 @@ border_width_prop!(border_right_width, |s, x| s.border.right.width = x);
 border_width_prop!(border_bottom_width, |s, x| s.border.bottom.width = x);
 border_width_prop!(border_left_width, |s, x| s.border.left.width = x);
 simple!(border_top_style, BorderStyle, |s, x| s.border.top.style = x);
-simple!(border_right_style, BorderStyle, |s, x| s.border.right.style = x);
-simple!(border_bottom_style, BorderStyle, |s, x| s.border.bottom.style = x);
-simple!(border_left_style, BorderStyle, |s, x| s.border.left.style = x);
+simple!(border_right_style, BorderStyle, |s, x| s
+    .border
+    .right
+    .style = x);
+simple!(border_bottom_style, BorderStyle, |s, x| s
+    .border
+    .bottom
+    .style = x);
+simple!(border_left_style, BorderStyle, |s, x| s.border.left.style =
+    x);
 color_prop!(border_top_color, |s, x| s.border.top.color = x);
 color_prop!(border_right_color, |s, x| s.border.right.color = x);
 color_prop!(border_bottom_color, |s, x| s.border.bottom.color = x);
@@ -291,7 +316,10 @@ color_prop!(border_left_color, |s, x| s.border.left.color = x);
 
 fn radius_value(v: &Specified, c: &ComputeCtx) -> Option<(LengthPercentage, LengthPercentage)> {
     match v {
-        Specified::LpPair(a, b) => Some((clamp_non_negative(a.compute(&c.lengths)?), clamp_non_negative(b.compute(&c.lengths)?))),
+        Specified::LpPair(a, b) => Some((
+            clamp_non_negative(a.compute(&c.lengths)?),
+            clamp_non_negative(b.compute(&c.lengths)?),
+        )),
         _ => None,
     }
 }
@@ -311,9 +339,14 @@ macro_rules! radius_prop {
 }
 
 radius_prop!(border_top_left_radius, |s, x| s.border_radius.top_left = x);
-radius_prop!(border_top_right_radius, |s, x| s.border_radius.top_right = x);
-radius_prop!(border_bottom_right_radius, |s, x| s.border_radius.bottom_right = x);
-radius_prop!(border_bottom_left_radius, |s, x| s.border_radius.bottom_left = x);
+radius_prop!(border_top_right_radius, |s, x| s.border_radius.top_right =
+    x);
+radius_prop!(border_bottom_right_radius, |s, x| s
+    .border_radius
+    .bottom_right = x);
+radius_prop!(border_bottom_left_radius, |s, x| s
+    .border_radius
+    .bottom_left = x);
 lpa_prop!(top, |s, x| s.inset.top = x);
 lpa_prop!(right, |s, x| s.inset.right = x);
 lpa_prop!(bottom, |s, x| s.inset.bottom = x);
@@ -326,7 +359,14 @@ lp_prop!(text_indent, false, |s, x| s.text_indent = x);
 simple!(text_transform, TextTransform, |s, x| s.text_transform = x);
 
 pub fn text_decoration_line(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
-    let Specified::TextDecorationLine { underline, overline, line_through } = v else { return false };
+    let Specified::TextDecorationLine {
+        underline,
+        overline,
+        line_through,
+    } = v
+    else {
+        return false;
+    };
     s.text_decoration.underline = *underline;
     s.text_decoration.overline = *overline;
     s.text_decoration.line_through = *line_through;
@@ -335,16 +375,24 @@ pub fn text_decoration_line(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCt
 
 pub fn text_decoration_color(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
     let Specified::Color(c) = v else { return false };
-    s.text_decoration.color = if c.is_current() { None } else { Some(c.resolve(s.color)) };
+    s.text_decoration.color = if c.is_current() {
+        None
+    } else {
+        Some(c.resolve(s.color))
+    };
     true
 }
 
-simple!(text_decoration_style, TextDecorationStyle, |s, x| s.text_decoration.style = x);
+simple!(text_decoration_style, TextDecorationStyle, |s, x| s
+    .text_decoration
+    .style =
+    x);
 simple!(text_overflow, TextOverflow, |s, x| s.text_overflow = x);
 simple!(white_space, WhiteSpace, |s, x| s.white_space = x);
 simple!(word_break, WordBreak, |s, x| s.word_break = x);
 simple!(overflow_wrap, OverflowWrap, |s, x| s.overflow_wrap = x);
-simple!(scrollbar_width, ScrollbarWidth, |s, x| s.scrollbar_width = x);
+simple!(scrollbar_width, ScrollbarWidth, |s, x| s.scrollbar_width =
+    x);
 
 fn length_or_normal_value(v: &Specified, c: &ComputeCtx) -> Option<Au> {
     match v {
@@ -387,19 +435,38 @@ pub fn vertical_align(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> b
 }
 
 pub fn text_shadow(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::Shadows(list) = v else { return false };
+    let Specified::Shadows(list) = v else {
+        return false;
+    };
     let mut out = Vec::with_capacity(list.len());
     for sh in list {
-        let (Some(x), Some(y), Some(blur)) = (sh.x.compute_length(&c.lengths), sh.y.compute_length(&c.lengths), sh.blur.compute_length(&c.lengths)) else { return false };
-        let color = sh.color.as_ref().map(|col| col.resolve(s.color)).unwrap_or(s.color);
-        out.push(TextShadow { offset_x: x, offset_y: y, blur: blur.max(Au::ZERO), color });
+        let (Some(x), Some(y), Some(blur)) = (
+            sh.x.compute_length(&c.lengths),
+            sh.y.compute_length(&c.lengths),
+            sh.blur.compute_length(&c.lengths),
+        ) else {
+            return false;
+        };
+        let color = sh
+            .color
+            .as_ref()
+            .map(|col| col.resolve(s.color))
+            .unwrap_or(s.color);
+        out.push(TextShadow {
+            offset_x: x,
+            offset_y: y,
+            blur: blur.max(Au::ZERO),
+            color,
+        });
     }
     s.text_shadow = out;
     true
 }
 
 pub fn tab_size(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
-    let Specified::Number(n) = v else { return false };
+    let Specified::Number(n) = v else {
+        return false;
+    };
     s.tab_size = n.round().clamp(0, 255) as u8;
     true
 }
@@ -407,7 +474,9 @@ pub fn tab_size(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
 // --- Lists and tables ------------------------------------------------------------
 
 simple!(list_style_type, ListStyleType, |s, x| s.list_style_type = x);
-simple!(list_style_position, ListStylePosition, |s, x| s.list_style_position = x);
+simple!(list_style_position, ListStylePosition, |s, x| s
+    .list_style_position =
+    x);
 
 pub fn list_style_image(_s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
     // Accepted and ignored: markers are drawn from `list-style-type`.
@@ -415,11 +484,16 @@ pub fn list_style_image(_s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) 
 }
 
 simple!(table_layout, TableLayout, |s, x| s.table_layout = x);
-simple!(border_collapse, BorderCollapse, |s, x| s.border_collapse = x);
+simple!(border_collapse, BorderCollapse, |s, x| s.border_collapse =
+    x);
 
 pub fn border_spacing(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::LpPair(a, b) = v else { return false };
-    let (Some(a), Some(b)) = (a.compute_length(&c.lengths), b.compute_length(&c.lengths)) else { return false };
+    let Specified::LpPair(a, b) = v else {
+        return false;
+    };
+    let (Some(a), Some(b)) = (a.compute_length(&c.lengths), b.compute_length(&c.lengths)) else {
+        return false;
+    };
     s.border_spacing = (a.max(Au::ZERO), b.max(Au::ZERO));
     true
 }
@@ -463,7 +537,11 @@ fn ensure_layers(s: &mut ComputedStyle, n: usize, set_count: bool) {
     }
 }
 
-fn set_layer_field<T: Clone>(s: &mut ComputedStyle, list: &[T], f: impl Fn(&mut BackgroundLayer, T)) {
+fn set_layer_field<T: Clone>(
+    s: &mut ComputedStyle,
+    list: &[T],
+    f: impl Fn(&mut BackgroundLayer, T),
+) {
     if list.is_empty() {
         return;
     }
@@ -509,7 +587,11 @@ fn copy_field(dst: &mut BackgroundLayer, src: &BackgroundLayer, field: LayerFiel
     }
 }
 
-fn compute_stops(stops: &[StopSpec], s: &ComputedStyle, c: &ComputeCtx) -> Option<Vec<GradientStop>> {
+fn compute_stops(
+    stops: &[StopSpec],
+    s: &ComputedStyle,
+    c: &ComputeCtx,
+) -> Option<Vec<GradientStop>> {
     let mut out = Vec::with_capacity(stops.len());
     let mut last_color = Color::TRANSPARENT;
     for st in stops {
@@ -530,17 +612,31 @@ fn compute_stops(stops: &[StopSpec], s: &ComputedStyle, c: &ComputeCtx) -> Optio
     Some(out)
 }
 
-pub fn compute_image(img: &ImageSpec, s: &ComputedStyle, c: &ComputeCtx) -> Option<BackgroundImage> {
+pub fn compute_image(
+    img: &ImageSpec,
+    s: &ComputedStyle,
+    c: &ComputeCtx,
+) -> Option<BackgroundImage> {
     Some(match img {
         ImageSpec::None => BackgroundImage::None,
         ImageSpec::Url(u) => BackgroundImage::Url(u.clone()),
-        ImageSpec::Linear { direction, stops, .. } => BackgroundImage::LinearGradient { angle_centi_deg: direction.to_centi_degrees(), stops: compute_stops(stops, s, c)? },
-        ImageSpec::Radial { circle, stops, .. } => BackgroundImage::RadialGradient { circle: *circle, stops: compute_stops(stops, s, c)? },
+        ImageSpec::Linear {
+            direction, stops, ..
+        } => BackgroundImage::LinearGradient {
+            angle_centi_deg: direction.to_centi_degrees(),
+            stops: compute_stops(stops, s, c)?,
+        },
+        ImageSpec::Radial { circle, stops, .. } => BackgroundImage::RadialGradient {
+            circle: *circle,
+            stops: compute_stops(stops, s, c)?,
+        },
     })
 }
 
 pub fn background_image(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::Images(list) = v else { return false };
+    let Specified::Images(list) = v else {
+        return false;
+    };
     let mut images = Vec::with_capacity(list.len());
     for i in list {
         match compute_image(i, s, c) {
@@ -556,13 +652,17 @@ pub fn background_image(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) ->
 }
 
 pub fn background_repeat(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
-    let Specified::Repeats(list) = v else { return false };
+    let Specified::Repeats(list) = v else {
+        return false;
+    };
     set_layer_field(s, list, |l, r| l.repeat = r);
     true
 }
 
 pub fn background_size(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::BgSizes(list) = v else { return false };
+    let Specified::BgSizes(list) = v else {
+        return false;
+    };
     let mut sizes = Vec::with_capacity(list.len());
     for sz in list {
         sizes.push(match sz {
@@ -573,10 +673,14 @@ pub fn background_size(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> 
                 let f = |x: &LpaSpec| -> Option<LengthPercentageAuto> {
                     Some(match x {
                         LpaSpec::Auto => LengthPercentageAuto::Auto,
-                        LpaSpec::Lp(l) => LengthPercentageAuto::Set(clamp_non_negative(l.compute(&c.lengths)?)),
+                        LpaSpec::Lp(l) => {
+                            LengthPercentageAuto::Set(clamp_non_negative(l.compute(&c.lengths)?))
+                        }
                     })
                 };
-                let (Some(a), Some(b)) = (f(a), f(b)) else { return false };
+                let (Some(a), Some(b)) = (f(a), f(b)) else {
+                    return false;
+                };
                 BackgroundSize::Explicit(a, b)
             }
         });
@@ -586,69 +690,106 @@ pub fn background_size(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> 
 }
 
 fn lp_list(v: &Specified, c: &ComputeCtx) -> Option<Vec<LengthPercentage>> {
-    let Specified::LpList(list) = v else { return None };
+    let Specified::LpList(list) = v else {
+        return None;
+    };
     list.iter().map(|l| l.compute(&c.lengths)).collect()
 }
 
 pub fn background_position_x(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Some(list) = lp_list(v, c) else { return false };
+    let Some(list) = lp_list(v, c) else {
+        return false;
+    };
     set_layer_field(s, &list, |l, v| l.position.0 = v);
     true
 }
 
 pub fn background_position_y(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Some(list) = lp_list(v, c) else { return false };
+    let Some(list) = lp_list(v, c) else {
+        return false;
+    };
     set_layer_field(s, &list, |l, v| l.position.1 = v);
     true
 }
 
 pub fn background_origin(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
-    let Specified::BgBoxes(list) = v else { return false };
+    let Specified::BgBoxes(list) = v else {
+        return false;
+    };
     set_layer_field(s, list, |l, v| l.origin = v);
     true
 }
 
 pub fn background_clip(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
-    let Specified::BgBoxes(list) = v else { return false };
+    let Specified::BgBoxes(list) = v else {
+        return false;
+    };
     set_layer_field(s, list, |l, v| l.clip = v);
     true
 }
 
 pub fn background_attachment(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
-    let Specified::Bools(list) = v else { return false };
+    let Specified::Bools(list) = v else {
+        return false;
+    };
     set_layer_field(s, list, |l, v| l.attachment_fixed = v);
     true
 }
 
 pub fn box_shadow(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::Shadows(list) = v else { return false };
+    let Specified::Shadows(list) = v else {
+        return false;
+    };
     let mut out = Vec::with_capacity(list.len());
     for sh in list {
         let l = |x: &LpSpec| x.compute_length(&c.lengths);
-        let (Some(x), Some(y), Some(blur), Some(spread)) = (l(&sh.x), l(&sh.y), l(&sh.blur), l(&sh.spread)) else { return false };
-        let color = sh.color.as_ref().map(|col| col.resolve(s.color)).unwrap_or(s.color);
-        out.push(BoxShadow { offset_x: x, offset_y: y, blur: blur.max(Au::ZERO), spread, color, inset: sh.inset });
+        let (Some(x), Some(y), Some(blur), Some(spread)) =
+            (l(&sh.x), l(&sh.y), l(&sh.blur), l(&sh.spread))
+        else {
+            return false;
+        };
+        let color = sh
+            .color
+            .as_ref()
+            .map(|col| col.resolve(s.color))
+            .unwrap_or(s.color);
+        out.push(BoxShadow {
+            offset_x: x,
+            offset_y: y,
+            blur: blur.max(Au::ZERO),
+            spread,
+            color,
+            inset: sh.inset,
+        });
     }
     s.box_shadow = out;
     true
 }
 
 pub fn opacity(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
-    let Specified::Number(n) = v else { return false };
+    let Specified::Number(n) = v else {
+        return false;
+    };
     s.opacity = fraction_to_255(n.micro.clamp(0, 1_000_000));
     true
 }
 
 pub fn transform(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::Transform(ops) = v else { return false };
+    let Specified::Transform(ops) = v else {
+        return false;
+    };
     let mut out = Vec::with_capacity(ops.len());
     for op in ops {
         out.push(match op {
             TransformSpec::Translate(x, y) => {
-                let (Some(x), Some(y)) = (x.compute(&c.lengths), y.compute(&c.lengths)) else { return false };
+                let (Some(x), Some(y)) = (x.compute(&c.lengths), y.compute(&c.lengths)) else {
+                    return false;
+                };
                 TransformOp::Translate(x, y)
             }
-            TransformSpec::Scale(x, y) => TransformOp::Scale(micro_to_milli(x.micro), micro_to_milli(y.micro)),
+            TransformSpec::Scale(x, y) => {
+                TransformOp::Scale(micro_to_milli(x.micro), micro_to_milli(y.micro))
+            }
             TransformSpec::Rotate(a) => TransformOp::Rotate(*a),
             TransformSpec::SkewX(a) => TransformOp::SkewX(*a),
             TransformSpec::SkewY(a) => TransformOp::SkewY(*a),
@@ -659,8 +800,12 @@ pub fn transform(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
 }
 
 pub fn transform_origin(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::LpPair(a, b) = v else { return false };
-    let (Some(a), Some(b)) = (a.compute(&c.lengths), b.compute(&c.lengths)) else { return false };
+    let Specified::LpPair(a, b) = v else {
+        return false;
+    };
+    let (Some(a), Some(b)) = (a.compute(&c.lengths), b.compute(&c.lengths)) else {
+        return false;
+    };
     s.transform_origin = (a, b);
     true
 }
@@ -671,7 +816,9 @@ color_prop!(outline_color, |s, x| s.outline.color = x);
 
 pub fn outline_offset(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
     let Specified::Lp(l) = v else { return false };
-    let Some(x) = l.compute_length(&c.lengths) else { return false };
+    let Some(x) = l.compute_length(&c.lengths) else {
+        return false;
+    };
     s.outline_offset = x;
     true
 }
@@ -682,20 +829,25 @@ simple!(flex_direction, FlexDirection, |s, x| s.flex_direction = x);
 simple!(flex_wrap, FlexWrap, |s, x| s.flex_wrap = x);
 
 pub fn flex_grow(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
-    let Specified::Number(n) = v else { return false };
+    let Specified::Number(n) = v else {
+        return false;
+    };
     s.flex_grow = micro_to_milli(n.micro).max(0);
     true
 }
 
 pub fn flex_shrink(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
-    let Specified::Number(n) = v else { return false };
+    let Specified::Number(n) = v else {
+        return false;
+    };
     s.flex_shrink = micro_to_milli(n.micro).max(0);
     true
 }
 
 sizing_prop!(flex_basis, |s, x| s.flex_basis = x);
 simple!(order, Integer, |s, x| s.order = x);
-simple!(justify_content, JustifyContent, |s, x| s.justify_content = x);
+simple!(justify_content, JustifyContent, |s, x| s.justify_content =
+    x);
 simple!(align_items, AlignItems, |s, x| s.align_items = x);
 simple!(align_self, AlignSelf, |s, x| s.align_self = x);
 simple!(align_content, AlignContent, |s, x| s.align_content = x);
@@ -724,14 +876,21 @@ pub fn compute_track_size(t: &TrackSizeSpec, c: &ComputeCtx) -> Option<TrackSize
             TrackBreadth::MaxContent => TrackSize::MaxContent,
         },
         TrackSizeSpec::MinMax(a, b) => TrackSize::MinMax(breadth(a, c)?, breadth(b, c)?),
-        TrackSizeSpec::FitContent(l) => TrackSize::FitContent(clamp_non_negative(l.compute(&c.lengths)?)),
+        TrackSizeSpec::FitContent(l) => {
+            TrackSize::FitContent(clamp_non_negative(l.compute(&c.lengths)?))
+        }
     })
 }
 
 /// Expands a track list: fixed `repeat()`s are unrolled, an `auto-fill`/`auto-fit`
 /// repeat is kept aside for layout, and line names are merged at boundaries.
 pub fn compute_track_list(spec: &TrackListSpec, c: &ComputeCtx) -> Option<TrackList> {
-    fn walk(entries: &[TrackEntry], c: &ComputeCtx, out: &mut TrackList, pending: &mut Vec<String>) -> Option<()> {
+    fn walk(
+        entries: &[TrackEntry],
+        c: &ComputeCtx,
+        out: &mut TrackList,
+        pending: &mut Vec<String>,
+    ) -> Option<()> {
         for e in entries {
             match e {
                 TrackEntry::LineNames(n) => pending.extend(n.iter().cloned()),
@@ -749,7 +908,12 @@ pub fn compute_track_list(spec: &TrackListSpec, c: &ComputeCtx) -> Option<TrackL
                     let mut rep_pending = std::mem::take(pending);
                     walk(inner, c, &mut rep, &mut rep_pending)?;
                     rep.line_names.push(rep_pending);
-                    out.auto_repeat = Some(AutoRepeat { fill: matches!(count, RepeatCount::AutoFill), at: out.tracks.len(), tracks: rep.tracks, line_names: rep.line_names });
+                    out.auto_repeat = Some(AutoRepeat {
+                        fill: matches!(count, RepeatCount::AutoFill),
+                        at: out.tracks.len(),
+                        tracks: rep.tracks,
+                        line_names: rep.line_names,
+                    });
                 }
             }
         }
@@ -763,23 +927,35 @@ pub fn compute_track_list(spec: &TrackListSpec, c: &ComputeCtx) -> Option<TrackL
 }
 
 pub fn grid_template_rows(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::TrackList(t) = v else { return false };
-    let Some(t) = compute_track_list(t, c) else { return false };
+    let Specified::TrackList(t) = v else {
+        return false;
+    };
+    let Some(t) = compute_track_list(t, c) else {
+        return false;
+    };
     s.grid_template_rows = t;
     true
 }
 
 pub fn grid_template_columns(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
-    let Specified::TrackList(t) = v else { return false };
-    let Some(t) = compute_track_list(t, c) else { return false };
+    let Specified::TrackList(t) = v else {
+        return false;
+    };
+    let Some(t) = compute_track_list(t, c) else {
+        return false;
+    };
     s.grid_template_columns = t;
     true
 }
 
-simple!(grid_template_areas, GridAreas, |s, x| s.grid_template_areas = x);
+simple!(grid_template_areas, GridAreas, |s, x| s
+    .grid_template_areas =
+    x);
 
 fn auto_tracks(v: &Specified, c: &ComputeCtx) -> Option<Vec<TrackSize>> {
-    let Specified::AutoTracks(list) = v else { return None };
+    let Specified::AutoTracks(list) = v else {
+        return None;
+    };
     list.iter().map(|t| compute_track_size(t, c)).collect()
 }
 
@@ -820,10 +996,14 @@ simple!(appearance, Appearance, |s, x| s.appearance = x);
 simple!(object_fit, ObjectFit, |s, x| s.object_fit = x);
 simple!(aspect_ratio, AspectRatio, |s, x| s.aspect_ratio = x);
 simple!(line_clamp, LineClamp, |s, x| s.line_clamp = x);
-simple!(box_orient, BoxOrientVertical, |s, x| s.box_orient_vertical = x);
+simple!(box_orient, BoxOrientVertical, |s, x| s
+    .box_orient_vertical =
+    x);
 
 pub fn content(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
-    let Specified::Content(spec) = v else { return false };
+    let Specified::Content(spec) = v else {
+        return false;
+    };
     s.content = match spec {
         ContentSpec::Normal => Content::Normal,
         ContentSpec::None => Content::None,
@@ -833,7 +1013,9 @@ pub fn content(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
 }
 
 pub fn quotes(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
-    let Specified::Quotes(q) = v else { return false };
+    let Specified::Quotes(q) = v else {
+        return false;
+    };
     s.quotes = match q {
         None => ComputedStyle::initial().quotes,
         Some(pairs) => pairs.clone(),
@@ -846,15 +1028,32 @@ simple!(counter_increment, Counters, |s, x| s.counter_increment = x);
 
 // --- Transitions and animations --------------------------------------------------
 
-simple!(transition_property, Idents, |s, x| s.transitions.property = x);
-simple!(transition_duration, Times, |s, x| s.transitions.duration = x);
-simple!(transition_timing_function, Timings, |s, x| s.transitions.timing = x);
+simple!(transition_property, Idents, |s, x| s.transitions.property =
+    x);
+simple!(transition_duration, Times, |s, x| s.transitions.duration =
+    x);
+simple!(transition_timing_function, Timings, |s, x| s
+    .transitions
+    .timing = x);
 simple!(transition_delay, Times, |s, x| s.transitions.delay = x);
 simple!(animation_name, Idents, |s, x| s.animations.name = x);
 simple!(animation_duration, Times, |s, x| s.animations.duration = x);
-simple!(animation_timing_function, Timings, |s, x| s.animations.timing = x);
+simple!(animation_timing_function, Timings, |s, x| s
+    .animations
+    .timing = x);
 simple!(animation_delay, Times, |s, x| s.animations.delay = x);
-simple!(animation_iteration_count, IterationCounts, |s, x| s.animations.iteration_count = x);
-simple!(animation_direction, AnimationDirections, |s, x| s.animations.direction = x);
-simple!(animation_fill_mode, AnimationFillModes, |s, x| s.animations.fill_mode = x);
-simple!(animation_play_state, Bools, |s, x| s.animations.play_state = x);
+simple!(animation_iteration_count, IterationCounts, |s, x| s
+    .animations
+    .iteration_count =
+    x);
+simple!(animation_direction, AnimationDirections, |s, x| s
+    .animations
+    .direction =
+    x);
+simple!(animation_fill_mode, AnimationFillModes, |s, x| s
+    .animations
+    .fill_mode =
+    x);
+simple!(animation_play_state, Bools, |s, x| s
+    .animations
+    .play_state = x);

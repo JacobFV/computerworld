@@ -13,7 +13,14 @@ use serde_json::Value;
 use std::collections::BTreeSet;
 
 const ACTORS: [&str; 2] = ["alice", "bob"];
-const SITES: [&str; 6] = ["hackernews", "reddit", "stackoverflow", "quora", "yelp", "craigslist"];
+const SITES: [&str; 6] = [
+    "hackernews",
+    "reddit",
+    "stackoverflow",
+    "quora",
+    "yelp",
+    "craigslist",
+];
 /// Where a sweep starts. Everything else is reached by following links.
 const SEEDS: &[&str] = &["/", "/newest", "/submit", "/search", "/r"];
 /// Links that may land on the page they sit on, because the real product's do too.
@@ -29,7 +36,10 @@ fn ctx(actor: &str) -> ServiceContext {
     }
 }
 fn site(name: &str) -> Value {
-    let path = format!("{}/../../worlds/company-2026/sites/{name}.json", env!("CARGO_MANIFEST_DIR"));
+    let path = format!(
+        "{}/../../worlds/company-2026/sites/{name}.json",
+        env!("CARGO_MANIFEST_DIR")
+    );
     serde_json::from_str(&std::fs::read_to_string(&path).expect(&path)).unwrap()
 }
 fn load(name: &str) -> (String, Value) {
@@ -42,13 +52,20 @@ fn load(name: &str) -> (String, Value) {
 }
 /// One request. A `POST` probe runs against a scratch copy, so a sweep that presses every
 /// button on the site does not change what the next page it reads says.
-fn caller<'a>(state: &'a mut Value, actor: &'a str, host: &'a str) -> impl FnMut(&str, &str) -> (u16, String) + 'a {
+fn caller<'a>(
+    state: &'a mut Value,
+    actor: &'a str,
+    host: &'a str,
+) -> impl FnMut(&str, &str) -> (u16, String) + 'a {
     move |method: &str, path: &str| {
         let mut request = HttpRequest::get(format!("http://{host}{path}"));
         let mut scratch;
         let state: &mut Value = if method == "POST" {
             request.method = "POST".into();
-            request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+            request.headers.insert(
+                "content-type".into(),
+                "application/x-www-form-urlencoded".into(),
+            );
             scratch = state.clone();
             &mut scratch
         } else {
@@ -57,7 +74,10 @@ fn caller<'a>(state: &'a mut Value, actor: &'a str, host: &'a str) -> impl FnMut
         let reply = ForumService
             .handle(state, &ctx(actor), &request)
             .unwrap_or_else(|e| panic!("{method} {path}: {e}"));
-        (reply.status, String::from_utf8(reply.body).unwrap_or_default())
+        (
+            reply.status,
+            String::from_utf8(reply.body).unwrap_or_default(),
+        )
     }
 }
 
@@ -69,18 +89,29 @@ fn no_page_of_any_seeded_site_draws_a_control_that_cannot_act() {
             let mut state = seed.clone();
             let mut call = caller(&mut state, actor, &host);
             let faults = Sweep::new(SEEDS, &mut call).allow_self(ALLOW_SELF).run();
-            assert!(faults.is_empty(), "{name} as {actor}:\n  {}", faults.join("\n  "));
+            assert!(
+                faults.is_empty(),
+                "{name} as {actor}:\n  {}",
+                faults.join("\n  ")
+            );
         }
     }
 }
 
 /// Every host the world answers on, so a link off this site is checked to lead somewhere.
 fn world_domains() -> BTreeSet<String> {
-    let dir = format!("{}/../../worlds/company-2026/sites", env!("CARGO_MANIFEST_DIR"));
+    let dir = format!(
+        "{}/../../worlds/company-2026/sites",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let mut out = BTreeSet::new();
     for entry in std::fs::read_dir(&dir).expect(&dir).flatten() {
-        let Ok(text) = std::fs::read_to_string(entry.path()) else { continue };
-        let Ok(file) = serde_json::from_str::<Value>(&text) else { continue };
+        let Ok(text) = std::fs::read_to_string(entry.path()) else {
+            continue;
+        };
+        let Ok(file) = serde_json::from_str::<Value>(&text) else {
+            continue;
+        };
         for domain in file["domains"].as_array().into_iter().flatten() {
             if let Some(d) = domain.as_str() {
                 out.insert(d.to_ascii_lowercase());
@@ -94,8 +125,20 @@ fn world_domains() -> BTreeSet<String> {
 /// The pages that carry a link off the site: a submission's URL and a member's site.
 fn off_site_pages(seed: &Value) -> Vec<String> {
     let mut out: Vec<String> = vec!["/".into(), "/newest".into()];
-    out.extend(seed["members"].as_object().into_iter().flatten().map(|(h, _)| format!("/u/{h}")));
-    out.extend(seed["threads"].as_object().into_iter().flatten().map(|(id, _)| format!("/questions/{id}")));
+    out.extend(
+        seed["members"]
+            .as_object()
+            .into_iter()
+            .flatten()
+            .map(|(h, _)| format!("/u/{h}")),
+    );
+    out.extend(
+        seed["threads"]
+            .as_object()
+            .into_iter()
+            .flatten()
+            .map(|(id, _)| format!("/questions/{id}")),
+    );
     out
 }
 
@@ -113,7 +156,11 @@ fn a_link_that_leaves_the_site_names_a_host_this_world_answers_on() {
                 continue;
             }
             for control in controls(&cw_web::html::parse(&body)) {
-                let Some(rest) = control.target.strip_prefix("http://").or_else(|| control.target.strip_prefix("https://")) else {
+                let Some(rest) = control
+                    .target
+                    .strip_prefix("http://")
+                    .or_else(|| control.target.strip_prefix("https://"))
+                else {
                     continue;
                 };
                 let authority = rest.split('/').next().unwrap_or("").to_ascii_lowercase();
@@ -127,21 +174,37 @@ fn a_link_that_leaves_the_site_names_a_host_this_world_answers_on() {
             }
         }
     }
-    assert!(checked > 0, "no off-site link was checked: the seeds must carry some");
+    assert!(
+        checked > 0,
+        "no off-site link was checked: the seeds must carry some"
+    );
 }
 
 /// One request, with a body when it is a `POST`.
-fn request(state: &mut Value, actor: &str, host: &str, method: &str, path: &str, body: &str) -> (u16, String) {
+fn request(
+    state: &mut Value,
+    actor: &str,
+    host: &str,
+    method: &str,
+    path: &str,
+    body: &str,
+) -> (u16, String) {
     let mut r = HttpRequest::get(format!("http://{host}{path}"));
     if method == "POST" {
         r.method = "POST".into();
-        r.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        r.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
         r.body = body.as_bytes().to_vec();
     }
     let reply = ForumService
         .handle(state, &ctx(actor), &r)
         .unwrap_or_else(|e| panic!("{method} {path}: {e}"));
-    (reply.status, String::from_utf8(reply.body).unwrap_or_default())
+    (
+        reply.status,
+        String::from_utf8(reply.body).unwrap_or_default(),
+    )
 }
 
 /// A control with nothing to fill in — like, follow, vote, join, save, remove, checkout —
@@ -167,7 +230,8 @@ fn every_control_that_needs_no_typing_works_when_it_is_pressed() {
                     } else {
                         action.clone()
                     };
-                    let (status, answer) = request(&mut scratch, actor, &host, &method, &target, &fields);
+                    let (status, answer) =
+                        request(&mut scratch, actor, &host, &method, &target, &fields);
                     assert!(
                         status < 400,
                         "{name} as {actor}, {path}: pressing #{id} ({method} {action}) answers {status}: {}",
@@ -178,7 +242,10 @@ fn every_control_that_needs_no_typing_works_when_it_is_pressed() {
             }
         }
     }
-    assert!(pressed > 20, "only {pressed} controls were pressed: the walk found too little");
+    assert!(
+        pressed > 20,
+        "only {pressed} controls were pressed: the walk found too little"
+    );
 }
 
 /// The forms on a page that need nothing typed into them: every field is hidden, or a text
@@ -217,7 +284,9 @@ fn ready_forms(body: &str) -> Vec<(String, String, String, String)> {
         }
         out.push((
             doc.attr(node, "id").unwrap_or_default().to_owned(),
-            doc.attr(node, "method").unwrap_or("get").to_ascii_uppercase(),
+            doc.attr(node, "method")
+                .unwrap_or("get")
+                .to_ascii_uppercase(),
             action.to_owned(),
             url::form_urlencoded::Serializer::new(String::new())
                 .extend_pairs(fields.iter().map(|(k, v)| (k.as_str(), v.as_str())))

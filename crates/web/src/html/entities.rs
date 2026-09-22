@@ -2248,5 +2248,8 @@ pub static ENTITIES: &[(&str, &str)] = &[
 
 /// The replacement for a name (without `&`), if it is in the table.
 pub fn lookup(name: &str) -> Option<&'static str> {
-    ENTITIES.binary_search_by(|(n, _)| n.as_bytes().cmp(name.as_bytes())).ok().map(|i| ENTITIES[i].1)
+    ENTITIES
+        .binary_search_by(|(n, _)| n.as_bytes().cmp(name.as_bytes()))
+        .ok()
+        .map(|i| ENTITIES[i].1)
 }

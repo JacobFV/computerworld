@@ -288,7 +288,9 @@ fn search(state: &mut Value, ctx: &ServiceContext, request: &HttpRequest) -> Res
     }
     remember(state, &ctx.actor, &query);
     match bang(state, &query) {
-        Some(Bang::Jump { tag, title, url }) => view::jump(state, &query, &tag, &title, &url, &here),
+        Some(Bang::Jump { tag, title, url }) => {
+            view::jump(state, &query, &tag, &title, &url, &here)
+        }
         Some(Bang::Unknown { tag, rest }) => {
             let hits = rank(state, &rest, &vertical);
             let note = format!("No !{tag} shortcut is configured; showing web results instead.");
@@ -567,7 +569,9 @@ mod tests {
         page.attr(node, name).unwrap_or_default().to_owned()
     }
     fn body_text(page: &Dom) -> String {
-        page.body().map(|b| page.text_content(b)).unwrap_or_default()
+        page.body()
+            .map(|b| page.text_content(b))
+            .unwrap_or_default()
     }
 
     /// The contract the whole index rests on: a seeded document is an absolute, titled URL, and
@@ -641,7 +645,10 @@ mod tests {
                     document.url
                 );
                 assert_eq!(attr_of(&page, &card, "href"), document.url, "{id}: {card}");
-                assert_eq!(text_of(&page, &format!("{card}-title")), document.title.trim());
+                assert_eq!(
+                    text_of(&page, &format!("{card}-title")),
+                    document.title.trim()
+                );
             }
         }
     }
@@ -784,14 +791,20 @@ mod tests {
         assert_eq!(attr_of(&page, "tab-all", "aria-current"), "page");
         // Each vertical has its own card shape, and the box keeps the vertical when re-queried.
         let news = get(&mut state, "alice", "/search?q=atlas&v=news");
-        assert_eq!(attr_of(&news, "news-0", "href"), "http://theverge.com/atlas");
+        assert_eq!(
+            attr_of(&news, "news-0", "href"),
+            "http://theverge.com/atlas"
+        );
         assert_eq!(text_of(&news, "news-0-source"), "theverge.com");
         assert!(links(&news).iter().any(|u| u == "/search"));
-        assert!(news
-            .descendants(Dom::ROOT)
-            .any(|n| news.is(n, "input") && news.attr(n, "name") == Some("v") && news.attr(n, "value") == Some("news")));
+        assert!(news.descendants(Dom::ROOT).any(|n| news.is(n, "input")
+            && news.attr(n, "name") == Some("v")
+            && news.attr(n, "value") == Some("news")));
         let videos = get(&mut state, "alice", "/search?q=atlas&v=videos");
-        assert_eq!(attr_of(&videos, "reel-0", "href"), "http://youtube.com/watch");
+        assert_eq!(
+            attr_of(&videos, "reel-0", "href"),
+            "http://youtube.com/watch"
+        );
         let images = get(&mut state, "alice", "/search?q=atlas&v=images");
         assert!(has(&images, "images"));
         for url in [
@@ -840,23 +853,41 @@ mod tests {
     #[test]
     fn long_result_lists_are_paged() {
         let index: Vec<Value> = (0..23)
-            .map(|i| hit(&format!("http://a.example/{i:02}"), "Atlas", "a.example", "all", &[]))
+            .map(|i| {
+                hit(
+                    &format!("http://a.example/{i:02}"),
+                    "Atlas",
+                    "a.example",
+                    "all",
+                    &[],
+                )
+            })
             .collect();
         let mut state = seeded("google-search", &index);
         let first = get(&mut state, "alice", "/search?q=atlas");
         assert!(has(&first, "hit-0") && has(&first, "hit-9") && !has(&first, "hit-10"));
         assert!(!has(&first, "page-prev"));
-        assert_eq!(attr_of(&first, "page-next", "href"), "/search?q=atlas&v=all&p=2");
+        assert_eq!(
+            attr_of(&first, "page-next", "href"),
+            "/search?q=atlas&v=all&p=2"
+        );
         assert!(attr_of(&first, "page-1", "class").contains("on"));
         let last = get(&mut state, "alice", "/search?q=atlas&p=3");
         assert!(has(&last, "hit-20") && has(&last, "hit-22") && !has(&last, "hit-23"));
         assert!(!has(&last, "page-next"));
-        assert_eq!(attr_of(&last, "page-prev", "href"), "/search?q=atlas&v=all&p=2");
+        assert_eq!(
+            attr_of(&last, "page-prev", "href"),
+            "/search?q=atlas&v=all&p=2"
+        );
         assert_eq!(attr_of(&last, "hit-22", "href"), "http://a.example/22");
         // Out of range clamps rather than 404s; a short list has no pager.
         let clamped = get(&mut state, "alice", "/search?q=atlas&p=99");
         assert!(has(&clamped, "hit-20"));
-        let short = get(&mut seeded("google-search", &index[..3]), "alice", "/search?q=atlas");
+        let short = get(
+            &mut seeded("google-search", &index[..3]),
+            "alice",
+            "/search?q=atlas",
+        );
         assert!(!has(&short, "pages"));
     }
     /// Recent searches: most-recent-first, deduplicated, bounded, per actor, and clearable.
@@ -885,7 +916,10 @@ mod tests {
         let home = get(&mut state, "alice", "/");
         assert_eq!(attr_of(&home, "recent-0", "href"), "/search?q=q5");
         assert_eq!(text_of(&home, "recent-0"), "q5");
-        assert_eq!(attr_of(&home, "recent-clear-form", "action"), "/history/clear");
+        assert_eq!(
+            attr_of(&home, "recent-clear-form", "action"),
+            "/history/clear"
+        );
         assert!(has(&home, "recent-clear"));
         let cleared = call(&mut state, "alice", "POST", "/api/history/clear");
         assert_eq!(cleared.status, 200);
@@ -932,7 +966,10 @@ mod tests {
             &format!("/search?q={}", enc("!gh atlas ranking")),
         );
         assert_eq!(title(&page), "!gh - DuckDuckGo");
-        assert_eq!(attr_of(&page, "jump", "href"), "http://github.com/search?q=atlas+ranking");
+        assert_eq!(
+            attr_of(&page, "jump", "href"),
+            "http://github.com/search?q=atlas+ranking"
+        );
         assert_eq!(text_of(&page, "jump-tag"), "!gh → GitHub");
         let unknown = get(
             &mut ddg,
@@ -944,7 +981,10 @@ mod tests {
         // The home page lists the bangs as inert text, not as controls.
         let home = get(&mut ddg, "alice", "/");
         assert!(text_of(&home, "bang-gh").contains("GitHub"));
-        assert_eq!(home.by_id("bang-gh").first().and_then(|n| home.tag(*n)), Some("div"));
+        assert_eq!(
+            home.by_id("bang-gh").first().and_then(|n| home.tag(*n)),
+            Some("div")
+        );
         // Google has no bang prefix, so the text is just text.
         let mut google = seeded(
             "google-search",
@@ -1058,8 +1098,18 @@ mod tests {
         let mark = home.by_id("mark")[0];
         assert_eq!(home.element_children(mark).count(), 6);
         for id in [
-            "top", "head-0", "head-cta", "search", "q", "search-go", "search-lucky", "foot",
-            "foot-about", "foot-0", "recent-0", "recent-clear",
+            "top",
+            "head-0",
+            "head-cta",
+            "search",
+            "q",
+            "search-go",
+            "search-lucky",
+            "foot",
+            "foot-about",
+            "foot-0",
+            "recent-0",
+            "recent-clear",
         ] {
             assert!(has(&home, id), "home page lacks #{id}");
         }
@@ -1067,16 +1117,41 @@ mod tests {
         assert!(body_text(&home).contains("Recent searches"));
         let about = get(&mut state, "alice", "/about");
         assert_eq!(attr_of(&about, "about-home", "href"), "/");
-        assert!(text_of(&about, "fact-pages-value").parse::<usize>().unwrap() > 0);
+        assert!(
+            text_of(&about, "fact-pages-value")
+                .parse::<usize>()
+                .unwrap()
+                > 0
+        );
         assert_eq!(attr_of(&about, "mark", "href"), "/");
         let results = get(&mut state, "alice", "/search?q=atlas");
-        for id in ["head", "mark", "search", "q", "search-go", "tabs", "tab-all", "stats", "hit-0", "hit-0-site", "hit-0-title", "hit-0-snippet", "foot"] {
+        for id in [
+            "head",
+            "mark",
+            "search",
+            "q",
+            "search-go",
+            "tabs",
+            "tab-all",
+            "stats",
+            "hit-0",
+            "hit-0-site",
+            "hit-0-title",
+            "hit-0-snippet",
+            "foot",
+        ] {
             assert!(has(&results, id), "results page lacks #{id}");
         }
         assert!(text_of(&results, "stats").starts_with("About "));
         // A single hit reads as one result, not as "About 1 results".
-        let mut one = seeded("google-search", &[hit("http://a.test/1", "Solitaire", "a.test", "all", &[])]);
-        assert_eq!(text_of(&get(&mut one, "alice", "/search?q=solitaire"), "stats"), "1 result");
+        let mut one = seeded(
+            "google-search",
+            &[hit("http://a.test/1", "Solitaire", "a.test", "all", &[])],
+        );
+        assert_eq!(
+            text_of(&get(&mut one, "alice", "/search?q=solitaire"), "stats"),
+            "1 result"
+        );
         let mut two = seeded(
             "google-search",
             &[
@@ -1084,7 +1159,10 @@ mod tests {
                 hit("http://a.test/2", "Solitaire deux", "a.test", "all", &[]),
             ],
         );
-        assert_eq!(text_of(&get(&mut two, "alice", "/search?q=solitaire"), "stats"), "About 2 results");
+        assert_eq!(
+            text_of(&get(&mut two, "alice", "/search?q=solitaire"), "stats"),
+            "About 2 results"
+        );
     }
     /// No dead controls: every link, form and button on every page of every skin reaches a
     /// route the engine answers, nothing is drawn as pressable that cannot act, and nothing
@@ -1113,7 +1191,13 @@ mod tests {
                 (response.status, body)
             };
             let faults = audit::Sweep::new(
-                &["/", "/about", "/search?q=atlas", "/search?q=atlas&v=images", "/lucky?q=atlas"],
+                &[
+                    "/",
+                    "/about",
+                    "/search?q=atlas",
+                    "/search?q=atlas&v=images",
+                    "/lucky?q=atlas",
+                ],
                 &mut call,
             )
             .run();
@@ -1172,9 +1256,9 @@ mod tests {
         assert!(has(&images, "tabs") && has(&images, "tab-images"));
         assert_eq!(attr_of(&images, "tab-images", "aria-current"), "page");
         assert_eq!(attr_of(&images, "tab-all", "href"), "/search?q=&v=all");
-        assert!(images
-            .descendants(Dom::ROOT)
-            .any(|n| images.is(n, "input") && images.attr(n, "name") == Some("v") && images.attr(n, "value") == Some("images")));
+        assert!(images.descendants(Dom::ROOT).any(|n| images.is(n, "input")
+            && images.attr(n, "name") == Some("v")
+            && images.attr(n, "value") == Some("images")));
         // Standing on that page, the entry that names it is a label rather than a link.
         assert_eq!(attr_of(&images, "head-1", "href"), "");
         // And the same is true of the footer's About entry on the About page.
@@ -1236,7 +1320,11 @@ mod tests {
     #[test]
     fn queries_are_escaped_on_the_page() {
         let mut state = seeded("google-search", &[]);
-        let page = get(&mut state, "alice", &format!("/search?q={}", enc("<b>\"x\" & y</b>")));
+        let page = get(
+            &mut state,
+            "alice",
+            &format!("/search?q={}", enc("<b>\"x\" & y</b>")),
+        );
         assert_eq!(attr_of(&page, "q", "value"), "<b>\"x\" & y</b>");
         assert!(page.descendants(Dom::ROOT).all(|n| !page.is(n, "b")));
     }

@@ -27,13 +27,19 @@ fn world() -> (World, String) {
 }
 fn act(world: &mut World, session: &str, op: &str, payload: Value) -> Value {
     let result = world
-        .step(session, vec![ActionEnvelope::new("browser.v1", op, MACHINE, payload)])
+        .step(
+            session,
+            vec![ActionEnvelope::new("browser.v1", op, MACHINE, payload)],
+        )
         .unwrap();
     assert!(result.outcomes[0].success, "{op}: {:?}", result.outcomes[0]);
     result.outcomes[0].value.clone()
 }
 fn url(world: &World, session: &str) -> String {
-    world.observe(session).unwrap().channels["browser.v1"][MACHINE]["url"].as_str().unwrap().to_owned()
+    world.observe(session).unwrap().channels["browser.v1"][MACHINE]["url"]
+        .as_str()
+        .unwrap()
+        .to_owned()
 }
 /// Every element of the semantic tree, flattened.
 fn elements(world: &World, session: &str) -> (Value, Vec<Value>) {
@@ -51,95 +57,191 @@ fn elements(world: &World, session: &str) -> (Value, Vec<Value>) {
     (page, out)
 }
 fn by_id<'a>(all: &'a [Value], id: &str) -> &'a Value {
-    all.iter().find(|e| e["id"] == id).unwrap_or_else(|| panic!("no element {id} in {all:?}"))
+    all.iter()
+        .find(|e| e["id"] == id)
+        .unwrap_or_else(|| panic!("no element {id} in {all:?}"))
 }
 fn says(all: &[Value], text: &str) -> bool {
-    all.iter().any(|e| e["text"].as_str().is_some_and(|t| t.contains(text)))
+    all.iter()
+        .any(|e| e["text"].as_str().is_some_and(|t| t.contains(text)))
 }
 
 #[test]
 fn google_calendar_is_browsed_answered_and_edited_through_the_agent_api() {
     let (mut world, session) = world();
-    act(&mut world, &session, "navigate", json!({"url":"http://calendar.google.com/"}));
+    act(
+        &mut world,
+        &session,
+        "navigate",
+        json!({"url":"http://calendar.google.com/"}),
+    );
     let (page, all) = elements(&world, &session);
     assert_eq!(page["title"], "Google Calendar");
     // Navigation, the grid's chips and the new-event form are all there under their ids.
     // Create reaches the new-event form, which is already in the panel on this page.
-    for (id, href) in [("today", "/?day=0"), ("next", "/?day=7"), ("create", "/#event-title"), ("view-month", "/?view=month&day=0")] {
+    for (id, href) in [
+        ("today", "/?day=0"),
+        ("next", "/?day=7"),
+        ("create", "/#event-title"),
+        ("view-month", "/?view=month&day=0"),
+    ] {
         let e = by_id(&all, id);
         assert_eq!(e["kind"], "link", "{id}");
-        assert_eq!(e["url"], format!("http://calendar.google.com{href}"), "{id}");
+        assert_eq!(
+            e["url"],
+            format!("http://calendar.google.com{href}"),
+            "{id}"
+        );
     }
     // This is the first week the world has, so the back arrow is drawn but is not a
     // control: nothing an agent can click leads to a week before the epoch.
-    assert!(!all.iter().any(|e| e["id"] == "prev" && e["kind"] == "link"), "{all:?}");
+    assert!(
+        !all.iter().any(|e| e["id"] == "prev" && e["kind"] == "link"),
+        "{all:?}"
+    );
     assert_eq!(by_id(&all, "event")["kind"], "form");
     let title = by_id(&all, "event-title");
-    assert_eq!((title["kind"].as_str(), title["label"].as_str()), (Some("input"), Some("Title")));
+    assert_eq!(
+        (title["kind"].as_str(), title["label"].as_str()),
+        (Some("input"), Some("Title"))
+    );
     assert_eq!(by_id(&all, "event-start")["value"], HOUR_US.to_string());
     assert_eq!(by_id(&all, "event-submit")["kind"], "button");
     let chip = by_id(&all, "day-0-event-1");
     assert_eq!(chip["kind"], "link");
-    assert!(chip["text"].as_str().unwrap().contains("Atlas launch review"), "{chip:?}");
+    assert!(
+        chip["text"]
+            .as_str()
+            .unwrap()
+            .contains("Atlas launch review"),
+        "{chip:?}"
+    );
     assert!(chip["text"].as_str().unwrap().contains("14:00"), "{chip:?}");
 
     // The chip opens the event in the side panel; the page is a permalink.
     act(&mut world, &session, "click", json!({"id":"day-0-event-1"}));
-    assert_eq!(url(&world, &session), "http://calendar.google.com/?day=0&event=event-1");
+    assert_eq!(
+        url(&world, &session),
+        "http://calendar.google.com/?day=0&event=event-1"
+    );
     let (_, all) = elements(&world, &session);
     assert!(says(&all, "Thu 17 Sep · 14:00 – 15:00"));
-    assert_eq!(by_id(&all, "detail-join")["url"], "http://slack.com/archives/eng");
-    assert!(all.iter().any(|e| e["kind"] == "link" && e["url"] == "http://docs.google.com/documents/atlas-launch"));
+    assert_eq!(
+        by_id(&all, "detail-join")["url"],
+        "http://slack.com/archives/eng"
+    );
+    assert!(all.iter().any(
+        |e| e["kind"] == "link" && e["url"] == "http://docs.google.com/documents/atlas-launch"
+    ));
     assert_eq!(by_id(&all, "rsvp")["kind"], "form");
     assert_eq!(by_id(&all, "rsvp-maybe")["text"], "Maybe");
-    assert!(!all.iter().any(|e| e["id"] == "edit"), "carol owns the review, not alice");
+    assert!(
+        !all.iter().any(|e| e["id"] == "edit"),
+        "carol owns the review, not alice"
+    );
 
     // Alice had accepted; Maybe is one click, and the guest list says so on the page it returns.
     act(&mut world, &session, "click", json!({"id":"rsvp-maybe"}));
-    assert_eq!(url(&world, &session), "http://calendar.google.com/events/event-1/rsvp");
+    assert_eq!(
+        url(&world, &session),
+        "http://calendar.google.com/events/event-1/rsvp"
+    );
     let (_, all) = elements(&world, &session);
     assert!(says(&all, "Maybe"));
-    assert_eq!(by_id(&all, "detail-back")["url"], "http://calendar.google.com/?day=0");
+    assert_eq!(
+        by_id(&all, "detail-back")["url"],
+        "http://calendar.google.com/?day=0"
+    );
 
     // Next week and back again are plain links.
     act(&mut world, &session, "click", json!({"id":"next"}));
     assert_eq!(url(&world, &session), "http://calendar.google.com/?day=7");
     let (_, all) = elements(&world, &session);
-    assert!(all.iter().any(|e| e["id"] == "day-8-event-4"), "the retro is on Friday the 25th");
+    assert!(
+        all.iter().any(|e| e["id"] == "day-8-event-4"),
+        "the retro is on Friday the 25th"
+    );
     // From the second week, back is a link again.
     act(&mut world, &session, "click", json!({"id":"prev"}));
     assert_eq!(url(&world, &session), "http://calendar.google.com/?day=0");
 
     // The new-event form posts the same fields the Page form did.
     let (start, end) = (2 * DAY_US + HOUR_US, 2 * DAY_US + 2 * HOUR_US);
-    act(&mut world, &session, "fill", json!({"id":"event-title","value":"Pairing on the renderer"}));
-    act(&mut world, &session, "fill", json!({"id":"event-start","value":start.to_string()}));
-    act(&mut world, &session, "fill", json!({"id":"event-end","value":end.to_string()}));
-    act(&mut world, &session, "fill", json!({"id":"event-attendees","value":"bob"}));
+    act(
+        &mut world,
+        &session,
+        "fill",
+        json!({"id":"event-title","value":"Pairing on the renderer"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "fill",
+        json!({"id":"event-start","value":start.to_string()}),
+    );
+    act(
+        &mut world,
+        &session,
+        "fill",
+        json!({"id":"event-end","value":end.to_string()}),
+    );
+    act(
+        &mut world,
+        &session,
+        "fill",
+        json!({"id":"event-attendees","value":"bob"}),
+    );
     act(&mut world, &session, "click", json!({"id":"event-submit"}));
     assert_eq!(url(&world, &session), "http://calendar.google.com/events");
     let (_, all) = elements(&world, &session);
     let created = all
         .iter()
-        .find(|e| e["kind"] == "link" && e["text"].as_str().is_some_and(|t| t.contains("Pairing on the renderer")))
+        .find(|e| {
+            e["kind"] == "link"
+                && e["text"]
+                    .as_str()
+                    .is_some_and(|t| t.contains("Pairing on the renderer"))
+        })
         .expect("the new event is a chip in the grid");
     let chip_id = created["id"].as_str().unwrap().to_owned();
     assert!(chip_id.starts_with("day-2-event-"), "{chip_id}");
-    assert_eq!(by_id(&all, "edit-title")["value"], "Pairing on the renderer");
+    assert_eq!(
+        by_id(&all, "edit-title")["value"],
+        "Pairing on the renderer"
+    );
 
     // Its owner renames it through the edit form, then deletes it.
-    act(&mut world, &session, "fill", json!({"id":"edit-title","value":"Pairing (moved)"}));
+    act(
+        &mut world,
+        &session,
+        "fill",
+        json!({"id":"edit-title","value":"Pairing (moved)"}),
+    );
     act(&mut world, &session, "submit", json!({"id":"edit"}));
     let (_, all) = elements(&world, &session);
-    assert!(by_id(&all, &chip_id)["text"].as_str().unwrap().contains("Pairing (moved)"));
+    assert!(by_id(&all, &chip_id)["text"]
+        .as_str()
+        .unwrap()
+        .contains("Pairing (moved)"));
     act(&mut world, &session, "click", json!({"id":"delete"}));
     let (_, all) = elements(&world, &session);
     assert!(!all.iter().any(|e| e["id"] == chip_id.as_str()));
     assert_eq!(by_id(&all, "event")["kind"], "form");
 
     // The month view is the same calendar in a seven-column grid.
-    act(&mut world, &session, "navigate", json!({"url":"http://calendar.google.com/?view=month&day=0"}));
+    act(
+        &mut world,
+        &session,
+        "navigate",
+        json!({"url":"http://calendar.google.com/?view=month&day=0"}),
+    );
     let (_, all) = elements(&world, &session);
-    assert_eq!(by_id(&all, "day-0-event-1")["url"], "http://calendar.google.com/?view=month&day=0&event=event-1");
-    assert_eq!(by_id(&all, "next")["url"], "http://calendar.google.com/?view=month&day=14");
+    assert_eq!(
+        by_id(&all, "day-0-event-1")["url"],
+        "http://calendar.google.com/?view=month&day=0&event=event-1"
+    );
+    assert_eq!(
+        by_id(&all, "next")["url"],
+        "http://calendar.google.com/?view=month&day=14"
+    );
 }

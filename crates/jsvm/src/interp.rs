@@ -1302,7 +1302,8 @@ impl<'h> Vm<'h> {
                     if let Value::Obj(o) = &obj {
                         if self.has_property(o, &key)? {
                             found = true;
-                            let unscopables = self.get(&obj, &Key::Sym(self.syms.unscopables.clone()))?;
+                            let unscopables =
+                                self.get(&obj, &Key::Sym(self.syms.unscopables.clone()))?;
                             if let Value::Obj(_) = &unscopables {
                                 if self.get(&unscopables, &key)?.truthy() {
                                     found = false;

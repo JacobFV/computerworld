@@ -19,13 +19,22 @@ use support::Page;
 const ACTOR: &str = "alicechen";
 
 fn ctx(actor: &str) -> ServiceContext {
-    ServiceContext { actor: actor.into(), source: format!("{actor}-pc"), tick: 240, seed: 5, instance: "github".into() }
+    ServiceContext {
+        actor: actor.into(),
+        source: format!("{actor}-pc"),
+        tick: 240,
+        seed: 5,
+        instance: "github".into(),
+    }
 }
 fn request(state: &mut Value, method: &str, url: &str, body: &[(String, String)]) -> HttpResponse {
     let mut req = HttpRequest::get(format!("http://github.com{url}"));
     req.method = method.into();
     if method == "POST" {
-        req.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        req.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
         req.body = url::form_urlencoded::Serializer::new(String::new())
             .extend_pairs(body.iter().map(|(k, v)| (k.as_str(), v.as_str())))
             .finish()
@@ -34,10 +43,13 @@ fn request(state: &mut Value, method: &str, url: &str, body: &[(String, String)]
     GitService.handle(state, &ctx(ACTOR), &req).unwrap()
 }
 fn seeded(site: &str, skin: &str) -> Value {
-    let raw = std::fs::read_to_string(format!("../../worlds/company-2026/sites/{site}.json")).unwrap();
+    let raw =
+        std::fs::read_to_string(format!("../../worlds/company-2026/sites/{site}.json")).unwrap();
     let mut site: Value = serde_json::from_str(&raw).unwrap();
     site["initial_state"]["skin"] = skin.into();
-    GitService.initialize(site["initial_state"].clone(), &ctx(ACTOR)).unwrap()
+    GitService
+        .initialize(site["initial_state"].clone(), &ctx(ACTOR))
+        .unwrap()
 }
 
 /// A control the page paints: where it points, how it gets there, and what it carries.
@@ -50,15 +62,27 @@ struct Control {
 /// The chrome that points at the page it is on because the real product's does too: the
 /// mark goes home from the home page, the header's icons stay lit on their own dashboards,
 /// and the repository header keeps naming the repository and counting its people.
-const SELF_LINKS: &[&str] = &["mark", "home", "repo-name", "nav-issues", "nav-pulls", "nav-inbox", "nav-profile", "stargazers", "watch-count"];
+const SELF_LINKS: &[&str] = &[
+    "mark",
+    "home",
+    "repo-name",
+    "nav-issues",
+    "nav-pulls",
+    "nav-inbox",
+    "nav-profile",
+    "stargazers",
+    "watch-count",
+];
 /// Is this the link that marks where you already are? Those are allowed to point at the
 /// page they are on; anything else that does is a control with no effect.
 fn marks_here(doc: &Document, node: NodeId) -> bool {
-    doc.attr(node, "id").is_some_and(|id| SELF_LINKS.contains(&id))
+    doc.attr(node, "id")
+        .is_some_and(|id| SELF_LINKS.contains(&id))
         || doc.attr(node, "aria-current").is_some()
-        || doc
-            .attr(node, "class")
-            .is_some_and(|c| c.split_ascii_whitespace().any(|k| ["active", "last", "here"].contains(&k)))
+        || doc.attr(node, "class").is_some_and(|c| {
+            c.split_ascii_whitespace()
+                .any(|k| ["active", "last", "here"].contains(&k))
+        })
 }
 /// The form an element submits with: its action, its method and its fields.
 fn owning_form(doc: &Document, node: NodeId) -> Option<(NodeId, String, String)> {
@@ -66,13 +90,20 @@ fn owning_form(doc: &Document, node: NodeId) -> Option<(NodeId, String, String)>
     Some((
         form,
         doc.attr(form, "action").unwrap_or("").to_owned(),
-        doc.attr(form, "method").unwrap_or("get").to_ascii_lowercase(),
+        doc.attr(form, "method")
+            .unwrap_or("get")
+            .to_ascii_lowercase(),
     ))
 }
 fn fields_of(doc: &Document, form: NodeId) -> Vec<(String, String)> {
     doc.descendants(form)
         .filter(|n| matches!(doc.tag(*n), Some("input" | "textarea" | "select")))
-        .filter_map(|n| Some((doc.attr(n, "name")?.to_owned(), doc.attr(n, "value").unwrap_or("").to_owned())))
+        .filter_map(|n| {
+            Some((
+                doc.attr(n, "name")?.to_owned(),
+                doc.attr(n, "value").unwrap_or("").to_owned(),
+            ))
+        })
         .collect()
 }
 /// Everything on the page that is, or looks like, a control, with what it would do.
@@ -97,7 +128,12 @@ fn controls(page: &Page, here: &str, dead: &mut Vec<String>) -> Vec<Control> {
                     continue;
                 }
                 if href.starts_with('/') {
-                    out.push(Control { id, method: "GET", target: href.to_owned(), fields: vec![] });
+                    out.push(Control {
+                        id,
+                        method: "GET",
+                        target: href.to_owned(),
+                        fields: vec![],
+                    });
                 }
             }
             // A button or a field outside a form submits nowhere at all.
@@ -105,22 +141,35 @@ fn controls(page: &Page, here: &str, dead: &mut Vec<String>) -> Vec<Control> {
                 None => dead.push(format!("{here}: <button id={id:?}> is in no form")),
                 Some((form, action, method)) => {
                     let mut fields = fields_of(doc, form);
-                    if let (Some(name), Some(value)) = (doc.attr(node, "name"), doc.attr(node, "value")) {
+                    if let (Some(name), Some(value)) =
+                        (doc.attr(node, "name"), doc.attr(node, "value"))
+                    {
                         fields.push((name.to_owned(), value.to_owned()));
                     }
                     let target = doc.attr(node, "formaction").unwrap_or(&action).to_owned();
                     let method = if method == "post" { "POST" } else { "GET" };
-                    out.push(Control { id, method, target, fields });
+                    out.push(Control {
+                        id,
+                        method,
+                        target,
+                        fields,
+                    });
                 }
             },
             Some("input" | "textarea" | "select") if doc.attr(node, "type") != Some("hidden") => {
                 if owning_form(doc, node).is_none() {
-                    dead.push(format!("{here}: <{}> id={id:?} is in no form", doc.tag(node).unwrap_or("")));
+                    dead.push(format!(
+                        "{here}: <{}> id={id:?} is in no form",
+                        doc.tag(node).unwrap_or("")
+                    ));
                 }
             }
             Some("form") => {
                 let action = doc.attr(node, "action").unwrap_or("").to_owned();
-                let method = doc.attr(node, "method").unwrap_or("get").to_ascii_lowercase();
+                let method = doc
+                    .attr(node, "method")
+                    .unwrap_or("get")
+                    .to_ascii_lowercase();
                 if action.is_empty() {
                     dead.push(format!("{here}: <form id={id:?}> posts nowhere"));
                     continue;
@@ -145,7 +194,11 @@ fn submitted(target: &str, fields: &[(String, String)]) -> String {
     let query = url::form_urlencoded::Serializer::new(String::new())
         .extend_pairs(fields.iter().map(|(k, v)| (k.as_str(), v.as_str())))
         .finish();
-    format!("{}{}{query}", target, if target.contains('?') { "&" } else { "?" })
+    format!(
+        "{}{}{query}",
+        target,
+        if target.contains('?') { "&" } else { "?" }
+    )
 }
 
 /// Walks a whole site: every page reachable from its entry points, every control on every
@@ -163,9 +216,17 @@ fn walk(site: &str, mut state: Value, roots: &[&str]) {
             dead.push(format!("{site}: GET {url} -> {}", response.status));
             continue;
         }
-        assert!(response.status < 400, "{site}: GET {url} -> {}", response.status);
+        assert!(
+            response.status < 400,
+            "{site}: GET {url} -> {}",
+            response.status
+        );
         let body = String::from_utf8(response.body).unwrap();
-        if response.headers.get("content-type").is_some_and(|c| !c.starts_with("text/html")) {
+        if response
+            .headers
+            .get("content-type")
+            .is_some_and(|c| !c.starts_with("text/html"))
+        {
             continue;
         }
         pages += 1;
@@ -196,13 +257,20 @@ fn walk(site: &str, mut state: Value, roots: &[&str]) {
             let answer = request(&mut copy, "POST", &control.target, &control.fields);
             posts += 1;
             if answer.status == 404 || answer.status == 405 {
-                dead.push(format!("{site}: POST {} (#{}) -> {}", control.target, control.id, answer.status));
+                dead.push(format!(
+                    "{site}: POST {} (#{}) -> {}",
+                    control.target, control.id, answer.status
+                ));
             }
         }
     }
     assert!(pages > 20, "{site}: only {pages} pages were reached");
     assert!(posts > 0, "{site}: no form was probed");
-    assert!(dead.is_empty(), "{site}: {} dead controls out of {pages} pages and {posts} posts:\n{dead:#?}", dead.len());
+    assert!(
+        dead.is_empty(),
+        "{site}: {} dead controls out of {pages} pages and {posts} posts:\n{dead:#?}",
+        dead.len()
+    );
     println!("{site}: {pages} pages, {posts} form submissions, no dead controls");
 }
 
@@ -219,7 +287,11 @@ fn every_control_on_every_gitlab_page_does_something() {
 /// git.internal: the plain index and repository pages, and the owner paths it also serves.
 #[test]
 fn every_control_on_the_plain_server_does_something() {
-    walk("git.internal", seeded("gitlab", "plain"), &["/", "/opensim/replay-tools"]);
+    walk(
+        "git.internal",
+        seeded("gitlab", "plain"),
+        &["/", "/opensim/replay-tools"],
+    );
 }
 
 /// A repository whose every branch has been merged away, a thread with no comments and a
@@ -238,7 +310,16 @@ fn the_states_the_seeds_do_not_cover_have_no_dead_controls_either() {
             &ctx(ACTOR),
         )
         .unwrap();
-    walk("edge cases", state, &["/", "/aria/spare", "/aria/spare/issues?state=closed", "/aria/spare/pulls?state=closed"]);
+    walk(
+        "edge cases",
+        state,
+        &[
+            "/",
+            "/aria/spare",
+            "/aria/spare/issues?state=closed",
+            "/aria/spare/pulls?state=closed",
+        ],
+    );
 }
 
 /// The two controls the brief turned from decoration into behaviour: watching a
@@ -246,17 +327,32 @@ fn the_states_the_seeds_do_not_cover_have_no_dead_controls_either() {
 #[test]
 fn watching_is_a_real_subscription_and_go_to_file_really_finds_files() {
     let mut state = seeded("github", "github");
-    let repo = Page::parse("repo", String::from_utf8(request(&mut state, "GET", "/northstar/atlas", &[]).body).unwrap());
+    let repo = Page::parse(
+        "repo",
+        String::from_utf8(request(&mut state, "GET", "/northstar/atlas", &[]).body).unwrap(),
+    );
     assert_eq!(repo.tag("watch"), "button");
     assert_eq!(repo.text("watch-label"), "Watch");
     assert_eq!(repo.form_of("watch"), "watch-form");
     let (action, method, _) = repo.form("watch-form");
-    assert_eq!((action.as_str(), method.as_str()), ("/northstar/atlas/watch", "post"));
+    assert_eq!(
+        (action.as_str(), method.as_str()),
+        ("/northstar/atlas/watch", "post")
+    );
     // Posting it lands on the watchers page, which now names the actor.
-    let watched = Page::parse("watchers", String::from_utf8(request(&mut state, "POST", &action, &[]).body).unwrap());
-    assert_eq!(watched.text("watchers-count"), "1 person is watching northstar/atlas");
+    let watched = Page::parse(
+        "watchers",
+        String::from_utf8(request(&mut state, "POST", &action, &[]).body).unwrap(),
+    );
+    assert_eq!(
+        watched.text("watchers-count"),
+        "1 person is watching northstar/atlas"
+    );
     assert_eq!(watched.text("watcher-name-0"), ACTOR);
-    let again = Page::parse("repo", String::from_utf8(request(&mut state, "GET", "/northstar/atlas", &[]).body).unwrap());
+    let again = Page::parse(
+        "repo",
+        String::from_utf8(request(&mut state, "GET", "/northstar/atlas", &[]).body).unwrap(),
+    );
     assert_eq!(again.text("watch-label"), "Unwatch");
     assert_eq!(again.text("about-watching-link"), "1 watching");
     // Unwatching is the same button.
@@ -264,13 +360,30 @@ fn watching_is_a_real_subscription_and_go_to_file_really_finds_files() {
     assert_eq!(state["repositories"]["atlas"]["watchers"], json!(null));
 
     // "Go to file" reaches a page that lists the tree and filters it.
-    assert_eq!(again.attr("go-to-file", "href"), "/northstar/atlas/find/main");
-    let find = Page::parse("find", String::from_utf8(request(&mut state, "GET", "/northstar/atlas/find/main", &[]).body).unwrap());
+    assert_eq!(
+        again.attr("go-to-file", "href"),
+        "/northstar/atlas/find/main"
+    );
+    let find = Page::parse(
+        "find",
+        String::from_utf8(request(&mut state, "GET", "/northstar/atlas/find/main", &[]).body)
+            .unwrap(),
+    );
     let (action, method, fields) = find.form("find");
-    assert_eq!((action.as_str(), method.as_str()), ("/northstar/atlas/find/main", "get"));
+    assert_eq!(
+        (action.as_str(), method.as_str()),
+        ("/northstar/atlas/find/main", "get")
+    );
     assert_eq!(fields, vec![("q".to_owned(), String::new())]);
-    let filtered = Page::parse("find bfs", String::from_utf8(request(&mut state, "GET", "/northstar/atlas/find/main?q=bfs", &[]).body).unwrap());
-    assert_eq!(filtered.attr("find-link-0", "href"), "/northstar/atlas/blob/main/src/bfs.rs");
+    let filtered = Page::parse(
+        "find bfs",
+        String::from_utf8(request(&mut state, "GET", "/northstar/atlas/find/main?q=bfs", &[]).body)
+            .unwrap(),
+    );
+    assert_eq!(
+        filtered.attr("find-link-0", "href"),
+        "/northstar/atlas/blob/main/src/bfs.rs"
+    );
     assert_eq!(filtered.text("find-count"), "1 of 10 files on main");
 }
 
@@ -278,20 +391,42 @@ fn watching_is_a_real_subscription_and_go_to_file_really_finds_files() {
 /// repository pages do, and every name a page paints has a page behind it.
 fn header_dashboards_and_every_name_have_a_page() {
     let mut state = seeded("github", "github");
-    let issues = Page::parse("issues", String::from_utf8(request(&mut state, "GET", "/issues", &[]).body).unwrap());
+    let issues = Page::parse(
+        "issues",
+        String::from_utf8(request(&mut state, "GET", "/issues", &[]).body).unwrap(),
+    );
     assert_eq!(issues.text("dash-title"), "Issues");
     assert!(issues.has("dash-issue-14"));
-    assert_eq!(issues.attr("dash-issue-link-14", "href"), "/northstar/atlas/issues/14");
-    let pulls = Page::parse("pulls", String::from_utf8(request(&mut state, "GET", "/pulls", &[]).body).unwrap());
+    assert_eq!(
+        issues.attr("dash-issue-link-14", "href"),
+        "/northstar/atlas/issues/14"
+    );
+    let pulls = Page::parse(
+        "pulls",
+        String::from_utf8(request(&mut state, "GET", "/pulls", &[]).body).unwrap(),
+    );
     assert_eq!(pulls.text("dash-title"), "Pull requests");
     // The inbox is a reading of the threads, so it needs no state of its own.
-    let inbox = Page::parse("inbox", String::from_utf8(request(&mut state, "GET", "/notifications", &[]).body).unwrap());
-    assert!(inbox.text("inbox-sub").ends_with("you have taken part in or are watching."));
+    let inbox = Page::parse(
+        "inbox",
+        String::from_utf8(request(&mut state, "GET", "/notifications", &[]).body).unwrap(),
+    );
+    assert!(inbox
+        .text("inbox-sub")
+        .ends_with("you have taken part in or are watching."));
     // Everyone a page names — stargazers, commit authors, commenters — has a profile.
-    let stars = Page::parse("stars", String::from_utf8(request(&mut state, "GET", "/northstar/atlas/stargazers", &[]).body).unwrap());
+    let stars = Page::parse(
+        "stars",
+        String::from_utf8(request(&mut state, "GET", "/northstar/atlas/stargazers", &[]).body)
+            .unwrap(),
+    );
     for id in stars.ids_with_prefix("stargazer-name-") {
         let who = stars.attr(&id, "href");
-        assert_eq!(request(&mut state, "GET", &who, &[]).status, 200, "{who} has no profile");
+        assert_eq!(
+            request(&mut state, "GET", &who, &[]).status,
+            200,
+            "{who} has no profile"
+        );
     }
     // And a name nobody here has ever used still does not.
     assert_eq!(request(&mut state, "GET", "/nobody", &[]).status, 404);

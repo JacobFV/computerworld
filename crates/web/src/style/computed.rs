@@ -22,7 +22,11 @@ pub enum LengthPercentage {
     /// `min()`, `max()` or `clamp()` whose operands mix lengths and percentages, so the
     /// comparison waits for the percentage base: `v` (length, percent) clamped below
     /// by `lo` and above by `hi`; the lower bound wins, as in `clamp()`.
-    Clamp { lo: Option<(Au, i32)>, v: (Au, i32), hi: Option<(Au, i32)> },
+    Clamp {
+        lo: Option<(Au, i32)>,
+        v: (Au, i32),
+        hi: Option<(Au, i32)>,
+    },
 }
 
 impl LengthPercentage {
@@ -52,7 +56,9 @@ impl LengthPercentage {
             LengthPercentage::Length(_) => false,
             LengthPercentage::Percent(_) => true,
             LengthPercentage::Calc(_, p) => p != 0,
-            LengthPercentage::Clamp { lo, v, hi } => v.1 != 0 || lo.is_some_and(|b| b.1 != 0) || hi.is_some_and(|b| b.1 != 0),
+            LengthPercentage::Clamp { lo, v, hi } => {
+                v.1 != 0 || lo.is_some_and(|b| b.1 != 0) || hi.is_some_and(|b| b.1 != 0)
+            }
         }
     }
     /// Resolves when a base exists, else `None` for percentages (auto behaviour).
@@ -65,7 +71,10 @@ impl LengthPercentage {
         }
     }
     pub fn is_zero(self) -> bool {
-        matches!(self, LengthPercentage::Length(Au::ZERO) | LengthPercentage::Percent(0))
+        matches!(
+            self,
+            LengthPercentage::Length(Au::ZERO) | LengthPercentage::Percent(0)
+        )
     }
 }
 
@@ -129,7 +138,14 @@ pub enum Display {
 
 impl Display {
     pub fn is_inline_level(self) -> bool {
-        matches!(self, Display::Inline | Display::InlineBlock | Display::InlineFlex | Display::InlineGrid | Display::InlineTable)
+        matches!(
+            self,
+            Display::Inline
+                | Display::InlineBlock
+                | Display::InlineFlex
+                | Display::InlineGrid
+                | Display::InlineTable
+        )
     }
     pub fn is_none(self) -> bool {
         matches!(self, Display::None)
@@ -220,14 +236,22 @@ pub struct BorderSide {
 
 impl Default for BorderSide {
     fn default() -> Self {
-        BorderSide { width: Au::ZERO, style: BorderStyle::None, color: Color(0, 0, 0, 255) }
+        BorderSide {
+            width: Au::ZERO,
+            style: BorderStyle::None,
+            color: Color(0, 0, 0, 255),
+        }
     }
 }
 
 impl BorderSide {
     /// The used width: zero unless the style draws.
     pub fn used_width(&self) -> Au {
-        if self.style.is_visible() { self.width } else { Au::ZERO }
+        if self.style.is_visible() {
+            self.width
+        } else {
+            Au::ZERO
+        }
     }
 }
 
@@ -241,7 +265,12 @@ pub struct Sides<T> {
 
 impl<T: Copy> Sides<T> {
     pub fn uniform(v: T) -> Sides<T> {
-        Sides { top: v, right: v, bottom: v, left: v }
+        Sides {
+            top: v,
+            right: v,
+            bottom: v,
+            left: v,
+        }
     }
 }
 
@@ -323,7 +352,10 @@ pub enum WhiteSpace {
 
 impl WhiteSpace {
     pub fn collapses(self) -> bool {
-        matches!(self, WhiteSpace::Normal | WhiteSpace::NoWrap | WhiteSpace::PreLine)
+        matches!(
+            self,
+            WhiteSpace::Normal | WhiteSpace::NoWrap | WhiteSpace::PreLine
+        )
     }
     pub fn wraps(self) -> bool {
         !matches!(self, WhiteSpace::NoWrap | WhiteSpace::Pre)
@@ -631,8 +663,14 @@ pub enum BackgroundImage {
     /// Same-origin URL, resolved at fetch time.
     Url(String),
     /// Angle in degrees * 100 (clockwise from up) or a side keyword resolved to one.
-    LinearGradient { angle_centi_deg: i32, stops: Vec<GradientStop> },
-    RadialGradient { circle: bool, stops: Vec<GradientStop> },
+    LinearGradient {
+        angle_centi_deg: i32,
+        stops: Vec<GradientStop>,
+    },
+    RadialGradient {
+        circle: bool,
+        stops: Vec<GradientStop>,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -746,12 +784,16 @@ impl AspectRatio {
     /// The height that goes with a width, both of the box `box-sizing` names.
     pub fn height_for(self, width: Au) -> Option<Au> {
         let (w, h) = self.ratio?;
-        Some(Au((width.0 as i128 * h as i128 / w as i128).clamp(0, Au::MAX.0 as i128) as i32))
+        Some(Au(
+            (width.0 as i128 * h as i128 / w as i128).clamp(0, Au::MAX.0 as i128) as i32,
+        ))
     }
     /// The width that goes with a height.
     pub fn width_for(self, height: Au) -> Option<Au> {
         let (w, h) = self.ratio?;
-        Some(Au((height.0 as i128 * w as i128 / h as i128).clamp(0, Au::MAX.0 as i128) as i32))
+        Some(Au(
+            (height.0 as i128 * w as i128 / h as i128).clamp(0, Au::MAX.0 as i128) as i32,
+        ))
     }
 }
 
@@ -815,7 +857,12 @@ pub struct TransitionList {
 
 impl Default for TransitionList {
     fn default() -> Self {
-        TransitionList { property: vec!["all".into()], duration: vec![0], timing: vec![TimingFunction::Ease], delay: vec![0] }
+        TransitionList {
+            property: vec!["all".into()],
+            duration: vec![0],
+            timing: vec![TimingFunction::Ease],
+            delay: vec![0],
+        }
     }
 }
 
@@ -1151,7 +1198,10 @@ impl ComputedStyle {
             box_shadow: Vec::new(),
             opacity: 255,
             transform: Vec::new(),
-            transform_origin: (LengthPercentage::Percent(5000), LengthPercentage::Percent(5000)),
+            transform_origin: (
+                LengthPercentage::Percent(5000),
+                LengthPercentage::Percent(5000),
+            ),
             outline: BorderSide::default(),
             outline_offset: Au::ZERO,
             flex_direction: FlexDirection::Row,
@@ -1187,7 +1237,10 @@ impl ComputedStyle {
             line_clamp: None,
             box_orient_vertical: false,
             content: Content::Normal,
-            quotes: vec![("\u{201C}".into(), "\u{201D}".into()), ("\u{2018}".into(), "\u{2019}".into())],
+            quotes: vec![
+                ("\u{201C}".into(), "\u{201D}".into()),
+                ("\u{2018}".into(), "\u{2019}".into()),
+            ],
             counter_reset: Vec::new(),
             counter_increment: Vec::new(),
             custom: std::collections::BTreeMap::new(),
@@ -1261,7 +1314,9 @@ impl ComputedStyle {
             LineHeight::Normal => normal,
             // A number multiplies the font size; the product is truncated to 1/64 px
             // (Blink's `LayoutUnit(float)`), so `1.6` on 14 px is 22.390625, not 22.40625.
-            LineHeight::Number(n) => Au((self.font.size.0 as i64 * n as i64).div_euclid(1000) as i32),
+            LineHeight::Number(n) => {
+                Au((self.font.size.0 as i64 * n as i64).div_euclid(1000) as i32)
+            }
             LineHeight::Length(l) => l,
         }
     }
@@ -1270,16 +1325,31 @@ impl ComputedStyle {
 impl Corners<(LengthPercentage, LengthPercentage)> {
     pub fn default_radius() -> Self {
         let z = (LengthPercentage::ZERO, LengthPercentage::ZERO);
-        Corners { top_left: z, top_right: z, bottom_right: z, bottom_left: z }
+        Corners {
+            top_left: z,
+            top_right: z,
+            bottom_right: z,
+            bottom_left: z,
+        }
     }
     pub fn is_zero(&self) -> bool {
-        [self.top_left, self.top_right, self.bottom_right, self.bottom_left].iter().all(|(a, b)| a.is_zero() && b.is_zero())
+        [
+            self.top_left,
+            self.top_right,
+            self.bottom_right,
+            self.bottom_left,
+        ]
+        .iter()
+        .all(|(a, b)| a.is_zero() && b.is_zero())
     }
 }
 
 /// One `@keyframes` rule's frames: selectors (`from`, `to`, percentages) and their
 /// declarations, in source order.
-pub type Keyframes = Vec<(Vec<crate::css::KeyframeSelector>, Vec<crate::css::Declaration>)>;
+pub type Keyframes = Vec<(
+    Vec<crate::css::KeyframeSelector>,
+    Vec<crate::css::Declaration>,
+)>;
 
 /// Computed styles for a document, keyed by node id; pseudo-elements keyed separately.
 /// Text nodes share their parent's style. Also carries what the cascade collected for
@@ -1293,7 +1363,8 @@ pub struct StyleSet {
     pub(crate) marker: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
     /// `::placeholder` of a text control, for the colour the empty control's hint
     /// text is painted in.
-    pub(crate) placeholder: std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
+    pub(crate) placeholder:
+        std::collections::BTreeMap<crate::dom::NodeId, std::rc::Rc<ComputedStyle>>,
     /// `@font-face` rules from every sheet, in order, for the fonts module.
     pub font_faces: Vec<crate::style::cascade::FontFace>,
     /// `@keyframes` by name (the last declaration of a name wins).

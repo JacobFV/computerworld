@@ -145,7 +145,13 @@ fn plain_keys(_vm: &mut Vm, _o: &Obj) -> JsResult<Vec<Key>> {
     Ok(Vec::new())
 }
 
-pub static PLAIN_HOOKS: HostHooks = HostHooks { class: "Object", get: plain_get, set: plain_set, delete: plain_delete, keys: plain_keys };
+pub static PLAIN_HOOKS: HostHooks = HostHooks {
+    class: "Object",
+    get: plain_get,
+    set: plain_set,
+    delete: plain_delete,
+    keys: plain_keys,
+};
 
 /// A host object holding an opaque id (a stylesheet, a canvas context).
 pub fn handle_obj(vm: &mut Vm, proto_name: &str, id: u32, extra: Vec<Value>) -> Value {
@@ -176,7 +182,9 @@ pub fn install(vm: &mut Vm) {
 /// on them.
 fn register_protos(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let map = a.arg(0);
-    let Value::Obj(m) = &map else { return Ok(Value::Undefined) };
+    let Value::Obj(m) = &map else {
+        return Ok(Value::Undefined);
+    };
     let keys = vm.own_enum_keys(m)?;
     let mut protos = Vec::new();
     for k in keys {
@@ -192,7 +200,12 @@ fn register_protos(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
             inner.protos.insert(k.clone(), p.clone());
         }
     }
-    let get = |name: &str| protos.iter().find(|(k, _)| k == name).map(|(_, p)| p.clone());
+    let get = |name: &str| {
+        protos
+            .iter()
+            .find(|(k, _)| k == name)
+            .map(|(_, p)| p.clone())
+    };
     if let Some(p) = get("Node") {
         dom::install_node_accessors(vm, &p);
     }
@@ -211,9 +224,13 @@ fn register_protos(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 
 /// Sets a hidden data property (non-enumerable) on a wrapper.
 pub fn set_hidden(o: &Obj, k: &str, v: Value) {
-    o.borrow_mut().props.insert(Key::str(k), cw_jsvm::value::Prop::data(v, HIDDEN));
+    o.borrow_mut()
+        .props
+        .insert(Key::str(k), cw_jsvm::value::Prop::data(v, HIDDEN));
 }
 
 pub fn set_data(o: &Obj, k: &str, v: Value) {
-    o.borrow_mut().props.insert(Key::str(k), cw_jsvm::value::Prop::data(v, ALL));
+    o.borrow_mut()
+        .props
+        .insert(Key::str(k), cw_jsvm::value::Prop::data(v, ALL));
 }

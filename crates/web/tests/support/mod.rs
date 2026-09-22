@@ -8,8 +8,9 @@ use cw_web::dom::{Document, NodeId, NodeKind};
 use cw_web::geom::{Au, Edges, Point, Rect};
 use cw_web::layout::{Fragment, FragmentKind, FragmentTree, StyleSource};
 use cw_web::style::{
-    BoxSizing, ComputedStyle, Display, Float, LengthPercentage, LengthPercentageAuto, LineHeight, Overflow, Position, Sizing, StyleSet,
-    TextAlign, TransformOp, VerticalAlign, WhiteSpace, ZIndex,
+    BoxSizing, ComputedStyle, Display, Float, LengthPercentage, LengthPercentageAuto, LineHeight,
+    Overflow, Position, Sizing, StyleSet, TextAlign, TransformOp, VerticalAlign, WhiteSpace,
+    ZIndex,
 };
 use cw_web::Viewport;
 use serde::{Deserialize, Serialize};
@@ -81,7 +82,12 @@ pub const RECT_PX: f64 = 1.0;
 pub const TEXT_PX: f64 = 2.0;
 
 pub fn viewport() -> Viewport {
-    Viewport { width: WIDTH, height: HEIGHT, scale: 1, zoom: 100 }
+    Viewport {
+        width: WIDTH,
+        height: HEIGHT,
+        scale: 1,
+        zoom: 100,
+    }
 }
 
 pub fn crate_dir() -> PathBuf {
@@ -149,30 +155,81 @@ pub fn run_at(html: &str, viewport: Viewport, fragment: Option<&str>) -> Rendere
     }
     // Chromium's dumps were made on a stock Linux desktop (see each fixture's
     // fonts.json): the engine resolves families as that machine does.
-    let media = Media { fonts: cw_web::css::FontEnvironment::LinuxBaseline, ..Media::with_size(viewport.width as i32, viewport.height as i32) };
-    let styles = cw_web::style::cascade(&doc, &sheets, &media, &MatchContext::new(), Strictness::Lenient).unwrap_or_else(|e| panic!("cascade: {e}"));
+    let media = Media {
+        fonts: cw_web::css::FontEnvironment::LinuxBaseline,
+        ..Media::with_size(viewport.width as i32, viewport.height as i32)
+    };
+    let styles = cw_web::style::cascade(
+        &doc,
+        &sheets,
+        &media,
+        &MatchContext::new(),
+        Strictness::Lenient,
+    )
+    .unwrap_or_else(|e| panic!("cascade: {e}"));
     let images = ImageMap::from_document(&doc, &styles);
     let mut scroll = ScrollState::new();
     // Chromium's dumps come from a headless run, which hides scrollbars.
-    let mut cache = LayoutCache { overlay_scrollbars: true, ..LayoutCache::default() };
-    let mut tree = layout_with(&doc, &styles, viewport, LayoutOptions { images: &images, scroll: &scroll }, &mut cache);
+    let mut cache = LayoutCache {
+        overlay_scrollbars: true,
+        ..LayoutCache::default()
+    };
+    let mut tree = layout_with(
+        &doc,
+        &styles,
+        viewport,
+        LayoutOptions {
+            images: &images,
+            scroll: &scroll,
+        },
+        &mut cache,
+    );
     let mut offset = Point::default();
     if let Some(id) = fragment {
-        let target = doc.by_id(id).first().copied().unwrap_or_else(|| panic!("no element with id `{id}` to navigate to"));
+        let target = doc
+            .by_id(id)
+            .first()
+            .copied()
+            .unwrap_or_else(|| panic!("no element with id `{id}` to navigate to"));
         let ix = index_fragments(&doc, &styles, &tree);
-        let y = ix.boxes.get(&target).and_then(|b| b.rect).map(|r| r.origin.y).unwrap_or_else(|| panic!("`#{id}` generates no box"));
+        let y = ix
+            .boxes
+            .get(&target)
+            .and_then(|b| b.rect)
+            .map(|r| r.origin.y)
+            .unwrap_or_else(|| panic!("`#{id}` generates no box"));
         scroll.insert(Document::ROOT, (Au::ZERO, y));
         // Lay out again with the offset known, so sticky boxes and the clamp to the
         // scrollable range apply; the root fragment then carries the used offset.
-        tree = layout_with(&doc, &styles, viewport, LayoutOptions { images: &images, scroll: &scroll }, &mut cache);
-        if let FragmentKind::Box { scroll: Some(info), .. } = &tree.root.kind {
-            offset = Point { x: info.scroll_x, y: info.scroll_y };
+        tree = layout_with(
+            &doc,
+            &styles,
+            viewport,
+            LayoutOptions {
+                images: &images,
+                scroll: &scroll,
+            },
+            &mut cache,
+        );
+        if let FragmentKind::Box {
+            scroll: Some(info), ..
+        } = &tree.root.kind
+        {
+            offset = Point {
+                x: info.scroll_x,
+                y: info.scroll_y,
+            };
         }
     }
     let mut ctx = PaintContext::new(&images);
     ctx.scroll = offset;
     let scene = cw_web::paint::paint(&doc, &styles, &tree, viewport, &ctx);
-    Rendered { doc, styles, tree, scene }
+    Rendered {
+        doc,
+        styles,
+        tree,
+        scene,
+    }
 }
 
 /// The text of a `<link rel=stylesheet href="data:text/css,...">`: `rel` must name
@@ -227,8 +284,19 @@ pub struct DumpRect {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum DumpNode {
-    Element { path: String, tag: String, id: String, rect: DumpRect, computed: BTreeMap<String, String> },
-    Text { path: String, parent: String, text: String, rects: Vec<DumpRect> },
+    Element {
+        path: String,
+        tag: String,
+        id: String,
+        rect: DumpRect,
+        computed: BTreeMap<String, String>,
+    },
+    Text {
+        path: String,
+        parent: String,
+        text: String,
+        rects: Vec<DumpRect>,
+    },
 }
 
 impl DumpNode {
@@ -273,7 +341,8 @@ pub struct Dump {
 }
 
 pub fn read_dump(path: &Path) -> Dump {
-    let text = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let text =
+        std::fs::read_to_string(path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
     serde_json::from_str(&text).unwrap_or_else(|e| panic!("parse {}: {e}", path.display()))
 }
 
@@ -282,7 +351,12 @@ fn q64(au: Au) -> f64 {
 }
 
 fn dump_rect(r: Rect) -> DumpRect {
-    DumpRect { x: q64(r.origin.x), y: q64(r.origin.y), width: q64(r.size.width), height: q64(r.size.height) }
+    DumpRect {
+        x: q64(r.origin.x),
+        y: q64(r.origin.y),
+        width: q64(r.size.width),
+        height: q64(r.size.height),
+    }
 }
 
 /// A CSS px string the way `getComputedStyle` prints one: up to four decimals, no
@@ -355,44 +429,93 @@ fn element_affine(s: &ComputedStyle, abs: Rect) -> Affine {
     let mut m = IDENTITY;
     for op in &s.transform {
         let t: Affine = match *op {
-            TransformOp::Translate(x, y) => [1.0, 0.0, 0.0, 1.0, q64(x.resolve(w)), q64(y.resolve(h))],
-            TransformOp::Scale(sx, sy) => [sx as f64 / 1000.0, 0.0, 0.0, sy as f64 / 1000.0, 0.0, 0.0],
+            TransformOp::Translate(x, y) => {
+                [1.0, 0.0, 0.0, 1.0, q64(x.resolve(w)), q64(y.resolve(h))]
+            }
+            TransformOp::Scale(sx, sy) => {
+                [sx as f64 / 1000.0, 0.0, 0.0, sy as f64 / 1000.0, 0.0, 0.0]
+            }
             TransformOp::Rotate(cdeg) => {
                 let (sin, cos) = (cdeg as f64 / 100.0).to_radians().sin_cos();
                 [cos, sin, -sin, cos, 0.0, 0.0]
             }
-            TransformOp::SkewX(cdeg) => [1.0, 0.0, (cdeg as f64 / 100.0).to_radians().tan(), 1.0, 0.0, 0.0],
-            TransformOp::SkewY(cdeg) => [1.0, (cdeg as f64 / 100.0).to_radians().tan(), 0.0, 1.0, 0.0, 0.0],
+            TransformOp::SkewX(cdeg) => [
+                1.0,
+                0.0,
+                (cdeg as f64 / 100.0).to_radians().tan(),
+                1.0,
+                0.0,
+                0.0,
+            ],
+            TransformOp::SkewY(cdeg) => [
+                1.0,
+                (cdeg as f64 / 100.0).to_radians().tan(),
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+            ],
         };
         m = affine_mul(&m, &t);
     }
     let ox = q64(abs.origin.x) + q64(s.transform_origin.0.resolve(w));
     let oy = q64(abs.origin.y) + q64(s.transform_origin.1.resolve(h));
-    affine_mul(&affine_mul(&[1.0, 0.0, 0.0, 1.0, ox, oy], &m), &[1.0, 0.0, 0.0, 1.0, -ox, -oy])
+    affine_mul(
+        &affine_mul(&[1.0, 0.0, 0.0, 1.0, ox, oy], &m),
+        &[1.0, 0.0, 0.0, 1.0, -ox, -oy],
+    )
 }
 
 /// The axis-aligned bounds of a rect's four corners under `m`.
 fn affine_bounds(m: &Affine, r: Rect) -> DumpRect {
     let (x0, y0) = (q64(r.origin.x), q64(r.origin.y));
     let (x1, y1) = (x0 + q64(r.size.width), y0 + q64(r.size.height));
-    let pts = [(x0, y0), (x1, y0), (x0, y1), (x1, y1)].map(|(x, y)| (m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]));
+    let pts = [(x0, y0), (x1, y0), (x0, y1), (x1, y1)]
+        .map(|(x, y)| (m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]));
     let min_x = pts.iter().map(|p| p.0).fold(f64::INFINITY, f64::min);
     let max_x = pts.iter().map(|p| p.0).fold(f64::NEG_INFINITY, f64::max);
     let min_y = pts.iter().map(|p| p.1).fold(f64::INFINITY, f64::min);
     let max_y = pts.iter().map(|p| p.1).fold(f64::NEG_INFINITY, f64::max);
     // `dump.mjs` rounds to 1/64 px.
     let r64 = |v: f64| (v * 64.0).round() / 64.0;
-    DumpRect { x: r64(min_x), y: r64(min_y), width: r64(max_x - min_x), height: r64(max_y - min_y) }
+    DumpRect {
+        x: r64(min_x),
+        y: r64(min_y),
+        width: r64(max_x - min_x),
+        height: r64(max_y - min_y),
+    }
 }
 
 fn index_fragments(doc: &Document, styles: &StyleSet, tree: &FragmentTree) -> FragIndex {
-    let mut ix = FragIndex { boxes: BTreeMap::new(), texts: BTreeMap::new() };
-    fn visit(doc: &Document, styles: &StyleSet, f: &Fragment, origin: Point, container: Option<Rect>, m: Option<Affine>, ix: &mut FragIndex) {
+    let mut ix = FragIndex {
+        boxes: BTreeMap::new(),
+        texts: BTreeMap::new(),
+    };
+    fn visit(
+        doc: &Document,
+        styles: &StyleSet,
+        f: &Fragment,
+        origin: Point,
+        container: Option<Rect>,
+        m: Option<Affine>,
+        ix: &mut FragIndex,
+    ) {
         let abs = f.rect.translate(origin.x, origin.y);
         let mut inner = container;
         let mut m = m;
         match &f.kind {
-            FragmentKind::Box { source, padding, border, .. } | FragmentKind::InlineBox { source, padding, border, .. } => {
+            FragmentKind::Box {
+                source,
+                padding,
+                border,
+                ..
+            }
+            | FragmentKind::InlineBox {
+                source,
+                padding,
+                border,
+                ..
+            } => {
                 // A transformed element maps itself and its subtree; pseudo-elements'
                 // transforms only move boxes the dump does not report.
                 if let StyleSource::Element(n) = source {
@@ -428,7 +551,13 @@ fn index_fragments(doc: &Document, styles: &StyleSet, tree: &FragmentTree) -> Fr
                     }
                     if e.container.is_none() {
                         e.used_margin = f.used_margin;
-                        e.replaced = matches!(&f.kind, FragmentKind::Box { replaced: Some(_), .. });
+                        e.replaced = matches!(
+                            &f.kind,
+                            FragmentKind::Box {
+                                replaced: Some(_),
+                                ..
+                            }
+                        );
                         e.padding = *padding;
                         e.border = *border;
                         e.container = container;
@@ -437,7 +566,14 @@ fn index_fragments(doc: &Document, styles: &StyleSet, tree: &FragmentTree) -> Fr
                 let content = border.inset(padding.inset(abs));
                 inner = Some(content);
             }
-            FragmentKind::Text { node: Some(n), ellipsis: true, text, source, range, .. } => {
+            FragmentKind::Text {
+                node: Some(n),
+                ellipsis: true,
+                text,
+                source,
+                range,
+                ..
+            } => {
                 // `Range.getClientRects` over text cut by `text-overflow: ellipsis`
                 // gives two rects in Chromium: the whole text as if it were not cut
                 // (it is laid out, then hidden), and the part that stays visible,
@@ -445,7 +581,9 @@ fn index_fragments(doc: &Document, styles: &StyleSet, tree: &FragmentTree) -> Fr
                 // The uncut rect covers the run's own text, which is the whole node
                 // on a `nowrap` line but only the clamped line on a
                 // `-webkit-line-clamp` box; the run keeps its pre-truncation range.
-                let font = styles.get(source.node()).map(|s| (s.font.clone(), s.letter_spacing, s.word_spacing));
+                let font = styles
+                    .get(source.node())
+                    .map(|s| (s.font.clone(), s.letter_spacing, s.word_spacing));
                 let mut rects = vec![abs];
                 if let Some((font, ls, ws)) = font {
                     let data = doc.text(*n).unwrap_or("");
@@ -456,14 +594,23 @@ fn index_fragments(doc: &Document, styles: &StyleSet, tree: &FragmentTree) -> Fr
                     }
                     let full = cw_web::layout::text::measure(&font, &whole, ls, ws);
                     let kept = abs.size.width - cw_web::layout::text::advance(&font, '\u{2026}');
-                    rects = vec![Rect::new(abs.origin.x, abs.origin.y, full, abs.size.height), Rect::new(abs.origin.x, abs.origin.y, kept, abs.size.height)];
+                    rects = vec![
+                        Rect::new(abs.origin.x, abs.origin.y, full, abs.size.height),
+                        Rect::new(abs.origin.x, abs.origin.y, kept, abs.size.height),
+                    ];
                 }
                 for r in rects {
-                    ix.texts.entry(*n).or_default().push((r, m.as_ref().map(|m| affine_bounds(m, r))));
+                    ix.texts
+                        .entry(*n)
+                        .or_default()
+                        .push((r, m.as_ref().map(|m| affine_bounds(m, r))));
                 }
             }
             FragmentKind::Text { node: Some(n), .. } => {
-                ix.texts.entry(*n).or_default().push((abs, m.as_ref().map(|m| affine_bounds(m, abs))));
+                ix.texts
+                    .entry(*n)
+                    .or_default()
+                    .push((abs, m.as_ref().map(|m| affine_bounds(m, abs))));
             }
             _ => {}
         }
@@ -471,7 +618,15 @@ fn index_fragments(doc: &Document, styles: &StyleSet, tree: &FragmentTree) -> Fr
             visit(doc, styles, c, abs.origin, inner, m, ix);
         }
     }
-    visit(doc, styles, &tree.root, Point::default(), None, None, &mut ix);
+    visit(
+        doc,
+        styles,
+        &tree.root,
+        Point::default(),
+        None,
+        None,
+        &mut ix,
+    );
     ix
 }
 
@@ -709,7 +864,12 @@ fn union_rect(a: DumpRect, b: DumpRect) -> DumpRect {
     let y0 = a.y.min(b.y);
     let x1 = (a.x + a.width).max(b.x + b.width);
     let y1 = (a.y + a.height).max(b.y + b.height);
-    DumpRect { x: x0, y: y0, width: x1 - x0, height: y1 - y0 }
+    DumpRect {
+        x: x0,
+        y: y0,
+        width: x1 - x0,
+        height: y1 - y0,
+    }
 }
 
 /// Used `auto` margins of a flex item along the main axis. `computed_strings` derives
@@ -718,35 +878,73 @@ fn union_rect(a: DumpRect, b: DumpRect) -> DumpRect {
 /// their share first, and what is left between the item and its neighbour's margin
 /// edge is the auto margin (`getComputedStyle` reports that used value: 0 when a
 /// `flex: 1` sibling took the free space).
-fn flex_auto_margins(doc: &Document, styles: &StyleSet, ix: &FragIndex, node: NodeId, computed: &mut BTreeMap<String, String>) {
+fn flex_auto_margins(
+    doc: &Document,
+    styles: &StyleSet,
+    ix: &FragIndex,
+    node: NodeId,
+    computed: &mut BTreeMap<String, String>,
+) {
     use cw_web::style::FlexDirection;
-    let (Some(style), Some(parent)) = (styles.get(node), doc.parent(node)) else { return };
+    let (Some(style), Some(parent)) = (styles.get(node), doc.parent(node)) else {
+        return;
+    };
     let Some(ps) = styles.get(parent) else { return };
-    if !matches!(ps.display, Display::Flex | Display::InlineFlex) || matches!(style.position, Position::Absolute | Position::Fixed) {
+    if !matches!(ps.display, Display::Flex | Display::InlineFlex)
+        || matches!(style.position, Position::Absolute | Position::Fixed)
+    {
         return;
     }
-    let row = matches!(ps.flex_direction, FlexDirection::Row | FlexDirection::RowReverse);
-    let reversed = matches!(ps.flex_direction, FlexDirection::RowReverse | FlexDirection::ColumnReverse);
-    let Some(info) = ix.boxes.get(&node) else { return };
+    let row = matches!(
+        ps.flex_direction,
+        FlexDirection::Row | FlexDirection::RowReverse
+    );
+    let reversed = matches!(
+        ps.flex_direction,
+        FlexDirection::RowReverse | FlexDirection::ColumnReverse
+    );
+    let Some(info) = ix.boxes.get(&node) else {
+        return;
+    };
     // Layout records a flex item's used margins on its fragment (`Fragment::used_margin`),
     // anonymous text items and all; the reconstruction below from the element
     // siblings' rects is only for a fragment without the record.
     if info.used_margin.is_some() {
         return;
     }
-    let (Some(r), Some(c)) = (info.rect, info.container) else { return };
+    let (Some(r), Some(c)) = (info.rect, info.container) else {
+        return;
+    };
     let cw = c.size.width;
-    let gap = if row { ps.column_gap.resolve(cw) } else { ps.row_gap.resolve(cw) };
+    let gap = if row {
+        ps.column_gap.resolve(cw)
+    } else {
+        ps.row_gap.resolve(cw)
+    };
     // In-flow element items with boxes, in document order (`order` is not modelled).
     let items: Vec<(NodeId, Rect)> = doc
         .element_children(parent)
-        .filter(|&n| styles.get(n).is_some_and(|s| !matches!(s.position, Position::Absolute | Position::Fixed)))
+        .filter(|&n| {
+            styles
+                .get(n)
+                .is_some_and(|s| !matches!(s.position, Position::Absolute | Position::Fixed))
+        })
         .filter_map(|n| ix.boxes.get(&n).and_then(|b| b.rect).map(|r| (n, r)))
         .collect();
-    let Some(at) = items.iter().position(|(n, _)| *n == node) else { return };
+    let Some(at) = items.iter().position(|(n, _)| *n == node) else {
+        return;
+    };
     let start = |r: Rect| if row { r.origin.x } else { r.origin.y };
     let end = |r: Rect| if row { r.right() } else { r.bottom() };
-    let cross_overlap = |a: Rect, b: Rect| if row { a.origin.y < b.bottom() && b.origin.y < a.bottom() || a.size.height.is_zero() || b.size.height.is_zero() } else { true };
+    let cross_overlap = |a: Rect, b: Rect| {
+        if row {
+            a.origin.y < b.bottom() && b.origin.y < a.bottom()
+                || a.size.height.is_zero()
+                || b.size.height.is_zero()
+        } else {
+            true
+        }
+    };
     let margin_of = |n: NodeId, before: bool| -> Option<Au> {
         let s = styles.get(n)?;
         let m = match (row, before) {
@@ -766,10 +964,17 @@ fn flex_auto_margins(doc: &Document, styles: &StyleSet, ix: &FragIndex, node: No
             continue;
         }
         let step: isize = if before { -1 } else { 1 };
-        let neighbour = items.get((at as isize + step) as usize).filter(|_| at as isize + step >= 0).filter(|(_, nr)| cross_overlap(r, *nr));
+        let neighbour = items
+            .get((at as isize + step) as usize)
+            .filter(|_| at as isize + step >= 0)
+            .filter(|(_, nr)| cross_overlap(r, *nr));
         let space = match neighbour {
             Some((n, nr)) => {
-                let (between, theirs) = if before { (start(r) - end(*nr), margin_of(*n, false)) } else { (start(*nr) - end(r), margin_of(*n, true)) };
+                let (between, theirs) = if before {
+                    (start(r) - end(*nr), margin_of(*n, false))
+                } else {
+                    (start(*nr) - end(r), margin_of(*n, true))
+                };
                 match theirs {
                     Some(m) => between - gap - m,
                     // Two auto margins facing each other share the space equally.
@@ -803,7 +1008,15 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
     let ix = index_fragments(&r.doc, &r.styles, &r.tree);
     let mut nodes = Vec::new();
     let mut families: Vec<(String, String)> = Vec::new();
-    fn walk(doc: &Document, styles: &StyleSet, ix: &FragIndex, node: NodeId, path: String, out: &mut Vec<DumpNode>, fams: &mut Vec<(String, String)>) {
+    fn walk(
+        doc: &Document,
+        styles: &StyleSet,
+        ix: &FragIndex,
+        node: NodeId,
+        path: String,
+        out: &mut Vec<DumpNode>,
+        fams: &mut Vec<(String, String)>,
+    ) {
         let tag = doc.tag(node).unwrap_or("").to_owned();
         let info = ix.boxes.get(&node).copied().unwrap_or_default();
         let mut computed = match styles.get(node) {
@@ -814,7 +1027,10 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
         if let Some(f) = computed.get("font-family") {
             if !fams.iter().any(|(family, _)| family == f) {
                 // The face the cascade resolved the list to, on the device `run_at` set.
-                let face = styles.get(node).map(|s| s.font.typeface.family_name().to_owned()).unwrap_or_default();
+                let face = styles
+                    .get(node)
+                    .map(|s| s.font.typeface.family_name().to_owned())
+                    .unwrap_or_default();
                 fams.push((f.clone(), face));
             }
         }
@@ -836,7 +1052,11 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
                     if ct == "head" {
                         continue;
                     }
-                    let seg = if ct == "body" && tag == "html" { "body".to_owned() } else { format!("{ct}:nth-child({n})") };
+                    let seg = if ct == "body" && tag == "html" {
+                        "body".to_owned()
+                    } else {
+                        format!("{ct}:nth-child({n})")
+                    };
                     let child_index = out.len();
                     walk(doc, styles, ix, child, format!("{path}>{seg}"), out, fams);
                     // Block-in-inline: Blink keeps the block children of an inline
@@ -846,7 +1066,10 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
                     // here.
                     if inline_parent {
                         if let Some(cs) = styles.get(child) {
-                            let in_flow_block = !cs.display.is_inline_level() && !cs.display.is_none() && cs.float == Float::None && !matches!(cs.position, Position::Absolute | Position::Fixed);
+                            let in_flow_block = !cs.display.is_inline_level()
+                                && !cs.display.is_none()
+                                && cs.float == Float::None
+                                && !matches!(cs.position, Position::Absolute | Position::Fixed);
                             if in_flow_block {
                                 let child_rect = match &out[child_index] {
                                     DumpNode::Element { rect, .. } => *rect,
@@ -865,8 +1088,21 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
                     if t.trim().is_empty() {
                         continue;
                     }
-                    let rects = ix.texts.get(&child).map(|v| v.iter().map(|(r, client)| client.unwrap_or_else(|| dump_rect(*r))).collect()).unwrap_or_default();
-                    out.push(DumpNode::Text { path: format!("{path}>#text:nth({text_index})"), parent: path.clone(), text: t.clone(), rects });
+                    let rects = ix
+                        .texts
+                        .get(&child)
+                        .map(|v| {
+                            v.iter()
+                                .map(|(r, client)| client.unwrap_or_else(|| dump_rect(*r)))
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    out.push(DumpNode::Text {
+                        path: format!("{path}>#text:nth({text_index})"),
+                        parent: path.clone(),
+                        text: t.clone(),
+                        rects,
+                    });
                     text_index += 1;
                 }
                 _ => {}
@@ -874,7 +1110,15 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
         }
     }
     if let Some(html) = r.doc.document_element() {
-        walk(&r.doc, &r.styles, &ix, html, "html".into(), &mut nodes, &mut families);
+        walk(
+            &r.doc,
+            &r.styles,
+            &ix,
+            html,
+            "html".into(),
+            &mut nodes,
+            &mut families,
+        );
     }
     let fonts = families
         .into_iter()
@@ -884,9 +1128,16 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
         fixture: fixture.to_owned(),
         engine: "cw-web".into(),
         version: env!("CARGO_PKG_VERSION").into(),
-        viewport: DumpViewport { width: viewport.width, height: viewport.height, dpr: viewport.scale as f64 },
+        viewport: DumpViewport {
+            width: viewport.width,
+            height: viewport.height,
+            dpr: viewport.scale as f64,
+        },
         properties: PROPERTIES.iter().map(|s| s.to_string()).collect(),
-        document: DumpSize { width: q64(r.tree.content_width), height: q64(r.tree.content_height) },
+        document: DumpSize {
+            width: q64(r.tree.content_width),
+            height: q64(r.tree.content_height),
+        },
         nodes,
         fonts,
     }
@@ -911,8 +1162,13 @@ pub fn normalise(property: &str, value: &str) -> String {
 }
 
 fn normalise_colour(v: &str) -> String {
-    let inner = v.strip_prefix("rgba(").or_else(|| v.strip_prefix("rgb(")).and_then(|s| s.strip_suffix(')'));
-    let Some(inner) = inner else { return v.to_owned() };
+    let inner = v
+        .strip_prefix("rgba(")
+        .or_else(|| v.strip_prefix("rgb("))
+        .and_then(|s| s.strip_suffix(')'));
+    let Some(inner) = inner else {
+        return v.to_owned();
+    };
     let parts: Vec<&str> = inner.split(',').map(str::trim).collect();
     if parts.len() < 3 {
         return v.to_owned();
@@ -921,7 +1177,13 @@ fn normalise_colour(v: &str) -> String {
     if a >= 1.0 {
         format!("rgb({}, {}, {})", parts[0], parts[1], parts[2])
     } else {
-        format!("rgba({}, {}, {}, {})", parts[0], parts[1], parts[2], (a * 100.0).round() / 100.0)
+        format!(
+            "rgba({}, {}, {}, {})",
+            parts[0],
+            parts[1],
+            parts[2],
+            (a * 100.0).round() / 100.0
+        )
     }
 }
 
@@ -977,7 +1239,12 @@ impl Report {
     }
     pub fn worst(&self, n: usize) -> Vec<&NodeResult> {
         let mut v: Vec<&NodeResult> = self.nodes.iter().filter(|r| !r.passed).collect();
-        v.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal).then_with(|| a.path.cmp(&b.path)));
+        v.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.path.cmp(&b.path))
+        });
         v.truncate(n);
         v
     }
@@ -997,7 +1264,11 @@ impl Report {
         if !fonts.is_empty() {
             s.push_str("## Fonts\n\n| font-family | engine face |\n|---|---|\n");
             for f in fonts {
-                s.push_str(&format!("| `{}` | {} |\n", f.family.replace('|', "\\|"), f.engine));
+                s.push_str(&format!(
+                    "| `{}` | {} |\n",
+                    f.family.replace('|', "\\|"),
+                    f.engine
+                ));
             }
             s.push('\n');
         }
@@ -1009,7 +1280,10 @@ impl Report {
         for r in self.worst(40) {
             s.push_str(&format!("### `{}` (score {:.2})\n\n", r.path, r.score));
             for m in &r.mismatches {
-                s.push_str(&format!("- {}: expected `{}`, got `{}`\n", m.what, m.expected, m.got));
+                s.push_str(&format!(
+                    "- {}: expected `{}`, got `{}`\n",
+                    m.what, m.expected, m.got
+                ));
             }
             s.push('\n');
         }
@@ -1017,12 +1291,28 @@ impl Report {
     }
 }
 
-fn rect_mismatches(expected: &DumpRect, got: &DumpRect, size_tolerance: f64, prefix: &str, out: &mut Vec<Mismatch>) {
-    let checks = [("x", expected.x, got.x, RECT_PX), ("y", expected.y, got.y, RECT_PX), ("width", expected.width, got.width, size_tolerance), ("height", expected.height, got.height, size_tolerance)];
+fn rect_mismatches(
+    expected: &DumpRect,
+    got: &DumpRect,
+    size_tolerance: f64,
+    prefix: &str,
+    out: &mut Vec<Mismatch>,
+) {
+    let checks = [
+        ("x", expected.x, got.x, RECT_PX),
+        ("y", expected.y, got.y, RECT_PX),
+        ("width", expected.width, got.width, size_tolerance),
+        ("height", expected.height, got.height, size_tolerance),
+    ];
     for (name, e, g, tol) in checks {
         let d = (e - g).abs();
         if d > tol + 1e-9 {
-            out.push(Mismatch { what: format!("{prefix}{name}"), expected: format!("{e}"), got: format!("{g}"), delta: d });
+            out.push(Mismatch {
+                what: format!("{prefix}{name}"),
+                expected: format!("{e}"),
+                got: format!("{g}"),
+                delta: d,
+            });
         }
     }
 }
@@ -1030,15 +1320,39 @@ fn rect_mismatches(expected: &DumpRect, got: &DumpRect, size_tolerance: f64, pre
 /// Compares Chromium's dump (`expected`) against the engine's (`got`).
 pub fn compare(expected: &Dump, got: &Dump) -> Report {
     let by_path: BTreeMap<&str, &DumpNode> = got.nodes.iter().map(|n| (n.path(), n)).collect();
-    let mut report = Report { fixture: expected.fixture.clone(), total: expected.nodes.len(), ..Default::default() };
+    let mut report = Report {
+        fixture: expected.fixture.clone(),
+        total: expected.nodes.len(),
+        ..Default::default()
+    };
     for node in &expected.nodes {
-        let mut result = NodeResult { path: node.path().to_owned(), ..Default::default() };
+        let mut result = NodeResult {
+            path: node.path().to_owned(),
+            ..Default::default()
+        };
         match (node, by_path.get(node.path())) {
             (_, None) => {
                 report.missing += 1;
-                result.mismatches.push(Mismatch { what: "node".into(), expected: "present".into(), got: "missing".into(), delta: 1000.0 });
+                result.mismatches.push(Mismatch {
+                    what: "node".into(),
+                    expected: "present".into(),
+                    got: "missing".into(),
+                    delta: 1000.0,
+                });
             }
-            (DumpNode::Element { tag, rect, computed, .. }, Some(DumpNode::Element { rect: got_rect, computed: got_computed, .. })) => {
+            (
+                DumpNode::Element {
+                    tag,
+                    rect,
+                    computed,
+                    ..
+                },
+                Some(DumpNode::Element {
+                    rect: got_rect,
+                    computed: got_computed,
+                    ..
+                }),
+            ) => {
                 let text_dep = text_dependent(computed);
                 let size_tol = if text_dep { TEXT_PX } else { RECT_PX };
                 // A `<br>` generates no box; Chromium reports the line break's position,
@@ -1057,19 +1371,38 @@ pub fn compare(expected: &Dump, got: &Dump) -> Report {
                     }
                     if LENGTH_PROPERTIES.contains(p) {
                         if let (Some(ep), Some(gp)) = (parse_px(&e), parse_px(&g)) {
-                            let tol = if text_dep && (*p == "width" || *p == "height") { TEXT_PX } else { RECT_PX };
+                            let tol = if text_dep && (*p == "width" || *p == "height") {
+                                TEXT_PX
+                            } else {
+                                RECT_PX
+                            };
                             let d = (ep - gp).abs();
                             if d <= tol + 1e-9 {
                                 continue;
                             }
-                            result.mismatches.push(Mismatch { what: p.to_string(), expected: e, got: g, delta: d });
+                            result.mismatches.push(Mismatch {
+                                what: p.to_string(),
+                                expected: e,
+                                got: g,
+                                delta: d,
+                            });
                             continue;
                         }
                     }
-                    result.mismatches.push(Mismatch { what: p.to_string(), expected: e, got: g, delta: 1.0 });
+                    result.mismatches.push(Mismatch {
+                        what: p.to_string(),
+                        expected: e,
+                        got: g,
+                        delta: 1.0,
+                    });
                 }
             }
-            (DumpNode::Text { rects, .. }, Some(DumpNode::Text { rects: got_rects, .. })) => {
+            (
+                DumpNode::Text { rects, .. },
+                Some(DumpNode::Text {
+                    rects: got_rects, ..
+                }),
+            ) => {
                 if rects.len() != got_rects.len() {
                     result.mismatches.push(Mismatch {
                         what: "lines".into(),
@@ -1079,12 +1412,23 @@ pub fn compare(expected: &Dump, got: &Dump) -> Report {
                     });
                 } else {
                     for (i, (e, g)) in rects.iter().zip(got_rects).enumerate() {
-                        rect_mismatches(e, g, TEXT_PX, &format!("line[{i}]."), &mut result.mismatches);
+                        rect_mismatches(
+                            e,
+                            g,
+                            TEXT_PX,
+                            &format!("line[{i}]."),
+                            &mut result.mismatches,
+                        );
                     }
                 }
             }
             (_, Some(_)) => {
-                result.mismatches.push(Mismatch { what: "kind".into(), expected: "same kind".into(), got: "other kind".into(), delta: 1000.0 });
+                result.mismatches.push(Mismatch {
+                    what: "kind".into(),
+                    expected: "same kind".into(),
+                    got: "other kind".into(),
+                    delta: 1000.0,
+                });
             }
         }
         result.passed = result.mismatches.is_empty();
@@ -1131,7 +1475,8 @@ pub fn rasterise(scene: &Scene) -> cw_render::Frame {
 /// drop their `target`, which names the element's DOM path.
 pub fn content_digest(scene: &Scene) -> u64 {
     let mut s = scene.clone();
-    s.nodes.retain(|n| !matches!(n.primitive, cw_scene::Primitive::Region));
+    s.nodes
+        .retain(|n| !matches!(n.primitive, cw_scene::Primitive::Region));
     for (i, n) in s.nodes.iter_mut().enumerate() {
         n.id = 0;
         n.revision = 0;
@@ -1154,7 +1499,11 @@ fn crc32(data: &[u8]) -> u32 {
     for (n, slot) in table.iter_mut().enumerate() {
         let mut c = n as u32;
         for _ in 0..8 {
-            c = if c & 1 != 0 { 0xEDB8_8320 ^ (c >> 1) } else { c >> 1 };
+            c = if c & 1 != 0 {
+                0xEDB8_8320 ^ (c >> 1)
+            } else {
+                c >> 1
+            };
         }
         *slot = c;
     }
@@ -1220,5 +1569,6 @@ pub fn encode_png(width: u32, height: u32, rgba: &[u8]) -> Vec<u8> {
 }
 
 pub fn write_png(path: &Path, frame: &cw_render::Frame) {
-    std::fs::write(path, encode_png(frame.width, frame.height, &frame.rgba)).unwrap_or_else(|e| panic!("write {}: {e}", path.display()));
+    std::fs::write(path, encode_png(frame.width, frame.height, &frame.rgba))
+        .unwrap_or_else(|e| panic!("write {}: {e}", path.display()));
 }

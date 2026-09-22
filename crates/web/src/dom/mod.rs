@@ -5,7 +5,9 @@
 
 use std::collections::BTreeMap;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub struct NodeId(pub u32);
 
 impl NodeId {
@@ -23,7 +25,9 @@ pub enum QuirksMode {
     Quirks,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Namespace {
     #[default]
     Html,
@@ -74,8 +78,15 @@ pub struct Node {
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Mutation {
     Inserted(NodeId),
-    Removed { node: NodeId, old_parent: NodeId },
-    AttributeChanged { node: NodeId, name: String, old: Option<String> },
+    Removed {
+        node: NodeId,
+        old_parent: NodeId,
+    },
+    AttributeChanged {
+        node: NodeId,
+        name: String,
+        old: Option<String>,
+    },
     TextChanged(NodeId),
 }
 
@@ -101,7 +112,15 @@ impl Document {
 
     pub fn new() -> Document {
         Document {
-            nodes: vec![Node { kind: NodeKind::Document, parent: None, first_child: None, last_child: None, prev_sibling: None, next_sibling: None, detached: false }],
+            nodes: vec![Node {
+                kind: NodeKind::Document,
+                parent: None,
+                first_child: None,
+                last_child: None,
+                prev_sibling: None,
+                next_sibling: None,
+                detached: false,
+            }],
             quirks: QuirksMode::NoQuirks,
             url: String::new(),
             mutations: Vec::new(),
@@ -129,7 +148,15 @@ impl Document {
     /// Allocates a detached node.
     pub fn create(&mut self, kind: NodeKind) -> NodeId {
         let id = NodeId(self.nodes.len() as u32);
-        self.nodes.push(Node { kind, parent: None, first_child: None, last_child: None, prev_sibling: None, next_sibling: None, detached: true });
+        self.nodes.push(Node {
+            kind,
+            parent: None,
+            first_child: None,
+            last_child: None,
+            prev_sibling: None,
+            next_sibling: None,
+            detached: true,
+        });
         if let NodeKind::Element { attrs, .. } = &self.nodes[id.index()].kind {
             if let Some(a) = attrs.iter().find(|a| a.name == "id") {
                 let v = a.value.clone();
@@ -139,7 +166,11 @@ impl Document {
         id
     }
     pub fn create_element(&mut self, tag: &str, attrs: Vec<Attribute>) -> NodeId {
-        self.create(NodeKind::Element { ns: Namespace::Html, tag: tag.to_ascii_lowercase(), attrs })
+        self.create(NodeKind::Element {
+            ns: Namespace::Html,
+            tag: tag.to_ascii_lowercase(),
+            attrs,
+        })
     }
     pub fn create_text(&mut self, text: &str) -> NodeId {
         self.create(NodeKind::Text(text.to_owned()))
@@ -150,7 +181,8 @@ impl Document {
         if !self.is(id, "template") {
             return None;
         }
-        self.children(id).find(|c| matches!(self.kind(*c), NodeKind::DocumentFragment))
+        self.children(id)
+            .find(|c| matches!(self.kind(*c), NodeKind::DocumentFragment))
     }
 
     pub fn parent(&self, id: NodeId) -> Option<NodeId> {
@@ -169,14 +201,24 @@ impl Document {
         self.nodes[id.index()].prev_sibling
     }
     pub fn children(&self, id: NodeId) -> Children<'_> {
-        Children { doc: self, next: self.first_child(id) }
+        Children {
+            doc: self,
+            next: self.first_child(id),
+        }
     }
     /// The node and every descendant, in document order.
     pub fn descendants(&self, id: NodeId) -> Descendants<'_> {
-        Descendants { doc: self, root: id, next: Some(id) }
+        Descendants {
+            doc: self,
+            root: id,
+            next: Some(id),
+        }
     }
     pub fn ancestors(&self, id: NodeId) -> Ancestors<'_> {
-        Ancestors { doc: self, next: self.parent(id) }
+        Ancestors {
+            doc: self,
+            next: self.parent(id),
+        }
     }
 
     pub fn is_element(&self, id: NodeId) -> bool {
@@ -204,7 +246,10 @@ impl Document {
         }
     }
     pub fn attr(&self, id: NodeId, name: &str) -> Option<&str> {
-        self.attrs(id).iter().find(|a| a.name == name).map(|a| a.value.as_str())
+        self.attrs(id)
+            .iter()
+            .find(|a| a.name == name)
+            .map(|a| a.value.as_str())
     }
     pub fn has_attr(&self, id: NodeId, name: &str) -> bool {
         self.attr(id, name).is_some()
@@ -226,14 +271,23 @@ impl Document {
         if let NodeKind::Element { attrs, .. } = &mut self.nodes[id.index()].kind {
             match attrs.iter_mut().find(|a| a.name == name) {
                 Some(a) => a.value = value.to_owned(),
-                None => attrs.push(Attribute { name: name.clone(), value: value.to_owned() }),
+                None => attrs.push(Attribute {
+                    name: name.clone(),
+                    value: value.to_owned(),
+                }),
             }
         }
-        self.mutations.push(Mutation::AttributeChanged { node: id, name, old });
+        self.mutations.push(Mutation::AttributeChanged {
+            node: id,
+            name,
+            old,
+        });
     }
     pub fn remove_attr(&mut self, id: NodeId, name: &str) {
         let name = name.to_ascii_lowercase();
-        let Some(old) = self.attr(id, &name).map(str::to_owned) else { return };
+        let Some(old) = self.attr(id, &name).map(str::to_owned) else {
+            return;
+        };
         if name == "id" {
             if let Some(v) = self.ids.get_mut(&old) {
                 v.retain(|n| *n != id);
@@ -242,7 +296,11 @@ impl Document {
         if let NodeKind::Element { attrs, .. } = &mut self.nodes[id.index()].kind {
             attrs.retain(|a| a.name != name);
         }
-        self.mutations.push(Mutation::AttributeChanged { node: id, name, old: Some(old) });
+        self.mutations.push(Mutation::AttributeChanged {
+            node: id,
+            name,
+            old: Some(old),
+        });
     }
     pub fn set_text(&mut self, id: NodeId, text: &str) {
         if let NodeKind::Text(t) = &mut self.nodes[id.index()].kind {
@@ -259,7 +317,9 @@ impl Document {
         self.ids.get(id).map(Vec::as_slice).unwrap_or(&[])
     }
     pub fn classes(&self, id: NodeId) -> impl Iterator<Item = &str> {
-        self.attr(id, "class").unwrap_or("").split_ascii_whitespace()
+        self.attr(id, "class")
+            .unwrap_or("")
+            .split_ascii_whitespace()
     }
     pub fn has_class(&self, id: NodeId, class: &str) -> bool {
         self.classes(id).any(|c| c == class)
@@ -321,7 +381,10 @@ impl Document {
         m.prev_sibling = None;
         m.next_sibling = None;
         m.detached = true;
-        self.mutations.push(Mutation::Removed { node: id, old_parent: parent });
+        self.mutations.push(Mutation::Removed {
+            node: id,
+            old_parent: parent,
+        });
     }
     /// Deep clone of a subtree into new ids (detached).
     pub fn clone_subtree(&mut self, id: NodeId) -> NodeId {
@@ -354,7 +417,8 @@ impl Document {
     }
     pub fn body(&self) -> Option<NodeId> {
         let html = self.document_element()?;
-        self.children(html).find(|c| self.is(*c, "body") || self.is(*c, "frameset"))
+        self.children(html)
+            .find(|c| self.is(*c, "body") || self.is(*c, "frameset"))
     }
     pub fn head(&self) -> Option<NodeId> {
         let html = self.document_element()?;
@@ -455,7 +519,13 @@ mod tests {
         let mut d = Document::new();
         let html = d.create_element("HTML", vec![]);
         d.append(Document::ROOT, html);
-        let body = d.create_element("body", vec![Attribute { name: "id".into(), value: "b".into() }]);
+        let body = d.create_element(
+            "body",
+            vec![Attribute {
+                name: "id".into(),
+                value: "b".into(),
+            }],
+        );
         d.append(html, body);
         let p1 = d.create_element("p", vec![]);
         let p2 = d.create_element("p", vec![]);
@@ -466,7 +536,10 @@ mod tests {
         assert_eq!(d.tag(html), Some("html"));
         assert_eq!(d.body(), Some(body));
         assert_eq!(d.children(body).collect::<Vec<_>>(), vec![p1, p2]);
-        assert_eq!(d.descendants(Document::ROOT).collect::<Vec<_>>(), vec![Document::ROOT, html, body, p1, t, p2]);
+        assert_eq!(
+            d.descendants(Document::ROOT).collect::<Vec<_>>(),
+            vec![Document::ROOT, html, body, p1, t, p2]
+        );
         assert_eq!(d.by_id("b"), &[body]);
         assert_eq!(d.element_index(p2), 2);
         assert_eq!(d.element_index_from_end(p1), 2);
@@ -477,7 +550,10 @@ mod tests {
         d.set_attr(body, "ID", "c");
         assert!(d.by_id("b").is_empty());
         assert_eq!(d.by_id("c"), &[body]);
-        assert!(matches!(d.drain_mutations().last(), Some(Mutation::AttributeChanged { .. })));
+        assert!(matches!(
+            d.drain_mutations().last(),
+            Some(Mutation::AttributeChanged { .. })
+        ));
         let c = d.clone_subtree(p1);
         assert_eq!(d.text_content(c), "hi");
         assert_ne!(c, p1);

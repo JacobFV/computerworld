@@ -232,10 +232,7 @@ fn artwork(key: &str, request: &HttpRequest) -> Result<HttpResponse> {
     let rgba = cw_artwork::rasterize(&cw_artwork::artwork(key), size, radius);
     Ok(HttpResponse {
         status: 200,
-        headers: BTreeMap::from([(
-            "content-type".into(),
-            cw_protocol::RGBA_MEDIA_TYPE.into(),
-        )]),
+        headers: BTreeMap::from([("content-type".into(), cw_protocol::RGBA_MEDIA_TYPE.into())]),
         body: serde_json::to_vec(&Asset {
             width: size,
             height: size,
@@ -314,7 +311,10 @@ mod tests {
             .by_id(id)
             .first()
             .unwrap_or_else(|| panic!("no #{id} on the page"));
-        dom.text_content(node).split_whitespace().collect::<Vec<_>>().join(" ")
+        dom.text_content(node)
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
     }
     fn session() -> Value {
         json!({
@@ -378,14 +378,20 @@ mod tests {
             .find(|n| dom.attr(*n, "name") == Some("level"))
             .expect("the control carries a level");
         assert_eq!(dom.attr(level, "value"), Some("55"));
-        assert_eq!(submit(&mut state, 0, "/volume", &[("level", "55")]).status, 200);
+        assert_eq!(
+            submit(&mut state, 0, "/volume", &[("level", "55")]).status,
+            200
+        );
         assert_eq!(
             text_of(&page(&mut state, 0), "speaker-volume"),
             "Volume 55%"
         );
         assert_eq!(get(&mut state, 0, "/api/status")["volume"], 55);
         // A level the slider could never send is still refused.
-        assert_eq!(submit(&mut state, 0, "/volume", &[("level", "140")]).status, 400);
+        assert_eq!(
+            submit(&mut state, 0, "/volume", &[("level", "140")]).status,
+            400
+        );
         // Playing: the queue beyond the current song is "Up next", and Stop ends it.
         post(&mut state, 0, "/api/cast", session());
         let dom = page(&mut state, 0);

@@ -40,7 +40,9 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use cw_determinism::Determinism;
 use cw_protocol::{HttpRequest, HttpResponse, Result};
-use cw_web::script::{FetchRequest, FetchResponse, LogLevel, Realm, RealmState, ScriptHostDocument, StorageArea};
+use cw_web::script::{
+    FetchRequest, FetchResponse, LogLevel, Realm, RealmState, ScriptHostDocument, StorageArea,
+};
 use cw_web::Viewport;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -72,8 +74,16 @@ pub struct ConsoleEntry {
 /// What a page asked the browser to do once the current event is over.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PendingNav {
-    Navigate { url: String, new_tab: bool },
-    Submit { action: String, method: String, enctype: String, data: Vec<(String, String)> },
+    Navigate {
+        url: String,
+        new_tab: bool,
+    },
+    Submit {
+        action: String,
+        method: String,
+        enctype: String,
+        data: Vec<(String, String)>,
+    },
 }
 
 pub(crate) struct TransportPtr(*mut (dyn FnMut(HttpRequest) -> Result<HttpResponse> + 'static));
@@ -107,12 +117,21 @@ pub struct HostEnv {
 
 impl HostEnv {
     /// Installs `transport` for the length of `f`.
-    pub fn with_transport<T>(&mut self, transport: Option<&mut (dyn FnMut(HttpRequest) -> Result<HttpResponse> + '_)>, f: impl FnOnce(&mut HostEnv) -> T) -> T {
+    pub fn with_transport<T>(
+        &mut self,
+        transport: Option<&mut (dyn FnMut(HttpRequest) -> Result<HttpResponse> + '_)>,
+        f: impl FnOnce(&mut HostEnv) -> T,
+    ) -> T {
         self.transport = transport.map(|t| {
             let p: *mut (dyn FnMut(HttpRequest) -> Result<HttpResponse> + '_) = t;
             // SAFETY: only the lifetime bound is erased; the pointer is cleared below,
             // before the borrow it came from ends.
-            TransportPtr(unsafe { std::mem::transmute::<*mut (dyn FnMut(HttpRequest) -> Result<HttpResponse> + '_), *mut (dyn FnMut(HttpRequest) -> Result<HttpResponse> + 'static)>(p) })
+            TransportPtr(unsafe {
+                std::mem::transmute::<
+                    *mut (dyn FnMut(HttpRequest) -> Result<HttpResponse> + '_),
+                    *mut (dyn FnMut(HttpRequest) -> Result<HttpResponse> + 'static),
+                >(p)
+            })
         });
         let out = f(self);
         self.transport = None;
@@ -120,35 +139,61 @@ impl HostEnv {
     }
 
     fn origin(&self) -> String {
-        Url::parse(&self.url).map(|u| u.origin().ascii_serialization()).unwrap_or_default()
+        Url::parse(&self.url)
+            .map(|u| u.origin().ascii_serialization())
+            .unwrap_or_default()
     }
 
     fn cookie_header(&self, url: &Url, for_script: bool) -> String {
         self.cookies
             .get(&url.origin().ascii_serialization())
-            .map(|cookies| cookies.iter().filter(|c| cookie_path_matches(url.path(), &c.path) && (!c.secure || url.scheme() == "https") && !(for_script && c.http_only)).map(|c| format!("{}={}", c.name, c.value)).collect::<Vec<_>>().join("; "))
+            .map(|cookies| {
+                cookies
+                    .iter()
+                    .filter(|c| {
+                        cookie_path_matches(url.path(), &c.path)
+                            && (!c.secure || url.scheme() == "https")
+                            && !(for_script && c.http_only)
+                    })
+                    .map(|c| format!("{}={}", c.name, c.value))
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            })
             .unwrap_or_default()
     }
 
     fn store_cookie(&mut self, url: &Url, header: &str, from_script: bool) {
-        let Some(cookie) = parse_cookie(header, url.path()) else { return };
+        let Some(cookie) = parse_cookie(header, url.path()) else {
+            return;
+        };
         if from_script && cookie.http_only {
             return;
         }
-        let jar = self.cookies.entry(url.origin().ascii_serialization()).or_default();
-        if from_script && jar.iter().any(|c| c.name == cookie.name && c.path == cookie.path && c.http_only) {
+        let jar = self
+            .cookies
+            .entry(url.origin().ascii_serialization())
+            .or_default();
+        if from_script
+            && jar
+                .iter()
+                .any(|c| c.name == cookie.name && c.path == cookie.path && c.http_only)
+        {
             return;
         }
         jar.retain(|c| c.name != cookie.name || c.path != cookie.path);
         let lower = header.to_ascii_lowercase();
-        if !lower.contains("max-age=0") && !lower.contains("max-age=-") && !lower.contains("expires=thu, 01 jan 1970") {
+        if !lower.contains("max-age=0")
+            && !lower.contains("max-age=-")
+            && !lower.contains("expires=thu, 01 jan 1970")
+        {
             jar.push(cookie);
             jar.sort_by(|a, b| (&a.name, &a.path).cmp(&(&b.name, &b.path)));
         }
     }
 
     fn fetch(&mut self, request: &FetchRequest) -> std::result::Result<FetchResponse, String> {
-        let Some(TransportPtr(transport)) = self.transport.as_ref().map(|t| TransportPtr(t.0)) else {
+        let Some(TransportPtr(transport)) = self.transport.as_ref().map(|t| TransportPtr(t.0))
+        else {
             return Err("network unavailable".into());
         };
         self.fetches += 1;
@@ -159,9 +204,18 @@ impl HostEnv {
         let document_origin = Url::parse(&self.url).ok().map(|u| u.origin());
         let mut method = request.method.to_ascii_uppercase();
         let mut body = request.body.clone().unwrap_or_default();
-        let mut headers: BTreeMap<String, String> = request.headers.iter().filter(|(k, _)| !k.eq_ignore_ascii_case("cookie")).map(|(k, v)| (k.to_ascii_lowercase(), v.clone())).collect();
+        let mut headers: BTreeMap<String, String> = request
+            .headers
+            .iter()
+            .filter(|(k, _)| !k.eq_ignore_ascii_case("cookie"))
+            .map(|(k, v)| (k.to_ascii_lowercase(), v.clone()))
+            .collect();
         for _ in 0..=8 {
-            if !matches!(url.scheme(), "http" | "https") || url.host_str().is_none() || !url.username().is_empty() || url.password().is_some() {
+            if !matches!(url.scheme(), "http" | "https")
+                || url.host_str().is_none()
+                || !url.username().is_empty()
+                || url.password().is_some()
+            {
                 return Err("browser supports credential-free http/https URLs only".into());
             }
             url.set_fragment(None);
@@ -187,7 +241,9 @@ impl HostEnv {
             if matches!(response.status, 301 | 302 | 303 | 307 | 308) {
                 if let Some(location) = response.header("location") {
                     url = url.join(location).map_err(|e| e.to_string())?;
-                    if response.status == 303 || (matches!(response.status, 301 | 302) && method == "POST") {
+                    if response.status == 303
+                        || (matches!(response.status, 301 | 302) && method == "POST")
+                    {
                         method = "GET".into();
                         body.clear();
                         headers.remove("content-type");
@@ -198,7 +254,17 @@ impl HostEnv {
             if response.body.len() > MAX_TEXT_RESOURCE_BYTES {
                 return Err("response exceeds the subresource budget".into());
             }
-            return Ok(FetchResponse { status: response.status, status_text: status_text(response.status).into(), headers: response.headers.iter().map(|(k, v)| (k.to_ascii_lowercase(), v.clone())).collect(), body: response.body, url: url.to_string() });
+            return Ok(FetchResponse {
+                status: response.status,
+                status_text: status_text(response.status).into(),
+                headers: response
+                    .headers
+                    .iter()
+                    .map(|(k, v)| (k.to_ascii_lowercase(), v.clone()))
+                    .collect(),
+                body: response.body,
+                url: url.to_string(),
+            });
         }
         Err("redirect limit".into())
     }
@@ -244,10 +310,24 @@ impl ScriptHostDocument for BrowserHost {
             Some(rest) => (rest, true),
             None => (url, false),
         };
-        lock(&self.env).navs.push(PendingNav::Navigate { url: url.to_owned(), new_tab });
+        lock(&self.env).navs.push(PendingNav::Navigate {
+            url: url.to_owned(),
+            new_tab,
+        });
     }
-    fn submit_form(&mut self, action: &str, method: &str, enctype: &str, data: &[(String, String)]) {
-        lock(&self.env).navs.push(PendingNav::Submit { action: action.to_owned(), method: method.to_owned(), enctype: enctype.to_owned(), data: data.to_vec() });
+    fn submit_form(
+        &mut self,
+        action: &str,
+        method: &str,
+        enctype: &str,
+        data: &[(String, String)],
+    ) {
+        lock(&self.env).navs.push(PendingNav::Submit {
+            action: action.to_owned(),
+            method: method.to_owned(),
+            enctype: enctype.to_owned(),
+            data: data.to_vec(),
+        });
     }
     fn now_micros(&self) -> i64 {
         lock(&self.env).now.min(i64::MAX as u64) as i64
@@ -255,7 +335,9 @@ impl ScriptHostDocument for BrowserHost {
     fn random_u64(&mut self) -> u64 {
         let mut env = lock(&self.env);
         let stream = env.stream.clone();
-        env.entropy.get_or_insert_with(|| Determinism::new(0)).next_u64(&stream)
+        env.entropy
+            .get_or_insert_with(|| Determinism::new(0))
+            .next_u64(&stream)
     }
     fn viewport(&self) -> Viewport {
         lock(&self.env).viewport
@@ -276,7 +358,9 @@ impl ScriptHostDocument for BrowserHost {
             StorageArea::Local => &mut env.storage,
             StorageArea::Session => &mut env.session,
         };
-        map.entry(origin).or_default().insert(key.to_owned(), value.to_owned());
+        map.entry(origin)
+            .or_default()
+            .insert(key.to_owned(), value.to_owned());
     }
     fn storage_remove(&mut self, area: StorageArea, key: &str) {
         let mut env = lock(&self.env);
@@ -308,7 +392,11 @@ impl ScriptHostDocument for BrowserHost {
     }
     fn cookie_set(&mut self, cookie: &str) {
         let mut env = lock(&self.env);
-        if cookie.split(';').skip(1).any(|p| p.trim().eq_ignore_ascii_case("httponly")) {
+        if cookie
+            .split(';')
+            .skip(1)
+            .any(|p| p.trim().eq_ignore_ascii_case("httponly"))
+        {
             return;
         }
         if let Ok(u) = Url::parse(&env.url) {
@@ -327,7 +415,10 @@ impl ScriptHostDocument for BrowserHost {
             LogLevel::Debug => "debug",
             _ => "log",
         };
-        env.console.push(ConsoleEntry { level: level.into(), text: text.to_owned() });
+        env.console.push(ConsoleEntry {
+            level: level.into(),
+            text: text.to_owned(),
+        });
     }
 }
 
@@ -388,7 +479,11 @@ struct ScriptedOwned {
 impl Serialize for Scripted {
     fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
         let state = self.state();
-        ScriptedRef { state: &state, mirror: &self.mirror() }.serialize(s)
+        ScriptedRef {
+            state: &state,
+            mirror: &self.mirror(),
+        }
+        .serialize(s)
     }
 }
 impl<'de> Deserialize<'de> for Scripted {
@@ -401,7 +496,14 @@ impl Clone for Scripted {
     fn clone(&self) -> Self {
         let state = self.state();
         let local = lock(&self.local);
-        Scripted { local: Mutex::new(Local { cell: local.cell.clone(), epoch: local.epoch, saved: Some(state), mirror: local.mirror.clone() }) }
+        Scripted {
+            local: Mutex::new(Local {
+                cell: local.cell.clone(),
+                epoch: local.epoch,
+                saved: Some(state),
+                mirror: local.mirror.clone(),
+            }),
+        }
     }
 }
 impl PartialEq for Scripted {
@@ -414,16 +516,43 @@ impl Eq for Scripted {}
 impl Scripted {
     /// A new realm for `html` at `url`; nothing has run yet.
     pub fn new(html: &str, url: &str, viewport: Viewport, now: u64) -> Scripted {
-        let env = Arc::new(Mutex::new(HostEnv { viewport, now, url: url.to_owned(), ..HostEnv::default() }));
+        let env = Arc::new(Mutex::new(HostEnv {
+            viewport,
+            now,
+            url: url.to_owned(),
+            ..HostEnv::default()
+        }));
         let mut realm = Realm::new(html, url, Box::new(BrowserHost { env: env.clone() }));
         realm.set_step_budget(STEP_BUDGET);
-        let cell = RealmCell { realm: Some(realm), epoch: 1, env };
-        Scripted { local: Mutex::new(Local { cell: Arc::new(Mutex::new(cell)), epoch: 1, saved: None, mirror: Mirror::default() }) }
+        let cell = RealmCell {
+            realm: Some(realm),
+            epoch: 1,
+            env,
+        };
+        Scripted {
+            local: Mutex::new(Local {
+                cell: Arc::new(Mutex::new(cell)),
+                epoch: 1,
+                saved: None,
+                mirror: Mirror::default(),
+            }),
+        }
     }
 
     fn from_state(state: RealmState, mirror: Mirror) -> Scripted {
-        let cell = RealmCell { realm: None, epoch: 0, env: Arc::new(Mutex::new(HostEnv::default())) };
-        Scripted { local: Mutex::new(Local { cell: Arc::new(Mutex::new(cell)), epoch: 0, saved: Some(Arc::new(state)), mirror }) }
+        let cell = RealmCell {
+            realm: None,
+            epoch: 0,
+            env: Arc::new(Mutex::new(HostEnv::default())),
+        };
+        Scripted {
+            local: Mutex::new(Local {
+                cell: Arc::new(Mutex::new(cell)),
+                epoch: 0,
+                saved: Some(Arc::new(state)),
+                mirror,
+            }),
+        }
     }
 
     pub fn mirror(&self) -> Mirror {
@@ -442,7 +571,12 @@ impl Scripted {
         }
         let state = {
             let cell = lock(&local.cell);
-            Arc::new(cell.realm.as_ref().expect("an unsaved handle owns the live realm").snapshot())
+            Arc::new(
+                cell.realm
+                    .as_ref()
+                    .expect("an unsaved handle owns the live realm")
+                    .snapshot(),
+            )
         };
         local.saved = Some(state.clone());
         state
@@ -474,11 +608,21 @@ impl Scripted {
         if in_sync {
             return;
         }
-        let state = local.saved.clone().expect("a handle out of step with its cell carries its state");
-        let env = Arc::new(Mutex::new(HostEnv { muted: true, ..HostEnv::default() }));
+        let state = local
+            .saved
+            .clone()
+            .expect("a handle out of step with its cell carries its state");
+        let env = Arc::new(Mutex::new(HostEnv {
+            muted: true,
+            ..HostEnv::default()
+        }));
         let realm = Realm::restore(&state, Box::new(BrowserHost { env: env.clone() }));
         lock(&env).muted = false;
-        let fresh = RealmCell { realm: Some(realm), epoch: local.epoch, env };
+        let fresh = RealmCell {
+            realm: Some(realm),
+            epoch: local.epoch,
+            env,
+        };
         if Arc::strong_count(&local.cell) == 1 {
             *lock(&local.cell) = fresh;
         } else {
@@ -498,7 +642,11 @@ impl Scripted {
         std::mem::swap(&mut *lock(&slot), env);
         let realm = cell.realm.as_mut().expect("ready");
         let out = f(realm);
-        let (next_timer, wants_frame, history) = (realm.next_timer_micros(), realm.wants_animation_frame(), realm.history_position());
+        let (next_timer, wants_frame, history) = (
+            realm.next_timer_micros(),
+            realm.wants_animation_frame(),
+            realm.history_position(),
+        );
         std::mem::swap(&mut *lock(&slot), env);
         cell.epoch += 1;
         local.epoch = cell.epoch;
@@ -527,6 +675,8 @@ impl Scripted {
 
 impl std::fmt::Debug for Scripted {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Scripted").field("mirror", &self.mirror()).finish()
+        f.debug_struct("Scripted")
+            .field("mirror", &self.mirror())
+            .finish()
     }
 }

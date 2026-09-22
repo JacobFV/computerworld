@@ -171,7 +171,10 @@ pub fn numeric_reference_char(code: u32) -> char {
 pub fn longest_named_reference(s: &str) -> Option<(usize, &'static str)> {
     let bytes = s.as_bytes();
     let mut alnum = 0;
-    while alnum < bytes.len() && alnum < entities::LONGEST_NAME && bytes[alnum].is_ascii_alphanumeric() {
+    while alnum < bytes.len()
+        && alnum < entities::LONGEST_NAME
+        && bytes[alnum].is_ascii_alphanumeric()
+    {
         alnum += 1;
     }
     if alnum == 0 {
@@ -233,7 +236,11 @@ impl Tokenizer {
             allow_cdata: false,
             text: String::new(),
             stashed: None,
-            tag: Tag { name: String::new(), attrs: Vec::new(), self_closing: false },
+            tag: Tag {
+                name: String::new(),
+                attrs: Vec::new(),
+                self_closing: false,
+            },
             tag_is_end: false,
             attr_name: String::new(),
             attr_value: String::new(),
@@ -308,7 +315,11 @@ impl Tokenizer {
     }
 
     fn start_tag(&mut self, is_end: bool) {
-        self.tag = Tag { name: String::new(), attrs: Vec::new(), self_closing: false };
+        self.tag = Tag {
+            name: String::new(),
+            attrs: Vec::new(),
+            self_closing: false,
+        };
         self.tag_is_end = is_end;
         self.attr_names = None;
     }
@@ -350,11 +361,21 @@ impl Tokenizer {
         if let Some(set) = &mut self.attr_names {
             set.insert(self.attr_name.clone());
         }
-        self.tag.attrs.push(Attribute { name: std::mem::take(&mut self.attr_name), value: std::mem::take(&mut self.attr_value) });
+        self.tag.attrs.push(Attribute {
+            name: std::mem::take(&mut self.attr_name),
+            value: std::mem::take(&mut self.attr_value),
+        });
     }
 
     fn emit_tag(&mut self) -> Option<Token> {
-        let tag = std::mem::replace(&mut self.tag, Tag { name: String::new(), attrs: Vec::new(), self_closing: false });
+        let tag = std::mem::replace(
+            &mut self.tag,
+            Tag {
+                name: String::new(),
+                attrs: Vec::new(),
+                self_closing: false,
+            },
+        );
         if self.tag_is_end {
             self.emit(Token::EndTag(tag))
         } else {
@@ -379,7 +400,12 @@ impl Tokenizer {
     }
 
     fn in_attribute(&self) -> bool {
-        matches!(self.return_state, State::AttributeValueDoubleQuoted | State::AttributeValueSingleQuoted | State::AttributeValueUnquoted)
+        matches!(
+            self.return_state,
+            State::AttributeValueDoubleQuoted
+                | State::AttributeValueSingleQuoted
+                | State::AttributeValueUnquoted
+        )
     }
 
     /// Flush code points consumed as a character reference.
@@ -596,7 +622,10 @@ impl Tokenizer {
                 }
                 None
             }
-            RcdataEndTagName | RawtextEndTagName | ScriptDataEndTagName | ScriptDataEscapedEndTagName => {
+            RcdataEndTagName
+            | RawtextEndTagName
+            | ScriptDataEndTagName
+            | ScriptDataEscapedEndTagName => {
                 let back = match self.state {
                     RcdataEndTagName => Rcdata,
                     RawtextEndTagName => Rawtext,
@@ -604,7 +633,9 @@ impl Tokenizer {
                     _ => ScriptDataEscaped,
                 };
                 match self.consume() {
-                    Some(c) if is_whitespace(c) && self.is_appropriate_end_tag() => self.state = BeforeAttributeName,
+                    Some(c) if is_whitespace(c) && self.is_appropriate_end_tag() => {
+                        self.state = BeforeAttributeName
+                    }
                     Some('/') if self.is_appropriate_end_tag() => self.state = SelfClosingStartTag,
                     Some('>') if self.is_appropriate_end_tag() => {
                         self.state = Data;
@@ -833,7 +864,11 @@ impl Tokenizer {
                 match self.consume() {
                     Some(c) if is_whitespace(c) || c == '/' || c == '>' => {
                         let is_script = self.temp == "script";
-                        self.state = if is_script == starting { ScriptDataDoubleEscaped } else { ScriptDataEscaped };
+                        self.state = if is_script == starting {
+                            ScriptDataDoubleEscaped
+                        } else {
+                            ScriptDataEscaped
+                        };
                         self.emit_char(c);
                     }
                     Some(c) if c.is_ascii_alphabetic() => {
@@ -842,10 +877,18 @@ impl Tokenizer {
                     }
                     Some(c) => {
                         self.reconsume(c);
-                        self.state = if starting { ScriptDataEscaped } else { ScriptDataDoubleEscaped };
+                        self.state = if starting {
+                            ScriptDataEscaped
+                        } else {
+                            ScriptDataDoubleEscaped
+                        };
                     }
                     None => {
-                        self.state = if starting { ScriptDataEscaped } else { ScriptDataDoubleEscaped };
+                        self.state = if starting {
+                            ScriptDataEscaped
+                        } else {
+                            ScriptDataDoubleEscaped
+                        };
                     }
                 }
                 None
@@ -1013,13 +1056,21 @@ impl Tokenizer {
                 None
             }
             AttributeValueDoubleQuoted | AttributeValueSingleQuoted => {
-                let quote = if self.state == AttributeValueDoubleQuoted { '"' } else { '\'' };
+                let quote = if self.state == AttributeValueDoubleQuoted {
+                    '"'
+                } else {
+                    '\''
+                };
                 // Fast path over plain bytes.
                 {
                     let bytes = self.input.as_bytes();
                     let start = self.pos;
                     let mut i = start;
-                    while i < bytes.len() && bytes[i] != quote as u8 && bytes[i] != b'&' && bytes[i] != 0 {
+                    while i < bytes.len()
+                        && bytes[i] != quote as u8
+                        && bytes[i] != b'&'
+                        && bytes[i] != 0
+                    {
                         i += 1;
                     }
                     if i > start {
@@ -1310,7 +1361,10 @@ impl Tokenizer {
                         self.state = BeforeDoctypeName;
                     }
                     None => {
-                        self.doctype = Doctype { force_quirks: true, ..Default::default() };
+                        self.doctype = Doctype {
+                            force_quirks: true,
+                            ..Default::default()
+                        };
                         return self.doctype_eof();
                     }
                 }
@@ -1320,20 +1374,32 @@ impl Tokenizer {
                 match self.consume() {
                     Some(c) if is_whitespace(c) => {}
                     Some('\0') => {
-                        self.doctype = Doctype { name: Some(REPLACEMENT.to_string()), ..Default::default() };
+                        self.doctype = Doctype {
+                            name: Some(REPLACEMENT.to_string()),
+                            ..Default::default()
+                        };
                         self.state = DoctypeName;
                     }
                     Some('>') => {
-                        self.doctype = Doctype { force_quirks: true, ..Default::default() };
+                        self.doctype = Doctype {
+                            force_quirks: true,
+                            ..Default::default()
+                        };
                         self.state = Data;
                         return self.emit_doctype();
                     }
                     Some(c) => {
-                        self.doctype = Doctype { name: Some(c.to_ascii_lowercase().to_string()), ..Default::default() };
+                        self.doctype = Doctype {
+                            name: Some(c.to_ascii_lowercase().to_string()),
+                            ..Default::default()
+                        };
                         self.state = DoctypeName;
                     }
                     None => {
-                        self.doctype = Doctype { force_quirks: true, ..Default::default() };
+                        self.doctype = Doctype {
+                            force_quirks: true,
+                            ..Default::default()
+                        };
                         return self.doctype_eof();
                     }
                 }
@@ -1346,8 +1412,16 @@ impl Tokenizer {
                         self.state = Data;
                         return self.emit_doctype();
                     }
-                    Some('\0') => self.doctype.name.get_or_insert_with(String::new).push(REPLACEMENT),
-                    Some(c) => self.doctype.name.get_or_insert_with(String::new).push(c.to_ascii_lowercase()),
+                    Some('\0') => self
+                        .doctype
+                        .name
+                        .get_or_insert_with(String::new)
+                        .push(REPLACEMENT),
+                    Some(c) => self
+                        .doctype
+                        .name
+                        .get_or_insert_with(String::new)
+                        .push(c.to_ascii_lowercase()),
                     None => {
                         self.doctype.force_quirks = true;
                         return self.doctype_eof();
@@ -1438,16 +1512,28 @@ impl Tokenizer {
                 None
             }
             DoctypePublicIdentifierDoubleQuoted | DoctypePublicIdentifierSingleQuoted => {
-                let quote = if self.state == DoctypePublicIdentifierDoubleQuoted { '"' } else { '\'' };
+                let quote = if self.state == DoctypePublicIdentifierDoubleQuoted {
+                    '"'
+                } else {
+                    '\''
+                };
                 match self.consume() {
                     Some(c) if c == quote => self.state = AfterDoctypePublicIdentifier,
-                    Some('\0') => self.doctype.public_id.get_or_insert_with(String::new).push(REPLACEMENT),
+                    Some('\0') => self
+                        .doctype
+                        .public_id
+                        .get_or_insert_with(String::new)
+                        .push(REPLACEMENT),
                     Some('>') => {
                         self.doctype.force_quirks = true;
                         self.state = Data;
                         return self.emit_doctype();
                     }
-                    Some(c) => self.doctype.public_id.get_or_insert_with(String::new).push(c),
+                    Some(c) => self
+                        .doctype
+                        .public_id
+                        .get_or_insert_with(String::new)
+                        .push(c),
                     None => {
                         self.doctype.force_quirks = true;
                         return self.doctype_eof();
@@ -1457,7 +1543,9 @@ impl Tokenizer {
             }
             AfterDoctypePublicIdentifier => {
                 match self.consume() {
-                    Some(c) if is_whitespace(c) => self.state = BetweenDoctypePublicAndSystemIdentifiers,
+                    Some(c) if is_whitespace(c) => {
+                        self.state = BetweenDoctypePublicAndSystemIdentifiers
+                    }
                     Some('>') => {
                         self.state = Data;
                         return self.emit_doctype();
@@ -1562,16 +1650,28 @@ impl Tokenizer {
                 None
             }
             DoctypeSystemIdentifierDoubleQuoted | DoctypeSystemIdentifierSingleQuoted => {
-                let quote = if self.state == DoctypeSystemIdentifierDoubleQuoted { '"' } else { '\'' };
+                let quote = if self.state == DoctypeSystemIdentifierDoubleQuoted {
+                    '"'
+                } else {
+                    '\''
+                };
                 match self.consume() {
                     Some(c) if c == quote => self.state = AfterDoctypeSystemIdentifier,
-                    Some('\0') => self.doctype.system_id.get_or_insert_with(String::new).push(REPLACEMENT),
+                    Some('\0') => self
+                        .doctype
+                        .system_id
+                        .get_or_insert_with(String::new)
+                        .push(REPLACEMENT),
                     Some('>') => {
                         self.doctype.force_quirks = true;
                         self.state = Data;
                         return self.emit_doctype();
                     }
-                    Some(c) => self.doctype.system_id.get_or_insert_with(String::new).push(c),
+                    Some(c) => self
+                        .doctype
+                        .system_id
+                        .get_or_insert_with(String::new)
+                        .push(c),
                     None => {
                         self.doctype.force_quirks = true;
                         return self.doctype_eof();
@@ -1673,7 +1773,10 @@ impl Tokenizer {
                     Some((len, value)) => {
                         let matched_semicolon = rest.as_bytes()[len - 1] == b';';
                         let next = rest.as_bytes().get(len).copied();
-                        if self.in_attribute() && !matched_semicolon && next.is_some_and(|b| b == b'=' || b.is_ascii_alphanumeric()) {
+                        if self.in_attribute()
+                            && !matched_semicolon
+                            && next.is_some_and(|b| b == b'=' || b.is_ascii_alphanumeric())
+                        {
                             self.temp.push_str(&rest[..len]);
                             self.pos += len;
                             self.flush_char_ref();
@@ -1745,7 +1848,11 @@ impl Tokenizer {
                 match self.consume() {
                     Some(c) if c.is_ascii_hexdigit() => {
                         let d = c.to_digit(16).unwrap_or(0);
-                        self.char_ref_code = self.char_ref_code.saturating_mul(16).saturating_add(d).min(0x110000);
+                        self.char_ref_code = self
+                            .char_ref_code
+                            .saturating_mul(16)
+                            .saturating_add(d)
+                            .min(0x110000);
                     }
                     Some(';') => self.state = NumericCharacterReferenceEnd,
                     other => {
@@ -1761,7 +1868,11 @@ impl Tokenizer {
                 match self.consume() {
                     Some(c) if c.is_ascii_digit() => {
                         let d = c.to_digit(10).unwrap_or(0);
-                        self.char_ref_code = self.char_ref_code.saturating_mul(10).saturating_add(d).min(0x110000);
+                        self.char_ref_code = self
+                            .char_ref_code
+                            .saturating_mul(10)
+                            .saturating_add(d)
+                            .min(0x110000);
                     }
                     Some(';') => self.state = NumericCharacterReferenceEnd,
                     other => {
@@ -1818,7 +1929,17 @@ mod tests {
     }
 
     fn tag(name: &str, attrs: &[(&str, &str)]) -> Tag {
-        Tag { name: name.into(), attrs: attrs.iter().map(|(n, v)| Attribute { name: (*n).into(), value: (*v).into() }).collect(), self_closing: false }
+        Tag {
+            name: name.into(),
+            attrs: attrs
+                .iter()
+                .map(|(n, v)| Attribute {
+                    name: (*n).into(),
+                    value: (*v).into(),
+                })
+                .collect(),
+            self_closing: false,
+        }
     }
 
     #[test]
@@ -1826,7 +1947,10 @@ mod tests {
         assert_eq!(
             tokens("<P Class=a b='c d' e=\"f\" g>x</p>"),
             vec![
-                Token::StartTag(tag("p", &[("class", "a"), ("b", "c d"), ("e", "f"), ("g", "")])),
+                Token::StartTag(tag(
+                    "p",
+                    &[("class", "a"), ("b", "c d"), ("e", "f"), ("g", "")]
+                )),
                 Token::Chars("x".into()),
                 Token::EndTag(tag("p", &[])),
                 Token::Eof
@@ -1836,12 +1960,25 @@ mod tests {
 
     #[test]
     fn duplicate_attributes_dropped() {
-        assert_eq!(tokens("<a x=1 x=2 y=3>"), vec![Token::StartTag(tag("a", &[("x", "1"), ("y", "3")])), Token::Eof]);
+        assert_eq!(
+            tokens("<a x=1 x=2 y=3>"),
+            vec![
+                Token::StartTag(tag("a", &[("x", "1"), ("y", "3")])),
+                Token::Eof
+            ]
+        );
     }
 
     #[test]
     fn self_closing_and_bogus() {
-        assert_eq!(tokens("<br/>")[0], Token::StartTag(Tag { name: "br".into(), attrs: vec![], self_closing: true }));
+        assert_eq!(
+            tokens("<br/>")[0],
+            Token::StartTag(Tag {
+                name: "br".into(),
+                attrs: vec![],
+                self_closing: true
+            })
+        );
         assert_eq!(tokens("<?php ?>")[0], Token::Comment("?php ?".into()));
         assert_eq!(tokens("</ x>")[0], Token::Comment(" x".into()));
         assert_eq!(tokens("<!x>")[0], Token::Comment("x".into()));
@@ -1852,7 +1989,8 @@ mod tests {
 
     #[test]
     fn doctype_forms() {
-        let d = match &tokens("<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" 'http://x'>")[0] {
+        let d = match &tokens("<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" 'http://x'>")[0]
+        {
             Token::Doctype(d) => d.clone(),
             _ => panic!(),
         };
@@ -1860,25 +1998,48 @@ mod tests {
         assert_eq!(d.public_id.as_deref(), Some("-//W3C//DTD HTML 4.01//EN"));
         assert_eq!(d.system_id.as_deref(), Some("http://x"));
         assert!(!d.force_quirks);
-        assert!(matches!(&tokens("<!DOCTYPE>")[0], Token::Doctype(d) if d.force_quirks && d.name.is_none()));
+        assert!(
+            matches!(&tokens("<!DOCTYPE>")[0], Token::Doctype(d) if d.force_quirks && d.name.is_none())
+        );
     }
 
     #[test]
     fn character_references() {
-        assert_eq!(tokens("&amp;&lt;&#x41;&#65;&#128;&#0;&#xD800;&#x110000;")[0], Token::Chars("&<AA\u{20AC}\u{FFFD}\u{FFFD}\u{FFFD}".into()));
-        assert_eq!(tokens("I'm &notit; I")[0], Token::Chars("I'm \u{AC}it; I".into()));
-        assert_eq!(tokens("&notin; &Aacute &bogus; &")[0], Token::Chars("\u{2209} \u{C1} &bogus; &".into()));
-        assert_eq!(tokens("&CounterClockwiseContourIntegral;")[0], Token::Chars("\u{2233}".into()));
+        assert_eq!(
+            tokens("&amp;&lt;&#x41;&#65;&#128;&#0;&#xD800;&#x110000;")[0],
+            Token::Chars("&<AA\u{20AC}\u{FFFD}\u{FFFD}\u{FFFD}".into())
+        );
+        assert_eq!(
+            tokens("I'm &notit; I")[0],
+            Token::Chars("I'm \u{AC}it; I".into())
+        );
+        assert_eq!(
+            tokens("&notin; &Aacute &bogus; &")[0],
+            Token::Chars("\u{2209} \u{C1} &bogus; &".into())
+        );
+        assert_eq!(
+            tokens("&CounterClockwiseContourIntegral;")[0],
+            Token::Chars("\u{2233}".into())
+        );
         assert_eq!(tokens("&#;&#x;")[0], Token::Chars("&#;&#x;".into()));
         // Two-codepoint entity.
-        assert_eq!(tokens("&NotEqualTilde;")[0], Token::Chars("\u{2242}\u{338}".into()));
+        assert_eq!(
+            tokens("&NotEqualTilde;")[0],
+            Token::Chars("\u{2242}\u{338}".into())
+        );
     }
 
     #[test]
     fn attribute_character_references() {
         // Legacy: no semicolon followed by alphanumeric or '=' is left alone in attributes.
-        assert_eq!(tokens("<a href='?a=1&copy=2&amp;b=3&lt'>")[0], Token::StartTag(tag("a", &[("href", "?a=1&copy=2&b=3<")])));
-        assert_eq!(tokens("<a t='&copy;x'>")[0], Token::StartTag(tag("a", &[("t", "\u{A9}x")])));
+        assert_eq!(
+            tokens("<a href='?a=1&copy=2&amp;b=3&lt'>")[0],
+            Token::StartTag(tag("a", &[("href", "?a=1&copy=2&b=3<")]))
+        );
+        assert_eq!(
+            tokens("<a t='&copy;x'>")[0],
+            Token::StartTag(tag("a", &[("t", "\u{A9}x")]))
+        );
     }
 
     #[test]
@@ -1922,8 +2083,21 @@ mod tests {
     fn eof_forms() {
         assert_eq!(tokens("a<"), vec![Token::Chars("a<".into()), Token::Eof]);
         assert_eq!(tokens("</"), vec![Token::Chars("</".into()), Token::Eof]);
-        assert_eq!(tokens("<!-- x"), vec![Token::Comment(" x".into()), Token::Eof]);
-        assert_eq!(tokens("<!DOCTYPE htm"), vec![Token::Doctype(Doctype { name: Some("htm".into()), force_quirks: true, ..Default::default() }), Token::Eof]);
+        assert_eq!(
+            tokens("<!-- x"),
+            vec![Token::Comment(" x".into()), Token::Eof]
+        );
+        assert_eq!(
+            tokens("<!DOCTYPE htm"),
+            vec![
+                Token::Doctype(Doctype {
+                    name: Some("htm".into()),
+                    force_quirks: true,
+                    ..Default::default()
+                }),
+                Token::Eof
+            ]
+        );
         assert_eq!(tokens("<a b='c"), vec![Token::Eof]);
     }
 }

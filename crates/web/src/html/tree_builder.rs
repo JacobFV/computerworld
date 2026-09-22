@@ -89,7 +89,89 @@ fn is_special(ns: Namespace, tag: &str) -> bool {
     match ns {
         Namespace::Html => matches!(
             tag,
-            "address" | "applet" | "area" | "article" | "aside" | "base" | "basefont" | "bgsound" | "blockquote" | "body" | "br" | "button" | "caption" | "center" | "col" | "colgroup" | "dd" | "details" | "dir" | "div" | "dl" | "dt" | "embed" | "fieldset" | "figcaption" | "figure" | "footer" | "form" | "frame" | "frameset" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "head" | "header" | "hgroup" | "hr" | "html" | "iframe" | "img" | "input" | "keygen" | "li" | "link" | "listing" | "main" | "marquee" | "menu" | "meta" | "nav" | "noembed" | "noframes" | "noscript" | "object" | "ol" | "p" | "param" | "plaintext" | "pre" | "script" | "search" | "section" | "select" | "source" | "style" | "summary" | "table" | "tbody" | "td" | "template" | "textarea" | "tfoot" | "th" | "thead" | "title" | "tr" | "track" | "ul" | "wbr" | "xmp"
+            "address"
+                | "applet"
+                | "area"
+                | "article"
+                | "aside"
+                | "base"
+                | "basefont"
+                | "bgsound"
+                | "blockquote"
+                | "body"
+                | "br"
+                | "button"
+                | "caption"
+                | "center"
+                | "col"
+                | "colgroup"
+                | "dd"
+                | "details"
+                | "dir"
+                | "div"
+                | "dl"
+                | "dt"
+                | "embed"
+                | "fieldset"
+                | "figcaption"
+                | "figure"
+                | "footer"
+                | "form"
+                | "frame"
+                | "frameset"
+                | "h1"
+                | "h2"
+                | "h3"
+                | "h4"
+                | "h5"
+                | "h6"
+                | "head"
+                | "header"
+                | "hgroup"
+                | "hr"
+                | "html"
+                | "iframe"
+                | "img"
+                | "input"
+                | "keygen"
+                | "li"
+                | "link"
+                | "listing"
+                | "main"
+                | "marquee"
+                | "menu"
+                | "meta"
+                | "nav"
+                | "noembed"
+                | "noframes"
+                | "noscript"
+                | "object"
+                | "ol"
+                | "p"
+                | "param"
+                | "plaintext"
+                | "pre"
+                | "script"
+                | "search"
+                | "section"
+                | "select"
+                | "source"
+                | "style"
+                | "summary"
+                | "table"
+                | "tbody"
+                | "td"
+                | "template"
+                | "textarea"
+                | "tfoot"
+                | "th"
+                | "thead"
+                | "title"
+                | "tr"
+                | "track"
+                | "ul"
+                | "wbr"
+                | "xmp"
         ),
         Namespace::MathMl => matches!(tag, "mi" | "mo" | "mn" | "ms" | "mtext" | "annotation-xml"),
         Namespace::Svg => matches!(tag, "foreignObject" | "desc" | "title"),
@@ -100,8 +182,13 @@ fn is_heading(tag: &str) -> bool {
     matches!(tag, "h1" | "h2" | "h3" | "h4" | "h5" | "h6")
 }
 
-const IMPLIED_END: &[&str] = &["dd", "dt", "li", "optgroup", "option", "p", "rb", "rp", "rt", "rtc"];
-const IMPLIED_END_THOROUGH: &[&str] = &["caption", "colgroup", "dd", "dt", "li", "optgroup", "option", "p", "rb", "rp", "rt", "rtc", "tbody", "td", "tfoot", "th", "thead", "tr"];
+const IMPLIED_END: &[&str] = &[
+    "dd", "dt", "li", "optgroup", "option", "p", "rb", "rp", "rt", "rtc",
+];
+const IMPLIED_END_THOROUGH: &[&str] = &[
+    "caption", "colgroup", "dd", "dt", "li", "optgroup", "option", "p", "rb", "rp", "rt", "rtc",
+    "tbody", "td", "tfoot", "th", "thead", "tr",
+];
 
 fn svg_tag_adjust(name: &str) -> Option<&'static str> {
     Some(match name {
@@ -215,7 +302,8 @@ fn svg_attr_adjust(name: &str) -> Option<&'static str> {
 /// `(prefix, local name)` split for consumers that need the namespace.
 pub fn foreign_attribute_namespace(qualified: &str) -> Option<(&'static str, &str)> {
     match qualified {
-        "xlink:actuate" | "xlink:arcrole" | "xlink:href" | "xlink:role" | "xlink:show" | "xlink:title" | "xlink:type" => Some(("xlink", &qualified[6..])),
+        "xlink:actuate" | "xlink:arcrole" | "xlink:href" | "xlink:role" | "xlink:show"
+        | "xlink:title" | "xlink:type" => Some(("xlink", &qualified[6..])),
         "xml:lang" | "xml:space" => Some(("xml", &qualified[4..])),
         "xmlns" => Some(("xmlns", "xmlns")),
         "xmlns:xlink" => Some(("xmlns", "xlink")),
@@ -240,7 +328,9 @@ fn adjust_svg_attrs(tag: &mut Tag) {
 }
 
 fn same_attrs(a: &[Attribute], b: &[Attribute]) -> bool {
-    a.len() == b.len() && a.iter().all(|x| b.iter().any(|y| x.name == y.name && x.value == y.value))
+    a.len() == b.len()
+        && a.iter()
+            .all(|x| b.iter().any(|y| x.name == y.name && x.value == y.value))
 }
 
 /// The document a tree builder writes into: borrowed for a plain parse, owned while
@@ -351,7 +441,11 @@ impl<'a> TreeBuilder<'a> {
     /// Sets up the fragment case (§13.4) for `context`; the parsed nodes are appended
     /// to `fragment`, which must be a detached DocumentFragment in the same document.
     pub fn set_fragment_context(&mut self, context: NodeId, fragment: NodeId) {
-        let root = self.doc.create(NodeKind::Element { ns: Namespace::Html, tag: "html".to_owned(), attrs: Vec::new() });
+        let root = self.doc.create(NodeKind::Element {
+            ns: Namespace::Html,
+            tag: "html".to_owned(),
+            attrs: Vec::new(),
+        });
         self.open.push(root);
         self.context = Some(context);
         self.root_target = Some(fragment);
@@ -360,7 +454,9 @@ impl<'a> TreeBuilder<'a> {
         if ns == Namespace::Html {
             match tag.as_str() {
                 "title" | "textarea" => self.tok.state = State::Rcdata,
-                "style" | "xmp" | "iframe" | "noembed" | "noframes" => self.tok.state = State::Rawtext,
+                "style" | "xmp" | "iframe" | "noembed" | "noframes" => {
+                    self.tok.state = State::Rawtext
+                }
                 "script" => self.tok.state = State::ScriptData,
                 "noscript" if self.scripting => self.tok.state = State::Rawtext,
                 "plaintext" => self.tok.state = State::Plaintext,
@@ -422,12 +518,43 @@ impl<'a> TreeBuilder<'a> {
     /// its children change; doing it once at the end of the parse gives the same tree.
     fn update_selectedcontent(&mut self) {
         let root = self.root_target.unwrap_or(Document::ROOT);
-        let selects: Vec<NodeId> = self.doc.descendants(root).filter(|&n| self.is_html(n, "select")).collect();
+        let selects: Vec<NodeId> = self
+            .doc
+            .descendants(root)
+            .filter(|&n| self.is_html(n, "select"))
+            .collect();
         for select in selects {
-            let Some(target) = self.doc.descendants(select).find(|&n| n != select && self.is_html(n, "selectedcontent")) else { continue };
-            let options: Vec<NodeId> = self.doc.descendants(select).filter(|&n| self.is_html(n, "option")).collect();
-            let single = !self.doc.has_attr(select, "multiple") && self.doc.attr(select, "size").and_then(|s| s.trim().parse::<u32>().ok()).unwrap_or(1) <= 1;
-            let chosen = options.iter().rev().find(|&&o| self.doc.has_attr(o, "selected")).copied().or_else(|| if single { options.first().copied() } else { None });
+            let Some(target) = self
+                .doc
+                .descendants(select)
+                .find(|&n| n != select && self.is_html(n, "selectedcontent"))
+            else {
+                continue;
+            };
+            let options: Vec<NodeId> = self
+                .doc
+                .descendants(select)
+                .filter(|&n| self.is_html(n, "option"))
+                .collect();
+            let single = !self.doc.has_attr(select, "multiple")
+                && self
+                    .doc
+                    .attr(select, "size")
+                    .and_then(|s| s.trim().parse::<u32>().ok())
+                    .unwrap_or(1)
+                    <= 1;
+            let chosen = options
+                .iter()
+                .rev()
+                .find(|&&o| self.doc.has_attr(o, "selected"))
+                .copied()
+                .or_else(|| {
+                    if single {
+                        options.first().copied()
+                    } else {
+                        None
+                    }
+                });
             let old: Vec<NodeId> = self.doc.children(target).collect();
             for c in old {
                 self.doc.detach(c);
@@ -447,7 +574,11 @@ impl<'a> TreeBuilder<'a> {
         while !rest.is_empty() {
             let first = rest.chars().next().unwrap_or(' ');
             let kind = char_kind(first);
-            let end = rest.char_indices().find(|(_, c)| char_kind(*c) != kind).map(|(i, _)| i).unwrap_or(rest.len());
+            let end = rest
+                .char_indices()
+                .find(|(_, c)| char_kind(*c) != kind)
+                .map(|(i, _)| i)
+                .unwrap_or(rest.len());
             let (seg, tail) = rest.split_at(end);
             self.dispatch(Tok::Chars(seg.to_owned(), kind));
             rest = tail;
@@ -493,12 +624,20 @@ impl<'a> TreeBuilder<'a> {
     }
 
     fn is_mathml_text_integration_point(&self, id: NodeId) -> bool {
-        matches!(self.name(id), (Namespace::MathMl, "mi" | "mo" | "mn" | "ms" | "mtext"))
+        matches!(
+            self.name(id),
+            (Namespace::MathMl, "mi" | "mo" | "mn" | "ms" | "mtext")
+        )
     }
 
     fn is_html_integration_point(&self, id: NodeId) -> bool {
         match self.name(id) {
-            (Namespace::MathMl, "annotation-xml") => self.doc.attr(id, "encoding").is_some_and(|v| v.eq_ignore_ascii_case("text/html") || v.eq_ignore_ascii_case("application/xhtml+xml")),
+            (Namespace::MathMl, "annotation-xml") => {
+                self.doc.attr(id, "encoding").is_some_and(|v| {
+                    v.eq_ignore_ascii_case("text/html")
+                        || v.eq_ignore_ascii_case("application/xhtml+xml")
+                })
+            }
             (Namespace::Svg, "foreignObject" | "desc" | "title") => true,
             _ => false,
         }
@@ -515,8 +654,22 @@ impl<'a> TreeBuilder<'a> {
             Scope::Table => ns == Namespace::Html && matches!(tag, "html" | "table" | "template"),
             _ => {
                 let base = match ns {
-                    Namespace::Html => matches!(tag, "applet" | "caption" | "html" | "table" | "td" | "th" | "marquee" | "object" | "select" | "template"),
-                    Namespace::MathMl => matches!(tag, "mi" | "mo" | "mn" | "ms" | "mtext" | "annotation-xml"),
+                    Namespace::Html => matches!(
+                        tag,
+                        "applet"
+                            | "caption"
+                            | "html"
+                            | "table"
+                            | "td"
+                            | "th"
+                            | "marquee"
+                            | "object"
+                            | "select"
+                            | "template"
+                    ),
+                    Namespace::MathMl => {
+                        matches!(tag, "mi" | "mo" | "mn" | "ms" | "mtext" | "annotation-xml")
+                    }
                     Namespace::Svg => matches!(tag, "foreignObject" | "desc" | "title"),
                 };
                 base || match scope {
@@ -615,7 +768,11 @@ impl<'a> TreeBuilder<'a> {
         let mut target = override_target.unwrap_or_else(|| self.current());
         let mut before = None;
         if self.foster && self.is_html_in(target, &["table", "tbody", "tfoot", "thead", "tr"]) {
-            match self.open.iter().rposition(|&n| self.is_html_in(n, &["template", "table"])) {
+            match self
+                .open
+                .iter()
+                .rposition(|&n| self.is_html_in(n, &["template", "table"]))
+            {
                 None => {
                     target = self.open[0];
                 }
@@ -664,7 +821,11 @@ impl<'a> TreeBuilder<'a> {
     }
 
     fn create_element(&mut self, tag: &Tag, ns: Namespace) -> NodeId {
-        let el = self.doc.create(NodeKind::Element { ns, tag: tag.name.clone(), attrs: tag.attrs.clone() });
+        let el = self.doc.create(NodeKind::Element {
+            ns,
+            tag: tag.name.clone(),
+            attrs: tag.attrs.clone(),
+        });
         if ns == Namespace::Html && tag.name == "template" {
             let contents = self.doc.create(NodeKind::DocumentFragment);
             self.doc.append(el, contents);
@@ -685,7 +846,11 @@ impl<'a> TreeBuilder<'a> {
     }
 
     fn insert_html_element_named(&mut self, name: &str) -> NodeId {
-        let tag = Tag { name: name.to_owned(), attrs: Vec::new(), self_closing: false };
+        let tag = Tag {
+            name: name.to_owned(),
+            attrs: Vec::new(),
+            self_closing: false,
+        };
         self.insert_html_element(&tag)
     }
 
@@ -717,7 +882,9 @@ impl<'a> TreeBuilder<'a> {
     // ----- active formatting elements -----
 
     fn afe_index_of(&self, node: NodeId) -> Option<usize> {
-        self.afe.iter().rposition(|e| matches!(e, Afe::Element { node: n, .. } if *n == node))
+        self.afe
+            .iter()
+            .rposition(|e| matches!(e, Afe::Element { node: n, .. } if *n == node))
     }
 
     fn afe_is_in_open(&self, i: usize) -> bool {
@@ -747,7 +914,10 @@ impl<'a> TreeBuilder<'a> {
                 self.afe.remove(i);
             }
         }
-        self.afe.push(Afe::Element { node, tag: tag.clone() });
+        self.afe.push(Afe::Element {
+            node,
+            tag: tag.clone(),
+        });
     }
 
     fn reconstruct_afe(&mut self) {
@@ -856,7 +1026,11 @@ impl<'a> TreeBuilder<'a> {
                         return;
                     }
                     "html" => {
-                        self.mode = if self.head.is_none() { Mode::BeforeHead } else { Mode::AfterHead };
+                        self.mode = if self.head.is_none() {
+                            Mode::BeforeHead
+                        } else {
+                            Mode::AfterHead
+                        };
                         return;
                     }
                     _ => {}
@@ -877,15 +1051,22 @@ impl<'a> TreeBuilder<'a> {
 
     fn dispatch(&mut self, mut tok: Tok) {
         loop {
-            let use_html = self.open.is_empty() || matches!(tok, Tok::Eof) || {
-                let acn = self.adjusted_current();
-                let (ns, tag) = self.name(acn);
-                ns == Namespace::Html
-                    || (self.is_mathml_text_integration_point(acn) && matches!(&tok, Tok::Start(t) if t.name != "mglyph" && t.name != "malignmark"))
-                    || (self.is_mathml_text_integration_point(acn) && matches!(tok, Tok::Chars(..)))
-                    || (ns == Namespace::MathMl && tag == "annotation-xml" && matches!(&tok, Tok::Start(t) if t.name == "svg"))
-                    || (self.is_html_integration_point(acn) && matches!(tok, Tok::Start(_) | Tok::Chars(..)))
-            };
+            let use_html = self.open.is_empty()
+                || matches!(tok, Tok::Eof)
+                || {
+                    let acn = self.adjusted_current();
+                    let (ns, tag) = self.name(acn);
+                    ns == Namespace::Html
+                        || (self.is_mathml_text_integration_point(acn)
+                            && matches!(&tok, Tok::Start(t) if t.name != "mglyph" && t.name != "malignmark"))
+                        || (self.is_mathml_text_integration_point(acn)
+                            && matches!(tok, Tok::Chars(..)))
+                        || (ns == Namespace::MathMl
+                            && tag == "annotation-xml"
+                            && matches!(&tok, Tok::Start(t) if t.name == "svg"))
+                        || (self.is_html_integration_point(acn)
+                            && matches!(tok, Tok::Start(_) | Tok::Chars(..)))
+                };
             let next = if use_html {
                 self.step(self.mode, tok)
             } else {
@@ -940,9 +1121,18 @@ impl<'a> TreeBuilder<'a> {
                 let name = d.name.clone().unwrap_or_default();
                 let public_id = d.public_id.clone().unwrap_or_default();
                 let system_id = d.system_id.clone().unwrap_or_default();
-                let has_child = self.doc.children(Document::ROOT).any(|c| matches!(self.doc.kind(c), NodeKind::DocType { .. } | NodeKind::Element { .. }));
+                let has_child = self.doc.children(Document::ROOT).any(|c| {
+                    matches!(
+                        self.doc.kind(c),
+                        NodeKind::DocType { .. } | NodeKind::Element { .. }
+                    )
+                });
                 if !has_child {
-                    let dt = self.doc.create(NodeKind::DocType { name, public_id, system_id });
+                    let dt = self.doc.create(NodeKind::DocType {
+                        name,
+                        public_id,
+                        system_id,
+                    });
                     self.doc.append(Document::ROOT, dt);
                 }
                 self.doc.quirks = quirks_mode_for(&d);
@@ -974,7 +1164,11 @@ impl<'a> TreeBuilder<'a> {
             }
             Tok::End(t) if !matches!(t.name.as_str(), "head" | "body" | "html" | "br") => None,
             other => {
-                let el = self.doc.create(NodeKind::Element { ns: Namespace::Html, tag: "html".to_owned(), attrs: Vec::new() });
+                let el = self.doc.create(NodeKind::Element {
+                    ns: Namespace::Html,
+                    tag: "html".to_owned(),
+                    attrs: Vec::new(),
+                });
                 self.doc.append(Document::ROOT, el);
                 self.open.push(el);
                 self.mode = Mode::BeforeHead;
@@ -1126,7 +1320,14 @@ impl<'a> TreeBuilder<'a> {
                 None
             }
             Tok::Chars(_, CharKind::Whitespace) | Tok::Comment(_) => self.in_head(tok),
-            Tok::Start(t) if matches!(t.name.as_str(), "basefont" | "bgsound" | "link" | "meta" | "noframes" | "style") => self.in_head(Tok::Start(t)),
+            Tok::Start(t)
+                if matches!(
+                    t.name.as_str(),
+                    "basefont" | "bgsound" | "link" | "meta" | "noframes" | "style"
+                ) =>
+            {
+                self.in_head(Tok::Start(t))
+            }
             Tok::End(t) if t.name == "br" => {
                 self.open.pop();
                 self.mode = Mode::InHead;
@@ -1166,7 +1367,8 @@ impl<'a> TreeBuilder<'a> {
                     self.mode = Mode::InFrameset;
                     None
                 }
-                "base" | "basefont" | "bgsound" | "link" | "meta" | "noframes" | "script" | "style" | "template" | "title" => {
+                "base" | "basefont" | "bgsound" | "link" | "meta" | "noframes" | "script"
+                | "style" | "template" | "title" => {
                     let head = self.head.expect("head pointer set after head");
                     self.open.push(head);
                     let r = self.in_head(Tok::Start(t));
@@ -1251,9 +1453,13 @@ impl<'a> TreeBuilder<'a> {
                 self.add_missing_attrs(top, &t.attrs);
                 None
             }
-            "base" | "basefont" | "bgsound" | "link" | "meta" | "noframes" | "script" | "style" | "template" | "title" => self.in_head(Tok::Start(t)),
+            "base" | "basefont" | "bgsound" | "link" | "meta" | "noframes" | "script" | "style"
+            | "template" | "title" => self.in_head(Tok::Start(t)),
             "body" => {
-                if self.open.len() < 2 || !self.is_html(self.open[1], "body") || self.has_template_on_stack() {
+                if self.open.len() < 2
+                    || !self.is_html(self.open[1], "body")
+                    || self.has_template_on_stack()
+                {
                     return None;
                 }
                 self.frameset_ok = false;
@@ -1272,7 +1478,10 @@ impl<'a> TreeBuilder<'a> {
                 self.mode = Mode::InFrameset;
                 None
             }
-            "address" | "article" | "aside" | "blockquote" | "center" | "details" | "dialog" | "dir" | "div" | "dl" | "fieldset" | "figcaption" | "figure" | "footer" | "header" | "hgroup" | "main" | "menu" | "nav" | "ol" | "p" | "search" | "section" | "summary" | "ul" => {
+            "address" | "article" | "aside" | "blockquote" | "center" | "details" | "dialog"
+            | "dir" | "div" | "dl" | "fieldset" | "figcaption" | "figure" | "footer" | "header"
+            | "hgroup" | "main" | "menu" | "nav" | "ol" | "p" | "search" | "section"
+            | "summary" | "ul" => {
                 if self.has_in_button_scope("p") {
                     self.close_p();
                 }
@@ -1398,7 +1607,8 @@ impl<'a> TreeBuilder<'a> {
                 self.push_afe(el, &t);
                 None
             }
-            "b" | "big" | "code" | "em" | "font" | "i" | "s" | "small" | "strike" | "strong" | "tt" | "u" => {
+            "b" | "big" | "code" | "em" | "font" | "i" | "s" | "small" | "strike" | "strong"
+            | "tt" | "u" => {
                 self.reconstruct_afe();
                 let el = self.insert_html_element(&t);
                 self.push_afe(el, &t);
@@ -1447,7 +1657,10 @@ impl<'a> TreeBuilder<'a> {
                 self.reconstruct_afe();
                 self.insert_html_element(&t);
                 self.open.pop();
-                let hidden = t.attrs.iter().any(|a| a.name == "type" && a.value.eq_ignore_ascii_case("hidden"));
+                let hidden = t
+                    .attrs
+                    .iter()
+                    .any(|a| a.name == "type" && a.value.eq_ignore_ascii_case("hidden"));
                 if !hidden {
                     self.frameset_ok = false;
                 }
@@ -1570,7 +1783,8 @@ impl<'a> TreeBuilder<'a> {
                 }
                 None
             }
-            "caption" | "col" | "colgroup" | "frame" | "head" | "tbody" | "td" | "tfoot" | "th" | "thead" | "tr" => None,
+            "caption" | "col" | "colgroup" | "frame" | "head" | "tbody" | "td" | "tfoot" | "th"
+            | "thead" | "tr" => None,
             _ => {
                 self.reconstruct_afe();
                 self.insert_html_element(&t);
@@ -1596,7 +1810,10 @@ impl<'a> TreeBuilder<'a> {
                 self.mode = Mode::AfterBody;
                 Some(Tok::End(t))
             }
-            "address" | "article" | "aside" | "blockquote" | "button" | "center" | "details" | "dialog" | "dir" | "div" | "dl" | "fieldset" | "figcaption" | "figure" | "footer" | "header" | "hgroup" | "listing" | "main" | "menu" | "nav" | "ol" | "pre" | "search" | "section" | "select" | "summary" | "ul" => {
+            "address" | "article" | "aside" | "blockquote" | "button" | "center" | "details"
+            | "dialog" | "dir" | "div" | "dl" | "fieldset" | "figcaption" | "figure" | "footer"
+            | "header" | "hgroup" | "listing" | "main" | "menu" | "nav" | "ol" | "pre"
+            | "search" | "section" | "select" | "summary" | "ul" => {
                 if !self.has_in_scope(&t.name) {
                     return None;
                 }
@@ -1646,14 +1863,18 @@ impl<'a> TreeBuilder<'a> {
                 None
             }
             "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
-                if !self.has_in_scope_by(Scope::Default, |s, n| matches!(s.name(n), (Namespace::Html, tag) if is_heading(tag))) {
+                if !self.has_in_scope_by(
+                    Scope::Default,
+                    |s, n| matches!(s.name(n), (Namespace::Html, tag) if is_heading(tag)),
+                ) {
                     return None;
                 }
                 self.generate_implied_end_tags(None);
                 self.pop_until_any(&["h1", "h2", "h3", "h4", "h5", "h6"]);
                 None
             }
-            "a" | "b" | "big" | "code" | "em" | "font" | "i" | "nobr" | "s" | "small" | "strike" | "strong" | "tt" | "u" => {
+            "a" | "b" | "big" | "code" | "em" | "font" | "i" | "nobr" | "s" | "small"
+            | "strike" | "strong" | "tt" | "u" => {
                 self.adoption_agency(&t);
                 None
             }
@@ -1667,7 +1888,11 @@ impl<'a> TreeBuilder<'a> {
                 None
             }
             "br" => {
-                let tag = Tag { name: "br".to_owned(), attrs: Vec::new(), self_closing: false };
+                let tag = Tag {
+                    name: "br".to_owned(),
+                    attrs: Vec::new(),
+                    self_closing: false,
+                };
                 self.in_body_start(tag)
             }
             _ => {
@@ -1723,7 +1948,10 @@ impl<'a> TreeBuilder<'a> {
             if !self.has_node_in_scope(fe) {
                 return;
             }
-            let fb = self.open[fe_idx + 1..].iter().position(|&n| self.special(n)).map(|i| fe_idx + 1 + i);
+            let fb = self.open[fe_idx + 1..]
+                .iter()
+                .position(|&n| self.special(n))
+                .map(|i| fe_idx + 1 + i);
             let Some(fb_idx) = fb else {
                 self.open.truncate(fe_idx);
                 self.afe.remove(fe_afe_idx);
@@ -1775,8 +2003,10 @@ impl<'a> TreeBuilder<'a> {
             if self.doc.parent(last_node).is_some() {
                 self.doc.detach(last_node);
             }
-            let ancestor_cycle = target == last_node || self.doc.ancestors(target).any(|a| a == last_node);
-            let doc_full = target == Document::ROOT && self.doc.element_children(target).next().is_some();
+            let ancestor_cycle =
+                target == last_node || self.doc.ancestors(target).any(|a| a == last_node);
+            let doc_full =
+                target == Document::ROOT && self.doc.element_children(target).next().is_some();
             let ref_ok = before.is_none_or(|b| self.doc.parent(b) == Some(target));
             if !ancestor_cycle && !doc_full && ref_ok {
                 self.doc.insert_before(target, last_node, before);
@@ -1797,7 +2027,13 @@ impl<'a> TreeBuilder<'a> {
                 bookmark -= 1;
             }
             let bookmark = bookmark.min(self.afe.len());
-            self.afe.insert(bookmark, Afe::Element { node: new_el, tag: fe_tag });
+            self.afe.insert(
+                bookmark,
+                Afe::Element {
+                    node: new_el,
+                    tag: fe_tag,
+                },
+            );
             // Stack: remove fe, insert the new element below the furthest block.
             self.remove_from_open(fe);
             if let Some(i) = self.open.iter().rposition(|&n| n == furthest_block) {
@@ -1844,7 +2080,10 @@ impl<'a> TreeBuilder<'a> {
     }
 
     fn clear_stack_to_table_body_context(&mut self) {
-        while !self.is_html_in(self.current(), &["tbody", "tfoot", "thead", "template", "html"]) {
+        while !self.is_html_in(
+            self.current(),
+            &["tbody", "tfoot", "thead", "template", "html"],
+        ) {
             self.open.pop();
         }
     }
@@ -1857,7 +2096,12 @@ impl<'a> TreeBuilder<'a> {
 
     fn in_table(&mut self, tok: Tok) -> Option<Tok> {
         match tok {
-            Tok::Chars(..) if self.is_html_in(self.current(), &["table", "tbody", "template", "tfoot", "thead", "tr"]) => {
+            Tok::Chars(..)
+                if self.is_html_in(
+                    self.current(),
+                    &["table", "tbody", "template", "tfoot", "thead", "tr"],
+                ) =>
+            {
                 self.pending_table_text.clear();
                 self.pending_table_non_ws = false;
                 self.original_mode = self.mode;
@@ -1911,7 +2155,10 @@ impl<'a> TreeBuilder<'a> {
                 }
                 "style" | "script" | "template" => self.in_head(Tok::Start(t)),
                 "input" => {
-                    let hidden = t.attrs.iter().any(|a| a.name == "type" && a.value.eq_ignore_ascii_case("hidden"));
+                    let hidden = t
+                        .attrs
+                        .iter()
+                        .any(|a| a.name == "type" && a.value.eq_ignore_ascii_case("hidden"));
                     if !hidden {
                         return self.in_table_anything_else(Tok::Start(t));
                     }
@@ -1941,7 +2188,8 @@ impl<'a> TreeBuilder<'a> {
                     self.reset_insertion_mode();
                     None
                 }
-                "body" | "caption" | "col" | "colgroup" | "html" | "tbody" | "td" | "tfoot" | "th" | "thead" | "tr" => None,
+                "body" | "caption" | "col" | "colgroup" | "html" | "tbody" | "td" | "tfoot"
+                | "th" | "thead" | "tr" => None,
                 "template" => self.in_head(Tok::End(t)),
                 _ => self.in_table_anything_else(Tok::End(t)),
             },
@@ -1976,7 +2224,11 @@ impl<'a> TreeBuilder<'a> {
                     while !rest.is_empty() {
                         let first = rest.chars().next().unwrap_or(' ');
                         let kind = char_kind(first);
-                        let end = rest.char_indices().find(|(_, c)| char_kind(*c) != kind).map(|(i, _)| i).unwrap_or(rest.len());
+                        let end = rest
+                            .char_indices()
+                            .find(|(_, c)| char_kind(*c) != kind)
+                            .map(|(i, _)| i)
+                            .unwrap_or(rest.len());
                         let (seg, tail) = rest.split_at(end);
                         self.in_table_anything_else(Tok::Chars(seg.to_owned(), kind));
                         rest = tail;
@@ -2002,7 +2254,20 @@ impl<'a> TreeBuilder<'a> {
                 self.mode = Mode::InTable;
                 None
             }
-            Tok::Start(t) if matches!(t.name.as_str(), "caption" | "col" | "colgroup" | "tbody" | "td" | "tfoot" | "th" | "thead" | "tr") => {
+            Tok::Start(t)
+                if matches!(
+                    t.name.as_str(),
+                    "caption"
+                        | "col"
+                        | "colgroup"
+                        | "tbody"
+                        | "td"
+                        | "tfoot"
+                        | "th"
+                        | "thead"
+                        | "tr"
+                ) =>
+            {
                 if !self.has_in_table_scope("caption") {
                     return None;
                 }
@@ -2022,7 +2287,23 @@ impl<'a> TreeBuilder<'a> {
                 self.mode = Mode::InTable;
                 Some(Tok::End(t))
             }
-            Tok::End(t) if matches!(t.name.as_str(), "body" | "col" | "colgroup" | "html" | "tbody" | "td" | "tfoot" | "th" | "thead" | "tr") => None,
+            Tok::End(t)
+                if matches!(
+                    t.name.as_str(),
+                    "body"
+                        | "col"
+                        | "colgroup"
+                        | "html"
+                        | "tbody"
+                        | "td"
+                        | "tfoot"
+                        | "th"
+                        | "thead"
+                        | "tr"
+                ) =>
+            {
+                None
+            }
             other => self.in_body(other),
         }
     }
@@ -2090,8 +2371,16 @@ impl<'a> TreeBuilder<'a> {
                 self.mode = Mode::InTable;
                 None
             }
-            Tok::Start(t) if matches!(t.name.as_str(), "caption" | "col" | "colgroup" | "tbody" | "tfoot" | "thead") => {
-                if !self.has_in_table_scope("tbody") && !self.has_in_table_scope("thead") && !self.has_in_table_scope("tfoot") {
+            Tok::Start(t)
+                if matches!(
+                    t.name.as_str(),
+                    "caption" | "col" | "colgroup" | "tbody" | "tfoot" | "thead"
+                ) =>
+            {
+                if !self.has_in_table_scope("tbody")
+                    && !self.has_in_table_scope("thead")
+                    && !self.has_in_table_scope("tfoot")
+                {
                     return None;
                 }
                 self.clear_stack_to_table_body_context();
@@ -2100,7 +2389,10 @@ impl<'a> TreeBuilder<'a> {
                 Some(Tok::Start(t))
             }
             Tok::End(t) if t.name == "table" => {
-                if !self.has_in_table_scope("tbody") && !self.has_in_table_scope("thead") && !self.has_in_table_scope("tfoot") {
+                if !self.has_in_table_scope("tbody")
+                    && !self.has_in_table_scope("thead")
+                    && !self.has_in_table_scope("tfoot")
+                {
                     return None;
                 }
                 self.clear_stack_to_table_body_context();
@@ -2108,7 +2400,14 @@ impl<'a> TreeBuilder<'a> {
                 self.mode = Mode::InTable;
                 Some(Tok::End(t))
             }
-            Tok::End(t) if matches!(t.name.as_str(), "body" | "caption" | "col" | "colgroup" | "html" | "td" | "th" | "tr") => None,
+            Tok::End(t)
+                if matches!(
+                    t.name.as_str(),
+                    "body" | "caption" | "col" | "colgroup" | "html" | "td" | "th" | "tr"
+                ) =>
+            {
+                None
+            }
             other => self.in_table(other),
         }
     }
@@ -2131,7 +2430,12 @@ impl<'a> TreeBuilder<'a> {
                 self.mode = Mode::InTableBody;
                 None
             }
-            Tok::Start(t) if matches!(t.name.as_str(), "caption" | "col" | "colgroup" | "tbody" | "tfoot" | "thead" | "tr") => {
+            Tok::Start(t)
+                if matches!(
+                    t.name.as_str(),
+                    "caption" | "col" | "colgroup" | "tbody" | "tfoot" | "thead" | "tr"
+                ) =>
+            {
                 if !self.has_in_table_scope("tr") {
                     return None;
                 }
@@ -2158,7 +2462,14 @@ impl<'a> TreeBuilder<'a> {
                 self.mode = Mode::InTableBody;
                 Some(Tok::End(t))
             }
-            Tok::End(t) if matches!(t.name.as_str(), "body" | "caption" | "col" | "colgroup" | "html" | "td" | "th") => None,
+            Tok::End(t)
+                if matches!(
+                    t.name.as_str(),
+                    "body" | "caption" | "col" | "colgroup" | "html" | "td" | "th"
+                ) =>
+            {
+                None
+            }
             other => self.in_table(other),
         }
     }
@@ -2182,15 +2493,40 @@ impl<'a> TreeBuilder<'a> {
                 self.mode = Mode::InRow;
                 None
             }
-            Tok::Start(t) if matches!(t.name.as_str(), "caption" | "col" | "colgroup" | "tbody" | "td" | "tfoot" | "th" | "thead" | "tr") => {
+            Tok::Start(t)
+                if matches!(
+                    t.name.as_str(),
+                    "caption"
+                        | "col"
+                        | "colgroup"
+                        | "tbody"
+                        | "td"
+                        | "tfoot"
+                        | "th"
+                        | "thead"
+                        | "tr"
+                ) =>
+            {
                 if !self.has_in_table_scope("td") && !self.has_in_table_scope("th") {
                     return None;
                 }
                 self.close_cell();
                 Some(Tok::Start(t))
             }
-            Tok::End(t) if matches!(t.name.as_str(), "body" | "caption" | "col" | "colgroup" | "html") => None,
-            Tok::End(t) if matches!(t.name.as_str(), "table" | "tbody" | "tfoot" | "thead" | "tr") => {
+            Tok::End(t)
+                if matches!(
+                    t.name.as_str(),
+                    "body" | "caption" | "col" | "colgroup" | "html"
+                ) =>
+            {
+                None
+            }
+            Tok::End(t)
+                if matches!(
+                    t.name.as_str(),
+                    "table" | "tbody" | "tfoot" | "thead" | "tr"
+                ) =>
+            {
                 if !self.has_in_table_scope(&t.name) {
                     return None;
                 }
@@ -2205,7 +2541,8 @@ impl<'a> TreeBuilder<'a> {
         match tok {
             Tok::Chars(..) | Tok::Comment(_) | Tok::Doctype(_) => self.in_body(tok),
             Tok::Start(t) => match t.name.as_str() {
-                "base" | "basefont" | "bgsound" | "link" | "meta" | "noframes" | "script" | "style" | "template" | "title" => self.in_head(Tok::Start(t)),
+                "base" | "basefont" | "bgsound" | "link" | "meta" | "noframes" | "script"
+                | "style" | "template" | "title" => self.in_head(Tok::Start(t)),
                 "caption" | "colgroup" | "tbody" | "tfoot" | "thead" => {
                     self.template_modes.pop();
                     self.template_modes.push(Mode::InTable);
@@ -2412,8 +2749,53 @@ impl<'a> TreeBuilder<'a> {
             Tok::Start(mut t) => {
                 let breakout = matches!(
                     t.name.as_str(),
-                    "b" | "big" | "blockquote" | "body" | "br" | "center" | "code" | "dd" | "div" | "dl" | "dt" | "em" | "embed" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "head" | "hr" | "i" | "img" | "li" | "listing" | "menu" | "meta" | "nobr" | "ol" | "p" | "pre" | "ruby" | "s" | "small" | "span" | "strong" | "strike" | "sub" | "sup" | "table" | "tt" | "u" | "ul" | "var"
-                ) || (t.name == "font" && t.attrs.iter().any(|a| matches!(a.name.as_str(), "color" | "face" | "size")));
+                    "b" | "big"
+                        | "blockquote"
+                        | "body"
+                        | "br"
+                        | "center"
+                        | "code"
+                        | "dd"
+                        | "div"
+                        | "dl"
+                        | "dt"
+                        | "em"
+                        | "embed"
+                        | "h1"
+                        | "h2"
+                        | "h3"
+                        | "h4"
+                        | "h5"
+                        | "h6"
+                        | "head"
+                        | "hr"
+                        | "i"
+                        | "img"
+                        | "li"
+                        | "listing"
+                        | "menu"
+                        | "meta"
+                        | "nobr"
+                        | "ol"
+                        | "p"
+                        | "pre"
+                        | "ruby"
+                        | "s"
+                        | "small"
+                        | "span"
+                        | "strong"
+                        | "strike"
+                        | "sub"
+                        | "sup"
+                        | "table"
+                        | "tt"
+                        | "u"
+                        | "ul"
+                        | "var"
+                ) || (t.name == "font"
+                    && t.attrs
+                        .iter()
+                        .any(|a| matches!(a.name.as_str(), "color" | "face" | "size")));
                 if breakout {
                     self.pop_foreign_to_html();
                     return Some(Tok::Start(t));
@@ -2443,7 +2825,9 @@ impl<'a> TreeBuilder<'a> {
                     self.pop_foreign_to_html();
                     return Some(Tok::End(t));
                 }
-                if t.name == "script" && matches!(self.name(self.current()), (Namespace::Svg, "script")) {
+                if t.name == "script"
+                    && matches!(self.name(self.current()), (Namespace::Svg, "script"))
+                {
                     self.open.pop();
                     return None;
                 }
@@ -2469,7 +2853,10 @@ impl<'a> TreeBuilder<'a> {
     fn pop_foreign_to_html(&mut self) {
         loop {
             let cur = self.current();
-            if self.is_mathml_text_integration_point(cur) || self.is_html_integration_point(cur) || self.name(cur).0 == Namespace::Html {
+            if self.is_mathml_text_integration_point(cur)
+                || self.is_html_integration_point(cur)
+                || self.name(cur).0 == Namespace::Html
+            {
                 break;
             }
             self.open.pop();
@@ -2542,16 +2929,24 @@ fn quirks_mode_for(d: &Doctype) -> QuirksMode {
     ];
     if d.force_quirks
         || name != "html"
-        || matches!(pub_lower.as_str(), "-//w3o//dtd w3 html strict 3.0//en//" | "-/w3c/dtd html 4.0 transitional/en" | "html")
-        || sys_lower.as_deref() == Some("http://www.ibm.com/data/dtd/v11/ibmxhtml1-transitional.dtd")
+        || matches!(
+            pub_lower.as_str(),
+            "-//w3o//dtd w3 html strict 3.0//en//" | "-/w3c/dtd html 4.0 transitional/en" | "html"
+        )
+        || sys_lower.as_deref()
+            == Some("http://www.ibm.com/data/dtd/v11/ibmxhtml1-transitional.dtd")
         || QUIRKY_PREFIXES.iter().any(|p| pub_lower.starts_with(p))
-        || (system.is_none() && (pub_lower.starts_with("-//w3c//dtd html 4.01 frameset//") || pub_lower.starts_with("-//w3c//dtd html 4.01 transitional//")))
+        || (system.is_none()
+            && (pub_lower.starts_with("-//w3c//dtd html 4.01 frameset//")
+                || pub_lower.starts_with("-//w3c//dtd html 4.01 transitional//")))
     {
         return QuirksMode::Quirks;
     }
     if pub_lower.starts_with("-//w3c//dtd xhtml 1.0 frameset//")
         || pub_lower.starts_with("-//w3c//dtd xhtml 1.0 transitional//")
-        || (system.is_some() && (pub_lower.starts_with("-//w3c//dtd html 4.01 frameset//") || pub_lower.starts_with("-//w3c//dtd html 4.01 transitional//")))
+        || (system.is_some()
+            && (pub_lower.starts_with("-//w3c//dtd html 4.01 frameset//")
+                || pub_lower.starts_with("-//w3c//dtd html 4.01 transitional//")))
     {
         return QuirksMode::LimitedQuirks;
     }

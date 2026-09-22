@@ -25,22 +25,45 @@ fn world() -> (World, String) {
 }
 fn act(world: &mut World, session: &str, channel: &str, op: &str, payload: Value) -> Value {
     let result = world
-        .step(session, vec![ActionEnvelope::new(channel, op, MACHINE, payload)])
+        .step(
+            session,
+            vec![ActionEnvelope::new(channel, op, MACHINE, payload)],
+        )
         .unwrap();
-    assert!(result.outcomes[0].success, "{op} {payload_hint}: {:?}", result.outcomes[0], payload_hint = op);
+    assert!(
+        result.outcomes[0].success,
+        "{op} {payload_hint}: {:?}",
+        result.outcomes[0],
+        payload_hint = op
+    );
     result.outcomes[0].value.clone()
 }
 fn go(world: &mut World, session: &str, url: &str) {
-    act(world, session, "browser.v1", "navigate", json!({ "url": url }));
+    act(
+        world,
+        session,
+        "browser.v1",
+        "navigate",
+        json!({ "url": url }),
+    );
 }
 fn click(world: &mut World, session: &str, id: &str) {
     act(world, session, "browser.v1", "click", json!({ "id": id }));
 }
 fn fill(world: &mut World, session: &str, id: &str, value: &str) {
-    act(world, session, "browser.v1", "fill", json!({ "id": id, "value": value }));
+    act(
+        world,
+        session,
+        "browser.v1",
+        "fill",
+        json!({ "id": id, "value": value }),
+    );
 }
 fn url(world: &World, session: &str) -> String {
-    world.observe(session).unwrap().channels["browser.v1"][MACHINE]["url"].as_str().unwrap().to_owned()
+    world.observe(session).unwrap().channels["browser.v1"][MACHINE]["url"]
+        .as_str()
+        .unwrap()
+        .to_owned()
 }
 /// The page title and every element of the semantic tree, flattened.
 fn page(world: &World, session: &str) -> (String, Vec<Value>) {
@@ -58,25 +81,43 @@ fn page(world: &World, session: &str) -> (String, Vec<Value>) {
     (page["title"].as_str().unwrap_or("").to_owned(), out)
 }
 fn by_id<'a>(all: &'a [Value], id: &str) -> &'a Value {
-    all.iter().find(|e| e["id"] == id).unwrap_or_else(|| panic!("no element {id}"))
+    all.iter()
+        .find(|e| e["id"] == id)
+        .unwrap_or_else(|| panic!("no element {id}"))
 }
 fn has_text(all: &[Value], needle: &str) -> bool {
-    all.iter().any(|e| e["text"].as_str().is_some_and(|t| t.contains(needle)))
+    all.iter()
+        .any(|e| e["text"].as_str().is_some_and(|t| t.contains(needle)))
 }
 /// `Like 12` -> ("Like", 12).
 fn count(label: &str) -> (String, u64) {
-    let (word, n) = label.rsplit_once(' ').unwrap_or_else(|| panic!("label {label:?}"));
+    let (word, n) = label
+        .rsplit_once(' ')
+        .unwrap_or_else(|| panic!("label {label:?}"));
     (word.to_owned(), n.parse().unwrap())
 }
 
 /// What every site does the same way: the chrome, a post, a like, a thread, a reply, a
 /// follow, and a search. Returns the id of the post it used.
-fn drive(world: &mut World, session: &str, domain: &str, brand: &str, home: &str, inbox: &str) -> String {
+fn drive(
+    world: &mut World,
+    session: &str,
+    domain: &str,
+    brand: &str,
+    home: &str,
+    inbox: &str,
+) -> String {
     let root = format!("http://{domain}");
     go(world, session, &format!("{root}/"));
     let (title, all) = page(world, session);
     assert_eq!(title, format!("{brand} / {home}"));
-    for (id, path) in [("brand", "/"), ("nav-home", "/"), ("nav-explore", "/explore"), ("nav-search", "/search"), ("nav-inbox", inbox)] {
+    for (id, path) in [
+        ("brand", "/"),
+        ("nav-home", "/"),
+        ("nav-explore", "/explore"),
+        ("nav-search", "/search"),
+        ("nav-inbox", inbox),
+    ] {
         let e = by_id(&all, id);
         assert_eq!(e["kind"], "link", "{domain} {id}");
         assert_eq!(e["url"], format!("{root}{path}"), "{domain} {id}");
@@ -104,29 +145,59 @@ fn drive(world: &mut World, session: &str, domain: &str, brand: &str, home: &str
             let Some(post) = e["id"].as_str().and_then(|i| i.strip_prefix("post-")) else {
                 return false;
             };
-            e["kind"] == "link" && all.iter().any(|n| n["id"] == format!("{post}-name") && n["text"] != "Alice Chen")
+            e["kind"] == "link"
+                && all
+                    .iter()
+                    .any(|n| n["id"] == format!("{post}-name") && n["text"] != "Alice Chen")
         })
         .unwrap_or_else(|| panic!("{domain}: no post on home"))
         .clone();
-    let post = open["id"].as_str().unwrap().trim_start_matches("post-").to_owned();
+    let post = open["id"]
+        .as_str()
+        .unwrap()
+        .trim_start_matches("post-")
+        .to_owned();
     let thread = open["url"].as_str().unwrap().to_owned();
-    assert!(thread.starts_with(&root) && thread.ends_with(&format!("/status/{post}")), "{thread}");
+    assert!(
+        thread.starts_with(&root) && thread.ends_with(&format!("/status/{post}")),
+        "{thread}"
+    );
     let like = format!("{post}-like");
     assert_eq!(by_id(&all, &like)["kind"], "button");
     let (word, before) = count(by_id(&all, &like)["text"].as_str().unwrap());
     click(world, session, &like);
     let (title, all) = page(world, session);
-    assert_eq!(title, format!("{brand} / {home}"), "{domain}: a like comes back to the page it was on");
+    assert_eq!(
+        title,
+        format!("{brand} / {home}"),
+        "{domain}: a like comes back to the page it was on"
+    );
     let (after_word, after) = count(by_id(&all, &like)["text"].as_str().unwrap());
     if word == "Like" {
-        assert_eq!((after_word.as_str(), after), ("Liked", before + 1), "{domain}");
+        assert_eq!(
+            (after_word.as_str(), after),
+            ("Liked", before + 1),
+            "{domain}"
+        );
     } else {
-        assert_eq!((after_word.as_str(), after), ("Like", before - 1), "{domain}");
+        assert_eq!(
+            (after_word.as_str(), after),
+            ("Like", before - 1),
+            "{domain}"
+        );
     }
-    let (_, reposts) = count(by_id(&all, &format!("{post}-repost"))["text"].as_str().unwrap());
+    let (_, reposts) = count(
+        by_id(&all, &format!("{post}-repost"))["text"]
+            .as_str()
+            .unwrap(),
+    );
     click(world, session, &format!("{post}-repost"));
     let (_, all) = page(world, session);
-    let (_, reposted) = count(by_id(&all, &format!("{post}-repost"))["text"].as_str().unwrap());
+    let (_, reposted) = count(
+        by_id(&all, &format!("{post}-repost"))["text"]
+            .as_str()
+            .unwrap(),
+    );
     assert_eq!(reposted.abs_diff(reposts), 1, "{domain}");
 
     // Thread: the post's text is the link; reply there.
@@ -138,7 +209,10 @@ fn drive(world: &mut World, session: &str, domain: &str, brand: &str, home: &str
     click(world, session, "reply-submit");
     let (_, all) = page(world, session);
     assert!(has_text(&all, "Replying through the form"), "{domain}");
-    assert!(has_text(&all, "1 replies") || all.iter().any(|e| e["id"] == "replies-title"), "{domain}");
+    assert!(
+        has_text(&all, "1 replies") || all.iter().any(|e| e["id"] == "replies-title"),
+        "{domain}"
+    );
 
     // Profile: the author's name is a link; follow toggles.
     let author = by_id(&all, &format!("{post}-name")).clone();
@@ -151,7 +225,15 @@ fn drive(world: &mut World, session: &str, domain: &str, brand: &str, home: &str
     click(world, session, "follow");
     let (_, all) = page(world, session);
     let now = by_id(&all, "follow")["text"].as_str().unwrap().to_owned();
-    assert_eq!(now, if was == "Follow" { "Following" } else { "Follow" }, "{domain}");
+    assert_eq!(
+        now,
+        if was == "Follow" {
+            "Following"
+        } else {
+            "Follow"
+        },
+        "{domain}"
+    );
 
     // Search: the form posts `q` and the results are posts again.
     click(world, session, "nav-search");
@@ -186,8 +268,20 @@ fn x_is_posted_to_liked_replied_to_and_messaged_through_the_agent_api() {
     // Typing and Enter submit the composer too.
     go(&mut world, &session, "http://x.com/");
     click(&mut world, &session, "compose-text");
-    act(&mut world, &session, "keyboard.v1", "type", json!({"text": "Typed, not filled"}));
-    act(&mut world, &session, "browser.v1", "key", json!({"key": "Enter"}));
+    act(
+        &mut world,
+        &session,
+        "keyboard.v1",
+        "type",
+        json!({"text": "Typed, not filled"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "key",
+        json!({"key": "Enter"}),
+    );
     let (_, all) = page(&world, &session);
     assert!(has_text(&all, "Typed, not filled"));
     // The side column is real navigation: a trend opens its thread.
@@ -201,10 +295,24 @@ fn x_is_posted_to_liked_replied_to_and_messaged_through_the_agent_api() {
 #[test]
 fn bluesky_and_mastodon_run_the_same_flow_in_their_own_skins() {
     let (mut world, session) = world();
-    drive(&mut world, &session, "bsky.app", "Bluesky", "Home", "/messages");
+    drive(
+        &mut world,
+        &session,
+        "bsky.app",
+        "Bluesky",
+        "Home",
+        "/messages",
+    );
     go(&mut world, &session, "http://bsky.app/explore");
     assert_eq!(page(&world, &session).0, "Bluesky / Discover");
-    drive(&mut world, &session, "mastodon.social", "mastodon.social", "Home", "/messages");
+    drive(
+        &mut world,
+        &session,
+        "mastodon.social",
+        "mastodon.social",
+        "Home",
+        "/messages",
+    );
     go(&mut world, &session, "http://mastodon.social/local");
     let (title, all) = page(&world, &session);
     assert_eq!(title, "mastodon.social / Local timeline");
@@ -215,10 +323,20 @@ fn bluesky_and_mastodon_run_the_same_flow_in_their_own_skins() {
 #[test]
 fn facebook_is_driven_from_its_top_bar_shortcuts_and_contacts() {
     let (mut world, session) = world();
-    drive(&mut world, &session, "facebook.com", "Facebook", "Home", "/messages");
+    drive(
+        &mut world,
+        &session,
+        "facebook.com",
+        "Facebook",
+        "Home",
+        "/messages",
+    );
     go(&mut world, &session, "http://facebook.com/");
     let (_, all) = page(&world, &session);
-    assert_eq!(by_id(&all, "short-me")["url"], "http://facebook.com/alice.chen");
+    assert_eq!(
+        by_id(&all, "short-me")["url"],
+        "http://facebook.com/alice.chen"
+    );
     assert_eq!(by_id(&all, "top-q")["kind"], "input");
     let contact = by_id(&all, "contact-0")["url"].as_str().unwrap().to_owned();
     click(&mut world, &session, "contact-0");
@@ -233,7 +351,14 @@ fn facebook_is_driven_from_its_top_bar_shortcuts_and_contacts() {
 #[test]
 fn instagram_and_pinterest_are_walls_of_pictures_with_the_same_controls() {
     let (mut world, session) = world();
-    drive(&mut world, &session, "instagram.com", "Instagram", "Home", "/messages");
+    drive(
+        &mut world,
+        &session,
+        "instagram.com",
+        "Instagram",
+        "Home",
+        "/messages",
+    );
     go(&mut world, &session, "http://instagram.com/");
     let (_, all) = page(&world, &session);
     let story = by_id(&all, "story-0")["url"].as_str().unwrap().to_owned();
@@ -242,9 +367,21 @@ fn instagram_and_pinterest_are_walls_of_pictures_with_the_same_controls() {
     go(&mut world, &session, "http://instagram.com/explore");
     let (title, all) = page(&world, &session);
     assert_eq!(title, "Instagram / Explore");
-    assert!(all.iter().filter(|e| e["id"].as_str().is_some_and(|i| i.starts_with("post-"))).count() >= 9);
+    assert!(
+        all.iter()
+            .filter(|e| e["id"].as_str().is_some_and(|i| i.starts_with("post-")))
+            .count()
+            >= 9
+    );
 
-    let pin = drive(&mut world, &session, "pinterest.com", "Pinterest", "Home", "/messages");
+    let pin = drive(
+        &mut world,
+        &session,
+        "pinterest.com",
+        "Pinterest",
+        "Home",
+        "/messages",
+    );
     go(&mut world, &session, "http://pin.it/explore");
     let (title, all) = page(&world, &session);
     assert_eq!(title, "Pinterest / Today");
@@ -254,10 +391,20 @@ fn instagram_and_pinterest_are_walls_of_pictures_with_the_same_controls() {
 #[test]
 fn linkedin_connects_and_answers_the_recruiter() {
     let (mut world, session) = world();
-    drive(&mut world, &session, "linkedin.com", "LinkedIn", "Feed", "/messaging");
+    drive(
+        &mut world,
+        &session,
+        "linkedin.com",
+        "LinkedIn",
+        "Feed",
+        "/messaging",
+    );
     go(&mut world, &session, "http://linkedin.com/");
     let (_, all) = page(&world, &session);
-    assert_eq!(by_id(&all, "card-me")["url"], "http://linkedin.com/alice-chen");
+    assert_eq!(
+        by_id(&all, "card-me")["url"],
+        "http://linkedin.com/alice-chen"
+    );
     go(&mut world, &session, "http://linkedin.com/nadia-fischer");
     let (_, all) = page(&world, &session);
     // Plain paragraphs are listed as text runs (the browser numbers them itself), so the
@@ -271,5 +418,8 @@ fn linkedin_connects_and_answers_the_recruiter() {
     go(&mut world, &session, "http://linkedin.com/bob-martinez");
     let (_, all) = page(&world, &session);
     assert!(has_text(&all, "Experience"));
-    assert!(all.iter().any(|e| e["id"] == "exp-0-title" || e["text"].as_str().is_some_and(|t| t.contains("Northstar"))));
+    assert!(all
+        .iter()
+        .any(|e| e["id"] == "exp-0-title"
+            || e["text"].as_str().is_some_and(|t| t.contains("Northstar"))));
 }

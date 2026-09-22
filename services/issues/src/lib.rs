@@ -286,7 +286,12 @@ impl Service for IssuesService {
             }
             let listed: Vec<(String, String)> = visible
                 .iter()
-                .filter_map(|v| Some((v["id"].as_str()?.to_owned(), v["name"].as_str().unwrap_or("Project").to_owned())))
+                .filter_map(|v| {
+                    Some((
+                        v["id"].as_str()?.to_owned(),
+                        v["name"].as_str().unwrap_or("Project").to_owned(),
+                    ))
+                })
                 .collect();
             return plain::projects(&listed);
         }
@@ -321,7 +326,10 @@ impl Service for IssuesService {
                 }
             }
             if api {
-                let listed: Vec<Value> = found.iter().map(|(key, item)| json!({"project": key, "issue": item})).collect();
+                let listed: Vec<Value> = found
+                    .iter()
+                    .map(|(key, item)| json!({"project": key, "issue": item}))
+                    .collect();
                 return HttpResponse::json(200, &listed);
             }
             return if skinned {
@@ -430,7 +438,16 @@ impl Service for IssuesService {
 /// Everything about an issue a search is allowed to match, lowercased: its key, title,
 /// body, labels, assignee and author.
 fn haystack(key: &str, item: &Issue) -> String {
-    format!("{key}-{} {} {} {} {} {}", item.id, item.title, item.body, item.labels.join(" "), item.assignee, item.author).to_lowercase()
+    format!(
+        "{key}-{} {} {} {} {} {}",
+        item.id,
+        item.title,
+        item.body,
+        item.labels.join(" "),
+        item.assignee,
+        item.author
+    )
+    .to_lowercase()
 }
 fn access(v: &Value, field: &str, actor: &str) -> bool {
     v[field]
@@ -611,10 +628,21 @@ mod linear_tests {
     use cw_service_common::html::validate_strict;
     use cw_web::dom::Document as Dom;
     fn ctx(actor: &str) -> ServiceContext {
-        ServiceContext { actor: actor.into(), source: format!("machine-{actor}"), tick: 11, seed: 3, instance: "linear".into() }
+        ServiceContext {
+            actor: actor.into(),
+            source: format!("machine-{actor}"),
+            tick: 11,
+            seed: 3,
+            instance: "linear".into(),
+        }
     }
     fn req(method: &str, path: &str, body: Value) -> HttpRequest {
-        HttpRequest { method: method.into(), url: format!("http://linear.app{path}"), headers: BTreeMap::new(), body: serde_json::to_vec(&body).unwrap() }
+        HttpRequest {
+            method: method.into(),
+            url: format!("http://linear.app{path}"),
+            headers: BTreeMap::new(),
+            body: serde_json::to_vec(&body).unwrap(),
+        }
     }
     fn seed(skin: &str) -> Value {
         json!({"skin":skin,"workspace":"Northstar","projects":{"OPS":{"name":"Operations",
@@ -626,13 +654,18 @@ mod linear_tests {
     struct Html(Dom);
     impl Html {
         fn of(response: HttpResponse) -> Html {
-            assert_eq!(response.header("content-type"), Some("text/html; charset=utf-8"));
+            assert_eq!(
+                response.header("content-type"),
+                Some("text/html; charset=utf-8")
+            );
             let html = String::from_utf8(response.body).unwrap();
             validate_strict(&html).unwrap_or_else(|e| panic!("{e:?}"));
             Html(cw_web::html::parse(&html))
         }
         fn get(state: &mut Value, actor: &str, path: &str) -> Html {
-            let response = IssuesService.handle(state, &ctx(actor), &req("GET", path, Value::Null)).unwrap();
+            let response = IssuesService
+                .handle(state, &ctx(actor), &req("GET", path, Value::Null))
+                .unwrap();
             assert_eq!(response.status, 200, "{path}");
             Html::of(response)
         }
@@ -640,12 +673,27 @@ mod linear_tests {
             !self.0.by_id(id).is_empty()
         }
         fn text(&self, id: &str) -> String {
-            let node = *self.0.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"));
-            self.0.text_content(node).split_whitespace().collect::<Vec<_>>().join(" ")
+            let node = *self
+                .0
+                .by_id(id)
+                .first()
+                .unwrap_or_else(|| panic!("no #{id}"));
+            self.0
+                .text_content(node)
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
         }
         fn attr(&self, id: &str, name: &str) -> String {
-            let node = *self.0.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"));
-            self.0.attr(node, name).unwrap_or_else(|| panic!("#{id} has no {name}")).to_owned()
+            let node = *self
+                .0
+                .by_id(id)
+                .first()
+                .unwrap_or_else(|| panic!("no #{id}"));
+            self.0
+                .attr(node, name)
+                .unwrap_or_else(|| panic!("#{id} has no {name}"))
+                .to_owned()
         }
         /// Whether `inner` is a descendant of `outer`.
         fn within(&self, inner: &str, outer: &str) -> bool {
@@ -659,40 +707,83 @@ mod linear_tests {
     fn plain_state_is_unchanged_and_its_pages_are_plain_html() {
         let mut plain = json!({"projects":{"OPS":{"name":"Operations","issues":{}}}});
         plain = IssuesService.initialize(plain, &ctx("alice")).unwrap();
-        assert_eq!(plain, json!({"projects":{"OPS":{"name":"Operations","issues":{},"readers":[],"writers":[]}}}));
+        assert_eq!(
+            plain,
+            json!({"projects":{"OPS":{"name":"Operations","issues":{},"readers":[],"writers":[]}}})
+        );
         let home = Html::get(&mut plain, "alice", "/");
         assert_eq!(home.attr("project-OPS", "href"), "/projects/OPS");
         assert_eq!(home.text("project-OPS"), "Operations");
         assert!(!home.has("rail") && !home.has("workspace"));
         let project = Html::get(&mut plain, "alice", "/projects/OPS");
         assert_eq!(project.text("project"), "Operations");
-        assert_eq!((project.attr("new-issue", "action"), project.attr("new-issue", "method")), ("/projects/OPS/issues".to_owned(), "post".to_owned()));
-        assert_eq!((project.attr("new-issue-title", "name"), project.attr("new-issue-body", "name")), ("title".to_owned(), "body".to_owned()));
+        assert_eq!(
+            (
+                project.attr("new-issue", "action"),
+                project.attr("new-issue", "method")
+            ),
+            ("/projects/OPS/issues".to_owned(), "post".to_owned())
+        );
+        assert_eq!(
+            (
+                project.attr("new-issue-title", "name"),
+                project.attr("new-issue-body", "name")
+            ),
+            ("title".to_owned(), "body".to_owned())
+        );
         assert_eq!(project.text("new-issue-submit"), "Submit");
         // The form's post, as a browser sends it, opens the issue and lands on its page.
         let mut create = req("POST", "/projects/OPS/issues", Value::Null);
-        create.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        create.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
         create.body = b"title=Repair+DNS&body=Check+the+resolver".to_vec();
-        let issue = Html::of(IssuesService.handle(&mut plain, &ctx("alice"), &create).unwrap());
+        let issue = Html::of(
+            IssuesService
+                .handle(&mut plain, &ctx("alice"), &create)
+                .unwrap(),
+        );
         assert_eq!(issue.text("title"), "OPS-1 Repair DNS");
         // Prose, not a contract: an unassigned issue says so rather than trailing a colon.
         assert_eq!(issue.text("status"), "Status: open · Unassigned");
         assert_eq!(issue.text("body"), "Check the resolver");
         assert_eq!(issue.attr("back", "href"), "/projects/OPS");
-        assert_eq!(issue.attr("comment", "action"), "/projects/OPS/issues/1/comments");
+        assert_eq!(
+            issue.attr("comment", "action"),
+            "/projects/OPS/issues/1/comments"
+        );
         assert_eq!(issue.attr("comment-body", "name"), "body");
         assert_eq!(issue.attr("update", "action"), "/projects/OPS/issues/1");
-        assert_eq!((issue.attr("update-status", "value"), issue.attr("update-assignee", "name")), ("open".to_owned(), "assignee".to_owned()));
+        assert_eq!(
+            (
+                issue.attr("update-status", "value"),
+                issue.attr("update-assignee", "name")
+            ),
+            ("open".to_owned(), "assignee".to_owned())
+        );
         assert!(!issue.has("review"));
-        assert_eq!(Html::get(&mut plain, "alice", "/projects/OPS").attr("issue-1", "href"), "/projects/OPS/issues/1");
+        assert_eq!(
+            Html::get(&mut plain, "alice", "/projects/OPS").attr("issue-1", "href"),
+            "/projects/OPS/issues/1"
+        );
     }
     #[test]
     fn list_and_board_show_the_status_groups_and_a_move_really_moves() {
-        let mut state = IssuesService.initialize(seed("linear"), &ctx("alice")).unwrap();
-        for path in ["/projects/OPS", "/projects/OPS?view=board", "/projects/OPS?view=cycle"] {
+        let mut state = IssuesService
+            .initialize(seed("linear"), &ctx("alice"))
+            .unwrap();
+        for path in [
+            "/projects/OPS",
+            "/projects/OPS?view=board",
+            "/projects/OPS?view=cycle",
+        ] {
             let page = Html::get(&mut state, "alice", path);
             for (status, name) in linear::COLUMNS {
-                assert!(page.text(&format!("col-head-{status}")).starts_with(name), "{path}: {status}");
+                assert!(
+                    page.text(&format!("col-head-{status}")).starts_with(name),
+                    "{path}: {status}"
+                );
             }
             assert!(page.text("workspace").contains("Northstar"));
             assert_eq!(page.text("card-1-label-0"), "release");
@@ -700,7 +791,10 @@ mod linear_tests {
             assert_eq!(page.attr("card-open-1", "href"), "/projects/OPS/issues/1");
             assert_eq!(page.attr("card-priority-1", "title"), "High");
             // The move is a real form: status and the landing view, posted to the issue.
-            assert_eq!(page.attr("move-1-in_progress-form", "action"), "/projects/OPS/issues/1");
+            assert_eq!(
+                page.attr("move-1-in_progress-form", "action"),
+                "/projects/OPS/issues/1"
+            );
             assert!(page.within("move-1-in_progress", "move-1-in_progress-form"));
             assert!(!page.has("move-1-closed"));
         }
@@ -709,18 +803,36 @@ mod linear_tests {
         assert_eq!(home.text("team-open-OPS"), "1 unfinished");
         assert_eq!(home.attr("nav-OPS", "href"), "/projects/OPS");
         let moved = IssuesService
-            .handle(&mut state, &ctx("alice"), &req("POST", "/projects/OPS/issues/1", json!({"status":"in_progress","view":"board"})))
+            .handle(
+                &mut state,
+                &ctx("alice"),
+                &req(
+                    "POST",
+                    "/projects/OPS/issues/1",
+                    json!({"status":"in_progress","view":"board"}),
+                ),
+            )
             .unwrap();
         assert_eq!(moved.status, 200);
         // Landing back on the team's issues is what makes the move feel like a drag.
         let landed = Html::of(moved);
         assert!(landed.within("card-1", "col-in_progress"));
-        assert_eq!(state["projects"]["OPS"]["issues"]["1"]["status"], "in_progress");
+        assert_eq!(
+            state["projects"]["OPS"]["issues"]["1"]["status"],
+            "in_progress"
+        );
         // From the board, the form says so, and the landing page is the board again.
         let mut form = req("POST", "/projects/OPS/issues/1", Value::Null);
-        form.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        form.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
         form.body = b"status=blocked&view=board&layout=board".to_vec();
-        let landed = Html::of(IssuesService.handle(&mut state, &ctx("alice"), &form).unwrap());
+        let landed = Html::of(
+            IssuesService
+                .handle(&mut state, &ctx("alice"), &form)
+                .unwrap(),
+        );
         assert!(landed.within("card-1", "col-blocked"));
         assert_eq!(landed.attr("board", "class"), "board");
         let restored: IssueState = serde_json::from_value(state.clone()).unwrap();
@@ -728,24 +840,49 @@ mod linear_tests {
     }
     #[test]
     fn assignee_filter_and_write_refusal() {
-        let mut state = IssuesService.initialize(seed("linear"), &ctx("alice")).unwrap();
+        let mut state = IssuesService
+            .initialize(seed("linear"), &ctx("alice"))
+            .unwrap();
         let mine = Html::get(&mut state, "alice", "/projects/OPS?assignee=alice");
         assert!(mine.has("card-1"));
-        assert_eq!(mine.attr("filter-alice", "href"), "/projects/OPS?assignee=alice");
+        assert_eq!(
+            mine.attr("filter-alice", "href"),
+            "/projects/OPS?assignee=alice"
+        );
         assert_eq!(mine.attr("filter-all", "href"), "/projects/OPS");
-        assert_eq!(mine.attr("view-board", "href"), "/projects/OPS?assignee=alice&view=board");
+        assert_eq!(
+            mine.attr("view-board", "href"),
+            "/projects/OPS?assignee=alice&view=board"
+        );
         assert!(!Html::get(&mut state, "alice", "/projects/OPS?assignee=bob").has("card-1"));
         assert_eq!(
-            IssuesService.handle(&mut state, &ctx("bob"), &req("POST", "/projects/OPS/issues/1", json!({"status":"closed"}))).unwrap().status,
+            IssuesService
+                .handle(
+                    &mut state,
+                    &ctx("bob"),
+                    &req("POST", "/projects/OPS/issues/1", json!({"status":"closed"}))
+                )
+                .unwrap()
+                .status,
             403
         );
         assert_eq!(state["projects"]["OPS"]["issues"]["1"]["status"], "open");
     }
     #[test]
     fn issue_page_carries_comments_and_status_moves() {
-        let mut state = IssuesService.initialize(seed("linear"), &ctx("carol")).unwrap();
+        let mut state = IssuesService
+            .initialize(seed("linear"), &ctx("carol"))
+            .unwrap();
         IssuesService
-            .handle(&mut state, &ctx("carol"), &req("POST", "/projects/OPS/issues/1/comments", json!({"body":"checklist is in the doc http://docs.google.com/d/launch."})))
+            .handle(
+                &mut state,
+                &ctx("carol"),
+                &req(
+                    "POST",
+                    "/projects/OPS/issues/1/comments",
+                    json!({"body":"checklist is in the doc http://docs.google.com/d/launch."}),
+                ),
+            )
             .unwrap();
         let page = Html::get(&mut state, "carol", "/projects/OPS/issues/1");
         assert_eq!(page.text("issue-key"), "OPS-1");
@@ -753,20 +890,47 @@ mod linear_tests {
         assert_eq!(page.text("body"), "Read the release code.");
         assert_eq!(page.text("issue-state"), "Todo");
         assert_eq!(page.text("issue-assignee"), "carol · assigned to alice");
-        assert_eq!(page.text("comment-body-0"), "checklist is in the doc http://docs.google.com/d/launch.");
-        assert_eq!(page.attr("comment-body-0-link-5", "href"), "http://docs.google.com/d/launch");
+        assert_eq!(
+            page.text("comment-body-0"),
+            "checklist is in the doc http://docs.google.com/d/launch."
+        );
+        assert_eq!(
+            page.attr("comment-body-0-link-5", "href"),
+            "http://docs.google.com/d/launch"
+        );
         assert_eq!(page.text("comment-author-0"), "carol");
         assert_eq!(page.attr("back", "href"), "/projects/OPS");
         // Every other status is one button away, each its own form posting `status`.
         for status in ["in_progress", "blocked", "closed"] {
-            assert_eq!(page.attr(&format!("status-{status}-form"), "action"), "/projects/OPS/issues/1");
-            assert!(page.within(&format!("status-{status}"), &format!("status-{status}-form")));
+            assert_eq!(
+                page.attr(&format!("status-{status}-form"), "action"),
+                "/projects/OPS/issues/1"
+            );
+            assert!(page.within(
+                &format!("status-{status}"),
+                &format!("status-{status}-form")
+            ));
         }
         assert!(!page.has("status-open"));
         assert_eq!(page.text("status-closed"), "Move to Done");
-        assert_eq!((page.attr("comment", "action"), page.attr("comment-body", "name")), ("/projects/OPS/issues/1/comments".to_owned(), "body".to_owned()));
+        assert_eq!(
+            (
+                page.attr("comment", "action"),
+                page.attr("comment-body", "name")
+            ),
+            (
+                "/projects/OPS/issues/1/comments".to_owned(),
+                "body".to_owned()
+            )
+        );
         assert!(page.within("comment-submit", "comment"));
-        assert_eq!((page.attr("update", "action"), page.attr("update-assignee", "value")), ("/projects/OPS/issues/1".to_owned(), "alice".to_owned()));
+        assert_eq!(
+            (
+                page.attr("update", "action"),
+                page.attr("update-assignee", "value")
+            ),
+            ("/projects/OPS/issues/1".to_owned(), "alice".to_owned())
+        );
         assert!(!page.has("review"));
     }
 }

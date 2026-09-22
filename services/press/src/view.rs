@@ -32,7 +32,10 @@
 //! `newsletter-divider`, `front-rule-<id>`, `list-rule-<id>`) are gone: a rule is a
 //! border in the stylesheet, not an element an agent can address.
 //! The splash a seed without articles serves is `brand` and `tagline`, and nothing else.
-use crate::{article, byline, has, num, recent, section_title, sections, BRAND, LAYOUTS, PUBLICATION, SKINS, TAGLINE};
+use crate::{
+    article, byline, has, num, recent, section_title, sections, BRAND, LAYOUTS, PUBLICATION, SKINS,
+    TAGLINE,
+};
 use cw_protocol::{HttpResponse, Result};
 use cw_service_common as web;
 use cw_service_common::html::{
@@ -93,11 +96,17 @@ const ART: &[(&str, &str)] = &[
     ("#44506b", "#aab4cf"),
 ];
 fn art_tint(seed: &str) -> (&'static str, &'static str) {
-    let hash = seed.bytes().fold(2166136261u32, |h, b| (h ^ b as u32).wrapping_mul(16777619));
+    let hash = seed
+        .bytes()
+        .fold(2166136261u32, |h, b| (h ^ b as u32).wrapping_mul(16777619));
     ART[(hash >> 11) as usize % ART.len()]
 }
 fn initials(name: &str) -> String {
-    name.split_whitespace().filter_map(|w| w.chars().next()).take(2).collect::<String>().to_uppercase()
+    name.split_whitespace()
+        .filter_map(|w| w.chars().next())
+        .take(2)
+        .collect::<String>()
+        .to_uppercase()
 }
 
 /// Everything a render reads once: the state, who is reading, the layout, the skin, the palette.
@@ -124,7 +133,9 @@ impl<'a> Chrome<'a> {
             "" => default_skin(&brand, &layout).to_owned(),
             _ => web::variant(state, "skin", SKINS)?,
         };
-        let or = |value: &Option<String>, fallback: &str| value.clone().unwrap_or_else(|| fallback.to_owned());
+        let or = |value: &Option<String>, fallback: &str| {
+            value.clone().unwrap_or_else(|| fallback.to_owned())
+        };
         let root = format!(
             "--accent: {}; --ink: {}; --muted: {}; --surface: {}; --paper: {}; --content: {}px",
             or(&theme.accent, "#5200ff"),
@@ -134,7 +145,15 @@ impl<'a> Chrome<'a> {
             or(&theme.background, "#ffffff"),
             theme.content_width.unwrap_or(900).clamp(320, 1400)
         );
-        Ok(Self { state, actor, here, layout, skin, brand, root })
+        Ok(Self {
+            state,
+            actor,
+            here,
+            layout,
+            skin,
+            brand,
+            root,
+        })
     }
     fn document(&self, title: &str, page_class: &str, main: Node) -> Result<HttpResponse> {
         let doc = Document::new(title)
@@ -142,7 +161,10 @@ impl<'a> Chrome<'a> {
             .stylesheet(BASE)
             .stylesheet(sheet(&self.skin))
             .root_style(&self.root)
-            .body_class(&format!("skin-{} layout-{} {page_class}", self.skin, self.layout))
+            .body_class(&format!(
+                "skin-{} layout-{} {page_class}",
+                self.skin, self.layout
+            ))
             .body([self.masthead(), main, self.footer()]);
         web::html::page(&doc)
     }
@@ -159,7 +181,9 @@ impl<'a> Chrome<'a> {
             }
             let mut w = span(&format!("w w{}", i.min(3)));
             if matches!(self.skin.as_str(), "bbc" | "gnews") && i == 0 {
-                w = w.each(word.chars().enumerate(), |(n, c)| span(&format!("ch c{}", n % 6)).text(c.to_string()));
+                w = w.each(word.chars().enumerate(), |(n, c)| {
+                    span(&format!("ch c{}", n % 6)).text(c.to_string())
+                });
             } else {
                 w = w.text(word);
             }
@@ -169,13 +193,16 @@ impl<'a> Chrome<'a> {
     }
     /// A toggle that really submits: a one-button POST form carrying where to come back to.
     fn pill(&self, id: &str, label: &str, on: bool, action: &str, back: &str) -> Node {
-        form(&format!("{id}-form"), action, "post").class("pill-form").child(hidden("return", back)).child(
-            el("button")
-                .id(id)
-                .attr("type", "submit")
-                .class(if on { "pill on" } else { "pill" })
-                .child(span("").id(format!("{id}-text")).text(label)),
-        )
+        form(&format!("{id}-form"), action, "post")
+            .class("pill-form")
+            .child(hidden("return", back))
+            .child(
+                el("button")
+                    .id(id)
+                    .attr("type", "submit")
+                    .class(if on { "pill on" } else { "pill" })
+                    .child(span("").id(format!("{id}-text")).text(label)),
+            )
     }
     /// The masthead: wordmark, section nav, reading list and the publication Follow control.
     fn masthead(&self) -> Node {
@@ -189,7 +216,13 @@ impl<'a> Chrome<'a> {
             .id("masthead-nav")
             .class("sections")
             .attr("aria-label", "Sections")
-            .each(sections(state), |id| link(&format!("masthead-{id}"), format!("/{id}"), section_title(state, &id)))
+            .each(sections(state), |id| {
+                link(
+                    &format!("masthead-{id}"),
+                    format!("/{id}"),
+                    section_title(state, &id),
+                )
+            })
             .child(link("masthead-archive", "/archive", "Archive"));
         el("header")
             .id("masthead")
@@ -225,24 +258,25 @@ impl<'a> Chrome<'a> {
     }
     fn footer(&self) -> Node {
         let state = self.state;
-        el("footer")
-            .id("foot")
-            .class("foot")
-            .child(
-                div("inner")
-                    .child(span("foot-brand").text(self.brand.as_str()))
-                    .child(
-                        el("nav")
-                            .class("foot-links")
-                            .attr("aria-label", "Footer")
-                            .each(sections(state), |id| {
-                                link(&format!("foot-{id}"), format!("/{id}"), section_title(state, &id))
-                            })
-                            .child(link("foot-archive", "/archive", "Archive"))
-                            .child(link("foot-saved", "/saved", "Reading list")),
-                    )
-                    .child(span("legal").text(format!("© 2026 {}", self.brand))),
-            )
+        el("footer").id("foot").class("foot").child(
+            div("inner")
+                .child(span("foot-brand").text(self.brand.as_str()))
+                .child(
+                    el("nav")
+                        .class("foot-links")
+                        .attr("aria-label", "Footer")
+                        .each(sections(state), |id| {
+                            link(
+                                &format!("foot-{id}"),
+                                format!("/{id}"),
+                                section_title(state, &id),
+                            )
+                        })
+                        .child(link("foot-archive", "/archive", "Archive"))
+                        .child(link("foot-saved", "/saved", "Reading list")),
+                )
+                .child(span("legal").text(format!("© 2026 {}", self.brand))),
+        )
     }
     /// A headline card sized by `scale`: 0 is a dense wire line, 1 a grid card, 2 the hero.
     /// The whole card is one link; the sheet decides which parts a scale shows.
@@ -256,7 +290,11 @@ impl<'a> Chrome<'a> {
             .class(&format!("card s{scale}"))
             .attr("href", self.path(id))
             .style(&format!("--a: {from}; --b: {to}"))
-            .child(span("art").id(format!("{cid}-art")).attr("aria-hidden", "true"))
+            .child(
+                span("art")
+                    .id(format!("{cid}-art"))
+                    .attr("aria-hidden", "true"),
+            )
             .child(
                 span("text")
                     .child(
@@ -268,11 +306,27 @@ impl<'a> Chrome<'a> {
                                     .text(section_title(state, &web::text(&a, "section"))),
                             )
                             .child(text(" "))
-                            .child(span("date").id(format!("{cid}-date")).text(web::text(&a, "date"))),
+                            .child(
+                                span("date")
+                                    .id(format!("{cid}-date"))
+                                    .text(web::text(&a, "date")),
+                            ),
                     )
-                    .child(span("title").id(format!("{cid}-title")).text(web::text(&a, "title")))
-                    .child(span("dek").id(format!("{cid}-dek")).text(web::text(&a, "dek")))
-                    .child(span("byline").id(format!("{cid}-byline")).text(byline(state, id))),
+                    .child(
+                        span("title")
+                            .id(format!("{cid}-title"))
+                            .text(web::text(&a, "title")),
+                    )
+                    .child(
+                        span("dek")
+                            .id(format!("{cid}-dek"))
+                            .text(web::text(&a, "dek")),
+                    )
+                    .child(
+                        span("byline")
+                            .id(format!("{cid}-byline"))
+                            .text(byline(state, id)),
+                    ),
             )
     }
     fn newsletter(&self) -> Node {
@@ -321,11 +375,20 @@ impl<'a> Chrome<'a> {
                 ))
             }))
             .when(!tags.is_empty(), |side| {
-                side.child(el("h2").id("front-topics-heading").class("topics-heading").text("Topics")).child(
-                    div("topics")
-                        .id("front-topics")
-                        .each(tags.iter(), |tag| link(&format!("topic-{tag}"), format!("/tag/{tag}"), format!("#{tag}")).class("chip")),
+                side.child(
+                    el("h2")
+                        .id("front-topics-heading")
+                        .class("topics-heading")
+                        .text("Topics"),
                 )
+                .child(div("topics").id("front-topics").each(tags.iter(), |tag| {
+                    link(
+                        &format!("topic-{tag}"),
+                        format!("/tag/{tag}"),
+                        format!("#{tag}"),
+                    )
+                    .class("chip")
+                }))
             })
     }
     pub(crate) fn front(&self) -> Result<HttpResponse> {
@@ -333,33 +396,48 @@ impl<'a> Chrome<'a> {
         let main = el("main").id("front").class("front");
         let main = match self.layout.as_str() {
             // The wire: a dated stack, newest first, beside what is being read most.
-            "wire" => main.child(el("h1").id("front-heading").class("heading").text("Latest")).child(
-                div("layout")
-                    .id("front-layout")
-                    .child(
-                        el("section")
-                            .id("front-lines")
-                            .class("stories lines")
-                            .each(all.iter().enumerate(), |(i, id)| self.card(id, 0).class(&format!("n{}", i.min(9)))),
-                    )
-                    .child(self.side(&all)),
-            ),
+            "wire" => main
+                .child(el("h1").id("front-heading").class("heading").text("Latest"))
+                .child(
+                    div("layout")
+                        .id("front-layout")
+                        .child(
+                            el("section")
+                                .id("front-lines")
+                                .class("stories lines")
+                                .each(all.iter().enumerate(), |(i, id)| {
+                                    self.card(id, 0).class(&format!("n{}", i.min(9)))
+                                }),
+                        )
+                        .child(self.side(&all)),
+                ),
             // The magazine: one hero, then a grid, beside the same rail.
             "magazine" => main.child(
                 div("layout")
                     .id("front-layout")
-                    .child(div("lead").id("front-lead").maybe(all.first().map(|id| self.card(id, 2))))
+                    .child(
+                        div("lead")
+                            .id("front-lead")
+                            .maybe(all.first().map(|id| self.card(id, 2))),
+                    )
                     .child(
                         el("section")
                             .id("front-grid")
                             .class("stories grid")
-                            .each(all.iter().skip(1).enumerate(), |(i, id)| self.card(id, 1).class(&format!("n{}", i.min(9)))),
+                            .each(all.iter().skip(1).enumerate(), |(i, id)| {
+                                self.card(id, 1).class(&format!("n{}", i.min(9)))
+                            }),
                     )
                     .child(self.side(&all)),
             ),
             // The blog: a line about the author, then posts in reverse chronological order.
             _ => main
-                .child(el("p").id("front-tagline").class("tagline").text(web::text(self.state, "tagline")))
+                .child(
+                    el("p")
+                        .id("front-tagline")
+                        .class("tagline")
+                        .text(web::text(self.state, "tagline")),
+                )
                 .child(
                     div("layout")
                         .id("front-layout")
@@ -367,14 +445,21 @@ impl<'a> Chrome<'a> {
                             el("section")
                                 .id("front-posts")
                                 .class("stories posts")
-                                .each(all.iter().enumerate(), |(i, id)| self.card(id, 1).class(&format!("n{}", i.min(9)))),
+                                .each(all.iter().enumerate(), |(i, id)| {
+                                    self.card(id, 1).class(&format!("n{}", i.min(9)))
+                                }),
                         )
                         .child(self.side(&all)),
                 ),
         };
         self.document(&self.brand, "page-front", main.child(self.newsletter()))
     }
-    pub(crate) fn list(&self, title: &str, entries: &[String], follow: Option<&str>) -> Result<HttpResponse> {
+    pub(crate) fn list(
+        &self,
+        title: &str,
+        entries: &[String],
+        follow: Option<&str>,
+    ) -> Result<HttpResponse> {
         let main = el("main")
             .id("list")
             .class("list")
@@ -393,8 +478,20 @@ impl<'a> Chrome<'a> {
                         )
                     })),
             )
-            .when(entries.is_empty(), |m| m.child(el("p").id("list-empty").class("empty").text("Nothing here yet.")))
-            .child(el("section").id("list-stories").class("stories listing").each(entries, |id| self.card(id, 1)))
+            .when(entries.is_empty(), |m| {
+                m.child(
+                    el("p")
+                        .id("list-empty")
+                        .class("empty")
+                        .text("Nothing here yet."),
+                )
+            })
+            .child(
+                el("section")
+                    .id("list-stories")
+                    .class("stories listing")
+                    .each(entries, |id| self.card(id, 1)),
+            )
             .child(self.newsletter());
         self.document(&format!("{title} - {}", self.brand), "page-list", main)
     }
@@ -417,7 +514,11 @@ impl<'a> Chrome<'a> {
             .flatten()
             .map(|l| (web::text(l, "label"), web::text(l, "url")))
             .collect();
-        let comments = a.get("comments").and_then(Value::as_array).cloned().unwrap_or_default();
+        let comments = a
+            .get("comments")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
         let story = el("article")
             .class("story")
             .child(
@@ -431,7 +532,12 @@ impl<'a> Chrome<'a> {
                     .child(span("date").id("article-date").text(web::text(&a, "date"))),
             )
             .child(el("h1").id("article-title").text(title.as_str()))
-            .child(el("p").id("article-dek").class("dek").text(web::text(&a, "dek")))
+            .child(
+                el("p")
+                    .id("article-dek")
+                    .class("dek")
+                    .text(web::text(&a, "dek")),
+            )
             .child(
                 div("credit")
                     .id("article-byline")
@@ -459,25 +565,43 @@ impl<'a> Chrome<'a> {
                     .child(span("plate").attr("aria-hidden", "true"))
                     .child(el("figcaption").text(format!("Illustration: {}", self.brand))),
             )
-            .child(div("body").id("article-body").each(paragraphs.iter().enumerate(), |(i, p)| prose(i, p)))
+            .child(
+                div("body")
+                    .id("article-body")
+                    .each(paragraphs.iter().enumerate(), |(i, p)| prose(i, p)),
+            )
             .when(!related.is_empty(), |s| {
                 s.child(
                     el("aside")
                         .id("article-links")
                         .class("readmore")
                         .child(el("h2").id("article-links-heading").text("Read more"))
-                        .child(el("ul").each(related.iter().enumerate(), |(i, (label, url))| {
-                            el("li").child(link(&format!("article-ref-{i}"), url.as_str(), label.as_str()))
-                        })),
+                        .child(
+                            el("ul").each(related.iter().enumerate(), |(i, (label, url))| {
+                                el("li").child(link(
+                                    &format!("article-ref-{i}"),
+                                    url.as_str(),
+                                    label.as_str(),
+                                ))
+                            }),
+                        ),
                 )
             })
-            .child(div("tags").id("article-tags").each(web::strings(&a, "tags"), |tag| {
-                el("a")
-                    .id(format!("article-tag-{tag}"))
-                    .class("chip")
-                    .attr("href", format!("/tag/{tag}"))
-                    .child(span("").id(format!("article-tag-{tag}-text")).text(format!("#{tag}")))
-            }));
+            .child(
+                div("tags")
+                    .id("article-tags")
+                    .each(web::strings(&a, "tags"), |tag| {
+                        el("a")
+                            .id(format!("article-tag-{tag}"))
+                            .class("chip")
+                            .attr("href", format!("/tag/{tag}"))
+                            .child(
+                                span("")
+                                    .id(format!("article-tag-{tag}-text"))
+                                    .text(format!("#{tag}")),
+                            )
+                    }),
+            );
         let discussion = el("section")
             .id("comments")
             .class("comments")
@@ -511,8 +635,16 @@ impl<'a> Chrome<'a> {
                     .child(
                         div("said")
                             .id(format!("comment-{cid}-body"))
-                            .child(span("author").id(format!("comment-{cid}-author")).text(who.as_str()))
-                            .child(el("p").id(format!("comment-{cid}-text")).text(web::text(comment, "text"))),
+                            .child(
+                                span("author")
+                                    .id(format!("comment-{cid}-author"))
+                                    .text(who.as_str()),
+                            )
+                            .child(
+                                el("p")
+                                    .id(format!("comment-{cid}-text"))
+                                    .text(web::text(comment, "text")),
+                            ),
                     )
                     .child(self.pill(
                         &format!("comment-{cid}-like"),
@@ -522,7 +654,12 @@ impl<'a> Chrome<'a> {
                         &back,
                     ))
             });
-        let main = el("main").id("article").class("article").child(story).child(discussion).child(self.newsletter());
+        let main = el("main")
+            .id("article")
+            .class("article")
+            .child(story)
+            .child(discussion)
+            .child(self.newsletter());
         self.document(&format!("{title} - {}", self.brand), "page-article", main)
     }
     /// Brand splash; nothing on it reads as a control, so no action is promised that does not exist.
@@ -536,7 +673,10 @@ impl<'a> Chrome<'a> {
             .stylesheet(BASE)
             .stylesheet(sheet(&self.skin))
             .root_style(&self.root)
-            .body_class(&format!("skin-{} layout-{} page-landing", self.skin, self.layout))
+            .body_class(&format!(
+                "skin-{} layout-{} page-landing",
+                self.skin, self.layout
+            ))
             .body([el("main")
                 .class("landing")
                 .child(el("h1").id("brand").text(self.brand.as_str()))

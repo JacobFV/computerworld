@@ -25,7 +25,10 @@ fn world() -> (World, String) {
 }
 fn act(world: &mut World, session: &str, channel: &str, op: &str, payload: Value) -> Value {
     let result = world
-        .step(session, vec![ActionEnvelope::new(channel, op, MACHINE, payload)])
+        .step(
+            session,
+            vec![ActionEnvelope::new(channel, op, MACHINE, payload)],
+        )
         .unwrap();
     assert!(result.outcomes[0].success, "{op}: {:?}", result.outcomes[0]);
     result.outcomes[0].value.clone()
@@ -66,7 +69,13 @@ fn says(all: &[Value], needle: &str) -> bool {
 #[test]
 fn discord_is_read_posted_to_reacted_on_and_joined_through_the_agent_api() {
     let (mut world, session) = world();
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url":"http://discord.com/"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url":"http://discord.com/"}),
+    );
     let home = page(&world, &session);
     assert_eq!(home["title"], "Atlas Community");
     let all = elements(&home);
@@ -76,12 +85,27 @@ fn discord_is_read_posted_to_reacted_on_and_joined_through_the_agent_api() {
     assert_eq!(help["url"], "http://discord.com/channels/atlas/atlas-help");
     assert_eq!(by_id(&all, "nav-mod-log")["kind"], "link");
     assert_eq!(by_id(&all, "voice-Lounge")["kind"], "button");
-    assert_eq!(by_id(&all, "rail-home")["url"], "http://discord.com/channels/@me");
-    assert!(!has(&all, "send-text"), "no composer until a channel is open");
+    assert_eq!(
+        by_id(&all, "rail-home")["url"],
+        "http://discord.com/channels/@me"
+    );
+    assert!(
+        !has(&all, "send-text"),
+        "no composer until a channel is open"
+    );
 
     // Open a channel by its sidebar row.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"nav-atlas-help"}));
-    assert_eq!(browser(&world, &session)["url"], "http://discord.com/channels/atlas/atlas-help");
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"nav-atlas-help"}),
+    );
+    assert_eq!(
+        browser(&world, &session)["url"],
+        "http://discord.com/channels/atlas/atlas-help"
+    );
     let channel = page(&world, &session);
     assert_eq!(channel["title"], "#atlas-help · Atlas Community");
     let all = elements(&channel);
@@ -93,21 +117,56 @@ fn discord_is_read_posted_to_reacted_on_and_joined_through_the_agent_api() {
     assert!(says(&all, "My replay diverges after about 200 ticks"));
     let link = all
         .iter()
-        .find(|e| e["kind"] == "link" && e["id"].as_str().is_some_and(|id| id.starts_with("chat-34-text-p")))
+        .find(|e| {
+            e["kind"] == "link"
+                && e["id"]
+                    .as_str()
+                    .is_some_and(|id| id.starts_with("chat-34-text-p"))
+        })
         .expect("the issue link in priya's answer");
     assert_eq!(link["url"], "http://github.com/northstar/atlas/issues/14");
 
     // Type a message and press Enter: the composer posts it and lands on the channel.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"send-text"}));
-    act(&mut world, &session, "keyboard.v1", "type", json!({"text":"Diffing state_hash() per tick found it, thanks"}));
-    act(&mut world, &session, "browser.v1", "key", json!({"key":"Enter"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"send-text"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "keyboard.v1",
+        "type",
+        json!({"text":"Diffing state_hash() per tick found it, thanks"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "key",
+        json!({"key":"Enter"}),
+    );
     let all = elements(&page(&world, &session));
     assert!(says(&all, "Diffing state_hash() per tick found it, thanks"));
     assert_eq!(by_id(&all, "send-text")["value"], "");
 
     // Fill and click the send button: the same form by its button.
-    act(&mut world, &session, "browser.v1", "fill", json!({"id":"send-text","value":"Second message"}));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"send-submit"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "fill",
+        json!({"id":"send-text","value":"Second message"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"send-submit"}),
+    );
     let all = elements(&page(&world, &session));
     assert!(says(&all, "Second message"));
 
@@ -115,15 +174,33 @@ fn discord_is_read_posted_to_reacted_on_and_joined_through_the_agent_api() {
     let chip = by_id(&all, "chat-33-react-eyes");
     assert_eq!(chip["kind"], "button");
     assert_eq!(chip["text"], "👀 1");
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"chat-33-react-eyes"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"chat-33-react-eyes"}),
+    );
     let all = elements(&page(&world, &session));
     assert_eq!(by_id(&all, "chat-33-react-eyes")["text"], "👀 2");
 
     // The member-list toggle is a link that closes the list.
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url":"http://discord.com/channels/atlas/atlas-help"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url":"http://discord.com/channels/atlas/atlas-help"}),
+    );
     let all = elements(&page(&world, &session));
     assert!(says(&all, "MOD — 2"));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"channel-members"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"channel-members"}),
+    );
     assert_eq!(
         browser(&world, &session)["url"],
         "http://discord.com/channels/atlas/atlas-help?members=0"
@@ -137,22 +214,58 @@ fn discord_is_read_posted_to_reacted_on_and_joined_through_the_agent_api() {
             .count()
     };
     let outside = named(&elements(&page(&world, &session)));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"voice-Lounge"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"voice-Lounge"}),
+    );
     let inside = named(&elements(&page(&world, &session)));
-    assert!(inside > outside, "alice is listed under Lounge: {outside} -> {inside}");
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"voice-Lounge"}));
+    assert!(
+        inside > outside,
+        "alice is listed under Lounge: {outside} -> {inside}"
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"voice-Lounge"}),
+    );
     assert_eq!(named(&elements(&page(&world, &session))), outside);
     // A voice channel whose name has a space is joined the same way.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"voice-Office Hours"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"voice-Office Hours"}),
+    );
     assert_eq!(named(&elements(&page(&world, &session))), inside);
     // A channel mention in text is a link into the server.
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url":"http://discord.com/channels/atlas/welcome"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url":"http://discord.com/channels/atlas/welcome"}),
+    );
     let all = elements(&page(&world, &session));
     let mention = all
         .iter()
         .find(|e| e["kind"] == "link" && e["text"] == "#rules")
         .expect("#rules mention");
     let id = mention["id"].as_str().unwrap().to_owned();
-    act(&mut world, &session, "browser.v1", "click", json!({"id": id}));
-    assert_eq!(browser(&world, &session)["url"], "http://discord.com/channels/atlas/rules");
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id": id}),
+    );
+    assert_eq!(
+        browser(&world, &session)["url"],
+        "http://discord.com/channels/atlas/rules"
+    );
 }

@@ -46,7 +46,8 @@ impl Chrome {
         let skin = s.skin().to_owned();
         let paypal = skin == "paypal";
         let t = &s.theme;
-        let or = |v: &Option<String>, fallback: &str| v.clone().unwrap_or_else(|| fallback.to_owned());
+        let or =
+            |v: &Option<String>, fallback: &str| v.clone().unwrap_or_else(|| fallback.to_owned());
         let root_style = format!(
             "--accent: {}; --ink: {}; --muted: {}; --surface: {}; --paper: {}; --content: {}px",
             or(&t.accent, if paypal { "#0070ba" } else { "#117aca" }),
@@ -80,8 +81,14 @@ impl Chrome {
         let on = |tab: &str| if tab == current { "tab on" } else { "tab" };
         // The current tab still links to itself, the way every real tab strip does, and
         // says so, so the agent is told where it is standing rather than sent in a circle.
-        let here = |tab: &'static str| move |n: Html| {
-            if tab == current { n.attr("aria-current", "page") } else { n }
+        let here = |tab: &'static str| {
+            move |n: Html| {
+                if tab == current {
+                    n.attr("aria-current", "page")
+                } else {
+                    n
+                }
+            }
         };
         let (home, pay) = if self.paypal() {
             ("Home", "Send and Request")
@@ -92,10 +99,13 @@ impl Chrome {
             .class("tabs")
             .attr("aria-label", "Main")
             .child(here("home")(link("nav-home", "/", home).class(on("home"))))
-            .child(here("pay")(link("nav-pay", "/transfers", pay).class(on("pay"))))
+            .child(here("pay")(
+                link("nav-pay", "/transfers", pay).class(on("pay")),
+            ))
             .maybe(self.first_account.as_ref().map(|id| {
                 here("activity")(
-                    link("nav-activity", format!("/accounts/{id}"), "Activity").class(on("activity")),
+                    link("nav-activity", format!("/accounts/{id}"), "Activity")
+                        .class(on("activity")),
                 )
             }));
         let person = self.person();
@@ -135,10 +145,20 @@ impl Chrome {
                 )),
         )
     }
-    fn document(&self, title: &str, page_class: &str, current: &str, main: Vec<Html>) -> Result<HttpResponse> {
+    fn document(
+        &self,
+        title: &str,
+        page_class: &str,
+        current: &str,
+        main: Vec<Html>,
+    ) -> Result<HttpResponse> {
         let doc = Document::new(title)
             .lang("en")
-            .stylesheet(if self.paypal() { PAYPAL_CSS } else { NORTHWIND_CSS })
+            .stylesheet(if self.paypal() {
+                PAYPAL_CSS
+            } else {
+                NORTHWIND_CSS
+            })
             .root_style(&self.root_style)
             .body_class(&format!("skin-{} {page_class}", self.skin))
             .body([
@@ -150,7 +170,9 @@ impl Chrome {
     }
 }
 
-const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
 /// `2026-03-02` -> `Mar 2, 2026`; anything else is shown as the seed wrote it.
 fn pretty_date(date: &str) -> String {
     let parts: Vec<&str> = date.split('-').collect();
@@ -184,7 +206,9 @@ fn when(t: &Transaction) -> Html {
     if t.date.is_empty() {
         el("time").text(format!("tick {}", t.tick))
     } else {
-        el("time").attr("datetime", t.date.as_str()).text(pretty_date(&t.date))
+        el("time")
+            .attr("datetime", t.date.as_str())
+            .text(pretty_date(&t.date))
     }
 }
 fn sign(cents: i64) -> &'static str {
@@ -196,7 +220,9 @@ fn sign(cents: i64) -> &'static str {
 }
 /// A flat tint for a merchant's round mark, stable across renders.
 fn tint(label: &str) -> &'static str {
-    const PALETTE: [&str; 8] = ["#0070ba", "#1f8a5b", "#c2603a", "#7a4fb8", "#00a2c7", "#b8536b", "#5f7d2e", "#9a6b1f"];
+    const PALETTE: [&str; 8] = [
+        "#0070ba", "#1f8a5b", "#c2603a", "#7a4fb8", "#00a2c7", "#b8536b", "#5f7d2e", "#9a6b1f",
+    ];
     let mut h = 0xcbf2_9ce4_8422_2325_u64;
     for b in label.bytes() {
         h = (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3);
@@ -206,7 +232,12 @@ fn tint(label: &str) -> &'static str {
 /// One ledger line; the whole row is the link to the transaction.
 fn tx_row(t: &Transaction) -> Html {
     let id = &t.id;
-    let initial = t.merchant.chars().find(|c| c.is_alphanumeric()).unwrap_or('#').to_string();
+    let initial = t
+        .merchant
+        .chars()
+        .find(|c| c.is_alphanumeric())
+        .unwrap_or('#')
+        .to_string();
     el("a")
         .id(format!("t-{id}"))
         .class("tx")
@@ -222,14 +253,24 @@ fn tx_row(t: &Transaction) -> Html {
             span("m")
                 .id(format!("t-{id}-m"))
                 .text(t.merchant.as_str())
-                .when(t.pending, |m| m.child(span("pend").id(format!("t-{id}-p")).text("Pending"))),
+                .when(t.pending, |m| {
+                    m.child(span("pend").id(format!("t-{id}-p")).text("Pending"))
+                }),
         )
-        .child(span("c").id(format!("t-{id}-c")).text(if t.category.is_empty() {
-            "Uncategorised"
-        } else {
-            t.category.as_str()
-        }))
-        .child(span(&format!("a {}", sign(t.amount_cents))).id(format!("t-{id}-a")).text(money(t.amount_cents)))
+        .child(
+            span("c")
+                .id(format!("t-{id}-c"))
+                .text(if t.category.is_empty() {
+                    "Uncategorised"
+                } else {
+                    t.category.as_str()
+                }),
+        )
+        .child(
+            span(&format!("a {}", sign(t.amount_cents)))
+                .id(format!("t-{id}-a"))
+                .text(money(t.amount_cents)),
+        )
 }
 /// The ledger: a header line and the rows under it.
 fn ledger<'a>(rows: impl IntoIterator<Item = &'a Transaction>) -> Html {
@@ -268,12 +309,24 @@ fn tile(a: &Account) -> Html {
             span("figures")
                 .child(
                     span("fig")
-                        .child(span("b").id(format!("a-{id}-b")).text(money(a.balance_cents)))
-                        .child(span("cap").text(if a.credit() { "Current balance" } else { "Balance" })),
+                        .child(
+                            span("b")
+                                .id(format!("a-{id}-b"))
+                                .text(money(a.balance_cents)),
+                        )
+                        .child(span("cap").text(if a.credit() {
+                            "Current balance"
+                        } else {
+                            "Balance"
+                        })),
                 )
                 .child(span("fig av").id(format!("a-{id}-av")).text(format!(
                     "{} {}",
-                    if a.credit() { "Available credit" } else { "Available" },
+                    if a.credit() {
+                        "Available credit"
+                    } else {
+                        "Available"
+                    },
                     money(a.available_cents)
                 ))),
         )
@@ -282,13 +335,22 @@ fn tile(a: &Account) -> Html {
 
 pub(crate) fn overview(s: &BankState, p: &Chrome, actor: &str) -> Result<HttpResponse> {
     let accounts = s.owned(actor);
-    let total: i64 = accounts.iter().filter(|a| !a.credit()).map(|a| a.balance_cents).sum();
+    let total: i64 = accounts
+        .iter()
+        .filter(|a| !a.credit())
+        .map(|a| a.balance_cents)
+        .sum();
     let hero = el("section")
         .class("hero")
         .child(
             div("greet")
                 .child(el("h1").id("lead").text("Your accounts"))
-                .child(el("p").class("sub").id("welcome").text(format!("Welcome back, {}", p.person()))),
+                .child(
+                    el("p")
+                        .class("sub")
+                        .id("welcome")
+                        .text(format!("Welcome back, {}", p.person())),
+                ),
         )
         .child(
             div("worth")
@@ -299,9 +361,15 @@ pub(crate) fn overview(s: &BankState, p: &Chrome, actor: &str) -> Result<HttpRes
     // wallet has no way to request money from anyone in this world, so it does not offer
     // one; its second action is the thing it can do, which is put a contact on file.
     let (send, pay) = if p.paypal() {
-        (("Send", "/transfers#pay-card"), ("Add a contact", "/transfers#payee-card"))
+        (
+            ("Send", "/transfers#pay-card"),
+            ("Add a contact", "/transfers#payee-card"),
+        )
     } else {
-        (("Transfer money", "/transfers#xfer-card"), ("Pay a bill", "/transfers#pay-card"))
+        (
+            ("Transfer money", "/transfers#xfer-card"),
+            ("Pay a bill", "/transfers#pay-card"),
+        )
     };
     let round = |id: &str, class: &str, (text, href): (&str, &str)| {
         el("a")
@@ -326,7 +394,12 @@ pub(crate) fn overview(s: &BankState, p: &Chrome, actor: &str) -> Result<HttpRes
     let tiles = div("tiles")
         .id("accounts")
         .when(accounts.is_empty(), |d| {
-            d.child(el("p").id("none").class("none").text("No accounts are open in your name."))
+            d.child(
+                el("p")
+                    .id("none")
+                    .class("none")
+                    .text("No accounts are open in your name."),
+            )
         })
         .each(accounts.iter(), |a| tile(a));
     let activity = el("section")
@@ -376,7 +449,14 @@ pub(crate) fn account_page(
         .class("summary")
         .child(
             div("title")
-                .child(link("crumb-home", "/", if p.paypal() { "Home" } else { "Accounts" }).class("crumb"))
+                .child(
+                    link(
+                        "crumb-home",
+                        "/",
+                        if p.paypal() { "Home" } else { "Accounts" },
+                    )
+                    .class("crumb"),
+                )
                 .child(el("h1").id("lead").text(a.name.as_str())),
         )
         .child(
@@ -391,18 +471,39 @@ pub(crate) fn account_page(
                 .child(
                     div("fig")
                         .id("avail")
-                        .child(span("cap").text(if a.credit() { "Available credit " } else { "Available " }))
+                        .child(span("cap").text(if a.credit() {
+                            "Available credit "
+                        } else {
+                            "Available "
+                        }))
                         .child(span("v").text(money(a.available_cents))),
                 )
-                .child(link("statement", format!("/statements/{id}/all"), "Statements").class("btn ghost"))
-                .child(link("to-transfer", "/transfers", if p.paypal() { "Transfer Money" } else { "Transfer money" }).class("btn")),
+                .child(
+                    link("statement", format!("/statements/{id}/all"), "Statements")
+                        .class("btn ghost"),
+                )
+                .child(
+                    link(
+                        "to-transfer",
+                        "/transfers",
+                        if p.paypal() {
+                            "Transfer Money"
+                        } else {
+                            "Transfer money"
+                        },
+                    )
+                    .class("btn"),
+                ),
         );
     let filter = form("filter", format!("/accounts/{id}"), "get")
         .class("filter")
         .child(
             div("field")
                 .child(label("filter-category", "Category"))
-                .child(text_input("filter-category", "category", category).attr("placeholder", "All categories")),
+                .child(
+                    text_input("filter-category", "category", category)
+                        .attr("placeholder", "All categories"),
+                ),
         )
         .child(
             div("field grow")
@@ -413,12 +514,22 @@ pub(crate) fn account_page(
     let cats = if categories.is_empty() {
         None
     } else {
-        Some(el("nav").id("cats").class("chips").attr("aria-label", "Categories").each(categories.iter(), |c| {
-            let on = c.eq_ignore_ascii_case(category);
-            link(&format!("cat-{}", slug(c)), href(&format!("/accounts/{id}"), &[("category", c)]), c.as_str())
-                .class(if on { "chip on" } else { "chip" })
-                .when(on, |n| n.attr("aria-current", "page"))
-        }))
+        Some(
+            el("nav")
+                .id("cats")
+                .class("chips")
+                .attr("aria-label", "Categories")
+                .each(categories.iter(), |c| {
+                    let on = c.eq_ignore_ascii_case(category);
+                    link(
+                        &format!("cat-{}", slug(c)),
+                        href(&format!("/accounts/{id}"), &[("category", c)]),
+                        c.as_str(),
+                    )
+                    .class(if on { "chip on" } else { "chip" })
+                    .when(on, |n| n.attr("aria-current", "page"))
+                }),
+        )
     };
     let panel = el("section")
         .class("panel")
@@ -433,21 +544,44 @@ pub(crate) fn account_page(
         .child(filter)
         .maybe(cats)
         .child(ledger(rows));
-    p.document(&format!("{} — {}", a.name, s.brand), "page-account", "activity", vec![summary, panel])
+    p.document(
+        &format!("{} — {}", a.name, s.brand),
+        "page-account",
+        "activity",
+        vec![summary, panel],
+    )
 }
 
-pub(crate) fn tx_page(s: &BankState, p: &Chrome, actor: &str, id: &str, tx: &str) -> Result<HttpResponse> {
+pub(crate) fn tx_page(
+    s: &BankState,
+    p: &Chrome,
+    actor: &str,
+    id: &str,
+    tx: &str,
+) -> Result<HttpResponse> {
     if s.account(actor, id).is_err() {
         return web::error(403, "account unavailable");
     }
     let Some(t) = s.transactions.get(tx).filter(|t| t.account == id) else {
         return web::error(404, "transaction not found");
     };
-    let initial = t.merchant.chars().find(|c| c.is_alphanumeric()).unwrap_or('#').to_string();
+    let initial = t
+        .merchant
+        .chars()
+        .find(|c| c.is_alphanumeric())
+        .unwrap_or('#')
+        .to_string();
     let fact = |id: &str, name: &str, value: Html| {
-        div("fact").id(id).child(span("cap").text(format!("{name} "))).child(value)
+        div("fact")
+            .id(id)
+            .child(span("cap").text(format!("{name} ")))
+            .child(value)
     };
-    let posted = if t.date.is_empty() { format!("at tick {}", t.tick) } else { pretty_date(&t.date) };
+    let posted = if t.date.is_empty() {
+        format!("at tick {}", t.tick)
+    } else {
+        pretty_date(&t.date)
+    };
     let card = el("section")
         .class("receipt")
         .child(
@@ -459,19 +593,40 @@ pub(crate) fn tx_page(s: &BankState, p: &Chrome, actor: &str, id: &str, tx: &str
                         .text(initial),
                 )
                 .child(el("h1").id("merchant").text(t.merchant.as_str()))
-                .child(el("p").id("amount").class(&format!("amount {}", sign(t.amount_cents))).text(money(t.amount_cents))),
+                .child(
+                    el("p")
+                        .id("amount")
+                        .class(&format!("amount {}", sign(t.amount_cents)))
+                        .text(money(t.amount_cents)),
+                ),
         )
         .child(
             div("facts")
                 .id("facts")
                 .child(fact("fact-date", "Posted", span("v").text(posted)))
-                .child(fact("fact-cat", "Category", span("v").text(t.category.as_str())))
-                .child(div("fact").child(span("cap").text("Memo ")).child(span("v").id("fact-memo").text(t.memo.as_str())))
+                .child(fact(
+                    "fact-cat",
+                    "Category",
+                    span("v").text(t.category.as_str()),
+                ))
+                .child(
+                    div("fact")
+                        .child(span("cap").text("Memo "))
+                        .child(span("v").id("fact-memo").text(t.memo.as_str())),
+                )
                 .child(
                     div("fact").child(span("cap").text("Status ")).child(
-                        span(if t.pending { "status pending" } else { "status" })
-                            .id("fact-status")
-                            .text(if t.pending { "Pending" } else { "Posted" }),
+                        span(if t.pending {
+                            "status pending"
+                        } else {
+                            "status"
+                        })
+                        .id("fact-status")
+                        .text(if t.pending {
+                            "Pending"
+                        } else {
+                            "Posted"
+                        }),
                     ),
                 ),
         )
@@ -483,10 +638,21 @@ pub(crate) fn tx_page(s: &BankState, p: &Chrome, actor: &str, id: &str, tx: &str
             )
         })
         .child(link("back", format!("/accounts/{id}"), "Back to the account").class("btn ghost"));
-    p.document(&format!("{} — {}", t.merchant, s.brand), "page-tx", "activity", vec![card])
+    p.document(
+        &format!("{} — {}", t.merchant, s.brand),
+        "page-tx",
+        "activity",
+        vec![card],
+    )
 }
 
-pub(crate) fn statement(s: &BankState, p: &Chrome, actor: &str, id: &str, period: &str) -> Result<HttpResponse> {
+pub(crate) fn statement(
+    s: &BankState,
+    p: &Chrome,
+    actor: &str,
+    id: &str,
+    period: &str,
+) -> Result<HttpResponse> {
     let a = match s.account(actor, id) {
         Ok(a) => a.clone(),
         Err(e) => return web::error(403, e),
@@ -523,9 +689,13 @@ pub(crate) fn statement(s: &BankState, p: &Chrome, actor: &str, id: &str, period
     months.reverse();
     let tab = |value: &str, text: String| {
         let on = value == period;
-        link(&format!("stmt-{value}"), format!("/statements/{id}/{value}"), text)
-            .class(if on { "chip on" } else { "chip" })
-            .when(on, |n| n.attr("aria-current", "page"))
+        link(
+            &format!("stmt-{value}"),
+            format!("/statements/{id}/{value}"),
+            text,
+        )
+        .class(if on { "chip on" } else { "chip" })
+        .when(on, |n| n.attr("aria-current", "page"))
     };
     let periods = el("nav")
         .id("stmt-periods")
@@ -537,8 +707,15 @@ pub(crate) fn statement(s: &BankState, p: &Chrome, actor: &str, id: &str, period
         .class("summary")
         .child(
             div("title")
-                .child(link("crumb-account", format!("/accounts/{id}"), a.name.as_str()).class("crumb"))
-                .child(el("h1").id("lead").text(format!("Statement — {} — {}", a.name, pretty_period(period)))),
+                .child(
+                    link("crumb-account", format!("/accounts/{id}"), a.name.as_str())
+                        .class("crumb"),
+                )
+                .child(el("h1").id("lead").text(format!(
+                    "Statement — {} — {}",
+                    a.name,
+                    pretty_period(period)
+                ))),
         )
         .child(
             div("totals")
@@ -552,17 +729,27 @@ pub(crate) fn statement(s: &BankState, p: &Chrome, actor: &str, id: &str, period
         .child(div("panel-head").child(el("h2").text("Statement activity")))
         .child(periods)
         .child(match rows.is_empty() {
-            true => el("p").id("stmt-none").class("none").text("Nothing was posted in this period."),
+            true => el("p")
+                .id("stmt-none")
+                .class("none")
+                .text("Nothing was posted in this period."),
             false => ledger(rows),
         });
-    p.document(&format!("Statement {period} — {}", s.brand), "page-statement", "activity", vec![head, panel])
+    p.document(
+        &format!("Statement {period} — {}", s.brand),
+        "page-statement",
+        "activity",
+        vec![head, panel],
+    )
 }
 
 /// A labelled text field: the label is the control's accessible name.
 fn field(id: &str, name: &str, caption: &str, value: &str, hint: &str) -> Html {
-    div("field")
-        .child(label(id, caption))
-        .child(text_input(id, name, value).attr("placeholder", hint).attr("autocomplete", "off"))
+    div("field").child(label(id, caption)).child(
+        text_input(id, name, value)
+            .attr("placeholder", hint)
+            .attr("autocomplete", "off"),
+    )
 }
 pub(crate) fn transfers(s: &BankState, p: &Chrome, actor: &str) -> Result<HttpResponse> {
     let accounts = s.owned(actor);
@@ -580,57 +767,120 @@ pub(crate) fn transfers(s: &BankState, p: &Chrome, actor: &str) -> Result<HttpRe
                 .child(span("what").text(format!(" {} ", a.name)))
                 .child(span("v").text(format!("({})", money(a.available_cents))))
         });
-    let payees = el("ul").id("payees").class("refs").when(s.payees.is_empty(), |n| {
-        n.child(el("li").text("Nobody is on file yet."))
-    }).each(s.payees.values(), |x| {
-        el("li")
-            .child(el("code").text(x.id.as_str()))
-            .child(span("what").text(format!(" ({}) ", x.name)))
-            .child(span("v").text(x.account_hint.as_str()))
-    });
+    let payees = el("ul")
+        .id("payees")
+        .class("refs")
+        .when(s.payees.is_empty(), |n| {
+            n.child(el("li").text("Nobody is on file yet."))
+        })
+        .each(s.payees.values(), |x| {
+            el("li")
+                .child(el("code").text(x.id.as_str()))
+                .child(span("what").text(format!(" ({}) ", x.name)))
+                .child(span("v").text(x.account_hint.as_str()))
+        });
     let xfer = el("section")
         .id("xfer-card")
         .class("panel formcard")
         .child(el("h2").id("xfer-head").text("Between your accounts"))
         .child(
             form("xfer", "/api/transfers", "post")
-                .child(field("xfer-from", "from", "From account id", &first, "chk-0000"))
+                .child(field(
+                    "xfer-from",
+                    "from",
+                    "From account id",
+                    &first,
+                    "chk-0000",
+                ))
                 .child(field("xfer-to", "to", "To account id", &second, "sav-0000"))
-                .child(field("xfer-amount", "amount_cents", "Amount in cents", "2500", "0"))
+                .child(field(
+                    "xfer-amount",
+                    "amount_cents",
+                    "Amount in cents",
+                    "2500",
+                    "0",
+                ))
                 .child(button("xfer-go", "Transfer").class("btn")),
         );
     let pay = el("section")
         .id("pay-card")
         .class("panel formcard")
-        .child(el("h2").id("pay-head").text(if p.paypal() { "Send a payment" } else { "Pay a bill" }))
+        .child(el("h2").id("pay-head").text(if p.paypal() {
+            "Send a payment"
+        } else {
+            "Pay a bill"
+        }))
         .child(
             form("pay", "/api/payments", "post")
-                .child(field("pay-account", "account", "From account id", &first, "chk-0000"))
-                .child(field("pay-payee", "payee", "Payee id", "", "payee id from the list"))
-                .child(field("pay-amount", "amount_cents", "Amount in cents", "0", "0"))
+                .child(field(
+                    "pay-account",
+                    "account",
+                    "From account id",
+                    &first,
+                    "chk-0000",
+                ))
+                .child(field(
+                    "pay-payee",
+                    "payee",
+                    "Payee id",
+                    "",
+                    "payee id from the list",
+                ))
+                .child(field(
+                    "pay-amount",
+                    "amount_cents",
+                    "Amount in cents",
+                    "0",
+                    "0",
+                ))
                 .child(button("pay-go", "Pay").class("btn")),
         );
     let add = el("section")
         .id("payee-card")
         .class("panel formcard")
-        .child(el("h2").text(if p.paypal() { "Add a contact" } else { "Add a payee" }))
+        .child(el("h2").text(if p.paypal() {
+            "Add a contact"
+        } else {
+            "Add a payee"
+        }))
         .child(
             form("addpayee", "/api/payees", "post")
                 .child(field("addpayee-name", "name", "New payee name", "", "Name"))
-                .child(field("addpayee-hint", "account_hint", "Account hint", "", "...0000"))
+                .child(field(
+                    "addpayee-hint",
+                    "account_hint",
+                    "Account hint",
+                    "",
+                    "...0000",
+                ))
                 .child(button("addpayee-go", "Add payee").class("btn")),
         );
     let refs = el("aside")
         .class("panel refcard")
         .child(el("h2").text("Your accounts"))
         .child(own)
-        .child(el("h2").class("second").text(if p.paypal() { "Contacts and merchants" } else { "Payees on file" }))
+        .child(el("h2").class("second").text(if p.paypal() {
+            "Contacts and merchants"
+        } else {
+            "Payees on file"
+        }))
         .child(payees);
     let body = vec![
         el("section").class("summary").child(
             div("title")
-                .child(link("crumb-home", "/", if p.paypal() { "Home" } else { "Accounts" }).class("crumb"))
-                .child(el("h1").id("lead").text(if p.paypal() { "Send and Request" } else { "Pay & transfer" })),
+                .child(
+                    link(
+                        "crumb-home",
+                        "/",
+                        if p.paypal() { "Home" } else { "Accounts" },
+                    )
+                    .class("crumb"),
+                )
+                .child(el("h1").id("lead").text(if p.paypal() {
+                    "Send and Request"
+                } else {
+                    "Pay & transfer"
+                })),
         ),
         // The wallet leads with sending money; the bank with moving it between accounts.
         div("board")
@@ -641,5 +891,10 @@ pub(crate) fn transfers(s: &BankState, p: &Chrome, actor: &str) -> Result<HttpRe
             })
             .child(refs.class("col side-col")),
     ];
-    p.document(&format!("Transfers — {}", s.brand), "page-transfers", "pay", body)
+    p.document(
+        &format!("Transfers — {}", s.brand),
+        "page-transfers",
+        "pay",
+        body,
+    )
 }

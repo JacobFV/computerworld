@@ -508,7 +508,11 @@ impl<'h> Vm<'h> {
                             desc.set_prop(k, Value::Bool(true), ALL);
                         }
                     }
-                    let ok = self.call(&trap, Value::Obj(h), vec![Value::Obj(t), key.to_value(), Value::Obj(desc)])?;
+                    let ok = self.call(
+                        &trap,
+                        Value::Obj(h),
+                        vec![Value::Obj(t), key.to_value(), Value::Obj(desc)],
+                    )?;
                     return Ok(ok.truthy());
                 }
                 rr = t;

@@ -371,7 +371,10 @@ mod tests {
     fn page(state: &mut Value, url: &str) -> Page {
         let response = get(state, url);
         assert_eq!(response.status, 200, "{url}");
-        assert_eq!(response.header("content-type"), Some(cw_service_common::html::HTML_MEDIA_TYPE));
+        assert_eq!(
+            response.header("content-type"),
+            Some(cw_service_common::html::HTML_MEDIA_TYPE)
+        );
         parsed(&response)
     }
     fn parsed(response: &HttpResponse) -> Page {
@@ -384,13 +387,20 @@ mod tests {
             !self.0.by_id(id).is_empty()
         }
         fn node(&self, id: &str) -> cw_web::dom::NodeId {
-            *self.0.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+            *self
+                .0
+                .by_id(id)
+                .first()
+                .unwrap_or_else(|| panic!("no element #{id}"))
         }
         fn text(&self, id: &str) -> String {
             self.0.text_content(self.node(id))
         }
         fn attr(&self, id: &str, name: &str) -> String {
-            self.0.attr(self.node(id), name).unwrap_or_else(|| panic!("#{id} has no {name}")).to_owned()
+            self.0
+                .attr(self.node(id), name)
+                .unwrap_or_else(|| panic!("#{id} has no {name}"))
+                .to_owned()
         }
         fn tag(&self, id: &str) -> String {
             self.0.tag(self.node(id)).unwrap().to_owned()
@@ -401,7 +411,12 @@ mod tests {
             self.0
                 .descendants(form)
                 .filter(|n| self.0.is(*n, "input"))
-                .map(|n| (self.0.attr(n, "name").unwrap_or("").to_owned(), self.0.attr(n, "value").unwrap_or("").to_owned()))
+                .map(|n| {
+                    (
+                        self.0.attr(n, "name").unwrap_or("").to_owned(),
+                        self.0.attr(n, "value").unwrap_or("").to_owned(),
+                    )
+                })
                 .collect()
         }
         fn body(&self) -> String {
@@ -431,11 +446,18 @@ mod tests {
             let mut state = PressService.initialize(seed(layout), &ctx()).unwrap();
             let front = page(&mut state, "http://press.example/");
             assert!(front.has(marker), "{layout} front page");
-            assert_eq!(front.text("card-atlas-determinism-title"), "Northstar's Atlas bets everything on determinism");
+            assert_eq!(
+                front.text("card-atlas-determinism-title"),
+                "Northstar's Atlas bets everything on determinism"
+            );
             assert_eq!(front.tag("card-atlas-determinism"), "a");
             assert_eq!(
                 front.attr("card-atlas-determinism", "href"),
-                if layout == "blog" { "/posts/atlas-determinism" } else { "/2026/atlas-determinism" }
+                if layout == "blog" {
+                    "/posts/atlas-determinism"
+                } else {
+                    "/2026/atlas-determinism"
+                }
             );
             assert_eq!(front.text("card-atlas-determinism-section"), "Tech");
             assert_eq!(front.text("masthead-brand"), "The Testpaper");
@@ -448,7 +470,10 @@ mod tests {
             assert_eq!(front.text("masthead-follow-text"), "Follow");
             assert_eq!(front.attr("masthead-follow-form", "action"), "/follow");
             assert_eq!(front.attr("masthead-follow-form", "method"), "post");
-            assert_eq!(front.fields("masthead-follow-form"), [("return".to_owned(), "/".to_owned())]);
+            assert_eq!(
+                front.fields("masthead-follow-form"),
+                [("return".to_owned(), "/".to_owned())]
+            );
             // The newsletter form posts `email` to /subscribe.
             assert_eq!(front.text("newsletter-heading"), "Get the newsletter");
             assert_eq!(front.attr("subscribe", "action"), "/subscribe");
@@ -457,7 +482,10 @@ mod tests {
             assert_eq!(front.attr("subscribe-email", "aria-label"), "Email address");
             assert_eq!(front.tag("subscribe-submit"), "button");
             if layout == "wire" {
-                assert_eq!(front.attr("mostread-atlas-determinism", "href"), "/2026/atlas-determinism");
+                assert_eq!(
+                    front.attr("mostread-atlas-determinism", "href"),
+                    "/2026/atlas-determinism"
+                );
                 assert_eq!(front.text("front-heading"), "Latest");
             }
         }
@@ -480,9 +508,17 @@ mod tests {
                     "http://press.example/posts/monitor-roundup",
                 ] {
                     let shown = page(&mut state, url);
-                    assert!(shown.has("masthead") && shown.has("subscribe"), "{skin} {layout} {url}");
+                    assert!(
+                        shown.has("masthead") && shown.has("subscribe"),
+                        "{skin} {layout} {url}"
+                    );
                     assert_eq!(
-                        shown.0.attr(shown.0.body().unwrap(), "class").unwrap().split(' ').next(),
+                        shown
+                            .0
+                            .attr(shown.0.body().unwrap(), "class")
+                            .unwrap()
+                            .split(' ')
+                            .next(),
                         Some(format!("skin-{skin}").as_str())
                     );
                 }
@@ -505,14 +541,25 @@ mod tests {
         for skin in SKINS {
             for layout in LAYOUTS {
                 let mut state = PressService
-                    .initialize(json!({"layout": layout, "skin": skin, "brand": "Soon"}), &ctx())
+                    .initialize(
+                        json!({"layout": layout, "skin": skin, "brand": "Soon"}),
+                        &ctx(),
+                    )
                     .unwrap();
                 let splash = page(&mut state, "http://press.example/");
                 assert_eq!(splash.text("brand"), "Soon", "{skin} {layout}");
                 assert_eq!(splash.text("tagline"), TAGLINE);
-                assert!(!splash.has("masthead"), "the splash promises no control it cannot honour");
+                assert!(
+                    !splash.has("masthead"),
+                    "the splash promises no control it cannot honour"
+                );
                 assert_eq!(
-                    splash.0.attr(splash.0.body().unwrap(), "class").unwrap().split(' ').next(),
+                    splash
+                        .0
+                        .attr(splash.0.body().unwrap(), "class")
+                        .unwrap()
+                        .split(' ')
+                        .next(),
                     Some(format!("skin-{skin}").as_str())
                 );
             }
@@ -539,32 +586,65 @@ mod tests {
             200
         );
         let story = page(&mut dated, "http://press.example/2026/atlas-determinism");
-        assert_eq!(story.text("article-credit"), "Tom Weber · Mar 5, 2026 · 7 min read");
-        assert_eq!(story.text("article-title"), "Northstar's Atlas bets everything on determinism");
+        assert_eq!(
+            story.text("article-credit"),
+            "Tom Weber · Mar 5, 2026 · 7 min read"
+        );
+        assert_eq!(
+            story.text("article-title"),
+            "Northstar's Atlas bets everything on determinism"
+        );
         assert_eq!(story.attr("article-section", "href"), "/tech");
         assert_eq!(story.text("article-date"), "Mar 5, 2026");
         assert_eq!(story.text("article-avatar"), "TW");
-        assert_eq!(story.text("article-p0"), "Most simulation software will tell you it is reproducible.");
+        assert_eq!(
+            story.text("article-p0"),
+            "Most simulation software will tell you it is reproducible."
+        );
         // The Read more box is real, and URLs in the prose are links in place.
-        assert_eq!(story.attr("article-ref-0", "href"), "http://github.com/northstar/atlas");
+        assert_eq!(
+            story.attr("article-ref-0", "href"),
+            "http://github.com/northstar/atlas"
+        );
         assert_eq!(story.text("article-ref-0"), "Atlas on GitHub");
         assert_eq!(story.tag("article-p1-link-4"), "a");
-        assert_eq!(story.attr("article-p1-link-4", "href"), "http://github.com/northstar/atlas");
+        assert_eq!(
+            story.attr("article-p1-link-4", "href"),
+            "http://github.com/northstar/atlas"
+        );
         assert_eq!(
             story.text("article-p1"),
             "The repo is at http://github.com/northstar/atlas and it is worth reading."
         );
-        assert_eq!(story.attr("article-tag-determinism", "href"), "/tag/determinism");
+        assert_eq!(
+            story.attr("article-tag-determinism", "href"),
+            "/tag/determinism"
+        );
         assert_eq!(story.text("article-tag-determinism-text"), "#determinism");
         assert_eq!(story.text("comments-heading"), "1 comment");
         // Save, comment and like are POST forms with the fields the Page actions carried.
-        assert_eq!(story.attr("article-save-form", "action"), "/articles/atlas-determinism/save");
-        assert_eq!(story.fields("article-save-form"), [("return".to_owned(), "/2026/atlas-determinism".to_owned())]);
+        assert_eq!(
+            story.attr("article-save-form", "action"),
+            "/articles/atlas-determinism/save"
+        );
+        assert_eq!(
+            story.fields("article-save-form"),
+            [("return".to_owned(), "/2026/atlas-determinism".to_owned())]
+        );
         assert_eq!(story.text("article-save"), "Save");
-        assert_eq!(story.attr("comment", "action"), "/articles/atlas-determinism/comments");
+        assert_eq!(
+            story.attr("comment", "action"),
+            "/articles/atlas-determinism/comments"
+        );
         assert_eq!(story.attr("comment", "method"), "post");
-        assert_eq!(story.fields("comment"), [("text".to_owned(), String::new())]);
-        assert_eq!(story.attr("comment-text", "aria-label"), "Join the discussion");
+        assert_eq!(
+            story.fields("comment"),
+            [("text".to_owned(), String::new())]
+        );
+        assert_eq!(
+            story.attr("comment-text", "aria-label"),
+            "Join the discussion"
+        );
         assert_eq!(story.tag("comment-submit"), "button");
         assert_eq!(story.text("comment-c1-author"), "praman");
         assert_eq!(story.text("comment-c1-text"), "Finally.");
@@ -573,7 +653,10 @@ mod tests {
             story.attr("comment-c1-like-form", "action"),
             "/articles/atlas-determinism/comments/c1/like"
         );
-        assert_eq!(story.fields("comment-c1-like-form"), [("return".to_owned(), "/2026/atlas-determinism".to_owned())]);
+        assert_eq!(
+            story.fields("comment-c1-like-form"),
+            [("return".to_owned(), "/2026/atlas-determinism".to_owned())]
+        );
     }
     #[test]
     fn commenting_appends_a_dense_id_and_refuses_an_empty_body() {
@@ -696,9 +779,19 @@ mod tests {
             json!(["determinism", "publication"])
         );
         let tag = page(&mut state, "http://press.example/tag/determinism");
-        assert_eq!(tag.text("list-follow"), "Following", "the topic control shows its engaged state");
-        assert_eq!(tag.attr("list-follow-form", "action"), "/tags/determinism/follow");
-        assert_eq!(tag.fields("list-follow-form"), [("return".to_owned(), "/tag/determinism".to_owned())]);
+        assert_eq!(
+            tag.text("list-follow"),
+            "Following",
+            "the topic control shows its engaged state"
+        );
+        assert_eq!(
+            tag.attr("list-follow-form", "action"),
+            "/tags/determinism/follow"
+        );
+        assert_eq!(
+            tag.fields("list-follow-form"),
+            [("return".to_owned(), "/tag/determinism".to_owned())]
+        );
         assert_eq!(tag.text("masthead-follow"), "Following");
         assert!(tag.has("card-atlas-determinism") && !tag.has("card-monitor-roundup"));
         assert!(tag.body().contains("Northstar's Atlas"));
@@ -750,9 +843,13 @@ mod tests {
         assert!(back.has("article-title"), "it re-renders the article");
         assert_eq!(back.text("article-save"), "Saved");
         // The browser posts forms urlencoded; the same route takes them.
-        let mut request = HttpRequest::get("http://press.example/articles/atlas-determinism/comments");
+        let mut request =
+            HttpRequest::get("http://press.example/articles/atlas-determinism/comments");
         request.method = "POST".into();
-        request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        request.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
         request.body = b"text=Read+it+twice.".to_vec();
         let shown = parsed(&PressService.handle(&mut state, &ctx(), &request).unwrap());
         assert_eq!(shown.text("comment-c2-text"), "Read it twice.");

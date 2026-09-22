@@ -93,24 +93,69 @@ pub fn position(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn float(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("none", Float::None), ("left", Float::Left), ("right", Float::Right), ("inline-start", Float::Left), ("inline-end", Float::Right)]).map(Specified::Float)
+    keyword(
+        p,
+        &[
+            ("none", Float::None),
+            ("left", Float::Left),
+            ("right", Float::Right),
+            ("inline-start", Float::Left),
+            ("inline-end", Float::Right),
+        ],
+    )
+    .map(Specified::Float)
 }
 
 pub fn clear(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("none", Clear::None), ("left", Clear::Left), ("right", Clear::Right), ("both", Clear::Both), ("inline-start", Clear::Left), ("inline-end", Clear::Right)])
-        .map(Specified::Clear)
+    keyword(
+        p,
+        &[
+            ("none", Clear::None),
+            ("left", Clear::Left),
+            ("right", Clear::Right),
+            ("both", Clear::Both),
+            ("inline-start", Clear::Left),
+            ("inline-end", Clear::Right),
+        ],
+    )
+    .map(Specified::Clear)
 }
 
 pub fn visibility(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("visible", Visibility::Visible), ("hidden", Visibility::Hidden), ("collapse", Visibility::Collapse)]).map(Specified::Visibility)
+    keyword(
+        p,
+        &[
+            ("visible", Visibility::Visible),
+            ("hidden", Visibility::Hidden),
+            ("collapse", Visibility::Collapse),
+        ],
+    )
+    .map(Specified::Visibility)
 }
 
 pub fn box_sizing(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("content-box", BoxSizing::ContentBox), ("border-box", BoxSizing::BorderBox)]).map(Specified::BoxSizing)
+    keyword(
+        p,
+        &[
+            ("content-box", BoxSizing::ContentBox),
+            ("border-box", BoxSizing::BorderBox),
+        ],
+    )
+    .map(Specified::BoxSizing)
 }
 
 pub fn overflow_keyword(p: &mut Parser) -> Option<Overflow> {
-    keyword(p, &[("visible", Overflow::Visible), ("hidden", Overflow::Hidden), ("clip", Overflow::Clip), ("scroll", Overflow::Scroll), ("auto", Overflow::Auto), ("overlay", Overflow::Auto)])
+    keyword(
+        p,
+        &[
+            ("visible", Overflow::Visible),
+            ("hidden", Overflow::Hidden),
+            ("clip", Overflow::Clip),
+            ("scroll", Overflow::Scroll),
+            ("auto", Overflow::Auto),
+            ("overlay", Overflow::Auto),
+        ],
+    )
 }
 
 pub fn overflow(p: &mut Parser) -> Option<Specified> {
@@ -211,7 +256,14 @@ pub fn gap(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn border_width_spec(p: &mut Parser) -> Option<BorderWidthSpec> {
-    if let Some(k) = keyword(p, &[("thin", BorderWidthSpec::Thin), ("medium", BorderWidthSpec::Medium), ("thick", BorderWidthSpec::Thick)]) {
+    if let Some(k) = keyword(
+        p,
+        &[
+            ("thin", BorderWidthSpec::Thin),
+            ("medium", BorderWidthSpec::Medium),
+            ("thick", BorderWidthSpec::Thick),
+        ],
+    ) {
         return Some(k);
     }
     parse_length_spec(p, true).map(BorderWidthSpec::Length)
@@ -327,7 +379,15 @@ pub fn font_size(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn font_weight_spec(p: &mut Parser) -> Option<FontWeightSpec> {
-    if let Some(k) = keyword(p, &[("normal", FontWeightSpec::Absolute(400)), ("bold", FontWeightSpec::Absolute(700)), ("bolder", FontWeightSpec::Bolder), ("lighter", FontWeightSpec::Lighter)]) {
+    if let Some(k) = keyword(
+        p,
+        &[
+            ("normal", FontWeightSpec::Absolute(400)),
+            ("bold", FontWeightSpec::Absolute(700)),
+            ("bolder", FontWeightSpec::Bolder),
+            ("lighter", FontWeightSpec::Lighter),
+        ],
+    ) {
         return Some(k);
     }
     let n = parse_number_spec(p)?;
@@ -342,7 +402,14 @@ pub fn font_weight(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn font_style_keyword(p: &mut Parser) -> Option<FontStyle> {
-    let k = keyword(p, &[("normal", FontStyle::Normal), ("italic", FontStyle::Italic), ("oblique", FontStyle::Oblique)])?;
+    let k = keyword(
+        p,
+        &[
+            ("normal", FontStyle::Normal),
+            ("italic", FontStyle::Italic),
+            ("oblique", FontStyle::Oblique),
+        ],
+    )?;
     if k == FontStyle::Oblique {
         // Optional angle.
         let _ = parse_angle(p, false);
@@ -355,7 +422,11 @@ pub fn font_style(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn font_variant(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("normal", false), ("small-caps", true), ("none", false)]).map(Specified::Bool)
+    keyword(
+        p,
+        &[("normal", false), ("small-caps", true), ("none", false)],
+    )
+    .map(Specified::Bool)
 }
 
 pub fn line_height_spec(p: &mut Parser) -> Option<LineHeightSpec> {
@@ -412,14 +483,24 @@ pub fn text_align(p: &mut Parser) -> Option<Specified> {
 pub fn text_transform(p: &mut Parser) -> Option<Specified> {
     keyword(
         p,
-        &[("none", TextTransform::None), ("uppercase", TextTransform::Uppercase), ("lowercase", TextTransform::Lowercase), ("capitalize", TextTransform::Capitalize), ("full-width", TextTransform::None)],
+        &[
+            ("none", TextTransform::None),
+            ("uppercase", TextTransform::Uppercase),
+            ("lowercase", TextTransform::Lowercase),
+            ("capitalize", TextTransform::Capitalize),
+            ("full-width", TextTransform::None),
+        ],
     )
     .map(Specified::TextTransform)
 }
 
 pub fn text_decoration_line(p: &mut Parser) -> Option<Specified> {
     if p.expect_ident_matching("none").is_some() {
-        return Some(Specified::TextDecorationLine { underline: false, overline: false, line_through: false });
+        return Some(Specified::TextDecorationLine {
+            underline: false,
+            overline: false,
+            line_through: false,
+        });
     }
     let (mut u, mut o, mut l) = (false, false, false);
     let mut any = false;
@@ -437,7 +518,11 @@ pub fn text_decoration_line(p: &mut Parser) -> Option<Specified> {
     if !any {
         return None;
     }
-    Some(Specified::TextDecorationLine { underline: u, overline: o, line_through: l })
+    Some(Specified::TextDecorationLine {
+        underline: u,
+        overline: o,
+        line_through: l,
+    })
 }
 
 pub fn text_decoration_style(p: &mut Parser) -> Option<Specified> {
@@ -455,9 +540,21 @@ pub fn text_decoration_style(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn text_overflow(p: &mut Parser) -> Option<Specified> {
-    let k = keyword(p, &[("clip", TextOverflow::Clip), ("ellipsis", TextOverflow::Ellipsis)])?;
+    let k = keyword(
+        p,
+        &[
+            ("clip", TextOverflow::Clip),
+            ("ellipsis", TextOverflow::Ellipsis),
+        ],
+    )?;
     // The two-value form applies to both ends; take the end value.
-    let second = keyword(p, &[("clip", TextOverflow::Clip), ("ellipsis", TextOverflow::Ellipsis)]);
+    let second = keyword(
+        p,
+        &[
+            ("clip", TextOverflow::Clip),
+            ("ellipsis", TextOverflow::Ellipsis),
+        ],
+    );
     Some(Specified::TextOverflow(second.unwrap_or(k)))
 }
 
@@ -478,15 +575,40 @@ pub fn white_space(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn word_break(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("normal", WordBreak::Normal), ("break-all", WordBreak::BreakAll), ("keep-all", WordBreak::KeepAll), ("break-word", WordBreak::BreakWord)]).map(Specified::WordBreak)
+    keyword(
+        p,
+        &[
+            ("normal", WordBreak::Normal),
+            ("break-all", WordBreak::BreakAll),
+            ("keep-all", WordBreak::KeepAll),
+            ("break-word", WordBreak::BreakWord),
+        ],
+    )
+    .map(Specified::WordBreak)
 }
 
 pub fn overflow_wrap(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("normal", OverflowWrap::Normal), ("anywhere", OverflowWrap::Anywhere), ("break-word", OverflowWrap::BreakWord)]).map(Specified::OverflowWrap)
+    keyword(
+        p,
+        &[
+            ("normal", OverflowWrap::Normal),
+            ("anywhere", OverflowWrap::Anywhere),
+            ("break-word", OverflowWrap::BreakWord),
+        ],
+    )
+    .map(Specified::OverflowWrap)
 }
 
 pub fn scrollbar_width(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("auto", ScrollbarWidth::Auto), ("thin", ScrollbarWidth::Thin), ("none", ScrollbarWidth::None)]).map(Specified::ScrollbarWidth)
+    keyword(
+        p,
+        &[
+            ("auto", ScrollbarWidth::Auto),
+            ("thin", ScrollbarWidth::Thin),
+            ("none", ScrollbarWidth::None),
+        ],
+    )
+    .map(Specified::ScrollbarWidth)
 }
 
 pub fn length_or_normal(p: &mut Parser) -> Option<Specified> {
@@ -615,8 +737,9 @@ pub fn list_style_type_keyword(p: &mut Parser) -> Option<ListStyleType> {
     }
     let s = p.expect_ident_lower()?;
     match s.as_str() {
-        "lower-greek" | "armenian" | "georgian" | "cjk-decimal" | "hebrew" | "hiragana" | "katakana" | "arabic-indic" | "persian" | "bengali" | "devanagari" | "disclosure-open"
-        | "disclosure-closed" => Some(ListStyleType::Decimal),
+        "lower-greek" | "armenian" | "georgian" | "cjk-decimal" | "hebrew" | "hiragana"
+        | "katakana" | "arabic-indic" | "persian" | "bengali" | "devanagari"
+        | "disclosure-open" | "disclosure-closed" => Some(ListStyleType::Decimal),
         _ => None,
     }
 }
@@ -626,7 +749,13 @@ pub fn list_style_type(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn list_style_position_keyword(p: &mut Parser) -> Option<ListStylePosition> {
-    keyword(p, &[("outside", ListStylePosition::Outside), ("inside", ListStylePosition::Inside)])
+    keyword(
+        p,
+        &[
+            ("outside", ListStylePosition::Outside),
+            ("inside", ListStylePosition::Inside),
+        ],
+    )
 }
 
 pub fn list_style_position(p: &mut Parser) -> Option<Specified> {
@@ -638,11 +767,22 @@ pub fn list_style_image(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn table_layout(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("auto", TableLayout::Auto), ("fixed", TableLayout::Fixed)]).map(Specified::TableLayout)
+    keyword(
+        p,
+        &[("auto", TableLayout::Auto), ("fixed", TableLayout::Fixed)],
+    )
+    .map(Specified::TableLayout)
 }
 
 pub fn border_collapse(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("separate", BorderCollapse::Separate), ("collapse", BorderCollapse::Collapse)]).map(Specified::BorderCollapse)
+    keyword(
+        p,
+        &[
+            ("separate", BorderCollapse::Separate),
+            ("collapse", BorderCollapse::Collapse),
+        ],
+    )
+    .map(Specified::BorderCollapse)
 }
 
 pub fn border_spacing(p: &mut Parser) -> Option<Specified> {
@@ -652,7 +792,11 @@ pub fn border_spacing(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn caption_side(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("top", CaptionSide::Top), ("bottom", CaptionSide::Bottom)]).map(Specified::CaptionSide)
+    keyword(
+        p,
+        &[("top", CaptionSide::Top), ("bottom", CaptionSide::Bottom)],
+    )
+    .map(Specified::CaptionSide)
 }
 
 pub fn empty_cells(p: &mut Parser) -> Option<Specified> {
@@ -666,10 +810,21 @@ pub fn background_image(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn repeat_style(p: &mut Parser) -> Option<BackgroundRepeat> {
-    if let Some(k) = keyword(p, &[("repeat-x", BackgroundRepeat::RepeatX), ("repeat-y", BackgroundRepeat::RepeatY)]) {
+    if let Some(k) = keyword(
+        p,
+        &[
+            ("repeat-x", BackgroundRepeat::RepeatX),
+            ("repeat-y", BackgroundRepeat::RepeatY),
+        ],
+    ) {
         return Some(k);
     }
-    let table: &[(&str, BackgroundRepeat)] = &[("repeat", BackgroundRepeat::Repeat), ("no-repeat", BackgroundRepeat::NoRepeat), ("space", BackgroundRepeat::Space), ("round", BackgroundRepeat::Round)];
+    let table: &[(&str, BackgroundRepeat)] = &[
+        ("repeat", BackgroundRepeat::Repeat),
+        ("no-repeat", BackgroundRepeat::NoRepeat),
+        ("space", BackgroundRepeat::Space),
+        ("round", BackgroundRepeat::Round),
+    ];
     let a = keyword(p, table)?;
     let b = keyword(p, table);
     Some(match (a, b) {
@@ -687,7 +842,13 @@ pub fn background_repeat(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn bg_size(p: &mut Parser) -> Option<BgSizeSpec> {
-    if let Some(k) = keyword(p, &[("cover", BgSizeSpec::Cover), ("contain", BgSizeSpec::Contain)]) {
+    if let Some(k) = keyword(
+        p,
+        &[
+            ("cover", BgSizeSpec::Cover),
+            ("contain", BgSizeSpec::Contain),
+        ],
+    ) {
         return Some(k);
     }
     let a = p.try_parse(|p| {
@@ -760,11 +921,21 @@ fn offset_from(edge_pct: i64, off: LpSpec) -> LpSpec {
         LpSpec::Percent(n) => CalcNode::Percent(n),
         LpSpec::Calc(c) => *c,
     };
-    LpSpec::Calc(Box::new(CalcNode::Sum(vec![CalcNode::Percent(Number::from_i64(100)), CalcNode::Neg(Box::new(node))])))
+    LpSpec::Calc(Box::new(CalcNode::Sum(vec![
+        CalcNode::Percent(Number::from_i64(100)),
+        CalcNode::Neg(Box::new(node)),
+    ])))
 }
 
 pub fn background_box_keyword(p: &mut Parser) -> Option<BackgroundBox> {
-    keyword(p, &[("border-box", BackgroundBox::BorderBox), ("padding-box", BackgroundBox::PaddingBox), ("content-box", BackgroundBox::ContentBox)])
+    keyword(
+        p,
+        &[
+            ("border-box", BackgroundBox::BorderBox),
+            ("padding-box", BackgroundBox::PaddingBox),
+            ("content-box", BackgroundBox::ContentBox),
+        ],
+    )
 }
 
 pub fn background_box(p: &mut Parser) -> Option<Specified> {
@@ -791,7 +962,10 @@ pub fn background_attachment(p: &mut Parser) -> Option<Specified> {
 
 pub fn opacity(p: &mut Parser) -> Option<Specified> {
     let f = parse_number_or_percent_fraction(p)?;
-    Some(Specified::Number(Number { micro: f.clamp(0, 1_000_000), int: false }))
+    Some(Specified::Number(Number {
+        micro: f.clamp(0, 1_000_000),
+        int: false,
+    }))
 }
 
 // --- Transforms ------------------------------------------------------------------
@@ -816,8 +990,14 @@ pub fn transform(p: &mut Parser) -> Option<Specified> {
                     _ => return None,
                 }
             }
-            "translatex" => ops.push(TransformSpec::Translate(a.parse_entirely(|p| parse_lp(p, Allow::ALL))?, zero)),
-            "translatey" => ops.push(TransformSpec::Translate(zero, a.parse_entirely(|p| parse_lp(p, Allow::ALL))?)),
+            "translatex" => ops.push(TransformSpec::Translate(
+                a.parse_entirely(|p| parse_lp(p, Allow::ALL))?,
+                zero,
+            )),
+            "translatey" => ops.push(TransformSpec::Translate(
+                zero,
+                a.parse_entirely(|p| parse_lp(p, Allow::ALL))?,
+            )),
             "translatez" => {
                 a.parse_entirely(|p| parse_length_spec(p, false))?;
             }
@@ -830,15 +1010,24 @@ pub fn transform(p: &mut Parser) -> Option<Specified> {
             }
             "scale" => {
                 let v = a.parse_entirely(|a| a.comma_list(parse_number_or_percent_fraction))?;
-                let n = |m: i64| Number { micro: m, int: false };
+                let n = |m: i64| Number {
+                    micro: m,
+                    int: false,
+                };
                 match v.len() {
                     1 => ops.push(TransformSpec::Scale(n(v[0]), n(v[0]))),
                     2 => ops.push(TransformSpec::Scale(n(v[0]), n(v[1]))),
                     _ => return None,
                 }
             }
-            "scalex" => ops.push(TransformSpec::Scale(a.parse_entirely(parse_number_spec)?, one)),
-            "scaley" => ops.push(TransformSpec::Scale(one, a.parse_entirely(parse_number_spec)?)),
+            "scalex" => ops.push(TransformSpec::Scale(
+                a.parse_entirely(parse_number_spec)?,
+                one,
+            )),
+            "scaley" => ops.push(TransformSpec::Scale(
+                one,
+                a.parse_entirely(parse_number_spec)?,
+            )),
             "scalez" => {
                 a.parse_entirely(parse_number_spec)?;
             }
@@ -849,9 +1038,15 @@ pub fn transform(p: &mut Parser) -> Option<Specified> {
                 }
                 ops.push(TransformSpec::Scale(v[0], v[1]));
             }
-            "rotate" | "rotatez" => ops.push(TransformSpec::Rotate(a.parse_entirely(|p| parse_angle(p, true))?)),
-            "skewx" => ops.push(TransformSpec::SkewX(a.parse_entirely(|p| parse_angle(p, true))?)),
-            "skewy" => ops.push(TransformSpec::SkewY(a.parse_entirely(|p| parse_angle(p, true))?)),
+            "rotate" | "rotatez" => ops.push(TransformSpec::Rotate(
+                a.parse_entirely(|p| parse_angle(p, true))?,
+            )),
+            "skewx" => ops.push(TransformSpec::SkewX(
+                a.parse_entirely(|p| parse_angle(p, true))?,
+            )),
+            "skewy" => ops.push(TransformSpec::SkewY(
+                a.parse_entirely(|p| parse_angle(p, true))?,
+            )),
             "skew" => {
                 let v = a.parse_entirely(|a| a.comma_list(|p| parse_angle(p, true)))?;
                 match v.len() {
@@ -872,7 +1067,12 @@ pub fn transform(p: &mut Parser) -> Option<Specified> {
                 if !v[1].is_zero() || !v[2].is_zero() {
                     return None;
                 }
-                let px = |n: Number| LpSpec::Length(Length { value: n, unit: LengthUnit::Px });
+                let px = |n: Number| {
+                    LpSpec::Length(Length {
+                        value: n,
+                        unit: LengthUnit::Px,
+                    })
+                };
                 ops.push(TransformSpec::Translate(px(v[4]), px(v[5])));
                 if v[0] != one || v[3] != one {
                     ops.push(TransformSpec::Scale(v[0], v[3]));
@@ -901,12 +1101,28 @@ pub fn transform_origin(p: &mut Parser) -> Option<Specified> {
 // --- Flex and alignment ----------------------------------------------------------
 
 pub fn flex_direction(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("row", FlexDirection::Row), ("row-reverse", FlexDirection::RowReverse), ("column", FlexDirection::Column), ("column-reverse", FlexDirection::ColumnReverse)])
-        .map(Specified::FlexDirection)
+    keyword(
+        p,
+        &[
+            ("row", FlexDirection::Row),
+            ("row-reverse", FlexDirection::RowReverse),
+            ("column", FlexDirection::Column),
+            ("column-reverse", FlexDirection::ColumnReverse),
+        ],
+    )
+    .map(Specified::FlexDirection)
 }
 
 pub fn flex_wrap(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("nowrap", FlexWrap::NoWrap), ("wrap", FlexWrap::Wrap), ("wrap-reverse", FlexWrap::WrapReverse)]).map(Specified::FlexWrap)
+    keyword(
+        p,
+        &[
+            ("nowrap", FlexWrap::NoWrap),
+            ("wrap", FlexWrap::Wrap),
+            ("wrap-reverse", FlexWrap::WrapReverse),
+        ],
+    )
+    .map(Specified::FlexWrap)
 }
 
 pub fn justify_content(p: &mut Parser) -> Option<Specified> {
@@ -948,7 +1164,10 @@ const ALIGN_ITEMS: &[(&str, AlignItems)] = &[
 ];
 
 pub fn align_items(p: &mut Parser) -> Option<Specified> {
-    let _ = keyword(p, &[("safe", ()), ("unsafe", ()), ("first", ()), ("last", ())]);
+    let _ = keyword(
+        p,
+        &[("safe", ()), ("unsafe", ()), ("first", ()), ("last", ())],
+    );
     keyword(p, ALIGN_ITEMS).map(Specified::AlignItems)
 }
 
@@ -958,7 +1177,10 @@ pub fn justify_items(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn align_self(p: &mut Parser) -> Option<Specified> {
-    let _ = keyword(p, &[("safe", ()), ("unsafe", ()), ("first", ()), ("last", ())]);
+    let _ = keyword(
+        p,
+        &[("safe", ()), ("unsafe", ()), ("first", ()), ("last", ())],
+    );
     keyword(
         p,
         &[
@@ -1005,7 +1227,14 @@ pub fn align_content(p: &mut Parser) -> Option<Specified> {
 
 fn track_breadth(p: &mut Parser) -> Option<TrackBreadthSpec> {
     p.try_parse(|p| {
-        if let Some(k) = keyword(p, &[("auto", TrackBreadthSpec::Auto), ("min-content", TrackBreadthSpec::MinContent), ("max-content", TrackBreadthSpec::MaxContent)]) {
+        if let Some(k) = keyword(
+            p,
+            &[
+                ("auto", TrackBreadthSpec::Auto),
+                ("min-content", TrackBreadthSpec::MinContent),
+                ("max-content", TrackBreadthSpec::MaxContent),
+            ],
+        ) {
             return Some(k);
         }
         if let Some(n) = p.try_parse(|p| {
@@ -1107,10 +1336,21 @@ pub fn track_list_spec(p: &mut Parser) -> Option<TrackListSpec> {
         return Some(TrackListSpec::default());
     }
     let entries = track_entries(p, true)?;
-    if !entries.iter().any(|e| matches!(e, TrackEntry::Track(_) | TrackEntry::Repeat(..))) {
+    if !entries
+        .iter()
+        .any(|e| matches!(e, TrackEntry::Track(_) | TrackEntry::Repeat(..)))
+    {
         return None;
     }
-    let auto_repeats = entries.iter().filter(|e| matches!(e, TrackEntry::Repeat(RepeatCount::AutoFill | RepeatCount::AutoFit, _))).count();
+    let auto_repeats = entries
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                TrackEntry::Repeat(RepeatCount::AutoFill | RepeatCount::AutoFit, _)
+            )
+        })
+        .count();
     if auto_repeats > 1 {
         return None;
     }
@@ -1172,7 +1412,17 @@ fn parse_area_row(s: &str) -> Option<Vec<String>> {
     if out.is_empty() {
         return None;
     }
-    Some(out.into_iter().map(|t| if t.starts_with('.') { ".".to_owned() } else { t }).collect())
+    Some(
+        out.into_iter()
+            .map(|t| {
+                if t.starts_with('.') {
+                    ".".to_owned()
+                } else {
+                    t
+                }
+            })
+            .collect(),
+    )
 }
 
 pub fn auto_tracks(p: &mut Parser) -> Option<Specified> {
@@ -1337,21 +1587,42 @@ pub fn pointer_events(p: &mut Parser) -> Option<Specified> {
 }
 
 pub fn user_select(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("auto", UserSelect::Auto), ("none", UserSelect::None), ("text", UserSelect::Text), ("all", UserSelect::All), ("contain", UserSelect::Text)]).map(Specified::UserSelect)
+    keyword(
+        p,
+        &[
+            ("auto", UserSelect::Auto),
+            ("none", UserSelect::None),
+            ("text", UserSelect::Text),
+            ("all", UserSelect::All),
+            ("contain", UserSelect::Text),
+        ],
+    )
+    .map(Specified::UserSelect)
 }
 
 pub fn appearance(p: &mut Parser) -> Option<Specified> {
     let s = p.expect_ident_lower()?;
     Some(Specified::Appearance(match s.as_str() {
         "none" => Appearance::None,
-        "auto" | "textfield" | "menulist" | "menulist-button" | "button" | "checkbox" | "radio" | "searchfield" | "textarea" | "listbox" | "meter" | "progress-bar" | "slider-horizontal"
-        | "square-button" | "push-button" => Appearance::Auto,
+        "auto" | "textfield" | "menulist" | "menulist-button" | "button" | "checkbox" | "radio"
+        | "searchfield" | "textarea" | "listbox" | "meter" | "progress-bar"
+        | "slider-horizontal" | "square-button" | "push-button" => Appearance::Auto,
         _ => return None,
     }))
 }
 
 pub fn object_fit(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("fill", ObjectFit::Fill), ("contain", ObjectFit::Contain), ("cover", ObjectFit::Cover), ("none", ObjectFit::None), ("scale-down", ObjectFit::ScaleDown)]).map(Specified::ObjectFit)
+    keyword(
+        p,
+        &[
+            ("fill", ObjectFit::Fill),
+            ("contain", ObjectFit::Contain),
+            ("cover", ObjectFit::Cover),
+            ("none", ObjectFit::None),
+            ("scale-down", ObjectFit::ScaleDown),
+        ],
+    )
+    .map(Specified::ObjectFit)
 }
 
 /// `-webkit-line-clamp: none | <integer [1,∞]>`.
@@ -1365,7 +1636,16 @@ pub fn line_clamp(p: &mut Parser) -> Option<Specified> {
 
 /// `-webkit-box-orient`: only whether the legacy box is vertical matters here.
 pub fn box_orient(p: &mut Parser) -> Option<Specified> {
-    keyword(p, &[("horizontal", false), ("inline-axis", false), ("vertical", true), ("block-axis", true)]).map(Specified::BoxOrientVertical)
+    keyword(
+        p,
+        &[
+            ("horizontal", false),
+            ("inline-axis", false),
+            ("vertical", true),
+            ("block-axis", true),
+        ],
+    )
+    .map(Specified::BoxOrientVertical)
 }
 
 /// `aspect-ratio: auto || <ratio>`, with `<ratio> = <number [0,∞]> [ / <number [0,∞]> ]?`.
@@ -1434,7 +1714,11 @@ pub fn content(p: &mut Parser) -> Option<Specified> {
                 }
                 "counter" => {
                     let n = parse_custom_ident(&mut a)?;
-                    let style = if a.expect_comma().is_some() { list_style_type_keyword(&mut a)? } else { ListStyleType::Decimal };
+                    let style = if a.expect_comma().is_some() {
+                        list_style_type_keyword(&mut a)?
+                    } else {
+                        ListStyleType::Decimal
+                    };
                     if !a.is_done() {
                         return None;
                     }
@@ -1444,7 +1728,11 @@ pub fn content(p: &mut Parser) -> Option<Specified> {
                     let n = parse_custom_ident(&mut a)?;
                     a.expect_comma()?;
                     a.expect_string()?;
-                    let style = if a.expect_comma().is_some() { list_style_type_keyword(&mut a)? } else { ListStyleType::Decimal };
+                    let style = if a.expect_comma().is_some() {
+                        list_style_type_keyword(&mut a)?
+                    } else {
+                        ListStyleType::Decimal
+                    };
                     if !a.is_done() {
                         return None;
                     }
@@ -1512,7 +1800,8 @@ pub fn transition_property(p: &mut Parser) -> Option<Specified> {
     if p.expect_ident_matching("none").is_some() && p.is_done() {
         return Some(Specified::Idents(vec!["none".into()]));
     }
-    p.comma_list(|p| p.expect_ident().map(|s| s.to_ascii_lowercase())).map(Specified::Idents)
+    p.comma_list(|p| p.expect_ident().map(|s| s.to_ascii_lowercase()))
+        .map(Specified::Idents)
 }
 
 pub fn animation_name(p: &mut Parser) -> Option<Specified> {
@@ -1560,7 +1849,12 @@ pub fn timing_function(p: &mut Parser) -> Option<TimingFunction> {
             if !(0..=1000).contains(&x1) || !(0..=1000).contains(&x2) {
                 return None;
             }
-            Some(TimingFunction::CubicBezier(x1, micro_to_milli(v[1].micro), x2, micro_to_milli(v[3].micro)))
+            Some(TimingFunction::CubicBezier(
+                x1,
+                micro_to_milli(v[1].micro),
+                x2,
+                micro_to_milli(v[3].micro),
+            ))
         }
         "steps" => {
             let n = a.expect_integer()?;
@@ -1602,7 +1896,8 @@ pub fn iteration_count(p: &mut Parser) -> Option<Option<i32>> {
 }
 
 pub fn iteration_counts(p: &mut Parser) -> Option<Specified> {
-    p.comma_list(iteration_count).map(Specified::IterationCounts)
+    p.comma_list(iteration_count)
+        .map(Specified::IterationCounts)
 }
 
 pub fn animation_direction_keyword(p: &mut Parser) -> Option<AnimationDirection> {
@@ -1618,15 +1913,25 @@ pub fn animation_direction_keyword(p: &mut Parser) -> Option<AnimationDirection>
 }
 
 pub fn animation_directions(p: &mut Parser) -> Option<Specified> {
-    p.comma_list(animation_direction_keyword).map(Specified::AnimationDirections)
+    p.comma_list(animation_direction_keyword)
+        .map(Specified::AnimationDirections)
 }
 
 pub fn animation_fill_mode_keyword(p: &mut Parser) -> Option<AnimationFillMode> {
-    keyword(p, &[("none", AnimationFillMode::None), ("forwards", AnimationFillMode::Forwards), ("backwards", AnimationFillMode::Backwards), ("both", AnimationFillMode::Both)])
+    keyword(
+        p,
+        &[
+            ("none", AnimationFillMode::None),
+            ("forwards", AnimationFillMode::Forwards),
+            ("backwards", AnimationFillMode::Backwards),
+            ("both", AnimationFillMode::Both),
+        ],
+    )
 }
 
 pub fn animation_fill_modes(p: &mut Parser) -> Option<Specified> {
-    p.comma_list(animation_fill_mode_keyword).map(Specified::AnimationFillModes)
+    p.comma_list(animation_fill_mode_keyword)
+        .map(Specified::AnimationFillModes)
 }
 
 pub fn animation_play_state_keyword(p: &mut Parser) -> Option<bool> {
@@ -1634,7 +1939,8 @@ pub fn animation_play_state_keyword(p: &mut Parser) -> Option<bool> {
 }
 
 pub fn animation_play_states(p: &mut Parser) -> Option<Specified> {
-    p.comma_list(animation_play_state_keyword).map(Specified::Bools)
+    p.comma_list(animation_play_state_keyword)
+        .map(Specified::Bools)
 }
 
 /// Whether the next token is a plain identifier equal to `kw` (for shorthands).

@@ -16,18 +16,54 @@ use cw_service_press::PressService;
 use serde_json::Value;
 
 const SITES: &[(&str, &str)] = &[
-    ("reuters", include_str!("../../../worlds/company-2026/sites/reuters.json")),
-    ("theverge", include_str!("../../../worlds/company-2026/sites/theverge.json")),
-    ("arstechnica", include_str!("../../../worlds/company-2026/sites/arstechnica.json")),
-    ("alice-blog", include_str!("../../../worlds/company-2026/sites/alice-blog.json")),
-    ("bob-blog", include_str!("../../../worlds/company-2026/sites/bob-blog.json")),
-    ("northstar-eng", include_str!("../../../worlds/company-2026/sites/northstar-eng.json")),
-    ("nytimes", include_str!("../../../worlds/company-2026/sites/nytimes.json")),
-    ("bbc", include_str!("../../../worlds/company-2026/sites/bbc.json")),
-    ("cnn", include_str!("../../../worlds/company-2026/sites/cnn.json")),
-    ("google-news", include_str!("../../../worlds/company-2026/sites/google-news.json")),
-    ("medium", include_str!("../../../worlds/company-2026/sites/medium.json")),
-    ("substack", include_str!("../../../worlds/company-2026/sites/substack.json")),
+    (
+        "reuters",
+        include_str!("../../../worlds/company-2026/sites/reuters.json"),
+    ),
+    (
+        "theverge",
+        include_str!("../../../worlds/company-2026/sites/theverge.json"),
+    ),
+    (
+        "arstechnica",
+        include_str!("../../../worlds/company-2026/sites/arstechnica.json"),
+    ),
+    (
+        "alice-blog",
+        include_str!("../../../worlds/company-2026/sites/alice-blog.json"),
+    ),
+    (
+        "bob-blog",
+        include_str!("../../../worlds/company-2026/sites/bob-blog.json"),
+    ),
+    (
+        "northstar-eng",
+        include_str!("../../../worlds/company-2026/sites/northstar-eng.json"),
+    ),
+    (
+        "nytimes",
+        include_str!("../../../worlds/company-2026/sites/nytimes.json"),
+    ),
+    (
+        "bbc",
+        include_str!("../../../worlds/company-2026/sites/bbc.json"),
+    ),
+    (
+        "cnn",
+        include_str!("../../../worlds/company-2026/sites/cnn.json"),
+    ),
+    (
+        "google-news",
+        include_str!("../../../worlds/company-2026/sites/google-news.json"),
+    ),
+    (
+        "medium",
+        include_str!("../../../worlds/company-2026/sites/medium.json"),
+    ),
+    (
+        "substack",
+        include_str!("../../../worlds/company-2026/sites/substack.json"),
+    ),
 ];
 
 fn ctx() -> ServiceContext {
@@ -64,7 +100,12 @@ fn self_links(state: &Value) -> Vec<String> {
 
 fn tags(state: &Value) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
-    for article in state["articles"].as_object().into_iter().flatten().map(|(_, a)| a) {
+    for article in state["articles"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .map(|(_, a)| a)
+    {
         for tag in article["tags"].as_array().into_iter().flatten() {
             let tag = tag.as_str().unwrap_or_default().to_owned();
             if !tag.is_empty() && !out.contains(&tag) {
@@ -83,7 +124,10 @@ fn no_control_on_any_publication_is_a_lie() {
         let mut state = PressService
             .initialize(file["initial_state"].clone(), &ctx())
             .expect("seed passes the service's own gate");
-        let origin = format!("http://{}", file["domains"][0].as_str().expect("a first domain"));
+        let origin = format!(
+            "http://{}",
+            file["domains"][0].as_str().expect("a first domain")
+        );
         let allow: Vec<String> = self_links(&state);
         let allow: Vec<&str> = allow.iter().map(String::as_str).collect();
         let mut call = |method: &str, path: &str| {
@@ -92,9 +136,18 @@ fn no_control_on_any_publication_is_a_lie() {
             // A POST probe writes, so it writes to a copy: the crawl keeps reading the
             // state the seed made.
             let mut scratch = state.clone();
-            let target = if method == "GET" { &mut state } else { &mut scratch };
-            let response = PressService.handle(target, &ctx(), &request).expect("the service answers");
-            (response.status, String::from_utf8_lossy(&response.body).into_owned())
+            let target = if method == "GET" {
+                &mut state
+            } else {
+                &mut scratch
+            };
+            let response = PressService
+                .handle(target, &ctx(), &request)
+                .expect("the service answers");
+            (
+                response.status,
+                String::from_utf8_lossy(&response.body).into_owned(),
+            )
         };
         let faults = audit::Sweep::new(&["/", "/archive", "/saved"], &mut call)
             .allow_self(&allow)
@@ -109,26 +162,44 @@ fn no_control_on_any_publication_is_a_lie() {
 fn no_skin_draws_a_control_it_cannot_honour() {
     let base: Value = serde_json::from_str(SITES[0].1).expect("site file parses");
     for layout in ["wire", "magazine", "blog"] {
-        for skin in ["plain", "blog", "nyt", "bbc", "cnn", "reuters", "verge", "ars", "gnews", "medium", "substack"] {
+        for skin in [
+            "plain", "blog", "nyt", "bbc", "cnn", "reuters", "verge", "ars", "gnews", "medium",
+            "substack",
+        ] {
             let mut initial = base["initial_state"].clone();
             initial["layout"] = Value::String(layout.to_owned());
             initial["skin"] = Value::String(skin.to_owned());
-            let mut state = PressService.initialize(initial, &ctx()).expect("seed loads");
+            let mut state = PressService
+                .initialize(initial, &ctx())
+                .expect("seed loads");
             let allow: Vec<String> = self_links(&state);
             let allow: Vec<&str> = allow.iter().map(String::as_str).collect();
             let mut call = |method: &str, path: &str| {
                 let mut request = HttpRequest::get(format!("http://press.example{path}"));
                 request.method = method.to_owned();
                 let mut scratch = state.clone();
-                let target = if method == "GET" { &mut state } else { &mut scratch };
-                let response = PressService.handle(target, &ctx(), &request).expect("the service answers");
-                (response.status, String::from_utf8_lossy(&response.body).into_owned())
+                let target = if method == "GET" {
+                    &mut state
+                } else {
+                    &mut scratch
+                };
+                let response = PressService
+                    .handle(target, &ctx(), &request)
+                    .expect("the service answers");
+                (
+                    response.status,
+                    String::from_utf8_lossy(&response.body).into_owned(),
+                )
             };
             let faults = audit::Sweep::new(&["/", "/archive", "/saved"], &mut call)
                 .allow_self(&allow)
                 .limit(40)
                 .run();
-            assert!(faults.is_empty(), "{skin}/{layout}:\n  {}", faults.join("\n  "));
+            assert!(
+                faults.is_empty(),
+                "{skin}/{layout}:\n  {}",
+                faults.join("\n  ")
+            );
         }
     }
 }
@@ -137,16 +208,27 @@ fn no_skin_draws_a_control_it_cannot_honour() {
 /// no articles serves, and a topic nobody has written about.
 #[test]
 fn the_splash_and_an_empty_topic_promise_nothing_either() {
-    for skin in ["plain", "blog", "nyt", "bbc", "cnn", "reuters", "verge", "ars", "gnews", "medium", "substack"] {
+    for skin in [
+        "plain", "blog", "nyt", "bbc", "cnn", "reuters", "verge", "ars", "gnews", "medium",
+        "substack",
+    ] {
         for layout in ["wire", "magazine", "blog"] {
             let seed = serde_json::json!({"layout": layout, "skin": skin, "brand": "Soon"});
             let mut state = PressService.initialize(seed, &ctx()).expect("seed loads");
             let response = PressService
-                .handle(&mut state, &ctx(), &HttpRequest::get("http://press.example/"))
+                .handle(
+                    &mut state,
+                    &ctx(),
+                    &HttpRequest::get("http://press.example/"),
+                )
                 .expect("the service answers");
             let html = String::from_utf8_lossy(&response.body).into_owned();
             let faults = audit::page(&html);
-            assert!(faults.is_empty(), "{skin}/{layout} splash:\n  {}", faults.join("\n  "));
+            assert!(
+                faults.is_empty(),
+                "{skin}/{layout} splash:\n  {}",
+                faults.join("\n  ")
+            );
         }
     }
     let file: Value = serde_json::from_str(SITES[0].1).expect("site file parses");
@@ -154,7 +236,11 @@ fn the_splash_and_an_empty_topic_promise_nothing_either() {
         .initialize(file["initial_state"].clone(), &ctx())
         .expect("seed loads");
     let response = PressService
-        .handle(&mut state, &ctx(), &HttpRequest::get("http://press.example/tag/nothing-tagged"))
+        .handle(
+            &mut state,
+            &ctx(),
+            &HttpRequest::get("http://press.example/tag/nothing-tagged"),
+        )
         .expect("the service answers");
     let html = String::from_utf8_lossy(&response.body).into_owned();
     let faults = audit::page(&html);
@@ -179,20 +265,30 @@ fn a_control_in_the_furniture_comes_back_to_the_page_it_was_pressed_from() {
             .next()
             .expect("at least one article")
             .clone();
-        let year = state["articles"][&first]["year"].as_str().unwrap_or("2026").to_owned();
+        let year = state["articles"][&first]["year"]
+            .as_str()
+            .unwrap_or("2026")
+            .to_owned();
         let story = match blog {
             true => format!("/posts/{first}"),
             false => format!("/{year}/{first}"),
         };
         for path in ["/", "/archive", "/saved", story.as_str()] {
             let response = PressService
-                .handle(&mut state, &ctx(), &HttpRequest::get(format!("http://press.example{path}")))
+                .handle(
+                    &mut state,
+                    &ctx(),
+                    &HttpRequest::get(format!("http://press.example{path}")),
+                )
                 .expect("the service answers");
             assert_eq!(response.status, 200, "{name}{path}");
             let html = String::from_utf8_lossy(&response.body).into_owned();
             let doc = cw_web::html::parse(&html);
             for form in ["masthead-follow-form", "subscribe"] {
-                let node = *doc.by_id(form).first().unwrap_or_else(|| panic!("{name}{path}: no #{form}"));
+                let node = *doc
+                    .by_id(form)
+                    .first()
+                    .unwrap_or_else(|| panic!("{name}{path}: no #{form}"));
                 let back = doc
                     .descendants(node)
                     .filter(|n| doc.is(*n, "input") && doc.attr(*n, "name") == Some("return"))
@@ -217,7 +313,10 @@ fn every_class_the_sheets_draw_as_pressable_lands_on_a_control() {
         let mut state = PressService
             .initialize(file["initial_state"].clone(), &ctx())
             .expect("seed loads");
-        let origin = format!("http://{}", file["domains"][0].as_str().expect("a first domain"));
+        let origin = format!(
+            "http://{}",
+            file["domains"][0].as_str().expect("a first domain")
+        );
         let blog = state["layout"] == "blog";
         let mut paths = vec!["/".to_owned(), "/archive".to_owned(), "/saved".to_owned()];
         for tag in tags(&state) {
@@ -230,7 +329,10 @@ fn every_class_the_sheets_draw_as_pressable_lands_on_a_control() {
             .cloned()
             .collect();
         for id in &articles {
-            let year = state["articles"][id]["year"].as_str().unwrap_or("2026").to_owned();
+            let year = state["articles"][id]["year"]
+                .as_str()
+                .unwrap_or("2026")
+                .to_owned();
             paths.push(match blog {
                 true => format!("/posts/{id}"),
                 false => format!("/{year}/{id}"),
@@ -239,7 +341,11 @@ fn every_class_the_sheets_draw_as_pressable_lands_on_a_control() {
         let mut chips = 0usize;
         for path in &paths {
             let response = PressService
-                .handle(&mut state, &ctx(), &HttpRequest::get(format!("{origin}{path}")))
+                .handle(
+                    &mut state,
+                    &ctx(),
+                    &HttpRequest::get(format!("{origin}{path}")),
+                )
                 .expect("the service answers");
             assert_eq!(response.status, 200, "{name}{path}");
             let html = String::from_utf8_lossy(&response.body).into_owned();
@@ -251,12 +357,17 @@ fn every_class_the_sheets_draw_as_pressable_lands_on_a_control() {
                 let tag = doc.tag(node).unwrap_or("");
                 let id = doc.attr(node, "id").unwrap_or("");
                 assert!(
-                    tag == "button" || tag == "a" && doc.attr(node, "href").is_some_and(|h| !h.trim().is_empty()),
+                    tag == "button"
+                        || tag == "a"
+                            && doc.attr(node, "href").is_some_and(|h| !h.trim().is_empty()),
                     "{name}{path}: <{tag} id={id:?}> is drawn as pressable but is not a control"
                 );
                 chips += 1;
             }
         }
-        assert!(chips > 0, "{name}: the sheets' pressable classes went unused");
+        assert!(
+            chips > 0,
+            "{name}: the sheets' pressable classes went unused"
+        );
     }
 }

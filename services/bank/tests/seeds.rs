@@ -143,10 +143,20 @@ fn every_page_of_both_shipped_seeds_validates_strictly() {
                 urls.push(format!("http://{host}/statements/{id}/all"));
                 urls.push(format!("http://{host}/statements/{id}/2026-03"));
             }
-            for t in s.transactions.values().filter(|t| owned.contains(&t.account.as_str())) {
-                urls.push(format!("http://{host}/accounts/{}/transactions/{}", t.account, t.id));
+            for t in s
+                .transactions
+                .values()
+                .filter(|t| owned.contains(&t.account.as_str()))
+            {
+                urls.push(format!(
+                    "http://{host}/accounts/{}/transactions/{}",
+                    t.account, t.id
+                ));
                 if !t.category.is_empty() {
-                    urls.push(format!("http://{host}/accounts/{}?category={}", t.account, t.category));
+                    urls.push(format!(
+                        "http://{host}/accounts/{}?category={}",
+                        t.account, t.category
+                    ));
                 }
             }
             for url in urls {

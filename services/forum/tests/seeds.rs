@@ -110,7 +110,11 @@ fn every_thread_is_reachable_at_its_permalink() {
             );
             // Every reply is on the page with its vote control and its reply or comment box.
             for r in &t.replies {
-                for id in [format!("reply-{}", r.id), format!("{}-up", r.id), format!("{}-body", r.id)] {
+                for id in [
+                    format!("reply-{}", r.id),
+                    format!("{}-up", r.id),
+                    format!("{}-body", r.id),
+                ] {
                     assert!(!page.by_id(&id).is_empty(), "{url}: no #{id}");
                 }
             }
@@ -316,7 +320,11 @@ fn every_route_of_every_seeded_skin_validates() {
             for actor in ACTORS {
                 let mut state = base.clone();
                 let r = ForumService
-                    .handle(&mut state, &ctx(actor), &HttpRequest::get(format!("{host}{path}")))
+                    .handle(
+                        &mut state,
+                        &ctx(actor),
+                        &HttpRequest::get(format!("{host}{path}")),
+                    )
                     .unwrap();
                 if r.status != 200 {
                     continue;

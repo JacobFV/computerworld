@@ -12,7 +12,14 @@ use cw_web::layout::fragment::{Fragment, FragmentKind};
 use cw_web::{Strictness, Viewport};
 use serde_json::Value;
 
-const SITES: [&str; 6] = ["hackernews", "reddit", "stackoverflow", "quora", "yelp", "craigslist"];
+const SITES: [&str; 6] = [
+    "hackernews",
+    "reddit",
+    "stackoverflow",
+    "quora",
+    "yelp",
+    "craigslist",
+];
 /// The two phone widths this world's device set uses, and a small tablet.
 const WIDTHS: [u32; 3] = [390, 412, 768];
 
@@ -33,12 +40,27 @@ fn widest_box(html: &str, width: u32) -> (f64, String) {
     let mut sheets = Vec::new();
     for node in doc.descendants(Document::ROOT) {
         if doc.is(node, "style") {
-            sheets.push(parse_stylesheet(&doc.text_content(node), Origin::Author, Strictness::Strict).unwrap());
+            sheets.push(
+                parse_stylesheet(&doc.text_content(node), Origin::Author, Strictness::Strict)
+                    .unwrap(),
+            );
         }
     }
-    let viewport = Viewport { width, height: 844, scale: 1, zoom: 100 };
+    let viewport = Viewport {
+        width,
+        height: 844,
+        scale: 1,
+        zoom: 100,
+    };
     let media = Media::with_size(viewport.width as i32, viewport.height as i32);
-    let styles = cw_web::style::cascade(&doc, &sheets, &media, &MatchContext::new(), Strictness::Strict).unwrap();
+    let styles = cw_web::style::cascade(
+        &doc,
+        &sheets,
+        &media,
+        &MatchContext::new(),
+        Strictness::Strict,
+    )
+    .unwrap();
     let tree = cw_web::layout::layout(&doc, &styles, viewport);
     fn visit(doc: &Document, f: &Fragment, ox: f64, worst: &mut (f64, String)) {
         let x = ox + f.rect.origin.x.to_f64_px();
@@ -46,7 +68,12 @@ fn widest_box(html: &str, width: u32) -> (f64, String) {
         // scrolls — is reachable by scrolling it, so it is not what clips the page. The
         // document's own scroll box is not one of those: a page wider than the screen is
         // exactly the fault this test is for.
-        if let FragmentKind::Box { scroll: Some(_), source, .. } = &f.kind {
+        if let FragmentKind::Box {
+            scroll: Some(_),
+            source,
+            ..
+        } = &f.kind
+        {
             let tag = doc.tag(source.node()).unwrap_or("");
             // The document's own box has no tag; `html` and `body` scroll the page itself.
             if !matches!(tag, "" | "html" | "body") {
@@ -62,8 +89,12 @@ fn widest_box(html: &str, width: u32) -> (f64, String) {
                     format!(
                         "<{}{}{}>",
                         doc.tag(node).unwrap_or("?"),
-                        doc.attr(node, "id").map(|i| format!(" id={i:?}")).unwrap_or_default(),
-                        doc.attr(node, "class").map(|c| format!(" class={c:?}")).unwrap_or_default()
+                        doc.attr(node, "id")
+                            .map(|i| format!(" id={i:?}"))
+                            .unwrap_or_default(),
+                        doc.attr(node, "class")
+                            .map(|c| format!(" class={c:?}"))
+                            .unwrap_or_default()
                     ),
                 );
             }
@@ -80,10 +111,15 @@ fn widest_box(html: &str, width: u32) -> (f64, String) {
 #[test]
 fn every_page_of_every_skin_fits_a_phone() {
     for site in SITES {
-        let path = format!("{}/../../worlds/company-2026/sites/{site}.json", env!("CARGO_MANIFEST_DIR"));
+        let path = format!(
+            "{}/../../worlds/company-2026/sites/{site}.json",
+            env!("CARGO_MANIFEST_DIR")
+        );
         let file: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         let domain = file["domains"][0].as_str().unwrap().to_owned();
-        let mut state = ForumService.initialize(file["initial_state"].clone(), &ctx()).unwrap();
+        let mut state = ForumService
+            .initialize(file["initial_state"].clone(), &ctx())
+            .unwrap();
         let seed = state.clone();
         let mut paths = vec![
             "/".to_owned(),
@@ -98,12 +134,19 @@ fn every_page_of_every_skin_fits_a_phone() {
         for (handle, _) in seed["members"].as_object().into_iter().flatten() {
             paths.push(format!("/u/{handle}"));
         }
-        for (board, _) in seed["boards"].as_object().into_iter().flatten().filter(|(b, _)| !b.is_empty()) {
+        for (board, _) in seed["boards"]
+            .as_object()
+            .into_iter()
+            .flatten()
+            .filter(|(b, _)| !b.is_empty())
+        {
             paths.push(format!("/r/{board}"));
         }
         for path in &paths {
             let url = format!("http://{domain}{path}");
-            let reply = ForumService.handle(&mut state, &ctx(), &HttpRequest::get(&url)).unwrap();
+            let reply = ForumService
+                .handle(&mut state, &ctx(), &HttpRequest::get(&url))
+                .unwrap();
             assert_eq!(reply.status, 200, "{url}");
             let body = String::from_utf8(reply.body).unwrap();
             for width in WIDTHS {

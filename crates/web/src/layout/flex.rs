@@ -31,15 +31,17 @@ use crate::layout::boxes::{BoxId, BoxKind, LayoutBox, Level, ReplacedBox};
 use crate::layout::fragment::{Fragment, FragmentKind, StyleSource};
 use crate::layout::{intrinsic, table, text, LayoutContext};
 use crate::style::{
-    AlignContent, AlignItems, AlignSelf, BoxSizing, ComputedStyle, Direction, Display, FlexDirection, FlexWrap, JustifyContent, LengthPercentage, LengthPercentageAuto,
-    Overflow, Position, Sizing, StyleSet,
+    AlignContent, AlignItems, AlignSelf, BoxSizing, ComputedStyle, Direction, Display,
+    FlexDirection, FlexWrap, JustifyContent, LengthPercentage, LengthPercentageAuto, Overflow,
+    Position, Sizing, StyleSet,
 };
 
 // Box generation (§4).
 
 /// A block container box that lays its children out as flex items.
 pub fn is_flex_container(b: &LayoutBox) -> bool {
-    matches!(b.style.display, Display::Flex | Display::InlineFlex) && matches!(b.kind, BoxKind::Block | BoxKind::InlineBlock)
+    matches!(b.style.display, Display::Flex | Display::InlineFlex)
+        && matches!(b.kind, BoxKind::Block | BoxKind::InlineBlock)
 }
 
 /// Whether the element's box is a flex or grid item: its parent (through
@@ -49,7 +51,9 @@ pub fn is_flex_or_grid_item(doc: &Document, styles: &StyleSet, node: NodeId) -> 
     while let Some(par) = p {
         match styles.get(par).map(|s| s.display) {
             Some(Display::Contents) => p = doc.parent(par),
-            Some(Display::Flex | Display::InlineFlex | Display::Grid | Display::InlineGrid) => return true,
+            Some(Display::Flex | Display::InlineFlex | Display::Grid | Display::InlineGrid) => {
+                return true
+            }
             _ => return false,
         }
     }
@@ -81,7 +85,11 @@ pub fn blockify_item_display(d: Display) -> Display {
 /// inline-level boxes (text) are wrapped in anonymous block items, runs of only
 /// collapsible white space are dropped, every in-flow box is marked an item, and
 /// absolutely positioned boxes stay as children without being items.
-pub fn wrap_flex_items(boxes: &mut Vec<LayoutBox>, container: BoxId, kids: Vec<BoxId>) -> Vec<BoxId> {
+pub fn wrap_flex_items(
+    boxes: &mut Vec<LayoutBox>,
+    container: BoxId,
+    kids: Vec<BoxId>,
+) -> Vec<BoxId> {
     let parent_style = boxes[container.index()].style.clone();
     let anon = StyleSource::Anonymous(boxes[container.index()].source.node());
     let mut out = Vec::new();
@@ -153,7 +161,11 @@ fn mul_div(a: Au, num: i128, den: i128) -> Au {
         return Au::ZERO;
     }
     let v = a.0 as i128 * num;
-    let r = if (v >= 0) == (den > 0) { (v + den.abs() / 2) / den } else { (v - den.abs() / 2) / den };
+    let r = if (v >= 0) == (den > 0) {
+        (v + den.abs() / 2) / den
+    } else {
+        (v - den.abs() / 2) / den
+    };
     Au(r.clamp(Au::MIN.0 as i128, Au::MAX.0 as i128) as i32)
 }
 
@@ -265,12 +277,23 @@ impl Item {
             },
             v => v,
         };
-        let is_scroll = |o: Overflow| matches!(o, Overflow::Hidden | Overflow::Scroll | Overflow::Auto);
+        let is_scroll =
+            |o: Overflow| matches!(o, Overflow::Hidden | Overflow::Scroll | Overflow::Auto);
         Item {
             id,
             order: s.order,
-            margin: Edges { top: m(s.margin.top), right: m(s.margin.right), bottom: m(s.margin.bottom), left: m(s.margin.left) },
-            auto: [s.margin.top.is_auto(), s.margin.right.is_auto(), s.margin.bottom.is_auto(), s.margin.left.is_auto()],
+            margin: Edges {
+                top: m(s.margin.top),
+                right: m(s.margin.right),
+                bottom: m(s.margin.bottom),
+                left: m(s.margin.left),
+            },
+            auto: [
+                s.margin.top.is_auto(),
+                s.margin.right.is_auto(),
+                s.margin.bottom.is_auto(),
+                s.margin.left.is_auto(),
+            ],
             pb: p + bw,
             replaced: matches!(b.kind, BoxKind::Replaced(_)),
             scroll: is_scroll(s.overflow_x) || is_scroll(s.overflow_y),
@@ -297,16 +320,32 @@ impl Item {
         }
     }
     fn edges_main(&self, a: Axes) -> Au {
-        if a.row { self.pb.horizontal() } else { self.pb.vertical() }
+        if a.row {
+            self.pb.horizontal()
+        } else {
+            self.pb.vertical()
+        }
     }
     fn edges_cross(&self, a: Axes) -> Au {
-        if a.row { self.pb.vertical() } else { self.pb.horizontal() }
+        if a.row {
+            self.pb.vertical()
+        } else {
+            self.pb.horizontal()
+        }
     }
     fn margin_main(&self, a: Axes) -> Au {
-        if a.row { self.margin.horizontal() } else { self.margin.vertical() }
+        if a.row {
+            self.margin.horizontal()
+        } else {
+            self.margin.vertical()
+        }
     }
     fn margin_cross(&self, a: Axes) -> Au {
-        if a.row { self.margin.vertical() } else { self.margin.horizontal() }
+        if a.row {
+            self.margin.vertical()
+        } else {
+            self.margin.horizontal()
+        }
     }
     fn outer_main(&self, a: Axes, m: Au) -> Au {
         m + self.edges_main(a) + self.margin_main(a)
@@ -316,10 +355,18 @@ impl Item {
     }
     /// `auto` margins in the main axis, physical order (left, right) or (top, bottom).
     fn auto_main(&self, a: Axes) -> (bool, bool) {
-        if a.row { (self.auto[3], self.auto[1]) } else { (self.auto[0], self.auto[2]) }
+        if a.row {
+            (self.auto[3], self.auto[1])
+        } else {
+            (self.auto[0], self.auto[2])
+        }
     }
     fn auto_cross(&self, a: Axes) -> (bool, bool) {
-        if a.row { (self.auto[0], self.auto[2]) } else { (self.auto[3], self.auto[1]) }
+        if a.row {
+            (self.auto[0], self.auto[2])
+        } else {
+            (self.auto[3], self.auto[1])
+        }
     }
     fn has_auto_cross(&self, a: Axes) -> bool {
         let (s, e) = self.auto_cross(a);
@@ -344,7 +391,10 @@ impl Item {
         }
     }
     fn frag_height(&self) -> Au {
-        self.fragment.as_ref().map(|f| f.rect.size.height).unwrap_or(Au::ZERO)
+        self.fragment
+            .as_ref()
+            .map(|f| f.rect.size.height)
+            .unwrap_or(Au::ZERO)
     }
     fn content_height(&self) -> Au {
         (self.frag_height() - self.pb.vertical()).max(Au::ZERO)
@@ -356,21 +406,38 @@ impl Item {
     }
     /// The cross-axis size property is `auto` (stretch may apply).
     fn cross_is_auto(&self, a: Axes) -> bool {
-        let v = if a.row { self.style.height } else { self.style.width };
+        let v = if a.row {
+            self.style.height
+        } else {
+            self.style.width
+        };
         matches!(v, Sizing::Auto)
     }
 }
 
 /// The used height of a replaced item at a content width, ignoring `height` when
 /// `content` is set (the aspect ratio transfers the width when there is one).
-fn replaced_height_for_width(ctx: &LayoutContext, it: &Item, rb: &ReplacedBox, cb: &Cb, width: Au, content: bool) -> Au {
+fn replaced_height_for_width(
+    ctx: &LayoutContext,
+    it: &Item,
+    rb: &ReplacedBox,
+    cb: &Cb,
+    width: Au,
+    content: bool,
+) -> Au {
     let s = &it.style;
     let ev = it.pb.vertical();
-    let css_h = if content { None } else { block::resolve_size(s.height, cb.height, ev, s.box_sizing) };
+    let css_h = if content {
+        None
+    } else {
+        block::resolve_size(s.height, cb.height, ev, s.box_sizing)
+    };
     let h = match css_h {
         Some(h) => h,
         None => match rb.intrinsic {
-            Some(z) if z.width > Au::ZERO && rb.attr_height.is_none() => width.scale(z.height.0, z.width.0),
+            Some(z) if z.width > Au::ZERO && rb.attr_height.is_none() => {
+                width.scale(z.height.0, z.width.0)
+            }
             _ => block::replaced_size(ctx, it.id, rb, cb).height,
         },
     };
@@ -384,7 +451,11 @@ fn layout_item(ctx: &LayoutContext, cb: &Cb, it: &mut Item, width: Au, h: H) {
         return;
     }
     if let (H::Forced(fh), Some((w0, h0))) = (h, it.laid) {
-        if w0 == width && h0 != H::Forced(fh) && !matches!(h0, H::Forced(_)) && it.content_height() == fh {
+        if w0 == width
+            && h0 != H::Forced(fh)
+            && !matches!(h0, H::Forced(_))
+            && it.content_height() == fh
+        {
             it.laid = Some((width, h));
             return;
         }
@@ -410,7 +481,15 @@ fn layout_item(ctx: &LayoutContext, cb: &Cb, it: &mut Item, width: Au, h: H) {
         }
         BoxKind::TableWrapper => {
             let mut bfc = Bfc::new();
-            let r = table::layout_wrapper(ctx, it.id, cb, &mut bfc, Point::default(), Au::ZERO, Some(width + eh));
+            let r = table::layout_wrapper(
+                ctx,
+                it.id,
+                cb,
+                &mut bfc,
+                Point::default(),
+                Au::ZERO,
+                Some(width + eh),
+            );
             let mut f = r.fragment;
             if let H::Forced(v) = h {
                 f.rect.size.height = v + ev;
@@ -428,7 +507,15 @@ fn layout_item(ctx: &LayoutContext, cb: &Cb, it: &mut Item, width: Au, h: H) {
                 ctx.cache.borrow_mut().forced_height.insert(it.id, f);
             }
             let mut bfc = Bfc::new();
-            let r = block::layout_block_box(ctx, it.id, cb, &mut bfc, Point::default(), Au::ZERO, Some(width));
+            let r = block::layout_block_box(
+                ctx,
+                it.id,
+                cb,
+                &mut bfc,
+                Point::default(),
+                Au::ZERO,
+                Some(width),
+            );
             ctx.cache.borrow_mut().forced_height.remove(&it.id);
             (r.fragment, r.abs, r.first_baseline)
         }
@@ -464,7 +551,8 @@ fn column_width(ctx: &LayoutContext, cb: &Cb, it: &Item, a: Axes, stretch_to: Op
                 match (stretch_to, &b.kind) {
                     (Some(line), _) if stretch => (line - mh - eh).max(Au::ZERO),
                     (_, BoxKind::Replaced(rb)) => block::replaced_size(ctx, it.id, rb, cb).width,
-                    _ => (block::shrink_to_fit(ctx, it.id, (cb.width - mh).max(Au::ZERO)) - eh).max(Au::ZERO),
+                    _ => (block::shrink_to_fit(ctx, it.id, (cb.width - mh).max(Au::ZERO)) - eh)
+                        .max(Au::ZERO),
                 }
             }
         },
@@ -479,7 +567,11 @@ fn compute_main_sizes(ctx: &LayoutContext, cb: &Cb, it: &mut Item, a: Axes, main
     let bs = s.box_sizing;
     let em = it.edges_main(a);
     let main_prop = if a.row { s.width } else { s.height };
-    let basis = if s.flex_basis == Sizing::Auto { main_prop } else { s.flex_basis };
+    let basis = if s.flex_basis == Sizing::Auto {
+        main_prop
+    } else {
+        s.flex_basis
+    };
     let max_prop = if a.row { s.max_width } else { s.max_height };
     it.max_main = block::resolve_size(max_prop, main_def, em, bs);
     let definite = match basis {
@@ -490,7 +582,11 @@ fn compute_main_sizes(ctx: &LayoutContext, cb: &Cb, it: &mut Item, a: Axes, main
         _ => None,
     };
     let stretch_to = if a.multi { None } else { Some(cb.width) };
-    let column_w = if a.row { Au::ZERO } else { column_width(ctx, cb, it, a, stretch_to) };
+    let column_w = if a.row {
+        Au::ZERO
+    } else {
+        column_width(ctx, cb, it, a, stretch_to)
+    };
     it.base = match definite {
         Some(v) => v.max(Au::ZERO),
         None => {
@@ -588,20 +684,38 @@ fn break_lines(items: &[Item], a: Axes, avail_main: Au, gap: Au) -> Vec<Vec<usiz
 fn resolve_flexible_lengths(items: &mut [Item], line: &[usize], a: Axes, inner_main: Au, gap: Au) {
     let n = line.len() as i32;
     let gaps = gap * (n - 1).max(0);
-    let sum_hyp: Au = line.iter().map(|&i| items[i].outer_main(a, items[i].hyp_main)).fold(Au::ZERO, |acc, v| acc + v);
+    let sum_hyp: Au = line
+        .iter()
+        .map(|&i| items[i].outer_main(a, items[i].hyp_main))
+        .fold(Au::ZERO, |acc, v| acc + v);
     let grow = sum_hyp + gaps < inner_main;
     for &i in line {
         let it = &mut items[i];
         it.target = it.base;
         it.frozen = false;
-        let inflexible = if grow { it.grow == 0 || it.base > it.hyp_main } else { it.shrink == 0 || it.base < it.hyp_main };
+        let inflexible = if grow {
+            it.grow == 0 || it.base > it.hyp_main
+        } else {
+            it.shrink == 0 || it.base < it.hyp_main
+        };
         if inflexible {
             it.target = it.hyp_main;
             it.frozen = true;
         }
     }
     let used = |items: &[Item]| -> Au {
-        line.iter().map(|&i| items[i].outer_main(a, if items[i].frozen { items[i].target } else { items[i].base })).fold(Au::ZERO, |acc, v| acc + v)
+        line.iter()
+            .map(|&i| {
+                items[i].outer_main(
+                    a,
+                    if items[i].frozen {
+                        items[i].target
+                    } else {
+                        items[i].base
+                    },
+                )
+            })
+            .fold(Au::ZERO, |acc, v| acc + v)
     };
     let initial_free = inner_main - gaps - used(items);
     for _ in 0..=line.len() {
@@ -610,7 +724,10 @@ fn resolve_flexible_lengths(items: &mut [Item], line: &[usize], a: Axes, inner_m
         }
         let remaining = inner_main - gaps - used(items);
         let unfrozen: Vec<usize> = line.iter().copied().filter(|&i| !items[i].frozen).collect();
-        let sum_factors: i128 = unfrozen.iter().map(|&i| if grow { items[i].grow } else { items[i].shrink } as i128).sum();
+        let sum_factors: i128 = unfrozen
+            .iter()
+            .map(|&i| if grow { items[i].grow } else { items[i].shrink } as i128)
+            .sum();
         let mut free = remaining;
         if sum_factors < 1000 {
             let p = mul_div(initial_free, sum_factors, 1000);
@@ -629,7 +746,10 @@ fn resolve_flexible_lengths(items: &mut [Item], line: &[usize], a: Axes, inner_m
                     prev = upto;
                 }
             } else {
-                let scaled: Vec<i128> = unfrozen.iter().map(|&i| items[i].shrink as i128 * items[i].base.0 as i128).collect();
+                let scaled: Vec<i128> = unfrozen
+                    .iter()
+                    .map(|&i| items[i].shrink as i128 * items[i].base.0 as i128)
+                    .collect();
                 let sum_scaled: i128 = scaled.iter().sum();
                 let mut cum: i128 = 0;
                 let mut prev = Au::ZERO;
@@ -670,7 +790,17 @@ fn resolve_flexible_lengths(items: &mut [Item], line: &[usize], a: Axes, inner_m
 /// Maps `justify-content` to the flex-relative position, given the axes (§8.2;
 /// `start`/`end` follow the writing mode, `left`/`right` are physical).
 fn justify_pos(j: JustifyContent, a: Axes) -> Pos {
-    let flip = |p: Pos, rev: bool| if rev { if p == Pos::Start { Pos::End } else { Pos::Start } } else { p };
+    let flip = |p: Pos, rev: bool| {
+        if rev {
+            if p == Pos::Start {
+                Pos::End
+            } else {
+                Pos::Start
+            }
+        } else {
+            p
+        }
+    };
     match j {
         JustifyContent::FlexStart | JustifyContent::Stretch => Pos::Start,
         JustifyContent::FlexEnd => Pos::End,
@@ -681,16 +811,34 @@ fn justify_pos(j: JustifyContent, a: Axes) -> Pos {
         JustifyContent::Start => flip(Pos::Start, a.dir_rev),
         JustifyContent::End => flip(Pos::End, a.dir_rev),
         JustifyContent::Left => {
-            if a.row { flip(Pos::Start, a.main_rev) } else { flip(Pos::Start, a.dir_rev) }
+            if a.row {
+                flip(Pos::Start, a.main_rev)
+            } else {
+                flip(Pos::Start, a.dir_rev)
+            }
         }
         JustifyContent::Right => {
-            if a.row { flip(Pos::End, a.main_rev) } else { flip(Pos::Start, a.dir_rev) }
+            if a.row {
+                flip(Pos::End, a.main_rev)
+            } else {
+                flip(Pos::Start, a.dir_rev)
+            }
         }
     }
 }
 
 fn align_content_pos(c: AlignContent, a: Axes) -> Pos {
-    let flip = |p: Pos, rev: bool| if rev { if p == Pos::Start { Pos::End } else { Pos::Start } } else { p };
+    let flip = |p: Pos, rev: bool| {
+        if rev {
+            if p == Pos::Start {
+                Pos::End
+            } else {
+                Pos::Start
+            }
+        } else {
+            p
+        }
+    };
     match c {
         AlignContent::Normal | AlignContent::Stretch | AlignContent::FlexStart => Pos::Start,
         AlignContent::FlexEnd => Pos::End,
@@ -704,13 +852,27 @@ fn align_content_pos(c: AlignContent, a: Axes) -> Pos {
 }
 
 fn align_self_pos(s: AlignSelf, a: Axes) -> Pos {
-    let flip = |p: Pos, rev: bool| if rev { if p == Pos::Start { Pos::End } else { Pos::Start } } else { p };
+    let flip = |p: Pos, rev: bool| {
+        if rev {
+            if p == Pos::Start {
+                Pos::End
+            } else {
+                Pos::Start
+            }
+        } else {
+            p
+        }
+    };
     match s {
         AlignSelf::Auto | AlignSelf::Stretch | AlignSelf::FlexStart => Pos::Start,
         AlignSelf::FlexEnd => Pos::End,
         AlignSelf::Center => Pos::Center,
         AlignSelf::Baseline => {
-            if a.row { Pos::Baseline } else { Pos::Start }
+            if a.row {
+                Pos::Baseline
+            } else {
+                Pos::Start
+            }
         }
         AlignSelf::Start => flip(Pos::Start, a.wrap_rev),
         AlignSelf::End => flip(Pos::End, a.wrap_rev),
@@ -727,13 +889,25 @@ fn distribute(p: Pos, free: Au, k: usize, n: usize) -> Au {
         Pos::End => free,
         Pos::Center => free / 2,
         Pos::Between => {
-            if free <= Au::ZERO || n <= 1 { Au::ZERO } else { mul_div(free, k, n - 1) }
+            if free <= Au::ZERO || n <= 1 {
+                Au::ZERO
+            } else {
+                mul_div(free, k, n - 1)
+            }
         }
         Pos::Around => {
-            if free < Au::ZERO { free / 2 } else { mul_div(free, 2 * k + 1, 2 * n) }
+            if free < Au::ZERO {
+                free / 2
+            } else {
+                mul_div(free, 2 * k + 1, 2 * n)
+            }
         }
         Pos::Evenly => {
-            if free < Au::ZERO { free / 2 } else { mul_div(free, k + 1, n + 1) }
+            if free < Au::ZERO {
+                free / 2
+            } else {
+                mul_div(free, k + 1, n + 1)
+            }
         }
     }
 }
@@ -745,10 +919,23 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
     let b = &ctx.tree[id];
     let s = b.style.clone();
     let rtl = s.direction == Direction::Rtl;
-    let row = matches!(s.flex_direction, FlexDirection::Row | FlexDirection::RowReverse);
-    let dir_rev = matches!(s.flex_direction, FlexDirection::RowReverse | FlexDirection::ColumnReverse);
+    let row = matches!(
+        s.flex_direction,
+        FlexDirection::Row | FlexDirection::RowReverse
+    );
+    let dir_rev = matches!(
+        s.flex_direction,
+        FlexDirection::RowReverse | FlexDirection::ColumnReverse
+    );
     let wrap_rev = s.flex_wrap == FlexWrap::WrapReverse;
-    let a = Axes { row, dir_rev, wrap_rev, main_rev: dir_rev ^ (row && rtl), cross_rev: wrap_rev ^ (!row && rtl), multi: s.flex_wrap != FlexWrap::NoWrap };
+    let a = Axes {
+        row,
+        dir_rev,
+        wrap_rev,
+        main_rev: dir_rev ^ (row && rtl),
+        cross_rev: wrap_rev ^ (!row && rtl),
+        multi: s.flex_wrap != FlexWrap::NoWrap,
+    };
     let main_def = if row { Some(cb.width) } else { cb.height };
     let cross_def = if row { cb.height } else { Some(cb.width) };
     // The container's own min/max height (lengths only: its containing block is not
@@ -757,8 +944,16 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
     let cev = cp.vertical() + s.used_border_widths().vertical();
     let min_h = length_size(s.min_height, cev, s.box_sizing);
     let max_h = length_size(s.max_height, cev, s.box_sizing);
-    let main_gap = if row { s.column_gap.resolve(cb.width) } else { s.row_gap.maybe_resolve(cb.height).unwrap_or(Au::ZERO) };
-    let cross_gap = if row { s.row_gap.maybe_resolve(cb.height).unwrap_or(Au::ZERO) } else { s.column_gap.resolve(cb.width) };
+    let main_gap = if row {
+        s.column_gap.resolve(cb.width)
+    } else {
+        s.row_gap.maybe_resolve(cb.height).unwrap_or(Au::ZERO)
+    };
+    let cross_gap = if row {
+        s.row_gap.maybe_resolve(cb.height).unwrap_or(Au::ZERO)
+    } else {
+        s.column_gap.resolve(cb.width)
+    };
 
     // Items in order-modified document order (§5.4); absolutes aside (§4.1).
     let mut items: Vec<Item> = Vec::new();
@@ -769,7 +964,10 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
             abs_ids.push(c);
             continue;
         }
-        if matches!(cbx.kind, BoxKind::Col(_) | BoxKind::ColGroup(_) | BoxKind::Wbr | BoxKind::Marker(_)) {
+        if matches!(
+            cbx.kind,
+            BoxKind::Col(_) | BoxKind::ColGroup(_) | BoxKind::Wbr | BoxKind::Marker(_)
+        ) {
             continue;
         }
         items.push(Item::new(ctx, c, cb, &s));
@@ -782,11 +980,16 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
     }
 
     // §9.3: flex lines and the container's main size.
-    let avail_main = main_def.or(if row { None } else { max_h }).unwrap_or(Au::MAX);
+    let avail_main = main_def
+        .or(if row { None } else { max_h })
+        .unwrap_or(Au::MAX);
     let lines = break_lines(&items, a, avail_main, main_gap);
     let line_hyp_sum = |line: &Vec<usize>| -> Au {
         let n = line.len() as i32;
-        line.iter().map(|&i| items[i].outer_main(a, items[i].hyp_main)).fold(Au::ZERO, |acc, v| acc + v) + main_gap * (n - 1).max(0)
+        line.iter()
+            .map(|&i| items[i].outer_main(a, items[i].hyp_main))
+            .fold(Au::ZERO, |acc, v| acc + v)
+            + main_gap * (n - 1).max(0)
     };
     let inner_main = match main_def {
         Some(m) => m,
@@ -811,14 +1014,19 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
             layout_item(ctx, cb, it, it.target, H::Auto);
             it.hyp_cross = it.content_height();
         } else {
-            it.hyp_cross = column_width(ctx, cb, it, a, if a.multi { None } else { Some(cb.width) });
+            it.hyp_cross =
+                column_width(ctx, cb, it, a, if a.multi { None } else { Some(cb.width) });
         }
     }
 
     // Step 8: line cross sizes; baseline groups measured from the cross-start edge.
     let above_of = |it: &Item| -> Au {
         let phys = it.margin.top + it.baseline_or_synth();
-        if a.cross_rev { it.outer_cross(a, it.hyp_cross) - phys } else { phys }
+        if a.cross_rev {
+            it.outer_cross(a, it.hyp_cross) - phys
+        } else {
+            phys
+        }
     };
     let participates = |it: &Item| row && it.align == AlignSelf::Baseline && !it.has_auto_cross(a);
     let mut line_cross: Vec<Au> = Vec::with_capacity(lines.len());
@@ -857,7 +1065,11 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
     let n_lines = lines.len();
     let cross_gaps = cross_gap * (n_lines as i32 - 1).max(0);
     if let Some(c) = cross_def {
-        if matches!(s.align_content, AlignContent::Normal | AlignContent::Stretch) && n_lines > 0 {
+        if matches!(
+            s.align_content,
+            AlignContent::Normal | AlignContent::Stretch
+        ) && n_lines > 0
+        {
             let used: Au = line_cross.iter().fold(Au::ZERO, |acc, v| acc + *v);
             let free = c - used - cross_gaps;
             if free > Au::ZERO {
@@ -875,20 +1087,39 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
         let lc = line_cross[li];
         for &i in line {
             let it = &mut items[i];
-            let stretch = it.align == AlignSelf::Stretch && it.cross_is_auto(a) && !it.has_auto_cross(a);
+            let stretch =
+                it.align == AlignSelf::Stretch && it.cross_is_auto(a) && !it.has_auto_cross(a);
             if stretch {
                 let v = (lc - it.margin_cross(a) - it.edges_cross(a)).max(Au::ZERO);
                 let st = it.style.clone();
                 it.cross = if row {
-                    block::clamp_size(v, st.min_height, st.max_height, cb.height, it.pb.vertical(), st.box_sizing)
+                    block::clamp_size(
+                        v,
+                        st.min_height,
+                        st.max_height,
+                        cb.height,
+                        it.pb.vertical(),
+                        st.box_sizing,
+                    )
                 } else {
-                    block::clamp_size(v, st.min_width, st.max_width, Some(cb.width), it.pb.horizontal(), st.box_sizing)
+                    block::clamp_size(
+                        v,
+                        st.min_width,
+                        st.max_width,
+                        Some(cb.width),
+                        it.pb.horizontal(),
+                        st.box_sizing,
+                    )
                 };
             } else {
                 it.cross = it.hyp_cross;
             }
             if row {
-                let h = if stretch { H::Forced(it.cross) } else { H::Auto };
+                let h = if stretch {
+                    H::Forced(it.cross)
+                } else {
+                    H::Auto
+                };
                 layout_item(ctx, cb, it, it.target, h);
             } else {
                 layout_item(ctx, cb, it, it.cross, H::Forced(it.target));
@@ -900,12 +1131,18 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
     let jc = justify_pos(s.justify_content, a);
     for line in &lines {
         let n = line.len();
-        let used: Au = line.iter().map(|&i| items[i].outer_main(a, items[i].target)).fold(Au::ZERO, |acc, v| acc + v);
+        let used: Au = line
+            .iter()
+            .map(|&i| items[i].outer_main(a, items[i].target))
+            .fold(Au::ZERO, |acc, v| acc + v);
         let mut free = inner_main - used - main_gap * (n as i32 - 1).max(0);
-        let auto_count: i128 = line.iter().map(|&i| {
-            let (s, e) = items[i].auto_main(a);
-            s as i128 + e as i128
-        }).sum();
+        let auto_count: i128 = line
+            .iter()
+            .map(|&i| {
+                let (s, e) = items[i].auto_main(a);
+                s as i128 + e as i128
+            })
+            .sum();
         if auto_count > 0 {
             if free > Au::ZERO {
                 let each = mul_div(free, 1, auto_count);
@@ -924,7 +1161,11 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
                         v
                     };
                     let (ms, me) = (take(sa), take(ea));
-                    let (cs, ce) = if a.row { (it.margin.left, it.margin.right) } else { (it.margin.top, it.margin.bottom) };
+                    let (cs, ce) = if a.row {
+                        (it.margin.left, it.margin.right)
+                    } else {
+                        (it.margin.top, it.margin.bottom)
+                    };
                     it.set_main_margins(a, if sa { ms } else { cs }, if ea { me } else { ce });
                 }
             }
@@ -956,7 +1197,11 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
             let it = &mut items[i];
             let free_i = lc - it.outer_cross(a, it.cross);
             let (sa, ea) = it.auto_cross(a);
-            let (cs, ce) = if a.row { (it.margin.top, it.margin.bottom) } else { (it.margin.left, it.margin.right) };
+            let (cs, ce) = if a.row {
+                (it.margin.top, it.margin.bottom)
+            } else {
+                (it.margin.left, it.margin.right)
+            };
             let offset = if sa || ea {
                 if free_i > Au::ZERO {
                     let (ms, me) = match (sa, ea) {
@@ -972,7 +1217,11 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
                     Pos::Baseline => {
                         let ab = {
                             let phys = it.margin.top + it.baseline_or_synth();
-                            if a.cross_rev { it.outer_cross(a, it.cross) - phys } else { phys }
+                            if a.cross_rev {
+                                it.outer_cross(a, it.cross) - phys
+                            } else {
+                                phys
+                            }
                         };
                         line_above[li] - ab
                     }
@@ -984,13 +1233,28 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
     }
 
     // Physical placement, relative offsets, fragments in order.
-    let mut out = ContentsResult { empty: items.is_empty(), ..Default::default() };
+    let mut out = ContentsResult {
+        empty: items.is_empty(),
+        ..Default::default()
+    };
     for it in &mut items {
         let om = it.outer_main(a, it.target);
         let oc = it.outer_cross(a, it.cross);
-        let main_phys = if a.main_rev { inner_main - it.main_pos - om } else { it.main_pos };
-        let cross_phys = if a.cross_rev { total_cross - it.cross_pos - oc } else { it.cross_pos };
-        let (x, y) = if row { (main_phys + it.margin.left, cross_phys + it.margin.top) } else { (cross_phys + it.margin.left, main_phys + it.margin.top) };
+        let main_phys = if a.main_rev {
+            inner_main - it.main_pos - om
+        } else {
+            it.main_pos
+        };
+        let cross_phys = if a.cross_rev {
+            total_cross - it.cross_pos - oc
+        } else {
+            it.cross_pos
+        };
+        let (x, y) = if row {
+            (main_phys + it.margin.left, cross_phys + it.margin.top)
+        } else {
+            (cross_phys + it.margin.left, main_phys + it.margin.top)
+        };
         let off = block::relative_offset(&it.style, cb);
         it.frag_y = y + off.y;
         // The container's baselines are read after the fragments have moved out, so
@@ -998,7 +1262,10 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
         // edge) while its fragment still says how tall it is.
         it.baseline = Some(it.baseline_or_synth());
         if let Some(mut f) = it.fragment.take() {
-            f.rect.origin = Point { x: x + off.x, y: y + off.y };
+            f.rect.origin = Point {
+                x: x + off.x,
+                y: y + off.y,
+            };
             f.used_margin = Some(it.margin);
             let mut abs = std::mem::take(&mut it.abs);
             block::translate_requests(&mut abs, f.rect.origin.x, f.rect.origin.y);
@@ -1009,7 +1276,15 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
     // The container's baselines (§8.5): the first line's baseline-aligned item, else
     // its first item, synthesized from the item's border box when it has none.
     let line_baseline = |line: &Vec<usize>, last: bool| -> Option<Au> {
-        let pick = line.iter().copied().find(|&i| participates(&items[i])).or(if last { line.last().copied() } else { line.first().copied() })?;
+        let pick = line
+            .iter()
+            .copied()
+            .find(|&i| participates(&items[i]))
+            .or(if last {
+                line.last().copied()
+            } else {
+                line.first().copied()
+            })?;
         let it = &items[pick];
         Some(it.frag_y + it.baseline_or_synth())
     };
@@ -1034,7 +1309,10 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
         };
         let jp = jc;
         let ap = align_self_pos(align, a);
-        let needs_size = !matches!(jp, Pos::Start | Pos::Between) || !matches!(ap, Pos::Start | Pos::Baseline) || a.main_rev || a.cross_rev;
+        let needs_size = !matches!(jp, Pos::Start | Pos::Between)
+            || !matches!(ap, Pos::Start | Pos::Baseline)
+            || a.main_rev
+            || a.cross_rev;
         let (ow, oh) = if needs_size {
             let p = block::padding_edges(&cs, cb.width);
             let bw = cs.used_border_widths();
@@ -1042,7 +1320,8 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
             let ml = cs.margin.left.resolve(cb.width).unwrap_or(Au::ZERO);
             let mr = cs.margin.right.resolve(cb.width).unwrap_or(Au::ZERO);
             let (mt, mb) = block::vertical_margins(&cs, cb.width);
-            let (f, _) = block::layout_standalone(ctx, c, cb, (cb.width - ml - mr).max(Au::ZERO), eh);
+            let (f, _) =
+                block::layout_standalone(ctx, c, cb, (cb.width - ml - mr).max(Au::ZERO), eh);
             (f.rect.size.width + ml + mr, f.rect.size.height + mt + mb)
         } else {
             (Au::ZERO, Au::ZERO)
@@ -1051,9 +1330,21 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
         let mp = distribute(jp, inner_main - om, 0, 1);
         let cpos = distribute(ap, total_cross - oc, 0, 1);
         let main_phys = if a.main_rev { inner_main - mp - om } else { mp };
-        let cross_phys = if a.cross_rev { total_cross - cpos - oc } else { cpos };
-        let (x, y) = if row { (main_phys, cross_phys) } else { (cross_phys, main_phys) };
-        out.abs.push(AbsRequest { id: c, static_pos: Point { x, y }, fixed: cs.position == Position::Fixed });
+        let cross_phys = if a.cross_rev {
+            total_cross - cpos - oc
+        } else {
+            cpos
+        };
+        let (x, y) = if row {
+            (main_phys, cross_phys)
+        } else {
+            (cross_phys, main_phys)
+        };
+        out.abs.push(AbsRequest {
+            id: c,
+            static_pos: Point { x, y },
+            fixed: cs.position == Position::Fixed,
+        });
     }
     out
 }
@@ -1065,7 +1356,10 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
 pub fn content_min_max(ctx: &LayoutContext, id: BoxId) -> (Au, Au) {
     let b = &ctx.tree[id];
     let s = &b.style;
-    let row = matches!(s.flex_direction, FlexDirection::Row | FlexDirection::RowReverse);
+    let row = matches!(
+        s.flex_direction,
+        FlexDirection::Row | FlexDirection::RowReverse
+    );
     let multi = s.flex_wrap != FlexWrap::NoWrap;
     let gap = match if row { s.column_gap } else { s.row_gap } {
         LengthPercentage::Length(l) => l,
@@ -1077,7 +1371,12 @@ pub fn content_min_max(ctx: &LayoutContext, id: BoxId) -> (Au, Au) {
     let mut n = 0;
     for &c in &b.children {
         let cb = &ctx.tree[c];
-        if cb.is_abs() || matches!(cb.kind, BoxKind::Col(_) | BoxKind::ColGroup(_) | BoxKind::Wbr | BoxKind::Marker(_)) {
+        if cb.is_abs()
+            || matches!(
+                cb.kind,
+                BoxKind::Col(_) | BoxKind::ColGroup(_) | BoxKind::Wbr | BoxKind::Marker(_)
+            )
+        {
             continue;
         }
         let (cmn, cmx) = intrinsic::min_max(ctx, c);

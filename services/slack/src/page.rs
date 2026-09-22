@@ -90,7 +90,6 @@ pub fn emojify(text: &str) -> String {
     out
 }
 
-
 /// A person's initials on a rounded square in their own colour, Slack's avatar shape.
 /// `size` is one of the sheet's avatar sizes (`s20`, `s24`, `s26`, `s32`, `s36`).
 fn avatar(id: &str, name: &str, size: &str) -> Html {
@@ -222,7 +221,14 @@ fn topbar(state: &SlackState, actor: &str, workspace: &str, query: &str) -> Html
 }
 /// The rail: the workspace tile, then Home, DMs and Activity, each an icon over its
 /// label. Slack's Later and More tabs are not drawn: neither names anything here.
-fn rail(state: &SlackState, actor: &str, workspace: &str, home: bool, dms: bool, activity: bool) -> Html {
+fn rail(
+    state: &SlackState,
+    actor: &str,
+    workspace: &str,
+    home: bool,
+    dms: bool,
+    activity: bool,
+) -> Html {
     let mentions = state.mentions(actor).len();
     let tab = |id: &str, icon: &str, label: &str, on: bool, url: &str| {
         el("a")
@@ -307,7 +313,12 @@ fn sidebar(state: &SlackState, actor: &str, open: Option<&str>, now: u64, worksp
             continue;
         }
         let mark = if channel.private {
-            glyph(&format!("nav-{id}-lock"), "mark lock", "Private channel", "")
+            glyph(
+                &format!("nav-{id}-lock"),
+                "mark lock",
+                "Private channel",
+                "",
+            )
         } else {
             glyph(&format!("nav-{id}-hash"), "mark", "Channel", "#")
         };
@@ -381,7 +392,12 @@ fn sidebar(state: &SlackState, actor: &str, open: Option<&str>, now: u64, worksp
                         .id(id.as_str())
                         .attr("type", "submit")
                         .class("row")
-                        .children(row_inner(&id, mark, state.display(&who), Standing::default())),
+                        .children(row_inner(
+                            &id,
+                            mark,
+                            state.display(&who),
+                            Standing::default(),
+                        )),
                 ),
         );
     }
@@ -390,7 +406,10 @@ fn sidebar(state: &SlackState, actor: &str, open: Option<&str>, now: u64, worksp
             span("workspace").id("workspace").text(workspace),
             ornament("workspace-menu", "caret light", "▾"),
         ]),
-        el("nav").id("sidebar-list").class("sidebar-list").children(items),
+        el("nav")
+            .id("sidebar-list")
+            .class("sidebar-list")
+            .children(items),
     ])
 }
 
@@ -566,28 +585,32 @@ fn toolbar(ctx: &Ctx, m: &Message) -> Html {
     } else {
         "Pin to channel"
     };
-    form(&format!("{}-tools", m.id), format!("{base}/reactions"), "post")
-        .class("tools")
-        .children([
-            quick("white_check_mark"),
-            quick("eyes"),
-            quick("+1"),
-            el("a")
-                .id(format!("{}-open-thread", m.id))
-                .class("tool bubble")
-                .attr("href", format!("{}?thread={}", ctx.url(), m.id))
-                .attr("title", "Reply in thread")
-                .attr("aria-label", "Reply in thread"),
-            // The `formmethod` is the form's own, spelled out: a reader that takes a
-            // bare `formaction` for a link would ask for this route with GET, which
-            // is not a route at all.
-            button(&format!("{}-pin", m.id), "📌")
-                .class("tool")
-                .attr("formaction", format!("{base}/pin"))
-                .attr("formmethod", "post")
-                .attr("title", pin_label)
-                .attr("aria-label", pin_label),
-        ])
+    form(
+        &format!("{}-tools", m.id),
+        format!("{base}/reactions"),
+        "post",
+    )
+    .class("tools")
+    .children([
+        quick("white_check_mark"),
+        quick("eyes"),
+        quick("+1"),
+        el("a")
+            .id(format!("{}-open-thread", m.id))
+            .class("tool bubble")
+            .attr("href", format!("{}?thread={}", ctx.url(), m.id))
+            .attr("title", "Reply in thread")
+            .attr("aria-label", "Reply in thread"),
+        // The `formmethod` is the form's own, spelled out: a reader that takes a
+        // bare `formaction` for a link would ask for this route with GET, which
+        // is not a route at all.
+        button(&format!("{}-pin", m.id), "📌")
+            .class("tool")
+            .attr("formaction", format!("{base}/pin"))
+            .attr("formmethod", "post")
+            .attr("title", pin_label)
+            .attr("aria-label", pin_label),
+    ])
 }
 /// Where a message is drawn, which decides what surrounds its text.
 #[derive(Clone, Copy)]
@@ -607,18 +630,24 @@ fn message(ctx: &Ctx, prefix: &str, m: &Message, at: Placement, replies: &[&Mess
     let mentions = m.mentions();
     let mut inner = div("msg-body").id(format!("{id}-body"));
     if ctx.channel.pins.contains(&m.id) {
-        inner = inner.child(div("pinned").id(format!("{id}-pinned")).children([
-            glyph(&format!("{id}-pin-icon"), "pin", "Pinned", "📌"),
-            span("").id(format!("{id}-pinned-text")).text("Pinned to this channel"),
-        ]));
+        inner = inner.child(
+            div("pinned").id(format!("{id}-pinned")).children([
+                glyph(&format!("{id}-pin-icon"), "pin", "Pinned", "📌"),
+                span("")
+                    .id(format!("{id}-pinned-text"))
+                    .text("Pinned to this channel"),
+            ]),
+        );
     }
     if at.first {
-        inner = inner.child(div("msg-head").id(format!("{id}-head")).children([
-            span("author")
-                .id(format!("{id}-author"))
-                .text(ctx.state.display(&m.author)),
-            span("time").id(format!("{id}-time")).text(stamp.clone()),
-        ]));
+        inner = inner.child(
+            div("msg-head").id(format!("{id}-head")).children([
+                span("author")
+                    .id(format!("{id}-author"))
+                    .text(ctx.state.display(&m.author)),
+                span("time").id(format!("{id}-time")).text(stamp.clone()),
+            ]),
+        );
     }
     inner = inner
         .child(body(id, &m.text, &mentions))
@@ -639,16 +668,26 @@ fn message(ctx: &Ctx, prefix: &str, m: &Message, at: Placement, replies: &[&Mess
         .id(format!("{id}-row"))
         .class(if at.first { "first" } else { "" })
         .class(if at.last { "last" } else { "" })
-        .class(if ctx.channel.pins.contains(&m.id) { "is-pinned" } else { "" })
-        .class(if mentions.contains(&ctx.actor) { "mentioned" } else { "" })
+        .class(if ctx.channel.pins.contains(&m.id) {
+            "is-pinned"
+        } else {
+            ""
+        })
+        .class(if mentions.contains(&ctx.actor) {
+            "mentioned"
+        } else {
+            ""
+        })
         .child(gutter)
         .child(inner)
         .when(at.transcript, |row| row.child(toolbar(ctx, m)))
 }
 fn day_divider(index: u64, label: String) -> Html {
-    div("day")
-        .id(format!("day-{index}"))
-        .child(span("day-label").id(format!("day-{index}-label")).text(label))
+    div("day").id(format!("day-{index}")).child(
+        span("day-label")
+            .id(format!("day-{index}-label"))
+            .text(label),
+    )
 }
 /// The transcript: top-level messages under date dividers, runs by one author grouped.
 fn transcript(ctx: &Ctx) -> Vec<Html> {
@@ -693,7 +732,10 @@ fn transcript(ctx: &Ctx) -> Vec<Html> {
 fn header(ctx: &Ctx, members_open: bool) -> Html {
     let heading = ctx.heading();
     let is_channel = ctx.state.channels.contains_key(ctx.id);
-    let title = el("h1").id("channel-title").class("channel-title").text(heading);
+    let title = el("h1")
+        .id("channel-title")
+        .class("channel-title")
+        .text(heading);
     let mut line = div("channel-head").id("channel-head");
     if is_channel {
         line = line
@@ -749,20 +791,24 @@ fn header(ctx: &Ctx, members_open: bool) -> Html {
     if !ctx.channel.pins.is_empty() || !ctx.channel.purpose.is_empty() {
         let mut bar = div("channel-bar").id("channel-bar");
         if !ctx.channel.pins.is_empty() {
-            bar = bar.child(span("bar-item").children([
-                glyph("channel-pins-icon", "pin", "Pinned", "📌"),
-                span("")
-                    .id("channel-pins")
-                    .text(format!("{} Pinned", ctx.channel.pins.len())),
-            ]));
+            bar = bar.child(
+                span("bar-item").children([
+                    glyph("channel-pins-icon", "pin", "Pinned", "📌"),
+                    span("")
+                        .id("channel-pins")
+                        .text(format!("{} Pinned", ctx.channel.pins.len())),
+                ]),
+            );
         }
         if !ctx.channel.purpose.is_empty() {
-            bar = bar.child(span("bar-item").children([
-                glyph("channel-purpose-icon", "info", "Purpose", "i"),
-                span("")
-                    .id("channel-purpose")
-                    .text(ctx.channel.purpose.as_str()),
-            ]));
+            bar = bar.child(
+                span("bar-item").children([
+                    glyph("channel-purpose-icon", "info", "Purpose", "i"),
+                    span("")
+                        .id("channel-purpose")
+                        .text(ctx.channel.purpose.as_str()),
+                ]),
+            );
         }
         head = head.child(bar);
     }
@@ -778,19 +824,23 @@ enum Pane<'a> {
 fn thread_composer(ctx: &Ctx, parent: &Message) -> Html {
     let id = &parent.id;
     div("composer").id("thread-composer").child(
-        form(&format!("{id}-reply"), format!("{}/messages", ctx.url()), "post")
-            .class("composer-box")
-            .children([
-                hidden("parent", id),
-                text_input(&format!("{id}-reply-body"), "text", "")
-                    .attr("aria-label", "Reply in thread")
-                    .attr("placeholder", "Reply…")
-                    .attr("autocomplete", "off"),
-                div("send-actions").children([
-                    span("grow"),
-                    button(&format!("{id}-reply-submit"), "Reply").class("send"),
-                ]),
+        form(
+            &format!("{id}-reply"),
+            format!("{}/messages", ctx.url()),
+            "post",
+        )
+        .class("composer-box")
+        .children([
+            hidden("parent", id),
+            text_input(&format!("{id}-reply-body"), "text", "")
+                .attr("aria-label", "Reply in thread")
+                .attr("placeholder", "Reply…")
+                .attr("autocomplete", "off"),
+            div("send-actions").children([
+                span("grow"),
+                button(&format!("{id}-reply-submit"), "Reply").class("send"),
             ]),
+        ]),
     )
 }
 /// The composer under the transcript: a bordered box with the field and the send
@@ -804,7 +854,10 @@ fn composer(ctx: &Ctx) -> Html {
             .children([
                 text_input("send-text", "text", "")
                     .attr("aria-label", format!("Message {heading}"))
-                    .attr("placeholder", format!("Message {}", heading.replace("# ", "#")))
+                    .attr(
+                        "placeholder",
+                        format!("Message {}", heading.replace("# ", "#")),
+                    )
                     .attr("autocomplete", "off"),
                 div("send-actions").id("send-actions").children([
                     span("grow"),
@@ -843,9 +896,10 @@ fn thread_pane(ctx: &Ctx, parent: &Message) -> Html {
         transcript: false,
     };
     // The parent is also in the transcript, so its ids are the pane's own here.
-    let mut list = div("scroller")
-        .id("thread-messages")
-        .child(message(ctx, "thread-", parent, pane, &[]));
+    let mut list =
+        div("scroller")
+            .id("thread-messages")
+            .child(message(ctx, "thread-", parent, pane, &[]));
     if !replies.is_empty() {
         list = list.child(
             div("thread-count").id("thread-count").child(
@@ -887,15 +941,17 @@ fn members_pane(ctx: &Ctx) -> Html {
     for who in &ctx.channel.members {
         let member = ctx.state.members.get(who);
         let mut lines = div("member-lines").id(format!("member-{who}-lines")).child(
-            div("member-name").id(format!("member-{who}-name")).children([
-                span("author")
-                    .id(format!("member-{who}"))
-                    .text(ctx.state.display(who)),
-                presence(
-                    &format!("member-{who}-presence"),
-                    active(ctx.state, who, ctx.actor, ctx.now),
-                ),
-            ]),
+            div("member-name")
+                .id(format!("member-{who}-name"))
+                .children([
+                    span("author")
+                        .id(format!("member-{who}"))
+                        .text(ctx.state.display(who)),
+                    presence(
+                        &format!("member-{who}-presence"),
+                        active(ctx.state, who, ctx.actor, ctx.now),
+                    ),
+                ]),
         );
         if let Some(m) = member {
             if !m.title.is_empty() {
@@ -914,7 +970,11 @@ fn members_pane(ctx: &Ctx) -> Html {
             }
         }
         list = list.child(div("member").id(format!("member-{who}-card")).children([
-            avatar(&format!("member-{who}-avatar"), &ctx.state.display(who), "s36"),
+            avatar(
+                &format!("member-{who}-avatar"),
+                &ctx.state.display(who),
+                "s36",
+            ),
             lines,
         ]));
     }
@@ -1026,12 +1086,14 @@ pub fn workspace(
     match &ctx {
         Some(ctx) => {
             let unread = state.unread(actor, ctx.id);
-            main = main.child(header(ctx, matches!(&pane, Pane::Members))).child(
-                div("scroller")
-                    .id("messages")
-                    .when(unread > 0, |list| list.child(unread_banner(ctx, unread)))
-                    .children(transcript(ctx)),
-            );
+            main = main
+                .child(header(ctx, matches!(&pane, Pane::Members)))
+                .child(
+                    div("scroller")
+                        .id("messages")
+                        .when(unread > 0, |list| list.child(unread_banner(ctx, unread)))
+                        .children(transcript(ctx)),
+                );
             main = main.child(composer(ctx));
         }
         None => {
@@ -1043,10 +1105,9 @@ pub fn workspace(
             );
         }
     }
-    let mut panel = div("panel").id("shell").children([
-        sidebar(state, actor, id, now, &workspace_name),
-        main,
-    ]);
+    let mut panel = div("panel")
+        .id("shell")
+        .children([sidebar(state, actor, id, now, &workspace_name), main]);
     if let Some(ctx) = &ctx {
         match pane {
             Pane::Thread(parent) => panel = panel.child(thread_pane(ctx, parent)),
@@ -1089,7 +1150,10 @@ impl Frame<'_> {
     /// `panel` is the whole panel (sidebar included) for the conversation view, which
     /// hangs a pane off it; [`Frame::main`] builds the plain one.
     fn render(&self, title: String, panel: Html) -> SimResult<HttpResponse> {
-        let mut doc = Document::new(title).lang("en").stylesheet(CSS).body_class("slack");
+        let mut doc = Document::new(title)
+            .lang("en")
+            .stylesheet(CSS)
+            .body_class("slack");
         if let Some(style) = root_style(self.state) {
             doc = doc.root_style(&style);
         }
@@ -1121,7 +1185,10 @@ impl Frame<'_> {
 fn plain_header(id: &str, title: &str, sub_id: &str, sub: String) -> Html {
     el("header").id(id).class("channel-header").child(
         div("channel-head").children([
-            el("h1").id(format!("{id}-title")).class("channel-title").text(title),
+            el("h1")
+                .id(format!("{id}-title"))
+                .class("channel-title")
+                .text(title),
             span("channel-topic").id(sub_id).text(sub),
         ]),
     )
@@ -1147,7 +1214,9 @@ fn hit(state: &SlackState, actor: &str, id: &str, at: &str, m: &Message, now: u6
                     .id(format!("{id}-time"))
                     .text(time::ago(m.time, now)),
             ]),
-            div("hit-text").id(format!("{id}-text")).text(emojify(&m.text)),
+            div("hit-text")
+                .id(format!("{id}-text"))
+                .text(emojify(&m.text)),
         ])
 }
 /// What the top bar's search box finds: every message of a conversation the actor is
@@ -1198,7 +1267,12 @@ pub fn search(
     let main = el("main")
         .id("main")
         .class("main")
-        .child(plain_header("search-header", "Search", "search-summary", summary))
+        .child(plain_header(
+            "search-header",
+            "Search",
+            "search-summary",
+            summary,
+        ))
         .child(list);
     let frame = Frame {
         state,
@@ -1241,7 +1315,12 @@ pub fn activity(state: &SlackState, actor: &str, view: &View) -> SimResult<HttpR
     let main = el("main")
         .id("main")
         .class("main")
-        .child(plain_header("activity-header", "Activity", "activity-summary", summary))
+        .child(plain_header(
+            "activity-header",
+            "Activity",
+            "activity-summary",
+            summary,
+        ))
         .child(list);
     let frame = Frame {
         state,

@@ -248,7 +248,12 @@ impl DriveState {
     }
     /// Narrow and order a listing the way the chips and column headers ask. Unset fields
     /// leave the list exactly as the screen built it.
-    pub(crate) fn arrange<'a>(&self, actor: &str, mut nodes: Vec<&'a Node>, sift: &Sift) -> Vec<&'a Node> {
+    pub(crate) fn arrange<'a>(
+        &self,
+        actor: &str,
+        mut nodes: Vec<&'a Node>,
+        sift: &Sift,
+    ) -> Vec<&'a Node> {
         match sift.kind() {
             "folders" => nodes.retain(|n| n.kind == NodeKind::Folder),
             "files" => nodes.retain(|n| n.kind != NodeKind::Folder),
@@ -506,7 +511,10 @@ fn view(s: &DriveState, actor: &str, screen: Screen, sift: &Sift) -> SimResult<H
         // Nothing was asked for, so there is nothing to report: "Results for " is not a heading.
         Screen::Search(q) if q.trim().is_empty() => vec![
             web::heading("title", "Search"),
-            web::paragraph("hint", "Type a name, or a word from a file, in the box above."),
+            web::paragraph(
+                "hint",
+                "Type a name, or a word from a file, in the box above.",
+            ),
         ],
         Screen::Search(q) => listing(&format!("Results for {q}"), s.search(actor, q)),
         Screen::Folder(id) => {
@@ -614,7 +622,11 @@ fn view(s: &DriveState, actor: &str, screen: Screen, sift: &Sift) -> SimResult<H
         Screen::Search(q) => q,
         _ => "",
     };
-    chrome.push(web::form("find", "/search", &[("q", "Search files", query)]));
+    chrome.push(web::form(
+        "find",
+        "/search",
+        &[("q", "Search files", query)],
+    ));
     e.splice(0..0, chrome);
     web::page(&brand, e)
 }
@@ -789,7 +801,9 @@ impl Service for DriveService {
         };
         match s.nodes.get(&touched) {
             _ if s.trashed(&touched) => render(&s, &c.actor, Screen::Trash, &sift),
-            Some(n) if n.kind == NodeKind::Folder => render(&s, &c.actor, Screen::Folder(&touched), &sift),
+            Some(n) if n.kind == NodeKind::Folder => {
+                render(&s, &c.actor, Screen::Folder(&touched), &sift)
+            }
             Some(_) => render(&s, &c.actor, Screen::File(&touched), &sift),
             None => render(&s, &c.actor, Screen::Folder(&root), &sift),
         }

@@ -37,7 +37,14 @@ pub fn reserved_bars_in(ctx: &LayoutContext, s: &ComputedStyle) -> (Au, Au) {
 }
 
 /// `auto_bars` on this host: overlaid scrollbars never take space.
-pub fn auto_bars_in(ctx: &LayoutContext, s: &ComputedStyle, content: Size, visible: Size, bar_x: Au, bar_y: Au) -> (Au, Au) {
+pub fn auto_bars_in(
+    ctx: &LayoutContext,
+    s: &ComputedStyle,
+    content: Size,
+    visible: Size,
+    bar_x: Au,
+    bar_y: Au,
+) -> (Au, Au) {
     if ctx.cache.borrow().overlay_scrollbars {
         (Au::ZERO, Au::ZERO)
     } else {
@@ -58,13 +65,27 @@ pub fn bar_thickness(s: &ComputedStyle) -> Au {
 /// Space reserved before layout: `(horizontal bar height, vertical bar width)`.
 pub fn reserved_bars(s: &ComputedStyle) -> (Au, Au) {
     let bar = bar_thickness(s);
-    let h = if s.overflow_x == Overflow::Scroll { bar } else { Au::ZERO };
-    let v = if s.overflow_y == Overflow::Scroll { bar } else { Au::ZERO };
+    let h = if s.overflow_x == Overflow::Scroll {
+        bar
+    } else {
+        Au::ZERO
+    };
+    let v = if s.overflow_y == Overflow::Scroll {
+        bar
+    } else {
+        Au::ZERO
+    };
     (h, v)
 }
 
 /// Bars needed after a first layout: `auto` shows a bar when the content overflows.
-pub fn auto_bars(s: &ComputedStyle, content: Size, visible: Size, bar_x: Au, bar_y: Au) -> (Au, Au) {
+pub fn auto_bars(
+    s: &ComputedStyle,
+    content: Size,
+    visible: Size,
+    bar_x: Au,
+    bar_y: Au,
+) -> (Au, Au) {
     let bar = bar_thickness(s);
     if bar.is_zero() {
         return (Au::ZERO, Au::ZERO);
@@ -97,17 +118,30 @@ pub fn content_size(fragments: &[Fragment], w: Au, h: Au) -> Size {
         left = left.min(o.origin.x);
         top = top.min(o.origin.y);
     }
-    Size { width: right - left, height: bottom - top }
+    Size {
+        width: right - left,
+        height: bottom - top,
+    }
 }
 
 /// Fills `ScrollInfo` on a scroll container's fragment.
-pub fn attach_scroll_info(ctx: &LayoutContext, id: BoxId, frag: &mut Fragment, content_w: Au, h: Au, reserve_h: Au, reserve_v: Au) {
+pub fn attach_scroll_info(
+    ctx: &LayoutContext,
+    id: BoxId,
+    frag: &mut Fragment,
+    content_w: Au,
+    h: Au,
+    reserve_h: Au,
+    reserve_v: Au,
+) {
     let b = &ctx.tree[id];
     if !b.is_scroll_container() {
         return;
     }
     let (padding, border) = match &frag.kind {
-        FragmentKind::Box { padding, border, .. } => (*padding, *border),
+        FragmentKind::Box {
+            padding, border, ..
+        } => (*padding, *border),
         _ => return,
     };
     // Children are in border-box coordinates; the scrollable area is the padding box.
@@ -123,10 +157,15 @@ pub fn attach_scroll_info(ctx: &LayoutContext, id: BoxId, frag: &mut Fragment, c
     // reachable as the part past the end edge.
     let (mut origin_x, mut origin_y) = (Au::ZERO, Au::ZERO);
     for c in &frag.children {
-        if c.is_positioned && c.establishes_stacking_context && matches!(ctx.style_of_source(c.source()), Some(s) if s.position == Position::Fixed) {
+        if c.is_positioned
+            && c.establishes_stacking_context
+            && matches!(ctx.style_of_source(c.source()), Some(s) if s.position == Position::Fixed)
+        {
             continue;
         }
-        let o = c.overflow.translate(c.rect.origin.x - cx, c.rect.origin.y - cy);
+        let o = c
+            .overflow
+            .translate(c.rect.origin.x - cx, c.rect.origin.y - cy);
         right = right.max(o.right() + padding.right);
         bottom = bottom.max(o.bottom() + padding.bottom);
         origin_x = origin_x.min(o.origin.x - padding.left);
@@ -142,11 +181,23 @@ pub fn attach_scroll_info(ctx: &LayoutContext, id: BoxId, frag: &mut Fragment, c
     let max_x = (content_w - visible_w).max(Au::ZERO);
     let max_y = (content_h - visible_h).max(Au::ZERO);
     let (sx, sy) = match b.node.and_then(|n| ctx.scroll.get(&n).copied()) {
-        Some((x, y)) => (x.clamp(Au::ZERO, max_x) + origin_x, y.clamp(Au::ZERO, max_y) + origin_y),
+        Some((x, y)) => (
+            x.clamp(Au::ZERO, max_x) + origin_x,
+            y.clamp(Au::ZERO, max_y) + origin_y,
+        ),
         None => (Au::ZERO, Au::ZERO),
     };
     if let FragmentKind::Box { scroll, .. } = &mut frag.kind {
-        *scroll = Some(ScrollInfo { content_width: content_w, content_height: content_h, scroll_x: sx, scroll_y: sy, origin_x, origin_y, shows_x_bar: !reserve_h.is_zero(), shows_y_bar: !reserve_v.is_zero() });
+        *scroll = Some(ScrollInfo {
+            content_width: content_w,
+            content_height: content_h,
+            scroll_x: sx,
+            scroll_y: sy,
+            origin_x,
+            origin_y,
+            shows_x_bar: !reserve_h.is_zero(),
+            shows_y_bar: !reserve_v.is_zero(),
+        });
     }
 }
 
@@ -166,10 +217,17 @@ impl LayoutContext<'_> {
 /// The viewport takes its `overflow` from `<html>`, or from `<body>` when the root's
 /// is `visible`; the element it came from then behaves as `visible` (css-overflow-3
 /// §3.3). Returns the viewport's `(overflow-x, overflow-y)`.
-pub fn propagate_root_overflow(doc: &Document, tree: &mut crate::layout::boxes::BoxTree) -> (Overflow, Overflow) {
-    let Some(html) = tree.root else { return (Overflow::Auto, Overflow::Auto) };
+pub fn propagate_root_overflow(
+    doc: &Document,
+    tree: &mut crate::layout::boxes::BoxTree,
+) -> (Overflow, Overflow) {
+    let Some(html) = tree.root else {
+        return (Overflow::Auto, Overflow::Auto);
+    };
     let mut from = html;
-    let visible = |b: BoxId, t: &crate::layout::boxes::BoxTree| t[b].style.overflow_x == Overflow::Visible && t[b].style.overflow_y == Overflow::Visible;
+    let visible = |b: BoxId, t: &crate::layout::boxes::BoxTree| {
+        t[b].style.overflow_x == Overflow::Visible && t[b].style.overflow_y == Overflow::Visible
+    };
     if visible(html, tree) {
         match doc.body().and_then(|b| tree.box_of(b)) {
             Some(body) if !visible(body, tree) => from = body,
@@ -181,7 +239,13 @@ pub fn propagate_root_overflow(doc: &Document, tree: &mut crate::layout::boxes::
     st.overflow_x = Overflow::Visible;
     st.overflow_y = Overflow::Visible;
     tree.boxes[from.index()].style = std::rc::Rc::new(st);
-    let fix = |o: Overflow| if o == Overflow::Visible { Overflow::Auto } else { o };
+    let fix = |o: Overflow| {
+        if o == Overflow::Visible {
+            Overflow::Auto
+        } else {
+            o
+        }
+    };
     (fix(ox), fix(oy))
 }
 
@@ -194,13 +258,26 @@ pub fn layout_root(ctx: &LayoutContext) -> FragmentTree {
     let vh = ctx.viewport.height;
     let (ox, oy) = ctx.root_overflow;
     let mut root = Fragment::new(
-        FragmentKind::Box { source: StyleSource::Anonymous(Document::ROOT), padding: crate::geom::Edges::ZERO, border: crate::geom::Edges::ZERO, replaced: None, scroll: None, baseline: None },
+        FragmentKind::Box {
+            source: StyleSource::Anonymous(Document::ROOT),
+            padding: crate::geom::Edges::ZERO,
+            border: crate::geom::Edges::ZERO,
+            replaced: None,
+            scroll: None,
+            baseline: None,
+        },
         Rect::new(Au::ZERO, Au::ZERO, vw, vh),
     );
     root.establishes_stacking_context = true;
-    let mut content = Size { width: vw, height: vh };
+    let mut content = Size {
+        width: vw,
+        height: vh,
+    };
     if let Some(html) = ctx.tree.root {
-        let cb = Cb { width: vw, height: Some(vh) };
+        let cb = Cb {
+            width: vw,
+            height: Some(vh),
+        };
         let mut bfc = Bfc::new();
         let s = ctx.style(html);
         let (mt, mb) = block::vertical_margins(s, cb.width);
@@ -208,14 +285,26 @@ pub fn layout_root(ctx: &LayoutContext) -> FragmentTree {
         let off = block::relative_offset(s, &cb);
         r.fragment.rect.origin.x += off.x;
         r.fragment.rect.origin.y += off.y;
-        block::translate_requests(&mut r.abs, r.fragment.rect.origin.x, r.fragment.rect.origin.y);
-        let o = r.fragment.overflow.translate(r.fragment.rect.origin.x, r.fragment.rect.origin.y);
-        let doc_h = (r.fragment.rect.bottom() + mb).max(o.bottom()).max(Au::ZERO);
+        block::translate_requests(
+            &mut r.abs,
+            r.fragment.rect.origin.x,
+            r.fragment.rect.origin.y,
+        );
+        let o = r
+            .fragment
+            .overflow
+            .translate(r.fragment.rect.origin.x, r.fragment.rect.origin.y);
+        let doc_h = (r.fragment.rect.bottom() + mb)
+            .max(o.bottom())
+            .max(Au::ZERO);
         let doc_w = o.right().max(Au::ZERO);
         root.children.push(r.fragment);
         let rest = block::resolve_absolutes(ctx, &mut root, r.abs);
         debug_assert!(rest.is_empty());
-        content = Size { width: doc_w.max(vw), height: doc_h.max(vh) };
+        content = Size {
+            width: doc_w.max(vw),
+            height: doc_h.max(vh),
+        };
         for c in &root.children[1..] {
             let o = c.overflow.translate(c.rect.origin.x, c.rect.origin.y);
             content.width = content.width.max(o.right());
@@ -226,18 +315,45 @@ pub fn layout_root(ctx: &LayoutContext) -> FragmentTree {
     // program: a fragment navigation (`#top`) or `scrollTo` still moves it, so the
     // caller's offset applies, clamped to the scrollable range; only `clip` pins it.
     let scrollable = !matches!(oy, Overflow::Clip);
-    let (sx, sy) = ctx.scroll.get(&Document::ROOT).copied().unwrap_or((Au::ZERO, Au::ZERO));
-    let sx = if matches!(ox, Overflow::Clip) { Au::ZERO } else { sx.clamp(Au::ZERO, (content.width - vw).max(Au::ZERO)) };
-    let sy = if scrollable { sy.clamp(Au::ZERO, (content.height - vh).max(Au::ZERO)) } else { Au::ZERO };
+    let (sx, sy) = ctx
+        .scroll
+        .get(&Document::ROOT)
+        .copied()
+        .unwrap_or((Au::ZERO, Au::ZERO));
+    let sx = if matches!(ox, Overflow::Clip) {
+        Au::ZERO
+    } else {
+        sx.clamp(Au::ZERO, (content.width - vw).max(Au::ZERO))
+    };
+    let sy = if scrollable {
+        sy.clamp(Au::ZERO, (content.height - vh).max(Au::ZERO))
+    } else {
+        Au::ZERO
+    };
     // Overlay bars are drawn over the content when the axis can scroll.
     let shows_x_bar = ox == Overflow::Scroll || ox == Overflow::Auto && content.width > vw;
     let shows_y_bar = oy == Overflow::Scroll || oy == Overflow::Auto && content.height > vh;
     if let FragmentKind::Box { scroll, .. } = &mut root.kind {
-        *scroll = Some(ScrollInfo { content_width: content.width, content_height: content.height, scroll_x: sx, scroll_y: sy, origin_x: Au::ZERO, origin_y: Au::ZERO, shows_x_bar, shows_y_bar });
+        *scroll = Some(ScrollInfo {
+            content_width: content.width,
+            content_height: content.height,
+            scroll_x: sx,
+            scroll_y: sy,
+            origin_x: Au::ZERO,
+            origin_y: Au::ZERO,
+            shows_x_bar,
+            shows_y_bar,
+        });
     }
     root.overflow = Rect::new(Au::ZERO, Au::ZERO, content.width, content.height);
     apply_sticky(ctx, &mut root);
-    FragmentTree { root, content_width: content.width, content_height: content.height, viewport_width: vw, viewport_height: vh }
+    FragmentTree {
+        root,
+        content_width: content.width,
+        content_height: content.height,
+        viewport_width: vw,
+        viewport_height: vh,
+    }
 }
 
 /// `position: sticky` (css-position-3 §3.4): each sticky box is shifted so it stays
@@ -246,7 +362,9 @@ pub fn layout_root(ctx: &LayoutContext) -> FragmentTree {
 /// the scroll offsets already known.
 pub fn apply_sticky(ctx: &LayoutContext, root: &mut Fragment) {
     let (sx, sy) = match &root.kind {
-        FragmentKind::Box { scroll: Some(s), .. } => (s.scroll_x, s.scroll_y),
+        FragmentKind::Box {
+            scroll: Some(s), ..
+        } => (s.scroll_x, s.scroll_y),
         _ => (Au::ZERO, Au::ZERO),
     };
     let port = Rect::new(sx, sy, root.rect.size.width, root.rect.size.height);
@@ -258,10 +376,17 @@ pub fn apply_sticky(ctx: &LayoutContext, root: &mut Fragment) {
 
 fn boxes_of(f: &Fragment, abs_origin: Point) -> (Rect, Rect) {
     let (p, b) = match &f.kind {
-        FragmentKind::Box { padding, border, .. } => (*padding, *border),
+        FragmentKind::Box {
+            padding, border, ..
+        } => (*padding, *border),
         _ => (crate::geom::Edges::ZERO, crate::geom::Edges::ZERO),
     };
-    let bb = Rect::new(abs_origin.x, abs_origin.y, f.rect.size.width, f.rect.size.height);
+    let bb = Rect::new(
+        abs_origin.x,
+        abs_origin.y,
+        f.rect.size.width,
+        f.rect.size.height,
+    );
     let pad = b.inset(bb);
     let content = p.inset(pad);
     (pad, content)
@@ -271,21 +396,44 @@ fn walk_sticky(ctx: &LayoutContext, f: &mut Fragment, abs_origin: Point, port: R
     let (pad, content) = boxes_of(f, abs_origin);
     // A scroll container starts a new scrollport for its descendants.
     let inner_port = match &f.kind {
-        FragmentKind::Box { scroll: Some(s), .. } => Rect::new(pad.origin.x + s.scroll_x, pad.origin.y + s.scroll_y, pad.size.width, pad.size.height),
+        FragmentKind::Box {
+            scroll: Some(s), ..
+        } => Rect::new(
+            pad.origin.x + s.scroll_x,
+            pad.origin.y + s.scroll_y,
+            pad.size.width,
+            pad.size.height,
+        ),
         _ => port,
     };
     let is_block = matches!(f.kind, FragmentKind::Box { .. });
     let inner_cb = if is_block { content } else { cb };
     for c in &mut f.children {
-        let c_origin = Point { x: abs_origin.x + c.rect.origin.x, y: abs_origin.y + c.rect.origin.y };
+        let c_origin = Point {
+            x: abs_origin.x + c.rect.origin.x,
+            y: abs_origin.y + c.rect.origin.y,
+        };
         if let Some(s) = ctx.style_of_source(c.source()) {
             if s.position == Position::Sticky && matches!(c.kind, FragmentKind::Box { .. }) {
-                let shift = sticky_shift(s, Rect::new(c_origin.x, c_origin.y, c.rect.size.width, c.rect.size.height), inner_port, inner_cb);
+                let shift = sticky_shift(
+                    s,
+                    Rect::new(
+                        c_origin.x,
+                        c_origin.y,
+                        c.rect.size.width,
+                        c.rect.size.height,
+                    ),
+                    inner_port,
+                    inner_cb,
+                );
                 c.rect.origin.x += shift.x;
                 c.rect.origin.y += shift.y;
             }
         }
-        let c_origin = Point { x: abs_origin.x + c.rect.origin.x, y: abs_origin.y + c.rect.origin.y };
+        let c_origin = Point {
+            x: abs_origin.x + c.rect.origin.x,
+            y: abs_origin.y + c.rect.origin.y,
+        };
         walk_sticky(ctx, c, c_origin, inner_port, inner_cb);
     }
 }
@@ -310,7 +458,9 @@ fn sticky_shift(s: &ComputedStyle, rect: Rect, port: Rect, cb: Rect) -> Point {
         let max_y = port.bottom() - b;
         if rect.bottom() + dy > max_y {
             let max_shift = (rect.origin.y - cb.origin.y).max(Au::ZERO);
-            dy = dy.min(Au::ZERO).max(-(rect.bottom() - max_y).min(max_shift));
+            dy = dy
+                .min(Au::ZERO)
+                .max(-(rect.bottom() - max_y).min(max_shift));
         }
     }
     if let Some(l) = inset(s.inset.left, port.size.width) {

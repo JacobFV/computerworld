@@ -19,15 +19,28 @@ struct Site {
 
 impl Site {
     fn new(files: &[(&str, &str, &str)]) -> Site {
-        Site { files: files.iter().map(|(p, t, b)| (p.to_string(), (t.to_string(), b.to_string()))).collect(), requests: Vec::new() }
+        Site {
+            files: files
+                .iter()
+                .map(|(p, t, b)| (p.to_string(), (t.to_string(), b.to_string())))
+                .collect(),
+            requests: Vec::new(),
+        }
     }
     fn serve(&mut self, r: HttpRequest) -> Result<HttpResponse> {
         self.requests.push(r.clone());
         let url = url::Url::parse(&r.url).unwrap();
         if r.method == "POST" && url.path() == "/api/signup" {
             let body = String::from_utf8_lossy(&r.body).into_owned();
-            let mut resp = HttpResponse::text(200, format!("{{\"ok\":true,\"got\":{}}}", serde_json::to_string(&body).unwrap()));
-            resp.headers.insert("content-type".into(), "application/json".into());
+            let mut resp = HttpResponse::text(
+                200,
+                format!(
+                    "{{\"ok\":true,\"got\":{}}}",
+                    serde_json::to_string(&body).unwrap()
+                ),
+            );
+            resp.headers
+                .insert("content-type".into(), "application/json".into());
             return Ok(resp);
         }
         match self.files.get(url.path()) {
@@ -35,7 +48,8 @@ impl Site {
                 let mut resp = HttpResponse::text(200, body.clone());
                 resp.headers.insert("content-type".into(), kind.clone());
                 if url.path() == "/login" {
-                    resp.headers.insert("set-cookie".into(), "sid=secret; Path=/; HttpOnly".into());
+                    resp.headers
+                        .insert("set-cookie".into(), "sid=secret; Path=/; HttpOnly".into());
                 }
                 Ok(resp)
             }
@@ -54,13 +68,21 @@ fn fixture(name: &str) -> String {
 }
 
 fn texts(scene: &Scene) -> Vec<String> {
-    scene.nodes.iter().filter_map(|n| serde_json::to_value(&n.primitive).ok()).filter_map(|v| v.get("text")?.as_str().map(str::to_owned)).collect()
+    scene
+        .nodes
+        .iter()
+        .filter_map(|n| serde_json::to_value(&n.primitive).ok())
+        .filter_map(|v| v.get("text")?.as_str().map(str::to_owned))
+        .collect()
 }
 fn shows(b: &BrowserState, needle: &str) -> bool {
     texts(&b.scene(W, H)).iter().any(|t| t.contains(needle))
 }
 fn console(b: &BrowserState) -> Vec<String> {
-    b.console().iter().map(|e| format!("{}: {}", e.level, e.text)).collect()
+    b.console()
+        .iter()
+        .map(|e| format!("{}: {}", e.level, e.text))
+        .collect()
 }
 fn browser() -> BrowserState {
     let mut b = BrowserState::default();
@@ -101,12 +123,24 @@ fn a_click_handler_changes_what_the_scene_shows() {
     // The accordion header is a plain <h3> with a click handler: clicked by point.
     assert!(!shows(&b, "Hidden accordion body"));
     let scene = b.scene(W, H);
-    let header = scene.nodes.iter().find(|n| serde_json::to_string(&n.primitive).unwrap().contains("Accordion")).expect("header painted");
-    b.click_at(header.bounds.x + 2, header.bounds.y + 2, W, H, http!(site)).unwrap();
+    let header = scene
+        .nodes
+        .iter()
+        .find(|n| {
+            serde_json::to_string(&n.primitive)
+                .unwrap()
+                .contains("Accordion")
+        })
+        .expect("header painted");
+    b.click_at(header.bounds.x + 2, header.bounds.y + 2, W, H, http!(site))
+        .unwrap();
     assert!(shows(&b, "Hidden accordion body"));
     // The page readers see only what is displayed.
     let text = b.document().unwrap().text();
-    assert!(text.contains("Second panel text") && !text.contains("First panel text"), "{text}");
+    assert!(
+        text.contains("Second panel text") && !text.contains("First panel text"),
+        "{text}"
+    );
     assert_eq!(console(&b), vec!["log: tab 2"]);
 }
 
@@ -115,16 +149,33 @@ const COUNTER: &str = r#"<!DOCTYPE html><title>Counter</title><p id=n>0</p>
 
 #[test]
 fn set_interval_advances_with_world_ticks_and_background_tabs_are_throttled() {
-    let mut site = Site::new(&[("/", "text/html", COUNTER), ("/fast", "text/html", &COUNTER.replace("1000", "100"))]);
+    let mut site = Site::new(&[
+        ("/", "text/html", COUNTER),
+        ("/fast", "text/html", &COUNTER.replace("1000", "100")),
+    ]);
     let mut b = browser();
     b.set_clock(1_000_000);
     b.navigate(&format!("{ORIGIN}/"), http!(site)).unwrap();
     assert!(shows(&b, "0"));
-    println!("first interval due at {:?} (loaded at 1000000)", b.document().unwrap().scripted().unwrap().mirror().next_timer);
-    assert!(!b.refresh_pending(1_500_000), "nothing is due half a second in");
+    println!(
+        "first interval due at {:?} (loaded at 1000000)",
+        b.document()
+            .unwrap()
+            .scripted()
+            .unwrap()
+            .mirror()
+            .next_timer
+    );
+    assert!(
+        !b.refresh_pending(1_500_000),
+        "nothing is due half a second in"
+    );
     // The VM charges virtual time for the code it runs, so the first interval is due
     // a few milliseconds after the round second.
-    assert!(b.refresh_pending(2_100_000), "the interval is due: the environment must tick");
+    assert!(
+        b.refresh_pending(2_100_000),
+        "the interval is due: the environment must tick"
+    );
     b.tick(2_100_000, http!(site)).unwrap();
     assert_eq!(b.title().as_deref(), Some("Count 1"));
     // Three seconds in one tick: the interval fires at each of its due times.
@@ -135,14 +186,30 @@ fn set_interval_advances_with_world_ticks_and_background_tabs_are_throttled() {
     b.new_tab();
     b.navigate(&format!("{ORIGIN}/fast"), http!(site)).unwrap();
     b.tick(6_100_000, http!(site)).unwrap();
-    let fast_visible: u32 = b.title().unwrap().trim_start_matches("Count ").parse().unwrap();
-    assert!(fast_visible >= 9, "visible: every due time fires ({fast_visible})");
+    let fast_visible: u32 = b
+        .title()
+        .unwrap()
+        .trim_start_matches("Count ")
+        .parse()
+        .unwrap();
+    assert!(
+        fast_visible >= 9,
+        "visible: every due time fires ({fast_visible})"
+    );
     b.switch_tab(0).unwrap();
-    let before: u32 = b.tabs[1].history[0].title().trim_start_matches("Count ").parse().unwrap();
+    let before: u32 = b.tabs[1].history[0]
+        .title()
+        .trim_start_matches("Count ")
+        .parse()
+        .unwrap();
     for step in 1..=20u64 {
         b.tick(6_100_000 + step * 100_000, http!(site)).unwrap();
     }
-    let after: u32 = b.tabs[1].history[0].title().trim_start_matches("Count ").parse().unwrap();
+    let after: u32 = b.tabs[1].history[0]
+        .title()
+        .trim_start_matches("Count ")
+        .parse()
+        .unwrap();
     assert_eq!(after - before, 2, "two seconds in the background: two runs");
 }
 
@@ -156,12 +223,22 @@ fetch('/api/items.json').then(function (r) { return r.json(); }).then(function (
 
 #[test]
 fn a_fetch_driven_list_renders_json_from_the_transport() {
-    let mut site = Site::new(&[("/", "text/html", LIST), ("/api/items.json", "application/json", r#"{"items":[{"name":"Apples"},{"name":"Pears"}]}"#)]);
+    let mut site = Site::new(&[
+        ("/", "text/html", LIST),
+        (
+            "/api/items.json",
+            "application/json",
+            r#"{"items":[{"name":"Apples"},{"name":"Pears"}]}"#,
+        ),
+    ]);
     let mut b = browser();
     b.navigate(&format!("{ORIGIN}/"), http!(site)).unwrap();
     assert!(shows(&b, "Apples") && shows(&b, "Pears") && !shows(&b, "loading"));
     assert_eq!(console(&b), vec!["log: loaded 2"]);
-    assert!(site.requests.iter().any(|r| r.url.ends_with("/api/items.json")));
+    assert!(site
+        .requests
+        .iter()
+        .any(|r| r.url.ends_with("/api/items.json")));
 }
 
 const SIGNUP: &str = r#"<!DOCTYPE html><title>Sign up</title>
@@ -186,7 +263,11 @@ fn client_side_validation_prevents_the_submit_then_posts_with_fetch() {
     b.fill("email", "nope").unwrap();
     b.click("go", http!(site)).unwrap();
     assert!(shows(&b, "Enter a valid email"));
-    assert_eq!(b.url(), Some("https://app.test/"), "preventDefault: no navigation");
+    assert_eq!(
+        b.url(),
+        Some("https://app.test/"),
+        "preventDefault: no navigation"
+    );
     assert!(!site.requests.iter().any(|r| r.method == "POST"));
     // Typed keys reach `input` handlers one by one; the tab's fields mirror the value.
     b.fill("email", "").unwrap();
@@ -195,10 +276,24 @@ fn client_side_validation_prevents_the_submit_then_posts_with_fetch() {
     assert_eq!(b.tab().focused.as_deref(), Some("email"));
     b.key("Enter", http!(site)).unwrap();
     assert!(shows(&b, "Welcome a@b.c"));
-    let post = site.requests.iter().find(|r| r.method == "POST").expect("the fetch POST");
-    assert_eq!((post.url.as_str(), String::from_utf8_lossy(&post.body).as_ref()), ("https://app.test/api/signup", "email=a%40b.c"));
+    let post = site
+        .requests
+        .iter()
+        .find(|r| r.method == "POST")
+        .expect("the fetch POST");
+    assert_eq!(
+        (
+            post.url.as_str(),
+            String::from_utf8_lossy(&post.body).as_ref()
+        ),
+        ("https://app.test/api/signup", "email=a%40b.c")
+    );
     assert_eq!(b.url(), Some("https://app.test/"));
-    assert!(console(&b).contains(&"log: input a@b.c".to_owned()), "{:?}", console(&b));
+    assert!(
+        console(&b).contains(&"log: input a@b.c".to_owned()),
+        "{:?}",
+        console(&b)
+    );
 }
 
 const SPA: &str = r#"<!DOCTYPE html><title>SPA</title>
@@ -213,32 +308,65 @@ render();
 
 #[test]
 fn push_state_routing_back_forward_and_real_navigation() {
-    let mut site = Site::new(&[("/", "text/html", SPA), ("/plain.html", "text/html", "<title>Plain</title><p>No script here</p>")]);
+    let mut site = Site::new(&[
+        ("/", "text/html", SPA),
+        (
+            "/plain.html",
+            "text/html",
+            "<title>Plain</title><p>No script here</p>",
+        ),
+    ]);
     let mut b = browser();
     b.navigate(&format!("{ORIGIN}/"), http!(site)).unwrap();
     let loads = site.requests.len();
     b.click("about", http!(site)).unwrap();
-    assert_eq!((b.url(), b.title().as_deref()), (Some("https://app.test/about"), Some("About")));
+    assert_eq!(
+        (b.url(), b.title().as_deref()),
+        (Some("https://app.test/about"), Some("About"))
+    );
     assert!(shows(&b, "About view"));
-    assert_eq!(site.requests.len(), loads, "a router click makes no request");
-    assert_eq!(b.tab().history.len(), 1, "same-document entries live in the realm");
+    assert_eq!(
+        site.requests.len(),
+        loads,
+        "a router click makes no request"
+    );
+    assert_eq!(
+        b.tab().history.len(),
+        1,
+        "same-document entries live in the realm"
+    );
     b.back(http!(site)).unwrap();
-    assert_eq!((b.url(), b.title().as_deref()), (Some("https://app.test/"), Some("Home")));
+    assert_eq!(
+        (b.url(), b.title().as_deref()),
+        (Some("https://app.test/"), Some("Home"))
+    );
     assert!(shows(&b, "Home view"));
     b.forward(http!(site)).unwrap();
     assert!(shows(&b, "About view"));
-    assert_eq!(console(&b), vec!["log: popstate null", "log: popstate {\"p\":\"/about\"}"]);
+    assert_eq!(
+        console(&b),
+        vec!["log: popstate null", "log: popstate {\"p\":\"/about\"}"]
+    );
     // A link nobody prevents is a real navigation; the page sees pagehide.
     b.click("ext", http!(site)).unwrap();
     assert_eq!(b.title().as_deref(), Some("Plain"));
     assert!(!b.document().unwrap().is_scripted());
-    assert_eq!(console(&b).last().map(String::as_str), Some("log: pagehide"));
+    assert_eq!(
+        console(&b).last().map(String::as_str),
+        Some("log: pagehide")
+    );
     // Back across documents restores the SPA where it was (its journal replays).
     b.back(http!(site)).unwrap();
-    assert_eq!((b.url(), b.title().as_deref()), (Some("https://app.test/about"), Some("About")));
+    assert_eq!(
+        (b.url(), b.title().as_deref()),
+        (Some("https://app.test/about"), Some("About"))
+    );
     assert!(shows(&b, "About view"));
     b.click("blank", http!(site)).unwrap();
-    assert_eq!((b.tabs.len(), b.active, b.title().as_deref()), (2, 1, Some("Plain")));
+    assert_eq!(
+        (b.tabs.len(), b.active, b.title().as_deref()),
+        (2, 1, Some("Plain"))
+    );
 }
 
 const NAV: &str = r#"<!DOCTYPE html><title>Nav</title><button id=assign>assign</button><button id=open>open</button><button id=reload>reload</button><button id=hash>hash</button><p id=loads></p><p id=sec style="margin-top:2000px">Section</p>
@@ -255,7 +383,14 @@ document.write('<p>written by document.write</p>');
 
 #[test]
 fn location_window_open_reload_hashchange_and_document_write() {
-    let mut site = Site::new(&[("/", "text/html", NAV), ("/plain.html", "text/html", "<title>Plain</title><p>plain</p>")]);
+    let mut site = Site::new(&[
+        ("/", "text/html", NAV),
+        (
+            "/plain.html",
+            "text/html",
+            "<title>Plain</title><p>plain</p>",
+        ),
+    ]);
     let mut b = browser();
     b.navigate(&format!("{ORIGIN}/"), http!(site)).unwrap();
     assert!(shows(&b, "written by document.write") && shows(&b, "load 1"));
@@ -264,16 +399,30 @@ fn location_window_open_reload_hashchange_and_document_write() {
     assert_eq!(b.tab().history.len(), 1, "reload replaces the entry");
     b.click("hash", http!(site)).unwrap();
     assert_eq!(b.url(), Some("https://app.test/#sec"));
-    assert!(b.tab().scroll_y > 1000, "the fragment scrolled into view: {}", b.tab().scroll_y);
+    assert!(
+        b.tab().scroll_y > 1000,
+        "the fragment scrolled into view: {}",
+        b.tab().scroll_y
+    );
     b.click("open", http!(site)).unwrap();
-    assert_eq!((b.tabs.len(), b.active, b.title().as_deref()), (2, 1, Some("Plain")));
+    assert_eq!(
+        (b.tabs.len(), b.active, b.title().as_deref()),
+        (2, 1, Some("Plain"))
+    );
     b.switch_tab(0).unwrap();
     // The navigation happens after the handler finished, never inside it.
     b.click("assign", http!(site)).unwrap();
     assert_eq!(b.title().as_deref(), Some("Plain"));
     let log = console(&b);
-    assert!(log.contains(&"log: hashchange https://app.test/#sec".to_owned()), "{log:?}");
-    assert!(log.contains(&"log: handle null".to_owned()) && log.contains(&"log: still running after assign".to_owned()), "{log:?}");
+    assert!(
+        log.contains(&"log: hashchange https://app.test/#sec".to_owned()),
+        "{log:?}"
+    );
+    assert!(
+        log.contains(&"log: handle null".to_owned())
+            && log.contains(&"log: still running after assign".to_owned()),
+        "{log:?}"
+    );
 }
 
 const NOTES: &str = r#"<!DOCTYPE html><title>Notes</title><input id=note><button id=save>Save</button><p id=saved></p>
@@ -287,7 +436,14 @@ document.cookie = 'sid=stolen; path=/';
 
 #[test]
 fn local_storage_survives_reload_and_http_only_cookies_stay_hidden() {
-    let mut site = Site::new(&[("/", "text/html", NOTES), ("/login", "text/html", "<title>In</title><a id=go href=/>go</a>")]);
+    let mut site = Site::new(&[
+        ("/", "text/html", NOTES),
+        (
+            "/login",
+            "text/html",
+            "<title>In</title><a id=go href=/>go</a>",
+        ),
+    ]);
     let mut b = browser();
     b.navigate(&format!("{ORIGIN}/login"), http!(site)).unwrap();
     b.navigate(&format!("{ORIGIN}/"), http!(site)).unwrap();
@@ -296,12 +452,29 @@ fn local_storage_survives_reload_and_http_only_cookies_stay_hidden() {
     b.click("save", http!(site)).unwrap();
     b.reload(http!(site)).unwrap();
     assert!(shows(&b, "saved: buy milk"));
-    assert_eq!(b.storage_get("note").unwrap(), Some("buy milk"), "the same storage the browser API reads");
+    assert_eq!(
+        b.storage_get("note").unwrap(),
+        Some("buy milk"),
+        "the same storage the browser API reads"
+    );
     let log = console(&b);
-    assert_eq!(log[0], "log: cookie \"\"", "HttpOnly cookies are invisible to script");
+    assert_eq!(
+        log[0], "log: cookie \"\"",
+        "HttpOnly cookies are invisible to script"
+    );
     assert_eq!(log[1], "log: cookie \"theme=dark\"");
-    let sent = site.requests.last().unwrap().headers.get("cookie").cloned().unwrap_or_default();
-    assert!(sent.contains("sid=secret") && sent.contains("theme=dark"), "{sent}");
+    let sent = site
+        .requests
+        .last()
+        .unwrap()
+        .headers
+        .get("cookie")
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        sent.contains("sid=secret") && sent.contains("theme=dark"),
+        "{sent}"
+    );
 }
 
 const SPIN: &str = r#"<!DOCTYPE html><title>Spin</title><button id=spin>Spin</button><button id=ok>OK</button><p id=out>idle</p>
@@ -319,7 +492,11 @@ fn an_infinite_loop_is_interrupted_and_the_page_stays_usable() {
     b.click("spin", http!(site)).unwrap();
     let took = started.elapsed();
     let log = console(&b);
-    assert!(log.iter().any(|l| l.starts_with("error:") && l.contains("step limit")), "{log:?}");
+    assert!(
+        log.iter()
+            .any(|l| l.starts_with("error:") && l.contains("step limit")),
+        "{log:?}"
+    );
     b.click("ok", http!(site)).unwrap();
     assert!(shows(&b, "still alive"));
     println!("interrupting a script that never yields took {took:?}");
@@ -345,20 +522,39 @@ fn hovering_and_scrolling_are_dom_events_too() {
     b.navigate(&format!("{ORIGIN}/"), http!(site)).unwrap();
     assert!(!shows(&b, "Open recent") && shows(&b, "menu closed"));
     let scene = b.scene(W, H);
-    let file = scene.nodes.iter().find(|n| serde_json::to_string(&n.primitive).unwrap().contains("File")).expect("the menu label");
+    let file = scene
+        .nodes
+        .iter()
+        .find(|n| {
+            serde_json::to_string(&n.primitive)
+                .unwrap()
+                .contains("File")
+        })
+        .expect("the menu label");
     let (mx, my) = (file.bounds.x + 2, file.bounds.y + 2);
     // Hover: `:hover` opens the submenu, `mouseenter` runs, and the cursor comes from
     // the computed style.
     let cursor = b.hover_at_with(mx, my, W, H, http!(site));
     assert_eq!(cursor, Some("pointer"));
-    assert!(shows(&b, "Open recent") && shows(&b, "menu entered"), "{:?}", texts(&b.scene(W, H)));
+    assert!(
+        shows(&b, "Open recent") && shows(&b, "menu entered"),
+        "{:?}",
+        texts(&b.scene(W, H))
+    );
     // Moving away closes it: `mouseleave` runs and `:hover` no longer matches.
     b.hover_at_with(mx, my + 400, W, H, http!(site));
-    assert!(!shows(&b, "Open recent") && shows(&b, "menu left"), "{:?}", texts(&b.scene(W, H)));
+    assert!(
+        !shows(&b, "Open recent") && shows(&b, "menu left"),
+        "{:?}",
+        texts(&b.scene(W, H))
+    );
     // Scrolling a scroll container fires `scroll` on it and moves the paint.
     assert!(b.scroll_pane_with("list", 80, false, http!(site)));
     assert!(shows(&b, "depth 80"), "{:?}", texts(&b.scene(W, H)));
-    assert!(!b.scroll_pane_with("list", 80, false, http!(site)), "scrolling where it already is moves nothing");
+    assert!(
+        !b.scroll_pane_with("list", 80, false, http!(site)),
+        "scrolling where it already is moves nothing"
+    );
 }
 
 const RESPONSIVE: &str = r#"<!DOCTYPE html><title>Responsive</title><p id=w></p><p id=m></p><p id=v>visible</p><p id=f>frames 0</p>
@@ -378,35 +574,63 @@ fn resizing_visibility_and_animation_frames_follow_the_browser() {
     let mut site = Site::new(&[("/", "text/html", RESPONSIVE)]);
     let mut b = browser();
     b.navigate(&format!("{ORIGIN}/"), http!(site)).unwrap();
-    let at = |b: &BrowserState, w: u32, h: u32, needle: &str| texts(&b.scene(w, h)).iter().any(|t| t.contains(needle));
+    let at = |b: &BrowserState, w: u32, h: u32, needle: &str| {
+        texts(&b.scene(w, h)).iter().any(|t| t.contains(needle))
+    };
     assert!(at(&b, W, H, "w=800x600") && at(&b, W, H, "wide"));
     // The environment announces the content viewport before it acts: `resize` fires
     // and `matchMedia` re-evaluates.
     b.set_viewport(500, 400);
-    assert!(at(&b, 500, 400, "w=500x400"), "{:?}", texts(&b.scene(500, 400)));
+    assert!(
+        at(&b, 500, 400, "w=500x400"),
+        "{:?}",
+        texts(&b.scene(500, 400))
+    );
     assert!(at(&b, 500, 400, "narrow"));
     // Zoom changes the CSS viewport the page is laid out for, so it resizes too.
     b.step_zoom("in").unwrap();
-    assert!(at(&b, 500, 400, "w=435x348"), "{:?}", texts(&b.scene(500, 400)));
+    assert!(
+        at(&b, 500, 400, "w=435x348"),
+        "{:?}",
+        texts(&b.scene(500, 400))
+    );
     b.step_zoom("reset").unwrap();
     // A hidden tab sees `visibilitychange`; the tab on show sees it come back.
     b.new_tab();
-    assert!(b.tabs[0].history[0].web().unwrap().text().contains("hidden"));
+    assert!(b.tabs[0].history[0]
+        .web()
+        .unwrap()
+        .text()
+        .contains("hidden"));
     b.switch_tab(0).unwrap();
     assert!(at(&b, 500, 400, "visible"));
     // `requestAnimationFrame`: the browser says the page wants another frame, and a
     // tick on the world clock delivers them, one per 16 ms.
-    let frames = |b: &BrowserState| texts(&b.scene(500, 400)).iter().find_map(|t| t.strip_prefix("frames ").map(|n| n.parse::<u32>().unwrap())).unwrap();
-    assert!(b.refresh_pending(b.clock), "a page mid-animation always wants the next frame");
+    let frames = |b: &BrowserState| {
+        texts(&b.scene(500, 400))
+            .iter()
+            .find_map(|t| t.strip_prefix("frames ").map(|n| n.parse::<u32>().unwrap()))
+            .unwrap()
+    };
+    assert!(
+        b.refresh_pending(b.clock),
+        "a page mid-animation always wants the next frame"
+    );
     let before = frames(&b);
     b.tick(b.clock + 100_000, http!(site)).unwrap();
     let after = frames(&b);
-    assert!((5..=8).contains(&(after - before)), "100 ms of world time is six or so frames: {before} -> {after}");
+    assert!(
+        (5..=8).contains(&(after - before)),
+        "100 ms of world time is six or so frames: {before} -> {after}"
+    );
     for _ in 0..10 {
         b.tick(b.clock + 100_000, http!(site)).unwrap();
     }
     assert_eq!(frames(&b), 30, "the animation stopped asking");
-    assert!(!b.refresh_pending(b.clock + 10_000_000), "a settled page wants nothing");
+    assert!(
+        !b.refresh_pending(b.clock + 10_000_000),
+        "a settled page wants nothing"
+    );
 }
 
 fn library_site() -> Site {
@@ -420,7 +644,11 @@ fn library_site() -> Site {
         ("/preact.html", "text/html", &preact_page),
         ("/vendor/jquery-3.7.1.min.js", "text/javascript", &jq),
         ("/vendor/preact-10.19.3.umd.js", "text/javascript", &preact),
-        ("/vendor/preact-hooks-10.19.3.umd.js", "text/javascript", &hooks),
+        (
+            "/vendor/preact-hooks-10.19.3.umd.js",
+            "text/javascript",
+            &hooks,
+        ),
         ("/api/items", "application/json", "{\"items\":[1,2,3]}"),
         ("/api/text", "text/plain", "plain text"),
     ])
@@ -430,10 +658,14 @@ fn library_site() -> Site {
 fn the_jquery_fixture_runs_and_is_driven_by_clicks() {
     let mut site = library_site();
     let mut b = browser();
-    b.navigate(&format!("{ORIGIN}/jq.html"), http!(site)).unwrap();
+    b.navigate(&format!("{ORIGIN}/jq.html"), http!(site))
+        .unwrap();
     assert!(console(&b).is_empty(), "{:?}", console(&b));
     assert!(shows(&b, "ready 3.7.1 3"), "{:?}", texts(&b.scene(W, H)));
-    assert!(shows(&b, "1,2,3"), "the $.ajax JSON arrived through the transport");
+    assert!(
+        shows(&b, "1,2,3"),
+        "the $.ajax JSON arrived through the transport"
+    );
     assert!(shows(&b, "four"));
     // The 50 ms fadeOut runs on the world clock.
     assert!(b.refresh_pending(1_000_000));
@@ -441,39 +673,78 @@ fn the_jquery_fixture_runs_and_is_driven_by_clicks() {
         b.tick(t * 20_000, http!(site)).unwrap();
     }
     assert!(!shows(&b, "Box"), "faded out");
-    let li = b.document().unwrap().with_document(|d| d.descendants(cw_web::dom::Document::ROOT).filter(|n| d.is(*n, "li")).nth(2).unwrap());
+    let li = b.document().unwrap().with_document(|d| {
+        d.descendants(cw_web::dom::Document::ROOT)
+            .filter(|n| d.is(*n, "li"))
+            .nth(2)
+            .unwrap()
+    });
     let li = b.document().unwrap().id_of(li);
     b.click(&li, http!(site)).unwrap();
-    assert!(shows(&b, "clicked three true idx 2"), "{:?}", texts(&b.scene(W, H)));
+    assert!(
+        shows(&b, "clicked three true idx 2"),
+        "{:?}",
+        texts(&b.scene(W, H))
+    );
     b.click("go", http!(site)).unwrap();
-    assert!(shows(&b, "submitted q=changed&s=y"), "{:?}", texts(&b.scene(W, H)));
-    assert_eq!(b.url(), Some("https://app.test/jq.html"), "jQuery's submit handler prevented the navigation");
+    assert!(
+        shows(&b, "submitted q=changed&s=y"),
+        "{:?}",
+        texts(&b.scene(W, H))
+    );
+    assert_eq!(
+        b.url(),
+        Some("https://app.test/jq.html"),
+        "jQuery's submit handler prevented the navigation"
+    );
 }
 
 #[test]
 fn the_preact_fixture_is_driven_by_clicks_and_typing() {
     let mut site = library_site();
     let mut b = browser();
-    b.navigate(&format!("{ORIGIN}/preact.html"), http!(site)).unwrap();
+    b.navigate(&format!("{ORIGIN}/preact.html"), http!(site))
+        .unwrap();
     assert!(console(&b).is_empty(), "{:?}", console(&b));
-    assert!(shows(&b, "Count: ") && b.title().as_deref() == Some("Count 0"), "{:?} {:?}", b.title(), texts(&b.scene(W, H)));
+    assert!(
+        shows(&b, "Count: ") && b.title().as_deref() == Some("Count 0"),
+        "{:?} {:?}",
+        b.title(),
+        texts(&b.scene(W, H))
+    );
     for _ in 0..3 {
         b.click("inc", http!(site)).unwrap();
         b.tick(b.clock + 20_000, http!(site)).unwrap();
     }
-    assert_eq!(b.title().as_deref(), Some("Count 3"), "useEffect ran after each render");
+    assert_eq!(
+        b.title().as_deref(),
+        Some("Count 3"),
+        "useEffect ran after each render"
+    );
     assert!(shows(&b, "big!"));
     // A controlled input: every key goes through onInput and state.
     b.click("text", http!(site)).unwrap();
     b.text("hey").unwrap();
     b.tick(b.clock + 20_000, http!(site)).unwrap();
-    assert!(shows(&b, "You typed: hey") || shows(&b, "hey"), "{:?}", texts(&b.scene(W, H)));
+    assert!(
+        shows(&b, "You typed: hey") || shows(&b, "hey"),
+        "{:?}",
+        texts(&b.scene(W, H))
+    );
     assert_eq!(b.tab().fields["text"], "hey");
-    let first = b.document().unwrap().with_document(|d| d.descendants(cw_web::dom::Document::ROOT).find(|n| d.is(*n, "li")).unwrap());
+    let first = b.document().unwrap().with_document(|d| {
+        d.descendants(cw_web::dom::Document::ROOT)
+            .find(|n| d.is(*n, "li"))
+            .unwrap()
+    });
     let first = b.document().unwrap().id_of(first);
     b.click(&first, http!(site)).unwrap();
     b.tick(b.clock + 20_000, http!(site)).unwrap();
-    let items = b.document().unwrap().with_document(|d| d.descendants(cw_web::dom::Document::ROOT).filter(|n| d.is(*n, "li")).count());
+    let items = b.document().unwrap().with_document(|d| {
+        d.descendants(cw_web::dom::Document::ROOT)
+            .filter(|n| d.is(*n, "li"))
+            .count()
+    });
     assert_eq!(items, 2, "clicking an item removed it");
 }
 
@@ -522,7 +793,11 @@ fn a_scripted_page_snapshots_restores_and_continues_identically() {
     assert_eq!(scenes_live, scenes_json);
     assert_eq!(console_live, console_json);
     assert_eq!(console_live.len(), 11);
-    assert_eq!(serde_json::to_string(&b).unwrap(), serde_json::to_string(&from_json).unwrap(), "the states agree too");
+    assert_eq!(
+        serde_json::to_string(&b).unwrap(),
+        serde_json::to_string(&from_json).unwrap(),
+        "the states agree too"
+    );
 }
 
 #[test]
@@ -554,13 +829,23 @@ fn restore_cost_of_a_thousand_journaled_events() {
     assert!(shows(&b, "n=1001"));
     // The compaction boundary: a navigation builds a new realm, so no journal ever
     // spans one and the replay cost of a page is bounded by that page's own life.
-    assert_eq!(b.document().unwrap().scripted().unwrap().journal_len(), 4009);
-    b.navigate(&format!("{ORIGIN}/?again"), http!(site)).unwrap();
+    assert_eq!(
+        b.document().unwrap().scripted().unwrap().journal_len(),
+        4009
+    );
+    b.navigate(&format!("{ORIGIN}/?again"), http!(site))
+        .unwrap();
     let fresh = b.document().unwrap().scripted().unwrap().journal_len();
-    assert!(fresh <= 8, "a navigation starts a fresh journal, not a continued one: {fresh}");
+    assert!(
+        fresh <= 8,
+        "a navigation starts a fresh journal, not a continued one: {fresh}"
+    );
     let started = std::time::Instant::now();
     assert!(shows(&b, "n=0"));
-    println!("after a navigation the journal is {fresh} inputs and the page paints in {:?}", started.elapsed());
+    println!(
+        "after a navigation the journal is {fresh} inputs and the page paints in {:?}",
+        started.elapsed()
+    );
 }
 
 const STATIC: &str = r#"<!DOCTYPE html><html><head><title>Static</title><link rel=stylesheet href=/site.css><style>h1{color:#123456} .box{float:right;width:120px;border:2px solid red;padding:4px}</style></head>
@@ -570,15 +855,27 @@ const STATIC: &str = r#"<!DOCTYPE html><html><head><title>Static</title><link re
 
 #[test]
 fn static_html_paints_identically_through_both_paths() {
-    let files = [("/", "text/html", STATIC), ("/site.css", "text/css", "body{font-family:serif;margin:20px} p{line-height:1.6}")];
+    let files = [
+        ("/", "text/html", STATIC),
+        (
+            "/site.css",
+            "text/css",
+            "body{font-family:serif;margin:20px} p{line-height:1.6}",
+        ),
+    ];
     let mut plain = browser();
     let mut site = Site::new(&files);
     plain.navigate(&format!("{ORIGIN}/"), http!(site)).unwrap();
-    assert!(!plain.document().unwrap().is_scripted(), "no script: the cheaper path");
+    assert!(
+        !plain.document().unwrap().is_scripted(),
+        "no script: the cheaper path"
+    );
     let mut scripted = browser();
     scripted.always_script = true;
     let mut site = Site::new(&files);
-    scripted.navigate(&format!("{ORIGIN}/"), http!(site)).unwrap();
+    scripted
+        .navigate(&format!("{ORIGIN}/"), http!(site))
+        .unwrap();
     assert!(scripted.document().unwrap().is_scripted());
     for (w, h) in [(W, H), (500, 700)] {
         plain.set_viewport(w, h);
@@ -590,6 +887,9 @@ fn static_html_paints_identically_through_both_paths() {
         }
         assert_eq!(cw_scene::digest(&a), cw_scene::digest(&b), "{w}x{h}");
     }
-    assert_eq!(plain.current_page().unwrap().into_owned(), scripted.current_page().unwrap().into_owned());
+    assert_eq!(
+        plain.current_page().unwrap().into_owned(),
+        scripted.current_page().unwrap().into_owned()
+    );
     assert_eq!(plain.tab().fields, scripted.tab().fields);
 }

@@ -74,16 +74,26 @@ fn github_seed_initialises_and_every_page_renders() {
         assert_eq!(status, 200, "{path}: {}", String::from_utf8_lossy(&body));
         // Every page is strict HTML the engine renders, with unique ids.
         let page = support::Page::parse(path, String::from_utf8(body).unwrap());
-        assert!(page.has("chrome") && page.has("mark"), "{path}: no site chrome");
+        assert!(
+            page.has("chrome") && page.has("mark"),
+            "{path}: no site chrome"
+        );
     }
     // The same data under the other two looks: strict HTML there too.
     for skin in ["gitlab", "plain"] {
         let mut initial = site["initial_state"].clone();
         initial["skin"] = skin.into();
-        let mut other = GitService.initialize(initial, &ctx("alice")).expect("github seed initialises");
+        let mut other = GitService
+            .initialize(initial, &ctx("alice"))
+            .expect("github seed initialises");
         for path in PATHS {
             let (status, body) = open(&mut other, &format!("http://github.com{path}"));
-            assert_eq!(status, 200, "{skin} {path}: {}", String::from_utf8_lossy(&body));
+            assert_eq!(
+                status,
+                200,
+                "{skin} {path}: {}",
+                String::from_utf8_lossy(&body)
+            );
             support::Page::parse(&format!("{skin} {path}"), String::from_utf8(body).unwrap());
         }
     }
@@ -116,13 +126,31 @@ fn gitlab_seed_initialises_and_every_page_renders_in_every_skin() {
     for skin in ["gitlab", "github", "plain"] {
         let mut initial = site["initial_state"].clone();
         initial["skin"] = skin.into();
-        let mut state = GitService.initialize(initial, &ctx("alice")).expect("gitlab seed initialises");
+        let mut state = GitService
+            .initialize(initial, &ctx("alice"))
+            .expect("gitlab seed initialises");
         let repos = state["repositories"].as_object().unwrap().clone();
-        let mut paths = vec!["/".to_owned(), "/search?q=replay".to_owned(), "/opensim".to_owned()];
+        let mut paths = vec![
+            "/".to_owned(),
+            "/search?q=replay".to_owned(),
+            "/opensim".to_owned(),
+        ];
         for (name, repo) in &repos {
             let owner = repo["owner"].as_str().unwrap();
             let base = format!("/{owner}/{name}");
-            for tail in ["", "/issues", "/issues?state=closed", "/pulls", "/issues/new", "/compare", "/branches", "/commits/main", "/stargazers", "/wiki", "/pulse"] {
+            for tail in [
+                "",
+                "/issues",
+                "/issues?state=closed",
+                "/pulls",
+                "/issues/new",
+                "/compare",
+                "/branches",
+                "/commits/main",
+                "/stargazers",
+                "/wiki",
+                "/pulse",
+            ] {
                 paths.push(format!("{base}{tail}"));
             }
             for sha in repo["objects"].as_object().unwrap().keys() {
@@ -132,14 +160,24 @@ fn gitlab_seed_initialises_and_every_page_renders_in_every_skin() {
             for file in repo["objects"][tip]["files"].as_object().unwrap().keys() {
                 paths.push(format!("{base}/blob/main/{file}"));
             }
-            for number in repo["issues"].as_object().into_iter().flatten().map(|(n, _)| n) {
+            for number in repo["issues"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .map(|(n, _)| n)
+            {
                 paths.push(format!("{base}/issues/{number}"));
             }
             paths.push(format!("/repos/{name}"));
         }
         for path in paths {
             let (status, body) = open(&mut state, &format!("http://gitlab.com{path}"));
-            assert_eq!(status, 200, "{skin} {path}: {}", String::from_utf8_lossy(&body));
+            assert_eq!(
+                status,
+                200,
+                "{skin} {path}: {}",
+                String::from_utf8_lossy(&body)
+            );
             support::Page::parse(&format!("{skin} {path}"), String::from_utf8(body).unwrap());
         }
         for entry in site["search_entries"].as_array().unwrap() {

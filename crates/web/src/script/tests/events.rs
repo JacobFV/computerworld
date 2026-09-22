@@ -9,7 +9,11 @@ fn id_of(r: &Realm, id: &str) -> NodeId {
 
 fn click_id(r: &mut Realm, id: &str) -> DefaultAction {
     let n = id_of(r, id);
-    r.dispatch(UiEvent::ClickNode { node: n, modifiers: Modifiers::default(), detail: 1 })
+    r.dispatch(UiEvent::ClickNode {
+        node: n,
+        modifiers: Modifiers::default(),
+        detail: 1,
+    })
 }
 
 check!(add_remove_dispatch, "<div id=d></div>", "const d=document.getElementById('d'); let n=0; const f=()=>n++; d.addEventListener('x', f); d.addEventListener('x', f); d.dispatchEvent(new Event('x')); d.removeEventListener('x', f); d.dispatchEvent(new Event('x')); console.log(n, d.dispatchEvent(new Event('y')), d.dispatchEvent(new Event('z', {cancelable:true})));", "1 true true");
@@ -24,24 +28,31 @@ check!(event_constructors, "", "const m=new MouseEvent('click', {clientX:5, clie
 check!(uncaught_error_event, "", "window.addEventListener('error', e=>{ console.log('caught', e.message, e.error instanceof RangeError, e instanceof ErrorEvent); e.preventDefault(); }); setTimeout(()=>{ throw new RangeError('boom'); }, 0);", "caught RangeError: boom true true");
 check!(unhandled_rejection_event, "", "window.addEventListener('unhandledrejection', e=>{ console.log('rej', e.reason, e.promise instanceof Promise); e.preventDefault(); }); Promise.reject('why');", "rej why true");
 
-
 #[test]
 fn uncaught_exception_logs_error() {
     let r = run("", "window.onerror = (m, f, l, c, e) => { console.log('handler', typeof m, e instanceof TypeError); }; setTimeout(() => { undefinedFn(); }, 0);");
     assert_eq!(logs(&r), "handler string false");
-    assert!(errors(&r).contains("ReferenceError: undefinedFn is not defined"), "{}", errors(&r));
+    assert!(
+        errors(&r).contains("ReferenceError: undefinedFn is not defined"),
+        "{}",
+        errors(&r)
+    );
 }
 
 #[test]
 fn click_dispatch_sequence_and_link_navigation() {
     let mut r = run("<a id=a href='/next'>go</a><div id=d></div>", "const log=[]; for (const t of ['pointerdown','mousedown','pointerup','mouseup','click','focus','focusin']) document.getElementById('a').addEventListener(t, e=>log.push(t+':'+e.target.id+':'+e.isTrusted+':'+(e.button|0))); window.log=log;");
     let action = click_id(&mut r, "a");
-    assert_eq!(action, DefaultAction::Navigate("https://example.test/next".into()));
+    assert_eq!(
+        action,
+        DefaultAction::Navigate("https://example.test/next".into())
+    );
     let out = r.eval("log.join()").unwrap();
     assert_eq!(out, "pointerdown:a:true:0,mousedown:a:true:0,focus:a:true:0,focusin:a:true:0,pointerup:a:true:0,mouseup:a:true:0,click:a:true:0");
     assert_eq!(r.focused(), Some(id_of(&r, "a")));
     // A prevented click keeps the browser from navigating.
-    r.eval("document.getElementById('a').addEventListener('click', e => e.preventDefault())").unwrap();
+    r.eval("document.getElementById('a').addEventListener('click', e => e.preventDefault())")
+        .unwrap();
     assert_eq!(click_id(&mut r, "a"), DefaultAction::Prevented);
     // A click on plain content focuses nothing and reports None.
     assert_eq!(click_id(&mut r, "d"), DefaultAction::None);
@@ -51,35 +62,86 @@ fn click_dispatch_sequence_and_link_navigation() {
 #[test]
 fn click_by_coordinates_hit_tests() {
     let mut r = run("<div id=top style='height:50px'></div><button id=b style='display:block;width:100px;height:30px'>b</button>", "window.hits=[]; document.addEventListener('click', e=>hits.push(e.target.id+'@'+e.clientX+','+e.clientY+' off'+e.offsetX+','+e.offsetY));");
-    let a = r.dispatch(UiEvent::Click { x: 20, y: 60, button: 0, modifiers: Modifiers::default(), detail: 1 });
+    let a = r.dispatch(UiEvent::Click {
+        x: 20,
+        y: 60,
+        button: 0,
+        modifiers: Modifiers::default(),
+        detail: 1,
+    });
     assert_eq!(a, DefaultAction::Focus(id_of(&r, "b")));
-    r.dispatch(UiEvent::Click { x: 20, y: 10, button: 0, modifiers: Modifiers::default(), detail: 1 });
-    assert_eq!(r.eval("hits.join()").unwrap(), "b@20,60 off12,2,top@20,10 off12,2");
+    r.dispatch(UiEvent::Click {
+        x: 20,
+        y: 10,
+        button: 0,
+        modifiers: Modifiers::default(),
+        detail: 1,
+    });
+    assert_eq!(
+        r.eval("hits.join()").unwrap(),
+        "b@20,60 off12,2,top@20,10 off12,2"
+    );
     assert_eq!(r.eval("document.elementFromPoint(20, 60).id + ' ' + document.elementFromPoint(20, 10).id + ' ' + document.elementFromPoint(-5, 0)").unwrap(), "b top null");
 }
 
 #[test]
 fn dblclick_and_buttons() {
     let mut r = run("<div id=d style='height:40px'></div>", "window.ev=[]; for (const t of ['click','dblclick','auxclick','contextmenu']) document.addEventListener(t, e=>ev.push(t+e.detail+':'+e.button));");
-    r.dispatch(UiEvent::Click { x: 5, y: 5, button: 0, modifiers: Modifiers::default(), detail: 2 });
-    r.dispatch(UiEvent::Click { x: 5, y: 5, button: 1, modifiers: Modifiers::default(), detail: 1 });
-    r.dispatch(UiEvent::Click { x: 5, y: 5, button: 2, modifiers: Modifiers::default(), detail: 1 });
-    assert_eq!(r.eval("ev.join()").unwrap(), "click2:0,dblclick2:0,auxclick1:1,contextmenu0:2");
+    r.dispatch(UiEvent::Click {
+        x: 5,
+        y: 5,
+        button: 0,
+        modifiers: Modifiers::default(),
+        detail: 2,
+    });
+    r.dispatch(UiEvent::Click {
+        x: 5,
+        y: 5,
+        button: 1,
+        modifiers: Modifiers::default(),
+        detail: 1,
+    });
+    r.dispatch(UiEvent::Click {
+        x: 5,
+        y: 5,
+        button: 2,
+        modifiers: Modifiers::default(),
+        detail: 1,
+    });
+    assert_eq!(
+        r.eval("ev.join()").unwrap(),
+        "click2:0,dblclick2:0,auxclick1:1,contextmenu0:2"
+    );
 }
 
 #[test]
 fn checkbox_and_radio_toggle_with_change_events() {
     let mut r = run("<input id=c type=checkbox><input id=r1 type=radio name=g><input id=r2 type=radio name=g checked><label id=l for=c>lab</label>", "window.ev=[]; for (const id of ['c','r1']) for (const t of ['click','input','change']) document.getElementById(id).addEventListener(t, e=>ev.push(id+':'+t+':'+e.target.checked));");
     assert_eq!(click_id(&mut r, "c"), DefaultAction::Toggle(id_of(&r, "c")));
-    assert_eq!(r.eval("ev.join() + ' ' + c.checked").unwrap(), "c:click:true,c:input:true,c:change:true true");
-    assert_eq!(click_id(&mut r, "r1"), DefaultAction::Toggle(id_of(&r, "r1")));
-    assert_eq!(r.eval("[r1.checked, r2.checked, r1.matches(':checked')].join()").unwrap(), "true,false,true");
+    assert_eq!(
+        r.eval("ev.join() + ' ' + c.checked").unwrap(),
+        "c:click:true,c:input:true,c:change:true true"
+    );
+    assert_eq!(
+        click_id(&mut r, "r1"),
+        DefaultAction::Toggle(id_of(&r, "r1"))
+    );
+    assert_eq!(
+        r.eval("[r1.checked, r2.checked, r1.matches(':checked')].join()")
+            .unwrap(),
+        "true,false,true"
+    );
     // Prevented click reverts the toggle.
-    r.eval("ev.length=0; c.addEventListener('click', e=>e.preventDefault());").unwrap();
+    r.eval("ev.length=0; c.addEventListener('click', e=>e.preventDefault());")
+        .unwrap();
     assert_eq!(click_id(&mut r, "c"), DefaultAction::Prevented);
-    assert_eq!(r.eval("ev.join() + ' ' + c.checked").unwrap(), "c:click:false true");
+    assert_eq!(
+        r.eval("ev.join() + ' ' + c.checked").unwrap(),
+        "c:click:false true"
+    );
     // Label forwards the click to its control.
-    r.eval("ev.length=0; c.removeEventListener; c.checked=false;").unwrap();
+    r.eval("ev.length=0; c.removeEventListener; c.checked=false;")
+        .unwrap();
     let a = click_id(&mut r, "l");
     assert!(matches!(a, DefaultAction::Prevented), "{a:?}");
 }
@@ -89,14 +151,40 @@ fn form_submission_default_action_and_prevent() {
     let mut r = run("<form id=f action='/post' method=post enctype='multipart/form-data'><input name=a value=1><input name=b value=2 disabled><input id=s type=submit name=btn value=Go></form><form id=g><input name=q value=x><input id=t type=text></form>", "window.subs=[]; document.getElementById('f').addEventListener('submit', e=>subs.push('f:'+(e.submitter&&e.submitter.id)+':'+e.isTrusted));");
     let f = id_of(&r, "f");
     let a = click_id(&mut r, "s");
-    assert_eq!(a, DefaultAction::Submit { form: f, action: "https://example.test/post".into(), method: "post".into(), enctype: "multipart/form-data".into(), data: vec![("a".into(), "1".into()), ("btn".into(), "Go".into())] });
+    assert_eq!(
+        a,
+        DefaultAction::Submit {
+            form: f,
+            action: "https://example.test/post".into(),
+            method: "post".into(),
+            enctype: "multipart/form-data".into(),
+            data: vec![("a".into(), "1".into()), ("btn".into(), "Go".into())]
+        }
+    );
     assert_eq!(r.eval("subs.join()").unwrap(), "f:s:true");
-    r.eval("f.addEventListener('submit', e => e.preventDefault())").unwrap();
+    r.eval("f.addEventListener('submit', e => e.preventDefault())")
+        .unwrap();
     assert_eq!(click_id(&mut r, "s"), DefaultAction::Prevented);
     // Enter in a text field submits implicitly.
-    r.dispatch(UiEvent::Focus { node: Some(id_of(&r, "t")) });
-    let a = r.dispatch(UiEvent::Key { key: "Enter".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
-    assert_eq!(a, DefaultAction::Submit { form: id_of(&r, "g"), action: "https://example.test/page.html".into(), method: "get".into(), enctype: "application/x-www-form-urlencoded".into(), data: vec![("q".into(), "x".into())] });
+    r.dispatch(UiEvent::Focus {
+        node: Some(id_of(&r, "t")),
+    });
+    let a = r.dispatch(UiEvent::Key {
+        key: "Enter".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
+    assert_eq!(
+        a,
+        DefaultAction::Submit {
+            form: id_of(&r, "g"),
+            action: "https://example.test/page.html".into(),
+            method: "get".into(),
+            enctype: "application/x-www-form-urlencoded".into(),
+            data: vec![("q".into(), "x".into())]
+        }
+    );
 }
 
 #[test]
@@ -108,9 +196,19 @@ fn implicit_submission_clicks_the_default_button_without_moving_focus() {
         "<form id=f><input id=t type=text><button id=b type=button>no</button><button id=s>Go</button></form>",
         "window.log=[]; for (const t of ['pointerdown','mousedown','pointerup','mouseup','click','focus','blur']) for (const id of ['t','s']) document.getElementById(id).addEventListener(t, e=>log.push(t+':'+e.target.id+':'+e.detail)); document.getElementById('f').addEventListener('submit', e=>{ log.push('submit:'+(e.submitter&&e.submitter.id)); e.preventDefault(); });",
     );
-    r.dispatch(UiEvent::Focus { node: Some(id_of(&r, "t")) });
+    r.dispatch(UiEvent::Focus {
+        node: Some(id_of(&r, "t")),
+    });
     r.eval("log.length = 0").unwrap();
-    assert_eq!(r.dispatch(UiEvent::Key { key: "Enter".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false }), DefaultAction::Prevented);
+    assert_eq!(
+        r.dispatch(UiEvent::Key {
+            key: "Enter".into(),
+            code: String::new(),
+            modifiers: Modifiers::default(),
+            repeat: false
+        }),
+        DefaultAction::Prevented
+    );
     assert_eq!(r.eval("log.join()").unwrap(), "click:s:0,submit:s");
     assert_eq!(r.focused(), Some(id_of(&r, "t")));
     // A real click on the same button does move focus and fires pointer events.
@@ -119,9 +217,19 @@ fn implicit_submission_clicks_the_default_button_without_moving_focus() {
     assert_eq!(r.eval("log.join()").unwrap(), "pointerdown:s:1,mousedown:s:1,blur:t:0,focus:s:0,pointerup:s:1,mouseup:s:1,click:s:1,submit:s");
     assert_eq!(r.focused(), Some(id_of(&r, "s")));
     // A prevented click on the default button blocks the implicit submission.
-    r.dispatch(UiEvent::Focus { node: Some(id_of(&r, "t")) });
+    r.dispatch(UiEvent::Focus {
+        node: Some(id_of(&r, "t")),
+    });
     r.eval("log.length = 0; document.getElementById('s').addEventListener('click', e => e.preventDefault());").unwrap();
-    assert_eq!(r.dispatch(UiEvent::Key { key: "Enter".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false }), DefaultAction::Prevented);
+    assert_eq!(
+        r.dispatch(UiEvent::Key {
+            key: "Enter".into(),
+            code: String::new(),
+            modifiers: Modifiers::default(),
+            repeat: false
+        }),
+        DefaultAction::Prevented
+    );
     assert_eq!(r.eval("log.join()").unwrap(), "click:s:0");
 }
 
@@ -129,38 +237,99 @@ fn implicit_submission_clicks_the_default_button_without_moving_focus() {
 fn form_validation_blocks_submission() {
     let mut r = run("<form id=f><input id=i required><button id=b></button></form>", "window.inv=0; document.getElementById('i').addEventListener('invalid', ()=>inv++); document.getElementById('f').addEventListener('submit', ()=>{ window.submitted=true; });");
     assert_eq!(click_id(&mut r, "b"), DefaultAction::Prevented);
-    assert_eq!(r.eval("inv + ' ' + window.submitted").unwrap(), "1 undefined");
-    r.dispatch(UiEvent::SetValue { node: id_of(&r, "i"), value: "ok".into(), commit: true });
-    assert!(matches!(click_id(&mut r, "b"), DefaultAction::Submit { .. }));
+    assert_eq!(
+        r.eval("inv + ' ' + window.submitted").unwrap(),
+        "1 undefined"
+    );
+    r.dispatch(UiEvent::SetValue {
+        node: id_of(&r, "i"),
+        value: "ok".into(),
+        commit: true,
+    });
+    assert!(matches!(
+        click_id(&mut r, "b"),
+        DefaultAction::Submit { .. }
+    ));
 }
 
 #[test]
 fn typing_fires_key_and_input_events_and_edits_value() {
     let mut r = run("<input id=i value='ab'><textarea id=t></textarea>", "window.ev=[]; const i=document.getElementById('i'); for (const t of ['keydown','keypress','beforeinput','input','keyup','change']) i.addEventListener(t, e=>ev.push(t+(e.key!==undefined?':'+e.key:'')+(e.data!==undefined?':'+e.data:'')+(e.inputType?':'+e.inputType:'')));");
-    r.dispatch(UiEvent::Focus { node: Some(id_of(&r, "i")) });
-    r.dispatch(UiEvent::Key { key: "c".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
-    assert_eq!(r.eval("ev.join('|') + ' ' + i.value").unwrap(), "keydown:c|keypress:c|beforeinput:c:insertText|input:c:insertText|keyup:c abc");
+    r.dispatch(UiEvent::Focus {
+        node: Some(id_of(&r, "i")),
+    });
+    r.dispatch(UiEvent::Key {
+        key: "c".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
+    assert_eq!(
+        r.eval("ev.join('|') + ' ' + i.value").unwrap(),
+        "keydown:c|keypress:c|beforeinput:c:insertText|input:c:insertText|keyup:c abc"
+    );
     r.eval("ev.length = 0").unwrap();
-    r.dispatch(UiEvent::Key { key: "Backspace".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
+    r.dispatch(UiEvent::Key {
+        key: "Backspace".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
     r.dispatch(UiEvent::TypeText { text: "xy".into() });
-    assert_eq!(r.eval("i.value + ' ' + i.selectionStart").unwrap(), "abxy 4");
+    assert_eq!(
+        r.eval("i.value + ' ' + i.selectionStart").unwrap(),
+        "abxy 4"
+    );
     r.eval("ev.length = 0; i.setSelectionRange(0, 2);").unwrap();
-    r.dispatch(UiEvent::Key { key: "Z".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
+    r.dispatch(UiEvent::Key {
+        key: "Z".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
     assert_eq!(r.eval("i.value").unwrap(), "Zxy");
     // Prevented keydown suppresses the edit; prevented beforeinput too.
     r.eval("i.addEventListener('keydown', e => { if (e.key === 'q') e.preventDefault(); }); i.addEventListener('beforeinput', e => { if (e.data === 'w') e.preventDefault(); });").unwrap();
-    assert_eq!(r.dispatch(UiEvent::Key { key: "q".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false }), DefaultAction::Prevented);
-    r.dispatch(UiEvent::Key { key: "w".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
+    assert_eq!(
+        r.dispatch(UiEvent::Key {
+            key: "q".into(),
+            code: String::new(),
+            modifiers: Modifiers::default(),
+            repeat: false
+        }),
+        DefaultAction::Prevented
+    );
+    r.dispatch(UiEvent::Key {
+        key: "w".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
     assert_eq!(r.eval("i.value").unwrap(), "Zxy");
     // Change fires on blur after an edit.
     r.eval("ev.length = 0").unwrap();
-    r.dispatch(UiEvent::Focus { node: Some(id_of(&r, "t")) });
+    r.dispatch(UiEvent::Focus {
+        node: Some(id_of(&r, "t")),
+    });
     assert_eq!(r.eval("ev.join()").unwrap(), "change");
-    r.dispatch(UiEvent::Key { key: "Enter".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
+    r.dispatch(UiEvent::Key {
+        key: "Enter".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
     r.dispatch(UiEvent::TypeText { text: "k".into() });
     assert_eq!(r.eval("JSON.stringify(t.value)").unwrap(), "\"\\nk\"");
     // Ctrl+A selects all, then typing replaces.
-    r.dispatch(UiEvent::Key { key: "a".into(), code: String::new(), modifiers: Modifiers { ctrl: true, ..Default::default() }, repeat: false });
+    r.dispatch(UiEvent::Key {
+        key: "a".into(),
+        code: String::new(),
+        modifiers: Modifiers {
+            ctrl: true,
+            ..Default::default()
+        },
+        repeat: false,
+    });
     r.dispatch(UiEvent::TypeText { text: "R".into() });
     assert_eq!(r.eval("t.value").unwrap(), "R");
 }
@@ -169,80 +338,211 @@ fn typing_fires_key_and_input_events_and_edits_value() {
 fn tab_moves_focus_in_order() {
     let mut r = run("<input id=a><button id=b></button><div id=d tabindex=0></div><a id=l href=x></a><input id=h tabindex=-1><input id=z disabled>", "");
     let names = |r: &mut Realm| r.eval("document.activeElement.id").unwrap();
-    r.dispatch(UiEvent::Key { key: "Tab".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
+    r.dispatch(UiEvent::Key {
+        key: "Tab".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
     assert_eq!(names(&mut r), "a");
-    r.dispatch(UiEvent::Key { key: "Tab".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
-    r.dispatch(UiEvent::Key { key: "Tab".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
+    r.dispatch(UiEvent::Key {
+        key: "Tab".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
+    r.dispatch(UiEvent::Key {
+        key: "Tab".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
     assert_eq!(names(&mut r), "d");
-    r.dispatch(UiEvent::Key { key: "Tab".into(), code: String::new(), modifiers: Modifiers { shift: true, ..Default::default() }, repeat: false });
+    r.dispatch(UiEvent::Key {
+        key: "Tab".into(),
+        code: String::new(),
+        modifiers: Modifiers {
+            shift: true,
+            ..Default::default()
+        },
+        repeat: false,
+    });
     assert_eq!(names(&mut r), "b");
-    r.dispatch(UiEvent::Key { key: "Tab".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
-    r.dispatch(UiEvent::Key { key: "Tab".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
+    r.dispatch(UiEvent::Key {
+        key: "Tab".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
+    r.dispatch(UiEvent::Key {
+        key: "Tab".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
     assert_eq!(names(&mut r), "l");
-    r.dispatch(UiEvent::Key { key: "Tab".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
+    r.dispatch(UiEvent::Key {
+        key: "Tab".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
     assert_eq!(names(&mut r), "");
 }
 
 #[test]
 fn hover_events_and_hover_state() {
     let mut r = run("<div id=a style='height:20px'><span id=b>x</span></div><div id=c style='height:20px'>c</div>", "window.ev=[]; for (const id of ['a','b','c']) for (const t of ['mouseover','mouseout','mouseenter','mouseleave','mousemove','pointerenter']) document.getElementById(id).addEventListener(t, e=>ev.push(id+':'+t+(e.relatedTarget?'>'+e.relatedTarget.id:'')));");
-    r.dispatch(UiEvent::PointerMove { x: 12, y: 12, modifiers: Modifiers::default() });
+    r.dispatch(UiEvent::PointerMove {
+        x: 12,
+        y: 12,
+        modifiers: Modifiers::default(),
+    });
     let first = r.eval("ev.join()").unwrap();
     assert!(first.starts_with("b:mouseover,a:mouseover,a:pointerenter,a:mouseenter,b:pointerenter,b:mouseenter,b:mousemove,a:mousemove"), "{first}");
     assert_eq!(r.hovered(), Some(id_of(&r, "b")));
-    assert_eq!(r.eval("[a.matches(':hover'), b.matches(':hover'), c.matches(':hover')].join()").unwrap(), "true,true,false");
+    assert_eq!(
+        r.eval("[a.matches(':hover'), b.matches(':hover'), c.matches(':hover')].join()")
+            .unwrap(),
+        "true,true,false"
+    );
     r.eval("ev.length=0").unwrap();
-    r.dispatch(UiEvent::PointerMove { x: 12, y: 38, modifiers: Modifiers::default() });
+    r.dispatch(UiEvent::PointerMove {
+        x: 12,
+        y: 38,
+        modifiers: Modifiers::default(),
+    });
     let second = r.eval("ev.join()").unwrap();
     assert!(second.starts_with("b:mouseout>c,a:mouseout>c,b:mouseleave>c,a:mouseleave>c,c:mouseover>b,c:pointerenter>b,c:mouseenter>b,c:mousemove"), "{second}");
     r.eval("ev.length=0").unwrap();
-    r.dispatch(UiEvent::PointerMove { x: 13, y: 39, modifiers: Modifiers::default() });
+    r.dispatch(UiEvent::PointerMove {
+        x: 13,
+        y: 39,
+        modifiers: Modifiers::default(),
+    });
     assert_eq!(r.eval("ev.join()").unwrap(), "c:mousemove");
 }
 
 #[test]
 fn scroll_and_wheel_events() {
     let mut r = run("<div id=box style='height:50px;overflow:auto'><div style='height:500px'></div></div><div style='height:3000px'></div>", "window.ev=[]; document.getElementById('box').addEventListener('scroll', ()=>ev.push('box'+box.scrollTop)); document.addEventListener('scroll', ()=>ev.push('doc'+window.scrollY)); window.addEventListener('scroll', ()=>ev.push('win')); document.addEventListener('wheel', e=>{ if (e.deltaY > 900) e.preventDefault(); });");
-    r.dispatch(UiEvent::Scroll { node: Some(id_of(&r, "box")), x: 0, y: 30 });
-    r.dispatch(UiEvent::Scroll { node: None, x: 0, y: 100 });
-    r.dispatch(UiEvent::Scroll { node: None, x: 0, y: 100 });
+    r.dispatch(UiEvent::Scroll {
+        node: Some(id_of(&r, "box")),
+        x: 0,
+        y: 30,
+    });
+    r.dispatch(UiEvent::Scroll {
+        node: None,
+        x: 0,
+        y: 100,
+    });
+    r.dispatch(UiEvent::Scroll {
+        node: None,
+        x: 0,
+        y: 100,
+    });
     assert_eq!(r.eval("ev.join()").unwrap(), "box30,doc100,win");
-    r.dispatch(UiEvent::Scroll { node: None, x: 0, y: 0 });
+    r.dispatch(UiEvent::Scroll {
+        node: None,
+        x: 0,
+        y: 0,
+    });
     r.eval("ev.length=0").unwrap();
-    r.dispatch(UiEvent::Wheel { x: 20, y: 20, delta_x: 0, delta_y: 20, modifiers: Modifiers::default() });
-    assert_eq!(r.eval("ev.join() + ' ' + box.scrollTop").unwrap(), "box50 50");
-    assert_eq!(r.dispatch(UiEvent::Wheel { x: 20, y: 20, delta_x: 0, delta_y: 1000, modifiers: Modifiers::default() }), DefaultAction::Prevented);
-    r.dispatch(UiEvent::Wheel { x: 5, y: 200, delta_x: 0, delta_y: 50, modifiers: Modifiers::default() });
+    r.dispatch(UiEvent::Wheel {
+        x: 20,
+        y: 20,
+        delta_x: 0,
+        delta_y: 20,
+        modifiers: Modifiers::default(),
+    });
+    assert_eq!(
+        r.eval("ev.join() + ' ' + box.scrollTop").unwrap(),
+        "box50 50"
+    );
+    assert_eq!(
+        r.dispatch(UiEvent::Wheel {
+            x: 20,
+            y: 20,
+            delta_x: 0,
+            delta_y: 1000,
+            modifiers: Modifiers::default()
+        }),
+        DefaultAction::Prevented
+    );
+    r.dispatch(UiEvent::Wheel {
+        x: 5,
+        y: 200,
+        delta_x: 0,
+        delta_y: 50,
+        modifiers: Modifiers::default(),
+    });
     assert_eq!(r.eval("window.scrollY").unwrap(), "50");
     // Clamped to the scrollable range.
-    r.dispatch(UiEvent::Scroll { node: Some(id_of(&r, "box")), x: 0, y: 9999 });
+    r.dispatch(UiEvent::Scroll {
+        node: Some(id_of(&r, "box")),
+        x: 0,
+        y: 9999,
+    });
     // 500px of content in a 50px box: no horizontal bar is needed, so the whole
     // 50px is the scrollport and 450px of content is below it.
-    assert_eq!(r.eval("box.scrollTop + ',' + (box.scrollHeight - box.clientHeight)").unwrap(), "450,450");
+    assert_eq!(
+        r.eval("box.scrollTop + ',' + (box.scrollHeight - box.clientHeight)")
+            .unwrap(),
+        "450,450"
+    );
 }
 
 #[test]
 fn resize_hashchange_popstate_visibility_unload() {
     let mut r = run("<div id=t></div>", "window.ev=[]; addEventListener('resize', ()=>ev.push('resize'+innerWidth)); addEventListener('hashchange', e=>ev.push('hash:'+location.hash+':'+e.oldURL.slice(-9))); addEventListener('popstate', e=>ev.push('pop:'+JSON.stringify(e.state))); document.addEventListener('visibilitychange', ()=>ev.push('vis:'+document.visibilityState)); addEventListener('pageshow', e=>ev.push('show')); addEventListener('beforeunload', e=>{ ev.push('bu'); e.returnValue='stay'; }); addEventListener('unload', ()=>ev.push('unload')); const mq=matchMedia('(max-width: 600px)'); mq.addEventListener('change', e=>ev.push('mq:'+e.matches));");
-    r.dispatch(UiEvent::Resize { width: 500, height: 400 });
+    r.dispatch(UiEvent::Resize {
+        width: 500,
+        height: 400,
+    });
     r.dispatch(UiEvent::HashChange { hash: "t".into() });
-    r.eval("history.pushState({p:1}, '', '/next'); history.pushState({p:2}, '', '/next2');").unwrap();
+    r.eval("history.pushState({p:1}, '', '/next'); history.pushState({p:2}, '', '/next2');")
+        .unwrap();
     r.dispatch(UiEvent::HistoryGo { delta: -1 });
     assert_eq!(r.url(), "https://example.test/next");
     r.dispatch(UiEvent::Visibility { hidden: true });
     r.dispatch(UiEvent::PageShow);
-    assert_eq!(r.dispatch(UiEvent::Unload), DefaultAction::ConfirmUnload("stay".into()));
+    assert_eq!(
+        r.dispatch(UiEvent::Unload),
+        DefaultAction::ConfirmUnload("stay".into())
+    );
     assert_eq!(r.eval("ev.join()").unwrap(), "show,mq:true,resize500,hash:#t:page.html,pop:{\"p\":1},vis:hidden,show,bu,vis:hidden,unload");
 }
 
 #[test]
 fn set_value_event_and_select_change() {
     let mut r = run("<select id=s><option>a</option><option>b</option></select><input id=i>", "window.ev=[]; for (const id of ['s','i']) for (const t of ['input','change']) document.getElementById(id).addEventListener(t, e=>ev.push(id+':'+t+':'+e.target.value));");
-    r.dispatch(UiEvent::SetValue { node: id_of(&r, "s"), value: "b".into(), commit: true });
-    r.dispatch(UiEvent::SetValue { node: id_of(&r, "i"), value: "typed".into(), commit: false });
-    assert_eq!(r.eval("ev.join() + ' ' + s.selectedIndex").unwrap(), "s:input:b,s:change:b,i:input:typed 1");
-    let opt = r.document().descendants(id_of(&r, "s")).find(|n| r.document().is(*n, "option")).unwrap();
-    assert_eq!(r.dispatch(UiEvent::ClickNode { node: opt, modifiers: Modifiers::default(), detail: 1 }), DefaultAction::Toggle(id_of(&r, "s")));
+    r.dispatch(UiEvent::SetValue {
+        node: id_of(&r, "s"),
+        value: "b".into(),
+        commit: true,
+    });
+    r.dispatch(UiEvent::SetValue {
+        node: id_of(&r, "i"),
+        value: "typed".into(),
+        commit: false,
+    });
+    assert_eq!(
+        r.eval("ev.join() + ' ' + s.selectedIndex").unwrap(),
+        "s:input:b,s:change:b,i:input:typed 1"
+    );
+    let opt = r
+        .document()
+        .descendants(id_of(&r, "s"))
+        .find(|n| r.document().is(*n, "option"))
+        .unwrap();
+    assert_eq!(
+        r.dispatch(UiEvent::ClickNode {
+            node: opt,
+            modifiers: Modifiers::default(),
+            detail: 1
+        }),
+        DefaultAction::Toggle(id_of(&r, "s"))
+    );
     assert_eq!(r.eval("s.value").unwrap(), "a");
 }
 
@@ -251,30 +551,62 @@ fn summary_toggles_details() {
     let mut r = run("<details id=d><summary id=s>sum</summary>body</details>", "window.n=0; document.getElementById('d').addEventListener('toggle', e=>{ n++; window.state=e.newState; });");
     assert_eq!(click_id(&mut r, "s"), DefaultAction::Toggle(id_of(&r, "d")));
     r.run_until_idle(10);
-    assert_eq!(r.eval("d.open + ' ' + n + ' ' + state").unwrap(), "true 1 open");
+    assert_eq!(
+        r.eval("d.open + ' ' + n + ' ' + state").unwrap(),
+        "true 1 open"
+    );
 }
 
 #[test]
 fn space_and_enter_activate_buttons() {
-    let mut r = run("<button id=b>b</button>", "window.n=0; b.addEventListener('click', ()=>n++);");
-    r.dispatch(UiEvent::Focus { node: Some(id_of(&r, "b")) });
-    r.dispatch(UiEvent::Key { key: "Enter".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
-    r.dispatch(UiEvent::Key { key: " ".into(), code: String::new(), modifiers: Modifiers::default(), repeat: false });
+    let mut r = run(
+        "<button id=b>b</button>",
+        "window.n=0; b.addEventListener('click', ()=>n++);",
+    );
+    r.dispatch(UiEvent::Focus {
+        node: Some(id_of(&r, "b")),
+    });
+    r.dispatch(UiEvent::Key {
+        key: "Enter".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
+    r.dispatch(UiEvent::Key {
+        key: " ".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
     assert_eq!(r.eval("n").unwrap(), "2");
 }
 
 #[test]
 fn pointer_halves_and_active_state() {
     let mut r = run("<div id=d style='height:30px'>x</div>", "window.ev=[]; d.addEventListener('mousedown', ()=>ev.push('down:'+d.matches(':active'))); d.addEventListener('mouseup', ()=>ev.push('up:'+d.matches(':active'))); d.addEventListener('click', ()=>ev.push('click'));");
-    r.dispatch(UiEvent::PointerDown { x: 20, y: 20, button: 0, modifiers: Modifiers::default() });
-    r.dispatch(UiEvent::PointerUp { x: 20, y: 20, button: 0, modifiers: Modifiers::default() });
+    r.dispatch(UiEvent::PointerDown {
+        x: 20,
+        y: 20,
+        button: 0,
+        modifiers: Modifiers::default(),
+    });
+    r.dispatch(UiEvent::PointerUp {
+        x: 20,
+        y: 20,
+        button: 0,
+        modifiers: Modifiers::default(),
+    });
     assert_eq!(r.eval("ev.join()").unwrap(), "down:true,up:false,click");
 }
 
 #[test]
 fn error_in_task_reaches_console() {
     let r = run("", "setTimeout(()=>{ null.x; }, 0);");
-    assert!(errors(&r).contains("Cannot read properties of null (reading 'x')"), "{}", errors(&r));
+    assert!(
+        errors(&r).contains("Cannot read properties of null (reading 'x')"),
+        "{}",
+        errors(&r)
+    );
 }
 
 // ------------------------------------------------- CSS transitions and animations
@@ -282,7 +614,11 @@ fn error_in_task_reaches_console() {
 /// A realm whose head holds `css`, for the transition and animation tests.
 fn styled(css: &str, body: &str, script: &str) -> Realm {
     let html = format!("<!DOCTYPE html><html><head><style>{css}</style></head><body>{body}<script>{script}</script></body></html>");
-    let mut r = Realm::new(&html, "https://example.test/page.html", Box::new(crate::script::MemoryHost::new()));
+    let mut r = Realm::new(
+        &html,
+        "https://example.test/page.html",
+        Box::new(crate::script::MemoryHost::new()),
+    );
     r.run_document();
     // The load's own style flush: an element transitions only from a value a previous
     // flush saw, so without this the first change after load would start nothing.
@@ -300,16 +636,21 @@ fn css_transition_fires_run_start_and_end_on_the_world_clock() {
     // Nothing transitions while no property changed.
     r.run_until_idle(500);
     assert_eq!(r.eval("log.join('|')").unwrap(), "");
-    r.eval("start = performance.now(); t.classList.add('off')").unwrap();
+    r.eval("start = performance.now(); t.classList.add('off')")
+        .unwrap();
     r.run_until_idle(10);
     // `transitionrun` is synchronous with the style change; a delayed
     // `transitionstart` waits (`color` has none, `opacity` has 50 ms of it).
     assert_eq!(r.eval("log.length").unwrap(), "3");
     r.run_until_idle(2000);
-    let log = r.eval("log.map(l => l.replace(/^\\d+ /, '')).join('|')").unwrap();
+    let log = r
+        .eval("log.map(l => l.replace(/^\\d+ /, '')).join('|')")
+        .unwrap();
     assert_eq!(log, "transitionrun:opacity:0:true|transitionrun:color:0:true|transitionstart:color:0:true|transitionstart:opacity:0:true|transitionend:opacity:0.3:true|transitionend:color:1:true");
     // The times are the declared delay and delay + duration, on the world clock.
-    let times = r.eval("log.map(l => Math.round((+l.split(' ')[0] - start) / 10) * 10).join()").unwrap();
+    let times = r
+        .eval("log.map(l => Math.round((+l.split(' ')[0] - start) / 10) * 10).join()")
+        .unwrap();
     assert_eq!(times, "0,0,0,50,350,1000");
     assert_eq!(r.eval("getComputedStyle(t).opacity").unwrap(), "0.25");
     assert!(errors(&r).is_empty(), "{}", errors(&r));
@@ -329,7 +670,8 @@ fn css_transition_needs_a_previous_value_a_duration_and_a_real_change() {
     assert_eq!(r.eval("log.join()").unwrap(), "");
     // A zero duration transitions nothing either; writing the value it already has is
     // not a change.
-    r.eval("b.classList.add('off'); a.style.opacity = '1';").unwrap();
+    r.eval("b.classList.add('off'); a.style.opacity = '1';")
+        .unwrap();
     r.run_until_idle(300);
     assert_eq!(r.eval("log.join()").unwrap(), "");
     r.eval("a.style.opacity = '0.5'").unwrap();
@@ -344,9 +686,13 @@ fn a_second_change_cancels_the_transition_in_flight() {
         "<div id=t>t</div>",
         "window.log=[]; for (const e of ['transitionend','transitioncancel']) t.addEventListener(e, ev => log.push(ev.type + ':' + Math.round(ev.elapsedTime * 20) / 20));",
     );
-    r.eval("t.style.opacity = '0'; setTimeout(() => { t.style.opacity = '0.5'; }, 100);").unwrap();
+    r.eval("t.style.opacity = '0'; setTimeout(() => { t.style.opacity = '0.5'; }, 100);")
+        .unwrap();
     r.run_until_idle(1000);
-    assert_eq!(r.eval("log.join()").unwrap(), "transitioncancel:0.1,transitionend:0.4");
+    assert_eq!(
+        r.eval("log.join()").unwrap(),
+        "transitioncancel:0.1,transitionend:0.4"
+    );
 }
 
 #[test]
@@ -357,7 +703,8 @@ fn css_animation_fires_start_iteration_and_end() {
         "window.log=[]; for (const e of ['animationstart','animationiteration','animationend','animationcancel']) document.addEventListener(e, ev => log.push(ev.target.id + ':' + ev.type + ':' + ev.animationName + ':' + Math.round(ev.elapsedTime * 100) / 100), true);",
     );
     r.run_until_idle(50);
-    r.eval("a.classList.add('go'); b.classList.add('go');").unwrap();
+    r.eval("a.classList.add('go'); b.classList.add('go');")
+        .unwrap();
     r.run_until_idle(2000);
     // `infinite` starts and never ends; the finite one iterates once, then ends.
     assert_eq!(r.eval("log.join('|')").unwrap(), "b:animationstart:spin:0|a:animationstart:spin:0|a:animationiteration:spin:0.2|a:animationend:spin:0.4");
@@ -365,10 +712,17 @@ fn css_animation_fires_start_iteration_and_end() {
     r.eval("const s = document.createElement('style'); document.head.appendChild(s); s.sheet.insertRule('@keyframes fade { from { opacity: 1 } to { opacity: 0 } }', 0); s.sheet.insertRule('#a.fade { animation: fade 50ms linear both }', 1); log.length = 0; a.className = 'fade';").unwrap();
     r.run_until_idle(500);
     // (`spin` had already ended, so dropping its name cancels nothing.)
-    assert_eq!(r.eval("log.join('|')").unwrap(), "a:animationstart:fade:0|a:animationend:fade:0.05");
+    assert_eq!(
+        r.eval("log.join('|')").unwrap(),
+        "a:animationstart:fade:0|a:animationend:fade:0.05"
+    );
     // Taking the name off an animation still running does cancel it.
     r.eval("log.length = 0; b.className = ''").unwrap();
     r.run_until_idle(50);
-    assert_eq!(r.eval("log.map(l => l.split(':').slice(0, 3).join(':')).join('|')").unwrap(), "b:animationcancel:spin");
+    assert_eq!(
+        r.eval("log.map(l => l.split(':').slice(0, 3).join(':')).join('|')")
+            .unwrap(),
+        "b:animationcancel:spin"
+    );
     assert!(errors(&r).is_empty(), "{}", errors(&r));
 }

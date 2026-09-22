@@ -140,11 +140,26 @@ impl<'a> LayoutContext<'a> {
 pub fn layout(doc: &Document, styles: &StyleSet, viewport: Viewport) -> FragmentTree {
     let scroll = ScrollState::new();
     let mut cache = LayoutCache::default();
-    layout_with(doc, styles, viewport, LayoutOptions { images: &NoImages, scroll: &scroll }, &mut cache)
+    layout_with(
+        doc,
+        styles,
+        viewport,
+        LayoutOptions {
+            images: &NoImages,
+            scroll: &scroll,
+        },
+        &mut cache,
+    )
 }
 
 /// Layout with image sizes, scroll offsets and a caller-owned cache.
-pub fn layout_with(doc: &Document, styles: &StyleSet, viewport: Viewport, opts: LayoutOptions<'_>, cache: &mut LayoutCache) -> FragmentTree {
+pub fn layout_with(
+    doc: &Document,
+    styles: &StyleSet,
+    viewport: Viewport,
+    opts: LayoutOptions<'_>,
+    cache: &mut LayoutCache,
+) -> FragmentTree {
     cache.invalidate_all();
     let zoom = (viewport.zoom.max(1)) as i32;
     let vw = Au::from_px_i32(viewport.width as i32).scale(100, zoom);
@@ -158,7 +173,10 @@ pub fn layout_with(doc: &Document, styles: &StyleSet, viewport: Viewport, opts: 
         tree,
         images: opts.images,
         scroll: opts.scroll,
-        viewport: Size { width: vw, height: vh },
+        viewport: Size {
+            width: vw,
+            height: vh,
+        },
         quirks: doc.quirks == QuirksMode::Quirks,
         root_overflow,
         cache: RefCell::new(std::mem::take(cache)),
@@ -167,4 +185,3 @@ pub fn layout_with(doc: &Document, styles: &StyleSet, viewport: Viewport, opts: 
     *cache = ctx.cache.into_inner();
     out
 }
-

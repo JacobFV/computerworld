@@ -4,7 +4,10 @@
 use cw_jsvm::value::{Args, HostHooks, JsResult, Key, Obj, Value};
 use cw_jsvm::vm::Vm;
 
-use super::{arg_bool, arg_node, arg_str, dom_exception, inner, node_array, node_of, opt_node, string_val, this_node};
+use super::{
+    arg_bool, arg_node, arg_str, dom_exception, inner, node_array, node_of, opt_node, string_val,
+    this_node,
+};
 use crate::dom::{Document, Namespace, NodeId, NodeKind};
 
 // ---------------------------------------------------------------- wrappers
@@ -25,7 +28,9 @@ fn node_get(_vm: &mut Vm, _o: &Obj, _k: &Key) -> JsResult<Option<Value>> {
 /// `form.name` / `form[0]`: listed elements by index, name or id.
 fn form_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
     let Key::Str(s) = k else { return Ok(None) };
-    let Some(id) = o.host_id() else { return Ok(None) };
+    let Some(id) = o.host_id() else {
+        return Ok(None);
+    };
     let form = NodeId(id);
     let found = {
         let rc = inner(vm);
@@ -42,7 +47,10 @@ fn form_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
                 if is_form_member(name) {
                     None
                 } else {
-                    inner.form_elements(form).into_iter().find(|n| inner.doc.attr(*n, "name") == Some(name) || inner.doc.attr(*n, "id") == Some(name))
+                    inner.form_elements(form).into_iter().find(|n| {
+                        inner.doc.attr(*n, "name") == Some(name)
+                            || inner.doc.attr(*n, "id") == Some(name)
+                    })
                 }
             }
         }
@@ -53,28 +61,94 @@ fn form_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
 fn is_form_member(name: &str) -> bool {
     matches!(
         name,
-        "submit" | "reset" | "elements" | "length" | "action" | "method" | "target" | "name" | "enctype" | "encoding" | "noValidate" | "checkValidity" | "reportValidity" | "requestSubmit" | "acceptCharset" | "autocomplete" | "then" | "constructor" | "style" | "id" | "className" | "children" | "parentNode" | "nodeType" | "tagName" | "nodeName"
+        "submit"
+            | "reset"
+            | "elements"
+            | "length"
+            | "action"
+            | "method"
+            | "target"
+            | "name"
+            | "enctype"
+            | "encoding"
+            | "noValidate"
+            | "checkValidity"
+            | "reportValidity"
+            | "requestSubmit"
+            | "acceptCharset"
+            | "autocomplete"
+            | "then"
+            | "constructor"
+            | "style"
+            | "id"
+            | "className"
+            | "children"
+            | "parentNode"
+            | "nodeType"
+            | "tagName"
+            | "nodeName"
     ) || name.starts_with("on")
         || name.starts_with("__")
 }
 
 /// `select[i]`: the option at an index.
 fn select_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
-    let Some(i) = k.array_index() else { return Ok(None) };
-    let Some(id) = o.host_id() else { return Ok(None) };
-    let opt = inner(vm).borrow().options_of(NodeId(id)).get(i as usize).copied();
+    let Some(i) = k.array_index() else {
+        return Ok(None);
+    };
+    let Some(id) = o.host_id() else {
+        return Ok(None);
+    };
+    let opt = inner(vm)
+        .borrow()
+        .options_of(NodeId(id))
+        .get(i as usize)
+        .copied();
     Ok(opt.map(|n| wrap_node(vm, n)))
 }
 
-pub static NODE_HOOKS: HostHooks = HostHooks { class: "Node", get: node_get, set: none_set, delete: none_delete, keys: none_keys };
-pub static FORM_HOOKS: HostHooks = HostHooks { class: "HTMLFormElement", get: form_get, set: none_set, delete: none_delete, keys: none_keys };
-pub static SELECT_HOOKS: HostHooks = HostHooks { class: "HTMLSelectElement", get: select_get, set: none_set, delete: none_delete, keys: none_keys };
+pub static NODE_HOOKS: HostHooks = HostHooks {
+    class: "Node",
+    get: node_get,
+    set: none_set,
+    delete: none_delete,
+    keys: none_keys,
+};
+pub static FORM_HOOKS: HostHooks = HostHooks {
+    class: "HTMLFormElement",
+    get: form_get,
+    set: none_set,
+    delete: none_delete,
+    keys: none_keys,
+};
+pub static SELECT_HOOKS: HostHooks = HostHooks {
+    class: "HTMLSelectElement",
+    get: select_get,
+    set: none_set,
+    delete: none_delete,
+    keys: none_keys,
+};
 
 /// The prototype key of a node: the element's local name, or a generic class.
 fn proto_key(doc: &Document, id: NodeId) -> (String, &'static str) {
     match doc.kind(id) {
-        NodeKind::Element { ns: Namespace::Html, tag, .. } => (tag.clone(), if tag.contains('-') { "*custom" } else { "*unknown" }),
-        NodeKind::Element { ns: Namespace::Svg, tag, .. } => (format!("svg:{tag}"), "*svg"),
+        NodeKind::Element {
+            ns: Namespace::Html,
+            tag,
+            ..
+        } => (
+            tag.clone(),
+            if tag.contains('-') {
+                "*custom"
+            } else {
+                "*unknown"
+            },
+        ),
+        NodeKind::Element {
+            ns: Namespace::Svg,
+            tag,
+            ..
+        } => (format!("svg:{tag}"), "*svg"),
         NodeKind::Element { .. } => ("*element".into(), "*element"),
         NodeKind::Text(_) => ("#text".into(), "#text"),
         NodeKind::Comment(_) => ("#comment".into(), "#comment"),
@@ -93,7 +167,12 @@ pub fn wrap_node(vm: &mut Vm, id: NodeId) -> Value {
             return Value::Obj(o.clone());
         }
         let (key, fallback) = proto_key(&inner.doc, id);
-        let proto = inner.protos.get(&key).or_else(|| inner.protos.get(fallback)).or_else(|| inner.protos.get("*element")).cloned();
+        let proto = inner
+            .protos
+            .get(&key)
+            .or_else(|| inner.protos.get(fallback))
+            .or_else(|| inner.protos.get("*element"))
+            .cloned();
         let hooks: &'static HostHooks = match key.as_str() {
             "form" => &FORM_HOOKS,
             "select" => &SELECT_HOOKS,
@@ -122,7 +201,9 @@ fn set_proto(_vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 
 /// Calls a prelude hook after a mutation, when someone listens for it.
 fn notify(vm: &mut Vm, hook: &str, args: Vec<Value>) -> JsResult<()> {
-    let Some(hooks) = vm.global.own_value("%hooks") else { return Ok(()) };
+    let Some(hooks) = vm.global.own_value("%hooks") else {
+        return Ok(());
+    };
     let f = vm.get_str(&hooks, hook)?;
     if f.is_callable() {
         vm.call(&f, hooks, args)?;
@@ -132,7 +213,11 @@ fn notify(vm: &mut Vm, hook: &str, args: Vec<Value>) -> JsResult<()> {
 
 fn subtree_needs_reaction(doc: &Document, custom: bool, root: NodeId) -> bool {
     doc.descendants(root).any(|n| match doc.tag(n) {
-        Some(t) => matches!(t, "script" | "style" | "link" | "img" | "iframe") || (custom && t.contains('-')) || doc.has_attr(n, "is"),
+        Some(t) => {
+            matches!(t, "script" | "style" | "link" | "img" | "iframe")
+                || (custom && t.contains('-'))
+                || doc.has_attr(n, "is")
+        }
         None => false,
     })
 }
@@ -155,7 +240,11 @@ fn node_type(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 fn node_name(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = this_node(vm, a)?;
     let s = match inner(vm).borrow().doc.kind(n) {
-        NodeKind::Element { ns: Namespace::Html, tag, .. } => tag.to_ascii_uppercase(),
+        NodeKind::Element {
+            ns: Namespace::Html,
+            tag,
+            ..
+        } => tag.to_ascii_uppercase(),
         NodeKind::Element { tag, .. } => tag.clone(),
         NodeKind::Text(_) => "#text".into(),
         NodeKind::Comment(_) => "#comment".into(),
@@ -175,9 +264,17 @@ fn local_name(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 fn namespace_uri(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = this_node(vm, a)?;
     let s = match inner(vm).borrow().doc.kind(n) {
-        NodeKind::Element { ns: Namespace::Html, .. } => "http://www.w3.org/1999/xhtml",
-        NodeKind::Element { ns: Namespace::Svg, .. } => "http://www.w3.org/2000/svg",
-        NodeKind::Element { ns: Namespace::MathMl, .. } => "http://www.w3.org/1998/Math/MathML",
+        NodeKind::Element {
+            ns: Namespace::Html,
+            ..
+        } => "http://www.w3.org/1999/xhtml",
+        NodeKind::Element {
+            ns: Namespace::Svg, ..
+        } => "http://www.w3.org/2000/svg",
+        NodeKind::Element {
+            ns: Namespace::MathMl,
+            ..
+        } => "http://www.w3.org/1998/Math/MathML",
         _ => return Ok(Value::Null),
     };
     Ok(Value::str(s))
@@ -211,17 +308,23 @@ fn script_parent(d: &Document, n: NodeId) -> Option<NodeId> {
 fn visible(d: &Document, c: Option<NodeId>, forward: bool) -> Option<NodeId> {
     let mut cur = c;
     while let Some(n) = cur {
-        let hidden = matches!(d.kind(n), NodeKind::DocumentFragment) && d.parent(n).map(|p| d.is(p, "template")).unwrap_or(false);
+        let hidden = matches!(d.kind(n), NodeKind::DocumentFragment)
+            && d.parent(n).map(|p| d.is(p, "template")).unwrap_or(false);
         if !hidden {
             return Some(n);
         }
-        cur = if forward { d.next_sibling(n) } else { d.prev_sibling(n) };
+        cur = if forward {
+            d.next_sibling(n)
+        } else {
+            d.prev_sibling(n)
+        };
     }
     None
 }
 
 link_getter!(parent_node, script_parent);
-link_getter!(parent_element, |d, n| script_parent(d, n).filter(|p| d.is_element(*p)));
+link_getter!(parent_element, |d, n| script_parent(d, n)
+    .filter(|p| d.is_element(*p)));
 link_getter!(first_child, |d, n| visible(d, d.first_child(n), true));
 link_getter!(last_child, |d, n| visible(d, d.last_child(n), false));
 link_getter!(next_sibling, |d, n| visible(d, d.next_sibling(n), true));
@@ -278,7 +381,9 @@ fn has_child_nodes(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = this_node(vm, a)?;
     let rc = inner(vm);
     let i = rc.borrow();
-    Ok(Value::Bool(visible(&i.doc, i.doc.first_child(n), true).is_some()))
+    Ok(Value::Bool(
+        visible(&i.doc, i.doc.first_child(n), true).is_some(),
+    ))
 }
 
 fn child_element_count(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
@@ -289,7 +394,9 @@ fn child_element_count(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 
 fn contains(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = this_node(vm, a)?;
-    let Some(o) = node_of(&a.arg(0)) else { return Ok(Value::Bool(false)) };
+    let Some(o) = node_of(&a.arg(0)) else {
+        return Ok(Value::Bool(false));
+    };
     let rc = inner(vm);
     let i = rc.borrow();
     Ok(Value::Bool(o == n || i.doc.ancestors(o).any(|x| x == n)))
@@ -329,7 +436,18 @@ fn compare_document_position(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 
 fn is_equal(d: &Document, a: NodeId, b: NodeId) -> bool {
     let same = match (d.kind(a), d.kind(b)) {
-        (NodeKind::Element { ns: n1, tag: t1, attrs: a1 }, NodeKind::Element { ns: n2, tag: t2, attrs: a2 }) => n1 == n2 && t1 == t2 && a1.len() == a2.len() && a1.iter().all(|x| a2.contains(x)),
+        (
+            NodeKind::Element {
+                ns: n1,
+                tag: t1,
+                attrs: a1,
+            },
+            NodeKind::Element {
+                ns: n2,
+                tag: t2,
+                attrs: a2,
+            },
+        ) => n1 == n2 && t1 == t2 && a1.len() == a2.len() && a1.iter().all(|x| a2.contains(x)),
         (x, y) => x == y,
     };
     if !same {
@@ -342,7 +460,9 @@ fn is_equal(d: &Document, a: NodeId, b: NodeId) -> bool {
 
 fn is_equal_node(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = this_node(vm, a)?;
-    let Some(o) = node_of(&a.arg(0)) else { return Ok(Value::Bool(false)) };
+    let Some(o) = node_of(&a.arg(0)) else {
+        return Ok(Value::Bool(false));
+    };
     let r = is_equal(&inner(vm).borrow().doc, n, o);
     Ok(Value::Bool(r))
 }
@@ -385,14 +505,28 @@ pub fn replace_children_with_text(vm: &mut Vm, n: NodeId, text: &str) -> JsResul
         i.doc.append(n, t);
         Some(t)
     };
-    after_children_changed(vm, n, &added.into_iter().collect::<Vec<_>>(), &removed, None, None)
+    after_children_changed(
+        vm,
+        n,
+        &added.into_iter().collect::<Vec<_>>(),
+        &removed,
+        None,
+        None,
+    )
 }
 
 fn text_content_set(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = this_node(vm, a)?;
     let v = a.arg(0);
-    let text = if v.is_nullish() { String::new() } else { vm.to_string(&v)?.to_string() };
-    let is_char = matches!(inner(vm).borrow().doc.kind(n), NodeKind::Text(_) | NodeKind::Comment(_));
+    let text = if v.is_nullish() {
+        String::new()
+    } else {
+        vm.to_string(&v)?.to_string()
+    };
+    let is_char = matches!(
+        inner(vm).borrow().doc.kind(n),
+        NodeKind::Text(_) | NodeKind::Comment(_)
+    );
     if is_char {
         set_char_data(vm, n, &text)?;
     } else {
@@ -425,7 +559,11 @@ pub fn set_char_data(vm: &mut Vm, n: NodeId, text: &str) -> JsResult<()> {
             *c = text.to_owned();
         }
         i.touch();
-        if i.doc.parent(n).map(|p| i.doc.is(p, "style")).unwrap_or(false) {
+        if i.doc
+            .parent(n)
+            .map(|p| i.doc.is(p, "style"))
+            .unwrap_or(false)
+        {
             i.sheets_dirty = true;
         }
         (old, i.observing)
@@ -440,7 +578,11 @@ pub fn set_char_data(vm: &mut Vm, n: NodeId, text: &str) -> JsResult<()> {
 fn data_set(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = this_node(vm, a)?;
     let v = a.arg(0);
-    let text = if matches!(v, Value::Null) { String::new() } else { vm.to_string(&v)?.to_string() };
+    let text = if matches!(v, Value::Null) {
+        String::new()
+    } else {
+        vm.to_string(&v)?.to_string()
+    };
     set_char_data(vm, n, &text)?;
     Ok(Value::Undefined)
 }
@@ -450,8 +592,16 @@ fn data_set(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 fn create_element(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let tag = arg_str(vm, a, 0)?;
     let ns = arg_str(vm, a, 1)?;
-    if tag.is_empty() || tag.chars().any(|c| c.is_whitespace() || c == '>' || c == '<') {
-        return Err(dom_exception(vm, "InvalidCharacterError", &format!("The tag name provided ('{tag}') is not a valid name.")));
+    if tag.is_empty()
+        || tag
+            .chars()
+            .any(|c| c.is_whitespace() || c == '>' || c == '<')
+    {
+        return Err(dom_exception(
+            vm,
+            "InvalidCharacterError",
+            &format!("The tag name provided ('{tag}') is not a valid name."),
+        ));
     }
     let id = {
         let rc = inner(vm);
@@ -461,7 +611,11 @@ fn create_element(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
             "http://www.w3.org/1998/Math/MathML" => (Namespace::MathMl, tag),
             _ => (Namespace::Html, tag.to_ascii_lowercase()),
         };
-        let id = i.doc.create(NodeKind::Element { ns, tag: tag.clone(), attrs: Vec::new() });
+        let id = i.doc.create(NodeKind::Element {
+            ns,
+            tag: tag.clone(),
+            attrs: Vec::new(),
+        });
         if tag == "template" && ns == Namespace::Html {
             let frag = i.doc.create(NodeKind::DocumentFragment);
             i.doc.append(id, frag);
@@ -485,7 +639,10 @@ fn create_comment(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 }
 
 fn create_fragment(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
-    let id = inner(vm).borrow_mut().doc.create(NodeKind::DocumentFragment);
+    let id = inner(vm)
+        .borrow_mut()
+        .doc
+        .create(NodeKind::DocumentFragment);
     Ok(wrap_node(vm, id))
 }
 
@@ -493,7 +650,11 @@ fn create_doctype(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let name = arg_str(vm, a, 0)?;
     let public_id = arg_str(vm, a, 1)?;
     let system_id = arg_str(vm, a, 2)?;
-    let id = inner(vm).borrow_mut().doc.create(NodeKind::DocType { name, public_id, system_id });
+    let id = inner(vm).borrow_mut().doc.create(NodeKind::DocType {
+        name,
+        public_id,
+        system_id,
+    });
     Ok(wrap_node(vm, id))
 }
 
@@ -517,7 +678,11 @@ fn clone_node(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         };
         i.doc.mutations.truncate(marks);
         // Dirty form state travels with the clone.
-        let pairs: Vec<(NodeId, NodeId)> = if deep { i.doc.descendants(n).zip(i.doc.descendants(id)).collect() } else { vec![(n, id)] };
+        let pairs: Vec<(NodeId, NodeId)> = if deep {
+            i.doc.descendants(n).zip(i.doc.descendants(id)).collect()
+        } else {
+            vec![(n, id)]
+        };
         for (from, to) in pairs {
             if let Some(v) = i.form.values.get(&from).cloned() {
                 i.form.values.insert(to, v);
@@ -535,7 +700,14 @@ fn clone_node(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 
 /// Observer, custom element, script and stylesheet reactions after a child list
 /// changed.
-pub fn after_children_changed(vm: &mut Vm, parent: NodeId, added: &[NodeId], removed: &[NodeId], prev: Option<NodeId>, next: Option<NodeId>) -> JsResult<()> {
+pub fn after_children_changed(
+    vm: &mut Vm,
+    parent: NodeId,
+    added: &[NodeId],
+    removed: &[NodeId],
+    prev: Option<NodeId>,
+    next: Option<NodeId>,
+) -> JsResult<()> {
     let (observing, react_added, react_removed) = {
         let rc = inner(vm);
         let mut i = rc.borrow_mut();
@@ -555,10 +727,16 @@ pub fn after_children_changed(vm: &mut Vm, parent: NodeId, added: &[NodeId], rem
                 rr.push(*n);
                 style_touched = true;
             }
-            if i.focused.map(|f| f == *n || i.doc.ancestors(f).any(|x| x == *n)).unwrap_or(false) {
+            if i.focused
+                .map(|f| f == *n || i.doc.ancestors(f).any(|x| x == *n))
+                .unwrap_or(false)
+            {
                 i.focused = None;
             }
-            if i.hovered.map(|f| f == *n || i.doc.ancestors(f).any(|x| x == *n)).unwrap_or(false) {
+            if i.hovered
+                .map(|f| f == *n || i.doc.ancestors(f).any(|x| x == *n))
+                .unwrap_or(false)
+            {
                 i.hovered = None;
             }
         }
@@ -591,7 +769,10 @@ fn check_insert(vm: &mut Vm, parent: NodeId, child: NodeId) -> JsResult<()> {
         let rc = inner(vm);
         let i = rc.borrow();
         let d = &i.doc;
-        if !matches!(d.kind(parent), NodeKind::Element { .. } | NodeKind::Document | NodeKind::DocumentFragment) {
+        if !matches!(
+            d.kind(parent),
+            NodeKind::Element { .. } | NodeKind::Document | NodeKind::DocumentFragment
+        ) {
             Some("This node type does not support this method.")
         } else if child == parent || d.ancestors(parent).any(|x| x == child) {
             Some("The new child element contains the parent.")
@@ -621,10 +802,22 @@ pub fn insert(vm: &mut Vm, parent: NodeId, child: NodeId, before: Option<NodeId>
                 return Err(dom_exception(vm, "NotFoundError", "The node before which the new node is to be inserted is not a child of this node."));
             }
         }
-        let before = if before == Some(child) { i.doc.next_sibling(child) } else { before };
+        let before = if before == Some(child) {
+            i.doc.next_sibling(child)
+        } else {
+            before
+        };
         let is_fragment = matches!(i.doc.kind(child), NodeKind::DocumentFragment);
-        let nodes: Vec<NodeId> = if is_fragment { i.doc.children(child).collect() } else { vec![child] };
-        let old_parent = if is_fragment { None } else { i.doc.parent(child) };
+        let nodes: Vec<NodeId> = if is_fragment {
+            i.doc.children(child).collect()
+        } else {
+            vec![child]
+        };
+        let old_parent = if is_fragment {
+            None
+        } else {
+            i.doc.parent(child)
+        };
         let prev = match before {
             Some(b) => i.doc.prev_sibling(b),
             None => i.doc.last_child(parent),
@@ -674,7 +867,11 @@ fn remove_child(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let child = arg_node(vm, a, 1)?;
     let ok = inner(vm).borrow().doc.parent(child) == Some(parent);
     if !ok {
-        return Err(dom_exception(vm, "NotFoundError", "The node to be removed is not a child of this node."));
+        return Err(dom_exception(
+            vm,
+            "NotFoundError",
+            "The node to be removed is not a child of this node.",
+        ));
     }
     remove(vm, child)?;
     Ok(a.arg(1))
@@ -692,7 +889,11 @@ fn replace_child(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let old = arg_node(vm, a, 2)?;
     let ok = inner(vm).borrow().doc.parent(old) == Some(parent);
     if !ok {
-        return Err(dom_exception(vm, "NotFoundError", "The node to be replaced is not a child of this node."));
+        return Err(dom_exception(
+            vm,
+            "NotFoundError",
+            "The node to be replaced is not a child of this node.",
+        ));
     }
     if new == old {
         return Ok(a.arg(2));
@@ -722,7 +923,9 @@ fn normalize(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         if i.doc.node(x).detached && x != n {
             continue;
         }
-        let Some(t) = i.doc.text(x).map(str::to_owned) else { continue };
+        let Some(t) = i.doc.text(x).map(str::to_owned) else {
+            continue;
+        };
         if t.is_empty() {
             i.doc.detach(x);
             continue;
@@ -730,7 +933,9 @@ fn normalize(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         let mut merged = t;
         let mut changed = false;
         while let Some(nx) = i.doc.next_sibling(x) {
-            let Some(t2) = i.doc.text(nx).map(str::to_owned) else { break };
+            let Some(t2) = i.doc.text(nx).map(str::to_owned) else {
+                break;
+            };
             merged.push_str(&t2);
             i.doc.detach(nx);
             changed = true;
@@ -747,7 +952,10 @@ fn normalize(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 
 fn attr_name(d: &Document, n: NodeId, name: &str) -> String {
     match d.kind(n) {
-        NodeKind::Element { ns: Namespace::Html, .. } => name.to_ascii_lowercase(),
+        NodeKind::Element {
+            ns: Namespace::Html,
+            ..
+        } => name.to_ascii_lowercase(),
         _ => name.to_owned(),
     }
 }
@@ -774,7 +982,12 @@ fn has_attribute(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 }
 
 /// Sets (or with `None` removes) an attribute with all its side effects.
-pub fn set_attribute_value(vm: &mut Vm, n: NodeId, name: &str, value: Option<&str>) -> JsResult<()> {
+pub fn set_attribute_value(
+    vm: &mut Vm,
+    n: NodeId,
+    name: &str,
+    value: Option<&str>,
+) -> JsResult<()> {
     let (old, notify_attr, custom, name) = {
         let rc = inner(vm);
         let mut i = rc.borrow_mut();
@@ -790,10 +1003,19 @@ pub fn set_attribute_value(vm: &mut Vm, n: NodeId, name: &str, value: Option<&st
                     if let NodeKind::Element { attrs, .. } = &mut i.doc.node_mut(n).kind {
                         match attrs.iter_mut().find(|x| x.name == name) {
                             Some(x) => x.value = v.to_owned(),
-                            None => attrs.push(crate::dom::Attribute { name: name.clone(), value: v.to_owned() }),
+                            None => attrs.push(crate::dom::Attribute {
+                                name: name.clone(),
+                                value: v.to_owned(),
+                            }),
                         }
                     }
-                    i.doc.mutations.push(crate::dom::Mutation::AttributeChanged { node: n, name: name.clone(), old: old.clone() });
+                    i.doc
+                        .mutations
+                        .push(crate::dom::Mutation::AttributeChanged {
+                            node: n,
+                            name: name.clone(),
+                            old: old.clone(),
+                        });
                 } else {
                     i.doc.set_attr(n, &name, v);
                 }
@@ -803,7 +1025,13 @@ pub fn set_attribute_value(vm: &mut Vm, n: NodeId, name: &str, value: Option<&st
                     if let NodeKind::Element { attrs, .. } = &mut i.doc.node_mut(n).kind {
                         attrs.retain(|x| x.name != name);
                     }
-                    i.doc.mutations.push(crate::dom::Mutation::AttributeChanged { node: n, name: name.clone(), old: old.clone() });
+                    i.doc
+                        .mutations
+                        .push(crate::dom::Mutation::AttributeChanged {
+                            node: n,
+                            name: name.clone(),
+                            old: old.clone(),
+                        });
                 } else {
                     i.doc.remove_attr(n, &name);
                 }
@@ -815,17 +1043,28 @@ pub fn set_attribute_value(vm: &mut Vm, n: NodeId, name: &str, value: Option<&st
         }
         let tag = i.doc.tag(n).unwrap_or("").to_owned();
         let tag = tag.as_str();
-        if (tag == "link" && matches!(name.as_str(), "href" | "rel" | "media" | "disabled")) || (tag == "style" && matches!(name.as_str(), "media" | "type")) {
+        if (tag == "link" && matches!(name.as_str(), "href" | "rel" | "media" | "disabled"))
+            || (tag == "style" && matches!(name.as_str(), "media" | "type"))
+        {
             i.sheets_dirty = true;
         }
         if tag == "canvas" && matches!(name.as_str(), "width" | "height") {
-            let w = i.doc.attr(n, "width").and_then(|v| v.trim().parse().ok()).unwrap_or(300);
-            let h = i.doc.attr(n, "height").and_then(|v| v.trim().parse().ok()).unwrap_or(150);
+            let w = i
+                .doc
+                .attr(n, "width")
+                .and_then(|v| v.trim().parse().ok())
+                .unwrap_or(300);
+            let h = i
+                .doc
+                .attr(n, "height")
+                .and_then(|v| v.trim().parse().ok())
+                .unwrap_or(150);
             if let Some(c) = i.canvases.get_mut(&n) {
                 c.resize(w, h);
             }
         }
-        let custom = i.custom_defined.contains(tag) || (!i.custom_defined.is_empty() && i.doc.has_attr(n, "is"));
+        let custom = i.custom_defined.contains(tag)
+            || (!i.custom_defined.is_empty() && i.doc.has_attr(n, "is"));
         (old, i.observing, custom, name)
     };
     if notify_attr || custom {
@@ -846,8 +1085,16 @@ pub fn set_attribute_value(vm: &mut Vm, n: NodeId, name: &str, value: Option<&st
 fn set_attribute(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = this_node(vm, a)?;
     let name = arg_str(vm, a, 0)?;
-    if name.is_empty() || name.chars().any(|c| c.is_whitespace() || matches!(c, '/' | '>' | '=' | '\0')) {
-        return Err(dom_exception(vm, "InvalidCharacterError", &format!("'{name}' is not a valid attribute name.")));
+    if name.is_empty()
+        || name
+            .chars()
+            .any(|c| c.is_whitespace() || matches!(c, '/' | '>' | '=' | '\0'))
+    {
+        return Err(dom_exception(
+            vm,
+            "InvalidCharacterError",
+            &format!("'{name}' is not a valid attribute name."),
+        ));
     }
     let v = a.arg(1);
     let value = vm.to_string(&v)?.to_string();
@@ -871,7 +1118,11 @@ fn toggle_attribute(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         let nm = attr_name(&i.doc, n, &name);
         i.doc.has_attr(n, &nm)
     };
-    let want = if a.arg(1).is_undefined() { !has } else { a.arg(1).truthy() };
+    let want = if a.arg(1).is_undefined() {
+        !has
+    } else {
+        a.arg(1).truthy()
+    };
     if want && !has {
         set_attribute_value(vm, n, &name, Some(""))?;
     } else if !want && has {
@@ -882,7 +1133,13 @@ fn toggle_attribute(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 
 fn get_attribute_names(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = this_node(vm, a)?;
-    let names: Vec<String> = inner(vm).borrow().doc.attrs(n).iter().map(|x| x.name.clone()).collect();
+    let names: Vec<String> = inner(vm)
+        .borrow()
+        .doc
+        .attrs(n)
+        .iter()
+        .map(|x| x.name.clone())
+        .collect();
     Ok(super::str_array(vm, &names))
 }
 
@@ -896,7 +1153,12 @@ fn has_attributes(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 fn attr_at(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = arg_node(vm, a, 0)?;
     let idx = super::arg_num(vm, a, 1)? as usize;
-    let pair = inner(vm).borrow().doc.attrs(n).get(idx).map(|x| (x.name.clone(), x.value.clone()));
+    let pair = inner(vm)
+        .borrow()
+        .doc
+        .attrs(n)
+        .get(idx)
+        .map(|x| (x.name.clone(), x.value.clone()));
     Ok(match pair {
         Some((k, v)) => vm.arr(vec![string_val(k), string_val(v)]),
         None => Value::Null,
@@ -1028,7 +1290,11 @@ fn part_attr(_vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 fn wrap_id(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let id = super::arg_num(vm, a, 0)? as u32;
     let ok = (id as usize) < inner(vm).borrow().doc.len();
-    Ok(if ok { wrap_node(vm, NodeId(id)) } else { Value::Null })
+    Ok(if ok {
+        wrap_node(vm, NodeId(id))
+    } else {
+        Value::Null
+    })
 }
 
 fn node_id(_vm: &mut Vm, a: &mut Args) -> JsResult<Value> {

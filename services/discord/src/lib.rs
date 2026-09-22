@@ -324,12 +324,9 @@ impl Service for DiscordService {
                 [""] | ["channels"] if !api => page::server(&s, &c.actor, None, &view),
                 // The header's search box: every message of a visible channel that
                 // holds the query.
-                ["search"] if !api => page::search(
-                    &s,
-                    &c.actor,
-                    &web::query(r, "q").unwrap_or_default(),
-                    &view,
-                ),
+                ["search"] if !api => {
+                    page::search(&s, &c.actor, &web::query(r, "q").unwrap_or_default(), &view)
+                }
                 ["channels"] => HttpResponse::json(
                     200,
                     &s.visible(&c.actor)

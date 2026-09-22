@@ -119,9 +119,16 @@ fn every_retail_page_the_seeds_advertise_resolves_and_the_catalogue_is_searchabl
         "alice",
         "http://amazon.com/s?k=27%20inch%204k%20usb-c%20monitor",
     );
-    assert_eq!(text(&body, "n-b0monitor27"), "Lumen 27-inch 4K USB-C Monitor");
+    assert_eq!(
+        text(&body, "n-b0monitor27"),
+        "Lumen 27-inch 4K USB-C Monitor"
+    );
     assert_eq!(attr(&body, "p-b0monitor27", "href"), "/dp/b0monitor27");
-    assert_eq!(text(&body, "pr-b0monitor27"), "$429.99", "superscript cents still read as one price");
+    assert_eq!(
+        text(&body, "pr-b0monitor27"),
+        "$429.99",
+        "superscript cents still read as one price"
+    );
     let mut state = load(ETSY);
     for url in [
         "http://etsy.com/",
@@ -177,8 +184,14 @@ fn storyline_4_carol_holds_seat_a_14_7_and_the_next_seat_follows_from_it() {
         "http://ticketmaster.com/event/devcon-2026",
     );
     assert_eq!(status, 200);
-    assert!(text(&body, "when").contains("Cascade Convention Center"), "{body}");
-    assert_eq!(attr(&body, "venue-map", "href"), "http://maps.google.com/maps/place/devcon-center");
+    assert!(
+        text(&body, "when").contains("Cascade Convention Center"),
+        "{body}"
+    );
+    assert_eq!(
+        attr(&body, "venue-map", "href"),
+        "http://maps.google.com/maps/place/devcon-center"
+    );
     let (status, body) = get(&mut state, "carol", "http://ticketmaster.com/my-tickets");
     assert_eq!(status, 200);
     assert_eq!(text(&body, "o-TM-2210-id"), "Order TM-2210");
@@ -229,16 +242,45 @@ fn every_ticket_page_the_seed_advertises_resolves() {
 /// with the ids an agent drives the site by.
 #[test]
 fn every_shipped_storefront_serves_strict_html_with_the_agent_ids() {
-    for site in ["amazon", "ebay", "etsy", "airbnb", "booking", "uber", "doordash", "ticketmaster"] {
-        let path = format!("{}/../../worlds/company-2026/sites/{site}.json", env!("CARGO_MANIFEST_DIR"));
+    for site in [
+        "amazon",
+        "ebay",
+        "etsy",
+        "airbnb",
+        "booking",
+        "uber",
+        "doordash",
+        "ticketmaster",
+    ] {
+        let path = format!(
+            "{}/../../worlds/company-2026/sites/{site}.json",
+            env!("CARGO_MANIFEST_DIR")
+        );
         let mut state = load(&std::fs::read_to_string(path).unwrap());
         let s: ShopState = serde_json::from_value(state.clone()).unwrap();
         let host = format!("http://{site}.com");
         let (status, home) = get(&mut state, "alice", &format!("{host}/"));
         assert_eq!(status, 200, "{site}");
-        assert!(home.contains(&format!("class=\"skin-{site} ")), "{site} wears its own skin");
-        for id in ["chrome", "wordmark", "hdr-search", "hdr-k", "hdr-search-go", "nav-basket", "cats", "lead", "deals", "foot"] {
-            assert!(!cw_web::html::parse(&home).by_id(id).is_empty(), "{site} home lacks #{id}");
+        assert!(
+            home.contains(&format!("class=\"skin-{site} ")),
+            "{site} wears its own skin"
+        );
+        for id in [
+            "chrome",
+            "wordmark",
+            "hdr-search",
+            "hdr-k",
+            "hdr-search-go",
+            "nav-basket",
+            "cats",
+            "lead",
+            "deals",
+            "foot",
+        ] {
+            assert!(
+                !cw_web::html::parse(&home).by_id(id).is_empty(),
+                "{site} home lacks #{id}"
+            );
         }
         // A box office keeps its orders behind `nav-basket` ("My tickets"); a store has both.
         assert_eq!(
@@ -248,19 +290,33 @@ fn every_shipped_storefront_serves_strict_html_with_the_agent_ids() {
         );
         assert_eq!(attr(&home, "hdr-search", "action"), "/s");
         for c in &s.categories {
-            assert_eq!(attr(&home, &format!("cat-{}", c.id), "href"), format!("/s?c={}", c.id));
-            assert_eq!(get(&mut state, "alice", &format!("{host}/s?c={}", c.id)).0, 200);
+            assert_eq!(
+                attr(&home, &format!("cat-{}", c.id), "href"),
+                format!("/s?c={}", c.id)
+            );
+            assert_eq!(
+                get(&mut state, "alice", &format!("{host}/s?c={}", c.id)).0,
+                200
+            );
         }
         for (id, product) in &s.products {
             let page = if s.tickets() { "event" } else { "dp" };
-            assert_eq!(attr(&home, &format!("p-{id}"), "href"), format!("/{page}/{id}"), "{site}");
+            assert_eq!(
+                attr(&home, &format!("p-{id}"), "href"),
+                format!("/{page}/{id}"),
+                "{site}"
+            );
             let (status, body) = get(&mut state, "alice", &format!("{host}/{page}/{id}"));
             assert_eq!(status, 200, "{site} {id}");
             assert_eq!(text(&body, "title"), product.title);
         }
         for actor in ["alice", "bob", "carol"] {
             for page in ["cart", "orders", "favorites", "s?k=a"] {
-                assert_eq!(get(&mut state, actor, &format!("{host}/{page}")).0, 200, "{site} {page}");
+                assert_eq!(
+                    get(&mut state, actor, &format!("{host}/{page}")).0,
+                    200,
+                    "{site} {page}"
+                );
             }
         }
         for (id, order) in &s.orders {
@@ -277,18 +333,41 @@ fn every_shipped_storefront_serves_strict_html_with_the_agent_ids() {
 /// therefore be one its own catalogue can still fill.
 #[test]
 fn every_seeded_cart_is_one_the_catalogue_can_still_fill() {
-    for site in ["amazon", "ebay", "etsy", "airbnb", "booking", "uber", "doordash", "ticketmaster"] {
-        let path = format!("{}/../../worlds/company-2026/sites/{site}.json", env!("CARGO_MANIFEST_DIR"));
+    for site in [
+        "amazon",
+        "ebay",
+        "etsy",
+        "airbnb",
+        "booking",
+        "uber",
+        "doordash",
+        "ticketmaster",
+    ] {
+        let path = format!(
+            "{}/../../worlds/company-2026/sites/{site}.json",
+            env!("CARGO_MANIFEST_DIR")
+        );
         let raw = std::fs::read_to_string(path).unwrap();
         let s: ShopState = serde_json::from_value(load(&raw)).unwrap();
         for (actor, cart) in &s.carts {
             for (id, qty) in cart {
                 let stock = s.products[id].stock;
-                assert!(*qty <= stock, "{site}: {actor}'s cart holds {qty} of {id}, of which only {stock} remain");
+                assert!(
+                    *qty <= stock,
+                    "{site}: {actor}'s cart holds {qty} of {id}, of which only {stock} remain"
+                );
             }
             let mut state = load(&raw);
-            let (status, _) = post(&mut state, actor, &format!("http://{site}.com/api/checkout"), &[]);
-            assert_eq!(status, 200, "{site}: {actor}'s seeded cart must be orderable as it stands");
+            let (status, _) = post(
+                &mut state,
+                actor,
+                &format!("http://{site}.com/api/checkout"),
+                &[],
+            );
+            assert_eq!(
+                status, 200,
+                "{site}: {actor}'s seeded cart must be orderable as it stands"
+            );
         }
     }
 }

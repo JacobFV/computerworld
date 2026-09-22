@@ -19,7 +19,10 @@ use cw_protocol::{HttpRequest, HttpResponse};
 use cw_sdk::{Service, ServiceContext};
 use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_service_docs::DocsService;
-use cw_web::css::{matches_list, parse_stylesheet, ComplexSelector, CompoundSelector, MatchContext, Media, Origin, PseudoClass, SelectorList, SimpleSelector};
+use cw_web::css::{
+    matches_list, parse_stylesheet, ComplexSelector, CompoundSelector, MatchContext, Media, Origin,
+    PseudoClass, SelectorList, SimpleSelector,
+};
 use cw_web::dom::{Document, NodeId};
 use cw_web::Strictness;
 use serde_json::{json, Value};
@@ -29,10 +32,18 @@ const GOOGLE_DOCS: &str = include_str!("../../../worlds/company-2026/sites/googl
 const NOTION: &str = include_str!("../../../worlds/company-2026/sites/notion.json");
 
 fn ctx(actor: &str) -> ServiceContext {
-    ServiceContext { actor: actor.into(), source: "alice-mac".into(), tick: 12, seed: 7, instance: "docs".into() }
+    ServiceContext {
+        actor: actor.into(),
+        source: "alice-mac".into(),
+        tick: 12,
+        seed: 7,
+        instance: "docs".into(),
+    }
 }
 fn boot(initial: Value) -> Value {
-    DocsService.initialize(initial, &ctx("alice")).expect("the seed must load")
+    DocsService
+        .initialize(initial, &ctx("alice"))
+        .expect("the seed must load")
 }
 fn seeded(site: &str) -> Value {
     let site: Value = serde_json::from_str(site).unwrap();
@@ -40,7 +51,13 @@ fn seeded(site: &str) -> Value {
     boot(site["initial_state"].clone())
 }
 fn get(state: &mut Value, actor: &str, path: &str) -> HttpResponse {
-    DocsService.handle(state, &ctx(actor), &HttpRequest::get(format!("http://docs{path}"))).unwrap_or_else(|e| panic!("GET {path} as {actor}: {e:?}"))
+    DocsService
+        .handle(
+            state,
+            &ctx(actor),
+            &HttpRequest::get(format!("http://docs{path}")),
+        )
+        .unwrap_or_else(|e| panic!("GET {path} as {actor}: {e:?}"))
 }
 
 /// One control the page drew, with enough about it to ask the service for its route.
@@ -86,12 +103,26 @@ fn every_page() -> Vec<(String, Value, &'static str, Vec<String>)> {
         if what.starts_with("plain") {
             state["skin"] = json!("plain");
         }
-        let mut paths: Vec<String> = ["/", "/?type=doc", "/?type=sheet", "/?type=slides", "/starred"].iter().map(|p| (*p).to_owned()).collect();
+        let mut paths: Vec<String> = [
+            "/",
+            "/?type=doc",
+            "/?type=sheet",
+            "/?type=slides",
+            "/starred",
+        ]
+        .iter()
+        .map(|p| (*p).to_owned())
+        .collect();
         for id in state["documents"].as_object().unwrap().keys() {
             paths.push(format!("/documents/{id}"));
         }
         for actor in actors {
-            out.push((format!("{what} as {actor}"), state.clone(), actor, paths.clone()));
+            out.push((
+                format!("{what} as {actor}"),
+                state.clone(),
+                actor,
+                paths.clone(),
+            ));
         }
     }
     out
@@ -100,7 +131,11 @@ fn every_page() -> Vec<(String, Value, &'static str, Vec<String>)> {
 /// The value the probe sends for a field, so a form is refused on its merits or not at all:
 /// its own `value`, else something the service will parse.
 fn field_value(doc: &Document, node: NodeId, name: &str) -> String {
-    let current = if doc.is(node, "textarea") { doc.text_content(node) } else { doc.attr(node, "value").unwrap_or_default().to_owned() };
+    let current = if doc.is(node, "textarea") {
+        doc.text_content(node)
+    } else {
+        doc.attr(node, "value").unwrap_or_default().to_owned()
+    };
     if !current.trim().is_empty() {
         return current;
     }
@@ -119,7 +154,11 @@ fn form_fields(doc: &Document, form: NodeId) -> Vec<(String, String)> {
         }
         if let Some(name) = doc.attr(n, "name") {
             let value = if doc.is(n, "select") {
-                doc.descendants(n).find(|o| doc.is(*o, "option")).and_then(|o| doc.attr(o, "value")).unwrap_or("doc").to_owned()
+                doc.descendants(n)
+                    .find(|o| doc.is(*o, "option"))
+                    .and_then(|o| doc.attr(o, "value"))
+                    .unwrap_or("doc")
+                    .to_owned()
             } else {
                 field_value(doc, n, name)
             };
@@ -158,22 +197,57 @@ fn controls_of_html(what: &str, html: &str) -> Vec<Control> {
                     "{what}: <a id={:?}> goes nowhere (href {href:?})",
                     id_of(node)
                 );
-                out.push(Control { tag, id: id_of(node), method: "GET".into(), target: href.to_owned(), fields: vec![] });
+                out.push(Control {
+                    tag,
+                    id: id_of(node),
+                    method: "GET".into(),
+                    target: href.to_owned(),
+                    fields: vec![],
+                });
             }
             "form" => {
                 let action = doc.attr(node, "action").unwrap_or("");
-                assert!(!action.is_empty(), "{what}: form {:?} posts nowhere", id_of(node));
-                let method = doc.attr(node, "method").unwrap_or("get").to_ascii_uppercase();
-                out.push(Control { tag, id: id_of(node), method, target: action.to_owned(), fields: form_fields(&doc, node) });
+                assert!(
+                    !action.is_empty(),
+                    "{what}: form {:?} posts nowhere",
+                    id_of(node)
+                );
+                let method = doc
+                    .attr(node, "method")
+                    .unwrap_or("get")
+                    .to_ascii_uppercase();
+                out.push(Control {
+                    tag,
+                    id: id_of(node),
+                    method,
+                    target: action.to_owned(),
+                    fields: form_fields(&doc, node),
+                });
             }
             "button" | "input" | "select" | "textarea" => {
                 // A control outside a form can only be wired up by script, and this world runs
                 // none: it would be a button whose click goes nowhere.
-                let form = owning_form(node).unwrap_or_else(|| panic!("{what}: <{tag} id={:?}> is outside every form", id_of(node)));
+                let form = owning_form(node).unwrap_or_else(|| {
+                    panic!("{what}: <{tag} id={:?}> is outside every form", id_of(node))
+                });
                 if let Some(action) = doc.attr(node, "formaction") {
-                    let method = doc.attr(node, "formmethod").or_else(|| doc.attr(form, "method")).unwrap_or("get").to_ascii_uppercase();
-                    assert!(!action.is_empty(), "{what}: {tag} {:?} has an empty formaction", id_of(node));
-                    out.push(Control { tag, id: id_of(node), method, target: action.to_owned(), fields: form_fields(&doc, form) });
+                    let method = doc
+                        .attr(node, "formmethod")
+                        .or_else(|| doc.attr(form, "method"))
+                        .unwrap_or("get")
+                        .to_ascii_uppercase();
+                    assert!(
+                        !action.is_empty(),
+                        "{what}: {tag} {:?} has an empty formaction",
+                        id_of(node)
+                    );
+                    out.push(Control {
+                        tag,
+                        id: id_of(node),
+                        method,
+                        target: action.to_owned(),
+                        fields: form_fields(&doc, form),
+                    });
                 }
             }
             _ => {}
@@ -192,17 +266,48 @@ fn controls_of_page(what: &str, page: &Value) -> Vec<Control> {
             let kind = e["kind"].as_str().unwrap_or_default();
             if kind == "link" {
                 let url = e["url"].as_str().unwrap_or_default();
-                assert!(!url.is_empty() && url != "#", "{what}: link {id:?} goes nowhere");
-                out.push(Control { tag: "link".into(), id, method: "GET".into(), target: url.to_owned(), fields: vec![] });
+                assert!(
+                    !url.is_empty() && url != "#",
+                    "{what}: link {id:?} goes nowhere"
+                );
+                out.push(Control {
+                    tag: "link".into(),
+                    id,
+                    method: "GET".into(),
+                    target: url.to_owned(),
+                    fields: vec![],
+                });
             } else if let Some(action) = e.get("action").filter(|a| !a.is_null()) {
                 let url = action["url"].as_str().unwrap_or_default();
                 assert!(!url.is_empty(), "{what}: {kind} {id:?} acts on nothing");
                 // `$field` references name an input on the page; the probe fills them in.
                 let fields = action["fields"]
                     .as_object()
-                    .map(|f| f.iter().map(|(k, _)| (k.clone(), if k == "revision" { "1".to_owned() } else { "probe".to_owned() })).collect())
+                    .map(|f| {
+                        f.iter()
+                            .map(|(k, _)| {
+                                (
+                                    k.clone(),
+                                    if k == "revision" {
+                                        "1".to_owned()
+                                    } else {
+                                        "probe".to_owned()
+                                    },
+                                )
+                            })
+                            .collect()
+                    })
                     .unwrap_or_default();
-                out.push(Control { tag: kind.to_owned(), id, method: action["method"].as_str().unwrap_or("GET").to_ascii_uppercase(), target: url.to_owned(), fields });
+                out.push(Control {
+                    tag: kind.to_owned(),
+                    id,
+                    method: action["method"]
+                        .as_str()
+                        .unwrap_or("GET")
+                        .to_ascii_uppercase(),
+                    target: url.to_owned(),
+                    fields,
+                });
             }
             if let Some(children) = e["children"].as_array() {
                 walk(what, children, out);
@@ -210,7 +315,11 @@ fn controls_of_page(what: &str, page: &Value) -> Vec<Control> {
         }
     }
     let mut out = Vec::new();
-    walk(what, page["elements"].as_array().unwrap_or(&vec![]), &mut out);
+    walk(
+        what,
+        page["elements"].as_array().unwrap_or(&vec![]),
+        &mut out,
+    );
     out
 }
 
@@ -219,7 +328,9 @@ fn mentions_hover(list: &SelectorList) -> bool {
     fn compound(c: &CompoundSelector) -> bool {
         c.simple.iter().any(|s| match s {
             SimpleSelector::PseudoClass(PseudoClass::Hover) => true,
-            SimpleSelector::PseudoClass(PseudoClass::Not(l) | PseudoClass::Is(l) | PseudoClass::Where(l)) => mentions_hover(l),
+            SimpleSelector::PseudoClass(
+                PseudoClass::Not(l) | PseudoClass::Is(l) | PseudoClass::Where(l),
+            ) => mentions_hover(l),
             _ => false,
         })
     }
@@ -235,11 +346,17 @@ fn hover_and_cursor_land_on_real_controls(what: &str, doc: &Document) {
     let mut sheets = Vec::new();
     for node in doc.descendants(Document::ROOT) {
         if doc.is(node, "style") {
-            sheets.push(parse_stylesheet(&doc.text_content(node), Origin::Author, Strictness::Strict).unwrap_or_else(|e| panic!("{what}: {e:?}")));
+            sheets.push(
+                parse_stylesheet(&doc.text_content(node), Origin::Author, Strictness::Strict)
+                    .unwrap_or_else(|e| panic!("{what}: {e:?}")),
+            );
         }
     }
     // Every element is "hovered", so a `:hover` rule matches exactly the elements it dresses.
-    let elements: Vec<NodeId> = doc.descendants(Document::ROOT).filter(|n| doc.is_element(*n)).collect();
+    let elements: Vec<NodeId> = doc
+        .descendants(Document::ROOT)
+        .filter(|n| doc.is_element(*n))
+        .collect();
     let mut ctx = MatchContext::new();
     ctx.hovered = elements.iter().copied().collect::<BTreeSet<_>>();
     let media = Media::with_size(1280, 800);
@@ -254,7 +371,9 @@ fn hover_and_cursor_land_on_real_controls(what: &str, doc: &Document) {
     };
     for sheet in &sheets {
         for rule in sheet.effective_style_rules(&media, &supported) {
-            let cursor = rule.declarations.iter().any(|d| d.name == "cursor" && d.value.iter().any(|v| v.as_ident() == Some("pointer")));
+            let cursor = rule.declarations.iter().any(|d| {
+                d.name == "cursor" && d.value.iter().any(|v| v.as_ident() == Some("pointer"))
+            });
             if !cursor && !mentions_hover(rule.selectors) {
                 continue;
             }
@@ -302,14 +421,29 @@ fn every_control_of_every_page_of_every_skin_is_answered_by_a_route_this_crate_s
                     if c.target.starts_with('#') {
                         continue;
                     }
-                    assert!(c.target.starts_with("http://") || c.target.starts_with("https://"), "{what}: {} {:?} points at {:?}", c.tag, c.id, c.target);
+                    assert!(
+                        c.target.starts_with("http://") || c.target.starts_with("https://"),
+                        "{what}: {} {:?} points at {:?}",
+                        c.tag,
+                        c.id,
+                        c.target
+                    );
                     continue;
                 }
                 let mut request = HttpRequest::get(format!("http://docs{}", c.target));
                 request.method = c.method.clone();
                 if c.method != "GET" {
-                    request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
-                    request.body = c.fields.iter().map(|(k, v)| format!("{}={}", urlencoded(k), urlencoded(v))).collect::<Vec<_>>().join("&").into_bytes();
+                    request.headers.insert(
+                        "content-type".into(),
+                        "application/x-www-form-urlencoded".into(),
+                    );
+                    request.body = c
+                        .fields
+                        .iter()
+                        .map(|(k, v)| format!("{}={}", urlencoded(k), urlencoded(v)))
+                        .collect::<Vec<_>>()
+                        .join("&")
+                        .into_bytes();
                 }
                 let mut probe = state.clone();
                 let answer = DocsService
@@ -329,13 +463,18 @@ fn every_control_of_every_page_of_every_skin_is_answered_by_a_route_this_crate_s
         }
     }
     // A guard on the guard: a walk that stopped finding pages would pass silently.
-    assert!(pages >= 60 && checked >= 300, "{pages} pages, {checked} controls");
+    assert!(
+        pages >= 60 && checked >= 300,
+        "{pages} pages, {checked} controls"
+    );
 }
 
 fn urlencoded(s: &str) -> String {
     s.bytes()
         .map(|b| match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => (b as char).to_string(),
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                (b as char).to_string()
+            }
             b' ' => "+".to_owned(),
             other => format!("%{other:02X}"),
         })
@@ -350,12 +489,26 @@ fn a_reader_is_told_why_there_is_no_editor_rather_than_shown_one() {
         "s": {"id":"s","title":"Numbers","owner":"carol","doc_type":"sheet","readers":["bob"],"writers":["alice"],"revision":1,"cells":{"A1":"Metric"}},
         "d": {"id":"d","title":"Review","owner":"carol","doc_type":"slides","readers":["bob"],"writers":["alice"],"revision":1,"slides":[{"title":"One","body":"Two"}]},
         "p": {"id":"p","title":"Plan","owner":"carol","readers":["bob"],"writers":["alice"],"revision":1,"body":"Plan\n\nShip it.\n"}}}));
-    for (id, note, form) in [("s", "sheet-readonly", "cell"), ("d", "deck-readonly", "slide"), ("p", "doc-readonly", "edit")] {
+    for (id, note, form) in [
+        ("s", "sheet-readonly", "cell"),
+        ("d", "deck-readonly", "slide"),
+        ("p", "doc-readonly", "edit"),
+    ] {
         for (actor, writes) in [("alice", true), ("bob", false)] {
-            let html = String::from_utf8(get(&mut state.clone(), actor, &format!("/documents/{id}")).body).unwrap();
+            let html =
+                String::from_utf8(get(&mut state.clone(), actor, &format!("/documents/{id}")).body)
+                    .unwrap();
             let doc = cw_web::html::parse(&html);
-            assert_eq!(!doc.by_id(form).is_empty(), writes, "{actor} and the {form} form on /documents/{id}");
-            assert_eq!(doc.by_id(note).is_empty(), writes, "{actor} and #{note} on /documents/{id}");
+            assert_eq!(
+                !doc.by_id(form).is_empty(),
+                writes,
+                "{actor} and the {form} form on /documents/{id}"
+            );
+            assert_eq!(
+                doc.by_id(note).is_empty(),
+                writes,
+                "{actor} and #{note} on /documents/{id}"
+            );
         }
     }
     // Notion says the same thing in its own words.
@@ -364,5 +517,7 @@ fn a_reader_is_told_why_there_is_no_editor_rather_than_shown_one() {
     let html = String::from_utf8(get(&mut notion, "bob", "/documents/p").body).unwrap();
     let doc = cw_web::html::parse(&html);
     assert!(doc.by_id("edit").is_empty());
-    assert!(doc.text_content(doc.by_id("document-readonly")[0]).starts_with("You can read this page"));
+    assert!(doc
+        .text_content(doc.by_id("document-readonly")[0])
+        .starts_with("You can read this page"));
 }

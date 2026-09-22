@@ -771,13 +771,20 @@ mod tests {
             !self.0.by_id(id).is_empty()
         }
         fn node(&self, id: &str) -> cw_web::dom::NodeId {
-            *self.0.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+            *self
+                .0
+                .by_id(id)
+                .first()
+                .unwrap_or_else(|| panic!("no element #{id}"))
         }
         fn text(&self, id: &str) -> String {
             self.0.text_content(self.node(id))
         }
         fn attr(&self, id: &str, name: &str) -> String {
-            self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+            self.0
+                .attr(self.node(id), name)
+                .unwrap_or_default()
+                .to_owned()
         }
         fn tag(&self, id: &str) -> String {
             self.0.tag(self.node(id)).unwrap_or_default().to_owned()
@@ -796,7 +803,12 @@ mod tests {
             let d = &self.0;
             d.descendants(self.node(form))
                 .filter(|n| d.is(*n, "input"))
-                .filter_map(|n| Some((d.attr(n, "name")?.to_owned(), d.attr(n, "value").unwrap_or_default().to_owned())))
+                .filter_map(|n| {
+                    Some((
+                        d.attr(n, "name")?.to_owned(),
+                        d.attr(n, "value").unwrap_or_default().to_owned(),
+                    ))
+                })
                 .collect()
         }
     }
@@ -820,7 +832,9 @@ mod tests {
         assert!(GeoService
             .initialize(json!({"units": "furlongs"}), &ctx())
             .is_err());
-        assert!(GeoService.initialize(json!({"skin": "yahoo"}), &ctx()).is_err());
+        assert!(GeoService
+            .initialize(json!({"skin": "yahoo"}), &ctx())
+            .is_err());
         assert!(GeoService.initialize(Value::Null, &ctx()).is_ok());
     }
     #[test]
@@ -852,7 +866,10 @@ mod tests {
             assert_eq!(page, get(&mut state, url), "{url} must be pure");
             assert_eq!(before, state, "{url} must not mutate state");
         }
-        let results = Dom::of(&get(&mut state, "http://maps.google.com/search?q=convention"));
+        let results = Dom::of(&get(
+            &mut state,
+            "http://maps.google.com/search?q=convention",
+        ));
         assert_eq!(results.attr("hdr-q", "value"), "convention");
         assert_eq!(results.tag("r-0"), "a");
         assert_eq!(results.attr("r-0", "href"), "/maps/place/devcon-center");
@@ -861,7 +878,10 @@ mod tests {
         assert_eq!(results.text("r-0-kind"), "venue");
         assert_eq!(results.text("r-0-rating"), "4.3 ★");
         assert!(results.has("r-0-tile") && !results.has("r-1"));
-        assert_eq!(Dom::of(&get(&mut state, "http://maps.google.com/search?q=zzz")).text("empty"), "No places matched.");
+        assert_eq!(
+            Dom::of(&get(&mut state, "http://maps.google.com/search?q=zzz")).text("empty"),
+            "No places matched."
+        );
         // The home page: the directions form is a GET of from, to and mode; cards are links.
         let home = Dom::of(&get(&mut state, "http://maps.google.com/"));
         assert_eq!(home.text("title"), "Testmaps");
@@ -869,16 +889,23 @@ mod tests {
         assert_eq!(home.attr("dir-form", "method"), "get");
         assert_eq!(
             home.fields("dir-form"),
-            [("from", ""), ("to", ""), ("mode", "driving")].map(|(k, v)| (k.to_owned(), v.to_owned()))
+            [("from", ""), ("to", ""), ("mode", "driving")]
+                .map(|(k, v)| (k.to_owned(), v.to_owned()))
         );
         for id in ["dir-from", "dir-to", "dir-mode"] {
             assert_eq!(home.tag(id), "input", "{id}");
         }
         assert_eq!(home.text("dir-form-go"), "Directions");
-        assert_eq!(home.attr("home-place-0", "href"), "/maps/place/devcon-center");
+        assert_eq!(
+            home.attr("home-place-0", "href"),
+            "/maps/place/devcon-center"
+        );
         assert!(home.has("saved-empty") && home.has("feat-title") && home.has("feat-grid"));
         // The place page: facts, the save form, directions from here, and the note form.
-        let place = Dom::of(&get(&mut state, "http://maps.google.com/maps/place/northstar-hq"));
+        let place = Dom::of(&get(
+            &mut state,
+            "http://maps.google.com/maps/place/northstar-hq",
+        ));
         assert_eq!(place.text("place-name"), "Northstar HQ");
         assert_eq!(place.text("place-rating"), "4.6 ★ · 128 reviews");
         assert_eq!(place.text("place-kind"), "office");
@@ -887,15 +914,22 @@ mod tests {
         assert_eq!(place.text("place-coord"), "47.572600, -122.348000");
         assert_eq!(place.text("place-hours"), "Hours: Mon-Fri 8:00-18:00");
         assert_eq!(place.text("place-phone"), "Phone: +1 206 555 0148");
-        assert_eq!(place.attr("place-site", "href"), "http://northstar.example/");
+        assert_eq!(
+            place.attr("place-site", "href"),
+            "http://northstar.example/"
+        );
         assert_eq!(place.text("place-summary"), "Bayfront campus.");
-        assert_eq!(place.attr("save-form", "action"), "/api/places/northstar-hq/save");
+        assert_eq!(
+            place.attr("save-form", "action"),
+            "/api/places/northstar-hq/save"
+        );
         assert_eq!(place.attr("save-form", "method"), "post");
         assert_eq!(place.text("save-form-go"), "Save to Your places");
         assert_eq!(place.attr("place-dir", "action"), "/maps/dir");
         assert_eq!(
             place.fields("place-dir"),
-            [("from", "northstar-hq"), ("to", ""), ("mode", "driving")].map(|(k, v)| (k.to_owned(), v.to_owned()))
+            [("from", "northstar-hq"), ("to", ""), ("mode", "driving")]
+                .map(|(k, v)| (k.to_owned(), v.to_owned()))
         );
         assert_eq!(place.text("place-dir-go"), "Get directions");
         assert_eq!(place.attr("note-form", "action"), "/api/notes");
@@ -916,8 +950,14 @@ mod tests {
         let mut state = init(maps_seed());
         let home = Dom::of(&get(&mut state, "http://maps.google.com/"));
         assert_eq!(home.tag("home-tile"), "img");
-        assert_eq!(home.attr("home-tile", "src"), "/map.rgba?w=768&h=480&center=devcon-center&zoom=0");
-        assert_eq!(home.attr("home-tile", "alt"), "Map of every place · pick one below");
+        assert_eq!(
+            home.attr("home-tile", "src"),
+            "/map.rgba?w=768&h=480&center=devcon-center&zoom=0"
+        );
+        assert_eq!(
+            home.attr("home-tile", "alt"),
+            "Map of every place · pick one below"
+        );
         let place = Dom::of(&get(
             &mut state,
             "http://maps.google.com/maps/place/northstar-hq",
@@ -934,12 +974,18 @@ mod tests {
             dir.attr("dir-tile", "src"),
             "/map.rgba?w=768&h=480&route=northstar-hq%7Cdevcon-center%7Cdriving&sel=devcon-center"
         );
-        assert_eq!(dir.attr("dir-tile", "alt"), "Northstar HQ → Cascade Convention Center");
+        assert_eq!(
+            dir.attr("dir-tile", "alt"),
+            "Northstar HQ → Cascade Convention Center"
+        );
         // OpenStreetMap's pane beside the sidebar is 4:3.
         let mut osm_seed = maps_seed();
         osm_seed["skin"] = json!("osm");
         let mut osm = init(osm_seed);
-        assert_eq!(Dom::of(&get(&mut osm, "http://openstreetmap.org/")).attr("home-tile", "src"), "/map.rgba?w=640&h=480&center=devcon-center&zoom=0");
+        assert_eq!(
+            Dom::of(&get(&mut osm, "http://openstreetmap.org/")).attr("home-tile", "src"),
+            "/map.rgba?w=640&h=480&center=devcon-center&zoom=0"
+        );
         let url = "http://maps.google.com/map.rgba?w=96&h=64&route=northstar-hq%7Cdevcon-center%7Cdriving&sel=devcon-center";
         let before = state.clone();
         let picture = get(&mut state, url);
@@ -979,8 +1025,14 @@ mod tests {
         let mut state = init(maps_seed());
         let url = |zoom: &str| format!("http://maps.google.com/maps/place/northstar-hq{zoom}");
         let mid = Dom::of(&get(&mut state, &url("")));
-        assert_eq!(mid.attr("zoom-in", "href"), "/maps/place/northstar-hq?zoom=4");
-        assert_eq!(mid.attr("zoom-out", "href"), "/maps/place/northstar-hq?zoom=2");
+        assert_eq!(
+            mid.attr("zoom-in", "href"),
+            "/maps/place/northstar-hq?zoom=4"
+        );
+        assert_eq!(
+            mid.attr("zoom-out", "href"),
+            "/maps/place/northstar-hq?zoom=2"
+        );
         assert_eq!(mid.tag("zoom-in"), "a");
         let deeper = Dom::of(&get(&mut state, &url("?zoom=4")));
         assert_eq!(
@@ -989,10 +1041,16 @@ mod tests {
         );
         // At the ends the step that cannot be taken is plain furniture with no id at all.
         let widest = Dom::of(&get(&mut state, &url("?zoom=0")));
-        assert_eq!(widest.attr("zoom-in", "href"), "/maps/place/northstar-hq?zoom=1");
+        assert_eq!(
+            widest.attr("zoom-in", "href"),
+            "/maps/place/northstar-hq?zoom=1"
+        );
         assert!(!widest.has("zoom-out"), "zoom 0 cannot zoom out");
         let tightest = Dom::of(&get(&mut state, &url(&format!("?zoom={MAP_ZOOM_MAX}"))));
-        assert!(!tightest.has("zoom-in"), "the tightest frame cannot zoom in");
+        assert!(
+            !tightest.has("zoom-in"),
+            "the tightest frame cannot zoom in"
+        );
         assert_eq!(
             tightest.attr("zoom-out", "href"),
             format!("/maps/place/northstar-hq?zoom={}", MAP_ZOOM_MAX - 1)
@@ -1016,15 +1074,26 @@ mod tests {
         assert_eq!(route.metres, 5_428);
         assert_eq!(route.minutes, 14);
         let dom = Dom::of(&page);
-        assert_eq!(dom.text("dir-title"), "Northstar HQ to Cascade Convention Center");
+        assert_eq!(
+            dom.text("dir-title"),
+            "Northstar HQ to Cascade Convention Center"
+        );
         assert_eq!(dom.text("dir-min"), "14 min");
         assert_eq!(dom.text("dir-dist"), "3.4 mi");
         assert_eq!(dom.text("dir-mode"), "driving");
         assert_eq!(dom.text("step-0-n"), "1");
-        assert_eq!(dom.text("step-1-text"), "Head north on Bayfront Ave — 2.7 mi");
+        assert_eq!(
+            dom.text("step-1-text"),
+            "Head north on Bayfront Ave — 2.7 mi"
+        );
         assert_eq!(dom.text("step-2-text"), "Turn east onto Pike St — 0.7 mi");
         assert!(dom.has("step-3") && !dom.has("step-4"));
-        for (mode, label) in [("driving", "Drive"), ("transit", "Transit"), ("cycling", "Bike"), ("walking", "Walk")] {
+        for (mode, label) in [
+            ("driving", "Drive"),
+            ("transit", "Transit"),
+            ("cycling", "Bike"),
+            ("walking", "Walk"),
+        ] {
             let id = format!("mode-{mode}");
             assert_eq!(dom.text(&id), label);
             assert_eq!(
@@ -1032,7 +1101,10 @@ mod tests {
                 format!("/maps/dir?from=northstar-hq&to=devcon-center&mode={mode}")
             );
         }
-        assert_eq!(dom.attr("dir-to-place", "href"), "/maps/place/devcon-center");
+        assert_eq!(
+            dom.attr("dir-to-place", "href"),
+            "/maps/place/devcon-center"
+        );
         assert_eq!(dom.text("dir-to-place"), "Open Cascade Convention Center");
         // A cache hit is the identical value, so the second page is byte-identical.
         let cached = state.clone();
@@ -1082,9 +1154,15 @@ mod tests {
         assert_eq!(saved.attr("saved-0", "href"), "/maps/place/devcon-center");
         let home = Dom::of(&get(&mut state, "http://maps.google.com/"));
         assert_eq!(home.text("saved-title"), "Your places");
-        assert_eq!(home.attr("home-saved-0", "href"), "/maps/place/devcon-center");
+        assert_eq!(
+            home.attr("home-saved-0", "href"),
+            "/maps/place/devcon-center"
+        );
         assert_eq!(home.attr("dir-from", "value"), "devcon-center");
-        let place = Dom::of(&get(&mut state, "http://maps.google.com/maps/place/devcon-center"));
+        let place = Dom::of(&get(
+            &mut state,
+            "http://maps.google.com/maps/place/devcon-center",
+        ));
         assert_eq!(place.text("save-form-go"), "Remove from Your places");
         // Saving again is the "unsave" every star really performs.
         post(
@@ -1110,7 +1188,10 @@ mod tests {
         assert_eq!(notes.attr("n-0", "href"), "/maps/place/devcon-center");
         assert_eq!(notes.text("n-0-where"), "Cascade Convention Center");
         assert_eq!(notes.text("n-0-text"), "Loading dock entrance is on 9th.");
-        assert_eq!(notes.text("n-0-meta"), "alice · 47.611400, -122.333000 · tick 7");
+        assert_eq!(
+            notes.text("n-0-meta"),
+            "alice · 47.611400, -122.333000 · tick 7"
+        );
         let s: GeoState = web::load(&state).unwrap();
         assert_eq!(s.notes.len(), 1);
         assert_eq!(s.notes[0].author, "alice");
@@ -1163,15 +1244,24 @@ mod tests {
         assert_eq!(home.attr("wx-ten", "href"), "/weather/tenday/l/seattle");
         assert_eq!(home.attr("locations-form", "action"), "/api/locations");
         assert_eq!(home.attr("locations-form", "method"), "post");
-        assert_eq!(home.fields("locations-form"), [("city".to_owned(), "seattle".to_owned())]);
+        assert_eq!(
+            home.fields("locations-form"),
+            [("city".to_owned(), "seattle".to_owned())]
+        );
         assert_eq!(home.text("locations-form-go"), "Save this location");
         assert_eq!(home.attr("units-form", "action"), "/api/units");
         assert_eq!(home.attr("units-form", "method"), "post");
-        assert_eq!(home.fields("units-form"), [("units".to_owned(), "f".to_owned())]);
+        assert_eq!(
+            home.fields("units-form"),
+            [("units".to_owned(), "f".to_owned())]
+        );
         assert_eq!(home.text("units-form-go"), "Switch units");
         assert!(!home.has("wx-place"), "the test seed has no places");
         assert_eq!(home.attr("hdr-search", "action"), "/search");
-        let ten = Dom::of(&get(&mut state, "http://weather.com/weather/tenday/l/seattle"));
+        let ten = Dom::of(&get(
+            &mut state,
+            "http://weather.com/weather/tenday/l/seattle",
+        ));
         assert_eq!(ten.text("days-title"), "10 day forecast");
         assert_eq!(ten.text("d-1-day"), "Tue");
         assert_eq!(ten.text("d-1-cond"), "Cloudy");
@@ -1179,8 +1269,14 @@ mod tests {
         assert_eq!(found.attr("r-0", "href"), "/weather/today/l/seattle");
         assert_eq!(found.text("r-0-city"), "Seattle, WA");
         assert_eq!(found.text("r-0-now"), "57° · Rain");
-        assert_eq!(Dom::of(&get(&mut state, "http://weather.com/search?q=zzz")).text("empty"), "No locations matched.");
-        assert_eq!(Dom::of(&get(&mut state, "http://weather.com/maps/saved")).text("empty"), "Nothing saved yet.");
+        assert_eq!(
+            Dom::of(&get(&mut state, "http://weather.com/search?q=zzz")).text("empty"),
+            "No locations matched."
+        );
+        assert_eq!(
+            Dom::of(&get(&mut state, "http://weather.com/maps/saved")).text("empty"),
+            "Nothing saved yet."
+        );
         assert_eq!(
             get(&mut state, "http://weather.com/weather/today/l/nope").status,
             404
@@ -1193,7 +1289,10 @@ mod tests {
         );
         let s: GeoState = web::load(&state).unwrap();
         assert_eq!(s.unit_prefs["alice"], "metric");
-        let metric = Dom::of(&get(&mut state, "http://weather.com/weather/today/l/seattle"));
+        let metric = Dom::of(&get(
+            &mut state,
+            "http://weather.com/weather/today/l/seattle",
+        ));
         assert_eq!(metric.text("d-0-hi"), "16°");
         assert_eq!(metric.attr("units-value", "value"), "c");
         assert_eq!(
@@ -1216,13 +1315,21 @@ mod tests {
         assert_eq!(saved.attr("saved-0", "href"), "/weather/today/l/seattle");
         assert_eq!(saved.text("saved-0-city"), "Seattle, WA");
         assert_eq!(
-            Dom::of(&get(&mut state, "http://weather.com/weather/today/l/seattle")).text("locations-form-go"),
+            Dom::of(&get(
+                &mut state,
+                "http://weather.com/weather/today/l/seattle"
+            ))
+            .text("locations-form-go"),
             "Remove this location"
         );
         post(&mut state, "http://weather.com/api/alerts/wx-1/ack", &[]);
         let s: GeoState = web::load(&state).unwrap();
         assert_eq!(s.alerts[0].acked, vec!["alice".to_string()]);
-        assert!(!Dom::of(&get(&mut state, "http://weather.com/weather/today/l/seattle")).has("alert-0"));
+        assert!(!Dom::of(&get(
+            &mut state,
+            "http://weather.com/weather/today/l/seattle"
+        ))
+        .has("alert-0"));
         assert_eq!(
             post(&mut state, "http://weather.com/api/alerts/nope/ack", &[]).status,
             400
@@ -1260,14 +1367,24 @@ mod tests {
                 "http://maps.google.com/maps/dir?from=northstar-hq&to=devcon-center&mode=walking",
             ] {
                 let dom = Dom::of(&get(&mut state, url));
-                assert!(dom.body_class().starts_with(&format!("skin-{want} ")), "{url}");
-                assert!(dom.has("chrome") && dom.has("hdr-search") && dom.has("foot"), "{url}");
+                assert!(
+                    dom.body_class().starts_with(&format!("skin-{want} ")),
+                    "{url}"
+                );
+                assert!(
+                    dom.has("chrome") && dom.has("hdr-search") && dom.has("foot"),
+                    "{url}"
+                );
             }
         }
         let mut seed = weather_seed();
         seed["skin"] = json!("weather");
         let mut state = init(seed);
-        post(&mut state, "http://weather.com/api/locations", &[("city", "seattle")]);
+        post(
+            &mut state,
+            "http://weather.com/api/locations",
+            &[("city", "seattle")],
+        );
         for url in [
             "http://weather.com/",
             "http://weather.com/weather/today/l/seattle",
@@ -1279,11 +1396,17 @@ mod tests {
         ] {
             let dom = Dom::of(&get(&mut state, url));
             assert!(dom.body_class().starts_with("skin-weather "), "{url}");
-            assert!(dom.has("chrome") && dom.has("hdr-search") && dom.has("foot"), "{url}");
+            assert!(
+                dom.has("chrome") && dom.has("hdr-search") && dom.has("foot"),
+                "{url}"
+            );
         }
         // A weather instance with nothing seeded is still a page, not a blank.
         let mut bare = init(json!({"mode": "weather", "brand": "Testweather"}));
-        assert_eq!(Dom::of(&get(&mut bare, "http://weather.com/")).text("empty"), "No locations are seeded.");
+        assert_eq!(
+            Dom::of(&get(&mut bare, "http://weather.com/")).text("empty"),
+            "No locations are seeded."
+        );
     }
     #[test]
     fn maps_routes_are_absent_in_weather_mode_and_the_reverse() {

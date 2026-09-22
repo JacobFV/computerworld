@@ -20,7 +20,11 @@ impl Specificity {
         Specificity { a, b, c }
     }
     fn add(self, o: Specificity) -> Specificity {
-        Specificity { a: self.a + o.a, b: self.b + o.b, c: self.c + o.c }
+        Specificity {
+            a: self.a + o.a,
+            b: self.b + o.b,
+            c: self.c + o.c,
+        }
     }
 }
 
@@ -86,7 +90,12 @@ pub enum PseudoClass {
     LastOfType,
     OnlyOfType,
     /// `:nth-child(An+B [of S])` and its three siblings.
-    Nth { kind: NthKind, a: i32, b: i32, of: Option<SelectorList> },
+    Nth {
+        kind: NthKind,
+        a: i32,
+        b: i32,
+        of: Option<SelectorList>,
+    },
     Not(SelectorList),
     Is(SelectorList),
     Where(SelectorList),
@@ -168,7 +177,12 @@ pub enum SimpleSelector {
     Universal,
     Id(String),
     Class(String),
-    Attribute { name: String, op: AttrOp, value: String, case: AttrCase },
+    Attribute {
+        name: String,
+        op: AttrOp,
+        value: String,
+        case: AttrCase,
+    },
     PseudoClass(PseudoClass),
     /// The nesting selector `&`; replaced by `:is(<parent>)` when a nested rule is
     /// flattened. At the top level it behaves as `:scope`.
@@ -222,7 +236,10 @@ impl fmt::Display for SelectorError {
 }
 
 fn err(kind: SelectorErrorKind, detail: impl Into<String>) -> SelectorError {
-    SelectorError { kind, detail: detail.into() }
+    SelectorError {
+        kind,
+        detail: detail.into(),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -242,7 +259,11 @@ pub fn parse_relative_selector_list(src: &str) -> Result<Vec<RelativeSelector>, 
 
 impl SelectorList {
     pub fn parse(values: &[ComponentValue]) -> Result<SelectorList, SelectorError> {
-        let mut p = Parser { values, pos: 0, in_has: false };
+        let mut p = Parser {
+            values,
+            pos: 0,
+            in_has: false,
+        };
         p.parse_list()
     }
     /// The forgiving form used by `:is()` and `:where()`: invalid selectors are dropped.
@@ -252,7 +273,11 @@ impl SelectorList {
     fn parse_forgiving_in(values: &[ComponentValue], in_has: bool) -> SelectorList {
         let mut out = Vec::new();
         for group in split_commas(values) {
-            let mut p = Parser { values: group, pos: 0, in_has };
+            let mut p = Parser {
+                values: group,
+                pos: 0,
+                in_has,
+            };
             if let Ok(mut list) = p.parse_list() {
                 out.append(&mut list.0);
             }
@@ -267,7 +292,11 @@ impl SelectorList {
     }
     /// The highest specificity among the list, as `:is()` and `:not()` use.
     pub fn max_specificity(&self) -> Specificity {
-        self.0.iter().map(|s| s.specificity()).max().unwrap_or_default()
+        self.0
+            .iter()
+            .map(|s| s.specificity())
+            .max()
+            .unwrap_or_default()
     }
     /// Replaces `&` with `:is(<parent>)` in every selector; see
     /// `ComplexSelector::resolve_nesting`.
@@ -280,22 +309,37 @@ impl SelectorList {
 }
 
 /// Parses relative selectors; a missing leading combinator means descendant.
-pub fn parse_relative_list(values: &[ComponentValue], in_has: bool) -> Result<Vec<RelativeSelector>, SelectorError> {
-    let mut p = Parser { values, pos: 0, in_has };
+pub fn parse_relative_list(
+    values: &[ComponentValue],
+    in_has: bool,
+) -> Result<Vec<RelativeSelector>, SelectorError> {
+    let mut p = Parser {
+        values,
+        pos: 0,
+        in_has,
+    };
     let mut out = Vec::new();
     loop {
         p.skip_ws();
         let combinator = p.parse_combinator_token().unwrap_or(Combinator::Descendant);
         p.skip_ws();
         let selector = p.parse_complex()?;
-        out.push(RelativeSelector { combinator, selector });
+        out.push(RelativeSelector {
+            combinator,
+            selector,
+        });
         p.skip_ws();
         match p.peek() {
             None => return Ok(out),
             Some(ComponentValue::Token(Token::Comma)) => {
                 p.pos += 1;
             }
-            Some(v) => return Err(err(SelectorErrorKind::Syntax, format!("unexpected {}", describe(v)))),
+            Some(v) => {
+                return Err(err(
+                    SelectorErrorKind::Syntax,
+                    format!("unexpected {}", describe(v)),
+                ))
+            }
         }
     }
 }
@@ -360,7 +404,12 @@ impl<'a> Parser<'a> {
             match self.next() {
                 None => return Ok(SelectorList(out)),
                 Some(ComponentValue::Token(Token::Comma)) => {}
-                Some(v) => return Err(err(SelectorErrorKind::Syntax, format!("unexpected {}", describe(v)))),
+                Some(v) => {
+                    return Err(err(
+                        SelectorErrorKind::Syntax,
+                        format!("unexpected {}", describe(v)),
+                    ))
+                }
             }
         }
     }
@@ -387,20 +436,32 @@ impl<'a> Parser<'a> {
         loop {
             let (compound, pe) = self.parse_compound()?;
             if compound.simple.is_empty() && pe.is_none() {
-                return Err(err(SelectorErrorKind::Empty, "expected a compound selector"));
+                return Err(err(
+                    SelectorErrorKind::Empty,
+                    "expected a compound selector",
+                ));
             }
             compounds.push(compound);
             if let Some(pe) = pe {
                 pseudo_element = Some(pe);
                 self.skip_ws();
-                if !matches!(self.peek(), None | Some(ComponentValue::Token(Token::Comma))) {
-                    return Err(err(SelectorErrorKind::Syntax, "a pseudo-element must end the selector"));
+                if !matches!(
+                    self.peek(),
+                    None | Some(ComponentValue::Token(Token::Comma))
+                ) {
+                    return Err(err(
+                        SelectorErrorKind::Syntax,
+                        "a pseudo-element must end the selector",
+                    ));
                 }
                 break;
             }
             let had_ws = self.skip_ws();
             if self.is_delim(0, '|') && self.is_delim(1, '|') {
-                return Err(err(SelectorErrorKind::ColumnCombinator, "the column combinator `||` is not supported"));
+                return Err(err(
+                    SelectorErrorKind::ColumnCombinator,
+                    "the column combinator `||` is not supported",
+                ));
             }
             match self.parse_combinator_token() {
                 Some(c) => {
@@ -408,7 +469,12 @@ impl<'a> Parser<'a> {
                     combinators.push(c);
                 }
                 None => {
-                    if had_ws && !matches!(self.peek(), None | Some(ComponentValue::Token(Token::Comma))) {
+                    if had_ws
+                        && !matches!(
+                            self.peek(),
+                            None | Some(ComponentValue::Token(Token::Comma))
+                        )
+                    {
                         combinators.push(Combinator::Descendant);
                     } else {
                         break;
@@ -416,11 +482,17 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        Ok(ComplexSelector { compounds, combinators, pseudo_element })
+        Ok(ComplexSelector {
+            compounds,
+            combinators,
+            pseudo_element,
+        })
     }
 
     /// Parses one compound; returns the pseudo-element that ended it, if any.
-    fn parse_compound(&mut self) -> Result<(CompoundSelector, Option<PseudoElement>), SelectorError> {
+    fn parse_compound(
+        &mut self,
+    ) -> Result<(CompoundSelector, Option<PseudoElement>), SelectorError> {
         let mut simple = Vec::new();
         // Optional namespace prefix followed by a type or universal selector.
         if let Some(t) = self.parse_type_or_universal()? {
@@ -430,7 +502,10 @@ impl<'a> Parser<'a> {
             match self.peek() {
                 Some(ComponentValue::Token(Token::Hash { value, id })) => {
                     if !*id {
-                        return Err(err(SelectorErrorKind::Syntax, format!("invalid id selector #{value}")));
+                        return Err(err(
+                            SelectorErrorKind::Syntax,
+                            format!("invalid id selector #{value}"),
+                        ));
                     }
                     simple.push(SimpleSelector::Id(value.clone()));
                     self.pos += 1;
@@ -438,15 +513,25 @@ impl<'a> Parser<'a> {
                 Some(ComponentValue::Token(Token::Delim('.'))) => {
                     self.pos += 1;
                     match self.next() {
-                        Some(ComponentValue::Token(Token::Ident(c))) => simple.push(SimpleSelector::Class(c.clone())),
-                        _ => return Err(err(SelectorErrorKind::Syntax, "expected a class name after `.`")),
+                        Some(ComponentValue::Token(Token::Ident(c))) => {
+                            simple.push(SimpleSelector::Class(c.clone()))
+                        }
+                        _ => {
+                            return Err(err(
+                                SelectorErrorKind::Syntax,
+                                "expected a class name after `.`",
+                            ))
+                        }
                     }
                 }
                 Some(ComponentValue::Token(Token::Delim('&'))) => {
                     self.pos += 1;
                     simple.push(SimpleSelector::Nesting);
                 }
-                Some(ComponentValue::Block { open: Token::OpenSquare, contents }) => {
+                Some(ComponentValue::Block {
+                    open: Token::OpenSquare,
+                    contents,
+                }) => {
                     self.pos += 1;
                     simple.push(parse_attribute(contents)?);
                 }
@@ -459,22 +544,42 @@ impl<'a> Parser<'a> {
                     match self.next() {
                         Some(ComponentValue::Token(Token::Ident(name))) => {
                             let lname = name.to_ascii_lowercase();
-                            let legacy = matches!(lname.as_str(), "before" | "after" | "first-line" | "first-letter");
+                            let legacy = matches!(
+                                lname.as_str(),
+                                "before" | "after" | "first-line" | "first-letter"
+                            );
                             if double || legacy {
                                 let Some(pe) = PseudoElement::from_name(&lname) else {
-                                    return Err(err(SelectorErrorKind::UnsupportedPseudoElement, format!("::{name}")));
+                                    return Err(err(
+                                        SelectorErrorKind::UnsupportedPseudoElement,
+                                        format!("::{name}"),
+                                    ));
                                 };
                                 return Ok((CompoundSelector { simple }, Some(pe)));
                             }
-                            simple.push(SimpleSelector::PseudoClass(parse_pseudo_class_ident(&lname, name)?));
+                            simple.push(SimpleSelector::PseudoClass(parse_pseudo_class_ident(
+                                &lname, name,
+                            )?));
                         }
                         Some(ComponentValue::Function { name, args }) => {
                             if double {
-                                return Err(err(SelectorErrorKind::UnsupportedPseudoElement, format!("::{name}()")));
+                                return Err(err(
+                                    SelectorErrorKind::UnsupportedPseudoElement,
+                                    format!("::{name}()"),
+                                ));
                             }
-                            simple.push(SimpleSelector::PseudoClass(parse_pseudo_class_function(name, args, self.in_has)?));
+                            simple.push(SimpleSelector::PseudoClass(parse_pseudo_class_function(
+                                name,
+                                args,
+                                self.in_has,
+                            )?));
                         }
-                        _ => return Err(err(SelectorErrorKind::Syntax, "expected a pseudo-class name after `:`")),
+                        _ => {
+                            return Err(err(
+                                SelectorErrorKind::Syntax,
+                                "expected a pseudo-class name after `:`",
+                            ))
+                        }
                     }
                 }
                 _ => break,
@@ -486,7 +591,10 @@ impl<'a> Parser<'a> {
     fn parse_type_or_universal(&mut self) -> Result<Option<SimpleSelector>, SelectorError> {
         // Namespace prefixes: `ns|`, `*|`, `|`; the prefix is accepted and ignored.
         let has_prefix = match self.peek() {
-            Some(ComponentValue::Token(Token::Ident(_))) | Some(ComponentValue::Token(Token::Delim('*'))) => self.is_delim(1, '|') && !self.is_delim(2, '|') && !self.is_delim(2, '='),
+            Some(ComponentValue::Token(Token::Ident(_)))
+            | Some(ComponentValue::Token(Token::Delim('*'))) => {
+                self.is_delim(1, '|') && !self.is_delim(2, '|') && !self.is_delim(2, '=')
+            }
             Some(ComponentValue::Token(Token::Delim('|'))) => !self.is_delim(1, '|'),
             _ => false,
         };
@@ -506,18 +614,28 @@ impl<'a> Parser<'a> {
                 self.pos += 1;
                 Ok(Some(SimpleSelector::Universal))
             }
-            _ if has_prefix => Err(err(SelectorErrorKind::Syntax, "expected a type after the namespace prefix")),
+            _ if has_prefix => Err(err(
+                SelectorErrorKind::Syntax,
+                "expected a type after the namespace prefix",
+            )),
             _ => Ok(None),
         }
     }
 }
 
 fn parse_attribute(contents: &[ComponentValue]) -> Result<SimpleSelector, SelectorError> {
-    let mut p = Parser { values: contents, pos: 0, in_has: false };
+    let mut p = Parser {
+        values: contents,
+        pos: 0,
+        in_has: false,
+    };
     p.skip_ws();
     // Namespace prefix on the attribute name is ignored.
     let prefixed = match p.peek() {
-        Some(ComponentValue::Token(Token::Ident(_))) | Some(ComponentValue::Token(Token::Delim('*'))) => p.is_delim(1, '|') && !p.is_delim(2, '='),
+        Some(ComponentValue::Token(Token::Ident(_)))
+        | Some(ComponentValue::Token(Token::Delim('*'))) => {
+            p.is_delim(1, '|') && !p.is_delim(2, '=')
+        }
         Some(ComponentValue::Token(Token::Delim('|'))) => true,
         _ => false,
     };
@@ -534,7 +652,14 @@ fn parse_attribute(contents: &[ComponentValue]) -> Result<SimpleSelector, Select
     };
     p.skip_ws();
     let op = match p.peek() {
-        None => return Ok(SimpleSelector::Attribute { name, op: AttrOp::Exists, value: String::new(), case: AttrCase::Default }),
+        None => {
+            return Ok(SimpleSelector::Attribute {
+                name,
+                op: AttrOp::Exists,
+                value: String::new(),
+                case: AttrCase::Default,
+            })
+        }
         Some(ComponentValue::Token(Token::Delim('='))) => {
             p.pos += 1;
             AttrOp::Equals
@@ -546,30 +671,63 @@ fn parse_attribute(contents: &[ComponentValue]) -> Result<SimpleSelector, Select
                 '^' => AttrOp::Prefix,
                 '$' => AttrOp::Suffix,
                 '*' => AttrOp::Substring,
-                _ => return Err(err(SelectorErrorKind::Syntax, format!("unknown attribute operator {c}="))),
+                _ => {
+                    return Err(err(
+                        SelectorErrorKind::Syntax,
+                        format!("unknown attribute operator {c}="),
+                    ))
+                }
             };
             p.pos += 2;
             op
         }
-        Some(v) => return Err(err(SelectorErrorKind::Syntax, format!("unexpected {} in attribute selector", describe(v)))),
+        Some(v) => {
+            return Err(err(
+                SelectorErrorKind::Syntax,
+                format!("unexpected {} in attribute selector", describe(v)),
+            ))
+        }
     };
     p.skip_ws();
     let value = match p.next() {
-        Some(ComponentValue::Token(Token::Ident(v))) | Some(ComponentValue::Token(Token::String(v))) => v.clone(),
-        _ => return Err(err(SelectorErrorKind::Syntax, "expected an attribute value")),
+        Some(ComponentValue::Token(Token::Ident(v)))
+        | Some(ComponentValue::Token(Token::String(v))) => v.clone(),
+        _ => {
+            return Err(err(
+                SelectorErrorKind::Syntax,
+                "expected an attribute value",
+            ))
+        }
     };
     p.skip_ws();
     let case = match p.next() {
         None => AttrCase::Default,
-        Some(ComponentValue::Token(Token::Ident(f))) if f.eq_ignore_ascii_case("i") => AttrCase::Insensitive,
-        Some(ComponentValue::Token(Token::Ident(f))) if f.eq_ignore_ascii_case("s") => AttrCase::Sensitive,
-        Some(v) => return Err(err(SelectorErrorKind::Syntax, format!("unexpected {} after attribute value", describe(v)))),
+        Some(ComponentValue::Token(Token::Ident(f))) if f.eq_ignore_ascii_case("i") => {
+            AttrCase::Insensitive
+        }
+        Some(ComponentValue::Token(Token::Ident(f))) if f.eq_ignore_ascii_case("s") => {
+            AttrCase::Sensitive
+        }
+        Some(v) => {
+            return Err(err(
+                SelectorErrorKind::Syntax,
+                format!("unexpected {} after attribute value", describe(v)),
+            ))
+        }
     };
     p.skip_ws();
     if p.peek().is_some() {
-        return Err(err(SelectorErrorKind::Syntax, "trailing content in attribute selector"));
+        return Err(err(
+            SelectorErrorKind::Syntax,
+            "trailing content in attribute selector",
+        ));
     }
-    Ok(SimpleSelector::Attribute { name, op, value, case })
+    Ok(SimpleSelector::Attribute {
+        name,
+        op,
+        value,
+        case,
+    })
 }
 
 fn parse_pseudo_class_ident(lname: &str, name: &str) -> Result<PseudoClass, SelectorError> {
@@ -607,17 +765,33 @@ fn parse_pseudo_class_ident(lname: &str, name: &str) -> Result<PseudoClass, Sele
         // selector must parse: Tailwind's preflight is `html, :host { … }`, and an
         // invalid selector in a list drops the whole rule.
         "host" => PseudoClass::Host,
-        _ => return Err(err(SelectorErrorKind::UnsupportedPseudoClass, format!(":{name}"))),
+        _ => {
+            return Err(err(
+                SelectorErrorKind::UnsupportedPseudoClass,
+                format!(":{name}"),
+            ))
+        }
     })
 }
 
-fn parse_pseudo_class_function(name: &str, args: &[ComponentValue], in_has: bool) -> Result<PseudoClass, SelectorError> {
+fn parse_pseudo_class_function(
+    name: &str,
+    args: &[ComponentValue],
+    in_has: bool,
+) -> Result<PseudoClass, SelectorError> {
     let lname = name.to_ascii_lowercase();
     let sub = |args: &[ComponentValue]| -> Result<SelectorList, SelectorError> {
-        let mut p = Parser { values: args, pos: 0, in_has };
+        let mut p = Parser {
+            values: args,
+            pos: 0,
+            in_has,
+        };
         let list = p.parse_list()?;
         if list.0.iter().any(|s| s.pseudo_element.is_some()) {
-            return Err(err(SelectorErrorKind::Syntax, format!(":{lname}() cannot contain a pseudo-element")));
+            return Err(err(
+                SelectorErrorKind::Syntax,
+                format!(":{lname}() cannot contain a pseudo-element"),
+            ));
         }
         Ok(list)
     };
@@ -635,11 +809,17 @@ fn parse_pseudo_class_function(name: &str, args: &[ComponentValue], in_has: bool
         }
         "has" => {
             if in_has {
-                return Err(err(SelectorErrorKind::NestedHas, ":has() cannot be nested inside :has()"));
+                return Err(err(
+                    SelectorErrorKind::NestedHas,
+                    ":has() cannot be nested inside :has()",
+                ));
             }
             let rel = parse_relative_list(args, true)?;
             if rel.iter().any(|r| r.selector.pseudo_element.is_some()) {
-                return Err(err(SelectorErrorKind::Syntax, ":has() cannot contain a pseudo-element"));
+                return Err(err(
+                    SelectorErrorKind::Syntax,
+                    ":has() cannot contain a pseudo-element",
+                ));
             }
             PseudoClass::Has(rel)
         }
@@ -651,29 +831,47 @@ fn parse_pseudo_class_function(name: &str, args: &[ComponentValue], in_has: bool
                 _ => NthKind::LastOfType,
             };
             let mut pos = 0;
-            let (a, b) = parse_anb_prefix(args, &mut pos).ok_or_else(|| err(SelectorErrorKind::Syntax, format!("invalid An+B in :{name}()")))?;
+            let (a, b) = parse_anb_prefix(args, &mut pos).ok_or_else(|| {
+                err(
+                    SelectorErrorKind::Syntax,
+                    format!("invalid An+B in :{name}()"),
+                )
+            })?;
             while matches!(args.get(pos), Some(v) if v.is_whitespace()) {
                 pos += 1;
             }
             let of = match args.get(pos) {
                 None => None,
-                Some(ComponentValue::Token(Token::Ident(of))) if of.eq_ignore_ascii_case("of") && matches!(kind, NthKind::Child | NthKind::LastChild) => {
+                Some(ComponentValue::Token(Token::Ident(of)))
+                    if of.eq_ignore_ascii_case("of")
+                        && matches!(kind, NthKind::Child | NthKind::LastChild) =>
+                {
                     let list = sub(&args[pos + 1..])?;
                     if list.0.is_empty() {
-                        return Err(err(SelectorErrorKind::Syntax, "empty selector list after `of`"));
+                        return Err(err(
+                            SelectorErrorKind::Syntax,
+                            "empty selector list after `of`",
+                        ));
                     }
                     Some(list)
                 }
-                Some(v) => return Err(err(SelectorErrorKind::Syntax, format!("unexpected {} in :{name}()", describe(v)))),
+                Some(v) => {
+                    return Err(err(
+                        SelectorErrorKind::Syntax,
+                        format!("unexpected {} in :{name}()", describe(v)),
+                    ))
+                }
             };
             PseudoClass::Nth { kind, a, b, of }
         }
         "lang" => {
             let mut ranges = Vec::new();
             for group in split_commas(args) {
-                let items: Vec<&ComponentValue> = group.iter().filter(|v| !v.is_whitespace()).collect();
+                let items: Vec<&ComponentValue> =
+                    group.iter().filter(|v| !v.is_whitespace()).collect();
                 match items.as_slice() {
-                    [ComponentValue::Token(Token::Ident(s))] | [ComponentValue::Token(Token::String(s))] => ranges.push(s.clone()),
+                    [ComponentValue::Token(Token::Ident(s))]
+                    | [ComponentValue::Token(Token::String(s))] => ranges.push(s.clone()),
                     [ComponentValue::Token(Token::Delim('*'))] => ranges.push("*".to_owned()),
                     _ => return Err(err(SelectorErrorKind::Syntax, "invalid :lang() argument")),
                 }
@@ -686,12 +884,21 @@ fn parse_pseudo_class_function(name: &str, args: &[ComponentValue], in_has: bool
         "dir" => {
             let items: Vec<&ComponentValue> = args.iter().filter(|v| !v.is_whitespace()).collect();
             match items.as_slice() {
-                [ComponentValue::Token(Token::Ident(d))] if d.eq_ignore_ascii_case("ltr") => PseudoClass::Dir(Direction::Ltr),
-                [ComponentValue::Token(Token::Ident(d))] if d.eq_ignore_ascii_case("rtl") => PseudoClass::Dir(Direction::Rtl),
+                [ComponentValue::Token(Token::Ident(d))] if d.eq_ignore_ascii_case("ltr") => {
+                    PseudoClass::Dir(Direction::Ltr)
+                }
+                [ComponentValue::Token(Token::Ident(d))] if d.eq_ignore_ascii_case("rtl") => {
+                    PseudoClass::Dir(Direction::Rtl)
+                }
                 _ => return Err(err(SelectorErrorKind::Syntax, "invalid :dir() argument")),
             }
         }
-        _ => return Err(err(SelectorErrorKind::UnsupportedPseudoClass, format!(":{name}()"))),
+        _ => {
+            return Err(err(
+                SelectorErrorKind::UnsupportedPseudoClass,
+                format!(":{name}()"),
+            ))
+        }
     })
 }
 
@@ -743,7 +950,9 @@ pub fn parse_anb_prefix(values: &[ComponentValue], pos: &mut usize) -> Option<(i
         let mut p = *pos;
         skip_ws(&mut p);
         match values.get(p) {
-            Some(ComponentValue::Token(Token::Number { text, value })) if text.starts_with('+') || text.starts_with('-') => {
+            Some(ComponentValue::Token(Token::Number { text, value }))
+                if text.starts_with('+') || text.starts_with('-') =>
+            {
                 let b = int_value(text, *value)?;
                 *pos = p + 1;
                 Some((a, b))
@@ -752,7 +961,9 @@ pub fn parse_anb_prefix(values: &[ComponentValue], pos: &mut usize) -> Option<(i
                 p += 1;
                 skip_ws(&mut p);
                 match values.get(p) {
-                    Some(ComponentValue::Token(Token::Number { text, value })) if text.starts_with(|c: char| c.is_ascii_digit()) => {
+                    Some(ComponentValue::Token(Token::Number { text, value }))
+                        if text.starts_with(|c: char| c.is_ascii_digit()) =>
+                    {
                         let b = int_value(text, *value)?;
                         *pos = p + 1;
                         Some((a, if *sign == '-' { -b } else { b }))
@@ -768,7 +979,9 @@ pub fn parse_anb_prefix(values: &[ComponentValue], pos: &mut usize) -> Option<(i
         let mut p = *pos;
         skip_ws(&mut p);
         match values.get(p) {
-            Some(ComponentValue::Token(Token::Number { text, value })) if text.starts_with(|c: char| c.is_ascii_digit()) => {
+            Some(ComponentValue::Token(Token::Number { text, value }))
+                if text.starts_with(|c: char| c.is_ascii_digit()) =>
+            {
                 let b = int_value(text, *value)?;
                 *pos = p + 1;
                 Some((a, -b))
@@ -839,14 +1052,19 @@ pub fn parse_anb_prefix(values: &[ComponentValue], pos: &mut usize) -> Option<(i
 
 impl ComplexSelector {
     pub fn specificity(&self) -> Specificity {
-        let mut s = self.compounds.iter().fold(Specificity::ZERO, |acc, c| acc.add(c.specificity()));
+        let mut s = self
+            .compounds
+            .iter()
+            .fold(Specificity::ZERO, |acc, c| acc.add(c.specificity()));
         if self.pseudo_element.is_some() {
             s.c += 1;
         }
         s
     }
     pub fn rightmost(&self) -> &CompoundSelector {
-        self.compounds.last().expect("a complex selector has at least one compound")
+        self.compounds
+            .last()
+            .expect("a complex selector has at least one compound")
     }
     pub fn contains_nesting(&self) -> bool {
         self.compounds.iter().any(|c| c.contains_nesting())
@@ -854,7 +1072,11 @@ impl ComplexSelector {
     /// CSS Nesting: every `&` becomes `:is(<parent>)`; a selector without `&` gets an
     /// implied `:is(<parent>) ` descendant prefix. With no parent, `&` becomes `:scope`.
     pub fn resolve_nesting(&self, parent: Option<&SelectorList>) -> ComplexSelector {
-        RelativeSelector { combinator: Combinator::Descendant, selector: self.clone() }.resolve_nesting(parent)
+        RelativeSelector {
+            combinator: Combinator::Descendant,
+            selector: self.clone(),
+        }
+        .resolve_nesting(parent)
     }
     pub fn simple_selectors(&self) -> impl Iterator<Item = &SimpleSelector> {
         self.compounds.iter().flat_map(|c| c.simple.iter())
@@ -883,7 +1105,12 @@ impl RelativeSelector {
         }
         if !had {
             if let Some(p) = parent {
-                out.compounds.insert(0, CompoundSelector { simple: vec![SimpleSelector::PseudoClass(PseudoClass::Is(p.clone()))] });
+                out.compounds.insert(
+                    0,
+                    CompoundSelector {
+                        simple: vec![SimpleSelector::PseudoClass(PseudoClass::Is(p.clone()))],
+                    },
+                );
                 out.combinators.insert(0, self.combinator);
             }
         }
@@ -916,14 +1143,22 @@ fn resolve_in_pseudo(pc: &mut PseudoClass, parent: Option<&SelectorList>) {
 
 impl CompoundSelector {
     pub fn specificity(&self) -> Specificity {
-        self.simple.iter().fold(Specificity::ZERO, |acc, s| acc.add(s.specificity()))
+        self.simple
+            .iter()
+            .fold(Specificity::ZERO, |acc, s| acc.add(s.specificity()))
     }
     pub fn contains_nesting(&self) -> bool {
         self.simple.iter().any(|s| match s {
             SimpleSelector::Nesting => true,
-            SimpleSelector::PseudoClass(PseudoClass::Not(l) | PseudoClass::Is(l) | PseudoClass::Where(l)) => l.contains_nesting(),
-            SimpleSelector::PseudoClass(PseudoClass::Nth { of: Some(l), .. }) => l.contains_nesting(),
-            SimpleSelector::PseudoClass(PseudoClass::Has(rel)) => rel.iter().any(|r| r.selector.contains_nesting()),
+            SimpleSelector::PseudoClass(
+                PseudoClass::Not(l) | PseudoClass::Is(l) | PseudoClass::Where(l),
+            ) => l.contains_nesting(),
+            SimpleSelector::PseudoClass(PseudoClass::Nth { of: Some(l), .. }) => {
+                l.contains_nesting()
+            }
+            SimpleSelector::PseudoClass(PseudoClass::Has(rel)) => {
+                rel.iter().any(|r| r.selector.contains_nesting())
+            }
             _ => false,
         })
     }
@@ -953,12 +1188,20 @@ impl SimpleSelector {
             SimpleSelector::Type(_) => Specificity::new(0, 0, 1),
             SimpleSelector::Universal | SimpleSelector::Nesting => Specificity::ZERO,
             SimpleSelector::Id(_) => Specificity::new(1, 0, 0),
-            SimpleSelector::Class(_) | SimpleSelector::Attribute { .. } => Specificity::new(0, 1, 0),
+            SimpleSelector::Class(_) | SimpleSelector::Attribute { .. } => {
+                Specificity::new(0, 1, 0)
+            }
             SimpleSelector::PseudoClass(pc) => match pc {
                 PseudoClass::Where(_) => Specificity::ZERO,
                 PseudoClass::Is(l) | PseudoClass::Not(l) => l.max_specificity(),
-                PseudoClass::Has(rel) => rel.iter().map(|r| r.selector.specificity()).max().unwrap_or_default(),
-                PseudoClass::Nth { of: Some(l), .. } => Specificity::new(0, 1, 0).add(l.max_specificity()),
+                PseudoClass::Has(rel) => rel
+                    .iter()
+                    .map(|r| r.selector.specificity())
+                    .max()
+                    .unwrap_or_default(),
+                PseudoClass::Nth { of: Some(l), .. } => {
+                    Specificity::new(0, 1, 0).add(l.max_specificity())
+                }
                 _ => Specificity::new(0, 1, 0),
             },
         }
@@ -1039,7 +1282,12 @@ impl fmt::Display for SimpleSelector {
             SimpleSelector::Nesting => f.write_str("&"),
             SimpleSelector::Id(i) => write!(f, "#{}", serialize_identifier(i)),
             SimpleSelector::Class(c) => write!(f, ".{}", serialize_identifier(c)),
-            SimpleSelector::Attribute { name, op, value, case } => {
+            SimpleSelector::Attribute {
+                name,
+                op,
+                value,
+                case,
+            } => {
                 write!(f, "[{}", serialize_identifier(name))?;
                 let op_text = match op {
                     AttrOp::Exists => return f.write_str("]"),
@@ -1143,7 +1391,10 @@ impl fmt::Display for PseudoClass {
                     if i > 0 {
                         f.write_str(", ")?;
                     }
-                    let is_ident = !r.is_empty() && r.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') && !r.starts_with(|c: char| c.is_ascii_digit()) && !r.starts_with('-');
+                    let is_ident = !r.is_empty()
+                        && r.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+                        && !r.starts_with(|c: char| c.is_ascii_digit())
+                        && !r.starts_with('-');
                     if is_ident {
                         f.write_str(r)?;
                     } else {
@@ -1179,33 +1430,89 @@ mod tests {
         assert_eq!(l.0.len(), 5);
         assert_eq!(l.0[0].compounds[0].simple.len(), 5);
         assert_eq!(l.0[1].compounds[0].simple, vec![SimpleSelector::Universal]);
-        assert_eq!(l.0[2].compounds[0].simple, vec![SimpleSelector::Type("p".into())]);
+        assert_eq!(
+            l.0[2].compounds[0].simple,
+            vec![SimpleSelector::Type("p".into())]
+        );
         assert_eq!(l.0[3].compounds[0].simple, vec![SimpleSelector::Universal]);
-        assert_eq!(l.0[4].compounds[0].simple, vec![SimpleSelector::Type("q".into())]);
+        assert_eq!(
+            l.0[4].compounds[0].simple,
+            vec![SimpleSelector::Type("q".into())]
+        );
     }
 
     #[test]
     fn parses_combinators() {
         let l = parse("a b>c+d~e");
-        assert_eq!(l.0[0].combinators, vec![Combinator::Descendant, Combinator::Child, Combinator::NextSibling, Combinator::SubsequentSibling]);
+        assert_eq!(
+            l.0[0].combinators,
+            vec![
+                Combinator::Descendant,
+                Combinator::Child,
+                Combinator::NextSibling,
+                Combinator::SubsequentSibling
+            ]
+        );
         let l = parse("a  >  b\n~\tc");
-        assert_eq!(l.0[0].combinators, vec![Combinator::Child, Combinator::SubsequentSibling]);
-        assert_eq!(parse_selector_list("a || b").unwrap_err().kind, SelectorErrorKind::ColumnCombinator);
-        assert_eq!(parse_selector_list("a >").unwrap_err().kind, SelectorErrorKind::Empty);
-        assert_eq!(parse_selector_list("").unwrap_err().kind, SelectorErrorKind::Empty);
-        assert_eq!(parse_selector_list("a,").unwrap_err().kind, SelectorErrorKind::Empty);
+        assert_eq!(
+            l.0[0].combinators,
+            vec![Combinator::Child, Combinator::SubsequentSibling]
+        );
+        assert_eq!(
+            parse_selector_list("a || b").unwrap_err().kind,
+            SelectorErrorKind::ColumnCombinator
+        );
+        assert_eq!(
+            parse_selector_list("a >").unwrap_err().kind,
+            SelectorErrorKind::Empty
+        );
+        assert_eq!(
+            parse_selector_list("").unwrap_err().kind,
+            SelectorErrorKind::Empty
+        );
+        assert_eq!(
+            parse_selector_list("a,").unwrap_err().kind,
+            SelectorErrorKind::Empty
+        );
     }
 
     #[test]
     fn parses_attributes() {
         let attr = |s: &str| match &parse(s).0[0].compounds[0].simple[0] {
-            SimpleSelector::Attribute { name, op, value, case } => (name.clone(), *op, value.clone(), *case),
+            SimpleSelector::Attribute {
+                name,
+                op,
+                value,
+                case,
+            } => (name.clone(), *op, value.clone(), *case),
             other => panic!("{other:?}"),
         };
-        assert_eq!(attr("[a]"), ("a".into(), AttrOp::Exists, "".into(), AttrCase::Default));
-        assert_eq!(attr("[ a = b ]"), ("a".into(), AttrOp::Equals, "b".into(), AttrCase::Default));
-        assert_eq!(attr("[a~='b c' i]"), ("a".into(), AttrOp::Includes, "b c".into(), AttrCase::Insensitive));
-        assert_eq!(attr("[a|=b S]"), ("a".into(), AttrOp::DashMatch, "b".into(), AttrCase::Sensitive));
+        assert_eq!(
+            attr("[a]"),
+            ("a".into(), AttrOp::Exists, "".into(), AttrCase::Default)
+        );
+        assert_eq!(
+            attr("[ a = b ]"),
+            ("a".into(), AttrOp::Equals, "b".into(), AttrCase::Default)
+        );
+        assert_eq!(
+            attr("[a~='b c' i]"),
+            (
+                "a".into(),
+                AttrOp::Includes,
+                "b c".into(),
+                AttrCase::Insensitive
+            )
+        );
+        assert_eq!(
+            attr("[a|=b S]"),
+            (
+                "a".into(),
+                AttrOp::DashMatch,
+                "b".into(),
+                AttrCase::Sensitive
+            )
+        );
         assert_eq!(attr("[a^=b]").1, AttrOp::Prefix);
         assert_eq!(attr("[a$=b]").1, AttrOp::Suffix);
         assert_eq!(attr("[a*=b]").1, AttrOp::Substring);
@@ -1219,11 +1526,20 @@ mod tests {
 
     #[test]
     fn parses_pseudo_classes_and_elements() {
-        let l = parse("a:not(.x, [y]):is(b, c):where(d):has(> e, ~ f):nth-child(2n+1 of .g)::before");
+        let l =
+            parse("a:not(.x, [y]):is(b, c):where(d):has(> e, ~ f):nth-child(2n+1 of .g)::before");
         let c = &l.0[0].compounds[0].simple;
-        assert!(matches!(c[1], SimpleSelector::PseudoClass(PseudoClass::Not(ref n)) if n.0.len() == 2));
-        assert!(matches!(c[2], SimpleSelector::PseudoClass(PseudoClass::Is(_))));
-        assert!(matches!(c[3], SimpleSelector::PseudoClass(PseudoClass::Where(_))));
+        assert!(
+            matches!(c[1], SimpleSelector::PseudoClass(PseudoClass::Not(ref n)) if n.0.len() == 2)
+        );
+        assert!(matches!(
+            c[2],
+            SimpleSelector::PseudoClass(PseudoClass::Is(_))
+        ));
+        assert!(matches!(
+            c[3],
+            SimpleSelector::PseudoClass(PseudoClass::Where(_))
+        ));
         match &c[4] {
             SimpleSelector::PseudoClass(PseudoClass::Has(r)) => {
                 assert_eq!(r[0].combinator, Combinator::Child);
@@ -1231,31 +1547,113 @@ mod tests {
             }
             o => panic!("{o:?}"),
         }
-        assert!(matches!(c[5], SimpleSelector::PseudoClass(PseudoClass::Nth { kind: NthKind::Child, a: 2, b: 1, of: Some(_) })));
+        assert!(matches!(
+            c[5],
+            SimpleSelector::PseudoClass(PseudoClass::Nth {
+                kind: NthKind::Child,
+                a: 2,
+                b: 1,
+                of: Some(_)
+            })
+        ));
         assert_eq!(l.0[0].pseudo_element, Some(PseudoElement::Before));
-        assert_eq!(parse("p:first-line").0[0].pseudo_element, Some(PseudoElement::FirstLine));
-        assert_eq!(parse("p:after").0[0].pseudo_element, Some(PseudoElement::After));
-        assert_eq!(parse("p::first-letter").0[0].pseudo_element, Some(PseudoElement::FirstLetter));
+        assert_eq!(
+            parse("p:first-line").0[0].pseudo_element,
+            Some(PseudoElement::FirstLine)
+        );
+        assert_eq!(
+            parse("p:after").0[0].pseudo_element,
+            Some(PseudoElement::After)
+        );
+        assert_eq!(
+            parse("p::first-letter").0[0].pseudo_element,
+            Some(PseudoElement::FirstLetter)
+        );
         assert!(!PseudoElement::FirstLetter.supported());
-        assert_eq!(parse_selector_list("::before:hover").unwrap_err().kind, SelectorErrorKind::Syntax);
-        assert_eq!(parse_selector_list("a::foo").unwrap_err().kind, SelectorErrorKind::UnsupportedPseudoElement);
+        assert_eq!(
+            parse_selector_list("::before:hover").unwrap_err().kind,
+            SelectorErrorKind::Syntax
+        );
+        assert_eq!(
+            parse_selector_list("a::foo").unwrap_err().kind,
+            SelectorErrorKind::UnsupportedPseudoElement
+        );
         // `:host` parses (and never matches); `:host()` does not.
-        assert_eq!(parse_selector_list("html, :host").unwrap().to_string(), "html, :host");
-        assert_eq!(parse_selector_list("a:host-context(x)").unwrap_err().kind, SelectorErrorKind::UnsupportedPseudoClass);
-        assert_eq!(parse_selector_list(":has(:has(a))").unwrap_err().kind, SelectorErrorKind::NestedHas);
-        assert_eq!(parse_selector_list(":has(:not(:has(a)))").unwrap_err().kind, SelectorErrorKind::NestedHas);
+        assert_eq!(
+            parse_selector_list("html, :host").unwrap().to_string(),
+            "html, :host"
+        );
+        assert_eq!(
+            parse_selector_list("a:host-context(x)").unwrap_err().kind,
+            SelectorErrorKind::UnsupportedPseudoClass
+        );
+        assert_eq!(
+            parse_selector_list(":has(:has(a))").unwrap_err().kind,
+            SelectorErrorKind::NestedHas
+        );
+        assert_eq!(
+            parse_selector_list(":has(:not(:has(a)))").unwrap_err().kind,
+            SelectorErrorKind::NestedHas
+        );
         // Forgiving lists drop a nested :has() instead of failing.
-        assert_eq!(parse_selector_list(":has(:is(:has(a), b))").unwrap().to_string(), ":has(:is(b))");
-        assert_eq!(parse_selector_list(":not(::before)").unwrap_err().kind, SelectorErrorKind::Syntax);
-        assert_eq!(parse_selector_list("#0a").unwrap_err().kind, SelectorErrorKind::Syntax);
+        assert_eq!(
+            parse_selector_list(":has(:is(:has(a), b))")
+                .unwrap()
+                .to_string(),
+            ":has(:is(b))"
+        );
+        assert_eq!(
+            parse_selector_list(":not(::before)").unwrap_err().kind,
+            SelectorErrorKind::Syntax
+        );
+        assert_eq!(
+            parse_selector_list("#0a").unwrap_err().kind,
+            SelectorErrorKind::Syntax
+        );
         // Forgiving lists drop what they cannot parse.
         match &parse(":is(a, :host-context(x), b)").0[0].compounds[0].simple[0] {
             SimpleSelector::PseudoClass(PseudoClass::Is(l)) => assert_eq!(l.0.len(), 2),
             o => panic!("{o:?}"),
         }
-        assert!(matches!(parse(":lang(en, \"fr-*\")").0[0].compounds[0].simple[0], SimpleSelector::PseudoClass(PseudoClass::Lang(ref r)) if r == &["en", "fr-*"]));
-        assert!(matches!(parse(":dir(RTL)").0[0].compounds[0].simple[0], SimpleSelector::PseudoClass(PseudoClass::Dir(Direction::Rtl))));
-        for name in ["root", "empty", "first-child", "last-child", "only-child", "first-of-type", "last-of-type", "only-of-type", "hover", "active", "focus", "focus-visible", "focus-within", "visited", "link", "any-link", "target", "checked", "disabled", "enabled", "required", "optional", "read-only", "read-write", "placeholder-shown", "indeterminate", "default", "scope", "defined", "host"] {
+        assert!(
+            matches!(parse(":lang(en, \"fr-*\")").0[0].compounds[0].simple[0], SimpleSelector::PseudoClass(PseudoClass::Lang(ref r)) if r == &["en", "fr-*"])
+        );
+        assert!(matches!(
+            parse(":dir(RTL)").0[0].compounds[0].simple[0],
+            SimpleSelector::PseudoClass(PseudoClass::Dir(Direction::Rtl))
+        ));
+        for name in [
+            "root",
+            "empty",
+            "first-child",
+            "last-child",
+            "only-child",
+            "first-of-type",
+            "last-of-type",
+            "only-of-type",
+            "hover",
+            "active",
+            "focus",
+            "focus-visible",
+            "focus-within",
+            "visited",
+            "link",
+            "any-link",
+            "target",
+            "checked",
+            "disabled",
+            "enabled",
+            "required",
+            "optional",
+            "read-only",
+            "read-write",
+            "placeholder-shown",
+            "indeterminate",
+            "default",
+            "scope",
+            "defined",
+            "host",
+        ] {
             parse(&format!(":{name}"));
         }
     }
@@ -1348,13 +1746,28 @@ mod tests {
         let r = nested.resolve_nesting(Some(&parent));
         assert_eq!(r.to_string(), ":is(.a, .b):hover");
         let bare = parse(".c");
-        assert_eq!(bare.resolve_nesting(Some(&parent)).to_string(), ":is(.a, .b) .c");
+        assert_eq!(
+            bare.resolve_nesting(Some(&parent)).to_string(),
+            ":is(.a, .b) .c"
+        );
         let rel = parse_relative_selector_list("> .c, + .d").unwrap();
-        assert_eq!(rel[0].resolve_nesting(Some(&parent)).to_string(), ":is(.a, .b) > .c");
-        assert_eq!(rel[1].resolve_nesting(Some(&parent)).to_string(), ":is(.a, .b) + .d");
-        assert_eq!(parse(".x &").resolve_nesting(Some(&parent)).to_string(), ".x :is(.a, .b)");
+        assert_eq!(
+            rel[0].resolve_nesting(Some(&parent)).to_string(),
+            ":is(.a, .b) > .c"
+        );
+        assert_eq!(
+            rel[1].resolve_nesting(Some(&parent)).to_string(),
+            ":is(.a, .b) + .d"
+        );
+        assert_eq!(
+            parse(".x &").resolve_nesting(Some(&parent)).to_string(),
+            ".x :is(.a, .b)"
+        );
         assert_eq!(parse("&").resolve_nesting(None).to_string(), ":scope");
-        assert_eq!(parse(":not(&)").resolve_nesting(Some(&parent)).to_string(), ":not(:is(.a, .b))");
+        assert_eq!(
+            parse(":not(&)").resolve_nesting(Some(&parent)).to_string(),
+            ":not(:is(.a, .b))"
+        );
         // Specificity of `&` follows :is().
         let sp = parse("& .c").resolve_nesting(Some(&parse("#p, .q"))).0[0].specificity();
         assert_eq!((sp.a, sp.b, sp.c), (1, 1, 0));

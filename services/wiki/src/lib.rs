@@ -446,17 +446,16 @@ impl Service for WikiService {
                     }
                 }
                 ["wiki", "Special:History", title] if !api => history_page(&s, title),
-                ["wiki", title] if !api => match (
-                    title.strip_prefix("Talk:"),
-                    title.strip_prefix("Category:"),
-                ) {
-                    (Some(title), _) => talk_page(&s, title),
-                    (_, Some(name)) => category_page(&s, name),
-                    _ => match web::query(r, "section") {
-                        Some(sid) => section_page(&s, title, &sid),
-                        None => article_page(&s, title),
-                    },
-                },
+                ["wiki", title] if !api => {
+                    match (title.strip_prefix("Talk:"), title.strip_prefix("Category:")) {
+                        (Some(title), _) => talk_page(&s, title),
+                        (_, Some(name)) => category_page(&s, name),
+                        _ => match web::query(r, "section") {
+                            Some(sid) => section_page(&s, title, &sid),
+                            None => article_page(&s, title),
+                        },
+                    }
+                }
                 ["search"] | ["w", "index.php"] if !api => match query.trim() {
                     "" => portal(&s),
                     q => results_page(&s, q),
@@ -550,7 +549,11 @@ mod tests {
     }
     impl Html {
         fn node(&self, id: &str) -> cw_web::dom::NodeId {
-            *self.doc.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+            *self
+                .doc
+                .by_id(id)
+                .first()
+                .unwrap_or_else(|| panic!("no element #{id}"))
         }
         fn has(&self, id: &str) -> bool {
             !self.doc.by_id(id).is_empty()
@@ -559,7 +562,10 @@ mod tests {
             self.doc.text_content(self.node(id))
         }
         fn attr(&self, id: &str, name: &str) -> String {
-            self.doc.attr(self.node(id), name).unwrap_or_default().to_owned()
+            self.doc
+                .attr(self.node(id), name)
+                .unwrap_or_default()
+                .to_owned()
         }
         fn tag(&self, id: &str) -> String {
             self.doc.tag(self.node(id)).unwrap_or_default().to_owned()
@@ -569,17 +575,26 @@ mod tests {
         }
         fn title(&self) -> String {
             let root = cw_web::dom::Document::ROOT;
-            let node = self.doc.descendants(root).find(|n| self.doc.is(*n, "title")).unwrap();
+            let node = self
+                .doc
+                .descendants(root)
+                .find(|n| self.doc.is(*n, "title"))
+                .unwrap();
             self.doc.text_content(node)
         }
     }
     /// A page the engine would refuse is not a page: HTML media type, strict CSS, unique ids.
     fn rendered(response: &HttpResponse) -> Html {
         assert_eq!(response.status, 200);
-        assert_eq!(response.header("content-type"), Some(web::html::HTML_MEDIA_TYPE));
+        assert_eq!(
+            response.header("content-type"),
+            Some(web::html::HTML_MEDIA_TYPE)
+        );
         let html = std::str::from_utf8(&response.body).unwrap();
         web::html::validate_strict(html).unwrap_or_else(|e| panic!("strict validation: {e:?}"));
-        Html { doc: cw_web::html::parse(html) }
+        Html {
+            doc: cw_web::html::parse(html),
+        }
     }
     fn get(state: &mut Value, url: &str) -> HttpResponse {
         WikiService
@@ -667,7 +682,10 @@ mod tests {
             &mut state,
             &format!("http://wikipedia.org/wiki/Special:History/{ARTICLE}"),
         ));
-        assert_eq!(history.text(&format!("rev-{next}-comment")), "tighten wording");
+        assert_eq!(
+            history.text(&format!("rev-{next}-comment")),
+            "tighten wording"
+        );
         assert_eq!(history.text(&format!("rev-{next}-mark")), "current");
         assert_eq!(
             history.attr(&format!("rev-{next}-comment"), "href"),
@@ -860,16 +878,30 @@ mod tests {
         assert!(WikiService.initialize(Value::Null, &ctx()).is_ok());
     }
     const SKINNED: [(&str, &str, &str); 3] = [
-        ("vector", "wikipedia.org", include_str!("../../../worlds/company-2026/sites/wikipedia.json")),
-        ("imdb", "imdb.com", include_str!("../../../worlds/company-2026/sites/imdb.json")),
-        ("archive", "archive.org", include_str!("../../../worlds/company-2026/sites/archive.json")),
+        (
+            "vector",
+            "wikipedia.org",
+            include_str!("../../../worlds/company-2026/sites/wikipedia.json"),
+        ),
+        (
+            "imdb",
+            "imdb.com",
+            include_str!("../../../worlds/company-2026/sites/imdb.json"),
+        ),
+        (
+            "archive",
+            "archive.org",
+            include_str!("../../../worlds/company-2026/sites/archive.json"),
+        ),
     ];
     /// Every page of every site: strict HTML and CSS, in the skin its seed names.
     #[test]
     fn every_page_of_every_skin_validates_strictly() {
         for (skin, host, seed) in SKINNED {
             let site: Value = serde_json::from_str(seed).unwrap();
-            let mut state = WikiService.initialize(site["initial_state"].clone(), &ctx()).unwrap();
+            let mut state = WikiService
+                .initialize(site["initial_state"].clone(), &ctx())
+                .unwrap();
             let s: WikiState = serde_json::from_value(state.clone()).unwrap();
             assert_eq!(s.skin_name(), skin, "{host}");
             let before = state.clone();
@@ -893,7 +925,9 @@ mod tests {
             for url in urls {
                 let page = rendered(&get(&mut state, &url));
                 assert!(
-                    std::str::from_utf8(&get(&mut state, &url).body).unwrap().contains(&format!("skin-{skin}")),
+                    std::str::from_utf8(&get(&mut state, &url).body)
+                        .unwrap()
+                        .contains(&format!("skin-{skin}")),
                     "{url}"
                 );
                 // The chrome every page wears: the search form posts `q` to /search.
@@ -903,16 +937,26 @@ mod tests {
                 assert_eq!(page.attr("search-q", "name"), "q");
                 assert_eq!(page.tag("search-submit"), "button");
                 assert_eq!(page.attr("masthead-logo", "href"), "/");
-                assert!(page.has("masthead-brand") && page.has("masthead-tagline") && page.has("foot"));
+                assert!(
+                    page.has("masthead-brand") && page.has("masthead-tagline") && page.has("foot")
+                );
             }
             for entry in site["search_entries"].as_array().unwrap() {
                 let url = entry["url"].as_str().unwrap();
-                assert_eq!(get(&mut state, url).status, 200, "indexed {url} does not resolve");
+                assert_eq!(
+                    get(&mut state, url).status,
+                    200,
+                    "indexed {url} does not resolve"
+                );
             }
             assert_eq!(before, state, "rendering must not mutate seed state");
         }
-        assert!(WikiService.initialize(json!({"skin": "monobook"}), &ctx()).is_err());
-        let explicit = WikiService.initialize(json!({"skin": "imdb"}), &ctx()).unwrap();
+        assert!(WikiService
+            .initialize(json!({"skin": "monobook"}), &ctx())
+            .is_err());
+        let explicit = WikiService
+            .initialize(json!({"skin": "imdb"}), &ctx())
+            .unwrap();
         let s: WikiState = serde_json::from_value(explicit).unwrap();
         assert_eq!(s.skin_name(), "imdb");
     }
@@ -922,20 +966,34 @@ mod tests {
         let mut state = raw();
         let s = seeded();
         let portal = rendered(&get(&mut state, "http://wikipedia.org/"));
-        assert_eq!(portal.text("featured-label"), "From today's featured article");
-        assert_eq!(portal.attr("featured-title", "href"), format!("/wiki/{ARTICLE}"));
-        assert!(portal.has("featured-summary") && portal.has("news-label") && portal.has("all-label"));
+        assert_eq!(
+            portal.text("featured-label"),
+            "From today's featured article"
+        );
+        assert_eq!(
+            portal.attr("featured-title", "href"),
+            format!("/wiki/{ARTICLE}")
+        );
+        assert!(
+            portal.has("featured-summary") && portal.has("news-label") && portal.has("all-label")
+        );
         assert_eq!(portal.attr("news-0", "href"), s.in_the_news[0].url);
         for (i, article) in s.articles.values().enumerate() {
             assert_eq!(portal.tag(&format!("all-{i}")), "a");
-            assert_eq!(portal.attr(&format!("all-{i}"), "href"), format!("/wiki/{}", article.id));
+            assert_eq!(
+                portal.attr(&format!("all-{i}"), "href"),
+                format!("/wiki/{}", article.id)
+            );
             assert_eq!(portal.text(&format!("all-{i}-title")), article.title);
             assert!(portal.has(&format!("all-{i}-summary")));
         }
         assert_eq!(portal.attr("portal-random", "href"), "/wiki/Special:Random");
 
         let article = &s.articles[ARTICLE];
-        let page = rendered(&get(&mut state, &format!("http://wikipedia.org/wiki/{ARTICLE}")));
+        let page = rendered(&get(
+            &mut state,
+            &format!("http://wikipedia.org/wiki/{ARTICLE}"),
+        ));
         assert_eq!(page.title(), format!("{} — Wikipedia", article.title));
         assert_eq!(page.text("article-title"), article.title);
         assert_eq!(page.text("article-summary"), article.summary);
@@ -966,7 +1024,10 @@ mod tests {
             assert_eq!(page.text(&format!("ref-{i}")), reference.label);
         }
         for (i, target) in article.see_also.iter().enumerate() {
-            assert_eq!(page.attr(&format!("see-{i}"), "href"), format!("/wiki/{target}"));
+            assert_eq!(
+                page.attr(&format!("see-{i}"), "href"),
+                format!("/wiki/{target}")
+            );
         }
         for (i, category) in article.categories.iter().enumerate() {
             assert_eq!(page.text(&format!("cat-{i}")), *category);
@@ -983,26 +1044,44 @@ mod tests {
             &mut state,
             &format!("http://wikipedia.org/wiki/{ARTICLE}?section=history"),
         ));
-        assert_eq!(section.attr("section-back", "href"), format!("/wiki/{ARTICLE}"));
+        assert_eq!(
+            section.attr("section-back", "href"),
+            format!("/wiki/{ARTICLE}")
+        );
         assert!(section.has("section-heading") && section.has("edit-label"));
         assert_eq!(section.tag("edit"), "form");
-        assert_eq!(section.attr("edit", "action"), format!("/articles/{ARTICLE}/sections/history"));
+        assert_eq!(
+            section.attr("edit", "action"),
+            format!("/articles/{ARTICLE}/sections/history")
+        );
         assert_eq!(section.attr("edit", "method"), "post");
         assert_eq!(section.tag("edit-body"), "textarea");
         assert_eq!(section.attr("edit-body", "name"), "body");
-        assert_eq!(section.text("edit-body"), article.section("history").unwrap().body);
+        assert_eq!(
+            section.text("edit-body"),
+            article.section("history").unwrap().body
+        );
         assert_eq!(section.attr("edit-comment", "name"), "comment");
         assert_eq!(section.tag("edit-submit"), "button");
 
-        let talk = rendered(&get(&mut state, &format!("http://wikipedia.org/wiki/Talk:{ARTICLE}")));
+        let talk = rendered(&get(
+            &mut state,
+            &format!("http://wikipedia.org/wiki/Talk:{ARTICLE}"),
+        ));
         assert_eq!(talk.text("talk-title"), format!("Talk: {}", article.title));
         for (i, post) in article.talk.iter().enumerate() {
             assert_eq!(talk.text(&format!("talk-{i}-author")), post.author);
             assert_eq!(talk.text(&format!("talk-{i}-text")), post.text);
-            assert_eq!(talk.text(&format!("talk-{i}-tick")), format!("tick {}", post.tick));
+            assert_eq!(
+                talk.text(&format!("talk-{i}-tick")),
+                format!("tick {}", post.tick)
+            );
             assert!(talk.has(&format!("talk-{i}")) && talk.has(&format!("talk-{i}-avatar")));
         }
-        assert_eq!(talk.attr("reply", "action"), format!("/articles/{ARTICLE}/talk"));
+        assert_eq!(
+            talk.attr("reply", "action"),
+            format!("/articles/{ARTICLE}/talk")
+        );
         assert_eq!(talk.attr("reply", "method"), "post");
         assert_eq!(talk.attr("reply-text", "name"), "text");
         assert_eq!(talk.tag("reply-submit"), "button");
@@ -1017,25 +1096,42 @@ mod tests {
             let rev = revision.rev;
             assert_eq!(history.text(&format!("rev-{rev}-id")), format!("rev {rev}"));
             assert_eq!(history.text(&format!("rev-{rev}-author")), revision.author);
-            assert_eq!(history.text(&format!("rev-{rev}-comment")), revision.comment);
+            assert_eq!(
+                history.text(&format!("rev-{rev}-comment")),
+                revision.comment
+            );
             assert!(history.has(&format!("rev-{rev}")) && history.has(&format!("rev-{rev}-tick")));
         }
 
         let results = rendered(&get(&mut state, "http://wikipedia.org/search?q=simulation"));
-        assert_eq!(results.text("results-title"), "Search results for simulation");
+        assert_eq!(
+            results.text("results-title"),
+            "Search results for simulation"
+        );
         let hits = s.search("simulation");
-        assert!(results.text("results-count").starts_with(&hits.len().to_string()));
+        assert!(results
+            .text("results-count")
+            .starts_with(&hits.len().to_string()));
         for (i, hit) in hits.iter().enumerate() {
-            assert_eq!(results.attr(&format!("hit-{i}"), "href"), format!("/wiki/{}", hit.id));
+            assert_eq!(
+                results.attr(&format!("hit-{i}"), "href"),
+                format!("/wiki/{}", hit.id)
+            );
             assert_eq!(results.text(&format!("hit-{i}-title")), hit.title);
             assert_eq!(results.text(&format!("hit-{i}-snippet")), hit.snippet);
         }
-        let none = rendered(&get(&mut state, "http://wikipedia.org/search?q=zzzznothing"));
+        let none = rendered(&get(
+            &mut state,
+            "http://wikipedia.org/search?q=zzzznothing",
+        ));
         assert!(none.has("results-empty"));
         // A form post from the browser arrives form-encoded and lands on the same page.
         let mut request = HttpRequest::get("http://wikipedia.org/search");
         request.method = "POST".into();
-        request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        request.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
         request.body = b"q=simulation".to_vec();
         let posted = WikiService.handle(&mut state, &ctx(), &request).unwrap();
         assert_eq!(rendered(&posted).all_text(), results.all_text());
@@ -1045,21 +1141,31 @@ mod tests {
     #[test]
     fn the_imdb_and_archive_skins_add_their_own_furniture() {
         let site: Value = serde_json::from_str(SKINNED[1].2).unwrap();
-        let mut state = WikiService.initialize(site["initial_state"].clone(), &ctx()).unwrap();
+        let mut state = WikiService
+            .initialize(site["initial_state"].clone(), &ctx())
+            .unwrap();
         let page = rendered(&get(&mut state, "http://imdb.com/wiki/Northbound_Signal"));
         assert!(page.text("rating").contains("8.1"));
         assert_eq!(page.attr("cast-0", "href"), "/wiki/Tobias_Renard");
-        assert_eq!(page.attr("info-1-value-link-0", "href"), "/wiki/Ilse_Marchetti");
+        assert_eq!(
+            page.attr("info-1-value-link-0", "href"),
+            "/wiki/Ilse_Marchetti"
+        );
         assert_eq!(page.text("info-1-value"), "Ilse Marchetti");
         assert_eq!(page.attr("nav-top", "href"), "/wiki/Top_rated");
         let home = rendered(&get(&mut state, "http://imdb.com/"));
         assert_eq!(home.text("featured-label"), "Featured today");
         assert_eq!(home.attr("nav-random", "href"), "/wiki/Special:Random");
         let site: Value = serde_json::from_str(SKINNED[2].2).unwrap();
-        let mut state = WikiService.initialize(site["initial_state"].clone(), &ctx()).unwrap();
+        let mut state = WikiService
+            .initialize(site["initial_state"].clone(), &ctx())
+            .unwrap();
         let item = rendered(&get(&mut state, "http://archive.org/wiki/Cavern_Runner_98"));
         assert_eq!(item.text("info-image"), "Cavern Runner 98");
-        assert_eq!(item.attr("info-0-value-link-0", "href"), "/wiki/Software_Library");
+        assert_eq!(
+            item.attr("info-0-value-link-0", "href"),
+            "/wiki/Software_Library"
+        );
         assert_eq!(item.attr("nav-col-0", "href"), "/wiki/Live_Music_Archive");
         assert_eq!(item.attr("nav-site-0", "href"), "/wiki/About");
     }

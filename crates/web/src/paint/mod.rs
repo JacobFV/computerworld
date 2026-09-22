@@ -55,7 +55,11 @@ pub struct RgbaImage {
 impl RgbaImage {
     pub fn new(width: u32, height: u32, rgba: Vec<u8>) -> RgbaImage {
         debug_assert_eq!(rgba.len() as u64, width as u64 * height as u64 * 4);
-        RgbaImage { width, height, rgba }
+        RgbaImage {
+            width,
+            height,
+            rgba,
+        }
     }
     /// A solid colour image, for tests and placeholders.
     pub fn solid(width: u32, height: u32, c: Color) -> RgbaImage {
@@ -63,7 +67,11 @@ impl RgbaImage {
         for _ in 0..width * height {
             rgba.extend_from_slice(&[c.0, c.1, c.2, c.3]);
         }
-        RgbaImage { width, height, rgba }
+        RgbaImage {
+            width,
+            height,
+            rgba,
+        }
     }
 }
 
@@ -151,7 +159,13 @@ impl Default for PaintContext<'static> {
 }
 
 /// Paints the document. See the module documentation.
-pub fn paint(doc: &Document, styles: &StyleSet, tree: &FragmentTree, viewport: Viewport, ctx: &PaintContext) -> Scene {
+pub fn paint(
+    doc: &Document,
+    styles: &StyleSet,
+    tree: &FragmentTree,
+    viewport: Viewport,
+    ctx: &PaintContext,
+) -> Scene {
     let mut p = Painter::new(Some(doc), styles, tree, viewport, ctx);
     p.run();
     p.finish()
@@ -159,7 +173,12 @@ pub fn paint(doc: &Document, styles: &StyleSet, tree: &FragmentTree, viewport: V
 
 /// Paints without a document: no semantics, no interactions, no form state. Used by
 /// hit testing and by tests that build fragment trees by hand.
-pub fn paint_fragments(styles: &StyleSet, tree: &FragmentTree, viewport: Viewport, ctx: &PaintContext) -> Scene {
+pub fn paint_fragments(
+    styles: &StyleSet,
+    tree: &FragmentTree,
+    viewport: Viewport,
+    ctx: &PaintContext,
+) -> Scene {
     let mut p = Painter::new(None, styles, tree, viewport, ctx);
     p.run();
     p.finish()
@@ -179,7 +198,9 @@ const PART_BITS: u32 = 16;
 pub fn scene_id(base: u64, node: NodeId, ordinal: u32, part: u32) -> u64 {
     let ordinal = (ordinal as u64) & ((1 << ORDINAL_BITS) - 1);
     let part = (part as u64) & ((1 << PART_BITS) - 1);
-    base.wrapping_add(((node.0 as u64) << (ORDINAL_BITS + PART_BITS)) | (ordinal << PART_BITS) | part)
+    base.wrapping_add(
+        ((node.0 as u64) << (ORDINAL_BITS + PART_BITS)) | (ordinal << PART_BITS) | part,
+    )
 }
 
 /// Whole-pixel conversion, half away from zero.
@@ -250,7 +271,9 @@ pub(crate) struct HitItem {
 impl HitItem {
     pub fn covers(&self, x: i32, y: i32) -> bool {
         self.clip.is_none_or(|c| c.contains(x, y))
-            && self.rounded_clip.is_none_or(|c| cw_scene::rounded_contains(c.rect, c.radius, x, y))
+            && self
+                .rounded_clip
+                .is_none_or(|c| cw_scene::rounded_contains(c.rect, c.radius, x, y))
             && self
                 .transform
                 .inverse_point(x, y)
@@ -313,7 +336,13 @@ pub(crate) mod parts {
 }
 
 impl<'a> Painter<'a> {
-    pub fn new(doc: Option<&'a Document>, styles: &'a StyleSet, tree: &'a FragmentTree, viewport: Viewport, ctx: &'a PaintContext<'a>) -> Painter<'a> {
+    pub fn new(
+        doc: Option<&'a Document>,
+        styles: &'a StyleSet,
+        tree: &'a FragmentTree,
+        viewport: Viewport,
+        ctx: &'a PaintContext<'a>,
+    ) -> Painter<'a> {
         let mut p = Painter {
             doc,
             styles,
@@ -363,7 +392,11 @@ impl<'a> Painter<'a> {
 
     fn assign_ordinals(&mut self) {
         let mut counts: BTreeMap<NodeId, u32> = BTreeMap::new();
-        fn walk(f: &Fragment, counts: &mut BTreeMap<NodeId, u32>, out: &mut HashMap<usize, (NodeId, u32)>) {
+        fn walk(
+            f: &Fragment,
+            counts: &mut BTreeMap<NodeId, u32>,
+            out: &mut HashMap<usize, (NodeId, u32)>,
+        ) {
             if let Some(node) = id_node(f) {
                 let n = counts.entry(node).or_insert(0);
                 out.insert(f as *const Fragment as usize, (node, *n));
@@ -429,13 +462,52 @@ impl<'a> Painter<'a> {
     /// are relative to the node's bounds, which is easy to get wrong: emitting
     /// absolute points draws the path displaced by the box's own origin.
     #[allow(clippy::too_many_arguments)]
-    pub fn emit_path(&mut self, state: &State, id: u64, bounds: SRect, points: Vec<(i32, i32)>, fill: Option<Color>, stroke: Option<Color>, stroke_width: u16, closed: bool) -> usize {
-        let points = points.into_iter().map(|(x, y)| (x - bounds.x, y - bounds.y)).collect();
-        self.emit(state, id, bounds, Primitive::Path { points, fill, stroke, stroke_width, closed })
+    pub fn emit_path(
+        &mut self,
+        state: &State,
+        id: u64,
+        bounds: SRect,
+        points: Vec<(i32, i32)>,
+        fill: Option<Color>,
+        stroke: Option<Color>,
+        stroke_width: u16,
+        closed: bool,
+    ) -> usize {
+        let points = points
+            .into_iter()
+            .map(|(x, y)| (x - bounds.x, y - bounds.y))
+            .collect();
+        self.emit(
+            state,
+            id,
+            bounds,
+            Primitive::Path {
+                points,
+                fill,
+                stroke,
+                stroke_width,
+                closed,
+            },
+        )
     }
 
-    pub fn record_hit(&mut self, state: &State, node: NodeId, bounds: SRect, radius: u32, pointer_none: bool) {
-        self.hits.push(HitItem { node, bounds, radius, clip: state.clip, rounded_clip: state.rounded_clip, transform: state.transform, pointer_none });
+    pub fn record_hit(
+        &mut self,
+        state: &State,
+        node: NodeId,
+        bounds: SRect,
+        radius: u32,
+        pointer_none: bool,
+    ) {
+        self.hits.push(HitItem {
+            node,
+            bounds,
+            radius,
+            clip: state.clip,
+            rounded_clip: state.rounded_clip,
+            transform: state.transform,
+            pointer_none,
+        });
     }
 
     pub fn run(&mut self) {
@@ -465,7 +537,14 @@ impl<'a> Painter<'a> {
 
     /// The scroll offset of a scroll container, from the context or from layout.
     pub fn scroll_of(&self, node: NodeId, info: &crate::layout::fragment::ScrollInfo) -> Point {
-        self.ctx.scroll_offsets.get(&node).copied().unwrap_or(Point { x: info.scroll_x, y: info.scroll_y })
+        self.ctx
+            .scroll_offsets
+            .get(&node)
+            .copied()
+            .unwrap_or(Point {
+                x: info.scroll_x,
+                y: info.scroll_y,
+            })
     }
 }
 

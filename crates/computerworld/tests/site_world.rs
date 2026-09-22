@@ -111,7 +111,9 @@ fn every_machine_in_the_live_world_runs_a_command() {
             result.outcomes[0]
         );
         assert!(
-            serde_json::to_string(&result).unwrap().contains("live-world"),
+            serde_json::to_string(&result)
+                .unwrap()
+                .contains("live-world"),
             "{id} produced no terminal output"
         );
     }

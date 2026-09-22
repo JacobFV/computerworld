@@ -25,7 +25,10 @@ fn world() -> (World, String) {
 }
 fn act(world: &mut World, session: &str, channel: &str, op: &str, payload: Value) -> Value {
     let result = world
-        .step(session, vec![ActionEnvelope::new(channel, op, MACHINE, payload)])
+        .step(
+            session,
+            vec![ActionEnvelope::new(channel, op, MACHINE, payload)],
+        )
         .unwrap();
     assert!(result.outcomes[0].success, "{op}: {:?}", result.outcomes[0]);
     result.outcomes[0].value.clone()
@@ -59,7 +62,13 @@ fn by_id<'a>(all: &'a [Value], id: &str) -> &'a Value {
 #[test]
 fn google_is_searched_and_the_first_result_is_followed_through_the_agent_api() {
     let (mut world, session) = world();
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url":"http://google.com/"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url":"http://google.com/"}),
+    );
     let home = page(&world, &session);
     assert_eq!(home["title"], "Google");
     let all = elements(&home);
@@ -75,40 +84,103 @@ fn google_is_searched_and_the_first_result_is_followed_through_the_agent_api() {
     assert_eq!(about["url"], "http://google.com/about");
     assert_eq!(by_id(&all, "head-0")["url"], "http://gmail.com/");
     assert_eq!(by_id(&all, "search")["kind"], "form");
-    assert!(all.iter().any(|e| e["kind"] == "link" && e["id"] == "recent-0"));
+    assert!(all
+        .iter()
+        .any(|e| e["kind"] == "link" && e["id"] == "recent-0"));
 
     // Type a query into the focused box and press Enter: the form is a GET, so the
     // results URL is the query.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"q"}));
-    act(&mut world, &session, "keyboard.v1", "type", json!({"text":"atlas"}));
-    act(&mut world, &session, "browser.v1", "key", json!({"key":"Enter"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"q"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "keyboard.v1",
+        "type",
+        json!({"text":"atlas"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "key",
+        json!({"key":"Enter"}),
+    );
     let shown = browser(&world, &session);
     assert_eq!(shown["url"], "http://google.com/search?q=atlas");
     let results = page(&world, &session);
     assert_eq!(results["title"], "atlas - Google");
     let all = elements(&results);
     assert_eq!(by_id(&all, "q")["value"], "atlas");
-    assert!(all.iter().any(|e| e["id"] == "tab-images" && e["kind"] == "link"));
-    assert!(all.iter().any(|e| e["id"] == "stats" || e["text"].as_str().is_some_and(|t| t.starts_with("About "))));
+    assert!(all
+        .iter()
+        .any(|e| e["id"] == "tab-images" && e["kind"] == "link"));
+    assert!(
+        all.iter()
+            .any(|e| e["id"] == "stats"
+                || e["text"].as_str().is_some_and(|t| t.starts_with("About ")))
+    );
     let first = by_id(&all, "hit-0");
     assert_eq!(first["kind"], "link");
     let target = first["url"].as_str().unwrap().to_owned();
     assert!(target.starts_with("http://"), "{target}");
-    assert!(first["text"].as_str().unwrap().to_lowercase().contains("atlas"), "{first:?}");
+    assert!(
+        first["text"]
+            .as_str()
+            .unwrap()
+            .to_lowercase()
+            .contains("atlas"),
+        "{first:?}"
+    );
 
     // The first result is a real link into the world: clicking it leaves google.com.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"hit-0"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"hit-0"}),
+    );
     let landed = browser(&world, &session);
     assert_eq!(landed["url"], target);
     assert_ne!(page(&world, &session)["title"], "atlas - Google");
     act(&mut world, &session, "browser.v1", "back", json!({}));
-    assert_eq!(browser(&world, &session)["url"], "http://google.com/search?q=atlas");
+    assert_eq!(
+        browser(&world, &session)["url"],
+        "http://google.com/search?q=atlas"
+    );
 
     // The Lucky button submits the same box to /lucky.
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url":"http://google.com/"}));
-    act(&mut world, &session, "browser.v1", "fill", json!({"id":"q","value":"atlas"}));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"search-lucky"}));
-    assert_eq!(browser(&world, &session)["url"], "http://google.com/lucky?q=atlas");
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url":"http://google.com/"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "fill",
+        json!({"id":"q","value":"atlas"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"search-lucky"}),
+    );
+    assert_eq!(
+        browser(&world, &session)["url"],
+        "http://google.com/lucky?q=atlas"
+    );
     let lucky = elements(&page(&world, &session));
     assert_eq!(by_id(&lucky, "lucky-go")["kind"], "link");
 }

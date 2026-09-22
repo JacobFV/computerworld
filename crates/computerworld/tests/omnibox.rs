@@ -3,9 +3,9 @@
 //! same resolution, so `github.com` is a site, `deterministic simulation` is a
 //! search, and a name the world's DNS does not know becomes a search rather than an
 //! error page.
-use computerworld::{World, reference_world};
+use computerworld::{reference_world, World};
 use cw_protocol::{ActionEnvelope, EnvironmentConfig};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 const MACHINE: &str = "alice-mac";
 

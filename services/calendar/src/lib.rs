@@ -606,7 +606,10 @@ mod tests {
     impl Dom {
         fn of(response: &HttpResponse) -> Dom {
             assert_eq!(response.status, 200);
-            assert_eq!(response.header("content-type"), Some(web::html::HTML_MEDIA_TYPE));
+            assert_eq!(
+                response.header("content-type"),
+                Some(web::html::HTML_MEDIA_TYPE)
+            );
             let html = std::str::from_utf8(&response.body).unwrap();
             web::html::validate_strict(html).unwrap_or_else(|e| panic!("strict: {e:?}"));
             Dom(cw_web::html::parse(html))
@@ -615,34 +618,52 @@ mod tests {
             !self.0.by_id(id).is_empty()
         }
         fn node(&self, id: &str) -> cw_web::dom::NodeId {
-            *self.0.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"))
+            *self
+                .0
+                .by_id(id)
+                .first()
+                .unwrap_or_else(|| panic!("no #{id}"))
         }
         fn text(&self, id: &str) -> String {
             cw_web::paint::semantics::collapse(&self.0.text_content(self.node(id)))
         }
         fn attr(&self, id: &str, name: &str) -> String {
-            self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+            self.0
+                .attr(self.node(id), name)
+                .unwrap_or_default()
+                .to_owned()
         }
         fn tag(&self, id: &str) -> String {
             self.0.tag(self.node(id)).unwrap_or_default().to_owned()
         }
     }
     fn get(v: &mut Value, actor: &str, url: &str) -> HttpResponse {
-        CalendarService.handle(v, &context(actor), &HttpRequest::get(url)).unwrap()
+        CalendarService
+            .handle(v, &context(actor), &HttpRequest::get(url))
+            .unwrap()
     }
     fn post(v: &mut Value, actor: &str, url: &str, fields: &[(&str, &str)]) -> HttpResponse {
         // Exactly what the browser sends for an HTML form: urlencoded fields.
-        let body: String = url::form_urlencoded::Serializer::new(String::new()).extend_pairs(fields).finish();
+        let body: String = url::form_urlencoded::Serializer::new(String::new())
+            .extend_pairs(fields)
+            .finish();
         let mut r = HttpRequest::get(url);
         r.method = "POST".into();
-        r.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        r.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
         r.body = body.into_bytes();
         CalendarService.handle(v, &context(actor), &r).unwrap()
     }
     #[test]
     fn skinned_week_renders_and_navigates() {
         let mut v = serde_json::to_value(seeded()).unwrap();
-        let page = Dom::of(&get(&mut v, "carol", "http://calendar/?day=0&event=event-1"));
+        let page = Dom::of(&get(
+            &mut v,
+            "carol",
+            "http://calendar/?day=0&event=event-1",
+        ));
         assert_eq!(page.text("wordmark"), "Calendar");
         assert_eq!(page.text("range"), "September 2026");
         // Sunday-first week around Thursday 17 September; the days before the epoch are inert.
@@ -658,12 +679,17 @@ mod tests {
         assert_eq!(page.text(&format!("{chip}-title")), "Atlas launch review");
         assert_eq!(page.text(&format!("{chip}-clock")), "10:00 – 11:00");
         // 10:00 is three hours below the 07:00 top of the grid, at 48px an hour.
-        assert!(page.attr(chip, "style").starts_with("top: 144px; height: 46px; left: 0.00%; width: 100.00%"));
+        assert!(page
+            .attr(chip, "style")
+            .starts_with("top: 144px; height: 46px; left: 0.00%; width: 100.00%"));
         assert_eq!(page.text("detail-title"), "Atlas launch review");
         assert_eq!(page.text("detail-when"), "Thu 17 Sep · 10:00 – 11:00");
         assert_eq!(page.text("detail-location"), "Northstar HQ · Room 2");
         // The conference link is navigation into the rest of the world, not decoration.
-        assert_eq!(page.attr("detail-join", "href"), "http://slack.com/archives/eng");
+        assert_eq!(
+            page.attr("detail-join", "href"),
+            "http://slack.com/archives/eng"
+        );
         assert_eq!(page.text("guest-alice-rsvp"), "Awaiting reply");
         // Carol owns it: she can edit and delete, and is not asked whether she is going.
         assert!(!page.has("rsvp"));
@@ -694,20 +720,33 @@ mod tests {
         // A calendar in the sidebar is a checkbox: the link takes it out of the grid, and
         // with it the open event, which is one of the events it takes away.
         assert_eq!(page.attr("calendar-carol", "href"), "/?day=0&hide=carol");
-        assert_eq!(page.attr("calendar-carol", "aria-label"), "Hide carol's calendar");
+        assert_eq!(
+            page.attr("calendar-carol", "aria-label"),
+            "Hide carol's calendar"
+        );
         assert_eq!(page.text("calendar-carol"), "carol");
         let hidden = Dom::of(&get(&mut v, "carol", "http://calendar/?day=0&hide=carol"));
         assert!(!hidden.has("day-0-event-1"), "carol's calendar is off");
         assert_eq!(hidden.attr("calendar-carol", "href"), "/?day=0");
-        assert_eq!(hidden.attr("calendar-carol", "aria-label"), "Show carol's calendar");
-        assert_eq!(hidden.attr("next", "href"), "/?day=7&hide=carol", "the filter travels");
+        assert_eq!(
+            hidden.attr("calendar-carol", "aria-label"),
+            "Show carol's calendar"
+        );
+        assert_eq!(
+            hidden.attr("next", "href"),
+            "/?day=7&hide=carol",
+            "the filter travels"
+        );
         assert_eq!(page.attr("account", "title"), "carol");
         let permalink = Dom::of(&get(&mut v, "carol", "http://calendar/events/event-1"));
         assert_eq!(permalink.text("detail-title"), "Atlas launch review");
         // On the permalink there is nowhere for a permalink to lead, so it is not drawn.
         assert!(!permalink.has("detail-permalink"));
         assert_eq!(permalink.attr("detail-back", "href"), "/?day=0");
-        assert_eq!(get(&mut v, "carol", "http://calendar/events/event-9").status, 404);
+        assert_eq!(
+            get(&mut v, "carol", "http://calendar/events/event-9").status,
+            404
+        );
         // Next week is a real link and shows no events, because the only one is this week.
         let next = Dom::of(&get(&mut v, "carol", "http://calendar/?day=7"));
         assert!(!next.has("day-7-event-1") && next.has("day-7") && next.has("day-3"));
@@ -715,10 +754,18 @@ mod tests {
         assert_eq!(next.text("detail-title"), "New event");
         assert_eq!(next.attr("event", "action"), "/events");
         assert_eq!(next.attr("event", "method"), "post");
-        for (id, name) in [("event-title", "title"), ("event-start", "start"), ("event-end", "end"), ("event-attendees", "attendees")] {
+        for (id, name) in [
+            ("event-title", "title"),
+            ("event-start", "start"),
+            ("event-end", "end"),
+            ("event-attendees", "attendees"),
+        ] {
             assert_eq!(next.attr(id, "name"), name);
         }
-        assert_eq!(next.attr("event-start", "value"), (7 * DAY_US + HOUR_US).to_string());
+        assert_eq!(
+            next.attr("event-start", "value"),
+            (7 * DAY_US + HOUR_US).to_string()
+        );
         assert_eq!(next.tag("event-submit"), "button");
         // With the form already in the panel, Create reaches its first field.
         assert_eq!(next.attr("create", "href"), "#event-title");
@@ -731,35 +778,81 @@ mod tests {
         let page = Dom::of(&get(&mut v, "alice", "http://calendar/?view=month&day=0"));
         assert_eq!(page.text("range"), "September 2026");
         assert_eq!(page.attr("view-week", "href"), "/?day=0");
-        assert_eq!(page.tag("view-month"), "span", "the month is the view being read");
-        assert_eq!(page.attr("day-0-event-1", "href"), "/?view=month&day=0&event=event-1");
+        assert_eq!(
+            page.tag("view-month"),
+            "span",
+            "the month is the view being read"
+        );
+        assert_eq!(
+            page.attr("day-0-event-1", "href"),
+            "/?view=month&day=0&event=event-1"
+        );
         assert_eq!(page.attr("day-0-head", "href"), "/?day=0");
-        assert!(page.has("day-13") && page.has("day-16"), "the grid runs to the Saturday after the 30th");
+        assert!(
+            page.has("day-13") && page.has("day-16"),
+            "the grid runs to the Saturday after the 30th"
+        );
         assert_eq!(page.attr("next", "href"), "/?view=month&day=14");
-        assert_eq!(page.tag("prev"), "span", "September is the first month there is");
+        assert_eq!(
+            page.tag("prev"),
+            "span",
+            "September is the first month there is"
+        );
         let october = Dom::of(&get(&mut v, "alice", "http://calendar/?view=month&day=14"));
         assert_eq!(october.text("range"), "October 2026");
         assert_eq!(october.attr("prev", "href"), "/?view=month&day=0");
         assert_eq!(october.attr("next", "href"), "/?view=month&day=45");
-        let open = Dom::of(&get(&mut v, "alice", "http://calendar/?view=month&day=0&event=event-1"));
+        let open = Dom::of(&get(
+            &mut v,
+            "alice",
+            "http://calendar/?view=month&day=0&event=event-1",
+        ));
         assert_eq!(open.attr("rsvp", "action"), "/events/event-1/rsvp");
         // The month keeps the month when a calendar is hidden, and its cells keep the filter.
-        let hidden = Dom::of(&get(&mut v, "alice", "http://calendar/?view=month&day=0&hide=carol"));
+        let hidden = Dom::of(&get(
+            &mut v,
+            "alice",
+            "http://calendar/?view=month&day=0&hide=carol",
+        ));
         assert!(!hidden.has("day-0-event-1"), "carol's calendar is off");
-        assert_eq!(hidden.attr("next", "href"), "/?view=month&day=14&hide=carol");
+        assert_eq!(
+            hidden.attr("next", "href"),
+            "/?view=month&day=14&hide=carol"
+        );
         assert_eq!(hidden.attr("day-6-head", "href"), "/?day=6&hide=carol");
         assert_eq!(hidden.attr("calendar-carol", "href"), "/?view=month&day=0");
     }
     #[test]
     fn overlapping_events_share_a_column_and_long_ones_sit_in_the_all_day_row() {
         let mut s = seeded();
-        s.create("carol", "Overlap", HOUR_US + HOUR_US / 2, 3 * HOUR_US, vec![], 0).unwrap();
-        s.create("carol", "Trip", 0, 30 * HOUR_US, vec![], 0).unwrap();
-        s.create("carol", "Early", DAY_US - 3 * HOUR_US, DAY_US - 2 * HOUR_US, vec![], 0).unwrap();
+        s.create(
+            "carol",
+            "Overlap",
+            HOUR_US + HOUR_US / 2,
+            3 * HOUR_US,
+            vec![],
+            0,
+        )
+        .unwrap();
+        s.create("carol", "Trip", 0, 30 * HOUR_US, vec![], 0)
+            .unwrap();
+        s.create(
+            "carol",
+            "Early",
+            DAY_US - 3 * HOUR_US,
+            DAY_US - 2 * HOUR_US,
+            vec![],
+            0,
+        )
+        .unwrap();
         let mut v = serde_json::to_value(s).unwrap();
         let page = Dom::of(&get(&mut v, "carol", "http://calendar/"));
-        assert!(page.attr("day-0-event-1", "style").ends_with("left: 0.00%; width: 50.00%"));
-        assert!(page.attr("day-0-event-2", "style").ends_with("left: 50.00%; width: 50.00%"));
+        assert!(page
+            .attr("day-0-event-1", "style")
+            .ends_with("left: 0.00%; width: 50.00%"));
+        assert!(page
+            .attr("day-0-event-2", "style")
+            .ends_with("left: 50.00%; width: 50.00%"));
         assert!(page.attr("day-0-event-3", "class").contains("bar lead"));
         assert!(page.attr("day-1-event-3", "class").contains("bar tail"));
         assert_eq!(page.attr("day-0-event-3", "style"), "");
@@ -772,25 +865,70 @@ mod tests {
         let before = Dom::of(&get(&mut v, "alice", "http://calendar/?event=event-1"));
         assert_eq!(before.attr("rsvp", "action"), "/events/event-1/rsvp");
         assert_eq!(before.attr("rsvp", "method"), "post");
-        for (id, value) in [("rsvp-yes", "accepted"), ("rsvp-no", "declined"), ("rsvp-maybe", "tentative")] {
-            assert_eq!((before.attr(id, "name"), before.attr(id, "value")), ("response".to_owned(), value.to_owned()));
+        for (id, value) in [
+            ("rsvp-yes", "accepted"),
+            ("rsvp-no", "declined"),
+            ("rsvp-maybe", "tentative"),
+        ] {
+            assert_eq!(
+                (before.attr(id, "name"), before.attr(id, "value")),
+                ("response".to_owned(), value.to_owned())
+            );
         }
-        assert!(!before.has("edit") && !before.has("delete"), "alice does not own it");
-        let answered = post(&mut v, "alice", "http://calendar/events/event-1/rsvp", &[("response", "accepted")]);
+        assert!(
+            !before.has("edit") && !before.has("delete"),
+            "alice does not own it"
+        );
+        let answered = post(
+            &mut v,
+            "alice",
+            "http://calendar/events/event-1/rsvp",
+            &[("response", "accepted")],
+        );
         assert_eq!(v["events"]["event-1"]["attendees"]["alice"], "accepted");
         assert_eq!(Dom::of(&answered).text("guest-alice-rsvp"), "Going");
-        let renamed = post(&mut v, "carol", "http://calendar/events/event-1", &[("title", "Atlas launch review (final)"), ("start", ""), ("end", "")]);
-        assert_eq!(Dom::of(&renamed).text("detail-title"), "Atlas launch review (final)");
-        assert_eq!(v["events"]["event-1"]["title"], "Atlas launch review (final)");
+        let renamed = post(
+            &mut v,
+            "carol",
+            "http://calendar/events/event-1",
+            &[
+                ("title", "Atlas launch review (final)"),
+                ("start", ""),
+                ("end", ""),
+            ],
+        );
+        assert_eq!(
+            Dom::of(&renamed).text("detail-title"),
+            "Atlas launch review (final)"
+        );
+        assert_eq!(
+            v["events"]["event-1"]["title"],
+            "Atlas launch review (final)"
+        );
         assert_eq!(v["events"]["event-1"]["start"], HOUR_US);
         let start = (2 * DAY_US).to_string();
         let end = (2 * DAY_US + HOUR_US).to_string();
-        let created = post(&mut v, "alice", "http://calendar/events", &[("title", "Pairing"), ("start", &start), ("end", &end), ("attendees", "bob, carol")]);
+        let created = post(
+            &mut v,
+            "alice",
+            "http://calendar/events",
+            &[
+                ("title", "Pairing"),
+                ("start", &start),
+                ("end", &end),
+                ("attendees", "bob, carol"),
+            ],
+        );
         let created = Dom::of(&created);
         assert_eq!(created.text("detail-title"), "Pairing");
         assert_eq!(created.text("day-2-event-2-title"), "Pairing");
         assert_eq!(v["events"]["event-2"]["attendees"]["bob"], "pending");
-        let deleted = Dom::of(&post(&mut v, "alice", "http://calendar/events/event-2/delete", &[]));
+        let deleted = Dom::of(&post(
+            &mut v,
+            "alice",
+            "http://calendar/events/event-2/delete",
+            &[],
+        ));
         assert!(!deleted.has("day-2-event-2"));
         assert_eq!(deleted.text("detail-title"), "New event");
         assert!(v["events"].get("event-2").is_none());
@@ -800,15 +938,21 @@ mod tests {
         let mut s = seeded();
         let e = s.events.get_mut("event-1").unwrap();
         e.title = "<b>Bold</b> & co".into();
-        e.description = "Agenda: http://docs.google.com/documents/atlas-launch, then <script>x</script>".into();
+        e.description =
+            "Agenda: http://docs.google.com/documents/atlas-launch, then <script>x</script>".into();
         let mut v = serde_json::to_value(s).unwrap();
         let response = get(&mut v, "carol", "http://calendar/?event=event-1");
         let html = String::from_utf8(response.body.clone()).unwrap();
         assert!(!html.contains("<b>Bold") && !html.contains("<script>x"));
         let page = Dom::of(&response);
         assert_eq!(page.text("detail-title"), "<b>Bold</b> & co");
-        assert_eq!(page.attr("detail-link-1", "href"), "http://docs.google.com/documents/atlas-launch");
-        assert!(page.text("detail-description").ends_with("then <script>x</script>"));
+        assert_eq!(
+            page.attr("detail-link-1", "href"),
+            "http://docs.google.com/documents/atlas-launch"
+        );
+        assert!(page
+            .text("detail-description")
+            .ends_with("then <script>x</script>"));
     }
     #[test]
     fn unknown_skin_is_a_seed_error() {

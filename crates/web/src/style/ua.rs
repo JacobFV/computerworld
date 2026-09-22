@@ -27,12 +27,18 @@ static QUIRKS: OnceLock<Stylesheet> = OnceLock::new();
 /// engine does not draw (system colours, `disclosure-*` markers), which parse to their
 /// nearest supported form or are dropped.
 pub fn sheet() -> &'static Stylesheet {
-    SHEET.get_or_init(|| parse_stylesheet(UA_CSS, Origin::UserAgent, crate::Strictness::Lenient).expect("lenient parse cannot fail"))
+    SHEET.get_or_init(|| {
+        parse_stylesheet(UA_CSS, Origin::UserAgent, crate::Strictness::Lenient)
+            .expect("lenient parse cannot fail")
+    })
 }
 
 /// The parsed quirks-mode additions.
 pub fn quirks_sheet() -> &'static Stylesheet {
-    QUIRKS.get_or_init(|| parse_stylesheet(QUIRKS_CSS, Origin::UserAgent, crate::Strictness::Lenient).expect("lenient parse cannot fail"))
+    QUIRKS.get_or_init(|| {
+        parse_stylesheet(QUIRKS_CSS, Origin::UserAgent, crate::Strictness::Lenient)
+            .expect("lenient parse cannot fail")
+    })
 }
 
 #[cfg(test)]
@@ -45,4 +51,3 @@ mod tests {
         }
     }
 }
-

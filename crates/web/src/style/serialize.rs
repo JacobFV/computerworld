@@ -75,7 +75,13 @@ pub fn lp(v: LengthPercentage) -> String {
             }
         }
         LengthPercentage::Clamp { lo, v, hi } => {
-            let part = |(l, p): (Au, i32)| lp(if p == 0 { LengthPercentage::Length(l) } else { LengthPercentage::Calc(l, p) });
+            let part = |(l, p): (Au, i32)| {
+                lp(if p == 0 {
+                    LengthPercentage::Length(l)
+                } else {
+                    LengthPercentage::Calc(l, p)
+                })
+            };
             match (lo, hi) {
                 (Some(lo), Some(hi)) => format!("clamp({}, {}, {})", part(lo), part(v), part(hi)),
                 (Some(lo), None) => format!("max({}, {})", part(lo), part(v)),
@@ -209,8 +215,19 @@ fn image(i: &BackgroundImage) -> String {
     match i {
         BackgroundImage::None => "none".into(),
         BackgroundImage::Url(u) => format!("url(\"{u}\")"),
-        BackgroundImage::LinearGradient { angle_centi_deg, stops } => format!("linear-gradient({}deg, {})", milli_to_string(*angle_centi_deg as i64, 100), gradient_stops(stops)),
-        BackgroundImage::RadialGradient { circle, stops } => format!("radial-gradient({}{})", if *circle { "circle, " } else { "" }, gradient_stops(stops)),
+        BackgroundImage::LinearGradient {
+            angle_centi_deg,
+            stops,
+        } => format!(
+            "linear-gradient({}deg, {})",
+            milli_to_string(*angle_centi_deg as i64, 100),
+            gradient_stops(stops)
+        ),
+        BackgroundImage::RadialGradient { circle, stops } => format!(
+            "radial-gradient({}{})",
+            if *circle { "circle, " } else { "" },
+            gradient_stops(stops)
+        ),
     }
 }
 
@@ -290,7 +307,11 @@ fn auto_repeat(r: &AutoRepeat) -> String {
     if let Some(n) = r.line_names.get(r.tracks.len()).and_then(|n| line_names(n)) {
         inner.push(n);
     }
-    format!("repeat({}, {})", if r.fill { "auto-fill" } else { "auto-fit" }, inner.join(" "))
+    format!(
+        "repeat({}, {})",
+        if r.fill { "auto-fill" } else { "auto-fit" },
+        inner.join(" ")
+    )
 }
 
 fn grid_line(l: &GridLine) -> String {
@@ -340,8 +361,16 @@ fn timing(t: TimingFunction) -> String {
         TimingFunction::EaseInOut => "ease-in-out".into(),
         TimingFunction::StepStart => "step-start".into(),
         TimingFunction::StepEnd => "step-end".into(),
-        TimingFunction::CubicBezier(a, b, c, d) => format!("cubic-bezier({}, {}, {}, {})", milli_to_string(a as i64, 1000), milli_to_string(b as i64, 1000), milli_to_string(c as i64, 1000), milli_to_string(d as i64, 1000)),
-        TimingFunction::Steps(n, start) => format!("steps({n}, {})", if start { "start" } else { "end" }),
+        TimingFunction::CubicBezier(a, b, c, d) => format!(
+            "cubic-bezier({}, {}, {}, {})",
+            milli_to_string(a as i64, 1000),
+            milli_to_string(b as i64, 1000),
+            milli_to_string(c as i64, 1000),
+            milli_to_string(d as i64, 1000)
+        ),
+        TimingFunction::Steps(n, start) => {
+            format!("steps({n}, {})", if start { "start" } else { "end" })
+        }
     }
 }
 
@@ -396,7 +425,10 @@ fn counters(c: &[(String, i32)]) -> String {
     if c.is_empty() {
         "none".into()
     } else {
-        c.iter().map(|(n, v)| format!("{n} {v}")).collect::<Vec<_>>().join(" ")
+        c.iter()
+            .map(|(n, v)| format!("{n} {v}"))
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 }
 
@@ -457,8 +489,22 @@ fn transform(ops: &[TransformOp]) -> String {
                 let r = (a as f64 / 100.0).to_radians();
                 [r.cos(), r.sin(), -r.sin(), r.cos(), 0.0, 0.0]
             }
-            TransformOp::SkewX(a) => [1.0, 0.0, (a as f64 / 100.0).to_radians().tan(), 1.0, 0.0, 0.0],
-            TransformOp::SkewY(a) => [1.0, (a as f64 / 100.0).to_radians().tan(), 0.0, 1.0, 0.0, 0.0],
+            TransformOp::SkewX(a) => [
+                1.0,
+                0.0,
+                (a as f64 / 100.0).to_radians().tan(),
+                1.0,
+                0.0,
+                0.0,
+            ],
+            TransformOp::SkewY(a) => [
+                1.0,
+                (a as f64 / 100.0).to_radians().tan(),
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+            ],
         };
         m = [
             m[0] * n[0] + m[2] * n[1],
@@ -470,12 +516,22 @@ fn transform(ops: &[TransformOp]) -> String {
         ];
     }
     if composable {
-        return format!("matrix({})", m.iter().map(|v| matrix_number(*v)).collect::<Vec<_>>().join(", "));
+        return format!(
+            "matrix({})",
+            m.iter()
+                .map(|v| matrix_number(*v))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     }
     ops.iter()
         .map(|op| match op {
             TransformOp::Translate(x, y) => format!("translate({}, {})", lp(*x), lp(*y)),
-            TransformOp::Scale(x, y) => format!("scale({}, {})", milli_to_string(*x as i64, 1000), milli_to_string(*y as i64, 1000)),
+            TransformOp::Scale(x, y) => format!(
+                "scale({}, {})",
+                milli_to_string(*x as i64, 1000),
+                milli_to_string(*y as i64, 1000)
+            ),
             TransformOp::Rotate(a) => format!("rotate({}deg)", milli_to_string(*a as i64, 100)),
             TransformOp::SkewX(a) => format!("skewX({}deg)", milli_to_string(*a as i64, 100)),
             TransformOp::SkewY(a) => format!("skewY({}deg)", milli_to_string(*a as i64, 100)),
@@ -489,7 +545,12 @@ impl ComputedStyle {
     /// `None` for a name that is not a longhand.
     pub fn serialize(&self, property: &str) -> Option<String> {
         if property.starts_with("--") {
-            return Some(self.custom.get(property).map(|v| serialize_component_values(v)).unwrap_or_default());
+            return Some(
+                self.custom
+                    .get(property)
+                    .map(|v| serialize_component_values(v))
+                    .unwrap_or_default(),
+            );
         }
         let id = LonghandId::by_name(property)?;
         Some(self.serialize_longhand(id))
@@ -521,7 +582,12 @@ impl ComputedStyle {
                 FontStyle::Oblique => "oblique",
             }
             .into(),
-            L::FontVariant => if s.font.small_caps { "small-caps" } else { "normal" }.into(),
+            L::FontVariant => if s.font.small_caps {
+                "small-caps"
+            } else {
+                "normal"
+            }
+            .into(),
             L::LineHeight => match s.line_height {
                 LineHeight::Normal => "normal".into(),
                 LineHeight::Number(n) => px(s.font.size.scale(n, 1000)),
@@ -707,7 +773,9 @@ impl ComputedStyle {
                 if s.text_shadow.is_empty() {
                     "none".into()
                 } else {
-                    list(&s.text_shadow, |t| shadow_common(t.offset_x, t.offset_y, t.blur, None, t.color, false))
+                    list(&s.text_shadow, |t| {
+                        shadow_common(t.offset_x, t.offset_y, t.blur, None, t.color, false)
+                    })
                 }
             }
             L::TabSize => s.tab_size.to_string(),
@@ -742,15 +810,17 @@ impl ComputedStyle {
             L::BackgroundColor => color(s.background_color),
             L::BackgroundImage => layers(&|l| image(&l.image), "none"),
             L::BackgroundRepeat => layers(
-                &|l| match l.repeat {
-                    BackgroundRepeat::Repeat => "repeat",
-                    BackgroundRepeat::RepeatX => "repeat-x",
-                    BackgroundRepeat::RepeatY => "repeat-y",
-                    BackgroundRepeat::NoRepeat => "no-repeat",
-                    BackgroundRepeat::Space => "space",
-                    BackgroundRepeat::Round => "round",
-                }
-                .into(),
+                &|l| {
+                    match l.repeat {
+                        BackgroundRepeat::Repeat => "repeat",
+                        BackgroundRepeat::RepeatX => "repeat-x",
+                        BackgroundRepeat::RepeatY => "repeat-y",
+                        BackgroundRepeat::NoRepeat => "no-repeat",
+                        BackgroundRepeat::Space => "space",
+                        BackgroundRepeat::Round => "round",
+                    }
+                    .into()
+                },
                 "repeat",
             ),
             L::BackgroundSize => layers(
@@ -766,18 +836,39 @@ impl ComputedStyle {
             L::BackgroundPositionY => layers(&|l| lp(l.position.1), "0%"),
             L::BackgroundOrigin => layers(&|l| bg_box(l.origin).into(), "padding-box"),
             L::BackgroundClip => layers(&|l| bg_box(l.clip).into(), "border-box"),
-            L::BackgroundAttachment => layers(&|l| if l.attachment_fixed { "fixed" } else { "scroll" }.into(), "scroll"),
+            L::BackgroundAttachment => layers(
+                &|l| {
+                    if l.attachment_fixed {
+                        "fixed"
+                    } else {
+                        "scroll"
+                    }
+                    .into()
+                },
+                "scroll",
+            ),
             L::BoxShadow => {
                 if s.box_shadow.is_empty() {
                     "none".into()
                 } else {
-                    list(&s.box_shadow, |b| shadow_common(b.offset_x, b.offset_y, b.blur, Some(b.spread), b.color, b.inset))
+                    list(&s.box_shadow, |b| {
+                        shadow_common(
+                            b.offset_x,
+                            b.offset_y,
+                            b.blur,
+                            Some(b.spread),
+                            b.color,
+                            b.inset,
+                        )
+                    })
                 }
             }
             // Opacity is stored in 1/255; two decimals reproduce the common authored values.
             L::Opacity => milli_to_string((s.opacity as i64 * 100 + 127) / 255, 100),
             L::Transform => transform(&s.transform),
-            L::TransformOrigin => format!("{} {}", lp(s.transform_origin.0), lp(s.transform_origin.1)),
+            L::TransformOrigin => {
+                format!("{} {}", lp(s.transform_origin.0), lp(s.transform_origin.1))
+            }
             L::OutlineWidth => px(s.outline.used_width()),
             L::OutlineStyle => border_style(s.outline.style).into(),
             L::OutlineColor => color(s.outline.color),
@@ -836,11 +927,25 @@ impl ComputedStyle {
                 if s.grid_template_areas.is_empty() {
                     "none".into()
                 } else {
-                    s.grid_template_areas.iter().map(|r| quote(&r.join(" "))).collect::<Vec<_>>().join(" ")
+                    s.grid_template_areas
+                        .iter()
+                        .map(|r| quote(&r.join(" ")))
+                        .collect::<Vec<_>>()
+                        .join(" ")
                 }
             }
-            L::GridAutoRows => s.grid_auto_rows.iter().map(track_size).collect::<Vec<_>>().join(" "),
-            L::GridAutoColumns => s.grid_auto_columns.iter().map(track_size).collect::<Vec<_>>().join(" "),
+            L::GridAutoRows => s
+                .grid_auto_rows
+                .iter()
+                .map(track_size)
+                .collect::<Vec<_>>()
+                .join(" "),
+            L::GridAutoColumns => s
+                .grid_auto_columns
+                .iter()
+                .map(track_size)
+                .collect::<Vec<_>>()
+                .join(" "),
             L::GridAutoFlow => match s.grid_auto_flow {
                 GridAutoFlow::Row => "row",
                 GridAutoFlow::Column => "column",
@@ -896,8 +1001,16 @@ impl ComputedStyle {
                 Appearance::None => "none",
             }
             .into(),
-            L::LineClamp => s.line_clamp.map(|n| n.to_string()).unwrap_or_else(|| "none".into()),
-            L::BoxOrient => if s.box_orient_vertical { "vertical" } else { "horizontal" }.into(),
+            L::LineClamp => s
+                .line_clamp
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| "none".into()),
+            L::BoxOrient => if s.box_orient_vertical {
+                "vertical"
+            } else {
+                "horizontal"
+            }
+            .into(),
             L::AspectRatio => {
                 let num = |micro: i64| {
                     let t = format!("{}.{:06}", micro / 1_000_000, micro % 1_000_000);
@@ -922,7 +1035,11 @@ impl ComputedStyle {
                 if s.quotes.is_empty() {
                     "none".into()
                 } else {
-                    s.quotes.iter().map(|(a, b)| format!("{} {}", quote(a), quote(b))).collect::<Vec<_>>().join(" ")
+                    s.quotes
+                        .iter()
+                        .map(|(a, b)| format!("{} {}", quote(a), quote(b)))
+                        .collect::<Vec<_>>()
+                        .join(" ")
                 }
             }
             L::CounterReset => counters(&s.counter_reset),
@@ -957,7 +1074,9 @@ impl ComputedStyle {
                 }
                 .into()
             }),
-            L::AnimationPlayState => list(&s.animations.play_state, |p| if *p { "running" } else { "paused" }.into()),
+            L::AnimationPlayState => list(&s.animations.play_state, |p| {
+                if *p { "running" } else { "paused" }.into()
+            }),
         }
     }
 }
@@ -992,7 +1111,10 @@ mod tests {
         assert_eq!(matrix_number(0.949999999), "0.95");
         assert_eq!(matrix_number(-0.0), "0");
         assert_eq!(color(Color(1, 2, 3, 0)), "rgba(0, 0, 0, 0)");
-        assert_eq!(lp(LengthPercentage::Calc(Au::from_px_i32(-20), 10000)), "calc(100% - 20px)");
+        assert_eq!(
+            lp(LengthPercentage::Calc(Au::from_px_i32(-20), 10000)),
+            "calc(100% - 20px)"
+        );
     }
 
     #[test]
@@ -1010,7 +1132,10 @@ mod tests {
         assert_eq!(s.serialize("background-image").unwrap(), "none");
         assert_eq!(s.serialize("opacity").unwrap(), "1");
         assert_eq!(s.serialize("flex-shrink").unwrap(), "1");
-        assert_eq!(s.serialize("quotes").unwrap(), "\"\u{201C}\" \"\u{201D}\" \"\u{2018}\" \"\u{2019}\"");
+        assert_eq!(
+            s.serialize("quotes").unwrap(),
+            "\"\u{201C}\" \"\u{201D}\" \"\u{2018}\" \"\u{2019}\""
+        );
         assert_eq!(s.serialize("transition-duration").unwrap(), "0s");
         assert_eq!(s.serialize("animation-iteration-count").unwrap(), "1");
         assert_eq!(s.serialize("grid-template-columns").unwrap(), "none");

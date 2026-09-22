@@ -33,12 +33,19 @@ impl Desk {
                 action_budget: 1 << 20,
             })
             .unwrap();
-        Desk { world, session, machine }
+        Desk {
+            world,
+            session,
+            machine,
+        }
     }
     fn act(&mut self, channel: &str, op: &str, payload: Value) -> Value {
         let result = self
             .world
-            .step(&self.session, vec![ActionEnvelope::new(channel, op, self.machine, payload)])
+            .step(
+                &self.session,
+                vec![ActionEnvelope::new(channel, op, self.machine, payload)],
+            )
             .unwrap();
         assert!(result.outcomes[0].success, "{op}: {:?}", result.outcomes[0]);
         result.outcomes[0].value.clone()
@@ -74,20 +81,24 @@ impl Desk {
                 }
             }
         }
-        let page = self.world.observe(&self.session).unwrap().channels["semantic.v1"][self.machine].clone();
+        let page = self.world.observe(&self.session).unwrap().channels["semantic.v1"][self.machine]
+            .clone();
         let mut out = Vec::new();
         walk(page["elements"].as_array().unwrap(), &mut out);
         out
     }
 }
 fn by_id<'a>(all: &'a [Value], id: &str) -> &'a Value {
-    all.iter().find(|e| e["id"] == id).unwrap_or_else(|| panic!("no element {id}"))
+    all.iter()
+        .find(|e| e["id"] == id)
+        .unwrap_or_else(|| panic!("no element {id}"))
 }
 fn has(all: &[Value], id: &str) -> bool {
     all.iter().any(|e| e["id"] == id)
 }
 fn says(all: &[Value], text: &str) -> bool {
-    all.iter().any(|e| e["text"].as_str().is_some_and(|t| t.contains(text)))
+    all.iter()
+        .any(|e| e["text"].as_str().is_some_and(|t| t.contains(text)))
 }
 
 #[test]
@@ -98,34 +109,57 @@ fn gmail_is_read_replied_to_starred_and_searched_through_the_agent_api() {
     let all = desk.elements();
     // The semantic tree lists the rail, the search box and the rows by their ids.
     assert_eq!(by_id(&all, "compose")["kind"], "link");
-    assert_eq!(by_id(&all, "compose")["url"], "http://mail.google.com/?folder=inbox&compose=1");
-    assert_eq!(by_id(&all, "folder-sent")["url"], "http://mail.google.com/?folder=sent");
+    assert_eq!(
+        by_id(&all, "compose")["url"],
+        "http://mail.google.com/?folder=inbox&compose=1"
+    );
+    assert_eq!(
+        by_id(&all, "folder-sent")["url"],
+        "http://mail.google.com/?folder=sent"
+    );
     assert_eq!(by_id(&all, "search")["kind"], "form");
     assert_eq!(by_id(&all, "search-q")["kind"], "input");
     assert_eq!(by_id(&all, "search-q")["label"], "Search mail");
     assert_eq!(by_id(&all, "search-submit")["kind"], "button");
     let row = by_id(&all, "row-mail-3");
     assert_eq!(row["kind"], "link");
-    assert!(row["text"].as_str().unwrap().contains("Atlas launch checklist"), "{row:?}");
+    assert!(
+        row["text"]
+            .as_str()
+            .unwrap()
+            .contains("Atlas launch checklist"),
+        "{row:?}"
+    );
 
     // Open the checklist conversation: three messages, the doc link is a real link.
     desk.click("row-mail-3");
-    assert_eq!(desk.url(), "http://mail.google.com/?folder=inbox&thread=mail-1");
+    assert_eq!(
+        desk.url(),
+        "http://mail.google.com/?folder=inbox&thread=mail-1"
+    );
     let all = desk.elements();
     assert!(says(&all, "3 in thread"));
     let doc = all
         .iter()
-        .find(|e| e["kind"] == "link" && e["url"] == "http://docs.google.com/documents/atlas-launch")
+        .find(|e| {
+            e["kind"] == "link" && e["url"] == "http://docs.google.com/documents/atlas-launch"
+        })
         .expect("the doc link in the prose");
     assert!(doc["id"].as_str().unwrap().starts_with("read-mail-1-link-"));
     assert_eq!(by_id(&all, "reply-to")["value"], "bob@northstar.example");
-    assert_eq!(by_id(&all, "reply-subject")["value"], "Re: Atlas launch checklist");
+    assert_eq!(
+        by_id(&all, "reply-subject")["value"],
+        "Re: Atlas launch checklist"
+    );
 
     // Reply through the form: the conversation grows and the message is really in the store.
     desk.fill("reply-body", "Ticked my boxes. ATLAS-REPLY-77");
     desk.click("reply-submit");
     let all = desk.elements();
-    assert!(says(&all, "4 in thread"), "the reply joined the conversation");
+    assert!(
+        says(&all, "4 in thread"),
+        "the reply joined the conversation"
+    );
     assert!(says(&all, "ATLAS-REPLY-77"));
 
     // The star button is one of three submitters of the message's form.
@@ -133,7 +167,10 @@ fn gmail_is_read_replied_to_starred_and_searched_through_the_agent_api() {
     let before = by_id(&desk.elements(), "read-mail-3-star")["text"].clone();
     assert_eq!(before, "Star");
     desk.click("read-mail-3-star");
-    assert_eq!(by_id(&desk.elements(), "read-mail-3-star")["text"], "Unstar");
+    assert_eq!(
+        by_id(&desk.elements(), "read-mail-3-star")["text"],
+        "Unstar"
+    );
     desk.go("http://mail.google.com/?folder=starred");
     assert!(has(&desk.elements(), "row-mail-3"));
 
@@ -143,7 +180,9 @@ fn gmail_is_read_replied_to_starred_and_searched_through_the_agent_api() {
     desk.click("search-submit");
     let all = desk.elements();
     assert!(!has(&all, "row-mail-3"));
-    assert!(all.iter().any(|e| e["kind"] == "link" && e["text"].as_str().is_some_and(|t| t.contains("Amazon"))));
+    assert!(all
+        .iter()
+        .any(|e| e["kind"] == "link" && e["text"].as_str().is_some_and(|t| t.contains("Amazon"))));
     desk.click("search-clear");
     assert!(has(&desk.elements(), "row-mail-3"));
 
@@ -157,7 +196,10 @@ fn gmail_is_read_replied_to_starred_and_searched_through_the_agent_api() {
     let all = desk.elements();
     assert!(says(&all, "Lunch on Thursday?") && says(&all, "1 in thread"));
     desk.go("http://mail.google.com/?folder=sent");
-    assert!(desk.elements().iter().any(|e| e["kind"] == "link" && e["text"].as_str().is_some_and(|t| t.contains("Lunch on Thursday?"))));
+    assert!(desk.elements().iter().any(|e| e["kind"] == "link"
+        && e["text"]
+            .as_str()
+            .is_some_and(|t| t.contains("Lunch on Thursday?"))));
 }
 
 #[test]
@@ -167,12 +209,26 @@ fn outlook_shows_three_panes_and_archives_through_the_agent_api() {
     assert_eq!(desk.title(), "Mail - Outlook");
     let all = desk.elements();
     assert_eq!(by_id(&all, "compose")["kind"], "link");
-    assert!(by_id(&all, "compose")["text"].as_str().unwrap().contains("New mail"));
-    assert!(by_id(&all, "folder-sent")["text"].as_str().unwrap().contains("Sent Items"));
-    assert!(says(&all, "Select a conversation"), "the reading pane is there and empty");
+    assert!(by_id(&all, "compose")["text"]
+        .as_str()
+        .unwrap()
+        .contains("New mail"));
+    assert!(by_id(&all, "folder-sent")["text"]
+        .as_str()
+        .unwrap()
+        .contains("Sent Items"));
+    assert!(
+        says(&all, "Select a conversation"),
+        "the reading pane is there and empty"
+    );
     let first = all
         .iter()
-        .find(|e| e["kind"] == "link" && e["id"].as_str().is_some_and(|id| id.starts_with("row-mail-")))
+        .find(|e| {
+            e["kind"] == "link"
+                && e["id"]
+                    .as_str()
+                    .is_some_and(|id| id.starts_with("row-mail-"))
+        })
         .expect("a message row")
         .clone();
     let row = first["id"].as_str().unwrap().to_owned();
@@ -198,7 +254,10 @@ fn mail_com_wears_its_own_skin_and_sends_through_the_agent_api() {
     desk.go("http://mail.com/");
     assert_eq!(desk.title(), "mail.com - Inbox");
     let all = desk.elements();
-    assert!(by_id(&all, "compose")["text"].as_str().unwrap().contains("Compose E-mail"));
+    assert!(by_id(&all, "compose")["text"]
+        .as_str()
+        .unwrap()
+        .contains("Compose E-mail"));
     assert!(says(&all, "carol.nakamura@mail.com"));
     desk.click("row-mail-2");
     let all = desk.elements();
@@ -209,5 +268,8 @@ fn mail_com_wears_its_own_skin_and_sends_through_the_agent_api() {
     assert!(says(&all, "3 in thread") && says(&all, "DEVCON-ACK"));
     desk.click("folder-sent");
     assert_eq!(desk.url(), "http://mail.com/?folder=sent");
-    assert!(desk.elements().iter().any(|e| e["kind"] == "link" && e["text"].as_str().is_some_and(|t| t.contains("DevCon Seattle"))));
+    assert!(desk.elements().iter().any(|e| e["kind"] == "link"
+        && e["text"]
+            .as_str()
+            .is_some_and(|t| t.contains("DevCon Seattle"))));
 }

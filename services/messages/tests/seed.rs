@@ -1,10 +1,10 @@
 //! The shipped Messages seed and the texting contract the phones' Messages app drives:
 //! handles, conversations, receipts and tapbacks.
 use cw_protocol::HttpRequest;
-use cw_service_common::html::validate_strict;
-use cw_web::dom::Document;
 use cw_sdk::{Service, ServiceContext};
+use cw_service_common::html::validate_strict;
 use cw_service_messages::MessagesService;
+use cw_web::dom::Document;
 use serde_json::{json, Value};
 
 fn ctx(actor: &str, tick: u64) -> ServiceContext {
@@ -105,7 +105,10 @@ fn the_seed_renders_for_each_of_its_people() {
     let sms = dom(&sms);
     let mine = sms
         .descendants(Document::ROOT)
-        .find(|n| sms.attr(*n, "class").is_some_and(|c| c.split(' ').any(|c| c == "sms") && c.contains("bubble")))
+        .find(|n| {
+            sms.attr(*n, "class")
+                .is_some_and(|c| c.split(' ').any(|c| c == "sms") && c.contains("bubble"))
+        })
         .expect("a green bubble");
     assert!(sms.attr(mine, "id").unwrap().ends_with("-bubble"));
     assert_eq!(attr(&sms, "send-text", "placeholder"), "Text Message");
@@ -284,7 +287,10 @@ fn conversations_open_once_by_handle_or_name_and_strangers_get_sms() {
     let fresh = dom(&page);
     assert_eq!(text(&fresh, "bar-title"), "Ops");
     assert_eq!(text(&fresh, "empty"), "Say something.");
-    assert!(!fresh.by_id("members").is_empty(), "a group names its people");
+    assert!(
+        !fresh.by_id("members").is_empty(),
+        "a group names its people"
+    );
     let restored: cw_service_messages::MessagesState =
         serde_json::from_value(state.clone()).unwrap();
     assert_eq!(serde_json::to_value(&restored).unwrap(), state);
@@ -297,7 +303,10 @@ fn the_pages_keep_their_ids_links_and_forms() {
     let inbox = dom(&get(&mut state, "alice", "/").1);
     assert_eq!(text(&inbox, "bar-title"), "Messages");
     assert_eq!(text(&inbox, "bar-me"), "Alice Chen · +14155550100");
-    assert_eq!(attr(&inbox, &format!("row-{AB}"), "href"), format!("/conversations/{AB}"));
+    assert_eq!(
+        attr(&inbox, &format!("row-{AB}"), "href"),
+        format!("/conversations/{AB}")
+    );
     assert_eq!(text(&inbox, &format!("row-{AB}-title")), "Bob Martinez");
     assert_eq!(text(&inbox, &format!("row-{AB}-time")), "tick 44");
     assert!(text(&inbox, &format!("row-{AB}-preview")).contains("spicy"));
@@ -318,14 +327,22 @@ fn the_pages_keep_their_ids_links_and_forms() {
     assert_eq!(text(&thread, "bar-service"), "iMessage");
     assert_eq!(text(&thread, "service"), "iMessage");
     assert_eq!(attr(&thread, "back", "href"), "/");
-    assert_eq!(attr(&thread, "send", "action"), format!("/conversations/{AB}/messages"));
+    assert_eq!(
+        attr(&thread, "send", "action"),
+        format!("/conversations/{AB}/messages")
+    );
     assert_eq!(attr(&thread, "send", "method"), "post");
     assert_eq!(attr(&thread, "send-text", "name"), "text");
     assert_eq!(attr(&thread, "send-text", "aria-label"), "iMessage");
     assert_eq!(thread.tag(node(&thread, "send-submit")), Some("button"));
-    assert_eq!(attr(&thread, "read", "action"), format!("/conversations/{AB}/read"));
+    assert_eq!(
+        attr(&thread, "read", "action"),
+        format!("/conversations/{AB}/read")
+    );
     assert!(!thread.by_id("read-submit").is_empty());
-    assert!(class(&thread, "sms-1-row").contains("in") && class(&thread, "sms-2-row").contains("out"));
+    assert!(
+        class(&thread, "sms-1-row").contains("in") && class(&thread, "sms-2-row").contains("out")
+    );
     assert!(class(&thread, "sms-1-bubble").contains("incoming"));
     assert_eq!(text(&thread, "sms-1-text"), "lunch?");
     // Tapbacks: a picker per bubble, one named button per tapback, posting to the message.
@@ -341,16 +358,28 @@ fn the_pages_keep_their_ids_links_and_forms() {
     // The sidebar rides along, with the open conversation marked.
     assert!(class(&thread, &format!("row-{AB}")).contains("current"));
     // A browser form post (urlencoded) gives a tapback and lands back on the thread.
-    let mut request = HttpRequest::get(format!("http://messages.internal/conversations/{AB}/messages/sms-1/tapbacks"));
+    let mut request = HttpRequest::get(format!(
+        "http://messages.internal/conversations/{AB}/messages/sms-1/tapbacks"
+    ));
     request.method = "POST".into();
-    request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+    request.headers.insert(
+        "content-type".into(),
+        "application/x-www-form-urlencoded".into(),
+    );
     request.body = b"tapback=laughed".to_vec();
-    let r = MessagesService.handle(&mut state, &ctx("alice", 61), &request).unwrap();
+    let r = MessagesService
+        .handle(&mut state, &ctx("alice", 61), &request)
+        .unwrap();
     assert_eq!(r.status, 200);
     let after = dom(&String::from_utf8(r.body).unwrap());
-    assert_eq!(attr(&after, "sms-1-has-laughed", "title"), "laughed · Alice Chen");
+    assert_eq!(
+        attr(&after, "sms-1-has-laughed", "title"),
+        "laughed · Alice Chen"
+    );
     // The group names its senders and lists its members.
     let crew = dom(&get(&mut state, "carol", &format!("/conversations/{CREW}")).1);
     assert!(!crew.by_id("members").is_empty());
-    assert!(crew.descendants(Document::ROOT).any(|n| crew.attr(n, "id").is_some_and(|id| id.ends_with("-from"))));
+    assert!(crew
+        .descendants(Document::ROOT)
+        .any(|n| crew.attr(n, "id").is_some_and(|id| id.ends_with("-from"))));
 }

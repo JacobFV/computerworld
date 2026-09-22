@@ -35,7 +35,11 @@ fn fr(n: i32) -> TrackSize {
     TrackSize::Flex(n * 1000)
 }
 fn tracks(ts: &[TrackSize]) -> TrackList {
-    TrackList { tracks: ts.to_vec(), line_names: vec![Vec::new(); ts.len() + 1], auto_repeat: None }
+    TrackList {
+        tracks: ts.to_vec(),
+        line_names: vec![Vec::new(); ts.len() + 1],
+        auto_repeat: None,
+    }
 }
 fn names(ts: &[TrackSize], names: &[&[&str]]) -> TrackList {
     let mut tl = tracks(ts);
@@ -46,7 +50,12 @@ fn names(ts: &[TrackSize], names: &[&[&str]]) -> TrackList {
 }
 fn auto_repeat(fill: bool, at: usize, outside: &[TrackSize], rep: &[TrackSize]) -> TrackList {
     let mut tl = tracks(outside);
-    tl.auto_repeat = Some(AutoRepeat { fill, at, tracks: rep.to_vec(), line_names: vec![Vec::new(); rep.len() + 1] });
+    tl.auto_repeat = Some(AutoRepeat {
+        fill,
+        at,
+        tracks: rep.to_vec(),
+        line_names: vec![Vec::new(); rep.len() + 1],
+    });
     tl
 }
 fn line(n: i32) -> GridLine {
@@ -59,7 +68,9 @@ fn name(s: &str) -> GridLine {
     GridLine::Name(s.into())
 }
 fn areas(rows: &[&str]) -> Vec<Vec<String>> {
-    rows.iter().map(|r| r.split_whitespace().map(str::to_owned).collect()).collect()
+    rows.iter()
+        .map(|r| r.split_whitespace().map(str::to_owned).collect())
+        .collect()
 }
 fn font() -> Font {
     ComputedStyle::initial().font
@@ -94,7 +105,10 @@ impl T {
         T { doc, styles, body }
     }
     fn style_of(&self, n: NodeId) -> ComputedStyle {
-        self.styles.get(n).cloned().unwrap_or_else(ComputedStyle::initial)
+        self.styles
+            .get(n)
+            .cloned()
+            .unwrap_or_else(ComputedStyle::initial)
     }
     fn el(&mut self, parent: NodeId, tag: &str, f: impl FnOnce(&mut ComputedStyle)) -> NodeId {
         let n = self.doc.create_element(tag, Vec::<Attribute>::new());
@@ -129,11 +143,24 @@ impl T {
         n
     }
     fn layout(&self) -> FragmentTree {
-        layout(&self.doc, &self.styles, Viewport { width: 800, height: 600, scale: 1, zoom: 100 })
+        layout(
+            &self.doc,
+            &self.styles,
+            Viewport {
+                width: 800,
+                height: 600,
+                scale: 1,
+                zoom: 100,
+            },
+        )
     }
     fn rect(&self, tree: &FragmentTree, n: NodeId) -> Rect {
         let rs = tree.rects_of(n);
-        assert!(!rs.is_empty(), "no fragment for node {n:?}\n{}", debug::dump_doc(&self.doc, tree));
+        assert!(
+            !rs.is_empty(),
+            "no fragment for node {n:?}\n{}",
+            debug::dump_doc(&self.doc, tree)
+        );
         rs[0]
     }
     fn dump(&self, tree: &FragmentTree) -> String {
@@ -146,7 +173,9 @@ impl T {
 #[test]
 fn fr_columns_1fr_2fr() {
     let mut t = T::new();
-    let g = t.grid(t.body, 900, |s| s.grid_template_columns = tracks(&[fr(1), fr(2)]));
+    let g = t.grid(t.body, 900, |s| {
+        s.grid_template_columns = tracks(&[fr(1), fr(2)])
+    });
     let a = t.item(g, 50, |_| {});
     let b = t.item(g, 30, |_| {});
     let tree = t.layout();
@@ -159,7 +188,9 @@ fn fr_columns_1fr_2fr() {
 #[test]
 fn repeat_three_fixed_columns_wraps_into_implicit_rows() {
     let mut t = T::new();
-    let g = t.grid(t.body, 800, |s| s.grid_template_columns = tracks(&[fx(100), fx(100), fx(100)]));
+    let g = t.grid(t.body, 800, |s| {
+        s.grid_template_columns = tracks(&[fx(100), fx(100), fx(100)])
+    });
     let items: Vec<NodeId> = (0..4).map(|_| t.item(g, 20, |_| {})).collect();
     let tree = t.layout();
     assert_eq!(t.rect(&tree, items[0]), r(0, 0, 100, 20));
@@ -172,16 +203,36 @@ fn repeat_three_fixed_columns_wraps_into_implicit_rows() {
 #[test]
 fn auto_fill_minmax_at_several_widths() {
     // At 99px the single track keeps its 100px minimum and overflows.
-    for (width, count, track) in [(800, 8, Au::from_px_i32(100)), (450, 4, Au(7200)), (150, 1, Au::from_px_i32(150)), (99, 1, Au::from_px_i32(100))] {
+    for (width, count, track) in [
+        (800, 8, Au::from_px_i32(100)),
+        (450, 4, Au(7200)),
+        (150, 1, Au::from_px_i32(150)),
+        (99, 1, Au::from_px_i32(100)),
+    ] {
         let mut t = T::new();
-        let g = t.grid(t.body, width, |s| s.grid_template_columns = auto_repeat(true, 0, &[], &[TrackSize::MinMax(TrackBreadth::Fixed(lp(100)), TrackBreadth::Flex(1000))]));
+        let g = t.grid(t.body, width, |s| {
+            s.grid_template_columns = auto_repeat(
+                true,
+                0,
+                &[],
+                &[TrackSize::MinMax(
+                    TrackBreadth::Fixed(lp(100)),
+                    TrackBreadth::Flex(1000),
+                )],
+            )
+        });
         let a = t.item(g, 10, |_| {});
         let b = t.item(g, 10, |_| {});
         let tree = t.layout();
         assert_eq!(t.rect(&tree, a).size.width, track, "width {width}");
         let b_x = if count > 1 { track } else { Au::ZERO };
         let b_y = if count > 1 { Au::ZERO } else { px(10) };
-        assert_eq!(t.rect(&tree, b).origin, crate::geom::Point { x: b_x, y: b_y }, "width {width}\n{}", t.dump(&tree));
+        assert_eq!(
+            t.rect(&tree, b).origin,
+            crate::geom::Point { x: b_x, y: b_y },
+            "width {width}\n{}",
+            t.dump(&tree)
+        );
     }
 }
 
@@ -197,7 +248,12 @@ fn auto_fill_counts_gaps_and_outside_tracks() {
     let last = t.item(g, 10, |s| s.grid_column_start = line(-1 - 1));
     let tree = t.layout();
     // Six tracks: 100 | 50 50 50 50 | 100, five gaps. Line -2 is the sixth track's start.
-    assert_eq!(t.rect(&tree, last), r(100 + 4 * 50 + 5 * 10, 0, 100, 10), "{}", t.dump(&tree));
+    assert_eq!(
+        t.rect(&tree, last),
+        r(100 + 4 * 50 + 5 * 10, 0, 100, 10),
+        "{}",
+        t.dump(&tree)
+    );
 }
 
 #[test]
@@ -228,7 +284,15 @@ fn auto_fit_collapses_empty_tracks_and_their_gutters() {
     // no gaps: the free space is 800 - 10 = 790, split 395 each.
     let mut t = T::new();
     let g = t.grid(t.body, 800, |s| {
-        s.grid_template_columns = auto_repeat(false, 0, &[], &[TrackSize::MinMax(TrackBreadth::Fixed(lp(100)), TrackBreadth::Flex(1000))]);
+        s.grid_template_columns = auto_repeat(
+            false,
+            0,
+            &[],
+            &[TrackSize::MinMax(
+                TrackBreadth::Fixed(lp(100)),
+                TrackBreadth::Flex(1000),
+            )],
+        );
         s.column_gap = lp(10);
     });
     let a = t.item(g, 10, |_| {});
@@ -322,7 +386,10 @@ fn line_names_at_both_ends_and_multiple_names_per_line() {
 fn nth_named_line_and_named_span() {
     let mut t = T::new();
     let g = t.grid(t.body, 800, |s| {
-        s.grid_template_columns = names(&[fx(100), fx(100), fx(100), fx(100)], &[&["a"], &["a"], &["a"], &["a"], &[]]);
+        s.grid_template_columns = names(
+            &[fx(100), fx(100), fx(100), fx(100)],
+            &[&["a"], &["a"], &["a"], &["a"], &[]],
+        );
         s.justify_content = JustifyContent::Start;
     });
     // `a 2 / span 2 a`: the second `a` line (2), then two `a` lines after it (4).
@@ -388,7 +455,9 @@ fn lines_beyond_the_explicit_grid_create_implicit_tracks() {
         s.justify_content = JustifyContent::Start;
     });
     let far = t.item(g, 10, |s| s.grid_column_start = line(4));
-    let named = t.item(g, 10, |s| s.grid_column_start = GridLine::Line(2, Some("nothing".into())));
+    let named = t.item(g, 10, |s| {
+        s.grid_column_start = GridLine::Line(2, Some("nothing".into()))
+    });
     let tree = t.layout();
     // Lines 3 and 4 are implicit; track 3 is 60px, so line 4 is at 260.
     assert_eq!(t.rect(&tree, far), r(260, 0, 60, 10), "{}", t.dump(&tree));
@@ -430,7 +499,12 @@ fn auto_placement_sparse_with_a_locked_item() {
     let one = t.div(g, |_| {});
     let three = t.div(g, |_| {});
     let tree = t.layout();
-    assert_eq!(t.rect(&tree, locked), r(100, 0, 100, 10), "{}", t.dump(&tree));
+    assert_eq!(
+        t.rect(&tree, locked),
+        r(100, 0, 100, 10),
+        "{}",
+        t.dump(&tree)
+    );
     assert_eq!(t.rect(&tree, two), r(0, 10, 200, 10));
     assert_eq!(t.rect(&tree, one), r(200, 10, 100, 10));
     assert_eq!(t.rect(&tree, three), r(0, 20, 100, 10));
@@ -452,7 +526,12 @@ fn auto_placement_dense_backfills_holes() {
     let one = t.div(g, |_| {});
     let three = t.div(g, |_| {});
     let tree = t.layout();
-    assert_eq!(t.rect(&tree, locked), r(100, 0, 100, 10), "{}", t.dump(&tree));
+    assert_eq!(
+        t.rect(&tree, locked),
+        r(100, 0, 100, 10),
+        "{}",
+        t.dump(&tree)
+    );
     assert_eq!(t.rect(&tree, two), r(0, 10, 200, 10));
     assert_eq!(t.rect(&tree, one), r(0, 0, 100, 10));
     assert_eq!(t.rect(&tree, three), r(200, 0, 100, 10));
@@ -485,7 +564,12 @@ fn column_flow_fills_columns_and_adds_implicit_columns() {
     });
     let items: Vec<NodeId> = (0..5).map(|_| t.div(g, |_| {})).collect();
     let tree = t.layout();
-    assert_eq!(t.rect(&tree, items[0]), r(0, 0, 100, 50), "{}", t.dump(&tree));
+    assert_eq!(
+        t.rect(&tree, items[0]),
+        r(0, 0, 100, 50),
+        "{}",
+        t.dump(&tree)
+    );
     assert_eq!(t.rect(&tree, items[1]), r(0, 50, 100, 50));
     assert_eq!(t.rect(&tree, items[2]), r(100, 0, 100, 50));
     assert_eq!(t.rect(&tree, items[3]), r(100, 50, 100, 50));
@@ -514,7 +598,9 @@ fn column_flow_dense_with_a_locked_row() {
 #[test]
 fn order_changes_placement_order() {
     let mut t = T::new();
-    let g = t.grid(t.body, 200, |s| s.grid_template_columns = tracks(&[fx(100), fx(100)]));
+    let g = t.grid(t.body, 200, |s| {
+        s.grid_template_columns = tracks(&[fx(100), fx(100)])
+    });
     let a = t.item(g, 10, |_| {});
     let b = t.item(g, 10, |s| s.order = -1);
     let tree = t.layout();
@@ -573,13 +659,21 @@ fn display_contents_child_contributes_its_children_and_inline_children_are_block
 fn minmax_auto_max_content_takes_the_text_width() {
     let mut t = T::new();
     let g = t.grid(t.body, 800, |s| {
-        s.grid_template_columns = tracks(&[TrackSize::MinMax(TrackBreadth::Auto, TrackBreadth::MaxContent), fx(100)]);
+        s.grid_template_columns = tracks(&[
+            TrackSize::MinMax(TrackBreadth::Auto, TrackBreadth::MaxContent),
+            fx(100),
+        ]);
         s.justify_content = JustifyContent::Start;
     });
     let a = t.div(g, |_| {});
     t.text(a, "Hello world");
     let tree = t.layout();
-    assert_eq!(t.rect(&tree, a), Rect::new(Au::ZERO, Au::ZERO, tw("Hello world"), lh()), "{}", t.dump(&tree));
+    assert_eq!(
+        t.rect(&tree, a),
+        Rect::new(Au::ZERO, Au::ZERO, tw("Hello world"), lh()),
+        "{}",
+        t.dump(&tree)
+    );
 }
 
 #[test]
@@ -594,7 +688,12 @@ fn min_content_and_max_content_tracks() {
     let b = t.div(g, |_| {});
     t.text(b, "Hello world");
     let tree = t.layout();
-    assert_eq!(t.rect(&tree, a).size.width, tw("Hello").max(tw("world")), "{}", t.dump(&tree));
+    assert_eq!(
+        t.rect(&tree, a).size.width,
+        tw("Hello").max(tw("world")),
+        "{}",
+        t.dump(&tree)
+    );
     assert_eq!(t.rect(&tree, b).size.width, tw("Hello world"));
     assert_eq!(t.rect(&tree, b).origin.x, tw("Hello").max(tw("world")));
 }
@@ -623,7 +722,10 @@ fn spanning_item_grows_intrinsic_tracks_equally() {
 fn spanning_item_prefers_tracks_with_intrinsic_maximums() {
     let mut t = T::new();
     let g = t.grid(t.body, 800, |s| {
-        s.grid_template_columns = tracks(&[TrackSize::MinMax(TrackBreadth::Auto, TrackBreadth::Fixed(lp(100))), TrackSize::Auto]);
+        s.grid_template_columns = tracks(&[
+            TrackSize::MinMax(TrackBreadth::Auto, TrackBreadth::Fixed(lp(100))),
+            TrackSize::Auto,
+        ]);
         s.justify_content = JustifyContent::Start;
     });
     let c = t.item(g, 10, |s| {
@@ -642,15 +744,23 @@ fn spanning_item_prefers_tracks_with_intrinsic_maximums() {
 fn fit_content_limits_max_content_but_not_min_content() {
     let mut t = T::new();
     let g = t.grid(t.body, 800, |s| {
-        s.grid_template_columns = tracks(&[TrackSize::FitContent(lp(200)), TrackSize::FitContent(lp(200))]);
+        s.grid_template_columns = tracks(&[
+            TrackSize::FitContent(lp(200)),
+            TrackSize::FitContent(lp(200)),
+        ]);
         s.justify_content = JustifyContent::Start;
     });
     let a = t.div(g, |_| {});
-    t.text(a, "A long line of words that measures far more than two hundred pixels wide");
+    t.text(
+        a,
+        "A long line of words that measures far more than two hundred pixels wide",
+    );
     let b = t.div(g, |_| {});
     t.text(b, "Short text");
     let tree = t.layout();
-    assert!(tw("A long line of words that measures far more than two hundred pixels wide") > px(200));
+    assert!(
+        tw("A long line of words that measures far more than two hundred pixels wide") > px(200)
+    );
     assert_eq!(t.rect(&tree, a).size.width, px(200), "{}", t.dump(&tree));
     assert_eq!(t.rect(&tree, b).size.width, tw("Short text"));
     assert_eq!(t.rect(&tree, b).origin.x, px(200));
@@ -659,7 +769,9 @@ fn fit_content_limits_max_content_but_not_min_content() {
 #[test]
 fn flexible_tracks_with_content_larger_than_their_share_become_inflexible() {
     let mut t = T::new();
-    let g = t.grid(t.body, 300, |s| s.grid_template_columns = tracks(&[fr(1), fr(1)]));
+    let g = t.grid(t.body, 300, |s| {
+        s.grid_template_columns = tracks(&[fr(1), fr(1)])
+    });
     let a = t.item(g, 10, |s| s.width = len(200));
     let b = t.item(g, 10, |s| s.width = len(50));
     let tree = t.layout();
@@ -671,7 +783,9 @@ fn flexible_tracks_with_content_larger_than_their_share_become_inflexible() {
 #[test]
 fn fractional_flex_factors_less_than_one_leave_free_space() {
     let mut t = T::new();
-    let g = t.grid(t.body, 400, |s| s.grid_template_columns = tracks(&[TrackSize::Flex(500)]));
+    let g = t.grid(t.body, 400, |s| {
+        s.grid_template_columns = tracks(&[TrackSize::Flex(500)])
+    });
     let a = t.item(g, 10, |_| {});
     let tree = t.layout();
     // A flex sum under 1 is treated as 1: 0.5fr of 400 is 200.
@@ -681,7 +795,9 @@ fn fractional_flex_factors_less_than_one_leave_free_space() {
 #[test]
 fn auto_tracks_stretch_with_normal_content_distribution() {
     let mut t = T::new();
-    let g = t.grid(t.body, 600, |s| s.grid_template_columns = tracks(&[TrackSize::Auto, fx(100), TrackSize::Auto]));
+    let g = t.grid(t.body, 600, |s| {
+        s.grid_template_columns = tracks(&[TrackSize::Auto, fx(100), TrackSize::Auto])
+    });
     let a = t.item(g, 10, |s| s.width = len(50));
     let b = t.item(g, 10, |_| {});
     let c = t.item(g, 10, |s| s.width = len(150));
@@ -696,7 +812,8 @@ fn auto_tracks_stretch_with_normal_content_distribution() {
 fn percentage_tracks_resolve_against_the_container_or_behave_as_auto() {
     let mut t = T::new();
     let g = t.grid(t.body, 400, |s| {
-        s.grid_template_columns = tracks(&[TrackSize::Fixed(LengthPercentage::Percent(2500)), fr(1)]);
+        s.grid_template_columns =
+            tracks(&[TrackSize::Fixed(LengthPercentage::Percent(2500)), fr(1)]);
         s.grid_template_rows = tracks(&[TrackSize::Fixed(LengthPercentage::Percent(5000))]);
     });
     let a = t.item(g, 20, |_| {});
@@ -713,7 +830,11 @@ fn definite_height_sizes_fr_rows_and_percent_rows() {
     let mut t = T::new();
     let g = t.grid(t.body, 100, |s| {
         s.height = len(200);
-        s.grid_template_rows = tracks(&[TrackSize::Fixed(LengthPercentage::Percent(2500)), fr(1), fr(2)]);
+        s.grid_template_rows = tracks(&[
+            TrackSize::Fixed(LengthPercentage::Percent(2500)),
+            fr(1),
+            fr(2),
+        ]);
     });
     let a = t.div(g, |_| {});
     let b = t.div(g, |_| {});
@@ -734,7 +855,12 @@ fn implicit_rows_from_overflowing_items_and_container_auto_height() {
     });
     let items: Vec<NodeId> = (0..5).map(|_| t.item(g, 20, |_| {})).collect();
     let tree = t.layout();
-    assert_eq!(t.rect(&tree, items[2]), r(0, 60, 100, 20), "{}", t.dump(&tree));
+    assert_eq!(
+        t.rect(&tree, items[2]),
+        r(0, 60, 100, 20),
+        "{}",
+        t.dump(&tree)
+    );
     assert_eq!(t.rect(&tree, items[4]), r(0, 90, 100, 20));
     // 50 + 10 + 20 + 10 + 20.
     assert_eq!(t.rect(&tree, g).size.height, px(110));
@@ -772,7 +898,12 @@ fn percentage_gaps_resolve_against_the_container() {
     });
     let items: Vec<NodeId> = (0..3).map(|_| t.div(g, |_| {})).collect();
     let tree = t.layout();
-    assert_eq!(t.rect(&tree, items[0]), r(0, 0, 360, 50), "{}", t.dump(&tree));
+    assert_eq!(
+        t.rect(&tree, items[0]),
+        r(0, 0, 360, 50),
+        "{}",
+        t.dump(&tree)
+    );
     assert_eq!(t.rect(&tree, items[1]), r(440, 0, 360, 50));
     assert_eq!(t.rect(&tree, items[2]), r(0, 70, 360, 50));
 }
@@ -796,7 +927,10 @@ fn justify_content_end_center_space_around_and_evenly() {
     for (jc, xs) in [
         (JustifyContent::End, [500, 600, 700]),
         (JustifyContent::Center, [250, 350, 450]),
-        (JustifyContent::SpaceAround, [250 / 3, 250 / 3 + 100 + 500 / 3, 250 / 3 + 200 + 1000 / 3]),
+        (
+            JustifyContent::SpaceAround,
+            [250 / 3, 250 / 3 + 100 + 500 / 3, 250 / 3 + 200 + 1000 / 3],
+        ),
         (JustifyContent::SpaceEvenly, [125, 350, 575]),
     ] {
         let mut t = T::new();
@@ -917,7 +1051,14 @@ fn baseline_alignment_shares_a_row_context() {
     // The container's baseline is the shared one.
     let gf = &tree.root.children[0].children[0].children[0];
     match &gf.kind {
-        FragmentKind::Box { baseline, .. } => assert_eq!(*baseline, Some(px(30) + text::font_metrics(&font()).ascent + text::half_leading(lh(), text::font_metrics(&font()).content_height()))),
+        FragmentKind::Box { baseline, .. } => assert_eq!(
+            *baseline,
+            Some(
+                px(30)
+                    + text::font_metrics(&font()).ascent
+                    + text::half_leading(lh(), text::font_metrics(&font()).content_height())
+            )
+        ),
         _ => panic!(),
     }
 }
@@ -925,7 +1066,9 @@ fn baseline_alignment_shares_a_row_context() {
 #[test]
 fn auto_margins_center_and_push_items() {
     let mut t = T::new();
-    let g = t.grid(t.body, 300, |s| s.grid_template_rows = tracks(&[fx(100), fx(100)]));
+    let g = t.grid(t.body, 300, |s| {
+        s.grid_template_rows = tracks(&[fx(100), fx(100)])
+    });
     let a = t.item(g, 20, |s| {
         s.width = len(100);
         s.margin.left = LengthPercentageAuto::Auto;
@@ -948,7 +1091,9 @@ fn min_width_auto_grows_fr_tracks_but_not_minmax_zero_tracks() {
     assert!(w > px(200) && w < px(400), "{w:?}");
     // `1fr 1fr`: the first track's auto minimum is the word; the second gets the rest.
     let mut t = T::new();
-    let g = t.grid(t.body, 400, |s| s.grid_template_columns = tracks(&[fr(1), fr(1)]));
+    let g = t.grid(t.body, 400, |s| {
+        s.grid_template_columns = tracks(&[fr(1), fr(1)])
+    });
     let a = t.div(g, |_| {});
     t.text(a, long);
     let b = t.div(g, |_| {});
@@ -957,7 +1102,12 @@ fn min_width_auto_grows_fr_tracks_but_not_minmax_zero_tracks() {
     assert_eq!(t.rect(&tree, b), Rect::new(w, Au::ZERO, px(400) - w, lh()));
     // `minmax(0, 1fr)`: tracks stay 200 and the item overflows its area.
     let mut t = T::new();
-    let g = t.grid(t.body, 400, |s| s.grid_template_columns = tracks(&[TrackSize::MinMax(TrackBreadth::Fixed(lp(0)), TrackBreadth::Flex(1000)), TrackSize::MinMax(TrackBreadth::Fixed(lp(0)), TrackBreadth::Flex(1000))]));
+    let g = t.grid(t.body, 400, |s| {
+        s.grid_template_columns = tracks(&[
+            TrackSize::MinMax(TrackBreadth::Fixed(lp(0)), TrackBreadth::Flex(1000)),
+            TrackSize::MinMax(TrackBreadth::Fixed(lp(0)), TrackBreadth::Flex(1000)),
+        ])
+    });
     let a = t.div(g, |_| {});
     t.text(a, long);
     let b = t.div(g, |_| {});
@@ -971,14 +1121,18 @@ fn min_width_auto_grows_fr_tracks_but_not_minmax_zero_tracks() {
 fn min_width_auto_is_clamped_by_fixed_tracks() {
     let long = "Unbreakablewordthatisverylongindeedandkeepsgoing";
     let mut t = T::new();
-    let g = t.grid(t.body, 400, |s| s.grid_template_columns = tracks(&[fx(100), fx(100)]));
+    let g = t.grid(t.body, 400, |s| {
+        s.grid_template_columns = tracks(&[fx(100), fx(100)])
+    });
     let a = t.div(g, |_| {});
     t.text(a, long);
     let tree = t.layout();
     assert_eq!(t.rect(&tree, a).size.width, px(100), "{}", t.dump(&tree));
     // A scroll container has a zero automatic minimum in an fr track too.
     let mut t = T::new();
-    let g = t.grid(t.body, 400, |s| s.grid_template_columns = tracks(&[fr(1), fr(1)]));
+    let g = t.grid(t.body, 400, |s| {
+        s.grid_template_columns = tracks(&[fr(1), fr(1)])
+    });
     let a = t.div(g, |s| s.overflow_x = Overflow::Hidden);
     t.text(a, long);
     let tree = t.layout();
@@ -1006,7 +1160,9 @@ fn percentage_item_sizes_resolve_against_the_grid_area() {
 #[test]
 fn box_sizing_border_box_items_and_max_width_end_stretching() {
     let mut t = T::new();
-    let g = t.grid(t.body, 400, |s| s.grid_template_columns = tracks(&[fx(200), fx(200)]));
+    let g = t.grid(t.body, 400, |s| {
+        s.grid_template_columns = tracks(&[fx(200), fx(200)])
+    });
     let a = t.item(g, 50, |s| {
         s.width = len(100);
         s.padding = Sides::uniform(lp(10));
@@ -1037,7 +1193,9 @@ fn replaced_items_are_not_stretched() {
 #[test]
 fn relative_positioning_offsets_an_item() {
     let mut t = T::new();
-    let g = t.grid(t.body, 200, |s| s.grid_template_columns = tracks(&[fx(100), fx(100)]));
+    let g = t.grid(t.body, 200, |s| {
+        s.grid_template_columns = tracks(&[fx(100), fx(100)])
+    });
     let a = t.item(g, 10, |s| {
         s.position = Position::Relative;
         s.inset.left = m(5);
@@ -1210,7 +1368,12 @@ fn grid_container_baseline_is_its_first_item_when_nothing_is_baseline_aligned() 
     let tree = t.layout();
     // The inline-grid's baseline is the item's text baseline, 20px below where the
     // line's text would sit, so the line grows and the "x" run moves down 20px.
-    assert_eq!(t.rect(&tree, g).origin.y, t.rect(&tree, p).origin.y, "{}", t.dump(&tree));
+    assert_eq!(
+        t.rect(&tree, g).origin.y,
+        t.rect(&tree, p).origin.y,
+        "{}",
+        t.dump(&tree)
+    );
     assert_eq!(t.rect(&tree, p).size.height, px(20) + lh());
     let mut x_top = None;
     tree.root.walk(Default::default(), &mut |f, rect| {
@@ -1248,7 +1411,9 @@ fn scroll_container_grid_reserves_a_scrollbar() {
 #[test]
 fn floated_children_are_grid_items() {
     let mut t = T::new();
-    let g = t.grid(t.body, 200, |s| s.grid_template_columns = tracks(&[fx(100), fx(100)]));
+    let g = t.grid(t.body, 200, |s| {
+        s.grid_template_columns = tracks(&[fx(100), fx(100)])
+    });
     let a = t.item(g, 10, |s| s.float = Float::Right);
     let b = t.item(g, 10, |_| {});
     let tree = t.layout();
@@ -1259,18 +1424,68 @@ fn floated_children_are_grid_items() {
 #[test]
 fn placement_unit_tests() {
     use super::{auto_place, resolve_axis, Names, Res};
-    let mut names = Names { lines: Default::default(), explicit: 3 };
+    let mut names = Names {
+        lines: Default::default(),
+        explicit: 3,
+    };
     names.lines.insert("a".into(), vec![1, 3]);
-    assert_eq!(resolve_axis(&names, &line(2), &line(2)), Res::Definite(2, 3));
-    assert_eq!(resolve_axis(&names, &line(3), &line(1)), Res::Definite(1, 3));
-    assert_eq!(resolve_axis(&names, &GridLine::Auto, &line(3)), Res::Definite(2, 3));
-    assert_eq!(resolve_axis(&names, &span(3), &GridLine::Auto), Res::Span(3));
+    assert_eq!(
+        resolve_axis(&names, &line(2), &line(2)),
+        Res::Definite(2, 3)
+    );
+    assert_eq!(
+        resolve_axis(&names, &line(3), &line(1)),
+        Res::Definite(1, 3)
+    );
+    assert_eq!(
+        resolve_axis(&names, &GridLine::Auto, &line(3)),
+        Res::Definite(2, 3)
+    );
+    assert_eq!(
+        resolve_axis(&names, &span(3), &GridLine::Auto),
+        Res::Span(3)
+    );
     assert_eq!(resolve_axis(&names, &span(2), &span(3)), Res::Span(2));
-    assert_eq!(resolve_axis(&names, &GridLine::Line(-1, Some("a".into())), &GridLine::Auto), Res::Definite(3, 4));
-    assert_eq!(resolve_axis(&names, &GridLine::Line(3, Some("a".into())), &GridLine::Auto), Res::Definite(5, 6));
-    assert_eq!(resolve_axis(&names, &GridLine::Line(-3, Some("a".into())), &GridLine::Auto), Res::Definite(0, 1));
-    assert_eq!(resolve_axis(&names, &GridLine::Span(2, Some("a".into())), &line(4)), Res::Definite(1, 4));
+    assert_eq!(
+        resolve_axis(
+            &names,
+            &GridLine::Line(-1, Some("a".into())),
+            &GridLine::Auto
+        ),
+        Res::Definite(3, 4)
+    );
+    assert_eq!(
+        resolve_axis(
+            &names,
+            &GridLine::Line(3, Some("a".into())),
+            &GridLine::Auto
+        ),
+        Res::Definite(5, 6)
+    );
+    assert_eq!(
+        resolve_axis(
+            &names,
+            &GridLine::Line(-3, Some("a".into())),
+            &GridLine::Auto
+        ),
+        Res::Definite(0, 1)
+    );
+    assert_eq!(
+        resolve_axis(&names, &GridLine::Span(2, Some("a".into())), &line(4)),
+        Res::Definite(1, 4)
+    );
     // Two auto items in a two-column grid, then a span that wraps.
-    let placed = auto_place(&[(Res::Span(1), Res::Span(1)), (Res::Span(1), Res::Span(1)), (Res::Span(1), Res::Span(2))], 2, false);
-    assert_eq!(placed, vec![((1, 2), (1, 2)), ((1, 2), (2, 3)), ((2, 3), (1, 3))]);
+    let placed = auto_place(
+        &[
+            (Res::Span(1), Res::Span(1)),
+            (Res::Span(1), Res::Span(1)),
+            (Res::Span(1), Res::Span(2)),
+        ],
+        2,
+        false,
+    );
+    assert_eq!(
+        placed,
+        vec![((1, 2), (1, 2)), ((1, 2), (2, 3)), ((2, 3), (1, 3))]
+    );
 }

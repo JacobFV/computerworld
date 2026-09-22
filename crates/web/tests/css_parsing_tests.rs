@@ -12,13 +12,19 @@
 //! - Declaration values are trimmed of surrounding whitespace on both sides, as the
 //!   2021 CR requires; the corpus keeps the untrimmed value.
 
-use cw_web::css::parser::{parse_block_contents, parse_component_value, parse_component_value_list, parse_declaration, parse_declaration_list, parse_rule, parse_rule_list, parse_stylesheet_rules, Item, ParseError};
+use cw_web::css::parser::{
+    parse_block_contents, parse_component_value, parse_component_value_list, parse_declaration,
+    parse_declaration_list, parse_rule, parse_rule_list, parse_stylesheet_rules, Item, ParseError,
+};
 use cw_web::css::selector::parse_anb;
 use cw_web::css::{ComponentValue, Declaration, Token};
 use serde_json::{json, Value};
 
 fn corpus(name: &str) -> Vec<Value> {
-    let path = format!("{}/tests/css-parsing-tests/{name}", env!("CARGO_MANIFEST_DIR"));
+    let path = format!(
+        "{}/tests/css-parsing-tests/{name}",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
     match serde_json::from_str(&text).unwrap() {
         Value::Array(v) => v,
@@ -52,7 +58,9 @@ fn dump(v: &ComponentValue) -> Value {
             Token::Ident(s) => json!(["ident", s]),
             Token::Function(s) => json!(["function", s]),
             Token::AtKeyword(s) => json!(["at-keyword", s]),
-            Token::Hash { value, id } => json!(["hash", value, if *id { "id" } else { "unrestricted" }]),
+            Token::Hash { value, id } => {
+                json!(["hash", value, if *id { "id" } else { "unrestricted" }])
+            }
             Token::String(s) => json!(["string", s]),
             Token::BadString => json!(["error", "bad-string"]),
             Token::Url(s) => json!(["url", s]),
@@ -97,8 +105,15 @@ fn dump_decl(d: &Declaration) -> Value {
 fn dump_item(i: &Item) -> Value {
     match i {
         Item::Declaration(d) => dump_decl(d),
-        Item::AtRule(a) => json!(["at-rule", a.name, dump_list(&a.prelude), a.block.as_ref().map(|b| dump_list(b))]),
-        Item::QualifiedRule(q) => json!(["qualified rule", dump_list(&q.prelude), dump_list(&q.block)]),
+        Item::AtRule(a) => json!([
+            "at-rule",
+            a.name,
+            dump_list(&a.prelude),
+            a.block.as_ref().map(|b| dump_list(b))
+        ]),
+        Item::QualifiedRule(q) => {
+            json!(["qualified rule", dump_list(&q.prelude), dump_list(&q.block)])
+        }
         Item::Invalid => json!(["error", "invalid"]),
     }
 }
@@ -150,7 +165,10 @@ fn normalise(v: &Value) -> Value {
                     }
                 }
                 if let Value::Array(a) = item {
-                    if a.len() == 2 && a[0] == "error" && (a[1] == "eof-in-string" || a[1] == "eof-in-url") {
+                    if a.len() == 2
+                        && a[0] == "error"
+                        && (a[1] == "eof-in-string" || a[1] == "eof-in-url")
+                    {
                         i += 1;
                         continue;
                     }
@@ -171,7 +189,10 @@ fn normalise(v: &Value) -> Value {
 
 fn contains_unicode_range(v: &Value) -> bool {
     match v {
-        Value::Array(items) => items.first().is_some_and(|h| h == "unicode-range") || items.iter().any(contains_unicode_range),
+        Value::Array(items) => {
+            items.first().is_some_and(|h| h == "unicode-range")
+                || items.iter().any(contains_unicode_range)
+        }
         _ => false,
     }
 }
@@ -186,9 +207,16 @@ struct Report {
 fn run(name: &'static str, f: impl Fn(&str) -> Value) -> Report {
     let cases = corpus(name);
     assert!(cases.len().is_multiple_of(2), "{name}: odd number of items");
-    let mut r = Report { name, passed: 0, skipped: 0, failures: Vec::new() };
+    let mut r = Report {
+        name,
+        passed: 0,
+        skipped: 0,
+        failures: Vec::new(),
+    };
     for pair in cases.chunks(2) {
-        let input = pair[0].as_str().unwrap_or_else(|| panic!("{name}: non-string input"));
+        let input = pair[0]
+            .as_str()
+            .unwrap_or_else(|| panic!("{name}: non-string input"));
         if contains_unicode_range(&pair[1]) {
             r.skipped += 1;
             continue;
@@ -198,7 +226,9 @@ fn run(name: &'static str, f: impl Fn(&str) -> Value) -> Report {
         if expected == actual {
             r.passed += 1;
         } else {
-            r.failures.push(format!("{name}: input {input:?}\n  expected {expected}\n  actual   {actual}"));
+            r.failures.push(format!(
+                "{name}: input {input:?}\n  expected {expected}\n  actual   {actual}"
+            ));
         }
     }
     r
@@ -211,12 +241,28 @@ fn items(v: Vec<Item>) -> Value {
 #[test]
 fn css_parsing_tests_corpus() {
     let reports = vec![
-        run("component_value_list.json", |s| dump_list(&parse_component_value_list(s))),
-        run("one_component_value.json", |s| parse_component_value(s).map(|v| dump(&v)).unwrap_or_else(dump_err)),
-        run("one_declaration.json", |s| parse_declaration(s).map(|d| dump_decl(&d)).unwrap_or_else(dump_err)),
-        run("declaration_list.json", |s| items(parse_declaration_list(s))),
+        run("component_value_list.json", |s| {
+            dump_list(&parse_component_value_list(s))
+        }),
+        run("one_component_value.json", |s| {
+            parse_component_value(s)
+                .map(|v| dump(&v))
+                .unwrap_or_else(dump_err)
+        }),
+        run("one_declaration.json", |s| {
+            parse_declaration(s)
+                .map(|d| dump_decl(&d))
+                .unwrap_or_else(dump_err)
+        }),
+        run("declaration_list.json", |s| {
+            items(parse_declaration_list(s))
+        }),
         run("blocks_contents.json", |s| items(parse_block_contents(s))),
-        run("one_rule.json", |s| parse_rule(s).map(|i| dump_item(&i)).unwrap_or_else(dump_err)),
+        run("one_rule.json", |s| {
+            parse_rule(s)
+                .map(|i| dump_item(&i))
+                .unwrap_or_else(dump_err)
+        }),
         run("rule_list.json", |s| items(parse_rule_list(s))),
         run("stylesheet.json", |s| items(parse_stylesheet_rules(s))),
         run("An+B.json", |s| match parse_anb(s) {
@@ -226,7 +272,13 @@ fn css_parsing_tests_corpus() {
     ];
     let mut failed = 0;
     for r in &reports {
-        println!("{}: {} passed, {} skipped (unicode-range), {} failed", r.name, r.passed, r.skipped, r.failures.len());
+        println!(
+            "{}: {} passed, {} skipped (unicode-range), {} failed",
+            r.name,
+            r.passed,
+            r.skipped,
+            r.failures.len()
+        );
         for f in &r.failures {
             println!("{f}");
         }

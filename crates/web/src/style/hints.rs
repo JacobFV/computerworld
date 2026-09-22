@@ -8,7 +8,11 @@ use crate::css::token::{ComponentValue, Declaration, Number};
 use crate::dom::{Document, NodeId};
 
 fn decl(name: &str, value: Vec<ComponentValue>) -> Declaration {
-    Declaration { name: name.to_owned(), value, important: false }
+    Declaration {
+        name: name.to_owned(),
+        value,
+        important: false,
+    }
 }
 
 fn kw(name: &str, value: &str) -> Declaration {
@@ -19,7 +23,10 @@ fn kw(name: &str, value: &str) -> Declaration {
 /// percentage is kept. Returns `None` for anything else.
 pub fn parse_dimension(s: &str) -> Option<ComponentValue> {
     let s = s.trim();
-    let digits: String = s.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
+    let digits: String = s
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
     if digits.is_empty() || digits == "." {
         return None;
     }
@@ -52,7 +59,12 @@ pub fn font_size_keyword(s: &str) -> Option<&'static str> {
         '-' => (true, -1i64, &s[1..]),
         _ => (false, 0, s),
     };
-    let n: i64 = rest.chars().take_while(|c| c.is_ascii_digit()).collect::<String>().parse().ok()?;
+    let n: i64 = rest
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .parse()
+        .ok()?;
     let size = if relative { 3 + sign * n } else { n }.clamp(1, 7);
     Some(match size {
         1 => "x-small",
@@ -73,9 +85,12 @@ fn color_decl(name: &str, value: &str) -> Option<Declaration> {
 pub fn is_hint_attribute(doc: &Document, node: NodeId, attr: &str) -> bool {
     let tag = doc.tag(node).unwrap_or("");
     match attr {
-        "align" | "width" | "height" | "bgcolor" | "background" | "border" | "valign" | "nowrap" | "color" | "size" | "face" | "hspace" | "vspace" | "noshade" | "type" | "start"
-        | "reversed" | "value" | "clear" | "dir" | "hidden" | "cols" | "rows" | "cellpadding" | "cellspacing" | "rules" | "frame" | "text" | "link" | "vlink" | "alink" | "char"
-        | "charoff" | "compact" | "behavior" | "direction" | "scrollamount" | "wrap" | "span" => true,
+        "align" | "width" | "height" | "bgcolor" | "background" | "border" | "valign"
+        | "nowrap" | "color" | "size" | "face" | "hspace" | "vspace" | "noshade" | "type"
+        | "start" | "reversed" | "value" | "clear" | "dir" | "hidden" | "cols" | "rows"
+        | "cellpadding" | "cellspacing" | "rules" | "frame" | "text" | "link" | "vlink"
+        | "alink" | "char" | "charoff" | "compact" | "behavior" | "direction" | "scrollamount"
+        | "wrap" | "span" => true,
         _ => {
             let _ = tag;
             false
@@ -85,7 +100,9 @@ pub fn is_hint_attribute(doc: &Document, node: NodeId, attr: &str) -> bool {
 
 /// The declarations an element's attributes imply.
 pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
-    let Some(tag) = doc.tag(node) else { return Vec::new() };
+    let Some(tag) = doc.tag(node) else {
+        return Vec::new();
+    };
     let mut out = Vec::new();
     let attr = |n: &str| doc.attr(node, n);
     // `dir` on any element.
@@ -97,10 +114,14 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
         }
     }
     match tag {
-        "div" | "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "caption" | "legend" | "tr" | "td" | "th" | "thead" | "tbody" | "tfoot" | "col" | "colgroup" => {
+        "div" | "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "caption" | "legend" | "tr"
+        | "td" | "th" | "thead" | "tbody" | "tfoot" | "col" | "colgroup" => {
             if let Some(a) = attr("align") {
                 let a = a.trim().to_ascii_lowercase();
-                let is_cell = matches!(tag, "tr" | "td" | "th" | "thead" | "tbody" | "tfoot" | "col" | "colgroup");
+                let is_cell = matches!(
+                    tag,
+                    "tr" | "td" | "th" | "thead" | "tbody" | "tfoot" | "col" | "colgroup"
+                );
                 match a.as_str() {
                     "left" => out.push(kw("text-align", "left")),
                     "right" => out.push(kw("text-align", "right")),
@@ -138,7 +159,12 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
                 out.push(c);
             }
             if let Some(b) = attr("background") {
-                out.push(decl("background-image", vec![ComponentValue::Token(crate::css::token::Token::Url(b.trim().to_owned()))]));
+                out.push(decl(
+                    "background-image",
+                    vec![ComponentValue::Token(crate::css::token::Token::Url(
+                        b.trim().to_owned(),
+                    ))],
+                ));
             }
             if let Some(cs) = attr("cellspacing").and_then(parse_dimension) {
                 out.push(decl("border-spacing", vec![cs]));
@@ -172,7 +198,12 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
                     "box" | "border" => (true, true, true, true),
                     _ => (true, true, true, true),
                 };
-                for (name, on) in [("border-top-style", sides.0), ("border-right-style", sides.1), ("border-bottom-style", sides.2), ("border-left-style", sides.3)] {
+                for (name, on) in [
+                    ("border-top-style", sides.0),
+                    ("border-right-style", sides.1),
+                    ("border-bottom-style", sides.2),
+                    ("border-left-style", sides.3),
+                ] {
                     out.push(kw(name, if on { "solid" } else { "hidden" }));
                 }
             }
@@ -199,19 +230,36 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
                 out.push(c);
             }
             if let Some(b) = attr("background") {
-                out.push(decl("background-image", vec![ComponentValue::Token(crate::css::token::Token::Url(b.trim().to_owned()))]));
+                out.push(decl(
+                    "background-image",
+                    vec![ComponentValue::Token(crate::css::token::Token::Url(
+                        b.trim().to_owned(),
+                    ))],
+                ));
             }
             // `link`/`vlink`/`alink` colour anchors; the UA sheet's `a:link` rules are
             // at the same level, so the cascade applies them through `body_link_colors`.
-            for (a, name) in [("marginwidth", "margin-left"), ("marginwidth", "margin-right"), ("marginheight", "margin-top"), ("marginheight", "margin-bottom"), ("leftmargin", "margin-left"), ("rightmargin", "margin-right"), ("topmargin", "margin-top"), ("bottommargin", "margin-bottom")] {
+            for (a, name) in [
+                ("marginwidth", "margin-left"),
+                ("marginwidth", "margin-right"),
+                ("marginheight", "margin-top"),
+                ("marginheight", "margin-bottom"),
+                ("leftmargin", "margin-left"),
+                ("rightmargin", "margin-right"),
+                ("topmargin", "margin-top"),
+                ("bottommargin", "margin-bottom"),
+            ] {
                 if let Some(v) = attr(a).and_then(parse_dimension) {
                     out.push(decl(name, vec![v]));
                 }
             }
         }
-        "img" | "iframe" | "embed" | "object" | "video" | "canvas" | "input" | "audio" | "source" => {
+        "img" | "iframe" | "embed" | "object" | "video" | "canvas" | "input" | "audio"
+        | "source" => {
             let is_input = tag == "input";
-            let input_type = attr("type").map(|t| t.trim().to_ascii_lowercase()).unwrap_or_else(|| "text".into());
+            let input_type = attr("type")
+                .map(|t| t.trim().to_ascii_lowercase())
+                .unwrap_or_else(|| "text".into());
             let sized_input = is_input && matches!(input_type.as_str(), "image");
             if !is_input || sized_input {
                 if let Some(w) = attr("width").and_then(parse_dimension) {
@@ -246,7 +294,9 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
                     "top" => out.push(kw("vertical-align", "top")),
                     "middle" => out.push(kw("vertical-align", "middle")),
                     "bottom" => out.push(kw("vertical-align", "baseline")),
-                    "center" | "abscenter" | "absmiddle" => out.push(kw("vertical-align", "middle")),
+                    "center" | "abscenter" | "absmiddle" => {
+                        out.push(kw("vertical-align", "middle"))
+                    }
                     "texttop" => out.push(kw("vertical-align", "text-top")),
                     "baseline" => out.push(kw("vertical-align", "baseline")),
                     _ => {}
@@ -354,10 +404,16 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
             // `start` and `reversed` are counters: layout numbers the items; the
             // reset is expressed so `counter-reset` carries the start value.
             if let Some(start) = attr("start").and_then(|s| s.trim().parse::<i64>().ok()) {
-                out.push(decl("counter-reset", vec![tok_ident("list-item"), tok_ws(), tok_int(start - 1)]));
+                out.push(decl(
+                    "counter-reset",
+                    vec![tok_ident("list-item"), tok_ws(), tok_int(start - 1)],
+                ));
             }
             if doc.has_attr(node, "reversed") {
-                out.push(decl("counter-increment", vec![tok_ident("list-item"), tok_ws(), tok_int(-1)]));
+                out.push(decl(
+                    "counter-increment",
+                    vec![tok_ident("list-item"), tok_ws(), tok_int(-1)],
+                ));
             }
             if doc.has_attr(node, "compact") {
                 out.push(decl("padding-left", vec![tok_px(20)]));
@@ -398,7 +454,10 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
                 }
             }
             if let Some(v) = attr("value").and_then(|s| s.trim().parse::<i64>().ok()) {
-                out.push(decl("counter-reset", vec![tok_ident("list-item"), tok_ws(), tok_int(v - 1)]));
+                out.push(decl(
+                    "counter-reset",
+                    vec![tok_ident("list-item"), tok_ws(), tok_int(v - 1)],
+                ));
             }
         }
         "br" => {
@@ -412,11 +471,23 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
             }
         }
         "textarea" => {
-            if let Some(cols) = attr("cols").and_then(parse_non_negative_integer).filter(|n| *n > 0) {
-                out.push(decl("width", vec![tok_dimension(Number::from_i64(cols), "ch")]));
+            if let Some(cols) = attr("cols")
+                .and_then(parse_non_negative_integer)
+                .filter(|n| *n > 0)
+            {
+                out.push(decl(
+                    "width",
+                    vec![tok_dimension(Number::from_i64(cols), "ch")],
+                ));
             }
-            if let Some(rows) = attr("rows").and_then(parse_non_negative_integer).filter(|n| *n > 0) {
-                out.push(decl("height", vec![tok_dimension(Number::from_i64(rows), "lh")]));
+            if let Some(rows) = attr("rows")
+                .and_then(parse_non_negative_integer)
+                .filter(|n| *n > 0)
+            {
+                out.push(decl(
+                    "height",
+                    vec![tok_dimension(Number::from_i64(rows), "lh")],
+                ));
             }
             if let Some(w) = attr("wrap") {
                 if w.trim().eq_ignore_ascii_case("off") {
@@ -445,12 +516,21 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
         }
         "pre" | "listing" | "xmp" | "plaintext" => {
             if let Some(w) = attr("width").and_then(parse_non_negative_integer) {
-                out.push(decl("width", vec![tok_dimension(Number::from_i64(w), "ch")]));
+                out.push(decl(
+                    "width",
+                    vec![tok_dimension(Number::from_i64(w), "ch")],
+                ));
             }
         }
         "select" => {
-            if let Some(size) = attr("size").and_then(parse_non_negative_integer).filter(|n| *n > 1) {
-                out.push(decl("height", vec![tok_dimension(Number::from_i64(size), "lh")]));
+            if let Some(size) = attr("size")
+                .and_then(parse_non_negative_integer)
+                .filter(|n| *n > 1)
+            {
+                out.push(decl(
+                    "height",
+                    vec![tok_dimension(Number::from_i64(size), "lh")],
+                ));
             }
         }
         _ => {}
@@ -459,7 +539,10 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
 }
 
 fn is_table_part(tag: &str) -> bool {
-    matches!(tag, "tr" | "td" | "th" | "thead" | "tbody" | "tfoot" | "col" | "colgroup" | "caption")
+    matches!(
+        tag,
+        "tr" | "td" | "th" | "thead" | "tbody" | "tfoot" | "col" | "colgroup" | "caption"
+    )
 }
 
 fn table_cell_hints(doc: &Document, node: NodeId, tag: &str, out: &mut Vec<Declaration>) {
@@ -478,7 +561,12 @@ fn table_cell_hints(doc: &Document, node: NodeId, tag: &str, out: &mut Vec<Decla
         out.push(c);
     }
     if let Some(b) = attr("background") {
-        out.push(decl("background-image", vec![ComponentValue::Token(crate::css::token::Token::Url(b.trim().to_owned()))]));
+        out.push(decl(
+            "background-image",
+            vec![ComponentValue::Token(crate::css::token::Token::Url(
+                b.trim().to_owned(),
+            ))],
+        ));
     }
     if let Some(v) = attr("valign") {
         match v.trim().to_ascii_lowercase().as_str() {
@@ -501,7 +589,10 @@ fn table_cell_hints(doc: &Document, node: NodeId, tag: &str, out: &mut Vec<Decla
                     out.push(decl(&format!("padding-{side}"), vec![cp.clone()]));
                 }
             }
-            let border = doc.attr(t, "border").map(|b| parse_non_negative_integer(b).unwrap_or(1)).unwrap_or(0);
+            let border = doc
+                .attr(t, "border")
+                .map(|b| parse_non_negative_integer(b).unwrap_or(1))
+                .unwrap_or(0);
             let rules = doc.attr(t, "rules").map(|r| r.trim().to_ascii_lowercase());
             if border > 0 || rules.is_some() {
                 let style = if rules.is_some() { "solid" } else { "inset" };
@@ -544,20 +635,44 @@ mod tests {
         d.append(Document::ROOT, html);
         let body = d.create_element("body", vec![]);
         d.append(html, body);
-        let n = d.create_element(tag, attrs.iter().map(|(k, v)| Attribute { name: k.to_string(), value: v.to_string() }).collect());
+        let n = d.create_element(
+            tag,
+            attrs
+                .iter()
+                .map(|(k, v)| Attribute {
+                    name: k.to_string(),
+                    value: v.to_string(),
+                })
+                .collect(),
+        );
         d.append(body, n);
         (d, n)
     }
 
     fn names(doc: &Document, n: NodeId) -> Vec<(String, String)> {
-        presentational_hints(doc, n).into_iter().map(|d| (d.name, serialize_component_values(&d.value))).collect()
+        presentational_hints(doc, n)
+            .into_iter()
+            .map(|d| (d.name, serialize_component_values(&d.value)))
+            .collect()
     }
 
     #[test]
     fn dimensions_and_integers() {
         assert_eq!(parse_dimension("50"), Some(tok_px(50)));
-        assert_eq!(parse_dimension("50%"), Some(tok_percent(Number::from_i64(50))));
-        assert_eq!(parse_dimension(" 12.5px"), Some(tok_dimension(Number { micro: 12_500_000, int: false }, "px")));
+        assert_eq!(
+            parse_dimension("50%"),
+            Some(tok_percent(Number::from_i64(50)))
+        );
+        assert_eq!(
+            parse_dimension(" 12.5px"),
+            Some(tok_dimension(
+                Number {
+                    micro: 12_500_000,
+                    int: false
+                },
+                "px"
+            ))
+        );
         assert_eq!(parse_dimension("abc"), None);
         assert_eq!(parse_dimension("-5"), None);
         assert_eq!(parse_non_negative_integer("3px"), Some(3));
@@ -573,16 +688,33 @@ mod tests {
     #[test]
     fn alignment_hints() {
         let (d, n) = el("p", &[("align", "CENTER")]);
-        assert_eq!(names(&d, n), vec![("text-align".to_string(), "-webkit-center".to_string())]);
+        assert_eq!(
+            names(&d, n),
+            vec![("text-align".to_string(), "-webkit-center".to_string())]
+        );
         let (d, n) = el("td", &[("align", "middle")]);
-        assert_eq!(names(&d, n), vec![("text-align".to_string(), "center".to_string())]);
-        let (d, n) = el("table", &[("align", "center"), ("width", "80%"), ("border", "1"), ("cellspacing", "0")]);
+        assert_eq!(
+            names(&d, n),
+            vec![("text-align".to_string(), "center".to_string())]
+        );
+        let (d, n) = el(
+            "table",
+            &[
+                ("align", "center"),
+                ("width", "80%"),
+                ("border", "1"),
+                ("cellspacing", "0"),
+            ],
+        );
         let h = names(&d, n);
         assert!(h.contains(&("margin-left".into(), "auto".into())));
         assert!(h.contains(&("width".into(), "80%".into())));
         assert!(h.contains(&("border-top-style".into(), "outset".into())));
         assert!(h.contains(&("border-spacing".into(), "0px".into())));
-        let (d, n) = el("img", &[("align", "left"), ("width", "10"), ("hspace", "4")]);
+        let (d, n) = el(
+            "img",
+            &[("align", "left"), ("width", "10"), ("hspace", "4")],
+        );
         let h = names(&d, n);
         assert!(h.contains(&("float".into(), "left".into())));
         assert!(h.contains(&("width".into(), "10px".into())));
@@ -593,7 +725,14 @@ mod tests {
 
     #[test]
     fn colours_fonts_lists() {
-        let (d, n) = el("font", &[("color", "red"), ("size", "+2"), ("face", "Arial, Helvetica")]);
+        let (d, n) = el(
+            "font",
+            &[
+                ("color", "red"),
+                ("size", "+2"),
+                ("face", "Arial, Helvetica"),
+            ],
+        );
         let h = names(&d, n);
         assert_eq!(h[0].0, "color");
         assert!(h.contains(&("font-size".into(), "x-large".into())));
@@ -629,8 +768,14 @@ mod tests {
         assert!(h.contains(&("width".into(), "40ch".into())));
         assert!(h.contains(&("height".into(), "5lh".into())));
         let (d, n) = el("span", &[("dir", "rtl")]);
-        assert_eq!(names(&d, n), vec![("direction".to_string(), "rtl".to_string())]);
-        let (d, n) = el("td", &[("valign", "top"), ("nowrap", ""), ("bgcolor", "silver")]);
+        assert_eq!(
+            names(&d, n),
+            vec![("direction".to_string(), "rtl".to_string())]
+        );
+        let (d, n) = el(
+            "td",
+            &[("valign", "top"), ("nowrap", ""), ("bgcolor", "silver")],
+        );
         let h = names(&d, n);
         assert!(h.contains(&("vertical-align".into(), "top".into())));
         assert!(h.contains(&("white-space".into(), "nowrap".into())));
@@ -641,7 +786,19 @@ mod tests {
         let mut d = Document::new();
         let html = d.create_element("html", vec![]);
         d.append(Document::ROOT, html);
-        let table = d.create_element("table", vec![Attribute { name: "border".into(), value: "1".into() }, Attribute { name: "cellpadding".into(), value: "3".into() }]);
+        let table = d.create_element(
+            "table",
+            vec![
+                Attribute {
+                    name: "border".into(),
+                    value: "1".into(),
+                },
+                Attribute {
+                    name: "cellpadding".into(),
+                    value: "3".into(),
+                },
+            ],
+        );
         d.append(html, table);
         let tr = d.create_element("tr", vec![]);
         d.append(table, tr);

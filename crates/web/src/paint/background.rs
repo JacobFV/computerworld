@@ -33,13 +33,19 @@ use cw_scene::{Color, Primitive, Rect as SRect};
 use super::{border, parts, px, snap, upx, Painter, RgbaImage, State};
 use crate::dom::NodeId;
 use crate::geom::{Au, Rect};
-use crate::style::computed::{BackgroundBox, BackgroundImage, BackgroundLayer, BackgroundRepeat, BackgroundSize, ComputedStyle, GradientStop, LengthPercentageAuto};
+use crate::style::computed::{
+    BackgroundBox, BackgroundImage, BackgroundLayer, BackgroundRepeat, BackgroundSize,
+    ComputedStyle, GradientStop, LengthPercentageAuto,
+};
 
 const MAX_TILES: usize = 4096;
 const MAX_GRADIENT_SIDE: u32 = 512;
 
 fn has_background(s: &ComputedStyle) -> bool {
-    s.background_color.3 != 0 || s.background.iter().any(|l| !matches!(l.image, BackgroundImage::None))
+    s.background_color.3 != 0
+        || s.background
+            .iter()
+            .any(|l| !matches!(l.image, BackgroundImage::None))
 }
 
 /// Canvas background propagation. Sets `Scene::background` and paints the root
@@ -54,17 +60,34 @@ pub(crate) fn paint_canvas(p: &mut Painter, state: &State) {
         _ => None,
     };
     let Some(src) = source else { return };
-    let Some(style) = p.styles.get(src).cloned() else { return };
+    let Some(style) = p.styles.get(src).cloned() else {
+        return;
+    };
     p.canvas_source = Some(src);
     if style.background_color.3 != 0 {
         p.background = style.background_color;
     }
-    if style.background.iter().all(|l| matches!(l.image, BackgroundImage::None)) {
+    if style
+        .background
+        .iter()
+        .all(|l| matches!(l.image, BackgroundImage::None))
+    {
         return;
     }
     // Layers are positioned relative to the root element's box; the viewport is the
     // painting area.
-    let root_rect = p.tree.rects_of(html.unwrap_or(src)).first().copied().unwrap_or(Rect::new(Au::ZERO, Au::ZERO, p.tree.viewport_width, p.tree.viewport_height)).translate(state.origin.x, state.origin.y);
+    let root_rect = p
+        .tree
+        .rects_of(html.unwrap_or(src))
+        .first()
+        .copied()
+        .unwrap_or(Rect::new(
+            Au::ZERO,
+            Au::ZERO,
+            p.tree.viewport_width,
+            p.tree.viewport_height,
+        ))
+        .translate(state.origin.x, state.origin.y);
     let vp = SRect::new(0, 0, p.viewport.width, p.viewport.height);
     let key = (src, u32::MAX >> 20);
     let clipped = state.clipped(vp);
@@ -76,14 +99,28 @@ pub(crate) fn paint_canvas(p: &mut Painter, state: &State) {
 /// The background of one box fragment. `border_box`, `padding_box` and
 /// `content_box` are absolute (`Au`).
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_background(p: &mut Painter, key: (NodeId, u32), state: &State, style: &ComputedStyle, border_box: Rect, padding_box: Rect, content_box: Rect, first: bool, last: bool) {
+pub(crate) fn paint_background(
+    p: &mut Painter,
+    key: (NodeId, u32),
+    state: &State,
+    style: &ComputedStyle,
+    border_box: Rect,
+    padding_box: Rect,
+    content_box: Rect,
+    first: bool,
+    last: bool,
+) {
     let srect = snap(border_box);
     let pick = |b: BackgroundBox| match b {
         BackgroundBox::BorderBox => border_box,
         BackgroundBox::PaddingBox => padding_box,
         BackgroundBox::ContentBox => content_box,
     };
-    let color_clip = style.background.last().map(|l| l.clip).unwrap_or(BackgroundBox::BorderBox);
+    let color_clip = style
+        .background
+        .last()
+        .map(|l| l.clip)
+        .unwrap_or(BackgroundBox::BorderBox);
     if style.background_color.3 != 0 {
         let area = snap(pick(color_clip));
         if area.width > 0 && area.height > 0 {
@@ -107,10 +144,29 @@ pub(crate) fn paint_background(p: &mut Painter, key: (NodeId, u32), state: &Stat
             };
             match border::uniform_radius(&radii) {
                 Some(0) => {
-                    p.emit(state, id, area, Primitive::Box { fill, border: None, border_width: 0 });
+                    p.emit(
+                        state,
+                        id,
+                        area,
+                        Primitive::Box {
+                            fill,
+                            border: None,
+                            border_width: 0,
+                        },
+                    );
                 }
                 Some(r) if area == srect => {
-                    p.emit(state, id, area, Primitive::RoundedBox { fill, border: None, border_width: 0, radius: r });
+                    p.emit(
+                        state,
+                        id,
+                        area,
+                        Primitive::RoundedBox {
+                            fill,
+                            border: None,
+                            border_width: 0,
+                            radius: r,
+                        },
+                    );
                 }
                 _ => {
                     let pts = border::rounded_polygon(area, radii);
@@ -129,17 +185,42 @@ pub(crate) fn paint_background(p: &mut Painter, key: (NodeId, u32), state: &Stat
         let mut clipped = state.clipped(painting);
         if let Some(r) = border::uniform_radius(&radii) {
             if r > 0 && clipped.rounded_clip.is_none() {
-                clipped.rounded_clip = Some(cw_scene::RoundedClip { rect: srect, radius: r });
+                clipped.rounded_clip = Some(cw_scene::RoundedClip {
+                    rect: srect,
+                    radius: r,
+                });
             }
         }
-        paint_layer(p, key, &clipped, layer, pick(layer.origin), border_box, padding_box, vp);
+        paint_layer(
+            p,
+            key,
+            &clipped,
+            layer,
+            pick(layer.origin),
+            border_box,
+            padding_box,
+            vp,
+        );
     }
 }
 
 /// Paints one image layer positioned in `origin_box` and clipped by `state`.
 #[allow(clippy::too_many_arguments)]
-fn paint_layer(p: &mut Painter, key: (NodeId, u32), state: &State, layer: &BackgroundLayer, origin_box: Rect, _border_box: Rect, _padding_box: Rect, viewport: SRect) {
-    let area = if layer.attachment_fixed { viewport } else { snap(origin_box) };
+fn paint_layer(
+    p: &mut Painter,
+    key: (NodeId, u32),
+    state: &State,
+    layer: &BackgroundLayer,
+    origin_box: Rect,
+    _border_box: Rect,
+    _padding_box: Rect,
+    viewport: SRect,
+) {
+    let area = if layer.attachment_fixed {
+        viewport
+    } else {
+        snap(origin_box)
+    };
     if area.width == 0 || area.height == 0 {
         return;
     }
@@ -172,14 +253,28 @@ fn paint_layer(p: &mut Painter, key: (NodeId, u32), state: &State, layer: &Backg
         g => rasterize_gradient(p, tw, th, g),
     };
     let (repeat_x, repeat_y) = match layer.repeat {
-        BackgroundRepeat::Repeat | BackgroundRepeat::Space | BackgroundRepeat::Round => (true, true),
+        BackgroundRepeat::Repeat | BackgroundRepeat::Space | BackgroundRepeat::Round => {
+            (true, true)
+        }
         BackgroundRepeat::RepeatX => (true, false),
         BackgroundRepeat::RepeatY => (false, true),
         BackgroundRepeat::NoRepeat => (false, false),
     };
     let Some(clip) = state.clip else { return };
-    let xs = tile_positions(area.x as i64 + pos_x, tw, repeat_x, clip.x as i64, clip.right() as i64);
-    let ys = tile_positions(area.y as i64 + pos_y, th, repeat_y, clip.y as i64, clip.bottom() as i64);
+    let xs = tile_positions(
+        area.x as i64 + pos_x,
+        tw,
+        repeat_x,
+        clip.x as i64,
+        clip.right() as i64,
+    );
+    let ys = tile_positions(
+        area.y as i64 + pos_y,
+        th,
+        repeat_y,
+        clip.y as i64,
+        clip.bottom() as i64,
+    );
     let mut n = 0;
     for &y in &ys {
         for &x in &xs {
@@ -193,7 +288,16 @@ fn paint_layer(p: &mut Painter, key: (NodeId, u32), state: &State, layer: &Backg
             if bounds.intersection(clip).is_none() {
                 continue;
             }
-            p.emit(state, id, bounds, Primitive::Image { width: pixels.width, height: pixels.height, rgba: pixels.rgba.clone() });
+            p.emit(
+                state,
+                id,
+                bounds,
+                Primitive::Image {
+                    width: pixels.width,
+                    height: pixels.height,
+                    rgba: pixels.rgba.clone(),
+                },
+            );
         }
     }
 }
@@ -218,9 +322,15 @@ fn tile_positions(start: i64, size: u32, repeat: bool, lo: i64, hi: i64) -> Vec<
 fn resolve_position(v: crate::style::computed::LengthPercentage, area: i64, size: i64) -> i64 {
     match v {
         crate::style::computed::LengthPercentage::Length(l) => px(l) as i64,
-        crate::style::computed::LengthPercentage::Percent(pc) => ((area - size) * pc as i64 + 5000) / 10_000,
-        crate::style::computed::LengthPercentage::Calc(l, pc) => px(l) as i64 + ((area - size) * pc as i64 + 5000) / 10_000,
-        v @ crate::style::computed::LengthPercentage::Clamp { .. } => px(v.resolve(crate::geom::Au::from_px_i32((area - size) as i32))) as i64,
+        crate::style::computed::LengthPercentage::Percent(pc) => {
+            ((area - size) * pc as i64 + 5000) / 10_000
+        }
+        crate::style::computed::LengthPercentage::Calc(l, pc) => {
+            px(l) as i64 + ((area - size) * pc as i64 + 5000) / 10_000
+        }
+        v @ crate::style::computed::LengthPercentage::Clamp { .. } => {
+            px(v.resolve(crate::geom::Au::from_px_i32((area - size) as i32))) as i64
+        }
     }
 }
 
@@ -235,11 +345,24 @@ fn tile_size(size: BackgroundSize, intrinsic: Option<(u32, u32)>, area: (u32, u3
                 return (0, 0);
             }
             // Scale so the image covers (or fits) the area, preserving aspect.
-            let by_w = (aw as u64, (aw as u64 * ih as u64 + iw as u64 / 2) / iw as u64);
-            let by_h = ((ah as u64 * iw as u64 + ih as u64 / 2) / ih as u64, ah as u64);
+            let by_w = (
+                aw as u64,
+                (aw as u64 * ih as u64 + iw as u64 / 2) / iw as u64,
+            );
+            let by_h = (
+                (ah as u64 * iw as u64 + ih as u64 / 2) / ih as u64,
+                ah as u64,
+            );
             let cover = matches!(size, BackgroundSize::Cover);
-            let pick = if (by_w.1 >= ah as u64) == cover { by_w } else { by_h };
-            (pick.0.min(u32::MAX as u64) as u32, pick.1.min(u32::MAX as u64) as u32)
+            let pick = if (by_w.1 >= ah as u64) == cover {
+                by_w
+            } else {
+                by_h
+            };
+            (
+                pick.0.min(u32::MAX as u64) as u32,
+                pick.1.min(u32::MAX as u64) as u32,
+            )
         }
         BackgroundSize::Explicit(w, h) => {
             let aw_au = Au::from_px_i32(aw as i32);
@@ -254,8 +377,22 @@ fn tile_size(size: BackgroundSize, intrinsic: Option<(u32, u32)>, area: (u32, u3
             };
             match (w_px, h_px) {
                 (Some(w), Some(h)) => (w, h),
-                (Some(w), None) => (w, if iw == 0 { ih } else { (w as u64 * ih as u64 / iw as u64) as u32 }),
-                (None, Some(h)) => (if ih == 0 { iw } else { (h as u64 * iw as u64 / ih as u64) as u32 }, h),
+                (Some(w), None) => (
+                    w,
+                    if iw == 0 {
+                        ih
+                    } else {
+                        (w as u64 * ih as u64 / iw as u64) as u32
+                    },
+                ),
+                (None, Some(h)) => (
+                    if ih == 0 {
+                        iw
+                    } else {
+                        (h as u64 * iw as u64 / ih as u64) as u32
+                    },
+                    h,
+                ),
                 (None, None) => (iw, ih),
             }
         }
@@ -265,7 +402,11 @@ fn tile_size(size: BackgroundSize, intrinsic: Option<(u32, u32)>, area: (u32, u3
 /// Nearest-neighbour resampling to `w × h`.
 pub(crate) fn resample(img: &RgbaImage, w: u32, h: u32) -> RgbaImage {
     if w == 0 || h == 0 || img.width == 0 || img.height == 0 {
-        return RgbaImage { width: w, height: h, rgba: vec![0; (w as usize) * (h as usize) * 4] };
+        return RgbaImage {
+            width: w,
+            height: h,
+            rgba: vec![0; (w as usize) * (h as usize) * 4],
+        };
     }
     let mut out = Vec::with_capacity((w as usize) * (h as usize) * 4);
     for y in 0..h {
@@ -276,7 +417,11 @@ pub(crate) fn resample(img: &RgbaImage, w: u32, h: u32) -> RgbaImage {
             out.extend_from_slice(&img.rgba[i..i + 4]);
         }
     }
-    RgbaImage { width: w, height: h, rgba: out }
+    RgbaImage {
+        width: w,
+        height: h,
+        rgba: out,
+    }
 }
 
 /// Colour stops resolved to `(offset in 1/65536 of the gradient line, colour)`.
@@ -295,7 +440,11 @@ fn resolve_stops(stops: &[GradientStop], line_len_au: Au) -> Vec<(i64, Color)> {
                 }
             }
             crate::style::computed::LengthPercentage::Calc(l, pc) => {
-                let a = if line_len_au.0 == 0 { 0 } else { l.0 as i64 * 65_536 / line_len_au.0 as i64 };
+                let a = if line_len_au.0 == 0 {
+                    0
+                } else {
+                    l.0 as i64 * 65_536 / line_len_au.0 as i64
+                };
                 a + pc as i64 * 65_536 / 10_000
             }
             v @ crate::style::computed::LengthPercentage::Clamp { .. } => {
@@ -341,7 +490,11 @@ fn resolve_stops(stops: &[GradientStop], line_len_au: Au) -> Vec<(i64, Color)> {
         }
         i += 1;
     }
-    stops.iter().zip(pos).map(|(s, p)| (p.unwrap(), s.color)).collect()
+    stops
+        .iter()
+        .zip(pos)
+        .map(|(s, p)| (p.unwrap(), s.color))
+        .collect()
 }
 
 fn color_at(stops: &[(i64, Color)], t: i64) -> Color {
@@ -361,7 +514,12 @@ fn color_at(stops: &[(i64, Color)], t: i64) -> Color {
             }
             let f = (t - a) * 256 / (b - a);
             let mix = |x: u8, y: u8| ((x as i64 * (256 - f) + y as i64 * f) / 256) as u8;
-            return Color(mix(ca.0, cb.0), mix(ca.1, cb.1), mix(ca.2, cb.2), mix(ca.3, cb.3));
+            return Color(
+                mix(ca.0, cb.0),
+                mix(ca.1, cb.1),
+                mix(ca.2, cb.2),
+                mix(ca.3, cb.3),
+            );
         }
     }
     last.1
@@ -369,7 +527,12 @@ fn color_at(stops: &[(i64, Color)], t: i64) -> Color {
 
 /// Rasterises a gradient at `w × h` (the tile size), cached by size and gradient
 /// within this paint.
-pub(crate) fn rasterize_gradient(p: &mut Painter, w: u32, h: u32, g: &BackgroundImage) -> Rc<RgbaImage> {
+pub(crate) fn rasterize_gradient(
+    p: &mut Painter,
+    w: u32,
+    h: u32,
+    g: &BackgroundImage,
+) -> Rc<RgbaImage> {
     let key = (w, h, g.clone());
     if let Some(cached) = p.gradients.get(&key) {
         let bytes = cached.clone();
@@ -384,14 +547,20 @@ pub(crate) fn rasterize_gradient(p: &mut Painter, w: u32, h: u32, g: &Background
 
 fn image_from_cached(w: u32, h: u32, bytes: &[u8], g: &BackgroundImage) -> RgbaImage {
     let (rw, rh) = raster_size(w, h, g);
-    RgbaImage { width: rw, height: rh, rgba: bytes.to_vec() }
+    RgbaImage {
+        width: rw,
+        height: rh,
+        rgba: bytes.to_vec(),
+    }
 }
 
 /// The raster's own size: a strip for axis-aligned linear gradients, otherwise the
 /// tile size capped on its longer side.
 fn raster_size(w: u32, h: u32, g: &BackgroundImage) -> (u32, u32) {
     match g {
-        BackgroundImage::LinearGradient { angle_centi_deg, .. } => {
+        BackgroundImage::LinearGradient {
+            angle_centi_deg, ..
+        } => {
             let a = angle_centi_deg.rem_euclid(36_000);
             if a == 0 || a == 18_000 {
                 (1, h.clamp(1, MAX_GRADIENT_SIDE * 8))
@@ -410,7 +579,10 @@ fn capped(w: u32, h: u32) -> (u32, u32) {
     if m <= MAX_GRADIENT_SIDE {
         (w.max(1), h.max(1))
     } else {
-        ((w as u64 * MAX_GRADIENT_SIDE as u64 / m as u64).max(1) as u32, (h as u64 * MAX_GRADIENT_SIDE as u64 / m as u64).max(1) as u32)
+        (
+            (w as u64 * MAX_GRADIENT_SIDE as u64 / m as u64).max(1) as u32,
+            (h as u64 * MAX_GRADIENT_SIDE as u64 / m as u64).max(1) as u32,
+        )
     }
 }
 
@@ -418,7 +590,10 @@ pub(crate) fn rasterize_gradient_uncached(w: u32, h: u32, g: &BackgroundImage) -
     let (rw, rh) = raster_size(w, h, g);
     let mut rgba = Vec::with_capacity((rw as usize) * (rh as usize) * 4);
     match g {
-        BackgroundImage::LinearGradient { angle_centi_deg, stops } => {
+        BackgroundImage::LinearGradient {
+            angle_centi_deg,
+            stops,
+        } => {
             let s = super::trig::sin_1024(*angle_centi_deg) as i64;
             let c = super::trig::cos_1024(*angle_centi_deg) as i64;
             // Gradient line length in 1/1024 px over the box size.
@@ -428,10 +603,22 @@ pub(crate) fn rasterize_gradient_uncached(w: u32, h: u32, g: &BackgroundImage) -
             for py in 0..rh {
                 for pxl in 0..rw {
                     // Pixel centre in doubled box coordinates relative to the centre.
-                    let x2 = if rw == 1 { 0 } else { (2 * pxl as i64 + 1) * bw / rw as i64 - bw };
-                    let y2 = if rh == 1 { 0 } else { (2 * py as i64 + 1) * bh / rh as i64 - bh };
+                    let x2 = if rw == 1 {
+                        0
+                    } else {
+                        (2 * pxl as i64 + 1) * bw / rw as i64 - bw
+                    };
+                    let y2 = if rh == 1 {
+                        0
+                    } else {
+                        (2 * py as i64 + 1) * bh / rh as i64 - bh
+                    };
                     let proj = x2 * s - y2 * c; // in 2 * 1/1024 px units
-                    let t = if len_1024 == 0 { 32_768 } else { ((proj + len_1024) * 65_536) / (2 * len_1024) };
+                    let t = if len_1024 == 0 {
+                        32_768
+                    } else {
+                        ((proj + len_1024) * 65_536) / (2 * len_1024)
+                    };
                     let col = color_at(&stops, t);
                     rgba.extend_from_slice(&[col.0, col.1, col.2, col.3]);
                 }
@@ -442,7 +629,11 @@ pub(crate) fn rasterize_gradient_uncached(w: u32, h: u32, g: &BackgroundImage) -
             // Farthest-corner radii, doubled: circle r2 = sqrt(w²+h²); ellipse
             // rx2 = w√2, ry2 = h√2.
             let r2 = super::trig::isqrt(bw * bw + bh * bh).max(1);
-            let ray_au = if *circle { Au((r2 * 32) as i32) } else { Au((super::trig::isqrt(2 * bw * bw) * 32) as i32) };
+            let ray_au = if *circle {
+                Au((r2 * 32) as i32)
+            } else {
+                Au((super::trig::isqrt(2 * bw * bw) * 32) as i32)
+            };
             let stops = resolve_stops(stops, ray_au);
             for py in 0..rh {
                 for pxl in 0..rw {
@@ -467,5 +658,9 @@ pub(crate) fn rasterize_gradient_uncached(w: u32, h: u32, g: &BackgroundImage) -
             rgba.resize((rw as usize) * (rh as usize) * 4, 0);
         }
     }
-    RgbaImage { width: rw, height: rh, rgba }
+    RgbaImage {
+        width: rw,
+        height: rh,
+        rgba,
+    }
 }

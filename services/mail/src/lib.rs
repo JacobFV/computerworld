@@ -798,7 +798,10 @@ mod tests {
     struct Dom(cw_web::dom::Document);
     impl Dom {
         fn of(response: &HttpResponse) -> Dom {
-            assert_eq!(response.header("content-type"), Some(web::html::HTML_MEDIA_TYPE));
+            assert_eq!(
+                response.header("content-type"),
+                Some(web::html::HTML_MEDIA_TYPE)
+            );
             let html = String::from_utf8(response.body.clone()).unwrap();
             web::html::validate_strict(&html).unwrap_or_else(|e| panic!("strict: {e:?}"));
             Dom(cw_web::html::parse(&html))
@@ -807,10 +810,17 @@ mod tests {
             !self.0.by_id(id).is_empty()
         }
         fn node(&self, id: &str) -> cw_web::dom::NodeId {
-            *self.0.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+            *self
+                .0
+                .by_id(id)
+                .first()
+                .unwrap_or_else(|| panic!("no element #{id}"))
         }
         fn attr(&self, id: &str, name: &str) -> String {
-            self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+            self.0
+                .attr(self.node(id), name)
+                .unwrap_or_default()
+                .to_owned()
         }
         fn tag(&self, id: &str) -> String {
             self.0.tag(self.node(id)).unwrap_or_default().to_owned()
@@ -819,21 +829,35 @@ mod tests {
             cw_web::paint::semantics::collapse(&self.0.text_content(self.node(id)))
         }
         fn body(&self) -> String {
-            self.0.body().map(|b| self.0.text_content(b)).unwrap_or_default()
+            self.0
+                .body()
+                .map(|b| self.0.text_content(b))
+                .unwrap_or_default()
         }
         fn classes(&self, id: &str) -> Vec<String> {
-            self.attr(id, "class").split_whitespace().map(str::to_owned).collect()
+            self.attr(id, "class")
+                .split_whitespace()
+                .map(str::to_owned)
+                .collect()
         }
     }
     fn get(v: &mut Value, actor: &str, url: &str) -> HttpResponse {
-        MailService.handle(v, &context(actor), &HttpRequest::get(url)).unwrap()
+        MailService
+            .handle(v, &context(actor), &HttpRequest::get(url))
+            .unwrap()
     }
     /// What a browser sends when a form is submitted: urlencoded fields.
     fn post(v: &mut Value, actor: &str, url: &str, fields: &[(&str, &str)]) -> HttpResponse {
         let mut r = HttpRequest::get(url);
         r.method = "POST".into();
-        r.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
-        r.body = web::html::href("", fields).trim_start_matches('?').as_bytes().to_vec();
+        r.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
+        r.body = web::html::href("", fields)
+            .trim_start_matches('?')
+            .as_bytes()
+            .to_vec();
         MailService.handle(v, &context(actor), &r).unwrap()
     }
     fn seeded(skin: &str) -> Value {
@@ -845,7 +869,9 @@ mod tests {
             SendMail {
                 to: vec!["bob@northstar.example".into()],
                 subject: "Atlas launch checklist".into(),
-                body: "Doc: http://docs.google.com/documents/atlas-launch.\n\nWalk it top to bottom.".into(),
+                body:
+                    "Doc: http://docs.google.com/documents/atlas-launch.\n\nWalk it top to bottom."
+                        .into(),
                 ..Default::default()
             },
         )
@@ -865,83 +891,213 @@ mod tests {
     }
     #[test]
     fn every_page_of_every_skin_is_strict_html_with_the_documented_ids() {
-        for (skin, brand) in [("gmail", "Gmail"), ("outlook", "Outlook"), ("mailcom", "mail.com")] {
+        for (skin, brand) in [
+            ("gmail", "Gmail"),
+            ("outlook", "Outlook"),
+            ("mailcom", "mail.com"),
+        ] {
             let mut v = seeded(skin);
             let home = Dom::of(&get(&mut v, "alice", "http://mail/"));
             assert_eq!(home.text("wordmark"), brand, "{skin}");
             // The search box is a POST form, as the Page form was, with the same field name.
-            assert_eq!((home.tag("search"), home.attr("search", "action"), home.attr("search", "method")), ("form".into(), "/search".into(), "post".into()));
-            assert_eq!((home.tag("search-q"), home.attr("search-q", "name"), home.attr("search-q", "aria-label")), ("input".into(), "q".into(), "Search mail".into()));
+            assert_eq!(
+                (
+                    home.tag("search"),
+                    home.attr("search", "action"),
+                    home.attr("search", "method")
+                ),
+                ("form".into(), "/search".into(), "post".into())
+            );
+            assert_eq!(
+                (
+                    home.tag("search-q"),
+                    home.attr("search-q", "name"),
+                    home.attr("search-q", "aria-label")
+                ),
+                ("input".into(), "q".into(), "Search mail".into())
+            );
             assert_eq!(home.tag("search-submit"), "button");
             assert!(!home.has("search-clear"), "nothing to clear yet");
             assert_eq!(home.attr("compose", "href"), "/?folder=inbox&compose=1");
             assert_eq!(home.text("account-address"), "alice@northstar.example");
             assert_eq!(home.text("account-folder"), "1 unread");
-            for (folder, href) in [("inbox", "/?folder=inbox"), ("starred", "/?folder=starred"), ("sent", "/?folder=sent"), ("archive", "/?folder=archive")] {
-                assert_eq!((home.tag(&format!("folder-{folder}")), home.attr(&format!("folder-{folder}"), "href")), ("a".into(), href.into()), "{skin}");
+            for (folder, href) in [
+                ("inbox", "/?folder=inbox"),
+                ("starred", "/?folder=starred"),
+                ("sent", "/?folder=sent"),
+                ("archive", "/?folder=archive"),
+            ] {
+                assert_eq!(
+                    (
+                        home.tag(&format!("folder-{folder}")),
+                        home.attr(&format!("folder-{folder}"), "href")
+                    ),
+                    ("a".into(), href.into()),
+                    "{skin}"
+                );
             }
             assert!(home.classes("folder-inbox").contains(&"on".to_owned()));
             assert_eq!(home.text("folder-inbox-count"), "1");
             // The row is one link into the conversation; unread mail is marked so the sheet bolds it.
-            assert_eq!((home.tag("row-mail-2"), home.attr("row-mail-2", "href")), ("a".into(), "/?folder=inbox&thread=mail-1".into()));
+            assert_eq!(
+                (home.tag("row-mail-2"), home.attr("row-mail-2", "href")),
+                ("a".into(), "/?folder=inbox&thread=mail-1".into())
+            );
             assert!(home.classes("row-mail-2").contains(&"unread".to_owned()));
             assert_eq!(home.text("row-mail-2-sender"), "Bob");
-            assert_eq!(home.text("row-mail-2-subject"), "Re: Atlas launch checklist");
-            assert_eq!(home.text("row-mail-2-snippet"), "On it <today> & tomorrow", "seed text is escaped, not markup");
+            assert_eq!(
+                home.text("row-mail-2-subject"),
+                "Re: Atlas launch checklist"
+            );
+            assert_eq!(
+                home.text("row-mail-2-snippet"),
+                "On it <today> & tomorrow",
+                "seed text is escaped, not markup"
+            );
             assert_eq!(home.text("row-mail-2-count"), "2");
-            assert!(home.has("row-mail-2-time") && home.has("row-mail-2-star") && home.has("row-mail-2-avatar"));
+            assert!(
+                home.has("row-mail-2-time")
+                    && home.has("row-mail-2-star")
+                    && home.has("row-mail-2-avatar")
+            );
             assert!(!home.has("read-mail-1"), "no conversation is open");
             // The row's star is a button of its own form, not an icon inside the row link: it
             // posts the same toggle the reading pane posts and says where it was pressed.
             assert_eq!(home.tag("row-mail-2-star"), "button", "{skin}");
             assert_eq!(
-                (home.attr("row-mail-2-star", "name"), home.attr("row-mail-2-star", "value"), home.attr("row-mail-2-star", "aria-label")),
+                (
+                    home.attr("row-mail-2-star", "name"),
+                    home.attr("row-mail-2-star", "value"),
+                    home.attr("row-mail-2-star", "aria-label")
+                ),
                 ("star".into(), "toggle".into(), "Star".into()),
                 "{skin}"
             );
             assert_eq!(
-                (home.attr("row-mail-2-star-form", "action"), home.attr("row-mail-2-star-form", "method")),
+                (
+                    home.attr("row-mail-2-star-form", "action"),
+                    home.attr("row-mail-2-star-form", "method")
+                ),
                 ("/messages/mail-2".into(), "post".into()),
                 "{skin}"
             );
             // The one toolbar icon is a link to this same view, which is what refresh means.
-            assert_eq!((home.tag("list-refresh"), home.attr("list-refresh", "href")), ("a".into(), "/?folder=inbox".into()), "{skin}");
+            assert_eq!(
+                (home.tag("list-refresh"), home.attr("list-refresh", "href")),
+                ("a".into(), "/?folder=inbox".into()),
+                "{skin}"
+            );
             // Nothing is drawn that cannot be pressed: no category strip, no select-all box.
-            assert!(!home.body().contains("Promotions") && !home.body().contains("Focused"), "{skin}");
+            assert!(
+                !home.body().contains("Promotions") && !home.body().contains("Focused"),
+                "{skin}"
+            );
             // Gmail's rail used to call this "All Mail" while showing only what was archived.
             assert_eq!(home.text("folder-archive-label"), "Archive", "{skin}");
 
             // The conversation: both messages, the doc link as a real link in the prose, the
             // three metadata buttons in one form, the label form and the reply form.
-            let thread = Dom::of(&get(&mut v, "alice", "http://mail/?folder=inbox&thread=mail-1"));
+            let thread = Dom::of(&get(
+                &mut v,
+                "alice",
+                "http://mail/?folder=inbox&thread=mail-1",
+            ));
             assert_eq!(thread.text("thread-subject"), "Re: Atlas launch checklist");
             assert_eq!(thread.text("thread-size"), "2 in thread");
             assert!(thread.classes("row-mail-2").contains(&"open".to_owned()));
             assert_eq!(thread.text("read-mail-1-name"), "Alice");
-            assert!(thread.text("read-mail-1-line").contains("alice@northstar.example"));
-            assert_eq!(thread.attr("read-mail-1-link-1", "href"), "http://docs.google.com/documents/atlas-launch");
-            assert_eq!(thread.text("read-mail-1-link-1"), "http://docs.google.com/documents/atlas-launch");
-            assert!(thread.text("read-mail-1-body").ends_with("Walk it top to bottom."));
-            assert_eq!((thread.attr("read-mail-2-actions", "action"), thread.attr("read-mail-2-actions", "method")), ("/messages/mail-2".into(), "post".into()));
-            assert_eq!((thread.attr("read-mail-2-star", "name"), thread.attr("read-mail-2-star", "value"), thread.text("read-mail-2-star")), ("star".into(), "toggle".into(), "Star".into()));
-            assert_eq!((thread.attr("read-mail-2-read", "name"), thread.attr("read-mail-2-read", "value"), thread.text("read-mail-2-read")), ("read".into(), "true".into(), "Mark read".into()));
-            assert_eq!((thread.attr("read-mail-2-archive", "name"), thread.attr("read-mail-2-archive", "value")), ("archive".into(), "true".into()));
-            assert_eq!(thread.attr("read-mail-2-permalink", "href"), "/threads/mail-1");
-            assert_eq!((thread.attr("read-mail-2-label", "action"), thread.attr("read-mail-2-label-label", "name")), ("/messages/mail-2".into(), "label".into()));
+            assert!(thread
+                .text("read-mail-1-line")
+                .contains("alice@northstar.example"));
+            assert_eq!(
+                thread.attr("read-mail-1-link-1", "href"),
+                "http://docs.google.com/documents/atlas-launch"
+            );
+            assert_eq!(
+                thread.text("read-mail-1-link-1"),
+                "http://docs.google.com/documents/atlas-launch"
+            );
+            assert!(thread
+                .text("read-mail-1-body")
+                .ends_with("Walk it top to bottom."));
+            assert_eq!(
+                (
+                    thread.attr("read-mail-2-actions", "action"),
+                    thread.attr("read-mail-2-actions", "method")
+                ),
+                ("/messages/mail-2".into(), "post".into())
+            );
+            assert_eq!(
+                (
+                    thread.attr("read-mail-2-star", "name"),
+                    thread.attr("read-mail-2-star", "value"),
+                    thread.text("read-mail-2-star")
+                ),
+                ("star".into(), "toggle".into(), "Star".into())
+            );
+            assert_eq!(
+                (
+                    thread.attr("read-mail-2-read", "name"),
+                    thread.attr("read-mail-2-read", "value"),
+                    thread.text("read-mail-2-read")
+                ),
+                ("read".into(), "true".into(), "Mark read".into())
+            );
+            assert_eq!(
+                (
+                    thread.attr("read-mail-2-archive", "name"),
+                    thread.attr("read-mail-2-archive", "value")
+                ),
+                ("archive".into(), "true".into())
+            );
+            assert_eq!(
+                thread.attr("read-mail-2-permalink", "href"),
+                "/threads/mail-1"
+            );
+            assert_eq!(
+                (
+                    thread.attr("read-mail-2-label", "action"),
+                    thread.attr("read-mail-2-label-label", "name")
+                ),
+                ("/messages/mail-2".into(), "label".into())
+            );
             assert_eq!(thread.tag("read-mail-2-label-submit"), "button");
-            assert_eq!((thread.attr("reply", "action"), thread.attr("reply", "method")), ("/send".into(), "post".into()));
+            assert_eq!(
+                (
+                    thread.attr("reply", "action"),
+                    thread.attr("reply", "method")
+                ),
+                ("/send".into(), "post".into())
+            );
             assert_eq!(thread.attr("reply-to", "value"), "bob@northstar.example");
-            assert_eq!(thread.attr("reply-subject", "value"), "Re: Atlas launch checklist");
-            assert_eq!((thread.tag("reply-body"), thread.attr("reply-body", "name")), ("textarea".into(), "body".into()));
+            assert_eq!(
+                thread.attr("reply-subject", "value"),
+                "Re: Atlas launch checklist"
+            );
+            assert_eq!(
+                (thread.tag("reply-body"), thread.attr("reply-body", "name")),
+                ("textarea".into(), "body".into())
+            );
             assert_eq!(thread.tag("reply-submit"), "button");
             // The permalink route is the same conversation.
             let permalink = Dom::of(&get(&mut v, "alice", "http://mail/threads/mail-1"));
-            assert_eq!(permalink.text("thread-subject"), "Re: Atlas launch checklist");
+            assert_eq!(
+                permalink.text("thread-subject"),
+                "Re: Atlas launch checklist"
+            );
 
             // Compose: the same four fields, posted to the same route.
             let compose = Dom::of(&get(&mut v, "alice", "http://mail/?folder=sent&compose=1"));
-            assert_eq!((compose.attr("new", "action"), compose.attr("new", "method")), ("/send".into(), "post".into()));
-            for (id, name) in [("new-to", "to"), ("new-cc", "cc"), ("new-subject", "subject"), ("new-body", "body")] {
+            assert_eq!(
+                (compose.attr("new", "action"), compose.attr("new", "method")),
+                ("/send".into(), "post".into())
+            );
+            for (id, name) in [
+                ("new-to", "to"),
+                ("new-cc", "cc"),
+                ("new-subject", "subject"),
+                ("new-body", "body"),
+            ] {
                 assert_eq!(compose.attr(id, "name"), name, "{skin}");
             }
             assert_eq!(compose.tag("new-submit"), "button");
@@ -962,48 +1118,113 @@ mod tests {
                 &mut v,
                 "alice",
                 "http://mail/send",
-                &[("to", "bob@northstar.example"), ("subject", "Re: Atlas launch checklist"), ("body", "Ticked.\nAll of it.")],
+                &[
+                    ("to", "bob@northstar.example"),
+                    ("subject", "Re: Atlas launch checklist"),
+                    ("body", "Ticked.\nAll of it."),
+                ],
             ));
             assert_eq!(sent.text("thread-size"), "3 in thread");
             assert_eq!(v["messages"]["mail-3"]["body"], "Ticked.\nAll of it.");
             // Search is a real mutation: it survives into the state and filters the next render.
-            let found = Dom::of(&post(&mut v, "alice", "http://mail/search", &[("q", "nothing")]));
+            let found = Dom::of(&post(
+                &mut v,
+                "alice",
+                "http://mail/search",
+                &[("q", "nothing")],
+            ));
             assert_eq!(v["queries"]["alice"], "nothing");
             assert!(!found.has("row-mail-2") && found.has("list-empty"));
             assert_eq!(found.attr("search-q", "value"), "nothing");
-            assert_eq!((found.tag("search-clear"), found.attr("search-clear-form", "action")), ("button".into(), "/search".into()));
+            assert_eq!(
+                (
+                    found.tag("search-clear"),
+                    found.attr("search-clear-form", "action")
+                ),
+                ("button".into(), "/search".into())
+            );
             let cleared = Dom::of(&post(&mut v, "alice", "http://mail/search", &[("q", "")]));
             assert!(cleared.has("row-mail-2") && !cleared.has("search-clear"));
             // The star button posts `star=toggle` plus the folder it was pressed in.
-            let starred = Dom::of(&post(&mut v, "alice", "http://mail/messages/mail-2", &[("folder", "inbox"), ("star", "toggle")]));
-            assert_eq!(v["messages"]["mail-2"]["mailboxes"]["alice"]["starred"], true);
+            let starred = Dom::of(&post(
+                &mut v,
+                "alice",
+                "http://mail/messages/mail-2",
+                &[("folder", "inbox"), ("star", "toggle")],
+            ));
+            assert_eq!(
+                v["messages"]["mail-2"]["mailboxes"]["alice"]["starred"],
+                true
+            );
             assert_eq!(starred.text("read-mail-2-star"), "Unstar");
-            assert!(starred.classes("row-mail-2-star").contains(&"on".to_owned()));
-            let read = Dom::of(&post(&mut v, "alice", "http://mail/messages/mail-2", &[("folder", "inbox"), ("read", "true")]));
+            assert!(starred
+                .classes("row-mail-2-star")
+                .contains(&"on".to_owned()));
+            let read = Dom::of(&post(
+                &mut v,
+                "alice",
+                "http://mail/messages/mail-2",
+                &[("folder", "inbox"), ("read", "true")],
+            ));
             assert_eq!(read.text("read-mail-2-read"), "Mark unread");
             assert!(read.classes("row-mail-2").contains(&"read".to_owned()));
-            let labelled = Dom::of(&post(&mut v, "alice", "http://mail/messages/mail-2", &[("label", "Atlas")]));
+            let labelled = Dom::of(&post(
+                &mut v,
+                "alice",
+                "http://mail/messages/mail-2",
+                &[("label", "Atlas")],
+            ));
             assert_eq!(labelled.text("read-mail-2-label-0"), "Atlas");
             // The rail's labels are links into the mail that carries them, and the view they
             // open says so in its heading.
-            assert_eq!((labelled.tag("label-0"), labelled.attr("label-0", "href")), ("a".into(), "/?folder=all&label=Atlas".into()), "{skin}");
+            assert_eq!(
+                (labelled.tag("label-0"), labelled.attr("label-0", "href")),
+                ("a".into(), "/?folder=all&label=Atlas".into()),
+                "{skin}"
+            );
             let by_label = Dom::of(&get(&mut v, "alice", "http://mail/?folder=all&label=Atlas"));
             assert_eq!(by_label.text("list-title"), "Atlas");
             // A label belongs to the conversation: the label was typed on mail-2 and the row
             // that stands for the exchange in `all` is its newest message, mail-3.
-            assert!(by_label.has("row-mail-3") && by_label.classes("label-0").contains(&"on".to_owned()), "{skin}");
+            assert!(
+                by_label.has("row-mail-3")
+                    && by_label.classes("label-0").contains(&"on".to_owned()),
+                "{skin}"
+            );
             // A star pressed in the list comes back to the list, not to some other conversation.
             let from_list = Dom::of(&post(
                 &mut v,
                 "alice",
                 "http://mail/messages/mail-2",
-                &[("folder", "inbox"), ("filter", ""), ("thread", ""), ("star", "toggle")],
+                &[
+                    ("folder", "inbox"),
+                    ("filter", ""),
+                    ("thread", ""),
+                    ("star", "toggle"),
+                ],
             ));
-            assert!(!from_list.has("read-mail-2"), "{skin}: the list star does not open the thread");
-            assert_eq!(from_list.text("row-mail-2-star"), "☆", "{skin}: and it unstarred the row");
-            let archived = Dom::of(&post(&mut v, "alice", "http://mail/messages/mail-2", &[("folder", "inbox"), ("archive", "true")]));
-            assert!(!archived.has("row-mail-2"), "{skin}: archived mail leaves the inbox");
-            assert!(Dom::of(&get(&mut v, "alice", "http://mail/?folder=archive")).has("row-mail-2"));
+            assert!(
+                !from_list.has("read-mail-2"),
+                "{skin}: the list star does not open the thread"
+            );
+            assert_eq!(
+                from_list.text("row-mail-2-star"),
+                "☆",
+                "{skin}: and it unstarred the row"
+            );
+            let archived = Dom::of(&post(
+                &mut v,
+                "alice",
+                "http://mail/messages/mail-2",
+                &[("folder", "inbox"), ("archive", "true")],
+            ));
+            assert!(
+                !archived.has("row-mail-2"),
+                "{skin}: archived mail leaves the inbox"
+            );
+            assert!(
+                Dom::of(&get(&mut v, "alice", "http://mail/?folder=archive")).has("row-mail-2")
+            );
         }
     }
     #[test]
@@ -1023,18 +1244,30 @@ mod tests {
                 .unwrap(),
             )
             .unwrap();
-        let sent = Dom::of(&get(&mut v, "alice", "http://mail/?folder=sent&thread=mail-1"));
+        let sent = Dom::of(&get(
+            &mut v,
+            "alice",
+            "http://mail/?folder=sent&thread=mail-1",
+        ));
         assert_eq!(sent.text("wordmark"), "Gmail");
         assert_eq!(sent.text("thread-subject"), "Atlas launch checklist");
         // The doc link in the body is a real navigation control, which is how sites connect.
-        assert_eq!(sent.attr("read-mail-1-link-1", "href"), "http://docs.google.com/documents/atlas-launch");
-        assert_eq!(get(&mut v, "alice", "http://mail/threads/mail-1").status, 200);
+        assert_eq!(
+            sent.attr("read-mail-1-link-1", "href"),
+            "http://docs.google.com/documents/atlas-launch"
+        );
+        assert_eq!(
+            get(&mut v, "alice", "http://mail/threads/mail-1").status,
+            200
+        );
         // Search is a real mutation: it survives into the state and filters the next render.
         let search =
             HttpRequest::json("POST", "http://mail/search", &json!({"q":"nothing"})).unwrap();
         assert_eq!(service.handle(&mut v, &c, &search).unwrap().status, 200);
         assert_eq!(v["queries"]["alice"], "nothing");
-        assert!(!Dom::of(&get(&mut v, "alice", "http://mail/?folder=sent")).body().contains("Atlas launch checklist"));
+        assert!(!Dom::of(&get(&mut v, "alice", "http://mail/?folder=sent"))
+            .body()
+            .contains("Atlas launch checklist"));
         let star = HttpRequest::json(
             "POST",
             "http://mail/messages/mail-1",

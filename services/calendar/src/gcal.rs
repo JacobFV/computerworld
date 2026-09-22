@@ -38,8 +38,18 @@ const CHIPS: usize = 6;
 const INITIALS: [&str; 7] = ["S", "M", "T", "W", "T", "F", "S"];
 const WEEKDAYS: [&str; 7] = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const MONTHS: [&str; 12] = [
-    "January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
-    "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
 ];
 /// The epoch is 09:00 on civil day 0, so a civil day begins nine hours before `d * DAY_US`.
 const EPOCH_OFFSET: u64 = 9 * HOUR_US;
@@ -53,7 +63,9 @@ const MONTH_CHIPS: usize = 3;
 
 fn chip_class(owner: &str) -> String {
     // A rolling hash rather than a byte sum, so anagram-close names (bob, carol) still differ.
-    let hash = owner.bytes().fold(0u32, |h, b| h.wrapping_mul(17).wrapping_add(u32::from(b)));
+    let hash = owner
+        .bytes()
+        .fold(0u32, |h, b| h.wrapping_mul(17).wrapping_add(u32::from(b)));
     format!("c{}", hash as usize % CHIPS)
 }
 /// First microsecond of civil day `d`, clamped at the epoch.
@@ -191,14 +203,24 @@ impl View<'_> {
         } else if y0 == y1 {
             format!("{} – {} {}", &month_name(m0)[..3], &month_name(m1)[..3], y1)
         } else {
-            format!("{} {} – {} {}", &month_name(m0)[..3], y0, &month_name(m1)[..3], y1)
+            format!(
+                "{} {} – {} {}",
+                &month_name(m0)[..3],
+                y0,
+                &month_name(m1)[..3],
+                y1
+            )
         }
     }
     fn header(&self) -> Html {
         let (prev, next) = if self.month {
             let at = civil(self.focus * DAY_US);
             let start = self.month_start();
-            let before = if at.month == 1 { days_in_month(at.year - 1, 12) } else { days_in_month(at.year, at.month - 1) };
+            let before = if at.month == 1 {
+                days_in_month(at.year - 1, 12)
+            } else {
+                days_in_month(at.year, at.month - 1)
+            };
             (
                 u64::try_from(start - before as i64).unwrap_or(0),
                 (start + days_in_month(at.year, at.month) as i64).max(0) as u64,
@@ -210,29 +232,51 @@ impl View<'_> {
         el("header")
             .id("bar")
             .class("bar")
-            .child(span("burger").attr("aria-hidden", "true").each(0..3, |_| el("i")))
-            .child(div("logo").attr("aria-hidden", "true").child(span("logo-day").text(today.day.to_string())))
+            .child(
+                span("burger")
+                    .attr("aria-hidden", "true")
+                    .each(0..3, |_| el("i")),
+            )
+            .child(
+                div("logo")
+                    .attr("aria-hidden", "true")
+                    .child(span("logo-day").text(today.day.to_string())),
+            )
             .child(span("wordmark").id("wordmark").text(self.brand.as_str()))
             .child(link("today", self.at(self.today, None), "Today").class("pill"))
             .child(match self.has_earlier() {
-                true => link("prev", self.at(prev, None), "‹")
-                    .class("arrow")
-                    .attr("aria-label", if self.month { "Previous month" } else { "Previous week" }),
+                true => link("prev", self.at(prev, None), "‹").class("arrow").attr(
+                    "aria-label",
+                    if self.month {
+                        "Previous month"
+                    } else {
+                        "Previous week"
+                    },
+                ),
                 // Nothing precedes the epoch, so the arrow is a greyed glyph, not a control.
                 false => span("arrow off").id("prev").text("‹"),
             })
-            .child(link("next", self.at(next, None), "›").class("arrow").attr("aria-label", if self.month { "Next month" } else { "Next week" }))
+            .child(link("next", self.at(next, None), "›").class("arrow").attr(
+                "aria-label",
+                if self.month {
+                    "Next month"
+                } else {
+                    "Next week"
+                },
+            ))
             .child(el("h1").id("range").class("range").text(self.range()))
             .child(
                 // The view being read names itself; only the other one is a link.
                 div("views")
                     .child(match self.month {
-                        true => link("view-week", self.go(false, self.focus, None), "Week").class("view"),
+                        true => link("view-week", self.go(false, self.focus, None), "Week")
+                            .class("view"),
                         false => span("view on").id("view-week").text("Week"),
                     })
                     .child(match self.month {
                         true => span("view on").id("view-month").text("Month"),
-                        false => link("view-month", self.go(true, self.focus, None), "Month").class("view"),
+                        false => link("view-month", self.go(true, self.focus, None), "Month")
+                            .class("view"),
                     }),
             )
             .child(
@@ -241,7 +285,13 @@ impl View<'_> {
                     .class(&chip_class(self.actor))
                     .attr("title", self.actor)
                     .attr("aria-label", format!("Account: {}", self.actor))
-                    .text(self.actor.chars().next().map(|c| c.to_uppercase().to_string()).unwrap_or_default()),
+                    .text(
+                        self.actor
+                            .chars()
+                            .next()
+                            .map(|c| c.to_uppercase().to_string())
+                            .unwrap_or_default(),
+                    ),
             )
     }
     /// The little month grid in the corner. Every number is a real link to that day's week.
@@ -250,7 +300,9 @@ impl View<'_> {
         let first = self.month_start();
         let lead = date_of(first).3;
         let (week_from, week_to) = (self.week_start(), self.week_start() + 6);
-        let mut grid = div("mini-grid").id("mini-grid").each(INITIALS, |d| span("mini-head").text(d));
+        let mut grid = div("mini-grid")
+            .id("mini-grid")
+            .each(INITIALS, |d| span("mini-head").text(d));
         for _ in 0..lead {
             grid = grid.child(span("mini-blank"));
         }
@@ -273,7 +325,10 @@ impl View<'_> {
                     // draws as a ring, so a day that cannot be clicked does not sit in the
                     // grid looking exactly like the six beside it that can.
                     match day == self.focus {
-                        true => span(&format!("{class} on")).id(id).attr("aria-current", "date").text(n.to_string()),
+                        true => span(&format!("{class} on"))
+                            .id(id)
+                            .attr("aria-current", "date")
+                            .text(n.to_string()),
                         false => link(&id, self.at(day, None), n.to_string()).class(class),
                     }
                 }
@@ -281,11 +336,20 @@ impl View<'_> {
         }
         div("mini")
             .id("mini")
-            .child(div("mini-title").id("mini-title").text(format!("{} {}", month_name(at.month), at.year)))
+            .child(div("mini-title").id("mini-title").text(format!(
+                "{} {}",
+                month_name(at.month),
+                at.year
+            )))
             .child(grid)
     }
     fn sidebar(&self) -> Html {
-        let mut owners: Vec<&str> = self.s.list(self.actor, 0, u64::MAX).into_iter().map(|e| e.owner.as_str()).collect();
+        let mut owners: Vec<&str> = self
+            .s
+            .list(self.actor, 0, u64::MAX)
+            .into_iter()
+            .map(|e| e.owner.as_str())
+            .collect();
         owners.sort_unstable();
         owners.dedup();
         el("aside")
@@ -299,7 +363,12 @@ impl View<'_> {
                     .class("create")
                     .attr(
                         "href",
-                        match self.nav.event.as_deref().and_then(|id| self.s.visible(self.actor, id)) {
+                        match self
+                            .nav
+                            .event
+                            .as_deref()
+                            .and_then(|id| self.s.visible(self.actor, id))
+                        {
                             Some(_) => self.at(self.focus, None),
                             None => "#event-title".to_owned(),
                         },
@@ -312,7 +381,11 @@ impl View<'_> {
             .child(
                 div("calendars")
                     .id("calendars")
-                    .child(div("calendars-title").id("calendars-title").text("My calendars"))
+                    .child(
+                        div("calendars-title")
+                            .id("calendars-title")
+                            .text("My calendars"),
+                    )
                     .each(owners, |owner| {
                         // The tick is a real checkbox: it takes that calendar out of the grid,
                         // and the same link puts it back.
@@ -321,9 +394,20 @@ impl View<'_> {
                             .id(format!("calendar-{owner}"))
                             .class(if on { "calendar" } else { "calendar hidden" })
                             .attr("href", self.toggle(owner))
-                            .attr("aria-label", format!("{} {owner}'s calendar", if on { "Hide" } else { "Show" }))
-                            .child(span("swatch").class(&chip_class(owner)).attr("aria-hidden", "true"))
-                            .child(span("calendar-name").id(format!("calendar-{owner}-name")).text(owner))
+                            .attr(
+                                "aria-label",
+                                format!("{} {owner}'s calendar", if on { "Hide" } else { "Show" }),
+                            )
+                            .child(
+                                span("swatch")
+                                    .class(&chip_class(owner))
+                                    .attr("aria-hidden", "true"),
+                            )
+                            .child(
+                                span("calendar-name")
+                                    .id(format!("calendar-{owner}-name"))
+                                    .text(owner),
+                            )
                     }),
             )
     }
@@ -340,7 +424,11 @@ impl View<'_> {
             // The chip whose event is already in the panel closes it again, rather than
             // being a link back to the page it is on.
             .attr("href", self.at(d, (!open).then_some(e.id.as_str())))
-            .child(span("ev-title").id(format!("{id}-title")).text(e.title.as_str()))
+            .child(
+                span("ev-title")
+                    .id(format!("{id}-title"))
+                    .text(e.title.as_str()),
+            )
             .child(span("ev-clock").id(format!("{id}-clock")).text(clock))
     }
     /// A day-long (or longer) event on day `d`: a bar whose ends square off where it continues
@@ -352,7 +440,11 @@ impl View<'_> {
             (false, true) => "bar lead",
             (false, false) => "bar",
         };
-        let clock = if e.start >= day_start(d) { civil(e.start).clock() } else { "all day".into() };
+        let clock = if e.start >= day_start(d) {
+            civil(e.start).clock()
+        } else {
+            "all day".into()
+        };
         self.chip(d, e, clock, class)
     }
     /// Timed events of one day with their lanes: (event, first minute, last minute, lane, lanes).
@@ -362,7 +454,10 @@ impl View<'_> {
         let mut cluster_end = 0;
         let mut ends: Vec<u64> = Vec::new();
         for e in events {
-            let (from, to) = (minute_of(d, e.start.max(day_start(d))), minute_of(d, e.end.min(day_end(d))));
+            let (from, to) = (
+                minute_of(d, e.start.max(day_start(d))),
+                minute_of(d, e.end.min(day_end(d))),
+            );
             let to = to.max(from + 1);
             if from >= cluster_end {
                 let lanes = ends.len().max(1);
@@ -397,7 +492,10 @@ impl View<'_> {
         let per_day: Vec<(Vec<&Event>, Vec<&Event>)> = days
             .iter()
             .map(|i| match u64::try_from(*i) {
-                Ok(d) => self.visible(d).into_iter().partition(|e| e.end - e.start >= ALL_DAY_US),
+                Ok(d) => self
+                    .visible(d)
+                    .into_iter()
+                    .partition(|e| e.end - e.start >= ALL_DAY_US),
                 Err(_) => (Vec::new(), Vec::new()),
             })
             .collect();
@@ -414,9 +512,9 @@ impl View<'_> {
         let px = |minutes: u64| minutes * HOUR_PX / 60;
         let mut heads = div("heads").child(div("zone").text("GMT"));
         let mut allday = div("allday").child(div("zone"));
-        let mut times = div("times").child(
-            div("gutter").each(0..hours, |h| div("hour-label").child(span("").text(format!("{:02}:00", from / 60 + h)))),
-        );
+        let mut times = div("times").child(div("gutter").each(0..hours, |h| {
+            div("hour-label").child(span("").text(format!("{:02}:00", from / 60 + h)))
+        }));
         for (i, (long, timed)) in days.iter().zip(&per_day) {
             let (number, _, _, weekday) = date_of(*i);
             let Ok(d) = u64::try_from(*i) else {
@@ -438,10 +536,16 @@ impl View<'_> {
                     .id(format!("day-{d}-head"))
                     .attr("aria-label", heading(d))
                     .child(span("dow").text(WEEKDAYS[weekday as usize]))
-                    .child(span("num").when(current, |n| n.attr("aria-current", "date")).text(number.to_string())),
+                    .child(
+                        span("num")
+                            .when(current, |n| n.attr("aria-current", "date"))
+                            .text(number.to_string()),
+                    ),
             );
             allday = allday.child(div("allday-cell").each(long, |e| self.bar(d, e)));
-            let mut col = div(if current { "col today" } else { "col" }).id(format!("day-{d}")).each(0..hours, |_| div("hour"));
+            let mut col = div(if current { "col today" } else { "col" })
+                .id(format!("day-{d}"))
+                .each(0..hours, |_| div("hour"));
             for (e, first, last, lane, lanes) in self.lanes(d, timed) {
                 let (top, bottom) = (first.max(from), last.min(to));
                 let height = px(bottom - top).saturating_sub(2).max(20);
@@ -452,7 +556,17 @@ impl View<'_> {
                     format!("until {}", civil(e.end).clock())
                 };
                 col = col.child(
-                    self.chip(d, e, clock, if bottom - top < 50 { "timed short" } else { "timed" }).style(&format!(
+                    self.chip(
+                        d,
+                        e,
+                        clock,
+                        if bottom - top < 50 {
+                            "timed short"
+                        } else {
+                            "timed"
+                        },
+                    )
+                    .style(&format!(
                         "top: {}px; height: {}px; left: {:.2}%; width: {:.2}%",
                         px(top - from),
                         height,
@@ -464,12 +578,22 @@ impl View<'_> {
             if current {
                 let minute = minute_of(d, self.now);
                 if (from..to).contains(&minute) {
-                    col = col.child(div("now").attr("aria-hidden", "true").style(&format!("top: {}px", px(minute - from))).child(el("i")));
+                    col = col.child(
+                        div("now")
+                            .attr("aria-hidden", "true")
+                            .style(&format!("top: {}px", px(minute - from)))
+                            .child(el("i")),
+                    );
                 }
             }
             times = times.child(col);
         }
-        el("main").id("week").class("main").child(heads).child(allday).child(times)
+        el("main")
+            .id("week")
+            .class("main")
+            .child(heads)
+            .child(allday)
+            .child(times)
     }
     fn month_grid(&self) -> Html {
         let at = civil(self.focus * DAY_US);
@@ -480,7 +604,11 @@ impl View<'_> {
         let mut grid = div("month-grid");
         for i in start..start + weeks * 7 {
             let (number, month, _, weekday) = date_of(i);
-            let label = if number == 1 { format!("{} 1", &month_name(month)[..3]) } else { number.to_string() };
+            let label = if number == 1 {
+                format!("{} 1", &month_name(month)[..3])
+            } else {
+                number.to_string()
+            };
             let dow = (i - start < 7).then(|| span("dow").text(WEEKDAYS[weekday as usize]));
             let Ok(d) = u64::try_from(i) else {
                 grid = grid.child(div("cell off").maybe(dow).child(span("num").text(label)));
@@ -506,12 +634,23 @@ impl View<'_> {
                         if e.end - e.start >= ALL_DAY_US {
                             self.bar(d, e)
                         } else {
-                            let clock = if e.start >= day_start(d) { civil(e.start).clock() } else { "all day".into() };
+                            let clock = if e.start >= day_start(d) {
+                                civil(e.start).clock()
+                            } else {
+                                "all day".into()
+                            };
                             self.chip(d, e, clock, "dot")
                         }
                     })
                     .when(more > 0, |cell| {
-                        cell.child(link(&format!("day-{d}-more"), self.go(false, d, None), format!("{more} more")).class("more"))
+                        cell.child(
+                            link(
+                                &format!("day-{d}-more"),
+                                self.go(false, d, None),
+                                format!("{more} more"),
+                            )
+                            .class("more"),
+                        )
                     }),
             );
         }
@@ -519,7 +658,11 @@ impl View<'_> {
     }
     /// The side panel: the open event, or the new-event form when nothing is selected.
     fn detail(&self) -> Html {
-        let open = self.nav.event.as_deref().and_then(|id| self.s.visible(self.actor, id));
+        let open = self
+            .nav
+            .event
+            .as_deref()
+            .and_then(|id| self.s.visible(self.actor, id));
         let panel = el("aside").id("detail").class("detail");
         match open {
             Some(e) => self.event(panel, e),
@@ -527,20 +670,37 @@ impl View<'_> {
         }
     }
     fn field(id: &str, name: &str, text: &str, value: &str) -> Html {
-        div("field").child(label(id, text)).child(text_input(id, name, value).attr("autocomplete", "off"))
+        div("field")
+            .child(label(id, text))
+            .child(text_input(id, name, value).attr("autocomplete", "off"))
     }
     fn new_event(&self, panel: Html) -> Html {
         // Prefilled with a sensible slot on the day on screen, so the form is one click from done.
         let start = (self.focus * DAY_US + HOUR_US).to_string();
         let end = (self.focus * DAY_US + 2 * HOUR_US).to_string();
         panel
-            .child(el("h2").id("detail-title").class("detail-title").text("New event"))
-            .child(el("p").id("detail-hint").class("hint").text("Pick an event in the grid, or fill this in to add one."))
+            .child(
+                el("h2")
+                    .id("detail-title")
+                    .class("detail-title")
+                    .text("New event"),
+            )
+            .child(
+                el("p")
+                    .id("detail-hint")
+                    .class("hint")
+                    .text("Pick an event in the grid, or fill this in to add one."),
+            )
             .child(
                 form("event", "/events", "post")
                     .class("fields")
                     .child(Self::field("event-title", "title", "Title", "").class("wide"))
-                    .child(Self::field("event-start", "start", "Start (logical µs)", &start))
+                    .child(Self::field(
+                        "event-start",
+                        "start",
+                        "Start (logical µs)",
+                        &start,
+                    ))
                     .child(Self::field("event-end", "end", "End (logical µs)", &end))
                     .child(Self::field("event-attendees", "attendees", "Guests", ""))
                     .child(button("event-submit", "Save").class("primary")),
@@ -552,7 +712,9 @@ impl View<'_> {
         let mut out = el("p").id("detail-description").class("description");
         let (mut word, mut rest) = (0usize, text);
         while !rest.is_empty() {
-            let space = rest.find(|c: char| !c.is_whitespace()).unwrap_or(rest.len());
+            let space = rest
+                .find(|c: char| !c.is_whitespace())
+                .unwrap_or(rest.len());
             if space > 0 {
                 out = out.text(&rest[..space]);
                 rest = &rest[space..];
@@ -561,9 +723,12 @@ impl View<'_> {
             let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
             let token = &rest[..end];
             let url = token.trim_end_matches(['.', ',', ';', ')', ']']);
-            let is_url = ["http://", "https://"].iter().any(|scheme| url.len() > scheme.len() && url.starts_with(scheme));
+            let is_url = ["http://", "https://"]
+                .iter()
+                .any(|scheme| url.len() > scheme.len() && url.starts_with(scheme));
             out = if is_url {
-                out.child(link(&format!("detail-link-{word}"), url, url)).text(&token[url.len()..])
+                out.child(link(&format!("detail-link-{word}"), url, url))
+                    .text(&token[url.len()..])
             } else {
                 out.text(token)
             };
@@ -579,17 +744,40 @@ impl View<'_> {
             .child(
                 div("detail-head")
                     .id("detail-head")
-                    .child(span("swatch").id("detail-swatch").class(&chip_class(&e.owner)).attr("aria-hidden", "true"))
-                    .child(el("h2").id("detail-title").class("detail-title").text(e.title.as_str())),
+                    .child(
+                        span("swatch")
+                            .id("detail-swatch")
+                            .class(&chip_class(&e.owner))
+                            .attr("aria-hidden", "true"),
+                    )
+                    .child(
+                        el("h2")
+                            .id("detail-title")
+                            .class("detail-title")
+                            .text(e.title.as_str()),
+                    ),
             )
             .child(el("p").id("detail-when").class("when").text(e.when()));
         if !e.location.is_empty() {
-            panel = panel.child(el("p").id("detail-location").class("location").text(e.location.as_str()));
+            panel = panel.child(
+                el("p")
+                    .id("detail-location")
+                    .class("location")
+                    .text(e.location.as_str()),
+            );
         }
         if !e.conference_url.is_empty() {
             panel = panel
-                .child(link("detail-join", e.conference_url.as_str(), "Join the meeting").class("join"))
-                .child(el("p").id("detail-join-url").class("join-url").text(e.conference_url.as_str()));
+                .child(
+                    link("detail-join", e.conference_url.as_str(), "Join the meeting")
+                        .class("join"),
+                )
+                .child(
+                    el("p")
+                        .id("detail-join-url")
+                        .class("join-url")
+                        .text(e.conference_url.as_str()),
+                );
         }
         if !e.description.is_empty() {
             panel = panel.child(Self::description(&e.description));
@@ -609,15 +797,35 @@ impl View<'_> {
                 .each(&e.attendees, |(who, rsvp)| {
                     div("guest")
                         .id(format!("guest-{who}"))
-                        .child(span("guest-avatar").class(&chip_class(who)).attr("aria-hidden", "true").text(
-                            who.chars().next().map(|c| c.to_uppercase().to_string()).unwrap_or_default(),
-                        ))
-                        .child(span("guest-name").id(format!("guest-{who}-name")).text(who.as_str()))
-                        .child(span("guest-rsvp").id(format!("guest-{who}-rsvp")).text(rsvp.label()))
+                        .child(
+                            span("guest-avatar")
+                                .class(&chip_class(who))
+                                .attr("aria-hidden", "true")
+                                .text(
+                                    who.chars()
+                                        .next()
+                                        .map(|c| c.to_uppercase().to_string())
+                                        .unwrap_or_default(),
+                                ),
+                        )
+                        .child(
+                            span("guest-name")
+                                .id(format!("guest-{who}-name"))
+                                .text(who.as_str()),
+                        )
+                        .child(
+                            span("guest-rsvp")
+                                .id(format!("guest-{who}-rsvp"))
+                                .text(rsvp.label()),
+                        )
                 }),
         );
         if e.attendees.contains_key(self.actor) {
-            let answer = |id: &str, text: &str, value: &str| button(id, text).attr("name", "response").attr("value", value);
+            let answer = |id: &str, text: &str, value: &str| {
+                button(id, text)
+                    .attr("name", "response")
+                    .attr("value", value)
+            };
             panel = panel.child(
                 form("rsvp", format!("{route}/rsvp"), "post")
                     .class("rsvp")
@@ -633,11 +841,24 @@ impl View<'_> {
                     form("edit", route.as_str(), "post")
                         .class("fields")
                         .child(Self::field("edit-title", "title", "Title", &e.title).class("wide"))
-                        .child(Self::field("edit-start", "start", "Start (logical µs)", &e.start.to_string()))
-                        .child(Self::field("edit-end", "end", "End (logical µs)", &e.end.to_string()))
+                        .child(Self::field(
+                            "edit-start",
+                            "start",
+                            "Start (logical µs)",
+                            &e.start.to_string(),
+                        ))
+                        .child(Self::field(
+                            "edit-end",
+                            "end",
+                            "End (logical µs)",
+                            &e.end.to_string(),
+                        ))
                         .child(button("edit-submit", "Save").class("primary")),
                 )
-                .child(form("delete-form", format!("{route}/delete"), "post").child(button("delete", "Delete event").class("danger")));
+                .child(
+                    form("delete-form", format!("{route}/delete"), "post")
+                        .child(button("delete", "Delete event").class("danger")),
+                );
         }
         panel.child(
             // On the permalink itself there is nowhere for a permalink to lead.
@@ -645,7 +866,15 @@ impl View<'_> {
                 .when(!self.nav.permalink, |links| {
                     links.child(link("detail-permalink", route.as_str(), "Permalink"))
                 })
-                .child(link("detail-back", self.at(day, None), if self.month { "Back to the month" } else { "Back to the week" })),
+                .child(link(
+                    "detail-back",
+                    self.at(day, None),
+                    if self.month {
+                        "Back to the month"
+                    } else {
+                        "Back to the week"
+                    },
+                )),
         )
     }
 }
@@ -668,9 +897,15 @@ pub(crate) fn week(s: &CalendarState, actor: &str, now: u64, nav: &Nav) -> Resul
         today,
         focus,
         month: nav.month,
-        brand: if s.brand.is_empty() { "Calendar".to_owned() } else { s.brand.clone() },
+        brand: if s.brand.is_empty() {
+            "Calendar".to_owned()
+        } else {
+            s.brand.clone()
+        },
     };
-    let or = |value: &Option<String>, fallback: &str| value.clone().unwrap_or_else(|| fallback.to_owned());
+    let or = |value: &Option<String>, fallback: &str| {
+        value.clone().unwrap_or_else(|| fallback.to_owned())
+    };
     let document = Document::new("Google Calendar")
         .lang("en")
         .stylesheet(CSS)
@@ -682,13 +917,21 @@ pub(crate) fn week(s: &CalendarState, actor: &str, now: u64, nav: &Nav) -> Resul
             or(&theme.surface, SURFACE),
             or(&theme.background, "#ffffff"),
         ))
-        .body_class(if nav.month { "skin-gcal view-month" } else { "skin-gcal view-week" })
+        .body_class(if nav.month {
+            "skin-gcal view-month"
+        } else {
+            "skin-gcal view-week"
+        })
         .body([
             view.header(),
             div("shell")
                 .id("panes")
                 .child(view.sidebar())
-                .child(if nav.month { view.month_grid() } else { view.week() })
+                .child(if nav.month {
+                    view.month_grid()
+                } else {
+                    view.week()
+                })
                 .child(view.detail()),
         ]);
     page(&document)

@@ -151,7 +151,9 @@ fn hash(s: &str) -> u64 {
 
 /// Stand-in artwork tint, chosen from the label (`page_scene::tint`).
 fn tint(label: &str) -> &'static str {
-    const PALETTE: [&str; 8] = ["#cbd5e4", "#d2ded4", "#e2d6ce", "#d6d1e3", "#cddce4", "#e4d8ce", "#d4dace", "#dbd1d5"];
+    const PALETTE: [&str; 8] = [
+        "#cbd5e4", "#d2ded4", "#e2d6ce", "#d6d1e3", "#cddce4", "#e4d8ce", "#d4dace", "#dbd1d5",
+    ];
     PALETTE[(hash(label) % 8) as usize]
 }
 
@@ -162,7 +164,11 @@ fn form_purpose(form: &str) -> (Option<&'static str>, &'static str) {
     const PURPOSES: [Purpose; 18] = [
         (&["search", "find", "q"], None, "Search"),
         (&["compose"], Some("New message"), "Send"),
-        (&["send", "dm", "composer", "message", "prompt"], None, "Send"),
+        (
+            &["send", "dm", "composer", "message", "prompt"],
+            None,
+            "Send",
+        ),
         (&["reply"], None, "Reply"),
         (&["comment"], Some("Add a comment"), "Post comment"),
         (&["rsvp"], None, "RSVP"),
@@ -203,7 +209,9 @@ fn style_of(e: &PageElement) -> Option<&Style> {
         | PageElement::Badge { style, .. }
         | PageElement::Icon { style, .. }
         | PageElement::Divider { style, .. } => Some(style),
-        PageElement::Link { style, .. } | PageElement::Button { style, .. } | PageElement::Image { style, .. } => style.as_ref(),
+        PageElement::Link { style, .. }
+        | PageElement::Button { style, .. }
+        | PageElement::Image { style, .. } => style.as_ref(),
         _ => None,
     }
 }
@@ -222,7 +230,9 @@ fn explicit_flex(e: &PageElement) -> bool {
 /// Whether a block holds reading matter (`page_scene::prose`).
 fn prose(children: &[PageElement]) -> bool {
     children.iter().any(|c| match c {
-        PageElement::Heading { text, .. } | PageElement::Text { text, .. } | PageElement::Styled { text, .. } => text.chars().count() >= 40,
+        PageElement::Heading { text, .. }
+        | PageElement::Text { text, .. }
+        | PageElement::Styled { text, .. } => text.chars().count() >= 40,
         PageElement::Input { .. } | PageElement::Image { .. } => true,
         PageElement::Thumbnail { style, .. } => style.height.unwrap_or(0) >= 120,
         PageElement::Row { children, .. }
@@ -236,7 +246,16 @@ fn prose(children: &[PageElement]) -> bool {
 
 fn control_pad(style: &Style, button: bool) -> u32 {
     let boxed = style.background.is_some() || style.border.is_some();
-    style.padding.unwrap_or(if button { 14 } else if boxed { 8 } else { 0 }).min(64)
+    style
+        .padding
+        .unwrap_or(if button {
+            14
+        } else if boxed {
+            8
+        } else {
+            0
+        })
+        .min(64)
 }
 
 /// A declaration list builder that keeps `property: value` pairs in order.
@@ -245,7 +264,10 @@ struct Decls(Vec<String>);
 
 impl Decls {
     fn push(&mut self, property: &str, value: impl std::fmt::Display) -> &mut Self {
-        debug_assert!(SUPPORTED_PROPERTIES.contains(&property), "unsupported property {property}");
+        debug_assert!(
+            SUPPORTED_PROPERTIES.contains(&property),
+            "unsupported property {property}"
+        );
         self.0.push(format!("{property}: {value}"));
         self
     }
@@ -300,10 +322,18 @@ impl Emitter {
     }
 
     fn box_decor(&self, style: &Style, decls: &mut Decls, default_radius: u32) {
-        if let Some(bg) = style.background.as_ref().filter(|c| cw_protocol::valid_color(c)) {
+        if let Some(bg) = style
+            .background
+            .as_ref()
+            .filter(|c| cw_protocol::valid_color(c))
+        {
             decls.push("background-color", bg);
         }
-        if let Some(edge) = style.border.as_ref().filter(|c| cw_protocol::valid_color(c)) {
+        if let Some(edge) = style
+            .border
+            .as_ref()
+            .filter(|c| cw_protocol::valid_color(c))
+        {
             decls.push("border", format!("1px solid {edge}"));
         }
         let radius = style.radius.unwrap_or(default_radius).min(64);
@@ -314,7 +344,12 @@ impl Emitter {
 
     fn hidden_fields(&mut self, action: &PageAction) {
         for (name, value) in &action.fields {
-            let _ = write!(self.html, "<input type=\"hidden\" name=\"{}\" value=\"{}\">", esc_attr(name), esc_attr(value));
+            let _ = write!(
+                self.html,
+                "<input type=\"hidden\" name=\"{}\" value=\"{}\">",
+                esc_attr(name),
+                esc_attr(value)
+            );
         }
     }
 
@@ -322,12 +357,25 @@ impl Emitter {
     /// submit button for anything else. Returns what closes it.
     fn open_action(&mut self, action: Option<&PageAction>, block: bool) -> &'static str {
         let Some(action) = action else { return "" };
-        let class = if block { "cw-target cw-target-block" } else { "cw-target" };
+        let class = if block {
+            "cw-target cw-target-block"
+        } else {
+            "cw-target"
+        };
         if action.method.eq_ignore_ascii_case("GET") && action.fields.is_empty() {
-            let _ = write!(self.html, "<a class=\"{class}\" href=\"{}\">", esc_attr(&action.url));
+            let _ = write!(
+                self.html,
+                "<a class=\"{class}\" href=\"{}\">",
+                esc_attr(&action.url)
+            );
             "</a>"
         } else {
-            let _ = write!(self.html, "<form class=\"cw-action\" action=\"{}\" method=\"{}\">", esc_attr(&action.url), esc_attr(&action.method.to_ascii_lowercase()));
+            let _ = write!(
+                self.html,
+                "<form class=\"cw-action\" action=\"{}\" method=\"{}\">",
+                esc_attr(&action.url),
+                esc_attr(&action.method.to_ascii_lowercase())
+            );
             self.hidden_fields(action);
             let _ = write!(self.html, "<button type=\"submit\" class=\"{class}\">");
             "</button></form>"
@@ -347,7 +395,11 @@ impl Emitter {
             decls.push("font-family", MONO);
         }
         if style.one_line == Some(true) {
-            decls.push("white-space", "nowrap").push("overflow-x", "hidden").push("overflow-y", "hidden").push("text-overflow", "ellipsis");
+            decls
+                .push("white-space", "nowrap")
+                .push("overflow-x", "hidden")
+                .push("overflow-y", "hidden")
+                .push("text-overflow", "ellipsis");
         }
     }
 
@@ -381,12 +433,27 @@ impl Emitter {
                 let level = (*level).clamp(1, 6);
                 let mut d = Decls::default();
                 d.px("font-size", if level <= 1 { 18 } else { 15 });
-                let _ = writeln!(self.html, "<h{level} class=\"cw-heading\"{}>{}</h{level}>", self.attrs(id, &d, None), esc_text(text));
+                let _ = writeln!(
+                    self.html,
+                    "<h{level} class=\"cw-heading\"{}>{}</h{level}>",
+                    self.attrs(id, &d, None),
+                    esc_text(text)
+                );
             }
             PageElement::Text { id, text } => {
-                let _ = writeln!(self.html, "<p class=\"cw-text\"{}>{}</p>", self.attrs(id, &Decls::default(), None), esc_text(text));
+                let _ = writeln!(
+                    self.html,
+                    "<p class=\"cw-text\"{}>{}</p>",
+                    self.attrs(id, &Decls::default(), None),
+                    esc_text(text)
+                );
             }
-            PageElement::Link { id, text, url, style } => {
+            PageElement::Link {
+                id,
+                text,
+                url,
+                style,
+            } => {
                 let styled = style.is_some();
                 let style = style.as_ref().unwrap_or(&plain);
                 let size = style.size.unwrap_or(13).clamp(6, 96);
@@ -409,9 +476,20 @@ impl Emitter {
                     d.px("height", h.min(8192));
                 }
                 let class = if boxed { "cw-link cw-boxed" } else { "cw-link" };
-                let _ = writeln!(self.html, "<a class=\"{class}\" href=\"{}\"{}>{}</a></div>", esc_attr(url), self.attrs(id, &d, style.lang.as_deref()), esc_text(text));
+                let _ = writeln!(
+                    self.html,
+                    "<a class=\"{class}\" href=\"{}\"{}>{}</a></div>",
+                    esc_attr(url),
+                    self.attrs(id, &d, style.lang.as_deref()),
+                    esc_text(text)
+                );
             }
-            PageElement::Button { id, text, action, style } => {
+            PageElement::Button {
+                id,
+                text,
+                action,
+                style,
+            } => {
                 let style = style.as_ref().unwrap_or(&plain);
                 let size = style.size.unwrap_or(12).clamp(6, 96);
                 let pad = control_pad(style, true);
@@ -439,7 +517,8 @@ impl Emitter {
                 );
                 self.hidden_fields(action);
                 let mut d = Decls::default();
-                d.px("font-size", u32::from(size)).px("line-height", line_height(size));
+                d.px("font-size", u32::from(size))
+                    .px("line-height", line_height(size));
                 if style.weight.as_deref() == Some("regular") {
                     d.push("font-weight", "normal");
                 }
@@ -451,8 +530,15 @@ impl Emitter {
                 }
                 d.push("padding", format!("{vpad}px {pad}px"));
                 d.push("color", colour(style.color.as_ref(), "#ffffff"));
-                d.push("background-color", colour(style.background.as_ref(), &self.theme.accent));
-                if let Some(edge) = style.border.as_ref().filter(|c| cw_protocol::valid_color(c)) {
+                d.push(
+                    "background-color",
+                    colour(style.background.as_ref(), &self.theme.accent),
+                );
+                if let Some(edge) = style
+                    .border
+                    .as_ref()
+                    .filter(|c| cw_protocol::valid_color(c))
+                {
                     d.push("border", format!("1px solid {edge}"));
                 }
                 d.px("border-radius", style.radius.unwrap_or(6).min(64));
@@ -462,11 +548,26 @@ impl Emitter {
                 if let Some(h) = style.height {
                     d.px("height", h.min(8192));
                 }
-                let _ = writeln!(self.html, "<button type=\"submit\" class=\"cw-button\"{}>{}</button></form>", self.attrs(id, &d, style.lang.as_deref()), esc_text(label));
+                let _ = writeln!(
+                    self.html,
+                    "<button type=\"submit\" class=\"cw-button\"{}>{}</button></form>",
+                    self.attrs(id, &d, style.lang.as_deref()),
+                    esc_text(label)
+                );
             }
-            PageElement::Input { id, label, value, placeholder } => {
+            PageElement::Input {
+                id,
+                label,
+                value,
+                placeholder,
+            } => {
                 let multiline = id.ends_with("-body") || label == "Content" || label == "Message";
-                let _ = write!(self.html, "<div class=\"cw-field\"><label class=\"cw-label\" for=\"{}\">{}</label>", esc_attr(id), esc_text(label));
+                let _ = write!(
+                    self.html,
+                    "<div class=\"cw-field\"><label class=\"cw-label\" for=\"{}\">{}</label>",
+                    esc_attr(id),
+                    esc_text(label)
+                );
                 if multiline {
                     let _ = write!(
                         self.html,
@@ -488,31 +589,65 @@ impl Emitter {
                 }
                 self.html.push_str("</div>\n");
             }
-            PageElement::Form { id, action, children } => {
-                let has_inputs = children.iter().any(|c| matches!(c, PageElement::Input { .. }));
-                let open = format!("action=\"{}\" method=\"{}\"", esc_attr(&action.url), esc_attr(&action.method.to_ascii_lowercase()));
+            PageElement::Form {
+                id,
+                action,
+                children,
+            } => {
+                let has_inputs = children
+                    .iter()
+                    .any(|c| matches!(c, PageElement::Input { .. }));
+                let open = format!(
+                    "action=\"{}\" method=\"{}\"",
+                    esc_attr(&action.url),
+                    esc_attr(&action.method.to_ascii_lowercase())
+                );
                 if !has_inputs {
-                    let _ = write!(self.html, "<form class=\"cw-form-bare\" id=\"{}\" {open}>", esc_attr(id));
+                    let _ = write!(
+                        self.html,
+                        "<form class=\"cw-form-bare\" id=\"{}\" {open}>",
+                        esc_attr(id)
+                    );
                     self.hidden_fields(action);
                     self.children(children);
                     self.html.push_str("</form>\n");
                 } else {
                     let title = form_purpose(id).0;
-                    let _ = write!(self.html, "<form class=\"cw-form\" id=\"{}\" {open}>", esc_attr(id));
+                    let _ = write!(
+                        self.html,
+                        "<form class=\"cw-form\" id=\"{}\" {open}>",
+                        esc_attr(id)
+                    );
                     self.hidden_fields(action);
                     if let Some(t) = title {
-                        let _ = write!(self.html, "<div class=\"cw-form-title\">{}</div>", esc_text(t));
+                        let _ = write!(
+                            self.html,
+                            "<div class=\"cw-form-title\">{}</div>",
+                            esc_text(t)
+                        );
                     }
                     self.children(children);
                     self.html.push_str("</form>\n");
                 }
             }
             PageElement::Group { id, children } => {
-                let _ = writeln!(self.html, "<div class=\"cw-group\" id=\"{}\">", esc_attr(id));
+                let _ = writeln!(
+                    self.html,
+                    "<div class=\"cw-group\" id=\"{}\">",
+                    esc_attr(id)
+                );
                 self.children(children);
                 self.html.push_str("</div>\n");
             }
-            PageElement::Image { id, source, alt, width, height, style, action } => {
+            PageElement::Image {
+                id,
+                source,
+                alt,
+                width,
+                height,
+                style,
+                action,
+            } => {
                 let style = style.as_ref().unwrap_or(&plain);
                 self.line_wrapper(style, GAP);
                 let close = self.open_action(action.as_ref(), false);
@@ -524,7 +659,11 @@ impl Emitter {
                 if let Some(h) = style.height {
                     d.px("height", h.min(8192));
                 }
-                if let Some(edge) = style.border.as_ref().filter(|c| cw_protocol::valid_color(c)) {
+                if let Some(edge) = style
+                    .border
+                    .as_ref()
+                    .filter(|c| cw_protocol::valid_color(c))
+                {
                     d.push("border", format!("1px solid {edge}"));
                 }
                 let radius = style.radius.unwrap_or(0).min(64);
@@ -536,13 +675,27 @@ impl Emitter {
                     "<img class=\"cw-image\" src=\"{}\" alt=\"{}\"{}{}{}>",
                     esc_attr(source),
                     esc_attr(alt),
-                    if *width > 0 { format!(" width=\"{width}\"") } else { String::new() },
-                    if *height > 0 { format!(" height=\"{height}\"") } else { String::new() },
+                    if *width > 0 {
+                        format!(" width=\"{width}\"")
+                    } else {
+                        String::new()
+                    },
+                    if *height > 0 {
+                        format!(" height=\"{height}\"")
+                    } else {
+                        String::new()
+                    },
                     self.attrs(id, &d, None)
                 );
                 let _ = writeln!(self.html, "{close}</div>");
             }
-            PageElement::Row { id, children, gap, align, style } => {
+            PageElement::Row {
+                id,
+                children,
+                gap,
+                align,
+                style,
+            } => {
                 let gap = (*gap).min(128);
                 let pad = style.padding.unwrap_or(0).min(64);
                 let scroll = style.scroll_x == Some(true);
@@ -579,12 +732,17 @@ impl Emitter {
                 }
                 self.box_decor(style, &mut d, 0);
                 if let Some(w) = style.width {
-                    d.push("width", format!("{}px", w.min(8192))).push("max-width", "100%");
+                    d.push("width", format!("{}px", w.min(8192)))
+                        .push("max-width", "100%");
                 }
                 if let Some(h) = style.height {
                     d.px("height", h.min(8192));
                 }
-                let _ = writeln!(self.html, "<div class=\"cw-row\"{}>", self.attrs(id, &d, None));
+                let _ = writeln!(
+                    self.html,
+                    "<div class=\"cw-row\"{}>",
+                    self.attrs(id, &d, None)
+                );
                 // Once any child flexes explicitly, or the row justifies, the others are
                 // chips at their own width; without either every child shares the width.
                 let chips = style.justify.is_some() || children.iter().any(explicit_flex);
@@ -607,33 +765,48 @@ impl Emitter {
                 }
                 self.html.push_str("</div>\n");
             }
-            PageElement::Grid { id, columns, children, gap, style } => {
+            PageElement::Grid {
+                id,
+                columns,
+                children,
+                gap,
+                style,
+            } => {
                 let columns = (*columns).clamp(1, 12);
                 let gap = (*gap).min(128);
                 let pad = style.padding.unwrap_or(0).min(64);
                 let mut d = Decls::default();
                 d.push("display", "grid");
-                d.push("grid-template-columns", format!("repeat({columns}, minmax(0, 1fr))"));
+                d.push(
+                    "grid-template-columns",
+                    format!("repeat({columns}, minmax(0, 1fr))"),
+                );
                 d.px("gap", gap);
                 if pad > 0 {
                     d.px("padding", pad);
                 }
                 self.box_decor(style, &mut d, 0);
                 if let Some(w) = style.width {
-                    d.push("width", format!("{}px", w.min(8192))).push("max-width", "100%");
+                    d.push("width", format!("{}px", w.min(8192)))
+                        .push("max-width", "100%");
                 }
                 if let Some(h) = style.height {
                     d.px("height", h.min(8192));
                 }
-                let _ = writeln!(self.html, "<div class=\"cw-grid\"{}>", self.attrs(id, &d, None));
+                let _ = writeln!(
+                    self.html,
+                    "<div class=\"cw-grid\"{}>",
+                    self.attrs(id, &d, None)
+                );
                 // The renderer drops columns when cells of content blocks would be
                 // narrower than a phone column (150 px below a 600 px viewport). As a
                 // media-query approximation: n columns need 150n + gap(n-1) + 2*gutter
                 // px of viewport; below that, one fewer.
                 let blocks = children.iter().any(|c| match c {
-                    PageElement::Card { children, .. } | PageElement::Group { children, .. } | PageElement::Row { children, .. } | PageElement::Grid { children, .. } => {
-                        children.len() > 1 && prose(children)
-                    }
+                    PageElement::Card { children, .. }
+                    | PageElement::Group { children, .. }
+                    | PageElement::Row { children, .. }
+                    | PageElement::Grid { children, .. } => children.len() > 1 && prose(children),
                     PageElement::Thumbnail { style, .. } => style.height.unwrap_or(0) >= 60,
                     _ => false,
                 });
@@ -654,36 +827,63 @@ impl Emitter {
                 self.children(children);
                 self.html.push_str("</div>\n");
             }
-            PageElement::Card { id, children, style, action } => {
+            PageElement::Card {
+                id,
+                children,
+                style,
+                action,
+            } => {
                 let pad = style.padding.unwrap_or(14).min(64);
                 let mut d = Decls::default();
                 d.px("padding", pad);
-                d.push("background-color", colour(style.background.as_ref(), &self.theme.surface));
-                if let Some(edge) = style.border.as_ref().filter(|c| cw_protocol::valid_color(c)) {
+                d.push(
+                    "background-color",
+                    colour(style.background.as_ref(), &self.theme.surface),
+                );
+                if let Some(edge) = style
+                    .border
+                    .as_ref()
+                    .filter(|c| cw_protocol::valid_color(c))
+                {
                     d.push("border", format!("1px solid {edge}"));
                 }
                 d.px("border-radius", style.radius.unwrap_or(10).min(64));
                 if let Some(w) = style.width {
-                    d.push("width", format!("{}px", w.min(8192))).push("max-width", "100%");
+                    d.push("width", format!("{}px", w.min(8192)))
+                        .push("max-width", "100%");
                 }
                 if let Some(h) = style.height {
-                    d.push("height", format!("{}px", h.min(8192))).push("box-sizing", "border-box");
+                    d.push("height", format!("{}px", h.min(8192)))
+                        .push("box-sizing", "border-box");
                 }
                 match action {
                     Some(a) if a.method.eq_ignore_ascii_case("GET") && a.fields.is_empty() => {
-                        let _ = writeln!(self.html, "<a class=\"cw-card cw-target-block\" href=\"{}\"{}>", esc_attr(&a.url), self.attrs(id, &d, None));
+                        let _ = writeln!(
+                            self.html,
+                            "<a class=\"cw-card cw-target-block\" href=\"{}\"{}>",
+                            esc_attr(&a.url),
+                            self.attrs(id, &d, None)
+                        );
                         self.children(children);
                         self.html.push_str("</a>\n");
                     }
                     Some(a) => {
                         let _ = write!(self.html, "<form class=\"cw-action cw-action-block\" action=\"{}\" method=\"{}\">", esc_attr(&a.url), esc_attr(&a.method.to_ascii_lowercase()));
                         self.hidden_fields(a);
-                        let _ = writeln!(self.html, "<button type=\"submit\" class=\"cw-card cw-target-block\"{}>", self.attrs(id, &d, None));
+                        let _ = writeln!(
+                            self.html,
+                            "<button type=\"submit\" class=\"cw-card cw-target-block\"{}>",
+                            self.attrs(id, &d, None)
+                        );
                         self.children(children);
                         self.html.push_str("</button></form>\n");
                     }
                     None => {
-                        let _ = writeln!(self.html, "<div class=\"cw-card\"{}>", self.attrs(id, &d, None));
+                        let _ = writeln!(
+                            self.html,
+                            "<div class=\"cw-card\"{}>",
+                            self.attrs(id, &d, None)
+                        );
                         self.children(children);
                         self.html.push_str("</div>\n");
                     }
@@ -700,10 +900,13 @@ impl Emitter {
                 }
                 self.box_decor(style, &mut d, 0);
                 if let Some(w) = style.width {
-                    d.push("width", format!("{}px", w.min(8192))).push("max-width", "100%").push("box-sizing", "border-box");
+                    d.push("width", format!("{}px", w.min(8192)))
+                        .push("max-width", "100%")
+                        .push("box-sizing", "border-box");
                 }
                 if let Some(h) = style.height {
-                    d.push("height", format!("{}px", h.min(8192))).push("box-sizing", "border-box");
+                    d.push("height", format!("{}px", h.min(8192)))
+                        .push("box-sizing", "border-box");
                 }
                 match style.align.as_deref() {
                     Some("center") => {
@@ -714,9 +917,19 @@ impl Emitter {
                     }
                     _ => {}
                 }
-                let _ = writeln!(self.html, "<div class=\"cw-styled\"{}>{}</div>", self.attrs(id, &d, style.lang.as_deref()), esc_text(text));
+                let _ = writeln!(
+                    self.html,
+                    "<div class=\"cw-styled\"{}>{}</div>",
+                    self.attrs(id, &d, style.lang.as_deref()),
+                    esc_text(text)
+                );
             }
-            PageElement::Thumbnail { id, label, style, action } => {
+            PageElement::Thumbnail {
+                id,
+                label,
+                style,
+                action,
+            } => {
                 let box_h = style.height.unwrap_or(120).min(8192);
                 let size = style.size.unwrap_or(12).clamp(6, 96);
                 self.line_wrapper(&plain, GAP);
@@ -724,15 +937,28 @@ impl Emitter {
                 let mut d = Decls::default();
                 d.px("height", box_h).px("line-height", box_h);
                 if let Some(w) = style.width {
-                    d.push("width", format!("{}px", w.min(8192))).push("max-width", "100%");
+                    d.push("width", format!("{}px", w.min(8192)))
+                        .push("max-width", "100%");
                 }
-                d.push("background-color", colour(style.background.as_ref(), tint(label)));
-                if let Some(edge) = style.border.as_ref().filter(|c| cw_protocol::valid_color(c)) {
+                d.push(
+                    "background-color",
+                    colour(style.background.as_ref(), tint(label)),
+                );
+                if let Some(edge) = style
+                    .border
+                    .as_ref()
+                    .filter(|c| cw_protocol::valid_color(c))
+                {
                     d.push("border", format!("1px solid {edge}"));
                 }
                 d.px("border-radius", style.radius.unwrap_or(8).min(64));
-                d.px("font-size", u32::from(size)).push("color", self.ink_of(style));
-                let shown = if line_height(size) <= box_h { esc_text(label) } else { String::new() };
+                d.px("font-size", u32::from(size))
+                    .push("color", self.ink_of(style));
+                let shown = if line_height(size) <= box_h {
+                    esc_text(label)
+                } else {
+                    String::new()
+                };
                 let _ = writeln!(
                     self.html,
                     "<div class=\"cw-thumb\" role=\"img\" aria-label=\"{}\"{}>{}</div>{close}</div>",
@@ -744,13 +970,19 @@ impl Emitter {
             PageElement::Badge { id, text, style } => {
                 let size = style.size.unwrap_or(10).clamp(6, 96);
                 let pad = style.padding.unwrap_or(0).min(64);
-                let bh = style.height.unwrap_or((line_height(size) + 2 * pad).max(20)).min(8192);
+                let bh = style
+                    .height
+                    .unwrap_or((line_height(size) + 2 * pad).max(20))
+                    .min(8192);
                 self.line_wrapper(style, 6);
                 let mut d = Decls::default();
-                d.px("font-size", u32::from(size)).px("height", bh).px("line-height", bh);
+                d.px("font-size", u32::from(size))
+                    .px("height", bh)
+                    .px("line-height", bh);
                 d.push("padding", format!("0 {}px", pad.max(9)));
                 if let Some(w) = style.width {
-                    d.push("width", format!("{}px", w.min(8192))).push("box-sizing", "border-box");
+                    d.push("width", format!("{}px", w.min(8192)))
+                        .push("box-sizing", "border-box");
                 }
                 let fill = match &style.background {
                     Some(c) if cw_protocol::valid_color(c) => c.clone(),
@@ -759,22 +991,44 @@ impl Emitter {
                 };
                 d.push("background-color", fill);
                 d.push("color", colour(style.color.as_ref(), "#ffffff"));
-                if let Some(edge) = style.border.as_ref().filter(|c| cw_protocol::valid_color(c)) {
+                if let Some(edge) = style
+                    .border
+                    .as_ref()
+                    .filter(|c| cw_protocol::valid_color(c))
+                {
                     d.push("border", format!("1px solid {edge}"));
                 }
                 d.px("border-radius", style.radius.unwrap_or(bh / 2).min(64));
                 if text.is_empty() {
                     d.push("visibility", "hidden");
                 }
-                let _ = writeln!(self.html, "<span class=\"cw-badge\"{}>{}</span></div>", self.attrs(id, &d, style.lang.as_deref()), esc_text(text));
+                let _ = writeln!(
+                    self.html,
+                    "<span class=\"cw-badge\"{}>{}</span></div>",
+                    self.attrs(id, &d, style.lang.as_deref()),
+                    esc_text(text)
+                );
             }
             PageElement::Divider { id, style } => {
                 let mut d = Decls::default();
                 d.px("height", style.height.unwrap_or(1).clamp(1, 64));
-                d.push("background-color", colour(style.color.as_ref(), &self.theme.border));
-                let _ = writeln!(self.html, "<hr class=\"cw-divider\"{}>", self.attrs(id, &d, None));
+                d.push(
+                    "background-color",
+                    colour(style.color.as_ref(), &self.theme.border),
+                );
+                let _ = writeln!(
+                    self.html,
+                    "<hr class=\"cw-divider\"{}>",
+                    self.attrs(id, &d, None)
+                );
             }
-            PageElement::Icon { id, name, label, style, action } => {
+            PageElement::Icon {
+                id,
+                name,
+                label,
+                style,
+                action,
+            } => {
                 let size = u32::from(style.size.unwrap_or(20).clamp(6, 96));
                 let pad = style.padding.unwrap_or(0).min(64);
                 let bw = style.width.unwrap_or(size + 2 * pad).min(8192);
@@ -784,15 +1038,28 @@ impl Emitter {
                 let mut d = Decls::default();
                 d.px("width", bw).px("height", bh).px("line-height", bh);
                 d.push("color", self.ink_of(style));
-                if let Some(bg) = style.background.as_ref().filter(|c| cw_protocol::valid_color(c)) {
+                if let Some(bg) = style
+                    .background
+                    .as_ref()
+                    .filter(|c| cw_protocol::valid_color(c))
+                {
                     d.push("background-color", bg);
                 }
-                if let Some(edge) = style.border.as_ref().filter(|c| cw_protocol::valid_color(c)) {
+                if let Some(edge) = style
+                    .border
+                    .as_ref()
+                    .filter(|c| cw_protocol::valid_color(c))
+                {
                     d.push("border", format!("1px solid {edge}"));
                 }
-                d.px("border-radius", style.radius.unwrap_or(bw.min(bh) / 2).min(64));
+                d.px(
+                    "border-radius",
+                    style.radius.unwrap_or(bw.min(bh) / 2).min(64),
+                );
                 let mut g = Decls::default();
-                g.px("width", size).px("height", size).px("line-height", size);
+                g.px("width", size)
+                    .px("height", size)
+                    .px("line-height", size);
                 let _ = writeln!(
                     self.html,
                     "<span class=\"cw-icon\" role=\"img\" aria-label=\"{}\" title=\"{}\"{}><span class=\"cw-glyph\" data-symbol=\"{}\"{}>{}</span></span>{close}</div>",
@@ -807,7 +1074,11 @@ impl Emitter {
             PageElement::Spacer { id, height } => {
                 let mut d = Decls::default();
                 d.px("height", (*height).min(8192));
-                let _ = writeln!(self.html, "<div class=\"cw-spacer\"{}></div>", self.attrs(id, &d, None));
+                let _ = writeln!(
+                    self.html,
+                    "<div class=\"cw-spacer\"{}></div>",
+                    self.attrs(id, &d, None)
+                );
             }
         }
     }
@@ -834,7 +1105,9 @@ fn css_ident(id: &str) -> String {
 
 fn theme_of(page: &Page) -> Theme {
     let t = page.theme.as_ref();
-    let pick = |f: fn(&cw_protocol::PageTheme) -> Option<&String>, fallback: &str| colour(t.and_then(f), fallback);
+    let pick = |f: fn(&cw_protocol::PageTheme) -> Option<&String>, fallback: &str| {
+        colour(t.and_then(f), fallback)
+    };
     let accent_fallback = match page.title.as_str() {
         "Chat" => "#592f70",
         "Calendar" => "#1f70c9",
@@ -845,13 +1118,21 @@ fn theme_of(page: &Page) -> Theme {
     let surface = pick(|t| t.surface.as_ref(), "#ffffff");
     let themed = t.is_some();
     Theme {
-        face: match t.and_then(|t| t.font.as_deref()).map(str::trim).filter(|f| !f.is_empty()) {
+        face: match t
+            .and_then(|t| t.font.as_deref())
+            .map(str::trim)
+            .filter(|f| !f.is_empty())
+        {
             Some(f) => format!("{f}, {FACE}"),
             None => FACE.to_owned(),
         },
         accent: pick(|t| t.accent.as_ref(), accent_fallback),
         muted: pick(|t| t.muted.as_ref(), "#6f7885"),
-        border: if themed { mix(&surface, &ink, 14) } else { "#e1e5eb".into() },
+        border: if themed {
+            mix(&surface, &ink, 14)
+        } else {
+            "#e1e5eb".into()
+        },
         background: pick(|t| t.background.as_ref(), "#f8fafd"),
         content_width: t.and_then(|t| t.content_width).filter(|v| *v > 0),
         ink,
@@ -920,15 +1201,37 @@ body {{ margin: 0; font-family: {face}; font-size: 13px; line-height: 17px; colo
 /// preserved; see the module documentation for what the CSS reproduces.
 pub fn to_html(page: &Page) -> (String, String) {
     let theme = theme_of(page);
-    let special = !theme.themed && matches!(page.title.as_str(), "Mail" | "Chat" | "Calendar" | "Documents");
-    let mut em = Emitter { css: base_css(&theme), extra_css: String::new(), html: String::new(), theme, depth: 0 };
+    let special = !theme.themed
+        && matches!(
+            page.title.as_str(),
+            "Mail" | "Chat" | "Calendar" | "Documents"
+        );
+    let mut em = Emitter {
+        css: base_css(&theme),
+        extra_css: String::new(),
+        html: String::new(),
+        theme,
+        depth: 0,
+    };
     let pin_of = |e: &PageElement| style_of(e).and_then(|s| s.pin.clone());
-    let lang = page.lang.as_deref().map(|l| format!(" lang=\"{}\"", esc_attr(l))).unwrap_or_default();
+    let lang = page
+        .lang
+        .as_deref()
+        .map(|l| format!(" lang=\"{}\"", esc_attr(l)))
+        .unwrap_or_default();
     let _ = writeln!(em.html, "<!DOCTYPE html>\n<html{lang}>\n<head>\n<meta charset=\"utf-8\">\n<title>{}</title>\n</head>\n<body>", esc_text(&page.title));
     if special {
-        let _ = writeln!(em.html, "<div class=\"cw-app-bar\">{}</div>", esc_text(&page.title));
+        let _ = writeln!(
+            em.html,
+            "<div class=\"cw-app-bar\">{}</div>",
+            esc_text(&page.title)
+        );
     }
-    let tops: Vec<&PageElement> = page.elements.iter().filter(|e| pin_of(e).as_deref() == Some("top")).collect();
+    let tops: Vec<&PageElement> = page
+        .elements
+        .iter()
+        .filter(|e| pin_of(e).as_deref() == Some("top"))
+        .collect();
     if !tops.is_empty() {
         em.html.push_str("<div class=\"cw-pin-top\">\n");
         for e in tops {
@@ -936,7 +1239,15 @@ pub fn to_html(page: &Page) -> (String, String) {
         }
         em.html.push_str("</div>\n");
     }
-    let _ = writeln!(em.html, "<div class=\"{}\">", if special { "cw-page cw-page-app" } else { "cw-page" });
+    let _ = writeln!(
+        em.html,
+        "<div class=\"{}\">",
+        if special {
+            "cw-page cw-page-app"
+        } else {
+            "cw-page"
+        }
+    );
     let mut content = Decls::default();
     if let Some(cw) = em.theme.content_width {
         content.px("max-width", cw);
@@ -945,12 +1256,20 @@ pub fn to_html(page: &Page) -> (String, String) {
     // An untitled page draws its title itself; a heading that repeats it is not drawn
     // twice, but its id stays on the title so the heading is still addressable.
     let title_heading = page.elements.iter().find_map(|e| match e {
-        PageElement::Heading { id, text, .. } if !em.theme.themed && text == &page.title => Some(id.as_str()),
+        PageElement::Heading { id, text, .. } if !em.theme.themed && text == &page.title => {
+            Some(id.as_str())
+        }
         _ => None,
     });
     if !em.theme.themed && !special {
-        let id = title_heading.map(|id| format!(" id=\"{}\"", esc_attr(id))).unwrap_or_default();
-        let _ = writeln!(em.html, "<h1 class=\"cw-title\"{id}>{}</h1>", esc_text(&page.title));
+        let id = title_heading
+            .map(|id| format!(" id=\"{}\"", esc_attr(id)))
+            .unwrap_or_default();
+        let _ = writeln!(
+            em.html,
+            "<h1 class=\"cw-title\"{id}>{}</h1>",
+            esc_text(&page.title)
+        );
     }
     for e in &page.elements {
         if pin_of(e).is_some() {
@@ -962,7 +1281,11 @@ pub fn to_html(page: &Page) -> (String, String) {
         em.element(e);
     }
     em.html.push_str("</div>\n</div>\n");
-    let bottoms: Vec<&PageElement> = page.elements.iter().filter(|e| pin_of(e).as_deref() == Some("bottom")).collect();
+    let bottoms: Vec<&PageElement> = page
+        .elements
+        .iter()
+        .filter(|e| pin_of(e).as_deref() == Some("bottom"))
+        .collect();
     if !bottoms.is_empty() {
         em.html.push_str("<div class=\"cw-pin-bottom\">\n");
         for e in bottoms {
@@ -988,7 +1311,10 @@ mod tests {
     use cw_protocol::PageTheme;
     use std::collections::{BTreeMap, BTreeSet};
 
-    const VOID: &[&str] = &["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"];
+    const VOID: &[&str] = &[
+        "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source",
+        "track", "wbr",
+    ];
 
     /// A small well-formedness check: tags balance, attribute values are quoted and
     /// hold no raw `<` or `"`, text holds no raw `<`.
@@ -1001,20 +1327,30 @@ mod tests {
             if text.contains('>') && !text.trim().is_empty() && text.contains("<") {
                 return Err(format!("raw < in text: {text:?}"));
             }
-            let tag_end = rest[i..].find('>').ok_or_else(|| format!("unterminated tag at {:?}", &rest[i..(i + 40).min(rest.len())]))?;
+            let tag_end = rest[i..].find('>').ok_or_else(|| {
+                format!(
+                    "unterminated tag at {:?}",
+                    &rest[i..(i + 40).min(rest.len())]
+                )
+            })?;
             let tag = &rest[i + 1..i + tag_end];
             rest = &rest[i + tag_end + 1..];
             if tag.starts_with('!') {
                 continue;
             }
             if let Some(name) = tag.strip_prefix('/') {
-                let open = stack.pop().ok_or_else(|| format!("close </{name}> with nothing open"))?;
+                let open = stack
+                    .pop()
+                    .ok_or_else(|| format!("close </{name}> with nothing open"))?;
                 if open != name.trim() {
                     return Err(format!("close </{name}> but <{open}> is open"));
                 }
                 continue;
             }
-            let name: String = tag.chars().take_while(|c| c.is_ascii_alphanumeric()).collect();
+            let name: String = tag
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric())
+                .collect();
             let mut a = &tag[name.len()..];
             while let Some(eq) = a.find('=') {
                 let key = a[..eq].trim().to_owned();
@@ -1022,7 +1358,9 @@ mod tests {
                 if !after.starts_with('"') {
                     return Err(format!("unquoted attribute {key} in <{tag}>"));
                 }
-                let close = after[1..].find('"').ok_or_else(|| format!("unterminated attribute {key}"))?;
+                let close = after[1..]
+                    .find('"')
+                    .ok_or_else(|| format!("unterminated attribute {key}"))?;
                 let value = &after[1..1 + close];
                 if value.contains('<') {
                     return Err(format!("raw < in attribute {key}"));
@@ -1058,7 +1396,10 @@ mod tests {
         let mut out = Vec::new();
         let mut rest = css;
         while let Some(open) = rest.find('{') {
-            let close = rest[open..].find('}').map(|c| open + c).unwrap_or(rest.len());
+            let close = rest[open..]
+                .find('}')
+                .map(|c| open + c)
+                .unwrap_or(rest.len());
             let body = &rest[open + 1..close];
             if body.contains('{') {
                 // A media query: descend into its block.
@@ -1079,30 +1420,59 @@ mod tests {
         attrs
             .iter()
             .filter(|(k, _)| k == "style")
-            .flat_map(|(_, v)| v.split(';').filter_map(|d| d.split_once(':').map(|(k, v)| (k.trim().to_owned(), v.trim().to_owned()))).collect::<Vec<_>>())
+            .flat_map(|(_, v)| {
+                v.split(';')
+                    .filter_map(|d| {
+                        d.split_once(':')
+                            .map(|(k, v)| (k.trim().to_owned(), v.trim().to_owned()))
+                    })
+                    .collect::<Vec<_>>()
+            })
             .collect()
     }
 
     fn check_page(page: &Page) -> (String, String) {
         let (html, css) = to_html(page);
-        let attrs = check_well_formed(&html).unwrap_or_else(|e| panic!("{}: {e}\n{html}", page.title));
+        let attrs =
+            check_well_formed(&html).unwrap_or_else(|e| panic!("{}: {e}\n{html}", page.title));
         let mut wanted = Vec::new();
         element_ids(&page.elements, &mut wanted);
-        let ids: Vec<&str> = attrs.iter().filter(|(k, _)| k == "id").map(|(_, v)| v.as_str()).collect();
+        let ids: Vec<&str> = attrs
+            .iter()
+            .filter(|(k, _)| k == "id")
+            .map(|(_, v)| v.as_str())
+            .collect();
         let unique: BTreeSet<&str> = ids.iter().copied().collect();
-        assert_eq!(ids.len(), unique.len(), "{}: duplicate ids in output", page.title);
+        assert_eq!(
+            ids.len(),
+            unique.len(),
+            "{}: duplicate ids in output",
+            page.title
+        );
         for id in &wanted {
-            assert!(unique.contains(esc_attr(id).as_str()), "{}: element id {id:?} lost", page.title);
+            assert!(
+                unique.contains(esc_attr(id).as_str()),
+                "{}: element id {id:?} lost",
+                page.title
+            );
         }
-        for (k, v) in declarations(&css).into_iter().chain(inline_declarations(&attrs)) {
-            assert!(SUPPORTED_PROPERTIES.contains(&k.as_str()), "{}: unsupported property {k}: {v}", page.title);
+        for (k, v) in declarations(&css)
+            .into_iter()
+            .chain(inline_declarations(&attrs))
+        {
+            assert!(
+                SUPPORTED_PROPERTIES.contains(&k.as_str()),
+                "{}: unsupported property {k}: {v}",
+                page.title
+            );
             assert!(!v.is_empty(), "{}: empty value for {k}", page.title);
         }
         (html, css)
     }
 
     fn fixture_pages() -> Vec<Page> {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../worlds/company-2026");
+        let root =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../worlds/company-2026");
         let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(root.join("sites"))
             .expect("worlds/company-2026/sites")
             .filter_map(|e| e.ok().map(|e| e.path()))
@@ -1130,7 +1500,8 @@ mod tests {
         let mut pages = Vec::new();
         for f in files {
             let text = std::fs::read_to_string(&f).unwrap();
-            let v: serde_json::Value = serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", f.display()));
+            let v: serde_json::Value =
+                serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", f.display()));
             walk(&v, &mut pages);
         }
         pages
@@ -1139,7 +1510,11 @@ mod tests {
     #[test]
     fn every_fixture_page_converts_to_well_formed_html_with_supported_css() {
         let pages = fixture_pages();
-        assert!(pages.len() >= 300, "expected the site fixtures to hold hundreds of pages, found {}", pages.len());
+        assert!(
+            pages.len() >= 300,
+            "expected the site fixtures to hold hundreds of pages, found {}",
+            pages.len()
+        );
         let mut kinds = BTreeSet::new();
         for page in &pages {
             let (html, _) = check_page(page);
@@ -1190,15 +1565,27 @@ mod tests {
             let mut wanted = Vec::new();
             element_ids(&page.elements, &mut wanted);
             for id in wanted {
-                assert!(!doc.by_id(&id).is_empty(), "{}: id {id:?} not found after parsing", page.title);
+                assert!(
+                    !doc.by_id(&id).is_empty(),
+                    "{}: id {id:?} not found after parsing",
+                    page.title
+                );
             }
             assert!(doc.body().is_some());
         }
     }
 
     fn sample_page() -> Page {
-        let get = |url: &str| PageAction { method: "GET".into(), url: url.into(), fields: BTreeMap::new() };
-        let post = |url: &str| PageAction { method: "POST".into(), url: url.into(), fields: BTreeMap::from([("kind".to_owned(), "like".to_owned())]) };
+        let get = |url: &str| PageAction {
+            method: "GET".into(),
+            url: url.into(),
+            fields: BTreeMap::new(),
+        };
+        let post = |url: &str| PageAction {
+            method: "POST".into(),
+            url: url.into(),
+            fields: BTreeMap::from([("kind".to_owned(), "like".to_owned())]),
+        };
         Page {
             version: 1,
             title: "Sample".into(),
@@ -1276,7 +1663,8 @@ mod tests {
         assert!(css.contains("body { margin: 0; font-family: Verdana, Geneva, sans-serif, 'DejaVu Sans', sans-serif; font-size: 13px; line-height: 17px; color: #1f1f1f; }"));
         // A themed page draws no title, and the heading equal to the title stays.
         assert!(!html.contains("cw-title"));
-        assert!(html.contains("<h1 class=\"cw-heading\" id=\"h\" style=\"font-size: 18px\">Sample</h1>"));
+        assert!(html
+            .contains("<h1 class=\"cw-heading\" id=\"h\" style=\"font-size: 18px\">Sample</h1>"));
         assert!(css.contains(".cw-heading { font-weight: bold; line-height: 30px; height: 30px;"));
         // Text escapes and keeps its paragraph metrics.
         assert!(html.contains("<p class=\"cw-text\" id=\"t\">A paragraph of text that says &lt;nothing&gt; &amp; wraps.</p>"));
@@ -1290,7 +1678,9 @@ mod tests {
         // The icon is a labelled box holding the symbol name, inside a GET link.
         assert!(html.contains("<a class=\"cw-target\" href=\"/notifications\"><span class=\"cw-icon\" role=\"img\" aria-label=\"Notifications\" title=\"Notifications\" id=\"bell\" style=\"width: 20px; height: 20px; line-height: 20px; color: #1f1f1f; border-radius: 10px\"><span class=\"cw-glyph\" data-symbol=\"bell\" style=\"width: 20px; height: 20px; line-height: 20px\">bell</span></span></a>"));
         // The grid: three equal columns, and the drop rule as media queries.
-        assert!(html.contains("display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px"));
+        assert!(html.contains(
+            "display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px"
+        ));
         assert!(css.contains("@media (max-width: 343px) { #cards { grid-template-columns: repeat(1, minmax(0, 1fr)); } }"));
         assert!(css.contains("@media (max-width: 505px) { #cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }"));
         // Cards: default padding 14 and radius 10; a GET card is a link, a POST card a button.
@@ -1311,10 +1701,14 @@ mod tests {
         assert!(html.contains("<textarea class=\"cw-input cw-textarea\" id=\"comment-body\" name=\"comment-body\" placeholder=\"Say something\"></textarea>"));
         assert!(html.contains("<input class=\"cw-input\" type=\"text\" id=\"name\" name=\"name\" value=\"alice\" placeholder=\"\">"));
         assert!(html.contains("<button type=\"submit\" class=\"cw-button\" id=\"comment-submit\" style=\"font-size: 12px; line-height: 16px; padding: 9px 14px; color: #ffffff; background-color: #ff6600; border-radius: 6px\">Post comment</button>"));
-        assert!(css.contains(".cw-input { display: block; width: 100%; box-sizing: border-box; height: 36px;"));
+        assert!(css.contains(
+            ".cw-input { display: block; width: 100%; box-sizing: border-box; height: 36px;"
+        ));
         assert!(css.contains(".cw-textarea { height: 82px;"));
         // Divider, centred button, spacer.
-        assert!(html.contains("<hr class=\"cw-divider\" id=\"d\" style=\"height: 1px; background-color: #"));
+        assert!(html.contains(
+            "<hr class=\"cw-divider\" id=\"d\" style=\"height: 1px; background-color: #"
+        ));
         assert!(html.contains("<form class=\"cw-line cw-action\" action=\"/buy\" method=\"post\" style=\"text-align: center; margin-bottom: 12px\">"));
         assert!(html.contains("<div class=\"cw-spacer\" id=\"sp\" style=\"height: 24px\"></div>"));
         assert!(html.contains("<html lang=\"en\">"));
@@ -1326,15 +1720,28 @@ mod tests {
     #[test]
     fn untitled_plain_pages_draw_the_title_and_legacy_apps_get_the_bar() {
         let mut page = Page::new("Plain");
-        page.elements.push(PageElement::Heading { id: "h".into(), text: "Plain".into(), level: 1 });
-        page.elements.push(PageElement::Text { id: "t".into(), text: "body".into() });
+        page.elements.push(PageElement::Heading {
+            id: "h".into(),
+            text: "Plain".into(),
+            level: 1,
+        });
+        page.elements.push(PageElement::Text {
+            id: "t".into(),
+            text: "body".into(),
+        });
         let (html, css) = check_page(&page);
         assert!(html.contains("<h1 class=\"cw-title\" id=\"h\">Plain</h1>"));
-        assert!(!html.contains("cw-heading"), "a heading equal to the title is not drawn twice");
+        assert!(
+            !html.contains("cw-heading"),
+            "a heading equal to the title is not drawn twice"
+        );
         assert!(css.contains("html { background-color: #f8fafd; }"));
         assert!(css.contains(".cw-title { font-size: 20px; line-height: 28px; height: 28px;"));
         let mut mail = Page::new("Mail");
-        mail.elements.push(PageElement::Text { id: "t".into(), text: "inbox".into() });
+        mail.elements.push(PageElement::Text {
+            id: "t".into(),
+            text: "inbox".into(),
+        });
         let (html, _) = check_page(&mail);
         assert!(html.contains("<div class=\"cw-app-bar\">Mail</div>"));
         assert!(html.contains("<div class=\"cw-page cw-page-app\">"));
@@ -1344,7 +1751,12 @@ mod tests {
     #[test]
     fn ids_and_text_are_escaped() {
         let mut page = Page::new("Esc");
-        page.elements.push(PageElement::Link { id: "a\"b<c".into(), text: "<x> & y".into(), url: "/?a=1&b=\"2\"".into(), style: None });
+        page.elements.push(PageElement::Link {
+            id: "a\"b<c".into(),
+            text: "<x> & y".into(),
+            url: "/?a=1&b=\"2\"".into(),
+            style: None,
+        });
         let (html, _) = check_page(&page);
         assert!(html.contains("id=\"a&quot;b&lt;c\""));
         assert!(html.contains("href=\"/?a=1&amp;b=&quot;2&quot;\""));

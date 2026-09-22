@@ -80,7 +80,11 @@ fn money(cents: i64) -> String {
         }
         whole.push(d);
     }
-    format!("{}${whole}.{:02}", if cents < 0 { "-" } else { "" }, n % 100)
+    format!(
+        "{}${whole}.{:02}",
+        if cents < 0 { "-" } else { "" },
+        n % 100
+    )
 }
 fn slug(name: &str) -> String {
     let s: String = name
@@ -479,7 +483,9 @@ mod tests {
         cw_web::html::parse(&body)
     }
     fn node(doc: &cw_web::dom::Document, id: &str) -> cw_web::dom::NodeId {
-        *doc.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+        *doc.by_id(id)
+            .first()
+            .unwrap_or_else(|| panic!("no element #{id}"))
     }
     fn paypal_seed() -> Value {
         let mut seed = seed();
@@ -515,7 +521,10 @@ mod tests {
             &mut state,
             "http://northwind.example/accounts/cc-3310/transactions/tx-1",
         ));
-        assert_eq!(tx.attr(node(&tx, "origin"), "href"), Some("http://amazon.com/orders/1001"));
+        assert_eq!(
+            tx.attr(node(&tx, "origin"), "href"),
+            Some("http://amazon.com/orders/1001")
+        );
         assert_eq!(tx.text_content(node(&tx, "amount")), "-$429.99");
     }
     #[test]
@@ -529,22 +538,39 @@ mod tests {
                 let page = get(&mut state, &format!("http://{host}{path}"));
                 assert_eq!(page.status, 200, "{host}{path}");
                 let doc = dom(&page);
-                let body = doc.descendants(cw_web::dom::Document::ROOT).find(|n| doc.is(*n, "body")).unwrap();
-                assert!(doc.attr(body, "class").unwrap().contains(skin), "{host}{path}");
+                let body = doc
+                    .descendants(cw_web::dom::Document::ROOT)
+                    .find(|n| doc.is(*n, "body"))
+                    .unwrap();
+                assert!(
+                    doc.attr(body, "class").unwrap().contains(skin),
+                    "{host}{path}"
+                );
                 for id in ["chrome", "wordmark", "nav-home", "nav-pay", "foot"] {
                     node(&doc, id);
                 }
             }
             // Somebody with no accounts still gets a valid page.
-            let bob = ServiceContext { actor: "carol".into(), ..ctx() };
+            let bob = ServiceContext {
+                actor: "carol".into(),
+                ..ctx()
+            };
             let empty = BankService
-                .handle(&mut state, &bob, &HttpRequest::get(format!("http://{host}/")))
+                .handle(
+                    &mut state,
+                    &bob,
+                    &HttpRequest::get(format!("http://{host}/")),
+                )
                 .unwrap();
             let doc = dom(&empty);
             node(&doc, "none");
         }
-        assert!(BankService.initialize(json!({"skin": "nonesuch"}), &ctx()).is_err());
-        let named = BankService.initialize(json!({"brand": "Any", "skin": "paypal"}), &ctx()).unwrap();
+        assert!(BankService
+            .initialize(json!({"skin": "nonesuch"}), &ctx())
+            .is_err());
+        let named = BankService
+            .initialize(json!({"brand": "Any", "skin": "paypal"}), &ctx())
+            .unwrap();
         let s: BankState = web::load(&named).unwrap();
         assert_eq!(s.skin(), "paypal");
     }
@@ -553,79 +579,201 @@ mod tests {
         let mut state = BankService.initialize(seed(), &ctx()).unwrap();
         let home = dom(&get(&mut state, "http://northwind.example/"));
         assert_eq!(home.attr(node(&home, "nav-home"), "href"), Some("/"));
-        assert_eq!(home.attr(node(&home, "nav-pay"), "href"), Some("/transfers"));
+        assert_eq!(
+            home.attr(node(&home, "nav-pay"), "href"),
+            Some("/transfers")
+        );
         assert_eq!(home.text_content(node(&home, "wordmark")), "Testbank");
         assert_eq!(home.text_content(node(&home, "lead")), "Your accounts");
-        assert_eq!(home.text_content(node(&home, "act-head")), "Recent activity");
+        assert_eq!(
+            home.text_content(node(&home, "act-head")),
+            "Recent activity"
+        );
         let tile = node(&home, "a-cc-3310");
         assert_eq!(home.tag(tile), Some("a"));
         assert_eq!(home.attr(tile, "href"), Some("/accounts/cc-3310"));
-        assert_eq!(home.text_content(node(&home, "a-cc-3310-n")), "Rewards Card (...3310)");
+        assert_eq!(
+            home.text_content(node(&home, "a-cc-3310-n")),
+            "Rewards Card (...3310)"
+        );
         assert_eq!(home.text_content(node(&home, "a-cc-3310-b")), "-$482.31");
-        assert_eq!(home.text_content(node(&home, "a-cc-3310-av")), "Available credit $9,517.69");
-        assert_eq!(home.text_content(node(&home, "a-chk-4417-av")), "Available $8,124.55");
+        assert_eq!(
+            home.text_content(node(&home, "a-cc-3310-av")),
+            "Available credit $9,517.69"
+        );
+        assert_eq!(
+            home.text_content(node(&home, "a-chk-4417-av")),
+            "Available $8,124.55"
+        );
         let row = node(&home, "t-tx-1");
         assert_eq!(home.tag(row), Some("a"));
-        assert_eq!(home.attr(row, "href"), Some("/accounts/cc-3310/transactions/tx-1"));
+        assert_eq!(
+            home.attr(row, "href"),
+            Some("/accounts/cc-3310/transactions/tx-1")
+        );
         assert_eq!(home.text_content(node(&home, "t-tx-1-m")), "AMAZON.COM");
         assert_eq!(home.text_content(node(&home, "t-tx-1-c")), "Shopping");
         assert_eq!(home.text_content(node(&home, "t-tx-1-d")), "Mar 2, 2026");
-        assert_eq!(home.attr(node(&home, "t-tx-1-d"), "datetime"), Some("2026-03-02"));
+        assert_eq!(
+            home.attr(node(&home, "t-tx-1-d"), "datetime"),
+            Some("2026-03-02")
+        );
         assert_eq!(home.text_content(node(&home, "t-tx-1-a")), "-$429.99");
 
-        let account = dom(&get(&mut state, "http://northwind.example/accounts/cc-3310?category=Shopping&q=order"));
-        assert_eq!(account.text_content(node(&account, "lead")), "Rewards Card (...3310)");
-        assert_eq!(account.text_content(node(&account, "bal")), "Balance -$482.31");
-        assert_eq!(account.text_content(node(&account, "avail")), "Available credit $9,517.69");
-        assert_eq!(account.attr(node(&account, "statement"), "href"), Some("/statements/cc-3310/all"));
+        let account = dom(&get(
+            &mut state,
+            "http://northwind.example/accounts/cc-3310?category=Shopping&q=order",
+        ));
+        assert_eq!(
+            account.text_content(node(&account, "lead")),
+            "Rewards Card (...3310)"
+        );
+        assert_eq!(
+            account.text_content(node(&account, "bal")),
+            "Balance -$482.31"
+        );
+        assert_eq!(
+            account.text_content(node(&account, "avail")),
+            "Available credit $9,517.69"
+        );
+        assert_eq!(
+            account.attr(node(&account, "statement"), "href"),
+            Some("/statements/cc-3310/all")
+        );
         let filter = node(&account, "filter");
         assert_eq!(account.attr(filter, "action"), Some("/accounts/cc-3310"));
         assert_eq!(account.attr(filter, "method"), Some("get"));
-        assert_eq!(account.attr(node(&account, "filter-category"), "name"), Some("category"));
-        assert_eq!(account.attr(node(&account, "filter-category"), "value"), Some("Shopping"));
+        assert_eq!(
+            account.attr(node(&account, "filter-category"), "name"),
+            Some("category")
+        );
+        assert_eq!(
+            account.attr(node(&account, "filter-category"), "value"),
+            Some("Shopping")
+        );
         assert_eq!(account.attr(node(&account, "filter-q"), "name"), Some("q"));
-        assert_eq!(account.attr(node(&account, "filter-q"), "value"), Some("order"));
+        assert_eq!(
+            account.attr(node(&account, "filter-q"), "value"),
+            Some("order")
+        );
         assert_eq!(account.tag(node(&account, "filter-go")), Some("button"));
-        assert_eq!(account.attr(node(&account, "cat-shopping"), "href"), Some("/accounts/cc-3310?category=Shopping"));
-        assert_eq!(account.text_content(node(&account, "count")), "1 transaction");
+        assert_eq!(
+            account.attr(node(&account, "cat-shopping"), "href"),
+            Some("/accounts/cc-3310?category=Shopping")
+        );
+        assert_eq!(
+            account.text_content(node(&account, "count")),
+            "1 transaction"
+        );
         node(&account, "t-tx-1");
-        let none = dom(&get(&mut state, "http://northwind.example/accounts/cc-3310?q=nothing-matches"));
+        let none = dom(&get(
+            &mut state,
+            "http://northwind.example/accounts/cc-3310?q=nothing-matches",
+        ));
         assert_eq!(none.text_content(node(&none, "count")), "0 transactions");
         assert!(none.by_id("t-tx-1").is_empty());
 
-        let tx = dom(&get(&mut state, "http://northwind.example/accounts/cc-3310/transactions/tx-1"));
+        let tx = dom(&get(
+            &mut state,
+            "http://northwind.example/accounts/cc-3310/transactions/tx-1",
+        ));
         assert_eq!(tx.text_content(node(&tx, "merchant")), "AMAZON.COM");
-        assert_eq!(tx.text_content(node(&tx, "fact-date")), "Posted Mar 2, 2026");
+        assert_eq!(
+            tx.text_content(node(&tx, "fact-date")),
+            "Posted Mar 2, 2026"
+        );
         assert_eq!(tx.text_content(node(&tx, "fact-cat")), "Category Shopping");
         assert_eq!(tx.text_content(node(&tx, "fact-memo")), "Order 1001");
         assert_eq!(tx.text_content(node(&tx, "fact-status")), "Posted");
-        assert_eq!(tx.text_content(node(&tx, "link-head")), "Where this charge came from");
-        assert_eq!(tx.attr(node(&tx, "back"), "href"), Some("/accounts/cc-3310"));
+        assert_eq!(
+            tx.text_content(node(&tx, "link-head")),
+            "Where this charge came from"
+        );
+        assert_eq!(
+            tx.attr(node(&tx, "back"), "href"),
+            Some("/accounts/cc-3310")
+        );
         node(&tx, "facts");
 
-        let st = dom(&get(&mut state, "http://northwind.example/statements/cc-3310/2026-03"));
+        let st = dom(&get(
+            &mut state,
+            "http://northwind.example/statements/cc-3310/2026-03",
+        ));
         assert_eq!(st.text_content(node(&st, "sum-in")), "Deposits $0.00");
-        assert_eq!(st.text_content(node(&st, "sum-out")), "Withdrawals -$429.99");
-        assert_eq!(st.text_content(node(&st, "sum-close")), "Closing balance -$482.31");
+        assert_eq!(
+            st.text_content(node(&st, "sum-out")),
+            "Withdrawals -$429.99"
+        );
+        assert_eq!(
+            st.text_content(node(&st, "sum-close")),
+            "Closing balance -$482.31"
+        );
         node(&st, "sums");
         // The period control offers only the months this account has activity in, and the
         // one being read says so instead of pretending there is somewhere else to go.
-        assert_eq!(st.text_content(node(&st, "lead")), "Statement — Rewards Card (...3310) — Mar 2026");
-        assert_eq!(st.attr(node(&st, "stmt-all"), "href"), Some("/statements/cc-3310/all"));
+        assert_eq!(
+            st.text_content(node(&st, "lead")),
+            "Statement — Rewards Card (...3310) — Mar 2026"
+        );
+        assert_eq!(
+            st.attr(node(&st, "stmt-all"), "href"),
+            Some("/statements/cc-3310/all")
+        );
         assert_eq!(st.text_content(node(&st, "stmt-2026-03")), "Mar 2026");
-        assert_eq!(st.attr(node(&st, "stmt-2026-03"), "aria-current"), Some("page"));
+        assert_eq!(
+            st.attr(node(&st, "stmt-2026-03"), "aria-current"),
+            Some("page")
+        );
         assert_eq!(st.attr(node(&st, "stmt-all"), "aria-current"), None);
-        assert!(st.by_id("stmt-2026-01").is_empty(), "a month with nothing in it is not offered");
-        let all = dom(&get(&mut state, "http://northwind.example/statements/cc-3310/all"));
-        assert_eq!(all.text_content(node(&all, "lead")), "Statement — Rewards Card (...3310) — all activity");
-        assert_eq!(all.attr(node(&all, "stmt-all"), "aria-current"), Some("page"));
+        assert!(
+            st.by_id("stmt-2026-01").is_empty(),
+            "a month with nothing in it is not offered"
+        );
+        let all = dom(&get(
+            &mut state,
+            "http://northwind.example/statements/cc-3310/all",
+        ));
+        assert_eq!(
+            all.text_content(node(&all, "lead")),
+            "Statement — Rewards Card (...3310) — all activity"
+        );
+        assert_eq!(
+            all.attr(node(&all, "stmt-all"), "aria-current"),
+            Some("page")
+        );
 
         let pay = dom(&get(&mut state, "http://northwind.example/transfers"));
         assert_eq!(pay.text_content(node(&pay, "lead")), "Pay & transfer");
         for (form, action, fields, go) in [
-            ("xfer", "/api/transfers", vec![("xfer-from", "from", "cc-3310"), ("xfer-to", "to", "chk-4417"), ("xfer-amount", "amount_cents", "2500")], "xfer-go"),
-            ("pay", "/api/payments", vec![("pay-account", "account", "cc-3310"), ("pay-payee", "payee", ""), ("pay-amount", "amount_cents", "0")], "pay-go"),
-            ("addpayee", "/api/payees", vec![("addpayee-name", "name", ""), ("addpayee-hint", "account_hint", "")], "addpayee-go"),
+            (
+                "xfer",
+                "/api/transfers",
+                vec![
+                    ("xfer-from", "from", "cc-3310"),
+                    ("xfer-to", "to", "chk-4417"),
+                    ("xfer-amount", "amount_cents", "2500"),
+                ],
+                "xfer-go",
+            ),
+            (
+                "pay",
+                "/api/payments",
+                vec![
+                    ("pay-account", "account", "cc-3310"),
+                    ("pay-payee", "payee", ""),
+                    ("pay-amount", "amount_cents", "0"),
+                ],
+                "pay-go",
+            ),
+            (
+                "addpayee",
+                "/api/payees",
+                vec![
+                    ("addpayee-name", "name", ""),
+                    ("addpayee-hint", "account_hint", ""),
+                ],
+                "addpayee-go",
+            ),
         ] {
             let f = node(&pay, form);
             assert_eq!(pay.attr(f, "action"), Some(action));
@@ -634,14 +782,19 @@ mod tests {
                 let input = node(&pay, id);
                 assert_eq!(pay.attr(input, "name"), Some(name), "{id}");
                 assert_eq!(pay.attr(input, "value").unwrap_or(""), value, "{id}");
-                assert!(pay.ancestors(input).any(|a| a == f), "{id} is inside #{form}");
+                assert!(
+                    pay.ancestors(input).any(|a| a == f),
+                    "{id} is inside #{form}"
+                );
             }
             let button = node(&pay, go);
             assert_eq!(pay.tag(button), Some("button"));
             assert!(pay.ancestors(button).any(|a| a == f));
         }
         assert!(pay.text_content(node(&pay, "own")).contains("chk-4417"));
-        assert!(pay.text_content(node(&pay, "payees")).contains("city-power (Cascade City Power)"));
+        assert!(pay
+            .text_content(node(&pay, "payees"))
+            .contains("city-power (Cascade City Power)"));
         for id in ["xfer-card", "xfer-head", "pay-card", "pay-head"] {
             node(&pay, id);
         }
@@ -652,7 +805,11 @@ mod tests {
         let moved = post(
             &mut state,
             "http://northwind.example/api/transfers",
-            &[("from", "chk-4417"), ("to", "sav-9902"), ("amount_cents", "25000")],
+            &[
+                ("from", "chk-4417"),
+                ("to", "sav-9902"),
+                ("amount_cents", "25000"),
+            ],
         );
         let doc = dom(&moved);
         assert_eq!(doc.text_content(node(&doc, "bal")), "Balance $7,874.55");
@@ -663,7 +820,9 @@ mod tests {
             &[("name", "Rainier Fibre"), ("account_hint", "...4402")],
         );
         let doc = dom(&added);
-        assert!(doc.text_content(node(&doc, "payees")).contains("rainier-fibre"));
+        assert!(doc
+            .text_content(node(&doc, "payees"))
+            .contains("rainier-fibre"));
     }
     #[test]
     fn only_the_actors_own_accounts_are_addressable() {

@@ -28,8 +28,18 @@ fn client_rect(i: &mut Inner, n: NodeId) -> Option<Rect> {
 
 fn rect_array(vm: &mut Vm, r: Option<Rect>) -> Value {
     match r {
-        Some(r) => vm.arr(vec![Value::Num(px(r.origin.x)), Value::Num(px(r.origin.y)), Value::Num(px(r.size.width)), Value::Num(px(r.size.height))]),
-        None => vm.arr(vec![Value::Num(0.0), Value::Num(0.0), Value::Num(0.0), Value::Num(0.0)]),
+        Some(r) => vm.arr(vec![
+            Value::Num(px(r.origin.x)),
+            Value::Num(px(r.origin.y)),
+            Value::Num(px(r.size.width)),
+            Value::Num(px(r.size.height)),
+        ]),
+        None => vm.arr(vec![
+            Value::Num(0.0),
+            Value::Num(0.0),
+            Value::Num(0.0),
+            Value::Num(0.0),
+        ]),
     }
 }
 
@@ -45,7 +55,10 @@ fn client_rects(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         let rc = inner(vm);
         let mut i = rc.borrow_mut();
         let (sx, sy) = i.window_scroll();
-        i.rects_of(n).into_iter().map(|r| r.translate(-sx, -sy)).collect::<Vec<_>>()
+        i.rects_of(n)
+            .into_iter()
+            .map(|r| r.translate(-sx, -sy))
+            .collect::<Vec<_>>()
     };
     let items: Vec<Value> = rects.into_iter().map(|r| rect_array(vm, Some(r))).collect();
     Ok(vm.arr(items))
@@ -55,15 +68,31 @@ fn client_rects(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 /// clientLeft, clientTop, clientWidth, clientHeight, scrollWidth, scrollHeight]`.
 fn metrics(i: &mut Inner, n: NodeId) -> [f64; 10] {
     i.ensure_layout();
-    let Some(tree) = i.tree.as_ref() else { return [0.0; 10] };
+    let Some(tree) = i.tree.as_ref() else {
+        return [0.0; 10];
+    };
     if Some(n) == i.doc.document_element() {
         // The root element's client box is the viewport; its scroll size the
         // document's.
         let vw = px(tree.viewport_width);
         let vh = px(tree.viewport_height);
         let rects = tree.rects_of(n);
-        let (w, h) = rects.first().map(|r| (px(r.size.width), px(r.size.height))).unwrap_or((vw, vh));
-        return [0.0, 0.0, w.round(), h.round(), 0.0, 0.0, vw.round(), vh.round(), px(tree.content_width.max(tree.viewport_width)).round(), px(tree.content_height.max(tree.viewport_height)).round()];
+        let (w, h) = rects
+            .first()
+            .map(|r| (px(r.size.width), px(r.size.height)))
+            .unwrap_or((vw, vh));
+        return [
+            0.0,
+            0.0,
+            w.round(),
+            h.round(),
+            0.0,
+            0.0,
+            vw.round(),
+            vh.round(),
+            px(tree.content_width.max(tree.viewport_width)).round(),
+            px(tree.content_height.max(tree.viewport_height)).round(),
+        ];
     }
     let Some((f, abs)) = fragment_of(tree, n) else {
         // Inline elements: use the union of inline fragments for offsets.
@@ -73,48 +102,119 @@ fn metrics(i: &mut Inner, n: NodeId) -> [f64; 10] {
         }
         let u = rects.iter().skip(1).fold(rects[0], |a, r| a.union(*r));
         let (ol, ot) = offset_origin(i, n);
-        return [px(u.origin.x - ol), px(u.origin.y - ot), u.size.width.to_px_round() as f64, u.size.height.to_px_round() as f64, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        return [
+            px(u.origin.x - ol),
+            px(u.origin.y - ot),
+            u.size.width.to_px_round() as f64,
+            u.size.height.to_px_round() as f64,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        ];
     };
     let (padding, border, scroll) = match &f.kind {
-        FragmentKind::Box { padding, border, scroll, .. } => (*padding, *border, *scroll),
+        FragmentKind::Box {
+            padding,
+            border,
+            scroll,
+            ..
+        } => (*padding, *border, *scroll),
         _ => (crate::geom::Edges::ZERO, crate::geom::Edges::ZERO, None),
     };
     let w = abs.size.width;
     let h = abs.size.height;
-    let bar_w = scroll.map(|s| if s.shows_y_bar { Au::from_px_i32(15) } else { Au::ZERO }).unwrap_or(Au::ZERO);
-    let bar_h = scroll.map(|s| if s.shows_x_bar { Au::from_px_i32(15) } else { Au::ZERO }).unwrap_or(Au::ZERO);
+    let bar_w = scroll
+        .map(|s| {
+            if s.shows_y_bar {
+                Au::from_px_i32(15)
+            } else {
+                Au::ZERO
+            }
+        })
+        .unwrap_or(Au::ZERO);
+    let bar_h = scroll
+        .map(|s| {
+            if s.shows_x_bar {
+                Au::from_px_i32(15)
+            } else {
+                Au::ZERO
+            }
+        })
+        .unwrap_or(Au::ZERO);
     let client_w = (w - border.horizontal() - bar_w).max(Au::ZERO);
     let client_h = (h - border.vertical() - bar_h).max(Au::ZERO);
     let (scroll_w, scroll_h) = match scroll {
-        Some(s) => (s.content_width.max(client_w), s.content_height.max(client_h)),
+        Some(s) => (
+            s.content_width.max(client_w),
+            s.content_height.max(client_h),
+        ),
         None => {
             let ov = f.overflow;
             let inner_w = (w - border.horizontal()).max(Au::ZERO);
             let inner_h = (h - border.vertical()).max(Au::ZERO);
-            ((ov.right() - border.left).max(inner_w), (ov.bottom() - border.top).max(inner_h))
+            (
+                (ov.right() - border.left).max(inner_w),
+                (ov.bottom() - border.top).max(inner_h),
+            )
         }
     };
     let _ = padding;
-    let is_inline = i.styles.get(n).map(|s| s.display.is_inline_level() && !matches!(s.display, crate::style::Display::InlineBlock)).unwrap_or(false);
+    let is_inline = i
+        .styles
+        .get(n)
+        .map(|s| {
+            s.display.is_inline_level() && !matches!(s.display, crate::style::Display::InlineBlock)
+        })
+        .unwrap_or(false);
     let (ol, ot) = offset_origin(i, n);
     let round = |a: Au| a.to_px_round() as f64;
     if is_inline {
-        return [round(abs.origin.x - ol), round(abs.origin.y - ot), round(w), round(h), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+        return [
+            round(abs.origin.x - ol),
+            round(abs.origin.y - ot),
+            round(w),
+            round(h),
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        ];
     }
-    [round(abs.origin.x - ol), round(abs.origin.y - ot), round(w), round(h), round(border.left), round(border.top), round(client_w), round(client_h), round(scroll_w), round(scroll_h)]
+    [
+        round(abs.origin.x - ol),
+        round(abs.origin.y - ot),
+        round(w),
+        round(h),
+        round(border.left),
+        round(border.top),
+        round(client_w),
+        round(client_h),
+        round(scroll_w),
+        round(scroll_h),
+    ]
 }
 
 /// The origin `offsetTop/Left` are relative to: the offsetParent's padding edge.
 fn offset_origin(i: &mut Inner, n: NodeId) -> (Au, Au) {
     match offset_parent(i, n) {
-        Some(p) if i.doc.is(p, "body") && !i.styles.get(p).map(|s| s.is_positioned()).unwrap_or(false) => {
+        Some(p)
+            if i.doc.is(p, "body")
+                && !i.styles.get(p).map(|s| s.is_positioned()).unwrap_or(false) =>
+        {
             // Offsets against a static body are relative to the initial containing
             // block, as browsers report them.
             let _ = p;
             (Au::ZERO, Au::ZERO)
         }
         Some(p) => {
-            let Some(tree) = i.tree.as_ref() else { return (Au::ZERO, Au::ZERO) };
+            let Some(tree) = i.tree.as_ref() else {
+                return (Au::ZERO, Au::ZERO);
+            };
             match fragment_of(tree, p) {
                 Some((f, abs)) => {
                     let border = match &f.kind {
@@ -132,7 +232,11 @@ fn offset_origin(i: &mut Inner, n: NodeId) -> (Au, Au) {
 
 fn offset_parent(i: &Inner, n: NodeId) -> Option<NodeId> {
     let style = i.styles.get(n)?;
-    if style.display.is_none() || matches!(style.position, Position::Fixed) || i.doc.is(n, "body") || i.doc.is(n, "html") {
+    if style.display.is_none()
+        || matches!(style.position, Position::Fixed)
+        || i.doc.is(n, "body")
+        || i.doc.is(n, "html")
+    {
         return None;
     }
     let mut cur = i.doc.parent(n);
@@ -248,8 +352,16 @@ fn scroll_left_set(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 /// `W.scrollTo(node|null, x, y)`; null is the window.
 fn scroll_to(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let n = super::node_of(&a.arg(0)).unwrap_or(Document::ROOT);
-    let x = if a.arg(1).is_nullish() { None } else { Some(arg_num(vm, a, 1)?) };
-    let y = if a.arg(2).is_nullish() { None } else { Some(arg_num(vm, a, 2)?) };
+    let x = if a.arg(1).is_nullish() {
+        None
+    } else {
+        Some(arg_num(vm, a, 1)?)
+    };
+    let y = if a.arg(2).is_nullish() {
+        None
+    } else {
+        Some(arg_num(vm, a, 2)?)
+    };
     set_scroll(vm, n, x, y);
     Ok(Value::Undefined)
 }
@@ -274,7 +386,9 @@ fn scroll_into_view(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let rc = inner(vm);
     let mut i = rc.borrow_mut();
     let rects = i.rects_of(n);
-    let Some(r) = rects.first().copied() else { return Ok(Value::Undefined) };
+    let Some(r) = rects.first().copied() else {
+        return Ok(Value::Undefined);
+    };
     let vh = Au::from_px_i32(i.viewport.height as i32);
     let (sx, sy) = i.window_scroll();
     let ny = if center {
@@ -284,7 +398,11 @@ fn scroll_into_view(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     } else {
         r.origin.y + r.size.height - vh
     };
-    let ny = if !top && !center && r.origin.y >= sy && r.bottom() <= sy + vh { sy } else { ny };
+    let ny = if !top && !center && r.origin.y >= sy && r.bottom() <= sy + vh {
+        sy
+    } else {
+        ny
+    };
     i.set_scroll(Document::ROOT, sx, ny.max(Au::ZERO));
     i.ensure_layout();
     Ok(Value::Undefined)
@@ -325,14 +443,29 @@ fn viewport(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
         None => (v.width as f64, v.height as f64),
     };
     drop(i);
-    Ok(vm.arr(vec![Value::Num(v.width as f64), Value::Num(v.height as f64), Value::Num(v.scale as f64), Value::Num(dw), Value::Num(dh)]))
+    Ok(vm.arr(vec![
+        Value::Num(v.width as f64),
+        Value::Num(v.height as f64),
+        Value::Num(v.scale as f64),
+        Value::Num(dw),
+        Value::Num(dh),
+    ]))
 }
 
 fn document_size(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
     let rc = inner(vm);
     let mut i = rc.borrow_mut();
     i.ensure_layout();
-    let (w, h) = i.tree.as_ref().map(|t| (px(t.content_width.max(t.viewport_width)), px(t.content_height.max(t.viewport_height)))).unwrap_or((0.0, 0.0));
+    let (w, h) = i
+        .tree
+        .as_ref()
+        .map(|t| {
+            (
+                px(t.content_width.max(t.viewport_width)),
+                px(t.content_height.max(t.viewport_height)),
+            )
+        })
+        .unwrap_or((0.0, 0.0));
     drop(i);
     Ok(vm.arr(vec![Value::Num(w), Value::Num(h)]))
 }
@@ -367,7 +500,10 @@ fn scroll_container(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         while let Some(c) = cur {
             if let Some(tree) = i.tree.as_ref() {
                 if let Some((f, _)) = fragment_of(tree, c) {
-                    if let FragmentKind::Box { scroll: Some(s), .. } = &f.kind {
+                    if let FragmentKind::Box {
+                        scroll: Some(s), ..
+                    } = &f.kind
+                    {
                         let inner_h = f.rect.size.height;
                         if s.content_height > inner_h || s.content_width > f.rect.size.width {
                             out = Some(c);

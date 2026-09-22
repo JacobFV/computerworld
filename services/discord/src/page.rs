@@ -110,7 +110,6 @@ pub fn emojify(text: &str) -> String {
     out
 }
 
-
 /// A seeded colour is only trusted into a `style` attribute when it is a hex colour.
 fn hex(colour: &str) -> Option<&str> {
     let digits = colour.strip_prefix('#')?;
@@ -238,23 +237,31 @@ fn segment(id: &str) -> String {
 /// one server and there is nowhere for them to lead.
 fn rail(state: &DiscordState) -> Html {
     let name = server_name(state);
-    el("nav").id("rail").class("rail").attr("aria-label", "Servers").children([
-        a("/channels/@me")
-            .id("rail-home")
-            .class("server home")
-            .attr("aria-label", "Direct Messages")
-            .attr("title", "Direct Messages")
-            .child(span("home-mark").attr("aria-hidden", "true").children([el("i").class("a"), el("i").class("b")])),
-        el("hr").id("rail-rule").class("rail-rule"),
-        div("server-slot open").child(
-            a(format!("/channels/{}", segment(&state.server.id)))
-                .id("rail-server")
-                .class("server open")
-                .attr("aria-label", name.as_str())
-                .attr("title", name.as_str())
-                .text(initials(&name)),
-        ),
-    ])
+    el("nav")
+        .id("rail")
+        .class("rail")
+        .attr("aria-label", "Servers")
+        .children([
+            a("/channels/@me")
+                .id("rail-home")
+                .class("server home")
+                .attr("aria-label", "Direct Messages")
+                .attr("title", "Direct Messages")
+                .child(
+                    span("home-mark")
+                        .attr("aria-hidden", "true")
+                        .children([el("i").class("a"), el("i").class("b")]),
+                ),
+            el("hr").id("rail-rule").class("rail-rule"),
+            div("server-slot open").child(
+                a(format!("/channels/{}", segment(&state.server.id)))
+                    .id("rail-server")
+                    .class("server open")
+                    .attr("aria-label", name.as_str())
+                    .attr("title", name.as_str())
+                    .text(initials(&name)),
+            ),
+        ])
 }
 
 // ---- the sidebar -----------------------------------------------------------------------
@@ -264,54 +271,80 @@ fn rail(state: &DiscordState) -> Html {
 fn category(id: &str, label: &str) -> Html {
     div("category").id(id).children([
         mark(&format!("{id}-chevron"), "chevron", "\u{25BE}"),
-        span("category-name").id(format!("{id}-text")).text(label.to_uppercase()),
+        span("category-name")
+            .id(format!("{id}-text"))
+            .text(label.to_uppercase()),
     ])
 }
 /// One text channel in the sidebar: `#` and its name, the row highlighted while it is
 /// the open one.
 fn channel_row(state: &DiscordState, id: &str, open: Option<&str>) -> Html {
     let current = open == Some(id);
-    a(format!("/channels/{}/{}", segment(&state.server.id), segment(id)))
-        .id(format!("nav-{id}"))
-        .class("channel")
-        .class(if current { "current" } else { "" })
-        .when(current, |n| n.attr("aria-current", "page"))
-        .children([
-            span("hash").id(format!("nav-{id}-hash")).attr("aria-hidden", "true").text("#"),
-            span("channel-name").id(format!("nav-{id}-text")).text(id),
-        ])
+    a(format!(
+        "/channels/{}/{}",
+        segment(&state.server.id),
+        segment(id)
+    ))
+    .id(format!("nav-{id}"))
+    .class("channel")
+    .class(if current { "current" } else { "" })
+    .when(current, |n| n.attr("aria-current", "page"))
+    .children([
+        span("hash")
+            .id(format!("nav-{id}-hash"))
+            .attr("aria-hidden", "true")
+            .text("#"),
+        span("channel-name").id(format!("nav-{id}-text")).text(id),
+    ])
 }
 /// A voice channel: the speaker, its name, and whoever is in it under it with their
 /// faces. Clicking the row joins it, or leaves it while the actor is inside.
 fn voice_rows(state: &DiscordState, id: &str, actor: &str) -> Html {
     let voice = &state.server.voice[id];
     let inside = voice.occupants.contains(actor);
-    let action = format!("/voice/{}/{}", segment(id), if inside { "leave" } else { "join" });
-    let label = format!("{} voice channel {id}", if inside { "Leave" } else { "Join" });
+    let action = format!(
+        "/voice/{}/{}",
+        segment(id),
+        if inside { "leave" } else { "join" }
+    );
+    let label = format!(
+        "{} voice channel {id}",
+        if inside { "Leave" } else { "Join" }
+    );
     html::fragment([
-        form(&format!("voice-{id}-form"), action, "post").class("voice-form").child(
-            el("button")
-                .id(format!("voice-{id}"))
-                .attr("type", "submit")
-                .class("channel voice")
-                .class(if inside { "current" } else { "" })
-                .attr("title", label.as_str())
-                .children([
-                    span("speaker").id(format!("voice-{id}-icon")).attr("aria-hidden", "true").children([el("i").class("a"), el("i").class("b"), el("i").class("c")]),
-                    span("channel-name").id(format!("voice-{id}-name")).text(id),
-                ]),
-        ),
+        form(&format!("voice-{id}-form"), action, "post")
+            .class("voice-form")
+            .child(
+                el("button")
+                    .id(format!("voice-{id}"))
+                    .attr("type", "submit")
+                    .class("channel voice")
+                    .class(if inside { "current" } else { "" })
+                    .attr("title", label.as_str())
+                    .children([
+                        span("speaker")
+                            .id(format!("voice-{id}-icon"))
+                            .attr("aria-hidden", "true")
+                            .children([el("i").class("a"), el("i").class("b"), el("i").class("c")]),
+                        span("channel-name").id(format!("voice-{id}-name")).text(id),
+                    ]),
+            ),
         html::fragment(voice.occupants.iter().map(|who| {
             let name = state.display(who);
             div("occupant").id(format!("voice-{id}-{who}")).children([
                 avatar(&format!("voice-{id}-{who}-avatar"), &name, "s24"),
-                span("occupant-name").id(format!("voice-{id}-{who}-name")).text(name.as_str()),
+                span("occupant-name")
+                    .id(format!("voice-{id}-{who}-name"))
+                    .text(name.as_str()),
             ])
         })),
     ])
 }
 fn sidebar(state: &DiscordState, actor: &str, open: Option<&str>) -> Html {
-    let mut list = el("nav").id("sidebar").class("channels").attr("aria-label", "Channels");
+    let mut list = el("nav")
+        .id("sidebar")
+        .class("channels")
+        .attr("aria-label", "Channels");
     let mut listed = std::collections::BTreeSet::new();
     for (index, cat) in state.server.categories.iter().enumerate() {
         list = list.child(category(&format!("category-{index}"), &cat.name));
@@ -343,10 +376,15 @@ fn sidebar(state: &DiscordState, actor: &str, open: Option<&str>) -> Html {
 fn user_panel(state: &DiscordState, actor: &str) -> Html {
     let name = state.display(actor);
     div("user-panel").id("user-panel").children([
-        span("face").children([avatar("me-avatar", &name, "s32"), presence("me-presence", true)]),
+        span("face").children([
+            avatar("me-avatar", &name, "s32"),
+            presence("me-presence", true),
+        ]),
         div("me-lines").id("me-lines").children([
             span("me-name").id("me-name").text(name.as_str()),
-            span("me-status").id("me-status").child(span("").id("me-status-text").text("Online")),
+            span("me-status")
+                .id("me-status")
+                .child(span("").id("me-status-text").text("Online")),
         ]),
     ])
 }
@@ -363,7 +401,11 @@ struct Ctx<'a> {
 }
 impl Ctx<'_> {
     fn url(&self) -> String {
-        format!("/channels/{}/{}", segment(&self.state.server.id), segment(self.id))
+        format!(
+            "/channels/{}/{}",
+            segment(&self.state.server.id),
+            segment(self.id)
+        )
     }
 }
 /// A word and the punctuation that closes it, which stays plain text.
@@ -450,7 +492,11 @@ fn body(ctx: &Ctx, id: &str, message: &str) -> Html {
                 .filter(|name| ctx.state.server.channels.contains_key(trailing(name).0))
             {
                 let (name, tail) = trailing(name);
-                let url = format!("/channels/{}/{}", segment(&ctx.state.server.id), segment(name));
+                let url = format!(
+                    "/channels/{}/{}",
+                    segment(&ctx.state.server.id),
+                    segment(name)
+                );
                 pieces.piece(
                     |pid| a(url).id(pid).class("mention").text(format!("#{name}")),
                     tail,
@@ -464,10 +510,7 @@ fn body(ctx: &Ctx, id: &str, message: &str) -> Html {
                     .any(|(who, m)| who == name || m.nick == name)
             }) {
                 let (name, tail) = trailing(name);
-                pieces.piece(
-                    |pid| span("mention").id(pid).text(format!("@{name}")),
-                    tail,
-                );
+                pieces.piece(|pid| span("mention").id(pid).text(format!("@{name}")), tail);
             } else if word.starts_with('`') && word.len() > 1 {
                 // A code span runs to the word that closes it.
                 let mut end = i;
@@ -531,10 +574,14 @@ fn reply_line(ctx: &Ctx, m: &Message, quoted: &Message) -> Html {
     };
     let name = ctx.state.display(&quoted.author);
     div("quote").id(format!("{id}-quote")).children([
-        span("spine").id(format!("{id}-quote-spine")).attr("aria-hidden", "true"),
+        span("spine")
+            .id(format!("{id}-quote-spine"))
+            .attr("aria-hidden", "true"),
         avatar(&format!("{id}-quote-avatar"), &name, "s16"),
         coloured(
-            span("quote-author").id(format!("{id}-quote-author")).text(name.as_str()),
+            span("quote-author")
+                .id(format!("{id}-quote-author"))
+                .text(name.as_str()),
             role_style(ctx.state, &quoted.author),
         ),
         span("quote-text").id(format!("{id}-quote-text")).text(line),
@@ -602,16 +649,22 @@ fn message(ctx: &Ctx, m: &Message, first: bool, newest: bool, replying: bool) ->
         row = row.child(reply_line(ctx, m, quoted));
     }
     row = if first {
-        row.child(span("gutter face40").child(avatar(&format!("{id}-avatar"), &name, "s40"))).child(
-            div("head").id(format!("{id}-head")).children([
-                coloured(
-                    span("author").id(format!("{id}-author")).text(name.as_str()),
-                    role_style(ctx.state, &m.author),
-                ),
-                text(" "),
-                el("time").id(format!("{id}-time")).class("stamp").text(time::stamp(m.time, ctx.now)),
-            ]),
-        )
+        row.child(span("gutter face40").child(avatar(&format!("{id}-avatar"), &name, "s40")))
+            .child(
+                div("head").id(format!("{id}-head")).children([
+                    coloured(
+                        span("author")
+                            .id(format!("{id}-author"))
+                            .text(name.as_str()),
+                        role_style(ctx.state, &m.author),
+                    ),
+                    text(" "),
+                    el("time")
+                        .id(format!("{id}-time"))
+                        .class("stamp")
+                        .text(time::stamp(m.time, ctx.now)),
+                ]),
+            )
     } else {
         row.child(
             el("time")
@@ -628,7 +681,11 @@ fn day_divider(index: u64, label: String) -> Html {
     div("day")
         .id(format!("day-{index}"))
         .attr("role", "separator")
-        .child(span("day-label").id(format!("day-{index}-label")).text(label))
+        .child(
+            span("day-label")
+                .id(format!("day-{index}-label"))
+                .text(label),
+        )
 }
 /// The transcript: messages under date dividers, runs by one author grouped.
 fn transcript(ctx: &Ctx, replying: Option<&str>) -> Html {
@@ -714,16 +771,30 @@ fn header(ctx: &Ctx, members_open: bool) -> Html {
         "Show Member List"
     };
     let mut head = div("channel-head").id("channel-head").children([
-        span("hash big").id("channel-hash").attr("aria-hidden", "true").text("#"),
-        el("h1").id("channel-title").class("channel-title").text(ctx.id),
+        span("hash big")
+            .id("channel-hash")
+            .attr("aria-hidden", "true")
+            .text("#"),
+        el("h1")
+            .id("channel-title")
+            .class("channel-title")
+            .text(ctx.id),
     ]);
     if !ctx.channel.roles.is_empty() {
         head = head.child(icon("channel-private", "lock", "Private channel"));
     }
     if !ctx.channel.topic.is_empty() {
         head = head
-            .child(span("topic-rule").id("channel-topic-rule").attr("aria-hidden", "true"))
-            .child(span("topic").id("channel-topic").text(emojify(&ctx.channel.topic)));
+            .child(
+                span("topic-rule")
+                    .id("channel-topic-rule")
+                    .attr("aria-hidden", "true"),
+            )
+            .child(
+                span("topic")
+                    .id("channel-topic")
+                    .text(emojify(&ctx.channel.topic)),
+            );
     }
     head.child(head_tools(
         Some(
@@ -747,10 +818,9 @@ fn composer(ctx: &Ctx, reply_to: Option<&Message>) -> Html {
         .id("composer")
         .maybe(reply_to.map(|parent| {
             div("reply-bar").id("reply-bar").children([
-                span("reply-bar-text").id("reply-bar-text").text(format!(
-                    "Replying to {}",
-                    ctx.state.display(&parent.author)
-                )),
+                span("reply-bar-text")
+                    .id("reply-bar-text")
+                    .text(format!("Replying to {}", ctx.state.display(&parent.author))),
                 a(ctx.url())
                     .id("reply-cancel")
                     .class("reply-cancel")
@@ -785,7 +855,10 @@ fn members(state: &DiscordState, actor: &str, now: u64) -> Html {
     // Discord lists a role's members apart only when the role is hoisted; here the
     // lowest role is everyone's base role and is not.
     let floor = roles.last().map(|(_, r)| r.position).unwrap_or_default();
-    let mut list = el("aside").id("members").class("members").attr("aria-label", "Members");
+    let mut list = el("aside")
+        .id("members")
+        .class("members")
+        .attr("aria-label", "Members");
     let mut placed = std::collections::BTreeSet::new();
     let group = |list: Html, key: &str, label: &str, who: Vec<&String>| -> Html {
         if who.is_empty() {
@@ -800,16 +873,21 @@ fn members(state: &DiscordState, actor: &str, now: u64) -> Html {
         .each(who, |member| {
             let on = online(state, member, actor, now);
             let name = state.display(member);
-            div("member").class(if on { "" } else { "away" }).id(format!("member-{member}")).children([
-                span("face").children([
-                    avatar(&format!("member-{member}-avatar"), &name, "s32"),
-                    presence(&format!("member-{member}-presence"), on),
-                ]),
-                coloured(
-                    span("member-name").id(format!("member-{member}-name")).text(name.as_str()),
-                    role_style(state, member).filter(|_| on),
-                ),
-            ])
+            div("member")
+                .class(if on { "" } else { "away" })
+                .id(format!("member-{member}"))
+                .children([
+                    span("face").children([
+                        avatar(&format!("member-{member}-avatar"), &name, "s32"),
+                        presence(&format!("member-{member}-presence"), on),
+                    ]),
+                    coloured(
+                        span("member-name")
+                            .id(format!("member-{member}-name"))
+                            .text(name.as_str()),
+                        role_style(state, member).filter(|_| on),
+                    ),
+                ])
         })
     };
     for (name, role) in &roles {
@@ -886,10 +964,10 @@ pub fn server(
             .and_then(|r| ctx.channel.messages.iter().find(|m| m.id == r))
     });
     let mut chat = div("chat").child(
-        el("main")
-            .id("main")
-            .class("scroller")
-            .maybe(ctx.as_ref().map(|ctx| transcript(ctx, replying.map(|m| m.id.as_str())))),
+        el("main").id("main").class("scroller").maybe(
+            ctx.as_ref()
+                .map(|ctx| transcript(ctx, replying.map(|m| m.id.as_str()))),
+        ),
     );
     if let Some(ctx) = &ctx {
         chat = chat.child(composer(ctx, replying));
@@ -905,10 +983,13 @@ pub fn server(
 fn side(state: &DiscordState, actor: &str, open: Option<&str>) -> Html {
     let name = server_name(state);
     div("side").children([
-        el("header").id("sidebar-head").class("side-head").children([
-            span("server-name").id("server-name").text(name.as_str()),
-            mark("server-menu", "chevron", "\u{2304}"),
-        ]),
+        el("header")
+            .id("sidebar-head")
+            .class("side-head")
+            .children([
+                span("server-name").id("server-name").text(name.as_str()),
+                mark("server-menu", "chevron", "\u{2304}"),
+            ]),
         sidebar(state, actor, open),
         user_panel(state, actor),
     ])
@@ -921,10 +1002,8 @@ fn document(
     head: Html,
     shell: Html,
 ) -> SimResult<HttpResponse> {
-    let content = div("content").children([
-        el("header").id("header").class("top").child(head),
-        shell,
-    ]);
+    let content =
+        div("content").children([el("header").id("header").class("top").child(head), shell]);
     let mut doc = Document::new(title)
         .lang("en")
         .stylesheet(CSS)
@@ -967,7 +1046,10 @@ pub fn search(
         (false, n) => format!("{n} results for \u{201c}{}\u{201d}", query.trim()),
     };
     let head = div("channel-head").id("channel-head").children([
-        el("h1").id("search-title").class("channel-title").text("Search"),
+        el("h1")
+            .id("search-title")
+            .class("channel-title")
+            .text("Search"),
         span("topic-rule").attr("aria-hidden", "true"),
         span("topic").id("search-summary").text(summary),
         head_tools(None, query),
@@ -985,7 +1067,9 @@ pub fn search(
             .class("hit")
             .children([
                 div("hit-head").children([
-                    span("hit-where").id(format!("{id}-where")).text(format!("#{channel}")),
+                    span("hit-where")
+                        .id(format!("{id}-where"))
+                        .text(format!("#{channel}")),
                     span("hit-author")
                         .id(format!("{id}-author"))
                         .text(state.display(&m.author)),
@@ -993,17 +1077,17 @@ pub fn search(
                         .id(format!("{id}-time"))
                         .text(time::stamp(m.time, now)),
                 ]),
-                div("hit-text").id(format!("{id}-text")).text(emojify(&m.text)),
+                div("hit-text")
+                    .id(format!("{id}-text"))
+                    .text(emojify(&m.text)),
             ]),
         );
     }
     if hits.is_empty() && !needle.is_empty() {
-        results = results.child(
-            el("p")
-                .id("search-empty")
-                .class("empty")
-                .text(format!("No message here says \u{201c}{}\u{201d}.", query.trim())),
-        );
+        results = results.child(el("p").id("search-empty").class("empty").text(format!(
+            "No message here says \u{201c}{}\u{201d}.",
+            query.trim()
+        )));
     }
     let shell = div("shell")
         .id("shell")

@@ -159,16 +159,16 @@ fn speaker_stills() {
     ] {
         let (host, mut state) = site(name);
         if playing {
-            let cast = HttpRequest::json(
-                "POST",
-                format!("http://{host}/api/cast"),
-                &session(),
-            )
-            .unwrap();
+            let cast =
+                HttpRequest::json("POST", format!("http://{host}/api/cast"), &session()).unwrap();
             SpeakerService.handle(&mut state, &ctx(0), &cast).unwrap();
         }
         let response = SpeakerService
-            .handle(&mut state, &ctx(0), &HttpRequest::get(format!("http://{host}/")))
+            .handle(
+                &mut state,
+                &ctx(0),
+                &HttpRequest::get(format!("http://{host}/")),
+            )
             .unwrap();
         assert_eq!(response.status, 200, "{name}");
         render(

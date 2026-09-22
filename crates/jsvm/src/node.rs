@@ -1479,7 +1479,13 @@ impl<'h> Vm<'h> {
 
     /// `eval_source` with `global_scope`: top-level declarations become global
     /// properties shared with later scripts (a browser's classic scripts).
-    pub fn eval_source_with(&mut self, src: &str, file: &str, completion: bool, global_scope: bool) -> JsResult<Value> {
+    pub fn eval_source_with(
+        &mut self,
+        src: &str,
+        file: &str,
+        completion: bool,
+        global_scope: bool,
+    ) -> JsResult<Value> {
         let _ = completion;
         let chars: Vec<char> = src.chars().collect();
         let prog = match crate::parser::parse(src, false) {

@@ -16,7 +16,13 @@ pub fn dump_doc(doc: &Document, tree: &FragmentTree) -> String {
 
 fn dump_with(doc: Option<&Document>, tree: &FragmentTree) -> String {
     let mut out = String::new();
-    out.push_str(&format!("viewport {}x{} content {}x{}\n", tree.viewport_width.to_px_round(), tree.viewport_height.to_px_round(), tree.content_width.to_px_round(), tree.content_height.to_px_round()));
+    out.push_str(&format!(
+        "viewport {}x{} content {}x{}\n",
+        tree.viewport_width.to_px_round(),
+        tree.viewport_height.to_px_round(),
+        tree.content_width.to_px_round(),
+        tree.content_height.to_px_round()
+    ));
     write(doc, &tree.root, 0, &mut out);
     out
 }
@@ -40,15 +46,44 @@ fn write(doc: Option<&Document>, f: &Fragment, depth: usize, out: &mut String) {
         out.push_str("  ");
     }
     let r = f.rect;
-    let rect = format!("{},{} {}x{}", r.origin.x.to_px_round(), r.origin.y.to_px_round(), r.size.width.to_px_round(), r.size.height.to_px_round());
+    let rect = format!(
+        "{},{} {}x{}",
+        r.origin.x.to_px_round(),
+        r.origin.y.to_px_round(),
+        r.size.width.to_px_round(),
+        r.size.height.to_px_round()
+    );
     match &f.kind {
-        FragmentKind::Box { source, padding, border, replaced, scroll, baseline } => {
+        FragmentKind::Box {
+            source,
+            padding,
+            border,
+            replaced,
+            scroll,
+            baseline,
+        } => {
             out.push_str(&format!("Box {} {rect}", source_name(doc, *source)));
-            if padding.horizontal() > crate::geom::Au::ZERO || padding.vertical() > crate::geom::Au::ZERO {
-                out.push_str(&format!(" pad[{} {} {} {}]", padding.top.to_px_round(), padding.right.to_px_round(), padding.bottom.to_px_round(), padding.left.to_px_round()));
+            if padding.horizontal() > crate::geom::Au::ZERO
+                || padding.vertical() > crate::geom::Au::ZERO
+            {
+                out.push_str(&format!(
+                    " pad[{} {} {} {}]",
+                    padding.top.to_px_round(),
+                    padding.right.to_px_round(),
+                    padding.bottom.to_px_round(),
+                    padding.left.to_px_round()
+                ));
             }
-            if border.horizontal() > crate::geom::Au::ZERO || border.vertical() > crate::geom::Au::ZERO {
-                out.push_str(&format!(" bdr[{} {} {} {}]", border.top.to_px_round(), border.right.to_px_round(), border.bottom.to_px_round(), border.left.to_px_round()));
+            if border.horizontal() > crate::geom::Au::ZERO
+                || border.vertical() > crate::geom::Au::ZERO
+            {
+                out.push_str(&format!(
+                    " bdr[{} {} {} {}]",
+                    border.top.to_px_round(),
+                    border.right.to_px_round(),
+                    border.bottom.to_px_round(),
+                    border.left.to_px_round()
+                ));
             }
             match replaced {
                 Some(Replaced::Image { src, .. }) => out.push_str(&format!(" img({src})")),
@@ -58,7 +93,15 @@ fn write(doc: Option<&Document>, f: &Fragment, depth: usize, out: &mut String) {
                 None => {}
             }
             if let Some(s) = scroll {
-                out.push_str(&format!(" scroll({}x{} @{},{}{}{})", s.content_width.to_px_round(), s.content_height.to_px_round(), s.scroll_x.to_px_round(), s.scroll_y.to_px_round(), if s.shows_x_bar { " xbar" } else { "" }, if s.shows_y_bar { " ybar" } else { "" }));
+                out.push_str(&format!(
+                    " scroll({}x{} @{},{}{}{})",
+                    s.content_width.to_px_round(),
+                    s.content_height.to_px_round(),
+                    s.scroll_x.to_px_round(),
+                    s.scroll_y.to_px_round(),
+                    if s.shows_x_bar { " xbar" } else { "" },
+                    if s.shows_y_bar { " ybar" } else { "" }
+                ));
             }
             if let Some(b) = baseline {
                 out.push_str(&format!(" bl={}", b.to_px_round()));
@@ -67,7 +110,12 @@ fn write(doc: Option<&Document>, f: &Fragment, depth: usize, out: &mut String) {
                 out.push_str(" collapsed");
             }
         }
-        FragmentKind::InlineBox { source, first, last, .. } => {
+        FragmentKind::InlineBox {
+            source,
+            first,
+            last,
+            ..
+        } => {
             out.push_str(&format!("Inline {} {rect}", source_name(doc, *source)));
             if !*first {
                 out.push_str(" cont");
@@ -76,8 +124,18 @@ fn write(doc: Option<&Document>, f: &Fragment, depth: usize, out: &mut String) {
                 out.push_str(" open");
             }
         }
-        FragmentKind::Text { source, text, baseline, ellipsis, .. } => {
-            out.push_str(&format!("Text {} {rect} {text:?} bl={}", source_name(doc, *source), baseline.to_px_round()));
+        FragmentKind::Text {
+            source,
+            text,
+            baseline,
+            ellipsis,
+            ..
+        } => {
+            out.push_str(&format!(
+                "Text {} {rect} {text:?} bl={}",
+                source_name(doc, *source),
+                baseline.to_px_round()
+            ));
             if *ellipsis {
                 out.push_str(" ellipsis");
             }
@@ -98,7 +156,13 @@ fn write(doc: Option<&Document>, f: &Fragment, depth: usize, out: &mut String) {
     }
     let o = f.overflow;
     if o.origin.x.0 != 0 || o.origin.y.0 != 0 || o.size != r.size {
-        out.push_str(&format!(" overflow[{},{} {}x{}]", o.origin.x.to_px_round(), o.origin.y.to_px_round(), o.size.width.to_px_round(), o.size.height.to_px_round()));
+        out.push_str(&format!(
+            " overflow[{},{} {}x{}]",
+            o.origin.x.to_px_round(),
+            o.origin.y.to_px_round(),
+            o.size.width.to_px_round(),
+            o.size.height.to_px_round()
+        ));
     }
     out.push('\n');
     for c in &f.children {

@@ -89,7 +89,10 @@ fn plain_state_is_byte_identical_and_pages_keep_their_ids() {
     assert!(home.by_id("send").is_empty() && home.by_id("channel").is_empty());
     let channel = dom(&get(&mut state, "alice", "/channels/general").1);
     assert_eq!(text(&channel, "channel"), "General");
-    assert_eq!(attr(&channel, "send", "action"), "/channels/general/messages");
+    assert_eq!(
+        attr(&channel, "send", "action"),
+        "/channels/general/messages"
+    );
     assert_eq!(attr(&channel, "send", "method"), "post");
     assert_eq!(attr(&channel, "send-text", "name"), "text");
     assert_eq!(channel.tag(node(&channel, "send-submit")), Some("button"));
@@ -108,31 +111,51 @@ fn messages_reactions_and_dms_render_with_their_forms() {
     assert!(first.contains("bob") && first.contains("BFS path test fails on Windows only."));
     let second = text(&page, "chat-2");
     assert!(second.contains("tada") && second.contains('1'));
-    assert_eq!(attr(&page, "chat-1-react", "action"), "/channels/eng/messages/chat-1/reactions");
+    assert_eq!(
+        attr(&page, "chat-1-react", "action"),
+        "/channels/eng/messages/chat-1/reactions"
+    );
     assert_eq!(attr(&page, "chat-1-react", "method"), "post");
     assert_eq!(attr(&page, "chat-1-react-reaction", "name"), "reaction");
     assert_eq!(page.tag(node(&page, "chat-1-react-submit")), Some("button"));
     // A browser form post reacts and lands back on the channel.
-    let mut request = HttpRequest::get("http://chat.internal/channels/eng/messages/chat-1/reactions");
+    let mut request =
+        HttpRequest::get("http://chat.internal/channels/eng/messages/chat-1/reactions");
     request.method = "POST".into();
-    request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+    request.headers.insert(
+        "content-type".into(),
+        "application/x-www-form-urlencoded".into(),
+    );
     request.body = b"reaction=eyes".to_vec();
-    let r = ChatService.handle(&mut state, &ctx("carol"), &request).unwrap();
+    let r = ChatService
+        .handle(&mut state, &ctx("carol"), &request)
+        .unwrap();
     assert_eq!(r.status, 200);
     let after = dom(&String::from_utf8(r.body).unwrap());
     assert!(text(&after, "chat-1").contains("eyes"));
     // A threaded reply quotes its parent.
-    let (status, replied) = post(&mut state, "carol", "/channels/eng/messages", json!({"text":"on it","parent":"chat-1"}));
+    let (status, replied) = post(
+        &mut state,
+        "carol",
+        "/channels/eng/messages",
+        json!({"text":"on it","parent":"chat-1"}),
+    );
     assert_eq!(status, 200);
     let replied = dom(&replied);
-    assert!(text(&replied, "chat-3").contains("BFS path test") && text(&replied, "chat-3").contains("on it"));
+    assert!(
+        text(&replied, "chat-3").contains("BFS path test")
+            && text(&replied, "chat-3").contains("on it")
+    );
     // DMs are listed under their key and opened from the sidebar's form.
     assert_eq!(attr(&page, "dm", "action"), "/dms");
     assert_eq!(attr(&page, "dm-to", "name"), "to");
     let opened = dom(&post(&mut state, "alice", "/dms", json!({"to":"bob"})).1);
     assert_eq!(attr(&opened, "dm-alice|bob", "href"), "/channels/alice|bob");
     assert_eq!(text(&opened, "channel"), "alice and bob");
-    assert_eq!(attr(&opened, "send", "action"), "/channels/alice|bob/messages");
+    assert_eq!(
+        attr(&opened, "send", "action"),
+        "/channels/alice|bob/messages"
+    );
 }
 
 /// The branded skins moved out; naming one here is a seed error, not a fallback.

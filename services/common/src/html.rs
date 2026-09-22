@@ -106,7 +106,10 @@ pub fn a(href: impl Into<String>) -> Html {
 pub fn form(id: &str, action: impl Into<String>, method: &str) -> Html {
     let method = method.to_ascii_lowercase();
     debug_assert!(method == "get" || method == "post", "form method {method}");
-    el("form").id(id).attr("action", action).attr("method", method)
+    el("form")
+        .id(id)
+        .attr("action", action)
+        .attr("method", method)
 }
 /// `<input type=text id name value>`; `value` is the current text.
 pub fn text_input(id: &str, name: &str, value: &str) -> Html {
@@ -226,7 +229,11 @@ impl Html {
         }
     }
     /// Appends one child per item.
-    pub fn each<T>(mut self, items: impl IntoIterator<Item = T>, mut build: impl FnMut(T) -> Html) -> Html {
+    pub fn each<T>(
+        mut self,
+        items: impl IntoIterator<Item = T>,
+        mut build: impl FnMut(T) -> Html,
+    ) -> Html {
         for item in items {
             self = self.child(build(item));
         }
@@ -254,7 +261,11 @@ impl Html {
                     c.write(out);
                 }
             }
-            Html::Element { tag, attrs, children } => {
+            Html::Element {
+                tag,
+                attrs,
+                children,
+            } => {
                 out.push('<');
                 out.push_str(tag);
                 for (k, v) in attrs {
@@ -492,12 +503,17 @@ pub fn validate_strict(html: &str) -> Result<(), cw_web::Unsupported> {
             }
         }
         if doc.is(node, "style") {
-            sheets.push(parse_stylesheet(&doc.text_content(node), Origin::Author, Strictness::Strict)?);
+            sheets.push(parse_stylesheet(
+                &doc.text_content(node),
+                Origin::Author,
+                Strictness::Strict,
+            )?);
         }
         if doc.is(node, "link")
-            && doc
-                .attr(node, "rel")
-                .is_some_and(|rel| rel.split_ascii_whitespace().any(|r| r.eq_ignore_ascii_case("stylesheet")))
+            && doc.attr(node, "rel").is_some_and(|rel| {
+                rel.split_ascii_whitespace()
+                    .any(|r| r.eq_ignore_ascii_case("stylesheet"))
+            })
         {
             return Err(Unsupported {
                 kind: UnsupportedKind::Feature,
@@ -506,7 +522,13 @@ pub fn validate_strict(html: &str) -> Result<(), cw_web::Unsupported> {
             });
         }
     }
-    cw_web::style::cascade(&doc, &sheets, &Media::default(), &MatchContext::new(), Strictness::Strict)?;
+    cw_web::style::cascade(
+        &doc,
+        &sheets,
+        &Media::default(),
+        &MatchContext::new(),
+        Strictness::Strict,
+    )?;
     Ok(())
 }
 
@@ -524,13 +546,24 @@ mod tests {
             "<p id=\"x\" title=\"a &quot;quoted&quot; &lt;b&gt; &amp; c\">1 &lt; 2 &amp; \"q\"</p>"
         );
         assert_eq!(
-            el("style").text("a::after { content: \"</style>\" }").render(),
+            el("style")
+                .text("a::after { content: \"</style>\" }")
+                .render(),
             "<style>a::after { content: \"<\\/style>\" }</style>"
         );
         assert_eq!(el("br").render(), "<br>");
-        assert_eq!(el("input").attr("name", "q").flag("disabled").render(), "<input name=\"q\" disabled>");
-        assert_eq!(div("a").class("b").class("").render(), "<div class=\"a b\"></div>");
-        assert_eq!(fragment([text("a"), el("i").text("b")]).render(), "a<i>b</i>");
+        assert_eq!(
+            el("input").attr("name", "q").flag("disabled").render(),
+            "<input name=\"q\" disabled>"
+        );
+        assert_eq!(
+            div("a").class("b").class("").render(),
+            "<div class=\"a b\"></div>"
+        );
+        assert_eq!(
+            fragment([text("a"), el("i").text("b")]).render(),
+            "a<i>b</i>"
+        );
     }
     #[test]
     fn conditional_and_iterated_children() {
@@ -544,7 +577,10 @@ mod tests {
     }
     #[test]
     fn hrefs_are_form_encoded() {
-        assert_eq!(href("/search", &[("q", "a b&c"), ("v", "news")]), "/search?q=a+b%26c&v=news");
+        assert_eq!(
+            href("/search", &[("q", "a b&c"), ("v", "news")]),
+            "/search?q=a+b%26c&v=news"
+        );
         assert_eq!(href("/search?v=news", &[("q", "")]), "/search?v=news&q=");
         assert_eq!(href("/about", &[]), "/about");
     }
@@ -556,7 +592,9 @@ mod tests {
             .stylesheet("b{color:blue}")
             .root_style("--accent: #123456")
             .body_class("skin-google")
-            .body([form("search", "/search", "get").child(text_input("q", "q", "atlas")).child(button("go", "Go"))]);
+            .body([form("search", "/search", "get")
+                .child(text_input("q", "q", "atlas"))
+                .child(button("go", "Go"))]);
         let html = doc.render();
         assert!(html.starts_with("<!DOCTYPE html>\n<html lang=\"en\" style=\"--accent: #123456\"><head><meta charset=\"utf-8\"><title>T &amp; U</title><style>a{color:red}\nb{color:blue}</style></head><body class=\"skin-google\">"));
         assert!(html.contains("<form id=\"search\" action=\"/search\" method=\"get\"><input id=\"q\" type=\"text\" name=\"q\" value=\"atlas\"><button id=\"go\" type=\"submit\">Go</button></form>"));
@@ -579,8 +617,12 @@ mod tests {
         let bad_at_rule = Document::new("bad").stylesheet("@container (min-width: 1px) { a {} }");
         assert!(validate_strict(&bad_at_rule.render()).is_err());
         let duplicate = Document::new("bad").body([div("").id("x"), div("").id("x")]);
-        assert!(validate_strict(&duplicate.render()).unwrap_err().detail.contains("more than once"));
-        let linked = Document::new("bad").head(el("link").attr("rel", "stylesheet").attr("href", "/s.css"));
+        assert!(validate_strict(&duplicate.render())
+            .unwrap_err()
+            .detail
+            .contains("more than once"));
+        let linked =
+            Document::new("bad").head(el("link").attr("rel", "stylesheet").attr("href", "/s.css"));
         assert!(validate_strict(&linked.render()).is_err());
     }
 }

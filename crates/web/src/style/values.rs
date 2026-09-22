@@ -122,7 +122,9 @@ impl<'a> Parser<'a> {
     }
     pub fn expect_dimension(&mut self) -> Option<(Number, &'a str)> {
         self.try_parse(|p| match p.next()? {
-            ComponentValue::Token(Token::Dimension { value, unit, .. }) => Some((*value, unit.as_str())),
+            ComponentValue::Token(Token::Dimension { value, unit, .. }) => {
+                Some((*value, unit.as_str()))
+            }
             _ => None,
         })
     }
@@ -152,7 +154,9 @@ impl<'a> Parser<'a> {
     pub fn expect_url(&mut self) -> Option<String> {
         self.try_parse(|p| match p.next()? {
             ComponentValue::Token(Token::Url(u)) => Some(u.clone()),
-            ComponentValue::Function { name, args } if name.eq_ignore_ascii_case("url") || name.eq_ignore_ascii_case("src") => {
+            ComponentValue::Function { name, args }
+                if name.eq_ignore_ascii_case("url") || name.eq_ignore_ascii_case("src") =>
+            {
                 let mut inner = Parser::new(args);
                 let s = inner.expect_string()?.to_owned();
                 // Ignore url modifiers.
@@ -164,13 +168,19 @@ impl<'a> Parser<'a> {
     /// A `[ ... ]` block's contents.
     pub fn expect_square_block(&mut self) -> Option<&'a [ComponentValue]> {
         self.try_parse(|p| match p.next()? {
-            ComponentValue::Block { open: Token::OpenSquare, contents } => Some(contents.as_slice()),
+            ComponentValue::Block {
+                open: Token::OpenSquare,
+                contents,
+            } => Some(contents.as_slice()),
             _ => None,
         })
     }
     pub fn expect_paren_block(&mut self) -> Option<&'a [ComponentValue]> {
         self.try_parse(|p| match p.next()? {
-            ComponentValue::Block { open: Token::OpenParen, contents } => Some(contents.as_slice()),
+            ComponentValue::Block {
+                open: Token::OpenParen,
+                contents,
+            } => Some(contents.as_slice()),
             _ => None,
         })
     }
@@ -182,7 +192,10 @@ impl<'a> Parser<'a> {
         r
     }
     /// Parses a comma-separated list of `f`, at least one item.
-    pub fn comma_list<T>(&mut self, mut f: impl FnMut(&mut Parser<'a>) -> Option<T>) -> Option<Vec<T>> {
+    pub fn comma_list<T>(
+        &mut self,
+        mut f: impl FnMut(&mut Parser<'a>) -> Option<T>,
+    ) -> Option<Vec<T>> {
         let mut out = vec![f(self)?];
         while self.expect_comma().is_some() {
             out.push(f(self)?);
@@ -303,7 +316,16 @@ impl LengthUnit {
         })
     }
     pub fn is_absolute(self) -> bool {
-        matches!(self, LengthUnit::Px | LengthUnit::Cm | LengthUnit::Mm | LengthUnit::Q | LengthUnit::In | LengthUnit::Pt | LengthUnit::Pc)
+        matches!(
+            self,
+            LengthUnit::Px
+                | LengthUnit::Cm
+                | LengthUnit::Mm
+                | LengthUnit::Q
+                | LengthUnit::In
+                | LengthUnit::Pt
+                | LengthUnit::Pc
+        )
     }
     pub fn as_str(self) -> &'static str {
         match self {
@@ -336,9 +358,15 @@ pub struct Length {
 }
 
 impl Length {
-    pub const ZERO: Length = Length { value: Number::ZERO, unit: LengthUnit::Px };
+    pub const ZERO: Length = Length {
+        value: Number::ZERO,
+        unit: LengthUnit::Px,
+    };
     pub fn px(v: i64) -> Length {
-        Length { value: Number::from_i64(v), unit: LengthUnit::Px }
+        Length {
+            value: Number::from_i64(v),
+            unit: LengthUnit::Px,
+        }
     }
     pub fn is_zero(&self) -> bool {
         self.value.is_zero()
@@ -408,14 +436,21 @@ impl LengthContext {
 
 impl Default for LengthContext {
     fn default() -> Self {
-        LengthContext::for_font_size(Au::from_px_i32(16), Au::from_px_i32(16), (Au::from_px_i32(1280), Au::from_px_i32(800)))
+        LengthContext::for_font_size(
+            Au::from_px_i32(16),
+            Au::from_px_i32(16),
+            (Au::from_px_i32(1280), Au::from_px_i32(800)),
+        )
     }
 }
 
 /// Parses `<length>`; unitless zero is accepted.
 pub fn parse_length(p: &mut Parser) -> Option<Length> {
     p.try_parse(|p| match p.next()? {
-        ComponentValue::Token(Token::Dimension { value, unit, .. }) => Some(Length { value: *value, unit: LengthUnit::parse(unit)? }),
+        ComponentValue::Token(Token::Dimension { value, unit, .. }) => Some(Length {
+            value: *value,
+            unit: LengthUnit::parse(unit)?,
+        }),
         ComponentValue::Token(Token::Number { value, .. }) if value.is_zero() => Some(Length::ZERO),
         _ => None,
     })
@@ -459,7 +494,16 @@ pub struct CalcValue {
 
 impl CalcValue {
     fn zero() -> CalcValue {
-        CalcValue { micro_px: 0, micro_pct: 0, micro_num: 0, has_len: false, has_pct: false, has_num: false, lo: None, hi: None }
+        CalcValue {
+            micro_px: 0,
+            micro_pct: 0,
+            micro_num: 0,
+            has_len: false,
+            has_pct: false,
+            has_num: false,
+            lo: None,
+            hi: None,
+        }
     }
     fn bounded(&self) -> bool {
         self.lo.is_some() || self.hi.is_some()
@@ -481,7 +525,9 @@ impl CalcValue {
             (true, false) => (a, b),
             _ => (b, a),
         };
-        let shift = |bound: Option<(i128, i128)>| bound.map(|(l, p)| (l + other.micro_px, p + other.micro_pct));
+        let shift = |bound: Option<(i128, i128)>| {
+            bound.map(|(l, p)| (l + other.micro_px, p + other.micro_pct))
+        };
         Some(CalcValue {
             micro_px: a.micro_px + b.micro_px,
             micro_pct: a.micro_pct + b.micro_pct,
@@ -495,12 +541,30 @@ impl CalcValue {
     }
     fn neg(a: CalcValue) -> CalcValue {
         let flip = |b: Option<(i128, i128)>| b.map(|(l, p)| (-l, -p));
-        CalcValue { micro_px: -a.micro_px, micro_pct: -a.micro_pct, micro_num: -a.micro_num, lo: flip(a.hi), hi: flip(a.lo), ..a }
+        CalcValue {
+            micro_px: -a.micro_px,
+            micro_pct: -a.micro_pct,
+            micro_num: -a.micro_num,
+            lo: flip(a.hi),
+            hi: flip(a.lo),
+            ..a
+        }
     }
     fn mul(a: CalcValue, b: CalcValue) -> Option<CalcValue> {
         if a.is_number() {
-            let scale = |bound: Option<(i128, i128)>| bound.map(|(l, p)| (round_div(l * a.micro_num, 1_000_000), round_div(p * a.micro_num, 1_000_000)));
-            let (lo, hi) = if a.micro_num < 0 { (scale(b.hi), scale(b.lo)) } else { (scale(b.lo), scale(b.hi)) };
+            let scale = |bound: Option<(i128, i128)>| {
+                bound.map(|(l, p)| {
+                    (
+                        round_div(l * a.micro_num, 1_000_000),
+                        round_div(p * a.micro_num, 1_000_000),
+                    )
+                })
+            };
+            let (lo, hi) = if a.micro_num < 0 {
+                (scale(b.hi), scale(b.lo))
+            } else {
+                (scale(b.lo), scale(b.hi))
+            };
             Some(CalcValue {
                 micro_px: round_div(b.micro_px * a.micro_num, 1_000_000),
                 micro_pct: round_div(b.micro_pct * a.micro_num, 1_000_000),
@@ -519,8 +583,19 @@ impl CalcValue {
         if !b.is_number() || b.micro_num == 0 {
             return None;
         }
-        let scale = |bound: Option<(i128, i128)>| bound.map(|(l, p)| (round_div(l * 1_000_000, b.micro_num), round_div(p * 1_000_000, b.micro_num)));
-        let (lo, hi) = if b.micro_num < 0 { (scale(a.hi), scale(a.lo)) } else { (scale(a.lo), scale(a.hi)) };
+        let scale = |bound: Option<(i128, i128)>| {
+            bound.map(|(l, p)| {
+                (
+                    round_div(l * 1_000_000, b.micro_num),
+                    round_div(p * 1_000_000, b.micro_num),
+                )
+            })
+        };
+        let (lo, hi) = if b.micro_num < 0 {
+            (scale(a.hi), scale(a.lo))
+        } else {
+            (scale(a.lo), scale(a.hi))
+        };
         Some(CalcValue {
             micro_px: round_div(a.micro_px * 1_000_000, b.micro_num),
             micro_pct: round_div(a.micro_pct * 1_000_000, b.micro_num),
@@ -539,7 +614,10 @@ impl CalcValue {
         }
         let mut rest: Vec<CalcValue> = Vec::new();
         for &v in items {
-            match rest.iter_mut().find(|r| CalcValue::same_kind(r, &v) && r.key().is_some()) {
+            match rest
+                .iter_mut()
+                .find(|r| CalcValue::same_kind(r, &v) && r.key().is_some())
+            {
                 Some(r) => {
                     let (kr, kv) = (r.key().unwrap(), v.key().unwrap());
                     if (is_min && kv < kr) || (!is_min && kv > kr) {
@@ -588,7 +666,11 @@ impl CalcValue {
         let len = micro_px_to_au(self.micro_px);
         if self.bounded() {
             let part = |(l, p): (i128, i128)| (micro_px_to_au(l), clamp_i32(round_div(p, 10_000)));
-            return Some(LengthPercentage::Clamp { lo: self.lo.map(part), v: (len, pct), hi: self.hi.map(part) });
+            return Some(LengthPercentage::Clamp {
+                lo: self.lo.map(part),
+                v: (len, pct),
+                hi: self.hi.map(part),
+            });
         }
         Some(match (self.has_len, self.has_pct) {
             (_, false) => LengthPercentage::Length(len),
@@ -601,9 +683,21 @@ impl CalcValue {
 impl CalcNode {
     pub fn eval(&self, ctx: &LengthContext) -> Option<CalcValue> {
         Some(match self {
-            CalcNode::Length(l) => CalcValue { micro_px: l.to_micro_px(ctx), has_len: true, ..CalcValue::zero() },
-            CalcNode::Percent(n) => CalcValue { micro_pct: n.micro as i128, has_pct: true, ..CalcValue::zero() },
-            CalcNode::Number(n) => CalcValue { micro_num: n.micro as i128, has_num: true, ..CalcValue::zero() },
+            CalcNode::Length(l) => CalcValue {
+                micro_px: l.to_micro_px(ctx),
+                has_len: true,
+                ..CalcValue::zero()
+            },
+            CalcNode::Percent(n) => CalcValue {
+                micro_pct: n.micro as i128,
+                has_pct: true,
+                ..CalcValue::zero()
+            },
+            CalcNode::Number(n) => CalcValue {
+                micro_num: n.micro as i128,
+                has_num: true,
+                ..CalcValue::zero()
+            },
             CalcNode::Sum(items) => {
                 let mut acc = items[0].eval(ctx)?;
                 for i in &items[1..] {
@@ -622,8 +716,13 @@ impl CalcNode {
             CalcNode::Div(a, b) => CalcValue::div(a.eval(ctx)?, b.eval(ctx)?)?,
             CalcNode::Min(items) | CalcNode::Max(items) => {
                 let is_min = matches!(self, CalcNode::Min(_));
-                let values = items.iter().map(|i| i.eval(ctx)).collect::<Option<Vec<_>>>()?;
-                let same = values.iter().all(|v| CalcValue::same_kind(&values[0], v) && !v.bounded());
+                let values = items
+                    .iter()
+                    .map(|i| i.eval(ctx))
+                    .collect::<Option<Vec<_>>>()?;
+                let same = values
+                    .iter()
+                    .all(|v| CalcValue::same_kind(&values[0], v) && !v.bounded());
                 if !same || values[0].key().is_none() {
                     return CalcValue::fold_min_max(&values, is_min);
                 }
@@ -640,7 +739,11 @@ impl CalcNode {
             }
             CalcNode::Clamp(lo, mid, hi) => {
                 let (lo, mid, hi) = (lo.eval(ctx)?, mid.eval(ctx)?, hi.eval(ctx)?);
-                let same = CalcValue::same_kind(&lo, &mid) && CalcValue::same_kind(&mid, &hi) && !lo.bounded() && !mid.bounded() && !hi.bounded();
+                let same = CalcValue::same_kind(&lo, &mid)
+                    && CalcValue::same_kind(&mid, &hi)
+                    && !lo.bounded()
+                    && !mid.bounded()
+                    && !hi.bounded();
                 if !same || mid.key().is_none() {
                     // max(lo, min(mid, hi)) with the comparison deferred to the base.
                     if [lo, mid, hi].iter().any(|v| v.has_num || v.bounded()) {
@@ -675,7 +778,9 @@ impl CalcNode {
         match self {
             CalcNode::Length(l) => l.unit.is_absolute(),
             CalcNode::Percent(_) | CalcNode::Number(_) => true,
-            CalcNode::Sum(v) | CalcNode::Product(v) | CalcNode::Min(v) | CalcNode::Max(v) => v.iter().all(|n| n.is_absolute()),
+            CalcNode::Sum(v) | CalcNode::Product(v) | CalcNode::Min(v) | CalcNode::Max(v) => {
+                v.iter().all(|n| n.is_absolute())
+            }
             CalcNode::Neg(a) => a.is_absolute(),
             CalcNode::Div(a, b) => a.is_absolute() && b.is_absolute(),
             CalcNode::Clamp(a, b, c) => a.is_absolute() && b.is_absolute() && c.is_absolute(),
@@ -690,8 +795,12 @@ pub fn parse_math_function(p: &mut Parser) -> Option<CalcNode> {
         let mut inner = Parser::new(args);
         match name.to_ascii_lowercase().as_str() {
             "calc" | "-webkit-calc" | "-moz-calc" => inner.parse_entirely(parse_calc_sum),
-            "min" => Some(CalcNode::Min(inner.parse_entirely(|p| p.comma_list(parse_calc_sum))?)),
-            "max" => Some(CalcNode::Max(inner.parse_entirely(|p| p.comma_list(parse_calc_sum))?)),
+            "min" => Some(CalcNode::Min(
+                inner.parse_entirely(|p| p.comma_list(parse_calc_sum))?,
+            )),
+            "max" => Some(CalcNode::Max(
+                inner.parse_entirely(|p| p.comma_list(parse_calc_sum))?,
+            )),
             "clamp" => {
                 let items = inner.parse_entirely(|p| p.comma_list(parse_calc_sum))?;
                 if items.len() != 3 {
@@ -712,7 +821,9 @@ fn parse_calc_sum(p: &mut Parser) -> Option<CalcNode> {
         let start = p.position();
         match p.next() {
             Some(ComponentValue::Token(Token::Delim('+'))) => items.push(parse_calc_product(p)?),
-            Some(ComponentValue::Token(Token::Delim('-'))) => items.push(CalcNode::Neg(Box::new(parse_calc_product(p)?))),
+            Some(ComponentValue::Token(Token::Delim('-'))) => {
+                items.push(CalcNode::Neg(Box::new(parse_calc_product(p)?)))
+            }
             Some(_) => {
                 p.reset(start);
                 break;
@@ -720,7 +831,11 @@ fn parse_calc_sum(p: &mut Parser) -> Option<CalcNode> {
             None => break,
         }
     }
-    Some(if items.len() == 1 { items.pop().unwrap() } else { CalcNode::Sum(items) })
+    Some(if items.len() == 1 {
+        items.pop().unwrap()
+    } else {
+        CalcNode::Sum(items)
+    })
 }
 
 fn parse_calc_product(p: &mut Parser) -> Option<CalcNode> {
@@ -731,7 +846,11 @@ fn parse_calc_product(p: &mut Parser) -> Option<CalcNode> {
             Some(ComponentValue::Token(Token::Delim('*'))) => items.push(parse_calc_value(p)?),
             Some(ComponentValue::Token(Token::Delim('/'))) => {
                 let d = parse_calc_value(p)?;
-                let n = if items.len() == 1 { items.pop().unwrap() } else { CalcNode::Product(std::mem::take(&mut items)) };
+                let n = if items.len() == 1 {
+                    items.pop().unwrap()
+                } else {
+                    CalcNode::Product(std::mem::take(&mut items))
+                };
                 items.push(CalcNode::Div(Box::new(n), Box::new(d)));
             }
             _ => {
@@ -740,7 +859,11 @@ fn parse_calc_product(p: &mut Parser) -> Option<CalcNode> {
             }
         }
     }
-    Some(if items.len() == 1 { items.pop().unwrap() } else { CalcNode::Product(items) })
+    Some(if items.len() == 1 {
+        items.pop().unwrap()
+    } else {
+        CalcNode::Product(items)
+    })
 }
 
 fn parse_calc_value(p: &mut Parser) -> Option<CalcNode> {
@@ -752,11 +875,27 @@ fn parse_calc_value(p: &mut Parser) -> Option<CalcNode> {
         ComponentValue::Token(Token::Number { value, .. }) => Some(CalcNode::Number(*value)),
         ComponentValue::Token(Token::Percentage { value, .. }) => Some(CalcNode::Percent(*value)),
         ComponentValue::Token(Token::Dimension { value, unit, .. }) => {
-            Some(CalcNode::Length(Length { value: *value, unit: LengthUnit::parse(unit)? }))
+            Some(CalcNode::Length(Length {
+                value: *value,
+                unit: LengthUnit::parse(unit)?,
+            }))
         }
-        ComponentValue::Token(Token::Ident(s)) if s.eq_ignore_ascii_case("e") => Some(CalcNode::Number(Number { micro: 2_718_282, int: false })),
-        ComponentValue::Token(Token::Ident(s)) if s.eq_ignore_ascii_case("pi") => Some(CalcNode::Number(Number { micro: 3_141_593, int: false })),
-        ComponentValue::Block { open: Token::OpenParen, contents } => Parser::new(contents).parse_entirely(parse_calc_sum),
+        ComponentValue::Token(Token::Ident(s)) if s.eq_ignore_ascii_case("e") => {
+            Some(CalcNode::Number(Number {
+                micro: 2_718_282,
+                int: false,
+            }))
+        }
+        ComponentValue::Token(Token::Ident(s)) if s.eq_ignore_ascii_case("pi") => {
+            Some(CalcNode::Number(Number {
+                micro: 3_141_593,
+                int: false,
+            }))
+        }
+        ComponentValue::Block {
+            open: Token::OpenParen,
+            contents,
+        } => Parser::new(contents).parse_entirely(parse_calc_sum),
         _ => {
             p.reset(start);
             None
@@ -813,10 +952,22 @@ pub struct Allow {
 }
 
 impl Allow {
-    pub const ALL: Allow = Allow { negative: true, percent: true };
-    pub const NON_NEGATIVE: Allow = Allow { negative: false, percent: true };
-    pub const LENGTH: Allow = Allow { negative: true, percent: false };
-    pub const LENGTH_NON_NEGATIVE: Allow = Allow { negative: false, percent: false };
+    pub const ALL: Allow = Allow {
+        negative: true,
+        percent: true,
+    };
+    pub const NON_NEGATIVE: Allow = Allow {
+        negative: false,
+        percent: true,
+    };
+    pub const LENGTH: Allow = Allow {
+        negative: true,
+        percent: false,
+    };
+    pub const LENGTH_NON_NEGATIVE: Allow = Allow {
+        negative: false,
+        percent: false,
+    };
 }
 
 /// `<length-percentage>` including math functions.
@@ -832,9 +983,14 @@ pub fn parse_lp(p: &mut Parser, allow: Allow) -> Option<LpSpec> {
             return Some(LpSpec::Calc(Box::new(c)));
         }
         let v = match p.next()? {
-            ComponentValue::Token(Token::Dimension { value, unit, .. }) => LpSpec::Length(Length { value: *value, unit: LengthUnit::parse(unit)? }),
+            ComponentValue::Token(Token::Dimension { value, unit, .. }) => LpSpec::Length(Length {
+                value: *value,
+                unit: LengthUnit::parse(unit)?,
+            }),
             ComponentValue::Token(Token::Number { value, .. }) if value.is_zero() => LpSpec::ZERO,
-            ComponentValue::Token(Token::Percentage { value, .. }) if allow.percent => LpSpec::Percent(*value),
+            ComponentValue::Token(Token::Percentage { value, .. }) if allow.percent => {
+                LpSpec::Percent(*value)
+            }
             _ => return None,
         };
         if !allow.negative && v.is_negative() {
@@ -846,7 +1002,14 @@ pub fn parse_lp(p: &mut Parser, allow: Allow) -> Option<LpSpec> {
 
 /// `<length>` including math functions (no percentages).
 pub fn parse_length_spec(p: &mut Parser, non_negative: bool) -> Option<LpSpec> {
-    parse_lp(p, if non_negative { Allow::LENGTH_NON_NEGATIVE } else { Allow::LENGTH })
+    parse_lp(
+        p,
+        if non_negative {
+            Allow::LENGTH_NON_NEGATIVE
+        } else {
+            Allow::LENGTH
+        },
+    )
 }
 
 /// A `<number>` or a numeric math function, in millionths.
@@ -857,7 +1020,10 @@ pub fn parse_number_spec(p: &mut Parser) -> Option<Number> {
             if !v.is_number() {
                 return None;
             }
-            return Some(Number { micro: v.micro_num.clamp(i64::MIN as i128, i64::MAX as i128) as i64, int: false });
+            return Some(Number {
+                micro: v.micro_num.clamp(i64::MIN as i128, i64::MAX as i128) as i64,
+                int: false,
+            });
         }
         p.expect_number()
     })
@@ -901,7 +1067,10 @@ pub fn angle_to_centi(value: Number, unit: &str) -> Option<i32> {
     let centi = match unit.to_ascii_lowercase().as_str() {
         "deg" => round_div(v, 10_000),
         "grad" => round_div(v * 9, 100_000),
-        "rad" => round_div(v * 18_000 * 1_000_000_000_000_000, 3_141_592_653_589_793 * 1_000_000),
+        "rad" => round_div(
+            v * 18_000 * 1_000_000_000_000_000,
+            3_141_592_653_589_793 * 1_000_000,
+        ),
         "turn" => round_div(v * 36_000, 1_000_000),
         _ => return None,
     };
@@ -935,7 +1104,13 @@ pub enum ColorSpec {
     CurrentColor,
     /// `color-mix(in srgb, a pa%, b pb%)` with the percentages already normalised to
     /// myriads summing to 10_000 (and the alpha multiplier from a sum below 100%).
-    Mix { a: Box<ColorSpec>, b: Box<ColorSpec>, pa: i32, pb: i32, alpha_mul: i32 },
+    Mix {
+        a: Box<ColorSpec>,
+        b: Box<ColorSpec>,
+        pa: i32,
+        pb: i32,
+        alpha_mul: i32,
+    },
 }
 
 impl ColorSpec {
@@ -943,7 +1118,13 @@ impl ColorSpec {
         match self {
             ColorSpec::Rgba(c) => *c,
             ColorSpec::CurrentColor => current,
-            ColorSpec::Mix { a, b, pa, pb, alpha_mul } => mix_srgb(a.resolve(current), b.resolve(current), *pa, *pb, *alpha_mul),
+            ColorSpec::Mix {
+                a,
+                b,
+                pa,
+                pb,
+                alpha_mul,
+            } => mix_srgb(a.resolve(current), b.resolve(current), *pa, *pb, *alpha_mul),
         }
     }
     pub fn is_current(&self) -> bool {
@@ -971,7 +1152,9 @@ pub fn mix_srgb(a: Color, b: Color, pa: i32, pb: i32, alpha_mul: i32) -> Color {
 /// Parses `<color>`.
 pub fn parse_color(p: &mut Parser) -> Option<ColorSpec> {
     p.try_parse(|p| match p.next()? {
-        ComponentValue::Token(Token::Hash { value, .. }) => parse_hex_color(value).map(ColorSpec::Rgba),
+        ComponentValue::Token(Token::Hash { value, .. }) => {
+            parse_hex_color(value).map(ColorSpec::Rgba)
+        }
         ComponentValue::Token(Token::Ident(s)) => {
             let l = s.to_ascii_lowercase();
             match l.as_str() {
@@ -980,18 +1163,38 @@ pub fn parse_color(p: &mut Parser) -> Option<ColorSpec> {
                 _ => named_color(&l).map(ColorSpec::Rgba),
             }
         }
-        ComponentValue::Function { name, args } => parse_color_function(&name.to_ascii_lowercase(), args),
+        ComponentValue::Function { name, args } => {
+            parse_color_function(&name.to_ascii_lowercase(), args)
+        }
         _ => None,
     })
 }
 
 pub fn parse_hex_color(s: &str) -> Option<Color> {
-    let digits: Vec<u8> = s.chars().map(|c| c.to_digit(16).map(|d| d as u8)).collect::<Option<_>>()?;
+    let digits: Vec<u8> = s
+        .chars()
+        .map(|c| c.to_digit(16).map(|d| d as u8))
+        .collect::<Option<_>>()?;
     Some(match digits.len() {
         3 => Color(digits[0] * 17, digits[1] * 17, digits[2] * 17, 255),
-        4 => Color(digits[0] * 17, digits[1] * 17, digits[2] * 17, digits[3] * 17),
-        6 => Color(digits[0] * 16 + digits[1], digits[2] * 16 + digits[3], digits[4] * 16 + digits[5], 255),
-        8 => Color(digits[0] * 16 + digits[1], digits[2] * 16 + digits[3], digits[4] * 16 + digits[5], digits[6] * 16 + digits[7]),
+        4 => Color(
+            digits[0] * 17,
+            digits[1] * 17,
+            digits[2] * 17,
+            digits[3] * 17,
+        ),
+        6 => Color(
+            digits[0] * 16 + digits[1],
+            digits[2] * 16 + digits[3],
+            digits[4] * 16 + digits[5],
+            255,
+        ),
+        8 => Color(
+            digits[0] * 16 + digits[1],
+            digits[2] * 16 + digits[3],
+            digits[4] * 16 + digits[5],
+            digits[6] * 16 + digits[7],
+        ),
         _ => return None,
     })
 }
@@ -1014,7 +1217,9 @@ fn channel_255(p: &mut Parser) -> Option<u8> {
             return Some(0);
         }
         if let Some(n) = p.expect_percentage() {
-            return Some(clamp_i32(round_div(n.micro as i128 * 255, 100_000_000)).clamp(0, 255) as u8);
+            return Some(
+                clamp_i32(round_div(n.micro as i128 * 255, 100_000_000)).clamp(0, 255) as u8,
+            );
         }
         let n = parse_number_spec(p)?;
         Some(clamp_i32(round_div(n.micro as i128, 1_000_000)).clamp(0, 255) as u8)
@@ -1043,12 +1248,20 @@ fn parse_rgb_args(p: &mut Parser) -> Option<Color> {
         let g = channel_255(p)?;
         p.expect_comma()?;
         let b = channel_255(p)?;
-        let a = if p.expect_comma().is_some() { alpha_255(p)? } else { 255 };
+        let a = if p.expect_comma().is_some() {
+            alpha_255(p)?
+        } else {
+            255
+        };
         return Some(Color(r, g, b, a));
     }
     let g = channel_255(p)?;
     let b = channel_255(p)?;
-    let a = if p.expect_delim('/').is_some() { alpha_255(p)? } else { 255 };
+    let a = if p.expect_delim('/').is_some() {
+        alpha_255(p)?
+    } else {
+        255
+    };
     Some(Color(r, g, b, a))
 }
 
@@ -1060,7 +1273,9 @@ fn parse_hue(p: &mut Parser) -> Option<i128> {
         }
         let micro_deg: i128 = match p.next()? {
             ComponentValue::Token(Token::Number { value, .. }) => value.micro as i128,
-            ComponentValue::Token(Token::Dimension { value, unit, .. }) => angle_to_centi(*value, unit)? as i128 * 10_000,
+            ComponentValue::Token(Token::Dimension { value, unit, .. }) => {
+                angle_to_centi(*value, unit)? as i128 * 10_000
+            }
             _ => return None,
         };
         Some(micro_deg.rem_euclid(360_000_000))
@@ -1109,7 +1324,9 @@ pub fn hsl_to_rgb(h: i128, s: i128, l: i128) -> (u8, u8, u8) {
     let a = round_div(s * l.min(1_000_000 - l), 1_000_000);
     let f = |n: i128| -> u8 {
         let k12 = (n * 30_000_000 + h).rem_euclid(360_000_000) / 30; // k * 1e6
-        let m = (k12 - 3_000_000).min(9_000_000 - k12).clamp(-1_000_000, 1_000_000);
+        let m = (k12 - 3_000_000)
+            .min(9_000_000 - k12)
+            .clamp(-1_000_000, 1_000_000);
         let v = l - round_div(a * m, 1_000_000);
         round_div(v * 255, 1_000_000).clamp(0, 255) as u8
     };
@@ -1120,7 +1337,11 @@ fn parse_hwb_args(p: &mut Parser) -> Option<Color> {
     let h = parse_hue(p)?;
     let w = percent_fraction(p)?;
     let b = percent_fraction(p)?;
-    let a = if p.expect_delim('/').is_some() { alpha_255(p)? } else { 255 };
+    let a = if p.expect_delim('/').is_some() {
+        alpha_255(p)?
+    } else {
+        255
+    };
     let (r, g, bl) = hwb_to_rgb(h, w, b);
     Some(Color(r, g, bl, a))
 }
@@ -1132,7 +1353,8 @@ pub fn hwb_to_rgb(h: i128, w: i128, b: i128) -> (u8, u8, u8) {
     }
     let (r, g, bl) = hsl_to_rgb(h, 1_000_000, 500_000);
     let f = |c: u8| -> u8 {
-        let v = round_div(c as i128 * (1_000_000 - w - b), 1_000_000) + round_div(w * 255, 1_000_000);
+        let v =
+            round_div(c as i128 * (1_000_000 - w - b), 1_000_000) + round_div(w * 255, 1_000_000);
         v.clamp(0, 255) as u8
     };
     (f(r), f(g), f(bl))
@@ -1167,10 +1389,20 @@ fn parse_color_mix_args(p: &mut Parser) -> Option<ColorSpec> {
         return None;
     }
     let sum = pa + pb;
-    let alpha_mul = if sum < 100_000_000 { round_div(sum, 10_000) } else { 10_000 };
+    let alpha_mul = if sum < 100_000_000 {
+        round_div(sum, 10_000)
+    } else {
+        10_000
+    };
     let pa_m = round_div(pa * 10_000, sum);
     let pb_m = 10_000 - pa_m;
-    Some(ColorSpec::Mix { a: Box::new(a), b: Box::new(b), pa: pa_m as i32, pb: pb_m as i32, alpha_mul: alpha_mul as i32 })
+    Some(ColorSpec::Mix {
+        a: Box::new(a),
+        b: Box::new(b),
+        pa: pa_m as i32,
+        pb: pb_m as i32,
+        alpha_mul: alpha_mul as i32,
+    })
 }
 
 /// The CSS named colours (Color Level 4 §6.1), lower-case names.
@@ -1333,16 +1565,18 @@ pub fn named_color(name: &str) -> Option<Color> {
     }
     // CSS system colours, as a light theme renders them.
     Some(match name {
-        "canvas" | "window" | "field" | "buttonface" | "menu" | "infobackground" | "threedface" => Color(255, 255, 255, 255),
-        "canvastext" | "windowtext" | "fieldtext" | "buttontext" | "menutext" | "infotext" | "captiontext" | "activecaption" => Color(0, 0, 0, 255),
+        "canvas" | "window" | "field" | "buttonface" | "menu" | "infobackground" | "threedface" => {
+            Color(255, 255, 255, 255)
+        }
+        "canvastext" | "windowtext" | "fieldtext" | "buttontext" | "menutext" | "infotext"
+        | "captiontext" | "activecaption" => Color(0, 0, 0, 255),
         "linktext" | "activetext" => Color(0, 0, 238, 255),
         "visitedtext" => Color(85, 26, 139, 255),
         "highlight" => Color(0, 120, 215, 255),
         "highlighttext" => Color(255, 255, 255, 255),
         "graytext" | "inactivecaptiontext" => Color(109, 109, 109, 255),
-        "buttonborder" | "activeborder" | "inactiveborder" | "threedshadow" | "threedhighlight" | "threeddarkshadow" | "threedlightshadow" => {
-            Color(118, 118, 118, 255)
-        }
+        "buttonborder" | "activeborder" | "inactiveborder" | "threedshadow" | "threedhighlight"
+        | "threeddarkshadow" | "threedlightshadow" => Color(118, 118, 118, 255),
         "mark" => Color(255, 255, 0, 255),
         "marktext" => Color(0, 0, 0, 255),
         "selecteditem" => Color(0, 120, 215, 255),
@@ -1359,7 +1593,10 @@ pub fn color_name(c: Color) -> Option<&'static str> {
     if c.3 != 255 {
         return None;
     }
-    NAMED_COLORS.iter().find(|(_, v)| *v == [c.0, c.1, c.2]).map(|e| e.0)
+    NAMED_COLORS
+        .iter()
+        .find(|(_, v)| *v == [c.0, c.1, c.2])
+        .map(|e| e.0)
 }
 
 /// The HTML "rules for parsing a legacy colour value" (`bgcolor="#ff0"`, `"red"`,
@@ -1373,7 +1610,11 @@ pub fn parse_legacy_color(input: &str) -> Option<Color> {
     if lower == "transparent" {
         return None;
     }
-    if let Some(c) = NAMED_COLORS.binary_search_by_key(&lower.as_str(), |e| e.0).ok().map(|i| NAMED_COLORS[i].1) {
+    if let Some(c) = NAMED_COLORS
+        .binary_search_by_key(&lower.as_str(), |e| e.0)
+        .ok()
+        .map(|i| NAMED_COLORS[i].1)
+    {
         return Some(Color(c[0], c[1], c[2], 255));
     }
     if s.len() == 4 && s.starts_with('#') {
@@ -1382,7 +1623,10 @@ pub fn parse_legacy_color(input: &str) -> Option<Color> {
         }
     }
     // Replace non-ASCII and everything outside hex with '0'.
-    let mut chars: Vec<char> = s.chars().map(|c| if c as u32 > 0xFFFF { '0' } else { c }).collect();
+    let mut chars: Vec<char> = s
+        .chars()
+        .map(|c| if c as u32 > 0xFFFF { '0' } else { c })
+        .collect();
     if chars.len() > 128 {
         chars.truncate(128);
     }
@@ -1471,8 +1715,16 @@ pub struct StopSpec {
 pub enum ImageSpec {
     None,
     Url(String),
-    Linear { direction: GradientDirection, stops: Vec<StopSpec>, repeating: bool },
-    Radial { circle: bool, stops: Vec<StopSpec>, repeating: bool },
+    Linear {
+        direction: GradientDirection,
+        stops: Vec<StopSpec>,
+        repeating: bool,
+    },
+    Radial {
+        circle: bool,
+        stops: Vec<StopSpec>,
+        repeating: bool,
+    },
 }
 
 /// `<image> | none`.
@@ -1489,8 +1741,12 @@ pub fn parse_image(p: &mut Parser) -> Option<ImageSpec> {
         let lname = lname.strip_prefix("-webkit-").unwrap_or(&lname).to_owned();
         let mut inner = Parser::new(args);
         match lname.as_str() {
-            "linear-gradient" | "repeating-linear-gradient" => inner.parse_entirely(|p| parse_linear_gradient(p, lname.starts_with("repeating"))),
-            "radial-gradient" | "repeating-radial-gradient" => inner.parse_entirely(|p| parse_radial_gradient(p, lname.starts_with("repeating"))),
+            "linear-gradient" | "repeating-linear-gradient" => {
+                inner.parse_entirely(|p| parse_linear_gradient(p, lname.starts_with("repeating")))
+            }
+            "radial-gradient" | "repeating-radial-gradient" => {
+                inner.parse_entirely(|p| parse_radial_gradient(p, lname.starts_with("repeating")))
+            }
             "image-set" => {
                 // Take the first image of the set.
                 let first = inner.try_parse(|p| {
@@ -1546,7 +1802,11 @@ fn parse_linear_gradient(p: &mut Parser, repeating: bool) -> Option<ImageSpec> {
         direction = d;
     }
     let stops = parse_color_stops(p)?;
-    Some(ImageSpec::Linear { direction, stops, repeating })
+    Some(ImageSpec::Linear {
+        direction,
+        stops,
+        repeating,
+    })
 }
 
 fn parse_radial_gradient(p: &mut Parser, repeating: bool) -> Option<ImageSpec> {
@@ -1563,7 +1823,8 @@ fn parse_radial_gradient(p: &mut Parser, repeating: bool) -> Option<ImageSpec> {
                         any = true;
                         continue;
                     }
-                    "ellipse" | "closest-side" | "closest-corner" | "farthest-side" | "farthest-corner" => {
+                    "ellipse" | "closest-side" | "closest-corner" | "farthest-side"
+                    | "farthest-corner" => {
                         p.next();
                         any = true;
                         continue;
@@ -1594,7 +1855,11 @@ fn parse_radial_gradient(p: &mut Parser, repeating: bool) -> Option<ImageSpec> {
         circle = false;
     }
     let stops = parse_color_stops(p)?;
-    Some(ImageSpec::Radial { circle, stops, repeating })
+    Some(ImageSpec::Radial {
+        circle,
+        stops,
+        repeating,
+    })
 }
 
 fn parse_color_stops(p: &mut Parser) -> Option<Vec<StopSpec>> {
@@ -1602,17 +1867,26 @@ fn parse_color_stops(p: &mut Parser) -> Option<Vec<StopSpec>> {
     loop {
         if let Some(c) = parse_color(p) {
             let pos = parse_lp(p, Allow::ALL);
-            stops.push(StopSpec { color: Some(c.clone()), position: pos });
+            stops.push(StopSpec {
+                color: Some(c.clone()),
+                position: pos,
+            });
             // A second position makes a second stop with the same colour.
             if let Some(pos2) = parse_lp(p, Allow::ALL) {
-                stops.push(StopSpec { color: Some(c), position: Some(pos2) });
+                stops.push(StopSpec {
+                    color: Some(c),
+                    position: Some(pos2),
+                });
             }
         } else {
             let hint = parse_lp(p, Allow::ALL)?;
             if stops.is_empty() {
                 return None;
             }
-            stops.push(StopSpec { color: None, position: Some(hint) });
+            stops.push(StopSpec {
+                color: None,
+                position: Some(hint),
+            });
         }
         if p.expect_comma().is_none() {
             break;
@@ -1646,7 +1920,12 @@ pub fn parse_position(p: &mut Parser) -> Option<(LpSpec, LpSpec)> {
                 _ => None,
             })
         };
-        let pct = |v: i64| LpSpec::Percent(Number { micro: v * 1_000_000, int: true });
+        let pct = |v: i64| {
+            LpSpec::Percent(Number {
+                micro: v * 1_000_000,
+                int: true,
+            })
+        };
         enum Item {
             K(Kw),
             L(LpSpec),
@@ -1702,20 +1981,21 @@ pub fn parse_position(p: &mut Parser) -> Option<(LpSpec, LpSpec)> {
                     } else {
                         None
                     };
-                    let value = |base: LpSpec, off: Option<LpSpec>, from_end: bool| -> Option<LpSpec> {
-                        match off {
-                            None => Some(base),
-                            Some(o) if !from_end => Some(o),
-                            Some(o) => Some(LpSpec::Calc(Box::new(CalcNode::Sum(vec![
-                                CalcNode::Percent(Number::from_i64(100)),
-                                CalcNode::Neg(Box::new(match o {
-                                    LpSpec::Length(l) => CalcNode::Length(l),
-                                    LpSpec::Percent(n) => CalcNode::Percent(n),
-                                    LpSpec::Calc(c) => *c,
-                                })),
-                            ])))),
-                        }
-                    };
+                    let value =
+                        |base: LpSpec, off: Option<LpSpec>, from_end: bool| -> Option<LpSpec> {
+                            match off {
+                                None => Some(base),
+                                Some(o) if !from_end => Some(o),
+                                Some(o) => Some(LpSpec::Calc(Box::new(CalcNode::Sum(vec![
+                                    CalcNode::Percent(Number::from_i64(100)),
+                                    CalcNode::Neg(Box::new(match o {
+                                        LpSpec::Length(l) => CalcNode::Length(l),
+                                        LpSpec::Percent(n) => CalcNode::Percent(n),
+                                        LpSpec::Calc(c) => *c,
+                                    })),
+                                ])))),
+                            }
+                        };
                     match k {
                         Kw::Left if h.is_none() => h = value(pct(0), offset, false),
                         Kw::Right if h.is_none() => h = value(pct(100), offset, true),
@@ -1817,7 +2097,9 @@ fn serialize_token(t: &Token, out: &mut String) {
             out.push_str("\")");
         }
         Token::Delim(c) => out.push(*c),
-        Token::Number { text, .. } | Token::Percentage { text, .. } | Token::Dimension { text, .. } => {
+        Token::Number { text, .. }
+        | Token::Percentage { text, .. }
+        | Token::Dimension { text, .. } => {
             out.push_str(text);
             if let Token::Percentage { .. } = t {
                 out.push('%');
@@ -1845,7 +2127,9 @@ fn serialize_token(t: &Token, out: &mut String) {
 /// time before parsing).
 pub fn contains_var(items: &[ComponentValue]) -> bool {
     items.iter().any(|v| match v {
-        ComponentValue::Function { name, args } => name.eq_ignore_ascii_case("var") || contains_var(args),
+        ComponentValue::Function { name, args } => {
+            name.eq_ignore_ascii_case("var") || contains_var(args)
+        }
         ComponentValue::Block { contents, .. } => contains_var(contents),
         _ => false,
     })
@@ -1867,27 +2151,51 @@ pub fn tok_string(s: &str) -> ComponentValue {
     ComponentValue::Token(Token::String(s.to_owned()))
 }
 pub fn tok_number(n: Number) -> ComponentValue {
-    ComponentValue::Token(Token::Number { text: number_text(n), value: n })
+    ComponentValue::Token(Token::Number {
+        text: number_text(n),
+        value: n,
+    })
 }
 pub fn tok_int(v: i64) -> ComponentValue {
     tok_number(Number::from_i64(v))
 }
 pub fn tok_dimension(n: Number, unit: &str) -> ComponentValue {
-    ComponentValue::Token(Token::Dimension { text: number_text(n), value: n, unit: unit.to_owned() })
+    ComponentValue::Token(Token::Dimension {
+        text: number_text(n),
+        value: n,
+        unit: unit.to_owned(),
+    })
 }
 pub fn tok_px(v: i64) -> ComponentValue {
     tok_dimension(Number::from_i64(v), "px")
 }
 pub fn tok_percent(n: Number) -> ComponentValue {
-    ComponentValue::Token(Token::Percentage { text: number_text(n), value: n })
+    ComponentValue::Token(Token::Percentage {
+        text: number_text(n),
+        value: n,
+    })
 }
 pub fn tok_hash(s: &str) -> ComponentValue {
-    ComponentValue::Token(Token::Hash { value: s.to_owned(), id: false })
+    ComponentValue::Token(Token::Hash {
+        value: s.to_owned(),
+        id: false,
+    })
 }
 pub fn tok_color(c: Color) -> ComponentValue {
     ComponentValue::Function {
         name: "rgba".into(),
-        args: vec![tok_int(c.0 as i64), tok_comma(), tok_int(c.1 as i64), tok_comma(), tok_int(c.2 as i64), tok_comma(), tok_number(Number { micro: c.3 as i64 * 1_000_000 / 255, int: false })],
+        args: vec![
+            tok_int(c.0 as i64),
+            tok_comma(),
+            tok_int(c.1 as i64),
+            tok_comma(),
+            tok_int(c.2 as i64),
+            tok_comma(),
+            tok_number(Number {
+                micro: c.3 as i64 * 1_000_000 / 255,
+                int: false,
+            }),
+        ],
     }
 }
 
@@ -1934,7 +2242,12 @@ pub(crate) mod test_util {
         is_name_start(c) || c.is_ascii_digit() || c == '-'
     }
 
-    fn parse_list(chars: &[char], i: &mut usize, close: Option<char>, out: &mut Vec<ComponentValue>) {
+    fn parse_list(
+        chars: &[char],
+        i: &mut usize,
+        close: Option<char>,
+        out: &mut Vec<ComponentValue>,
+    ) {
         while *i < chars.len() {
             let c = chars[*i];
             if Some(c) == close {
@@ -1969,7 +2282,10 @@ pub(crate) mod test_util {
                         s.push(chars[*i]);
                         *i += 1;
                     }
-                    out.push(ComponentValue::Token(Token::Hash { id: s.chars().next().is_some_and(is_name_start), value: s }));
+                    out.push(ComponentValue::Token(Token::Hash {
+                        id: s.chars().next().is_some_and(is_name_start),
+                        value: s,
+                    }));
                 }
                 ',' => {
                     *i += 1;
@@ -1994,7 +2310,9 @@ pub(crate) mod test_util {
                     parse_list(chars, i, Some(cl), &mut contents);
                     out.push(ComponentValue::Block { open, contents });
                 }
-                c if c.is_ascii_digit() || ((c == '.' || c == '+' || c == '-') && number_ahead(chars, *i)) => {
+                c if c.is_ascii_digit()
+                    || ((c == '.' || c == '+' || c == '-') && number_ahead(chars, *i)) =>
+                {
                     let start = *i;
                     if c == '+' || c == '-' {
                         *i += 1;
@@ -2025,12 +2343,20 @@ pub(crate) mod test_util {
                             unit.push(chars[*i]);
                             *i += 1;
                         }
-                        out.push(ComponentValue::Token(Token::Dimension { text, value, unit }));
+                        out.push(ComponentValue::Token(Token::Dimension {
+                            text,
+                            value,
+                            unit,
+                        }));
                     } else {
                         out.push(ComponentValue::Token(Token::Number { text, value }));
                     }
                 }
-                c if is_name_start(c) || (c == '-' && *i + 1 < chars.len() && (is_name_start(chars[*i + 1]) || chars[*i + 1] == '-')) => {
+                c if is_name_start(c)
+                    || (c == '-'
+                        && *i + 1 < chars.len()
+                        && (is_name_start(chars[*i + 1]) || chars[*i + 1] == '-')) =>
+                {
                     let mut name = String::new();
                     while *i < chars.len() && (is_name(chars[*i]) || chars[*i] == '\\') {
                         if chars[*i] == '\\' && *i + 1 < chars.len() {
@@ -2105,28 +2431,77 @@ mod tests {
     fn color(src: &str) -> Option<Color> {
         let toks = tokenize(src);
         let mut p = Parser::new(&toks);
-        p.parse_entirely(parse_color).map(|c| c.resolve(Color(1, 2, 3, 255)))
+        p.parse_entirely(parse_color)
+            .map(|c| c.resolve(Color(1, 2, 3, 255)))
     }
 
     #[test]
     fn lengths_in_every_unit() {
-        assert_eq!(lp("10px"), Some(LengthPercentage::Length(Au::from_px_i32(10))));
+        assert_eq!(
+            lp("10px"),
+            Some(LengthPercentage::Length(Au::from_px_i32(10)))
+        );
         assert_eq!(lp("0"), Some(LengthPercentage::ZERO));
-        assert_eq!(lp("1in"), Some(LengthPercentage::Length(Au::from_px_i32(96))));
-        assert_eq!(lp("2.54cm"), Some(LengthPercentage::Length(Au::from_px_i32(96))));
-        assert_eq!(lp("25.4mm"), Some(LengthPercentage::Length(Au::from_px_i32(96))));
-        assert_eq!(lp("72pt"), Some(LengthPercentage::Length(Au::from_px_i32(96))));
-        assert_eq!(lp("1pc"), Some(LengthPercentage::Length(Au::from_px_i32(16))));
-        assert_eq!(lp("4Q"), Some(LengthPercentage::Length(Au::from_f64_px(3.779528))));
-        assert_eq!(lp("2em"), Some(LengthPercentage::Length(Au::from_px_i32(32))));
-        assert_eq!(lp("1.5rem"), Some(LengthPercentage::Length(Au::from_px_i32(24))));
-        assert_eq!(lp("2ex"), Some(LengthPercentage::Length(Au::from_px_i32(16))));
-        assert_eq!(lp("4ch"), Some(LengthPercentage::Length(Au::from_px_i32(32))));
-        assert_eq!(lp("10vw"), Some(LengthPercentage::Length(Au::from_px_i32(128))));
-        assert_eq!(lp("10vh"), Some(LengthPercentage::Length(Au::from_px_i32(80))));
-        assert_eq!(lp("10vmin"), Some(LengthPercentage::Length(Au::from_px_i32(80))));
-        assert_eq!(lp("10vmax"), Some(LengthPercentage::Length(Au::from_px_i32(128))));
-        assert_eq!(lp("1lh"), Some(LengthPercentage::Length(Au::from_f64_px(19.2))));
+        assert_eq!(
+            lp("1in"),
+            Some(LengthPercentage::Length(Au::from_px_i32(96)))
+        );
+        assert_eq!(
+            lp("2.54cm"),
+            Some(LengthPercentage::Length(Au::from_px_i32(96)))
+        );
+        assert_eq!(
+            lp("25.4mm"),
+            Some(LengthPercentage::Length(Au::from_px_i32(96)))
+        );
+        assert_eq!(
+            lp("72pt"),
+            Some(LengthPercentage::Length(Au::from_px_i32(96)))
+        );
+        assert_eq!(
+            lp("1pc"),
+            Some(LengthPercentage::Length(Au::from_px_i32(16)))
+        );
+        assert_eq!(
+            lp("4Q"),
+            Some(LengthPercentage::Length(Au::from_f64_px(3.779528)))
+        );
+        assert_eq!(
+            lp("2em"),
+            Some(LengthPercentage::Length(Au::from_px_i32(32)))
+        );
+        assert_eq!(
+            lp("1.5rem"),
+            Some(LengthPercentage::Length(Au::from_px_i32(24)))
+        );
+        assert_eq!(
+            lp("2ex"),
+            Some(LengthPercentage::Length(Au::from_px_i32(16)))
+        );
+        assert_eq!(
+            lp("4ch"),
+            Some(LengthPercentage::Length(Au::from_px_i32(32)))
+        );
+        assert_eq!(
+            lp("10vw"),
+            Some(LengthPercentage::Length(Au::from_px_i32(128)))
+        );
+        assert_eq!(
+            lp("10vh"),
+            Some(LengthPercentage::Length(Au::from_px_i32(80)))
+        );
+        assert_eq!(
+            lp("10vmin"),
+            Some(LengthPercentage::Length(Au::from_px_i32(80)))
+        );
+        assert_eq!(
+            lp("10vmax"),
+            Some(LengthPercentage::Length(Au::from_px_i32(128)))
+        );
+        assert_eq!(
+            lp("1lh"),
+            Some(LengthPercentage::Length(Au::from_f64_px(19.2)))
+        );
         assert_eq!(lp("50%"), Some(LengthPercentage::Percent(5000)));
         assert_eq!(lp("12.5%"), Some(LengthPercentage::Percent(1250)));
         assert_eq!(lp("0.5px"), Some(LengthPercentage::Length(Au(32))));
@@ -2138,20 +2513,59 @@ mod tests {
 
     #[test]
     fn calc_arithmetic_and_units() {
-        assert_eq!(lp("calc(10px + 2em)"), Some(LengthPercentage::Length(Au::from_px_i32(42))));
-        assert_eq!(lp("calc(100% - 20px)"), Some(LengthPercentage::Calc(Au::from_px_i32(-20), 10000)));
-        assert_eq!(lp("calc(2 * 10px)"), Some(LengthPercentage::Length(Au::from_px_i32(20))));
-        assert_eq!(lp("calc(10px * 2)"), Some(LengthPercentage::Length(Au::from_px_i32(20))));
-        assert_eq!(lp("calc(30px / 3)"), Some(LengthPercentage::Length(Au::from_px_i32(10))));
-        assert_eq!(lp("calc((10px + 5px) * 2)"), Some(LengthPercentage::Length(Au::from_px_i32(30))));
+        assert_eq!(
+            lp("calc(10px + 2em)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(42)))
+        );
+        assert_eq!(
+            lp("calc(100% - 20px)"),
+            Some(LengthPercentage::Calc(Au::from_px_i32(-20), 10000))
+        );
+        assert_eq!(
+            lp("calc(2 * 10px)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(20)))
+        );
+        assert_eq!(
+            lp("calc(10px * 2)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(20)))
+        );
+        assert_eq!(
+            lp("calc(30px / 3)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(10)))
+        );
+        assert_eq!(
+            lp("calc((10px + 5px) * 2)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(30)))
+        );
         assert_eq!(lp("calc(50% / 2)"), Some(LengthPercentage::Percent(2500)));
-        assert_eq!(lp("min(10px, 5px, 8px)"), Some(LengthPercentage::Length(Au::from_px_i32(5))));
-        assert_eq!(lp("max(10px, 1em)"), Some(LengthPercentage::Length(Au::from_px_i32(16))));
-        assert_eq!(lp("clamp(10px, 50px, 20px)"), Some(LengthPercentage::Length(Au::from_px_i32(20))));
-        assert_eq!(lp("clamp(10px, 5px, 20px)"), Some(LengthPercentage::Length(Au::from_px_i32(10))));
-        assert_eq!(lp("calc(min(10px, 20px) + 1px)"), Some(LengthPercentage::Length(Au::from_px_i32(11))));
-        assert_eq!(lp("calc(1px - -1px)"), Some(LengthPercentage::Length(Au::from_px_i32(2))));
-        assert_eq!(lp("calc(-10px)"), Some(LengthPercentage::Length(Au::from_px_i32(-10))));
+        assert_eq!(
+            lp("min(10px, 5px, 8px)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(5)))
+        );
+        assert_eq!(
+            lp("max(10px, 1em)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(16)))
+        );
+        assert_eq!(
+            lp("clamp(10px, 50px, 20px)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(20)))
+        );
+        assert_eq!(
+            lp("clamp(10px, 5px, 20px)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(10)))
+        );
+        assert_eq!(
+            lp("calc(min(10px, 20px) + 1px)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(11)))
+        );
+        assert_eq!(
+            lp("calc(1px - -1px)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(2)))
+        );
+        assert_eq!(
+            lp("calc(-10px)"),
+            Some(LengthPercentage::Length(Au::from_px_i32(-10)))
+        );
         // Failures: unit algebra.
         assert_eq!(lp("calc(10px * 2px)"), None);
         assert_eq!(lp("calc(10px / 2px)"), None);
@@ -2163,14 +2577,28 @@ mod tests {
         assert_eq!(lp("clamp(1px, 2px)"), None);
         // Mixed length/percentage comparisons wait for the percentage base.
         let px = Au::from_px_i32;
-        assert_eq!(lp("min(10px, 50%)"), Some(LengthPercentage::Clamp { lo: None, v: (px(10), 0), hi: Some((px(0), 5000)) }));
+        assert_eq!(
+            lp("min(10px, 50%)"),
+            Some(LengthPercentage::Clamp {
+                lo: None,
+                v: (px(10), 0),
+                hi: Some((px(0), 5000))
+            })
+        );
         assert_eq!(lp("min(10px, 50%)").unwrap().resolve(px(100)), px(10));
         assert_eq!(lp("min(10px, 50%)").unwrap().resolve(px(10)), px(5));
         assert_eq!(lp("max(10px, 50%)").unwrap().resolve(px(10)), px(10));
         assert_eq!(lp("max(10px, 50%)").unwrap().resolve(px(100)), px(50));
         // The stripe container: min(1080px, calc(100% - 2 * 32px)).
         let w = lp("min(1080px, calc(100% - 2 * 32px))").unwrap();
-        assert_eq!(w, LengthPercentage::Clamp { lo: None, v: (px(1080), 0), hi: Some((px(-64), 10000)) });
+        assert_eq!(
+            w,
+            LengthPercentage::Clamp {
+                lo: None,
+                v: (px(1080), 0),
+                hi: Some((px(-64), 10000))
+            }
+        );
         assert_eq!(w.resolve(px(1280)), px(1080));
         assert_eq!(w.resolve(px(800)), px(736));
         // Pure lengths fold among themselves before the deferred comparison.
@@ -2190,11 +2618,22 @@ mod tests {
     #[test]
     fn numbers_and_integers() {
         let toks = tokenize("calc(2 * 3)");
-        assert_eq!(Parser::new(&toks).parse_entirely(parse_number_spec).map(|n| n.micro), Some(6_000_000));
+        assert_eq!(
+            Parser::new(&toks)
+                .parse_entirely(parse_number_spec)
+                .map(|n| n.micro),
+            Some(6_000_000)
+        );
         let toks = tokenize("3");
-        assert_eq!(Parser::new(&toks).parse_entirely(parse_integer_spec), Some(3));
+        assert_eq!(
+            Parser::new(&toks).parse_entirely(parse_integer_spec),
+            Some(3)
+        );
         let toks = tokenize("3.5");
-        assert_eq!(Parser::new(&toks).parse_entirely(|p| p.expect_integer()), None);
+        assert_eq!(
+            Parser::new(&toks).parse_entirely(|p| p.expect_integer()),
+            None
+        );
     }
 
     #[test]
@@ -2237,9 +2676,18 @@ mod tests {
         assert_eq!(color("rgb(1 2 3 4)"), None);
         assert_eq!(color("hsl(0, 100%, 50%)"), Some(Color(255, 0, 0, 255)));
         assert_eq!(color("hsl(120deg 100% 50%)"), Some(Color(0, 255, 0, 255)));
-        assert_eq!(color("hsl(240 100% 50% / 0.5)"), Some(Color(0, 0, 255, 128)));
-        assert_eq!(color("hsla(0, 0%, 50%, 1)"), Some(Color(128, 128, 128, 255)));
-        assert_eq!(color("hsl(0.5turn 100% 50%)"), Some(Color(0, 255, 255, 255)));
+        assert_eq!(
+            color("hsl(240 100% 50% / 0.5)"),
+            Some(Color(0, 0, 255, 128))
+        );
+        assert_eq!(
+            color("hsla(0, 0%, 50%, 1)"),
+            Some(Color(128, 128, 128, 255))
+        );
+        assert_eq!(
+            color("hsl(0.5turn 100% 50%)"),
+            Some(Color(0, 255, 255, 255))
+        );
         assert_eq!(color("hwb(0 0% 0%)"), Some(Color(255, 0, 0, 255)));
         assert_eq!(color("hwb(0 50% 50%)"), Some(Color(128, 128, 128, 255)));
         assert_eq!(color("hwb(120 20% 20%)"), Some(Color(51, 204, 51, 255)));
@@ -2248,12 +2696,24 @@ mod tests {
         assert_eq!(color("transparent"), Some(Color(0, 0, 0, 0)));
         assert_eq!(color("currentColor"), Some(Color(1, 2, 3, 255)));
         assert_eq!(color("notacolor"), None);
-        assert_eq!(color("color-mix(in srgb, red, blue)"), Some(Color(128, 0, 128, 255)));
-        assert_eq!(color("color-mix(in srgb, red 25%, blue)"), Some(Color(64, 0, 191, 255)));
-        assert_eq!(color("color-mix(in srgb, red 30%, blue 30%)"), Some(Color(128, 0, 128, 153)));
+        assert_eq!(
+            color("color-mix(in srgb, red, blue)"),
+            Some(Color(128, 0, 128, 255))
+        );
+        assert_eq!(
+            color("color-mix(in srgb, red 25%, blue)"),
+            Some(Color(64, 0, 191, 255))
+        );
+        assert_eq!(
+            color("color-mix(in srgb, red 30%, blue 30%)"),
+            Some(Color(128, 0, 128, 153))
+        );
         assert_eq!(color("color-mix(in lab, red, blue)"), None);
         assert_eq!(NAMED_COLORS.len(), 148);
-        assert!(NAMED_COLORS.windows(2).all(|w| w[0].0 < w[1].0), "table is sorted for binary search");
+        assert!(
+            NAMED_COLORS.windows(2).all(|w| w[0].0 < w[1].0),
+            "table is sorted for binary search"
+        );
     }
 
     #[test]
@@ -2262,10 +2722,16 @@ mod tests {
         assert_eq!(parse_legacy_color("#f00"), Some(Color(255, 0, 0, 255)));
         assert_eq!(parse_legacy_color("ff0000"), Some(Color(255, 0, 0, 255)));
         assert_eq!(parse_legacy_color("#FF0000"), Some(Color(255, 0, 0, 255)));
-        assert_eq!(parse_legacy_color("chucknorris"), Some(Color(0xc0, 0x00, 0x00, 255)));
+        assert_eq!(
+            parse_legacy_color("chucknorris"),
+            Some(Color(0xc0, 0x00, 0x00, 255))
+        );
         assert_eq!(parse_legacy_color("transparent"), None);
         assert_eq!(parse_legacy_color(""), None);
-        assert_eq!(parse_legacy_color("#abcdefabcdef"), Some(Color(0xab, 0xef, 0xcd, 255)));
+        assert_eq!(
+            parse_legacy_color("#abcdefabcdef"),
+            Some(Color(0xab, 0xef, 0xcd, 255))
+        );
     }
 
     #[test]
@@ -2276,9 +2742,16 @@ mod tests {
         };
         assert_eq!(img("none"), Some(ImageSpec::None));
         assert_eq!(img("url(a.png)"), Some(ImageSpec::Url("a.png".into())));
-        assert_eq!(img("url(\"a b.png\")"), Some(ImageSpec::Url("a b.png".into())));
+        assert_eq!(
+            img("url(\"a b.png\")"),
+            Some(ImageSpec::Url("a b.png".into()))
+        );
         match img("linear-gradient(to right, red, blue 50%, 75%, green)") {
-            Some(ImageSpec::Linear { direction, stops, repeating: false }) => {
+            Some(ImageSpec::Linear {
+                direction,
+                stops,
+                repeating: false,
+            }) => {
                 assert_eq!(direction, GradientDirection::Side(1, 0));
                 assert_eq!(stops.len(), 4);
                 assert!(stops[2].color.is_none());
@@ -2286,19 +2759,33 @@ mod tests {
             other => panic!("{other:?}"),
         }
         match img("linear-gradient(45deg, red 0 50%, blue)") {
-            Some(ImageSpec::Linear { direction: GradientDirection::Angle(4500), stops, .. }) => assert_eq!(stops.len(), 3),
+            Some(ImageSpec::Linear {
+                direction: GradientDirection::Angle(4500),
+                stops,
+                ..
+            }) => assert_eq!(stops.len(), 3),
             other => panic!("{other:?}"),
         }
         match img("linear-gradient(red, blue)") {
-            Some(ImageSpec::Linear { direction: GradientDirection::Side(0, 1), .. }) => {}
+            Some(ImageSpec::Linear {
+                direction: GradientDirection::Side(0, 1),
+                ..
+            }) => {}
             other => panic!("{other:?}"),
         }
         match img("radial-gradient(circle at center, red, blue)") {
-            Some(ImageSpec::Radial { circle: true, stops, .. }) => assert_eq!(stops.len(), 2),
+            Some(ImageSpec::Radial {
+                circle: true,
+                stops,
+                ..
+            }) => assert_eq!(stops.len(), 2),
             other => panic!("{other:?}"),
         }
         match img("-webkit-linear-gradient(to top, red, blue)") {
-            Some(ImageSpec::Linear { direction: GradientDirection::Side(0, -1), .. }) => {}
+            Some(ImageSpec::Linear {
+                direction: GradientDirection::Side(0, -1),
+                ..
+            }) => {}
             other => panic!("{other:?}"),
         }
         assert_eq!(img("linear-gradient(red)"), None);
@@ -2311,7 +2798,14 @@ mod tests {
     fn positions() {
         let pos = |s: &str| {
             let toks = tokenize(s);
-            Parser::new(&toks).parse_entirely(parse_position).map(|(a, b)| (a.compute(&LengthContext::default()).unwrap(), b.compute(&LengthContext::default()).unwrap()))
+            Parser::new(&toks)
+                .parse_entirely(parse_position)
+                .map(|(a, b)| {
+                    (
+                        a.compute(&LengthContext::default()).unwrap(),
+                        b.compute(&LengthContext::default()).unwrap(),
+                    )
+                })
         };
         let pct = |v| LengthPercentage::Percent(v);
         assert_eq!(pos("center"), Some((pct(5000), pct(5000))));
@@ -2319,8 +2813,17 @@ mod tests {
         assert_eq!(pos("top"), Some((pct(5000), pct(0))));
         assert_eq!(pos("right bottom"), Some((pct(10000), pct(10000))));
         assert_eq!(pos("bottom right"), Some((pct(10000), pct(10000))));
-        assert_eq!(pos("10px 20%"), Some((LengthPercentage::Length(Au::from_px_i32(10)), pct(2000))));
-        assert_eq!(pos("right 10px bottom 20px"), Some((LengthPercentage::Calc(Au::from_px_i32(-10), 10000), LengthPercentage::Calc(Au::from_px_i32(-20), 10000))));
+        assert_eq!(
+            pos("10px 20%"),
+            Some((LengthPercentage::Length(Au::from_px_i32(10)), pct(2000)))
+        );
+        assert_eq!(
+            pos("right 10px bottom 20px"),
+            Some((
+                LengthPercentage::Calc(Au::from_px_i32(-10), 10000),
+                LengthPercentage::Calc(Au::from_px_i32(-20), 10000)
+            ))
+        );
         assert_eq!(pos("left left"), None);
         assert_eq!(pos("10px left"), None);
     }
@@ -2328,9 +2831,24 @@ mod tests {
     #[test]
     fn serialization_round_trip() {
         let toks = tokenize("1px solid rgb(1, 2, 3) \"a\" url(x)");
-        assert_eq!(serialize_component_values(&toks), "1px solid rgb(1, 2, 3) \"a\" url(\"x\")");
-        assert_eq!(number_text(Number { micro: 1_500_000, int: false }), "1.5");
-        assert_eq!(number_text(Number { micro: -250_000, int: false }), "-0.25");
+        assert_eq!(
+            serialize_component_values(&toks),
+            "1px solid rgb(1, 2, 3) \"a\" url(\"x\")"
+        );
+        assert_eq!(
+            number_text(Number {
+                micro: 1_500_000,
+                int: false
+            }),
+            "1.5"
+        );
+        assert_eq!(
+            number_text(Number {
+                micro: -250_000,
+                int: false
+            }),
+            "-0.25"
+        );
         assert_eq!(number_text(Number::from_i64(12)), "12");
         assert!(contains_var(&tokenize("calc(var(--x) + 1px)")));
         assert!(!contains_var(&tokenize("1px")));
@@ -2339,9 +2857,15 @@ mod tests {
     #[test]
     fn css_wide_keywords() {
         let toks = tokenize("inherit");
-        assert_eq!(parse_css_wide(&mut Parser::new(&toks)), Some(CssWide::Inherit));
+        assert_eq!(
+            parse_css_wide(&mut Parser::new(&toks)),
+            Some(CssWide::Inherit)
+        );
         let toks = tokenize("revert-layer");
-        assert_eq!(parse_css_wide(&mut Parser::new(&toks)), Some(CssWide::RevertLayer));
+        assert_eq!(
+            parse_css_wide(&mut Parser::new(&toks)),
+            Some(CssWide::RevertLayer)
+        );
         let toks = tokenize("inherit 1px");
         assert_eq!(parse_css_wide(&mut Parser::new(&toks)), None);
     }

@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 mod view;
-pub use view::{PAGE_SIZE, SKINS};
 use view::View;
+pub use view::{PAGE_SIZE, SKINS};
 pub struct ForumService;
 pub fn register(registry: &mut Registry) -> SimResult<()> {
     registry.register(ForumService)
@@ -574,7 +574,12 @@ struct Params<'a> {
     page: usize,
 }
 /// The one router: every GET and every re-render after a successful form POST goes through here.
-fn view(s: &ForumState, ctx: &ServiceContext, path: &str, params: Params<'_>) -> SimResult<HttpResponse> {
+fn view(
+    s: &ForumState,
+    ctx: &ServiceContext,
+    path: &str,
+    params: Params<'_>,
+) -> SimResult<HttpResponse> {
     let parts: Vec<&str> = path.trim_matches('/').split('/').collect();
     let page = params.page.max(1);
     // The page a control comes back to is the page it is on, list page included.
@@ -1001,7 +1006,11 @@ mod tests {
             Dom(cw_web::html::parse(html))
         }
         fn node(&self, id: &str) -> cw_web::dom::NodeId {
-            *self.0.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"))
+            *self
+                .0
+                .by_id(id)
+                .first()
+                .unwrap_or_else(|| panic!("no #{id}"))
         }
         fn has(&self, id: &str) -> bool {
             !self.0.by_id(id).is_empty()
@@ -1010,13 +1019,19 @@ mod tests {
             cw_web::paint::semantics::collapse(&self.0.text_content(self.node(id)))
         }
         fn attr(&self, id: &str, name: &str) -> String {
-            self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+            self.0
+                .attr(self.node(id), name)
+                .unwrap_or_default()
+                .to_owned()
         }
         fn tag(&self, id: &str) -> String {
             self.0.tag(self.node(id)).unwrap_or_default().to_owned()
         }
         fn body(&self) -> String {
-            self.0.body().map(|b| self.0.text_content(b)).unwrap_or_default()
+            self.0
+                .body()
+                .map(|b| self.0.text_content(b))
+                .unwrap_or_default()
         }
         /// The hidden and typed fields of a form, by wire name.
         fn fields(&self, form: &str) -> BTreeMap<String, String> {
@@ -1025,14 +1040,23 @@ mod tests {
             self.0
                 .descendants(f)
                 .filter(|n| self.0.is(*n, "input") || self.0.is(*n, "textarea"))
-                .filter_map(|n| Some((self.0.attr(n, "name")?.to_owned(), self.0.attr(n, "value").unwrap_or_default().to_owned())))
+                .filter_map(|n| {
+                    Some((
+                        self.0.attr(n, "name")?.to_owned(),
+                        self.0.attr(n, "value").unwrap_or_default().to_owned(),
+                    ))
+                })
                 .collect()
         }
         /// The form a submit button belongs to: `(action, method)`.
         fn form_of(&self, button: &str) -> (String, String) {
             let b = self.node(button);
             assert_eq!(self.0.tag(b), Some("button"), "#{button}");
-            let f = self.0.ancestors(b).find(|a| self.0.is(*a, "form")).unwrap_or_else(|| panic!("#{button} is outside a form"));
+            let f = self
+                .0
+                .ancestors(b)
+                .find(|a| self.0.is(*a, "form"))
+                .unwrap_or_else(|| panic!("#{button} is outside a form"));
             (
                 self.0.attr(f, "action").unwrap_or_default().to_owned(),
                 self.0.attr(f, "method").unwrap_or_default().to_owned(),
@@ -1153,7 +1177,19 @@ mod tests {
                 let r = get(&mut state, actor, url);
                 assert_eq!(r.status, 200, "{url}");
                 let page = Dom::of(&r);
-                for id in ["masthead", "nav", "nav-home", "nav-new", "nav-search", "nav-submit", "nav-me", "search", "search-q", "search-submit", "content"] {
+                for id in [
+                    "masthead",
+                    "nav",
+                    "nav-home",
+                    "nav-new",
+                    "nav-search",
+                    "nav-submit",
+                    "nav-me",
+                    "search",
+                    "search-q",
+                    "search-submit",
+                    "content",
+                ] {
                     assert!(page.has(id), "{url}: no #{id}");
                 }
                 assert_eq!(page.attr("search", "action"), "/search", "{url}");
@@ -1204,9 +1240,16 @@ mod tests {
         assert_eq!(a, b);
         assert_eq!(before, state, "a render must not mutate state");
         let page = Dom::of(&a);
-        assert_eq!(page.text("r-9002-accepted"), "Accepted", "the accepted answer is marked");
+        assert_eq!(
+            page.text("r-9002-accepted"),
+            "Accepted",
+            "the accepted answer is marked"
+        );
         assert_eq!(page.text("r-9002-body"), "Your test iterates a HashMap.");
-        assert!(page.text("c-1-text").starts_with("That was it."), "answer comments render");
+        assert!(
+            page.text("c-1-text").starts_with("That was it."),
+            "answer comments render"
+        );
     }
     #[test]
     fn voting_is_one_per_actor_and_toggles() {
@@ -1477,8 +1520,15 @@ mod tests {
         );
         let page = Dom::of(&page);
         assert!(page.text("t-9001-by").starts_with("148 points by tweber"));
-        assert_eq!(page.text("t-9001-host"), "(theverge.com)", "the outbound host is on the row");
-        assert_eq!(page.attr("t-9001-out", "href"), "http://theverge.com/2026/atlas-determinism");
+        assert_eq!(
+            page.text("t-9001-host"),
+            "(theverge.com)",
+            "the outbound host is on the row"
+        );
+        assert_eq!(
+            page.attr("t-9001-out", "href"),
+            "http://theverge.com/2026/atlas-determinism"
+        );
     }
     #[test]
     fn a_submitted_link_must_be_http() {
@@ -1522,7 +1572,11 @@ mod tests {
         );
         let page = Dom::of(&page);
         assert_eq!(page.text("list-title"), "1 result for \"hashmap\"");
-        assert_eq!(page.attr("search-q", "value"), "hashmap", "the box keeps the query");
+        assert_eq!(
+            page.attr("search-q", "value"),
+            "hashmap",
+            "the box keeps the query"
+        );
         assert_eq!(page.attr("row-t-4411", "href"), "/questions/t-4411");
     }
     #[test]
@@ -1600,18 +1654,34 @@ mod tests {
     fn the_controls_keep_their_ids_routes_and_field_names() {
         // A Q&A question page: vote arrows, accept, the comment box, the answer box, tags.
         let mut state = live(qa_seed(), "bob");
-        let page = Dom::of(&get(&mut state, "bob", "http://stackoverflow.com/questions/t-4411"));
-        assert_eq!(page.form_of("t-4411-up"), ("/threads/t-4411/vote".into(), "post".into()));
+        let page = Dom::of(&get(
+            &mut state,
+            "bob",
+            "http://stackoverflow.com/questions/t-4411",
+        ));
+        assert_eq!(
+            page.form_of("t-4411-up"),
+            ("/threads/t-4411/vote".into(), "post".into())
+        );
         assert_eq!(page.fields("t-4411-up-form")["dir"], "1");
         assert_eq!(page.fields("t-4411-down-form")["dir"], "-1");
         assert_eq!(page.fields("t-4411-up-form")["view"], "/questions/t-4411");
         assert_eq!(page.text("t-4411-score"), "37");
-        assert_eq!(page.form_of("r-9003-up"), ("/replies/r-9003/vote".into(), "post".into()));
-        assert_eq!(page.form_of("r-9003-accept"), ("/threads/t-4411/accept".into(), "post".into()));
+        assert_eq!(
+            page.form_of("r-9003-up"),
+            ("/replies/r-9003/vote".into(), "post".into())
+        );
+        assert_eq!(
+            page.form_of("r-9003-accept"),
+            ("/threads/t-4411/accept".into(), "post".into())
+        );
         assert_eq!(page.fields("r-9003-accept-form")["reply"], "r-9003");
         assert_eq!(page.text("r-9003-accept"), "Accept");
         assert_eq!(page.text("r-9002-accept"), "Unaccept");
-        assert_eq!(page.attr("r-9002-comment", "action"), "/replies/r-9002/comments");
+        assert_eq!(
+            page.attr("r-9002-comment", "action"),
+            "/replies/r-9002/comments"
+        );
         assert_eq!(page.attr("r-9002-comment-body", "name"), "body");
         assert_eq!(page.tag("r-9002-comment-submit"), "button");
         assert_eq!(page.attr("compose", "action"), "/threads/t-4411/replies");
@@ -1622,10 +1692,20 @@ mod tests {
         assert_eq!(page.attr("thread-tag-0", "href"), "/questions/tagged/rust");
         assert_eq!(page.text("r-9002-rep"), "58.4k");
         // The link in the body keeps the id its word index gives it.
-        let link = (0..200).map(|i| format!("thread-src-link-{i}")).find(|id| page.has(id)).expect("the body link");
-        assert_eq!(page.attr(&link, "href"), "http://github.com/northstar/atlas/issues/14");
+        let link = (0..200)
+            .map(|i| format!("thread-src-link-{i}"))
+            .find(|id| page.has(id))
+            .expect("the body link");
+        assert_eq!(
+            page.attr(&link, "href"),
+            "http://github.com/northstar/atlas/issues/14"
+        );
         // Someone who did not ask gets no accept control.
-        let other = Dom::of(&get(&mut state, "alice", "http://stackoverflow.com/questions/t-4411"));
+        let other = Dom::of(&get(
+            &mut state,
+            "alice",
+            "http://stackoverflow.com/questions/t-4411",
+        ));
         assert!(!other.has("r-9003-accept"));
         // The list row is one link to the question, with its stats and tags beside it.
         let home = Dom::of(&get(&mut state, "bob", "http://stackoverflow.com/"));
@@ -1639,7 +1719,11 @@ mod tests {
         // The ask form carries the mode's fields.
         let ask = Dom::of(&get(&mut state, "bob", "http://stackoverflow.com/submit"));
         assert_eq!(ask.attr("submit", "action"), "/threads");
-        for (id, name) in [("submit-title", "title"), ("submit-tags", "tags"), ("submit-body", "body")] {
+        for (id, name) in [
+            ("submit-title", "title"),
+            ("submit-tags", "tags"),
+            ("submit-body", "body"),
+        ] {
             assert_eq!(ask.attr(id, "name"), name);
         }
         assert!(!ask.has("submit-board") && !ask.has("submit-url"));
@@ -1652,15 +1736,28 @@ mod tests {
         let home = Dom::of(&get(&mut state, "alice", "http://reddit.com/"));
         assert_eq!(home.attr("t-5121-open", "href"), "/r/rust/comments/t-5121");
         assert_eq!(home.attr("t-5121-board", "href"), "/r/rust");
-        assert_eq!(home.form_of("board-rust-sub"), ("/boards/rust/subscribe".into(), "post".into()));
+        assert_eq!(
+            home.form_of("board-rust-sub"),
+            ("/boards/rust/subscribe".into(), "post".into())
+        );
         assert_eq!(home.text("board-rust-sub"), "Joined");
         assert_eq!(home.text("board-programming-sub"), "Join");
-        assert_eq!(home.attr("board-programming-link", "href"), "/r/programming");
+        assert_eq!(
+            home.attr("board-programming-link", "href"),
+            "/r/programming"
+        );
         assert_eq!(home.attr("nav-boards", "href"), "/r");
-        let post = Dom::of(&get(&mut state, "alice", "http://reddit.com/r/programming/comments/t-5120"));
+        let post = Dom::of(&get(
+            &mut state,
+            "alice",
+            "http://reddit.com/r/programming/comments/t-5120",
+        ));
         assert_eq!(post.attr("r-1-reply", "action"), "/threads/t-5120/replies");
         assert_eq!(post.fields("r-1-reply")["parent"], "r-1");
-        assert_eq!(post.fields("r-1-reply")["view"], "/r/programming/comments/t-5120");
+        assert_eq!(
+            post.fields("r-1-reply")["view"],
+            "/r/programming/comments/t-5120"
+        );
         assert_eq!(post.attr("r-1-reply-body", "name"), "body");
         assert_eq!(post.text("r-1-flair"), "Northstar");
         assert!(post.text("r-1-by").starts_with("u/alice_c"));
@@ -1675,7 +1772,11 @@ mod tests {
         assert_eq!(home.attr("t-9001-comments", "href"), "/item?id=t-9001");
         assert_eq!(home.text("t-9001-comments"), "0 comments");
         assert_eq!(home.tag("row-t-9001"), "tr");
-        let ask = Dom::of(&get(&mut state, "bob", "http://news.ycombinator.com/submit"));
+        let ask = Dom::of(&get(
+            &mut state,
+            "bob",
+            "http://news.ycombinator.com/submit",
+        ));
         assert_eq!(ask.attr("submit-url", "name"), "url");
     }
     /// The skin follows the seed, then the brand, then the mode; each has its own sheet.
@@ -1695,23 +1796,52 @@ mod tests {
                 "linkfeed" => "/item?id=t-9001",
                 _ => "/r/programming/comments/t-5120",
             };
-            for path in ["/", "/newest", "/search?q=a", "/submit", "/r", "/questions/tagged/rust", "/u/bobm", "/u/bmartinez", "/r/rust", thread] {
+            for path in [
+                "/",
+                "/newest",
+                "/search?q=a",
+                "/submit",
+                "/r",
+                "/questions/tagged/rust",
+                "/u/bobm",
+                "/u/bmartinez",
+                "/r/rust",
+                thread,
+            ] {
                 let r = get(&mut state, "bob", &format!("http://site.example{path}"));
                 if r.status == 200 {
                     let page = Dom::of(&r);
-                    assert!(page.0.body().is_some_and(|b| page.0.attr(b, "class").is_some_and(|c| c.starts_with(&format!("skin-{skin} ")))), "{skin} {path}");
+                    assert!(
+                        page.0.body().is_some_and(|b| page
+                            .0
+                            .attr(b, "class")
+                            .is_some_and(|c| c.starts_with(&format!("skin-{skin} ")))),
+                        "{skin} {path}"
+                    );
                 }
             }
-            assert_eq!(get(&mut state, "bob", &format!("http://site.example{thread}")).status, 200);
+            assert_eq!(
+                get(&mut state, "bob", &format!("http://site.example{thread}")).status,
+                200
+            );
         }
-        let brand = |b: &str, mode: &str| ForumState { brand: b.into(), mode: mode.into(), ..ForumState::default() }.skin();
+        let brand = |b: &str, mode: &str| {
+            ForumState {
+                brand: b.into(),
+                mode: mode.into(),
+                ..ForumState::default()
+            }
+            .skin()
+        };
         assert_eq!(brand("Hacker News", "linkfeed"), "hackernews");
         assert_eq!(brand("craigslist", "linkfeed"), "craigslist");
         assert_eq!(brand("Yelp", "subreddits"), "yelp");
         assert_eq!(brand("Quora", "qa"), "quora");
         assert_eq!(brand("Northstar Answers", "qa"), "stackoverflow");
         assert_eq!(brand("", "subreddits"), "reddit");
-        assert!(ForumService.initialize(json!({"skin": "myspace"}), &ctx("bob", 0)).is_err());
+        assert!(ForumService
+            .initialize(json!({"skin": "myspace"}), &ctx("bob", 0))
+            .is_err());
     }
     /// Lists longer than a page are paged, and a vote on page two comes back to page two.
     #[test]
@@ -1723,21 +1853,44 @@ mod tests {
                                           "url": "http://example.com/", "tick": 1, "score": 5, "replies": []});
         }
         let mut state = live(seed, "bob");
-        let first = Dom::of(&get(&mut state, "bob", "http://news.ycombinator.com/newest"));
+        let first = Dom::of(&get(
+            &mut state,
+            "bob",
+            "http://news.ycombinator.com/newest",
+        ));
         assert_eq!(first.attr("page-next", "href"), "/newest?p=2");
         assert_eq!(first.attr("page-2", "href"), "/newest?p=2");
         assert!(!first.has("page-prev"));
-        let second = Dom::of(&get(&mut state, "bob", "http://news.ycombinator.com/newest?p=2"));
+        let second = Dom::of(&get(
+            &mut state,
+            "bob",
+            "http://news.ycombinator.com/newest?p=2",
+        ));
         assert_eq!(second.attr("page-prev", "href"), "/newest");
-        let rows: Vec<String> = (0..PAGE_SIZE + 7).map(|i| format!("row-t-{}", 100 + i)).filter(|id| second.has(id)).collect();
-        assert_eq!(rows.len(), 7, "thirty of the thirty-seven are on page one: {rows:?}");
+        let rows: Vec<String> = (0..PAGE_SIZE + 7)
+            .map(|i| format!("row-t-{}", 100 + i))
+            .filter(|id| second.has(id))
+            .collect();
+        assert_eq!(
+            rows.len(),
+            7,
+            "thirty of the thirty-seven are on page one: {rows:?}"
+        );
         let id = rows
             .iter()
             .map(|r| r.trim_start_matches("row-").to_owned())
             .find(|id| second.text(&format!("{id}-rank")) == format!("{}.", PAGE_SIZE + 1))
             .expect("page two starts at the next rank");
-        assert_eq!(second.fields(&format!("{id}-up-form"))["view"], "/newest?p=2");
-        let back = Dom::of(&post(&mut state, "bob", &format!("http://news.ycombinator.com/threads/{id}/vote"), "dir=1&view=%2Fnewest%3Fp%3D2"));
+        assert_eq!(
+            second.fields(&format!("{id}-up-form"))["view"],
+            "/newest?p=2"
+        );
+        let back = Dom::of(&post(
+            &mut state,
+            "bob",
+            &format!("http://news.ycombinator.com/threads/{id}/vote"),
+            "dir=1&view=%2Fnewest%3Fp%3D2",
+        ));
         assert_eq!(back.text(&format!("{id}-score")), "6");
         assert!(back.has("page-prev"), "we are still on page two");
     }
@@ -1745,35 +1898,66 @@ mod tests {
     #[test]
     fn bodies_render_as_prose_code_and_ratings() {
         let mut seed = qa_seed();
-        seed["threads"]["t-4411"]["body"] = json!("This fails:\n\nlet x = 1;\nfoo(x);\n\nWhy does `foo` fail? See http://example.com/a.");
+        seed["threads"]["t-4411"]["body"] = json!(
+            "This fails:\n\nlet x = 1;\nfoo(x);\n\nWhy does `foo` fail? See http://example.com/a."
+        );
         let mut state = live(seed, "bob");
-        let page = Dom::of(&get(&mut state, "bob", "http://stackoverflow.com/questions/t-4411"));
+        let page = Dom::of(&get(
+            &mut state,
+            "bob",
+            "http://stackoverflow.com/questions/t-4411",
+        ));
         let body = page.node("thread-body");
-        let tags: Vec<&str> = page.0.descendants(body).filter_map(|n| page.0.tag(n)).collect();
+        let tags: Vec<&str> = page
+            .0
+            .descendants(body)
+            .filter_map(|n| page.0.tag(n))
+            .collect();
         assert_eq!(tags, ["div", "p", "pre", "code", "p", "code", "a"]);
-        assert_eq!(page.attr("thread-src-link-12", "href"), "http://example.com/a");
+        assert_eq!(
+            page.attr("thread-src-link-12", "href"),
+            "http://example.com/a"
+        );
 
         let mut seed = reddit_seed();
         seed["skin"] = json!("yelp");
         seed["threads"]["t-5120"]["body"] = json!("Alder Kitchen\n1412 NW Alder St\nHours: Tue-Sun 17:00-22:00\nPrice: $$$   Rating: 4.5 stars (1 reviews)\n\nWood-fired.");
         seed["threads"]["t-5120"]["replies"][0]["body"] = json!("****. 4/5. Tight room.");
         let mut state = live(seed, "alice");
-        let page = Dom::of(&get(&mut state, "alice", "http://yelp.com/r/programming/comments/t-5120"));
+        let page = Dom::of(&get(
+            &mut state,
+            "alice",
+            "http://yelp.com/r/programming/comments/t-5120",
+        ));
         assert_eq!(page.attr("thread-stars", "aria-label"), "4.5 star rating");
         assert_eq!(page.attr("r-1-stars", "aria-label"), "4.0 star rating");
         assert_eq!(page.text("r-1-body"), "Tight room.");
         assert_eq!(page.text("biz-address"), "1412 NW Alder St");
-        assert_eq!(listing_parts_for_test("Oak table - $220 (Alder District)"), ("Oak table", "$220", "Alder District"));
-        assert_eq!(listing_parts_for_test("Free firewood"), ("Free firewood", "", ""));
+        assert_eq!(
+            listing_parts_for_test("Oak table - $220 (Alder District)"),
+            ("Oak table", "$220", "Alder District")
+        );
+        assert_eq!(
+            listing_parts_for_test("Free firewood"),
+            ("Free firewood", "", "")
+        );
     }
     #[test]
     fn a_tag_page_lists_the_tagged_threads_in_every_mode() {
         let mut seed = hn_seed();
         seed["threads"]["t-9001"]["tags"] = json!(["for sale", "furniture"]);
         let mut state = live(seed, "bob");
-        let page = Dom::of(&get(&mut state, "bob", "http://craigslist.org/questions/tagged/furniture"));
+        let page = Dom::of(&get(
+            &mut state,
+            "bob",
+            "http://craigslist.org/questions/tagged/furniture",
+        ));
         assert!(page.has("row-t-9001"), "{}", page.body());
-        let page = Dom::of(&get(&mut state, "bob", "http://craigslist.org/questions/tagged/for%20sale"));
+        let page = Dom::of(&get(
+            &mut state,
+            "bob",
+            "http://craigslist.org/questions/tagged/for%20sale",
+        ));
         assert!(page.has("row-t-9001"), "{}", page.body());
     }
     fn listing_parts_for_test(title: &str) -> (&str, &str, &str) {

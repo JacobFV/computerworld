@@ -37,7 +37,11 @@ impl Journal {
         Journal::default()
     }
     pub fn replay(entries: Vec<JournalEntry>) -> Journal {
-        Journal { entries, replay_pos: 0, replaying: true }
+        Journal {
+            entries,
+            replay_pos: 0,
+            replaying: true,
+        }
     }
     /// True while a restore is still answering calls from the record.
     pub fn in_replay(&self) -> bool {

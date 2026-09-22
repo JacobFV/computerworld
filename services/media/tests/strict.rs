@@ -133,7 +133,9 @@ fn every_page_of_every_skin_is_strict_html() {
         for path in &paths {
             let dom = check(&mut state, name, &host, path);
             // The skin is on the body, so a stylesheet rule can key on it.
-            let body = dom.body().unwrap_or_else(|| panic!("{name} {path}: no body"));
+            let body = dom
+                .body()
+                .unwrap_or_else(|| panic!("{name} {path}: no body"));
             let classes: Vec<&str> = dom.classes(body).collect();
             assert!(
                 classes.iter().any(|c| c.starts_with("skin-")),

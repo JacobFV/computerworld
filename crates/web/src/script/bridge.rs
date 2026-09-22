@@ -17,7 +17,10 @@ pub struct Bridge {
 /// The virtual path of a module URL: `https://h/a/b.js` is `/__modules/h/a/b.js`.
 pub fn module_path(url: &str) -> String {
     let no_frag = url.replace('#', "__");
-    let rest = no_frag.split_once("://").map(|(_, r)| r).unwrap_or(no_frag.as_str());
+    let rest = no_frag
+        .split_once("://")
+        .map(|(_, r)| r)
+        .unwrap_or(no_frag.as_str());
     let (host, path) = match rest.find('/') {
         Some(i) => (&rest[..i], &rest[i..]),
         None => (rest, "/"),
@@ -49,10 +52,19 @@ impl Bridge {
         if !path.starts_with("/__modules/") {
             return None;
         }
-        let scheme = inner.url.split_once("://").map(|(s, _)| s.to_owned()).unwrap_or_else(|| "https".into());
+        let scheme = inner
+            .url
+            .split_once("://")
+            .map(|(s, _)| s.to_owned())
+            .unwrap_or_else(|| "https".into());
         let url = module_url(path, &scheme);
         let url = inner.resolve_url(&url);
-        let r = inner.host_fetch(&FetchRequest { url: url.clone(), method: "GET".into(), headers: vec![], body: None });
+        let r = inner.host_fetch(&FetchRequest {
+            url: url.clone(),
+            method: "GET".into(),
+            headers: vec![],
+            body: None,
+        });
         match r {
             Ok(resp) if resp.status < 400 => {
                 let src = String::from_utf8_lossy(&resp.body).into_owned();
@@ -76,7 +88,11 @@ impl ScriptHost for Bridge {
     }
     fn stat(&mut self, path: &str) -> Result<FileStat, FsError> {
         match self.module_source(path) {
-            Some(s) => Ok(FileStat { is_dir: false, size: s.len() as u64, ..Default::default() }),
+            Some(s) => Ok(FileStat {
+                is_dir: false,
+                size: s.len() as u64,
+                ..Default::default()
+            }),
             None => Err(FsError::new(FsErrorKind::NotFound)),
         }
     }

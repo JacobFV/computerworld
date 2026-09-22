@@ -1,10 +1,10 @@
 //! The shipped Discord seed and the server's behaviour: categories, roles, voice and the
 //! short channel URLs the scenes and seeded prose use.
 use cw_protocol::HttpRequest;
-use cw_service_common::html::validate_strict;
-use cw_web::dom::{Document, NodeId};
 use cw_sdk::{Service, ServiceContext};
+use cw_service_common::html::validate_strict;
 use cw_service_discord::DiscordService;
+use cw_web::dom::{Document, NodeId};
 use serde_json::{json, Value};
 
 fn ctx(actor: &str) -> ServiceContext {
@@ -133,7 +133,11 @@ fn the_seed_renders_its_server_and_every_search_entry() {
         .collect();
     for id in &channels {
         page(&mut state, "alice", &format!("/channels/atlas/{id}"));
-        page(&mut state, "alice", &format!("/channels/atlas/{id}?members=0"));
+        page(
+            &mut state,
+            "alice",
+            &format!("/channels/atlas/{id}?members=0"),
+        );
     }
     page(&mut state, "bob", "/");
     page(&mut state, "eve", "/");
@@ -168,7 +172,9 @@ fn the_channel_looks_like_discord() {
     let p = page(&mut state, "alice", "/channels/atlas/atlas-help");
     assert_eq!(p.title(), "#atlas-help · Atlas Community");
     // The shell: rail, sidebar, header, the inner scrolling transcript, composer, members.
-    for id in ["app", "rail", "sidebar", "header", "shell", "main", "composer", "members"] {
+    for id in [
+        "app", "rail", "sidebar", "header", "shell", "main", "composer", "members",
+    ] {
         assert!(p.has(id), "{id}");
     }
     assert_eq!(p.attr("rail-home", "href"), Some("/channels/@me"));
@@ -218,7 +224,9 @@ fn the_channel_looks_like_discord() {
     // A reply shows Discord's reply line: the quoted author's face, name and text.
     assert_eq!(p.text("chat-34-quote-author"), "mkowalski");
     assert!(p.has("chat-34-quote-avatar") && p.has("chat-34-quote-spine"));
-    assert!(p.text("chat-34-quote-text").starts_with("My replay diverges"));
+    assert!(p
+        .text("chat-34-quote-text")
+        .starts_with("My replay diverges"));
     // Names take their highest role's colour.
     assert_eq!(p.attr("chat-34-author", "style"), Some("color: #3ba55d"));
     // Reactions are pill chips with the emoji itself, each a submit button of the
@@ -234,7 +242,10 @@ fn the_channel_looks_like_discord() {
             "post".to_owned()
         )
     );
-    assert_eq!(p.attr("chat-34-reactions", "action"), Some("/channels/atlas/atlas-help/messages/chat-34/reactions"));
+    assert_eq!(
+        p.attr("chat-34-reactions", "action"),
+        Some("/channels/atlas/atlas-help/messages/chat-34/reactions")
+    );
     assert_eq!(p.text("chat-33-react-eyes"), "👀 1");
     assert!(!p.class("chat-33-react-eyes", "mine") && !p.has("chat-33-react-add"));
     // Emoji short names in text are the characters they name; text wraps on the page,
@@ -245,13 +256,25 @@ fn the_channel_looks_like_discord() {
     // The composer posts `text` to the channel; the user panel sits under the sidebar.
     assert_eq!(
         p.form_of("send-text"),
-        ("/channels/atlas/atlas-help/messages".to_owned(), "post".to_owned())
+        (
+            "/channels/atlas/atlas-help/messages".to_owned(),
+            "post".to_owned()
+        )
     );
-    assert_eq!(p.attr("send", "action"), Some("/channels/atlas/atlas-help/messages"));
+    assert_eq!(
+        p.attr("send", "action"),
+        Some("/channels/atlas/atlas-help/messages")
+    );
     assert_eq!(p.attr("send-text", "name"), Some("text"));
-    assert_eq!(p.attr("send-text", "aria-label"), Some("Message #atlas-help"));
+    assert_eq!(
+        p.attr("send-text", "aria-label"),
+        Some("Message #atlas-help")
+    );
     assert_eq!(p.doc.tag(p.node("send-submit")), Some("button"));
-    assert_eq!(p.form_of("send-submit").0, "/channels/atlas/atlas-help/messages");
+    assert_eq!(
+        p.form_of("send-submit").0,
+        "/channels/atlas/atlas-help/messages"
+    );
     // Attach, gift, GIF, sticker and emoji all wanted a picker; none is drawn.
     assert!(!p.has("send-attach") && !p.has("send-gif") && !p.has("send-emoji"));
     assert_eq!(p.text("me-name"), "alice.chen");
@@ -270,14 +293,23 @@ fn the_channel_looks_like_discord() {
     // The sidebar: categories, the open channel highlighted, voice occupants with faces.
     assert_eq!(p.text("category-1-text"), "SUPPORT");
     assert!(p.class("nav-atlas-help", "current") && !p.class("nav-general", "current"));
-    assert_eq!(p.attr("nav-general", "href"), Some("/channels/atlas/general"));
+    assert_eq!(
+        p.attr("nav-general", "href"),
+        Some("/channels/atlas/general")
+    );
     assert!(p.has("nav-general-hash") && p.has("nav-mod-log"));
     assert!(p.has("voice-Lounge-jlee-avatar") && p.has("voice-Lounge-icon"));
     assert_eq!(p.text("voice-Lounge-praman-name"), "priya");
     // A voice channel is a one-button form: joining, or leaving while inside.
     assert_eq!(p.doc.tag(p.node("voice-Lounge")), Some("button"));
-    assert_eq!(p.form_of("voice-Lounge"), ("/voice/Lounge/join".to_owned(), "post".to_owned()));
-    assert_eq!(p.form_of("voice-Office Hours").0, "/voice/Office%20Hours/join");
+    assert_eq!(
+        p.form_of("voice-Lounge"),
+        ("/voice/Lounge/join".to_owned(), "post".to_owned())
+    );
+    assert_eq!(
+        p.form_of("voice-Office Hours").0,
+        "/voice/Office%20Hours/join"
+    );
     // `?members=0` closes the member list and the header button reopens it.
     assert_eq!(
         p.attr("channel-members", "href"),
@@ -285,7 +317,10 @@ fn the_channel_looks_like_discord() {
     );
     let closed = page(&mut state, "alice", "/channels/atlas/atlas-help?members=0");
     assert!(!closed.has("members") && closed.has("composer"));
-    assert_eq!(closed.attr("channel-members", "href"), Some("/channels/atlas/atlas-help"));
+    assert_eq!(
+        closed.attr("channel-members", "href"),
+        Some("/channels/atlas/atlas-help")
+    );
     // A role-gated channel shows its lock in the header.
     assert!(page(&mut state, "alice", "/channels/atlas/mod-log").has("channel-private"));
     // priya's second message two minutes on shares her header: no face, no name.
@@ -300,7 +335,12 @@ fn the_channel_looks_like_discord() {
         .doc
         .descendants(Document::ROOT)
         .filter(|n| welcome.doc.is(*n, "a"))
-        .filter(|n| welcome.doc.attr(*n, "id").is_some_and(|id| id.contains("-text-p")))
+        .filter(|n| {
+            welcome
+                .doc
+                .attr(*n, "id")
+                .is_some_and(|id| id.contains("-text-p"))
+        })
         .map(|n| {
             (
                 welcome.doc.text_content(n),
@@ -309,7 +349,9 @@ fn the_channel_looks_like_discord() {
         })
         .collect();
     assert!(
-        links.iter().any(|(text, href)| text.starts_with('#') && href.starts_with("/channels/atlas/")),
+        links
+            .iter()
+            .any(|(text, href)| text.starts_with('#') && href.starts_with("/channels/atlas/")),
         "{links:?}"
     );
     // The root is the server with no channel open.
@@ -350,11 +392,16 @@ fn browser_forms_post_urlencoded() {
     assert!(p.html.contains("hello from the form &lt;b&gt;"));
     let mut join = HttpRequest::get("http://discord.com/voice/Office%20Hours/join");
     join.method = "POST".into();
-    let r = DiscordService.handle(&mut state, &ctx("bob"), &join).unwrap();
+    let r = DiscordService
+        .handle(&mut state, &ctx("bob"), &join)
+        .unwrap();
     assert_eq!(r.status, 200);
     let p = parsed("join", String::from_utf8(r.body).unwrap());
     assert!(p.has("voice-Office Hours-bob") && p.class("voice-Office Hours", "current"));
-    assert_eq!(p.form_of("voice-Office Hours").0, "/voice/Office%20Hours/leave");
+    assert_eq!(
+        p.form_of("voice-Office Hours").0,
+        "/voice/Office%20Hours/leave"
+    );
 }
 
 #[test]
@@ -450,11 +497,15 @@ fn search_and_the_reply_bar_answer_the_controls_that_lead_to_them() {
     assert_eq!(found.title(), "Search · Atlas Community");
     // The query comes back into the field it was typed in.
     assert_eq!(found.attr("search-q", "value"), Some("replay"));
-    assert!(found.text("search-summary").ends_with("for \u{201c}replay\u{201d}"));
+    assert!(found
+        .text("search-summary")
+        .ends_with("for \u{201c}replay\u{201d}"));
     // Every hit links into the channel it was said in, newest first.
     assert_eq!(found.text("hit-0-where"), "#general");
     assert_eq!(found.attr("hit-0", "href"), Some("/channels/atlas/general"));
-    assert!(found.html.contains("My replay diverges after about 200 ticks"));
+    assert!(found
+        .html
+        .contains("My replay diverges after about 200 ticks"));
     // Nothing matching says so in prose; an empty query is just the box.
     let none = page(&mut state, "alice", "/search?q=zzzznothing");
     assert_eq!(
@@ -473,11 +524,24 @@ fn search_and_the_reply_bar_answer_the_controls_that_lead_to_them() {
     assert!(!get(&mut state, "bob", "/search?q=jlee").1.contains(gated));
     // `?reply_to=` opens the composer on that message: a bar naming who is answered,
     // a hidden field the composer posts, and a reply control that now closes it.
-    let replying = page(&mut state, "alice", "/channels/atlas/atlas-help?reply_to=chat-45");
+    let replying = page(
+        &mut state,
+        "alice",
+        "/channels/atlas/atlas-help?reply_to=chat-45",
+    );
     assert!(replying.text("reply-bar-text").starts_with("Replying to "));
-    assert_eq!(replying.attr("reply-cancel", "href"), Some("/channels/atlas/atlas-help"));
-    assert_eq!(replying.attr("chat-45-reply", "href"), Some("/channels/atlas/atlas-help"));
-    assert_eq!(replying.attr("chat-45-reply", "title"), Some("Cancel reply"));
+    assert_eq!(
+        replying.attr("reply-cancel", "href"),
+        Some("/channels/atlas/atlas-help")
+    );
+    assert_eq!(
+        replying.attr("chat-45-reply", "href"),
+        Some("/channels/atlas/atlas-help")
+    );
+    assert_eq!(
+        replying.attr("chat-45-reply", "title"),
+        Some("Cancel reply")
+    );
     let hidden: Vec<(String, String)> = replying
         .doc
         .descendants(replying.node("send"))
@@ -491,7 +555,12 @@ fn search_and_the_reply_bar_answer_the_controls_that_lead_to_them() {
         .collect();
     assert_eq!(hidden, [("reply_to".to_owned(), "chat-45".to_owned())]);
     // An unknown message is simply the channel, with no bar.
-    assert!(!page(&mut state, "alice", "/channels/atlas/atlas-help?reply_to=chat-999").has("reply-bar"));
+    assert!(!page(
+        &mut state,
+        "alice",
+        "/channels/atlas/atlas-help?reply_to=chat-999"
+    )
+    .has("reply-bar"));
     // The composer really posts the reply the bar promised.
     let mut request = HttpRequest::get("http://discord.com/channels/atlas/atlas-help/messages");
     request.method = "POST".into();
@@ -500,7 +569,9 @@ fn search_and_the_reply_bar_answer_the_controls_that_lead_to_them() {
         "application/x-www-form-urlencoded".into(),
     );
     request.body = b"text=on+it&reply_to=chat-45".to_vec();
-    let r = DiscordService.handle(&mut state, &ctx("alice"), &request).unwrap();
+    let r = DiscordService
+        .handle(&mut state, &ctx("alice"), &request)
+        .unwrap();
     assert_eq!(r.status, 200);
     let sent = parsed("reply", String::from_utf8(r.body).unwrap());
     // Once sent, the composer is plain again: no bar claiming a reply is pending.

@@ -57,7 +57,9 @@ mod cases {
                 .nodes
                 .iter()
                 .find_map(|n| match n {
-                    DumpNode::Element { id: i, computed, .. } if i == id => computed.get(prop).cloned(),
+                    DumpNode::Element {
+                        id: i, computed, ..
+                    } if i == id => computed.get(prop).cloned(),
                     _ => None,
                 })
                 .unwrap_or_else(|| panic!("no #{id} or no `{prop}`"))
@@ -66,7 +68,10 @@ mod cases {
 
     #[track_caller]
     fn close(got: f64, want: f64, what: &str) {
-        assert!((got - want).abs() <= 0.51, "{what}: expected {want}, got {got}");
+        assert!(
+            (got - want).abs() <= 0.51,
+            "{what}: expected {want}, got {got}"
+        );
     }
 
     #[track_caller]
@@ -163,7 +168,11 @@ mod cases {
         ));
         rect_is(&p, "gear", 280.0, 4.0, 16.0, 16.0);
         // 296 - "About" (46.2px) - the 8px gap - 16px.
-        let ml: f64 = p.computed("gear", "margin-left").trim_end_matches("px").parse().unwrap();
+        let ml: f64 = p
+            .computed("gear", "margin-left")
+            .trim_end_matches("px")
+            .parse()
+            .unwrap();
         close(ml, 225.8, "#gear margin-left");
         assert_eq!(p.computed("add", "margin-top"), "141px");
         rect_is(&p, "add", 0.0, 24.0 + 171.0, p.rect("add").width, 29.0);
@@ -191,7 +200,9 @@ mod cases {
     /// half an em: stripe's `max-width: 50ch` lead is 500.5px wide at 18px.
     #[test]
     fn ch_measures_the_zero_of_the_font() {
-        let p = page(&format!("{RESET}<p id=lead style='margin: 0; font-size: 18px; max-width: 50ch'>x</p>"));
+        let p = page(&format!(
+            "{RESET}<p id=lead style='margin: 0; font-size: 18px; max-width: 50ch'>x</p>"
+        ));
         close(p.rect("lead").width, 500.53, "#lead width");
     }
 
@@ -266,14 +277,21 @@ mod cases {
         close(lines[0].width, 138.75, "the first line");
         close(lines[1].y, 24.0, "the cut line's y");
         close(lines[1].width, 199.25, "the cut line before the cut");
-        close(lines[2].y, 24.0, "what stays of the cut line is on the same line");
+        close(
+            lines[2].y,
+            24.0,
+            "what stays of the cut line is on the same line",
+        );
         close(lines[3].y, 46.0, "the third line sits below the box");
         close(lines[3].width, 201.92, "the third line keeps its own width");
         // Blink cuts at the content edge less the ellipsis, not at the line's own
         // end: 185.03px stay of a 199.25px line, and the ellipsis (16px at this size)
         // goes in the 209px box after them.
         close(lines[2].width, 185.03, "what stays of the cut line");
-        assert!(lines[2].width + 16.0 <= 209.0, "the ellipsis fits the box: {lines:?}");
+        assert!(
+            lines[2].width + 16.0 <= 209.0,
+            "the ellipsis fits the box: {lines:?}"
+        );
         rect_is(&p, "short", 0.0, 44.0, 209.0, 22.0);
         assert_eq!(p.text_lines("short").len(), 1);
         rect_is(&p, "after", 0.0, 66.0, 1280.0, 5.0);
@@ -291,12 +309,22 @@ mod cases {
              <p class=ls id=kerny style='font: 20px/24px Arial; letter-spacing: 5px; text-transform: none'>AVATAR WAVY Ty.</p>
              <p id=kernyplain style='font: 20px/24px Arial; text-transform: none'>AVATAR WAVY Ty.</p>"
         ));
-        let (spaced, plain) = (p.text_lines("spaced")[0].width, p.text_lines("plain")[0].width);
+        let (spaced, plain) = (
+            p.text_lines("spaced")[0].width,
+            p.text_lines("plain")[0].width,
+        );
         // Chromium: 386.3125 spaced, 333.0156 plain, 41 characters at 1.3px.
         close(plain, 333.02, "the unspaced label");
         close(spaced, 386.31, "the spaced label");
-        close(spaced - plain, 41.0 * 1.3, "one spacing per character, kerning kept");
-        let (kerny, kernyplain) = (p.text_lines("kerny")[0].width, p.text_lines("kernyplain")[0].width);
+        close(
+            spaced - plain,
+            41.0 * 1.3,
+            "one spacing per character, kerning kept",
+        );
+        let (kerny, kernyplain) = (
+            p.text_lines("kerny")[0].width,
+            p.text_lines("kernyplain")[0].width,
+        );
         // Chromium: 166.328 unspaced and 241.328 at `letter-spacing: 5px`.
         close(kernyplain, 166.33, "a kerned run");
         close(kerny, 241.33, "the same run spaced");
@@ -313,7 +341,11 @@ mod cases {
         ));
         rect_is(&p, "one", 0.0, 0.0, 209.0, 22.0);
         let lines = p.text_lines("one");
-        assert_eq!(lines.len(), 2, "nothing is cut, so no line is reported twice: {lines:?}");
+        assert_eq!(
+            lines.len(),
+            2,
+            "nothing is cut, so no line is reported twice: {lines:?}"
+        );
         // The rects are the glyph boxes inside the 22px lines. "Short" is 38.27px in
         // Arimo at 16px; the ellipsis is a run of its own, outside the text node.
         close(lines[0].width, 38.27, "the kept line is whole");

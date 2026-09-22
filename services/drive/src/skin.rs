@@ -67,7 +67,12 @@ fn glyph(n: &Node) -> &'static str {
         NodeKind::Folder if n.shared_with.is_empty() => "folder",
         NodeKind::Folder => "folder shared",
         _ if n.mime.ends_with("apps.document") || ends(&[".doc", ".docx"]) => "doc",
-        _ if n.mime.ends_with("apps.spreadsheet") || n.mime == "text/csv" || ends(&[".csv", ".xlsx"]) => "sheet",
+        _ if n.mime.ends_with("apps.spreadsheet")
+            || n.mime == "text/csv"
+            || ends(&[".csv", ".xlsx"]) =>
+        {
+            "sheet"
+        }
         _ if n.mime.ends_with("apps.presentation") || ends(&[".ppt", ".pptx", ".key"]) => "slides",
         _ if n.mime == "application/pdf" || ends(&[".pdf"]) => "pdf",
         NodeKind::Shortcut => "shortcut",
@@ -93,16 +98,23 @@ fn open(n: &Node) -> String {
     }
 }
 fn initials(name: &str) -> String {
-    name.chars().next().map(|c| c.to_uppercase().collect()).unwrap_or_default()
+    name.chars()
+        .next()
+        .map(|c| c.to_uppercase().collect())
+        .unwrap_or_default()
 }
 /// A form field with its visible label; `<form>-<key>` is the id the `Page` form gave it.
 fn field(form_id: &str, key: &str, text: &str, value: &str) -> Html {
     let id = format!("{form_id}-{key}");
-    div("field").child(label(&id, text)).child(text_input(&id, key, value))
+    div("field")
+        .child(label(&id, text))
+        .child(text_input(&id, key, value))
 }
 /// A button that posts with no fields: a one-button form, the id on the button.
 fn action(id: &str, text: &str, url: String, class: &str) -> Html {
-    form(&format!("{id}-form"), url, "post").class("one").child(button(id, text).class(class))
+    form(&format!("{id}-form"), url, "post")
+        .class("one")
+        .child(button(id, text).class(class))
 }
 
 /// Everything one render needs; methods keep the argument lists short.
@@ -145,18 +157,29 @@ impl View<'_> {
                 if self.dropbox { "dropbox" } else { "gdrive" }
             ))
             .body(if self.dropbox {
-                vec![self.sidebar(), div("stage").child(self.top()).child(el("main").id("main").children(main))]
+                vec![
+                    self.sidebar(),
+                    div("stage")
+                        .child(self.top())
+                        .child(el("main").id("main").children(main)),
+                ]
             } else {
                 vec![
                     self.top(),
-                    div("shell").child(self.sidebar()).child(el("main").id("main").children(main)),
+                    div("shell")
+                        .child(self.sidebar())
+                        .child(el("main").id("main").children(main)),
                 ]
             })
     }
     /// The wordmark: the tri-colour triangle for Drive, the box of diamonds for Dropbox.
     fn brand(&self) -> Html {
         let mark = span("mark").id("chrome-mark").attr("aria-hidden", "true");
-        let mark = if self.dropbox { mark.each(0..5, |_| el("i")) } else { mark.each(0..3, |_| el("i")) };
+        let mark = if self.dropbox {
+            mark.each(0..5, |_| el("i"))
+        } else {
+            mark.each(0..3, |_| el("i"))
+        };
         let name = match self.s.brand() {
             "Google Drive" => "Drive",
             other => other,
@@ -170,7 +193,11 @@ impl View<'_> {
     }
     /// The search box. It posts, as the `Page` form did; `/search` answers both verbs.
     fn find(&self) -> Html {
-        let hint = if self.dropbox { "Search" } else { "Search in Drive" };
+        let hint = if self.dropbox {
+            "Search"
+        } else {
+            "Search in Drive"
+        };
         form("find", "/search", "post")
             .class("search")
             .attr("role", "search")
@@ -186,7 +213,12 @@ impl View<'_> {
     fn account(&self) -> Html {
         div("account")
             .child(span("who").id("account-name").text(self.actor))
-            .child(span("avatar").id("account").attr("aria-label", self.actor).text(initials(self.actor)))
+            .child(
+                span("avatar")
+                    .id("account")
+                    .attr("aria-label", self.actor)
+                    .text(initials(self.actor)),
+            )
     }
     /// This same screen, filtered or ordered differently. `q` rides along so a sorted search
     /// is still that search.
@@ -262,7 +294,9 @@ impl View<'_> {
         if self.dropbox {
             bar.child(self.find()).child(self.account())
         } else {
-            bar.child(self.brand()).child(self.find()).child(self.account())
+            bar.child(self.brand())
+                .child(self.find())
+                .child(self.account())
         }
     }
     fn sidebar(&self) -> Html {
@@ -271,10 +305,20 @@ impl View<'_> {
                 .id(id)
                 .class(if self.at == key { "entry on" } else { "entry" })
                 .attr("href", url)
-                .child(span(&format!("nav-ico {key}")).attr("aria-hidden", "true").child(el("i")))
+                .child(
+                    span(&format!("nav-ico {key}"))
+                        .attr("aria-hidden", "true")
+                        .child(el("i")),
+                )
                 .child(span("nav-text").text(text))
         };
-        let used: u64 = self.s.nodes.values().filter(|n| n.owner == self.actor).map(|n| n.size).sum();
+        let used: u64 = self
+            .s
+            .nodes
+            .values()
+            .filter(|n| n.owner == self.actor)
+            .map(|n| n.size)
+            .sum();
         let used = match used {
             n if n < 1024 => format!("{n} bytes"),
             n => format!("{}.{} KB", n / 1024, (n % 1024) * 10 / 1024),
@@ -286,7 +330,12 @@ impl View<'_> {
                 .child(entry("nav-shared", "shared", "Shared", "/shared-with-me"))
                 .child(entry("nav-starred", "starred", "Starred", "/starred"))
                 .child(entry("nav-trash", "trash", "Deleted files", "/trash"))
-                .child(div("storage").id("storage").child(div("meter").child(el("i"))).child(span("").text(format!("{used} of 2 GB used"))))
+                .child(
+                    div("storage")
+                        .id("storage")
+                        .child(div("meter").child(el("i")))
+                        .child(span("").text(format!("{used} of 2 GB used"))),
+                )
         } else {
             // New goes where something can actually be made: this folder when the actor may
             // file here, otherwise their own drive, which carries the same form. An actor with
@@ -307,10 +356,20 @@ impl View<'_> {
                     .child(span("").text("New"))
             }))
             .child(entry("nav-drive", "drive", "My Drive", "/"))
-            .child(entry("nav-shared", "shared", "Shared with me", "/shared-with-me"))
+            .child(entry(
+                "nav-shared",
+                "shared",
+                "Shared with me",
+                "/shared-with-me",
+            ))
             .child(entry("nav-starred", "starred", "Starred", "/starred"))
             .child(entry("nav-trash", "trash", "Trash", "/trash"))
-            .child(div("storage").id("storage").child(div("meter").child(el("i"))).child(span("").text(format!("{used} of 15 GB used"))))
+            .child(
+                div("storage")
+                    .id("storage")
+                    .child(div("meter").child(el("i")))
+                    .child(span("").text(format!("{used} of 15 GB used"))),
+            )
         }
     }
     /// The folder path. Drive's path *is* its title, so there the last crumb is the `<h1>`;
@@ -318,37 +377,61 @@ impl View<'_> {
     fn crumbs(&self, id: &str) -> Html {
         let trail = self.s.path_to(self.actor, id);
         let last = trail.len().saturating_sub(1);
-        el("nav").id("crumbs").class("crumbs").attr("aria-label", "Folder path").each(trail.iter().enumerate(), |(i, node)| {
-            // The last crumb is the screen the reader is already on, so it is text rather
-            // than a link that would fetch this very page again.
-            let crumb = if i == last {
-                span("crumb here").id(format!("crumb-{}", node.id)).text(node.name.as_str())
-            } else {
-                link(
-                    &format!("crumb-{}", node.id),
-                    match node.kind {
-                        NodeKind::Folder => format!("/drive/folders/{}", node.id),
-                        _ => format!("/file/{}", node.id),
+        el("nav")
+            .id("crumbs")
+            .class("crumbs")
+            .attr("aria-label", "Folder path")
+            .each(trail.iter().enumerate(), |(i, node)| {
+                // The last crumb is the screen the reader is already on, so it is text rather
+                // than a link that would fetch this very page again.
+                let crumb = if i == last {
+                    span("crumb here")
+                        .id(format!("crumb-{}", node.id))
+                        .text(node.name.as_str())
+                } else {
+                    link(
+                        &format!("crumb-{}", node.id),
+                        match node.kind {
+                            NodeKind::Folder => format!("/drive/folders/{}", node.id),
+                            _ => format!("/file/{}", node.id),
+                        },
+                        node.name.as_str(),
+                    )
+                    .class("crumb")
+                };
+                fragment([
+                    if i > 0 {
+                        span("sep").attr("aria-hidden", "true").text("›")
+                    } else {
+                        empty()
                     },
-                    node.name.as_str(),
-                )
-                .class("crumb")
-            };
-            fragment([
-                if i > 0 { span("sep").attr("aria-hidden", "true").text("›") } else { empty() },
-                if i == last && !self.dropbox { el("h1").id("head-title").child(crumb) } else { crumb },
-            ])
-        })
+                    if i == last && !self.dropbox {
+                        el("h1").id("head-title").child(crumb)
+                    } else {
+                        crumb
+                    },
+                ])
+            })
     }
     fn star(&self, id: &str, on: bool) -> Html {
-        form("star-form", format!("/nodes/{id}/star"), "post").class("one").child(
-            el("button")
-                .id("star")
-                .attr("type", "submit")
-                .class(if on { "pill star on" } else { "pill star" })
-                .child(span("glyph").attr("aria-hidden", "true").text(if on { "★" } else { "☆" }))
-                .child(span("").id("star-label").text(if on { "Starred" } else { "Star" })),
-        )
+        form("star-form", format!("/nodes/{id}/star"), "post")
+            .class("one")
+            .child(
+                el("button")
+                    .id("star")
+                    .attr("type", "submit")
+                    .class(if on { "pill star on" } else { "pill star" })
+                    .child(span("glyph").attr("aria-hidden", "true").text(if on {
+                        "★"
+                    } else {
+                        "☆"
+                    }))
+                    .child(
+                        span("")
+                            .id("star-label")
+                            .text(if on { "Starred" } else { "Star" }),
+                    ),
+            )
     }
     fn head(&self, n: &Node) -> Html {
         let star = self.star(&n.id, self.s.is_starred(self.actor, &n.id));
@@ -385,13 +468,30 @@ impl View<'_> {
         let part = |part: &str| format!("{prefix}-{part}-{id}");
         let starred = self.s.is_starred(self.actor, id);
         let name = span("name").id(part("name")).text(n.name.as_str());
-        let star = if starred { span("starred").id(part("star")).attr("aria-label", "Starred").text("★") } else { empty() };
+        let star = if starred {
+            span("starred")
+                .id(part("star"))
+                .attr("aria-label", "Starred")
+                .text("★")
+        } else {
+            empty()
+        };
         let meta = span("meta")
             .child(span("").id(part("meta")).text(self.meta(n)))
             .when(!n.shared_with.is_empty(), |m| {
-                m.child(span("shared").id(part("shared")).text(format!("Shared · {}", n.shared_with.len())))
+                m.child(
+                    span("shared")
+                        .id(part("shared"))
+                        .text(format!("Shared · {}", n.shared_with.len())),
+                )
             });
-        let card = el("a").id(if own { format!("item-{id}") } else { format!("{prefix}-{id}") }).attr("href", open(n));
+        let card = el("a")
+            .id(if own {
+                format!("item-{id}")
+            } else {
+                format!("{prefix}-{id}")
+            })
+            .attr("href", open(n));
         if n.kind == NodeKind::Folder {
             return card
                 .class("tile folder-tile")
@@ -400,14 +500,24 @@ impl View<'_> {
                 .child(star);
         }
         let mut thumb = div("thumb").id(part("cover"));
-        let lines: Vec<&str> = n.content.lines().filter(|l| !l.trim().is_empty()).take(THUMB_LINES).collect();
+        let lines: Vec<&str> = n
+            .content
+            .lines()
+            .filter(|l| !l.trim().is_empty())
+            .take(THUMB_LINES)
+            .collect();
         thumb = if lines.is_empty() {
             thumb.class("blank").child(icon(None, n))
         } else {
             thumb.child(div("sheet-of-paper").each(lines, |l| el("p").text(l)))
         };
         card.class("tile file-tile")
-            .child(div("tile-head").child(icon(Some(part("kind")), n)).child(name).child(star))
+            .child(
+                div("tile-head")
+                    .child(icon(Some(part("kind")), n))
+                    .child(name)
+                    .child(star),
+            )
             .child(thumb)
             .child(meta)
     }
@@ -432,26 +542,53 @@ impl View<'_> {
                         div("cell")
                             .child(icon(Some(format!("item-kind-{id}")), n))
                             .child(
-                                el("a").id(format!("item-{id}")).class("open").attr("href", open(n)).child(
-                                    span("name").id(format!("item-name-{id}")).text(n.name.as_str()),
-                                ),
+                                el("a")
+                                    .id(format!("item-{id}"))
+                                    .class("open")
+                                    .attr("href", open(n))
+                                    .child(
+                                        span("name")
+                                            .id(format!("item-name-{id}"))
+                                            .text(n.name.as_str()),
+                                    ),
                             )
                             .when(starred, |c| {
-                                c.child(span("starred").id(format!("item-star-{id}")).attr("aria-label", "Starred").text("★"))
+                                c.child(
+                                    span("starred")
+                                        .id(format!("item-star-{id}"))
+                                        .attr("aria-label", "Starred")
+                                        .text("★"),
+                                )
                             }),
                     ),
                 )
-                .child(el("td").class("c-access").child(span("").id(format!("item-shared-{id}")).text(self.access(n))))
+                .child(
+                    el("td").class("c-access").child(
+                        span("")
+                            .id(format!("item-shared-{id}"))
+                            .text(self.access(n)),
+                    ),
+                )
                 .child(el("td").class("c-when").text(date(n.tick)))
-                .child(el("td").class("c-size").id(format!("item-meta-{id}")).text(self.meta(n)))
+                .child(
+                    el("td")
+                        .class("c-size")
+                        .id(format!("item-meta-{id}"))
+                        .text(self.meta(n)),
+                )
         });
-        el("table").id("items").class("files").child(head).child(body)
+        el("table")
+            .id("items")
+            .class("files")
+            .child(head)
+            .child(body)
     }
     fn items(&self, nodes: &[&Node]) -> Html {
         if self.dropbox {
             return self.table(nodes);
         }
-        let (folders, files): (Vec<&Node>, Vec<&Node>) = nodes.iter().partition(|n| n.kind == NodeKind::Folder);
+        let (folders, files): (Vec<&Node>, Vec<&Node>) =
+            nodes.iter().partition(|n| n.kind == NodeKind::Folder);
         div("items")
             .id("items")
             .when(!folders.is_empty(), |d| {
@@ -466,7 +603,12 @@ impl View<'_> {
     /// Recent files from anywhere the actor can see, offered on the root the way both products
     /// open with suggestions. View-only: each card is the same link the item has in its folder.
     fn suggested(&self, folder: &str) -> Html {
-        let shown: Vec<String> = self.s.children(self.actor, folder).iter().map(|n| n.id.clone()).collect();
+        let shown: Vec<String> = self
+            .s
+            .children(self.actor, folder)
+            .iter()
+            .map(|n| n.id.clone())
+            .collect();
         let mut found: Vec<&Node> = self
             .s
             .nodes
@@ -486,7 +628,11 @@ impl View<'_> {
         el("section")
             .id("suggested")
             .class("suggested")
-            .child(el("h2").class("section").text(if self.dropbox { "Suggested from your activity" } else { "Suggested files" }))
+            .child(el("h2").class("section").text(if self.dropbox {
+                "Suggested from your activity"
+            } else {
+                "Suggested files"
+            }))
             .child(div("tiles files").each(found, |n| self.tile(n, "suggest")))
     }
     /// The share panel. A link that has not been minted is offered as a button, never faked.
@@ -495,7 +641,10 @@ impl View<'_> {
         let note = if n.shared_with.is_empty() {
             format!("Only {} can open this.", n.owner)
         } else {
-            format!("Shared with {}.", n.shared_with.iter().cloned().collect::<Vec<_>>().join(", "))
+            format!(
+                "Shared with {}.",
+                n.shared_with.iter().cloned().collect::<Vec<_>>().join(", ")
+            )
         };
         let mut panel = el("section")
             .class("card sharing")
@@ -503,15 +652,23 @@ impl View<'_> {
             .child(el("p").id("grant-note").class("note").text(note));
         if n.link.is_empty() {
             if self.s.granted_to(self.actor, id) {
-                panel = panel.child(action("link-action", "Create a share link", format!("/nodes/{id}/link"), "pill"));
+                panel = panel.child(action(
+                    "link-action",
+                    "Create a share link",
+                    format!("/nodes/{id}/link"),
+                    "pill",
+                ));
             }
         } else {
             panel = panel.child(
-                el("p").class("share-link").child(span("chain").attr("aria-hidden", "true")).child(link(
-                    "link-url",
-                    format!("/s/{}", n.link),
-                    format!("Share link: /s/{}", n.link),
-                )),
+                el("p")
+                    .class("share-link")
+                    .child(span("chain").attr("aria-hidden", "true"))
+                    .child(link(
+                        "link-url",
+                        format!("/s/{}", n.link),
+                        format!("Share link: /s/{}", n.link),
+                    )),
             );
         }
         if n.owner == self.actor {
@@ -525,7 +682,9 @@ impl View<'_> {
     }
     fn folder(&self, node: &Node) -> Vec<Html> {
         let id = &node.id;
-        let kids = self.s.arrange(self.actor, self.s.children(self.actor, id), self.sift);
+        let kids = self
+            .s
+            .arrange(self.actor, self.s.children(self.actor, id), self.sift);
         let granted = self.s.granted_to(self.actor, id);
         let mut e = vec![self.head(node)];
         e.push(el("p").id("head-meta").class("note").text(format!(
@@ -550,11 +709,16 @@ impl View<'_> {
             e.push(self.suggested(id));
         }
         if kids.is_empty() {
-            e.push(el("p").id("empty").class("empty").text(if self.sift.filters() {
-                "Nothing here matches those filters."
-            } else {
-                "This folder is empty."
-            }));
+            e.push(
+                el("p")
+                    .id("empty")
+                    .class("empty")
+                    .text(if self.sift.filters() {
+                        "Nothing here matches those filters."
+                    } else {
+                        "This folder is empty."
+                    }),
+            );
         } else {
             e.push(self.items(&kids));
         }
@@ -563,25 +727,36 @@ impl View<'_> {
         if granted {
             panels = panels
                 .child(
-                    el("section").class("card").child(el("h2").id("make-title").text("New folder")).child(
-                        form("make", "/folders", "post")
-                            .child(field("make", "name", "Folder name", ""))
-                            .child(field("make", "parent", "In folder", id))
-                            .child(button("make-submit", "Create").class("primary")),
-                    ),
+                    el("section")
+                        .class("card")
+                        .child(el("h2").id("make-title").text("New folder"))
+                        .child(
+                            form("make", "/folders", "post")
+                                .child(field("make", "name", "Folder name", ""))
+                                .child(field("make", "parent", "In folder", id))
+                                .child(button("make-submit", "Create").class("primary")),
+                        ),
                 )
                 .child(
-                    el("section").class("card").child(el("h2").id("upload-title").text("Upload a text file")).child(
-                        form("upload", "/files", "post")
-                            .child(field("upload", "name", "File name", ""))
-                            .child(field("upload", "parent", "In folder", id))
-                            .child(
-                                div("field").child(label("upload-content", "Contents")).child(
-                                    el("textarea").id("upload-content").attr("name", "content").attr("rows", "3"),
-                                ),
-                            )
-                            .child(button("upload-submit", "Upload").class("primary")),
-                    ),
+                    el("section")
+                        .class("card")
+                        .child(el("h2").id("upload-title").text("Upload a text file"))
+                        .child(
+                            form("upload", "/files", "post")
+                                .child(field("upload", "name", "File name", ""))
+                                .child(field("upload", "parent", "In folder", id))
+                                .child(
+                                    div("field")
+                                        .child(label("upload-content", "Contents"))
+                                        .child(
+                                            el("textarea")
+                                                .id("upload-content")
+                                                .attr("name", "content")
+                                                .attr("rows", "3"),
+                                        ),
+                                )
+                                .child(button("upload-submit", "Upload").class("primary")),
+                        ),
                 );
         }
         e.push(panels);
@@ -599,7 +774,12 @@ impl View<'_> {
             });
         }
         if !any {
-            paper = paper.child(el("p").id("preview-empty").class("note").text("No preview for this item."));
+            paper = paper.child(
+                el("p")
+                    .id("preview-empty")
+                    .class("note")
+                    .text("No preview for this item."),
+            );
         }
         let mut links = div("outbound");
         if !n.target_url.is_empty() {
@@ -619,24 +799,38 @@ impl View<'_> {
             ("kind", n.kind.label().to_owned()),
             ("owner", n.owner.clone()),
             ("size", n.size_text()),
-            ("type", if n.mime.is_empty() { "—".to_owned() } else { n.mime.clone() }),
+            (
+                "type",
+                if n.mime.is_empty() {
+                    "—".to_owned()
+                } else {
+                    n.mime.clone()
+                },
+            ),
             ("added", date(n.tick)),
         ];
-        el("section").id("details").class("card details").child(el("h2").text("Details")).child(
-            el("dl").each(rows, |(key, value)| {
+        el("section")
+            .id("details")
+            .class("card details")
+            .child(el("h2").text("Details"))
+            .child(el("dl").each(rows, |(key, value)| {
                 div("row")
                     .id(format!("detail-{key}"))
                     .child(el("dt").id(format!("detail-key-{key}")).text(key))
                     .child(el("dd").id(format!("detail-value-{key}")).text(value))
-            }),
-        )
+            }))
     }
     fn file(&self, node: &Node, public: bool) -> Vec<Html> {
         let id = &node.id;
         let mut e = vec![];
         if public {
             e.push(span("badge").id("public").text("Opened with a share link"));
-            e.push(div("head").id("head").child(icon(Some("head-mark".into()), node)).child(el("h1").id("head-title").text(node.name.as_str())));
+            e.push(
+                div("head")
+                    .id("head")
+                    .child(icon(Some("head-mark".into()), node))
+                    .child(el("h1").id("head-title").text(node.name.as_str())),
+            );
         } else {
             e.push(self.head(node));
         }
@@ -646,7 +840,11 @@ impl View<'_> {
             // Nothing may be filed into the trash, so for something already there the field
             // offers the drive's own root: saving the form is how a deletion is undone.
             let deleted = node.parent.as_deref() == Some(TRASH);
-            let home = if deleted { self.s.root_id() } else { node.parent.as_deref().unwrap_or_default() };
+            let home = if deleted {
+                self.s.root_id()
+            } else {
+                node.parent.as_deref().unwrap_or_default()
+            };
             let mine = self.s.granted_to(self.actor, id) && node.parent.is_some();
             // Renaming files the node afresh, which takes a grant on the folder it lands in as
             // well as on the node: without both, saving the form could only ever be refused.
@@ -654,9 +852,18 @@ impl View<'_> {
                 aside = aside.child(
                     el("section")
                         .class("card")
-                        .child(el("h2").id("rename-title").text(if deleted { "Restore or rename" } else { "Rename or move" }))
+                        .child(el("h2").id("rename-title").text(if deleted {
+                            "Restore or rename"
+                        } else {
+                            "Rename or move"
+                        }))
                         .when(deleted, |c| {
-                            c.child(el("p").id("rename-note").class("note").text("Filing it in a folder again takes it out of the trash."))
+                            c.child(
+                                el("p")
+                                    .id("rename-note")
+                                    .class("note")
+                                    .text("Filing it in a folder again takes it out of the trash."),
+                            )
                         })
                         .child(
                             form("rename", format!("/nodes/{id}"), "post")
@@ -668,7 +875,12 @@ impl View<'_> {
             }
             // Deleting needs the grant on the node alone, so it stands on its own condition.
             if mine && !deleted {
-                aside = aside.child(action("trash-action", "Move to trash", format!("/nodes/{id}/trash"), "pill danger"));
+                aside = aside.child(action(
+                    "trash-action",
+                    "Move to trash",
+                    format!("/nodes/{id}/trash"),
+                    "pill danger",
+                ));
             }
         }
         e.push(div("split").child(self.preview(node)).child(aside));
@@ -676,7 +888,9 @@ impl View<'_> {
     }
     fn listing(&self, heading: &str, subtitle: String, nodes: Vec<&Node>) -> Vec<Html> {
         vec![
-            div("head").id("head").child(el("h1").id("head-title").text(heading)),
+            div("head")
+                .id("head")
+                .child(el("h1").id("head-title").text(heading)),
             el("p").id("head-meta").class("note").text(subtitle),
             if nodes.is_empty() {
                 el("p").id("empty").class("empty").text("Nothing here.")
@@ -686,7 +900,12 @@ impl View<'_> {
         ]
     }
 }
-pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen, sift: &Sift) -> Result<HttpResponse> {
+pub(crate) fn view(
+    s: &DriveState,
+    actor: &str,
+    screen: Screen,
+    sift: &Sift,
+) -> Result<HttpResponse> {
     let brand = s.brand().to_owned();
     let count = |n: usize| format!("{n} item{}", if n == 1 { "" } else { "s" });
     let mut v = View {
@@ -720,12 +939,20 @@ pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen, sift: &Sift) -> 
         Screen::File(id) => match s.read(actor, id) {
             Ok(node) => {
                 v.at = if s.trashed(id) { "trash" } else { "drive" };
-                (format!("{} · {brand}", node.name), "file", v.file(node, false))
+                (
+                    format!("{} · {brand}", node.name),
+                    "file",
+                    v.file(node, false),
+                )
             }
             Err(e) => return web::error(403, e),
         },
         Screen::Link(link) => match s.by_link(link) {
-            Some(node) => (format!("{} · {brand}", node.name), "file", v.file(node, true)),
+            Some(node) => (
+                format!("{} · {brand}", node.name),
+                "file",
+                v.file(node, true),
+            ),
             None => return web::error(404, "no such share link"),
         },
         Screen::SharedWithMe => {
@@ -734,7 +961,11 @@ pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen, sift: &Sift) -> 
             (
                 format!("Shared with me · {brand}"),
                 "list",
-                v.listing("Shared with me", format!("{} other people put here.", count(found.len())), found),
+                v.listing(
+                    "Shared with me",
+                    format!("{} other people put here.", count(found.len())),
+                    found,
+                ),
             )
         }
         Screen::Starred => {
@@ -757,7 +988,10 @@ pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen, sift: &Sift) -> 
                 "list",
                 v.listing(
                     if v.dropbox { "Deleted files" } else { "Trash" },
-                    format!("{} waiting here. Nothing is ever really gone.", count(found.len())),
+                    format!(
+                        "{} waiting here. Nothing is ever really gone.",
+                        count(found.len())
+                    ),
                     found,
                 ),
             )
@@ -768,7 +1002,9 @@ pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen, sift: &Sift) -> 
             format!("Search · {brand}"),
             "list",
             vec![
-                div("head").id("head").child(el("h1").id("head-title").text("Search")),
+                div("head")
+                    .id("head")
+                    .child(el("h1").id("head-title").text("Search")),
                 el("p")
                     .id("head-meta")
                     .class("note")
@@ -778,7 +1014,11 @@ pub(crate) fn view(s: &DriveState, actor: &str, screen: Screen, sift: &Sift) -> 
         Screen::Search(q) => {
             v.query = q;
             let found = s.arrange(actor, s.search(actor, q), sift);
-            (format!("{q} · {brand}"), "list", v.listing(&format!("Results for {q}"), count(found.len()), found))
+            (
+                format!("{q} · {brand}"),
+                "list",
+                v.listing(&format!("Results for {q}"), count(found.len()), found),
+            )
         }
     };
     web::html::page(&v.document(&title, class, main))

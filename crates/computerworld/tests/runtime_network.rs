@@ -77,10 +77,7 @@ fn python_reaches_world_services() {
     let lines: Vec<&str> = out.lines().collect();
     assert!(lines[0].starts_with("10.0."), "{out}");
     assert_eq!(lines[1], format!("('{}', 80)", lines[0]));
-    assert_eq!(
-        lines[2],
-        "200 text/html Northstar Workshop"
-    );
+    assert_eq!(lines[2], "200 text/html Northstar Workshop");
     assert_eq!(lines[3], "HTTPError 404");
     // Every site listens on 443 as well, so https reaches the same page.
     assert_eq!(lines[4], "https 200");

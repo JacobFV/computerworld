@@ -20,10 +20,15 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use cw_protocol::{HttpRequest, Page, PageAction, PageElement, Result, SimError};
 use cw_scene::{AxNode, Scene};
-use cw_web::css::{self, ComponentValue, FormState, MatchContext, Media, MediaQueryList, Origin, Rule, Stylesheet, Token};
+use cw_web::css::{
+    self, ComponentValue, FormState, MatchContext, Media, MediaQueryList, Origin, Rule, Stylesheet,
+    Token,
+};
 use cw_web::dom::{Document, NodeId, NodeKind};
 use cw_web::geom::{Au, Point};
-use cw_web::layout::{self, FragmentKind, FragmentTree, ImageSizes, LayoutCache, LayoutOptions, ScrollState};
+use cw_web::layout::{
+    self, FragmentKind, FragmentTree, ImageSizes, LayoutCache, LayoutOptions, ScrollState,
+};
 use cw_web::paint::{self, semantics, ImageCache, PaintContext, RgbaImage};
 use cw_web::style::{self, Cursor, StyleSet};
 use cw_web::{Strictness, Viewport};
@@ -57,7 +62,10 @@ pub struct SheetSource {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
     Nothing,
-    Navigate { url: String, new_tab: bool },
+    Navigate {
+        url: String,
+        new_tab: bool,
+    },
     Request(HttpRequest),
     /// Scroll the document to `y` CSS px (a fragment link).
     ScrollTo(i32),
@@ -309,7 +317,13 @@ impl Eq for WebDocument {}
 
 impl std::fmt::Debug for WebDocument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("WebDocument").field("url", &self.url).field("title", &self.title).field("nodes", &self.doc.len()).field("sheets", &self.sheets.len()).field("images", &self.images.len()).finish()
+        f.debug_struct("WebDocument")
+            .field("url", &self.url)
+            .field("title", &self.title)
+            .field("nodes", &self.doc.len())
+            .field("sheets", &self.sheets.len())
+            .field("images", &self.images.len())
+            .finish()
     }
 }
 
@@ -382,7 +396,10 @@ impl WebDocument {
         };
         web.base = web.find_base();
         web.title = web.find_title();
-        web.target = Url::parse(url).ok().and_then(|u| u.fragment().map(str::to_owned)).filter(|f| !f.is_empty());
+        web.target = Url::parse(url)
+            .ok()
+            .and_then(|u| u.fragment().map(str::to_owned))
+            .filter(|f| !f.is_empty());
         for node in web.doc.descendants(Document::ROOT) {
             let d = &web.doc;
             if d.is(node, "input") {
@@ -400,11 +417,16 @@ impl WebDocument {
     }
 
     fn find_base(&self) -> String {
-        let Some(head) = self.doc.head() else { return self.url.clone() };
+        let Some(head) = self.doc.head() else {
+            return self.url.clone();
+        };
         for n in self.doc.descendants(head) {
             if self.doc.is(n, "base") {
                 if let Some(href) = self.doc.attr(n, "href") {
-                    if let Some(u) = Url::parse(&self.url).ok().and_then(|u| u.join(href.trim()).ok()) {
+                    if let Some(u) = Url::parse(&self.url)
+                        .ok()
+                        .and_then(|u| u.join(href.trim()).ok())
+                    {
                         if matches!(u.scheme(), "http" | "https") {
                             return u.to_string();
                         }
@@ -417,7 +439,11 @@ impl WebDocument {
     }
 
     fn find_title(&self) -> String {
-        self.doc.descendants(Document::ROOT).find(|n| self.doc.is(*n, "title")).map(|n| semantics::collapse(&self.doc.text_content(n))).unwrap_or_default()
+        self.doc
+            .descendants(Document::ROOT)
+            .find(|n| self.doc.is(*n, "title"))
+            .map(|n| semantics::collapse(&self.doc.text_content(n)))
+            .unwrap_or_default()
     }
 
     /// Resolves a reference against the document base; `None` for what the browser
@@ -425,7 +451,11 @@ impl WebDocument {
     pub fn resolve(&self, reference: &str) -> Option<Url> {
         let base = Url::parse(&self.base).ok()?;
         let u = base.join(reference.trim()).ok()?;
-        (matches!(u.scheme(), "http" | "https") && u.host_str().is_some() && u.username().is_empty() && u.password().is_none()).then_some(u)
+        (matches!(u.scheme(), "http" | "https")
+            && u.host_str().is_some()
+            && u.username().is_empty()
+            && u.password().is_none())
+        .then_some(u)
     }
 
     /// `<meta http-equiv=refresh content="5; url=/x">`, as the `Refresh` header value.
@@ -453,18 +483,32 @@ impl WebDocument {
             let d = &self.doc;
             if d.is(n, "style") {
                 let media = d.attr(n, "media").unwrap_or("").trim().to_owned();
-                out.push(SheetPlan::Inline { media, source: d.text_content(n) });
+                out.push(SheetPlan::Inline {
+                    media,
+                    source: d.text_content(n),
+                });
             } else if d.is(n, "link") {
                 let rel = d.attr(n, "rel").unwrap_or("");
-                let is_sheet = rel.split_ascii_whitespace().any(|r| r.eq_ignore_ascii_case("stylesheet"));
-                let is_alternate = rel.split_ascii_whitespace().any(|r| r.eq_ignore_ascii_case("alternate"));
+                let is_sheet = rel
+                    .split_ascii_whitespace()
+                    .any(|r| r.eq_ignore_ascii_case("stylesheet"));
+                let is_alternate = rel
+                    .split_ascii_whitespace()
+                    .any(|r| r.eq_ignore_ascii_case("alternate"));
                 if !is_sheet || is_alternate || d.has_attr(n, "disabled") {
                     continue;
                 }
-                let Some(href) = d.attr(n, "href") else { continue };
-                let Some(url) = self.resolve(href) else { continue };
+                let Some(href) = d.attr(n, "href") else {
+                    continue;
+                };
+                let Some(url) = self.resolve(href) else {
+                    continue;
+                };
                 let media = d.attr(n, "media").unwrap_or("").trim().to_owned();
-                out.push(SheetPlan::Linked { url: url.to_string(), media });
+                out.push(SheetPlan::Linked {
+                    url: url.to_string(),
+                    media,
+                });
             }
         }
         out
@@ -472,20 +516,44 @@ impl WebDocument {
 
     /// Registers a sheet's text, fetching what it `@import`s first (through `fetch`,
     /// which returns the text of a URL or `None`) so the cascade order is right.
-    pub fn add_sheet(&mut self, url: &str, media: &str, source: String, fetch: &mut dyn FnMut(&str) -> Option<String>) {
+    pub fn add_sheet(
+        &mut self,
+        url: &str,
+        media: &str,
+        source: String,
+        fetch: &mut dyn FnMut(&str) -> Option<String>,
+    ) {
         self.add_sheet_at(url, media, source, 0, fetch);
     }
 
-    fn add_sheet_at(&mut self, url: &str, media: &str, source: String, depth: u32, fetch: &mut dyn FnMut(&str) -> Option<String>) {
+    fn add_sheet_at(
+        &mut self,
+        url: &str,
+        media: &str,
+        source: String,
+        depth: u32,
+        fetch: &mut dyn FnMut(&str) -> Option<String>,
+    ) {
         if self.sheets.len() >= MAX_SHEETS {
             return;
         }
-        let parsed = css::parse_stylesheet(&source, Origin::Author, Strictness::Lenient).unwrap_or_default();
+        let parsed =
+            css::parse_stylesheet(&source, Origin::Author, Strictness::Lenient).unwrap_or_default();
         if depth < MAX_IMPORT_DEPTH {
-            let imports: Vec<(String, String)> = parsed.imports().map(|(u, m)| (u.to_owned(), m.to_string())).collect();
+            let imports: Vec<(String, String)> = parsed
+                .imports()
+                .map(|(u, m)| (u.to_owned(), m.to_string()))
+                .collect();
             for (reference, import_media) in imports {
-                let Some(abs) = Url::parse(url).ok().and_then(|b| b.join(reference.trim()).ok()) else { continue };
-                if !matches!(abs.scheme(), "http" | "https") || self.sheets.iter().any(|s| s.url == abs.as_str()) {
+                let Some(abs) = Url::parse(url)
+                    .ok()
+                    .and_then(|b| b.join(reference.trim()).ok())
+                else {
+                    continue;
+                };
+                if !matches!(abs.scheme(), "http" | "https")
+                    || self.sheets.iter().any(|s| s.url == abs.as_str())
+                {
                     continue;
                 }
                 if let Some(text) = fetch(abs.as_str()) {
@@ -500,7 +568,11 @@ impl WebDocument {
                 }
             }
         }
-        self.sheets.push(SheetSource { url: url.to_owned(), media: media.to_owned(), source });
+        self.sheets.push(SheetSource {
+            url: url.to_owned(),
+            media: media.to_owned(),
+            source,
+        });
         self.invalidate_styles();
     }
 
@@ -510,15 +582,16 @@ impl WebDocument {
     pub fn image_references(&self) -> Vec<(String, String)> {
         let mut out: Vec<(String, String)> = Vec::new();
         let mut seen = BTreeSet::new();
-        let mut push = |reference: String, resolved: Option<Url>, out: &mut Vec<(String, String)>| {
-            if let Some(u) = resolved {
-                let mut u = u;
-                u.set_fragment(None);
-                if seen.insert(reference.clone()) && out.len() < MAX_IMAGES {
-                    out.push((reference, u.to_string()));
+        let mut push =
+            |reference: String, resolved: Option<Url>, out: &mut Vec<(String, String)>| {
+                if let Some(u) = resolved {
+                    let mut u = u;
+                    u.set_fragment(None);
+                    if seen.insert(reference.clone()) && out.len() < MAX_IMAGES {
+                        out.push((reference, u.to_string()));
+                    }
                 }
-            }
-        };
+            };
         for n in self.doc.descendants(Document::ROOT) {
             let d = &self.doc;
             let is_img = d.is(n, "img") || (d.is(n, "input") && input_type(d, n) == "image");
@@ -530,16 +603,30 @@ impl WebDocument {
                 }
             }
             if let Some(style) = d.attr(n, "style") {
-                for u in css_urls(&css::parse_declarations(style).iter().flat_map(|d| d.value.iter()).cloned().collect::<Vec<_>>()) {
+                for u in css_urls(
+                    &css::parse_declarations(style)
+                        .iter()
+                        .flat_map(|d| d.value.iter())
+                        .cloned()
+                        .collect::<Vec<_>>(),
+                ) {
                     push(u.clone(), self.resolve(&u), &mut out);
                 }
             }
         }
         for sheet in &self.sheets {
-            let parsed = css::parse_stylesheet(&sheet.source, Origin::Author, Strictness::Lenient).unwrap_or_default();
+            let parsed = css::parse_stylesheet(&sheet.source, Origin::Author, Strictness::Lenient)
+                .unwrap_or_default();
             let base = Url::parse(&sheet.url).ok();
             for u in sheet_urls(&parsed.rules) {
-                let resolved = base.as_ref().and_then(|b| b.join(u.trim()).ok()).filter(|r| matches!(r.scheme(), "http" | "https") && r.username().is_empty() && r.password().is_none());
+                let resolved = base
+                    .as_ref()
+                    .and_then(|b| b.join(u.trim()).ok())
+                    .filter(|r| {
+                        matches!(r.scheme(), "http" | "https")
+                            && r.username().is_empty()
+                            && r.password().is_none()
+                    });
                 push(u, resolved, &mut out);
             }
         }
@@ -556,7 +643,8 @@ impl WebDocument {
 
     pub fn add_image_error(&mut self, reference: &str, resolved: &str, code: &str) {
         self.refs.insert(reference.to_owned(), resolved.to_owned());
-        self.image_errors.insert(resolved.to_owned(), code.to_owned());
+        self.image_errors
+            .insert(resolved.to_owned(), code.to_owned());
     }
 
     /// The decoded pictures, by resolved URL.
@@ -636,7 +724,11 @@ impl Finder<'_> {
         for step in path.split('/') {
             let (tag, rest) = step.split_once('[')?;
             let index: usize = rest.strip_suffix(']')?.parse().ok()?;
-            cur = self.doc.children(cur).filter(|c| self.doc.tag(*c) == Some(tag)).nth(index.checked_sub(1)?)?;
+            cur = self
+                .doc
+                .children(cur)
+                .filter(|c| self.doc.tag(*c) == Some(tag))
+                .nth(index.checked_sub(1)?)?;
         }
         Some(cur)
     }
@@ -690,7 +782,10 @@ impl WebDocument {
     }
 
     fn value_of(&self, node: NodeId, fields: &BTreeMap<String, String>) -> String {
-        fields.get(&self.id_of(node)).cloned().unwrap_or_else(|| self.default_value(node))
+        fields
+            .get(&self.id_of(node))
+            .cloned()
+            .unwrap_or_else(|| self.default_value(node))
     }
 
     /// `(interaction id, element)` of every focusable element in tab order.
@@ -701,20 +796,36 @@ impl WebDocument {
         let mut positive: Vec<(i32, usize, NodeId)> = Vec::new();
         let mut rest: Vec<NodeId> = Vec::new();
         for (i, n) in self.doc.descendants(Document::ROOT).enumerate() {
-            if !self.doc.is_element(n) || !semantics::is_focusable(&self.doc, n) || semantics::is_disabled(&self.doc, n) {
+            if !self.doc.is_element(n)
+                || !semantics::is_focusable(&self.doc, n)
+                || semantics::is_disabled(&self.doc, n)
+            {
                 continue;
             }
-            if self.doc.ancestors(n).chain(std::iter::once(n)).any(|a| self.doc.has_attr(a, "hidden")) {
+            if self
+                .doc
+                .ancestors(n)
+                .chain(std::iter::once(n))
+                .any(|a| self.doc.has_attr(a, "hidden"))
+            {
                 continue;
             }
-            match self.doc.attr(n, "tabindex").and_then(|t| t.trim().parse::<i32>().ok()) {
+            match self
+                .doc
+                .attr(n, "tabindex")
+                .and_then(|t| t.trim().parse::<i32>().ok())
+            {
                 Some(t) if t > 0 => positive.push((t, i, n)),
                 Some(t) if t < 0 => {}
                 _ => rest.push(n),
             }
         }
         positive.sort();
-        positive.into_iter().map(|(_, _, n)| n).chain(rest).collect()
+        positive
+            .into_iter()
+            .map(|(_, _, n)| n)
+            .chain(rest)
+            .collect()
     }
 
     fn radio_group(&self, radio: NodeId) -> Vec<NodeId> {
@@ -725,7 +836,12 @@ impl WebDocument {
         }
         self.doc
             .descendants(Document::ROOT)
-            .filter(|n| self.doc.is(*n, "input") && input_type(&self.doc, *n) == "radio" && self.doc.attr(*n, "name") == Some(name) && self.form_owner(*n) == owner)
+            .filter(|n| {
+                self.doc.is(*n, "input")
+                    && input_type(&self.doc, *n) == "radio"
+                    && self.doc.attr(*n, "name") == Some(name)
+                    && self.form_owner(*n) == owner
+            })
             .collect()
     }
 
@@ -752,7 +868,11 @@ impl WebDocument {
 
     fn select_option(&mut self, select: NodeId, option: NodeId) {
         let multiple = self.doc.has_attr(select, "multiple");
-        let options: Vec<NodeId> = self.doc.descendants(select).filter(|n| self.doc.is(*n, "option")).collect();
+        let options: Vec<NodeId> = self
+            .doc
+            .descendants(select)
+            .filter(|n| self.doc.is(*n, "option"))
+            .collect();
         for o in options {
             if o == option {
                 self.set_flag(o, "selected", true);
@@ -764,11 +884,27 @@ impl WebDocument {
 
     /// Picks a `<select>`'s option by value, then by label; the `fill` of a select.
     pub fn choose(&mut self, select: NodeId, value: &str) -> Result<()> {
-        let options: Vec<NodeId> = self.doc.descendants(select).filter(|n| self.doc.is(*n, "option")).collect();
+        let options: Vec<NodeId> = self
+            .doc
+            .descendants(select)
+            .filter(|n| self.doc.is(*n, "option"))
+            .collect();
         let wanted = value.trim();
-        let by_value = options.iter().copied().find(|o| self.option_value(*o) == wanted);
-        let by_label = || options.iter().copied().find(|o| semantics::collapse(&self.doc.text_content(*o)) == wanted);
-        let by_label_ci = || options.iter().copied().find(|o| semantics::collapse(&self.doc.text_content(*o)).eq_ignore_ascii_case(wanted));
+        let by_value = options
+            .iter()
+            .copied()
+            .find(|o| self.option_value(*o) == wanted);
+        let by_label = || {
+            options
+                .iter()
+                .copied()
+                .find(|o| semantics::collapse(&self.doc.text_content(*o)) == wanted)
+        };
+        let by_label_ci = || {
+            options.iter().copied().find(|o| {
+                semantics::collapse(&self.doc.text_content(*o)).eq_ignore_ascii_case(wanted)
+            })
+        };
         let Some(option) = by_value.or_else(by_label).or_else(by_label_ci) else {
             return Err(SimError::not_found(format!("option {value}")));
         };
@@ -785,7 +921,11 @@ impl WebDocument {
 
     /// Cycles a `<select>` to its next option (a click with no picker).
     fn cycle_select(&mut self, select: NodeId) {
-        let options: Vec<NodeId> = self.doc.descendants(select).filter(|n| self.doc.is(*n, "option") && !semantics::is_disabled(&self.doc, *n)).collect();
+        let options: Vec<NodeId> = self
+            .doc
+            .descendants(select)
+            .filter(|n| self.doc.is(*n, "option") && !semantics::is_disabled(&self.doc, *n))
+            .collect();
         if options.is_empty() {
             return;
         }
@@ -798,11 +938,17 @@ impl WebDocument {
     }
 
     fn step_select(&mut self, select: NodeId, delta: i32) {
-        let options: Vec<NodeId> = self.doc.descendants(select).filter(|n| self.doc.is(*n, "option") && !semantics::is_disabled(&self.doc, *n)).collect();
+        let options: Vec<NodeId> = self
+            .doc
+            .descendants(select)
+            .filter(|n| self.doc.is(*n, "option") && !semantics::is_disabled(&self.doc, *n))
+            .collect();
         if options.is_empty() {
             return;
         }
-        let current = semantics::selected_option(&self.doc, select).and_then(|c| options.iter().position(|o| *o == c)).unwrap_or(0) as i32;
+        let current = semantics::selected_option(&self.doc, select)
+            .and_then(|c| options.iter().position(|o| *o == c))
+            .unwrap_or(0) as i32;
         let next = (current + delta).clamp(0, options.len() as i32 - 1) as usize;
         self.select_option(select, options[next]);
     }
@@ -837,19 +983,28 @@ impl WebDocument {
     /// The element a click on `node` activates: the nearest interactive ancestor or
     /// self.
     fn activation_target(&self, node: NodeId) -> Option<NodeId> {
-        std::iter::once(node).chain(self.doc.ancestors(node)).find(|n| {
-            let d = &self.doc;
-            match d.tag(*n) {
-                Some("a" | "area") => d.has_attr(*n, "href"),
-                Some("button" | "input" | "select" | "textarea" | "label" | "summary" | "option") => true,
-                Some(_) => semantics::is_focusable(d, *n) || semantics::is_interactive(d, *n),
-                None => false,
-            }
-        })
+        std::iter::once(node)
+            .chain(self.doc.ancestors(node))
+            .find(|n| {
+                let d = &self.doc;
+                match d.tag(*n) {
+                    Some("a" | "area") => d.has_attr(*n, "href"),
+                    Some(
+                        "button" | "input" | "select" | "textarea" | "label" | "summary" | "option",
+                    ) => true,
+                    Some(_) => semantics::is_focusable(d, *n) || semantics::is_interactive(d, *n),
+                    None => false,
+                }
+            })
     }
 
     /// Clicks the element: its default action. `fields` and `focused` are the tab's.
-    pub fn click(&mut self, node: NodeId, fields: &mut BTreeMap<String, String>, focused: &mut Option<String>) -> Result<Outcome> {
+    pub fn click(
+        &mut self,
+        node: NodeId,
+        fields: &mut BTreeMap<String, String>,
+        focused: &mut Option<String>,
+    ) -> Result<Outcome> {
         self.notice = None;
         let Some(target) = self.activation_target(node) else {
             return Err(SimError::invalid("element is not interactive"));
@@ -866,11 +1021,16 @@ impl WebDocument {
                 self.follow_link(target)
             }
             "button" => {
-                let kind = d.attr(target, "type").map(|t| t.trim().to_ascii_lowercase()).unwrap_or_else(|| "submit".into());
+                let kind = d
+                    .attr(target, "type")
+                    .map(|t| t.trim().to_ascii_lowercase())
+                    .unwrap_or_else(|| "submit".into());
                 self.focus(Some(target), focused);
                 match kind.as_str() {
                     "submit" => match self.form_owner(target) {
-                        Some(form) => self.submit_form(form, Some(target), fields).map(Outcome::Request),
+                        Some(form) => self
+                            .submit_form(form, Some(target), fields)
+                            .map(Outcome::Request),
                         None => Ok(Outcome::Nothing),
                     },
                     "reset" => {
@@ -898,7 +1058,9 @@ impl WebDocument {
                     "submit" | "image" => {
                         self.focus(Some(target), focused);
                         match self.form_owner(target) {
-                            Some(form) => self.submit_form(form, Some(target), fields).map(Outcome::Request),
+                            Some(form) => self
+                                .submit_form(form, Some(target), fields)
+                                .map(Outcome::Request),
                             None => Ok(Outcome::Nothing),
                         }
                     }
@@ -967,7 +1129,14 @@ impl WebDocument {
         if let Some(id) = self.doc.attr(label, "for") {
             return self.doc.by_id(id).first().copied();
         }
-        self.doc.descendants(label).find(|n| *n != label && matches!(self.doc.tag(*n), Some("input" | "button" | "select" | "textarea")) && !(self.doc.is(*n, "input") && input_type(&self.doc, *n) == "hidden"))
+        self.doc.descendants(label).find(|n| {
+            *n != label
+                && matches!(
+                    self.doc.tag(*n),
+                    Some("input" | "button" | "select" | "textarea")
+                )
+                && !(self.doc.is(*n, "input") && input_type(&self.doc, *n) == "hidden")
+        })
     }
 
     fn focus(&mut self, node: Option<NodeId>, focused: &mut Option<String>) {
@@ -985,9 +1154,14 @@ impl WebDocument {
             return Ok(self.go_to_fragment(fragment));
         }
         let Some(url) = self.resolve(&href) else {
-            return Err(SimError::denied("browser supports credential-free http/https URLs only"));
+            return Err(SimError::denied(
+                "browser supports credential-free http/https URLs only",
+            ));
         };
-        let new_tab = self.doc.attr(link, "target").is_some_and(|t| t.trim().eq_ignore_ascii_case("_blank"));
+        let new_tab = self
+            .doc
+            .attr(link, "target")
+            .is_some_and(|t| t.trim().eq_ignore_ascii_case("_blank"));
         // A link to this document with a fragment scrolls rather than reloads.
         if !new_tab {
             if let (Some(here), Some(fragment)) = (Url::parse(&self.url).ok(), url.fragment()) {
@@ -1000,7 +1174,10 @@ impl WebDocument {
                 }
             }
         }
-        Ok(Outcome::Navigate { url: url.to_string(), new_tab })
+        Ok(Outcome::Navigate {
+            url: url.to_string(),
+            new_tab,
+        })
     }
 
     /// Sets `:target` and finds where the fragment's element sits, in CSS px from the
@@ -1016,10 +1193,21 @@ impl WebDocument {
         if fragment.is_empty() || fragment == "top" && self.doc.by_id(&fragment).is_empty() {
             return Outcome::ScrollTo(0);
         }
-        let Some(node) = self.doc.by_id(&fragment).first().copied().or_else(|| self.doc.descendants(Document::ROOT).find(|n| self.doc.is(*n, "a") && self.doc.attr(*n, "name") == Some(fragment.as_str()))) else {
+        let Some(node) = self.doc.by_id(&fragment).first().copied().or_else(|| {
+            self.doc.descendants(Document::ROOT).find(|n| {
+                self.doc.is(*n, "a") && self.doc.attr(*n, "name") == Some(fragment.as_str())
+            })
+        }) else {
             return Outcome::Nothing;
         };
-        let y = self.with_layout(|tree| tree.rects_of(node).first().map(|r| r.origin.y.to_px_floor().max(0))).flatten().unwrap_or(0);
+        let y = self
+            .with_layout(|tree| {
+                tree.rects_of(node)
+                    .first()
+                    .map(|r| r.origin.y.to_px_floor().max(0))
+            })
+            .flatten()
+            .unwrap_or(0);
         Outcome::ScrollTo(y)
     }
 
@@ -1049,36 +1237,76 @@ impl WebDocument {
         drop(guard);
         let (w, h, zoom) = self.last_viewport();
         let empty = BTreeMap::new();
-        let guard = self.render(Inputs { width: w, height: h, zoom, fields: &empty, focused: None, scroll_y: 0 });
+        let guard = self.render(Inputs {
+            width: w,
+            height: h,
+            zoom,
+            fields: &empty,
+            focused: None,
+            scroll_y: 0,
+        });
         guard.0.render.as_ref().map(|r| f(&r.tree))
     }
 
     /// The viewport of the last render, else the engine default.
     pub fn last_viewport(&self) -> (u32, u32, u16) {
         if self.script.is_some() {
-            return self.cache.lock().ok().and_then(|c| c.0.script_render.as_ref().map(|r| (r.width, r.height, r.zoom))).unwrap_or((1280, 800, 100));
+            return self
+                .cache
+                .lock()
+                .ok()
+                .and_then(|c| {
+                    c.0.script_render
+                        .as_ref()
+                        .map(|r| (r.width, r.height, r.zoom))
+                })
+                .unwrap_or((1280, 800, 100));
         }
-        self.cache.lock().ok().and_then(|c| c.0.render.as_ref().map(|r| (r.key.width, r.key.height, r.key.zoom))).unwrap_or((1280, 800, 100))
+        self.cache
+            .lock()
+            .ok()
+            .and_then(|c| {
+                c.0.render
+                    .as_ref()
+                    .map(|r| (r.key.width, r.key.height, r.key.zoom))
+            })
+            .unwrap_or((1280, 800, 100))
     }
 
     /// Types into the focused control at the caret.
-    pub fn insert_text(&mut self, text: &str, fields: &mut BTreeMap<String, String>, focused: &Option<String>) -> Result<()> {
-        let id = focused.clone().ok_or_else(|| SimError::invalid("no focused input"))?;
-        let node = self.node_for(&id).ok_or_else(|| SimError::not_found("input"))?;
+    pub fn insert_text(
+        &mut self,
+        text: &str,
+        fields: &mut BTreeMap<String, String>,
+        focused: &Option<String>,
+    ) -> Result<()> {
+        let id = focused
+            .clone()
+            .ok_or_else(|| SimError::invalid("no focused input"))?;
+        let node = self
+            .node_for(&id)
+            .ok_or_else(|| SimError::not_found("input"))?;
         if !self.is_text_control(node) {
             return Err(SimError::invalid("focused element is not a text control"));
         }
         if semantics::is_disabled(&self.doc, node) || self.doc.has_attr(node, "readonly") {
             return Err(SimError::invalid("input is read-only"));
         }
-        let text = if self.doc.is(node, "textarea") { text.to_owned() } else { text.replace(['\n', '\r'], "") };
+        let text = if self.doc.is(node, "textarea") {
+            text.to_owned()
+        } else {
+            text.replace(['\n', '\r'], "")
+        };
         let value = fields.entry(id).or_default();
         let chars: Vec<char> = value.chars().collect();
         let at = self.caret.map_or(chars.len(), |c| c.min(chars.len()));
         let mut next: String = chars[..at].iter().collect();
         next.push_str(&text);
         next.extend(chars[at..].iter());
-        let max = self.doc.attr(node, "maxlength").and_then(|m| m.trim().parse::<usize>().ok());
+        let max = self
+            .doc
+            .attr(node, "maxlength")
+            .and_then(|m| m.trim().parse::<usize>().ok());
         if let Some(max) = max {
             next = next.chars().take(max).collect();
         }
@@ -1089,7 +1317,12 @@ impl WebDocument {
     }
 
     /// A key press: what browsers do with it when the page has no script.
-    pub fn key(&mut self, key: &str, fields: &mut BTreeMap<String, String>, focused: &mut Option<String>) -> Result<Outcome> {
+    pub fn key(
+        &mut self,
+        key: &str,
+        fields: &mut BTreeMap<String, String>,
+        focused: &mut Option<String>,
+    ) -> Result<Outcome> {
         let (name, shift) = match key.strip_prefix("Shift+") {
             Some(rest) => (rest, true),
             None => (key, false),
@@ -1100,7 +1333,10 @@ impl WebDocument {
                 self.focus(None, focused);
                 return Ok(Outcome::Nothing);
             }
-            let current = focused.as_deref().and_then(|id| self.node_for(id)).and_then(|n| order.iter().position(|o| *o == n));
+            let current = focused
+                .as_deref()
+                .and_then(|id| self.node_for(id))
+                .and_then(|n| order.iter().position(|o| *o == n));
             let next = match (current, shift) {
                 (Some(i), false) => order[(i + 1) % order.len()],
                 (Some(i), true) => order[(i + order.len() - 1) % order.len()],
@@ -1115,8 +1351,12 @@ impl WebDocument {
             self.focus(None, focused);
             return Ok(Outcome::Nothing);
         }
-        let id = focused.clone().ok_or_else(|| SimError::invalid("no focused input"))?;
-        let node = self.node_for(&id).ok_or_else(|| SimError::not_found("input"))?;
+        let id = focused
+            .clone()
+            .ok_or_else(|| SimError::invalid("no focused input"))?;
+        let node = self
+            .node_for(&id)
+            .ok_or_else(|| SimError::not_found("input"))?;
         let text = self.is_text_control(node);
         let d = &self.doc;
         let tag = d.tag(node).unwrap_or("").to_owned();
@@ -1124,7 +1364,9 @@ impl WebDocument {
         match name {
             "Enter" => {
                 if tag == "textarea" {
-                    return self.insert_text("\n", fields, focused).map(|_| Outcome::Nothing);
+                    return self
+                        .insert_text("\n", fields, focused)
+                        .map(|_| Outcome::Nothing);
                 }
                 if text {
                     // Implicit submission: the form's default button is the submitter.
@@ -1132,18 +1374,37 @@ impl WebDocument {
                         return Err(SimError::invalid("input has no form"));
                     };
                     let submitter = self.default_button(form);
-                    return self.submit_form(form, submitter, fields).map(Outcome::Request);
+                    return self
+                        .submit_form(form, submitter, fields)
+                        .map(Outcome::Request);
                 }
-                if tag == "a" || tag == "button" || tag == "summary" || (tag == "input" && matches!(kind.as_str(), "submit" | "image" | "reset" | "button" | "checkbox" | "radio")) {
+                if tag == "a"
+                    || tag == "button"
+                    || tag == "summary"
+                    || (tag == "input"
+                        && matches!(
+                            kind.as_str(),
+                            "submit" | "image" | "reset" | "button" | "checkbox" | "radio"
+                        ))
+                {
                     return self.click(node, fields, focused);
                 }
                 Ok(Outcome::Nothing)
             }
             " " | "Space" => {
                 if text {
-                    return self.insert_text(" ", fields, focused).map(|_| Outcome::Nothing);
+                    return self
+                        .insert_text(" ", fields, focused)
+                        .map(|_| Outcome::Nothing);
                 }
-                if tag == "button" || tag == "summary" || (tag == "input" && matches!(kind.as_str(), "submit" | "image" | "reset" | "button" | "checkbox" | "radio")) {
+                if tag == "button"
+                    || tag == "summary"
+                    || (tag == "input"
+                        && matches!(
+                            kind.as_str(),
+                            "submit" | "image" | "reset" | "button" | "checkbox" | "radio"
+                        ))
+                {
                     return self.click(node, fields, focused);
                 }
                 Ok(Outcome::Nothing)
@@ -1189,7 +1450,11 @@ impl WebDocument {
                 if tag == "input" && kind == "radio" {
                     let group = self.radio_group(node);
                     let i = group.iter().position(|g| *g == node).unwrap_or(0);
-                    let next = if forward { group[(i + 1) % group.len()] } else { group[(i + group.len() - 1) % group.len()] };
+                    let next = if forward {
+                        group[(i + 1) % group.len()]
+                    } else {
+                        group[(i + group.len() - 1) % group.len()]
+                    };
                     self.check_radio(next);
                     self.focus(Some(next), focused);
                     return Ok(Outcome::Nothing);
@@ -1214,7 +1479,9 @@ impl WebDocument {
                 }
                 Ok(Outcome::Nothing)
             }
-            other => Err(SimError::invalid(format!("unsupported browser key {other}"))),
+            other => Err(SimError::invalid(format!(
+                "unsupported browser key {other}"
+            ))),
         }
     }
 
@@ -1223,7 +1490,9 @@ impl WebDocument {
         self.doc.descendants(Document::ROOT).find(|n| {
             let d = &self.doc;
             let is_submit = match d.tag(*n) {
-                Some("button") => d.attr(*n, "type").is_none_or(|t| t.trim().eq_ignore_ascii_case("submit")),
+                Some("button") => d
+                    .attr(*n, "type")
+                    .is_none_or(|t| t.trim().eq_ignore_ascii_case("submit")),
                 Some("input") => matches!(input_type(d, *n).as_str(), "submit" | "image"),
                 _ => false,
             };
@@ -1235,36 +1504,61 @@ impl WebDocument {
     /// unless `id` is a submit button.
     pub fn submit(&mut self, id: &str, fields: &BTreeMap<String, String>) -> Result<HttpRequest> {
         self.notice = None;
-        let node = self.node_for(id).ok_or_else(|| SimError::not_found("form"))?;
+        let node = self
+            .node_for(id)
+            .ok_or_else(|| SimError::not_found("form"))?;
         let (form, submitter) = if self.doc.is(node, "form") {
             (node, None)
         } else {
-            let form = self.form_owner(node).ok_or_else(|| SimError::not_found("form"))?;
-            let is_button = matches!(self.doc.tag(node), Some("button")) || (self.doc.is(node, "input") && matches!(input_type(&self.doc, node).as_str(), "submit" | "image"));
+            let form = self
+                .form_owner(node)
+                .ok_or_else(|| SimError::not_found("form"))?;
+            let is_button = matches!(self.doc.tag(node), Some("button"))
+                || (self.doc.is(node, "input")
+                    && matches!(input_type(&self.doc, node).as_str(), "submit" | "image"));
             (form, is_button.then_some(node))
         };
         self.submit_form(form, submitter, fields)
     }
 
     /// The form data set and the request that carries it (HTML §4.10.21).
-    fn submit_form(&mut self, form: NodeId, submitter: Option<NodeId>, fields: &BTreeMap<String, String>) -> Result<HttpRequest> {
+    fn submit_form(
+        &mut self,
+        form: NodeId,
+        submitter: Option<NodeId>,
+        fields: &BTreeMap<String, String>,
+    ) -> Result<HttpRequest> {
         let d = &self.doc;
         let attr = |name: &str| -> Option<String> {
-            submitter.and_then(|s| d.attr(s, &format!("form{name}"))).or_else(|| d.attr(form, name)).map(|v| v.trim().to_owned()).filter(|v| !v.is_empty())
+            submitter
+                .and_then(|s| d.attr(s, &format!("form{name}")))
+                .or_else(|| d.attr(form, name))
+                .map(|v| v.trim().to_owned())
+                .filter(|v| !v.is_empty())
         };
-        let method = attr("method").map(|m| m.to_ascii_uppercase()).filter(|m| m == "POST" || m == "GET" || m == "DIALOG").unwrap_or_else(|| "GET".into());
-        let enctype = attr("enctype").map(|e| e.to_ascii_lowercase()).unwrap_or_default();
+        let method = attr("method")
+            .map(|m| m.to_ascii_uppercase())
+            .filter(|m| m == "POST" || m == "GET" || m == "DIALOG")
+            .unwrap_or_else(|| "GET".into());
+        let enctype = attr("enctype")
+            .map(|e| e.to_ascii_lowercase())
+            .unwrap_or_default();
         let action = attr("action").unwrap_or_default();
         let url = if action.is_empty() {
             let mut u = Url::parse(&self.url).map_err(|e| SimError::invalid(e.to_string()))?;
             u.set_fragment(None);
             u
         } else {
-            self.resolve(&action).ok_or_else(|| SimError::denied("browser supports credential-free http/https URLs only"))?
+            self.resolve(&action).ok_or_else(|| {
+                SimError::denied("browser supports credential-free http/https URLs only")
+            })?
         };
         // Constraint validation: a required field left empty blocks the submission.
         for n in d.descendants(Document::ROOT) {
-            if self.form_owner(n) != Some(form) || !d.has_attr(n, "required") || semantics::is_disabled(d, n) {
+            if self.form_owner(n) != Some(form)
+                || !d.has_attr(n, "required")
+                || semantics::is_disabled(d, n)
+            {
                 continue;
             }
             let kind = input_type(d, n);
@@ -1281,7 +1575,11 @@ impl WebDocument {
             };
             if missing {
                 let label = semantics::label_of(d, &semantics::Tables::build(d), n);
-                let message = if label.is_empty() { "Please fill out this field.".to_owned() } else { format!("Please fill out this field: {label}") };
+                let message = if label.is_empty() {
+                    "Please fill out this field.".to_owned()
+                } else {
+                    format!("Please fill out this field: {label}")
+                };
                 self.notice = Some(message.clone());
                 self.generation += 1;
                 return Err(SimError::invalid(message));
@@ -1300,12 +1598,20 @@ impl WebDocument {
                     match kind.as_str() {
                         "submit" => {
                             if Some(n) == submitter && !name.is_empty() {
-                                entries.push((name, d.attr(n, "value").unwrap_or("").to_owned(), false));
+                                entries.push((
+                                    name,
+                                    d.attr(n, "value").unwrap_or("").to_owned(),
+                                    false,
+                                ));
                             }
                         }
                         "image" => {
                             if Some(n) == submitter {
-                                let prefix = if name.is_empty() { String::new() } else { format!("{name}.") };
+                                let prefix = if name.is_empty() {
+                                    String::new()
+                                } else {
+                                    format!("{name}.")
+                                };
                                 entries.push((format!("{prefix}x"), "0".into(), false));
                                 entries.push((format!("{prefix}y"), "0".into(), false));
                             }
@@ -1313,7 +1619,11 @@ impl WebDocument {
                         "button" | "reset" => {}
                         "checkbox" | "radio" => {
                             if !name.is_empty() && self.is_checked(n) {
-                                entries.push((name, d.attr(n, "value").unwrap_or("on").to_owned(), false));
+                                entries.push((
+                                    name,
+                                    d.attr(n, "value").unwrap_or("on").to_owned(),
+                                    false,
+                                ));
                             }
                         }
                         "file" => {
@@ -1323,14 +1633,21 @@ impl WebDocument {
                         }
                         _ => {
                             if !name.is_empty() {
-                                let value = if kind == "hidden" { d.attr(n, "value").unwrap_or("").to_owned() } else { self.value_of(n, fields) };
+                                let value = if kind == "hidden" {
+                                    d.attr(n, "value").unwrap_or("").to_owned()
+                                } else {
+                                    self.value_of(n, fields)
+                                };
                                 entries.push((name, value, false));
                             }
                         }
                     }
                 }
                 Some("button") => {
-                    let kind = d.attr(n, "type").map(|t| t.trim().to_ascii_lowercase()).unwrap_or_else(|| "submit".into());
+                    let kind = d
+                        .attr(n, "type")
+                        .map(|t| t.trim().to_ascii_lowercase())
+                        .unwrap_or_else(|| "submit".into());
                     if kind == "submit" && Some(n) == submitter && !name.is_empty() {
                         entries.push((name, d.attr(n, "value").unwrap_or("").to_owned(), false));
                     }
@@ -1339,9 +1656,16 @@ impl WebDocument {
                     if name.is_empty() {
                         continue;
                     }
-                    let options: Vec<NodeId> = d.descendants(n).filter(|o| d.is(*o, "option")).collect();
+                    let options: Vec<NodeId> =
+                        d.descendants(n).filter(|o| d.is(*o, "option")).collect();
                     let selected: Vec<NodeId> = if d.has_attr(n, "multiple") {
-                        options.iter().copied().filter(|o| d.has_attr(*o, "selected") && !semantics::is_disabled(d, *o)).collect()
+                        options
+                            .iter()
+                            .copied()
+                            .filter(|o| {
+                                d.has_attr(*o, "selected") && !semantics::is_disabled(d, *o)
+                            })
+                            .collect()
                     } else {
                         semantics::selected_option(d, n).into_iter().collect()
                     };
@@ -1350,7 +1674,11 @@ impl WebDocument {
                     }
                 }
                 Some("textarea") if !name.is_empty() => {
-                    let value = self.value_of(n, fields).replace("\r\n", "\n").replace('\r', "\n").replace('\n', "\r\n");
+                    let value = self
+                        .value_of(n, fields)
+                        .replace("\r\n", "\n")
+                        .replace('\r', "\n")
+                        .replace('\n', "\r\n");
                     entries.push((name, value, false));
                 }
                 _ => {}
@@ -1386,12 +1714,20 @@ impl WebDocument {
         let guard = self.render(inputs);
         let r = guard.0.render.as_ref()?;
         let zoom = inputs.zoom.max(1) as i64;
-        let (cx, cy) = ((i64::from(x) * 100 / zoom) as i32, (i64::from(y) * 100 / zoom) as i32);
+        let (cx, cy) = (
+            (i64::from(x) * 100 / zoom) as i32,
+            (i64::from(y) * 100 / zoom) as i32,
+        );
         let none = paint::NoImages;
         let mut ctx = PaintContext::new(&none);
         ctx.scroll = r.scroll;
         ctx.scroll_offsets = r.scroll_offsets.clone();
-        let viewport = Viewport { width: r.css_width, height: r.css_height, scale: 1, zoom: 100 };
+        let viewport = Viewport {
+            width: r.css_width,
+            height: r.css_height,
+            scale: 1,
+            zoom: 100,
+        };
         paint::hit::hit_test_with(&r.tree, &r.styles, viewport, &ctx, cx, cy)
     }
 
@@ -1402,30 +1738,54 @@ impl WebDocument {
         if self.script.is_some() {
             return self.script_cursor_at(x, y, inputs);
         }
-        let Some(node) = self.hit(x, y, inputs) else { return "default" };
+        let Some(node) = self.hit(x, y, inputs) else {
+            return "default";
+        };
         let guard = self.render(inputs);
-        let Some(r) = guard.0.render.as_ref() else { return "default" };
-        let explicit = std::iter::once(node).chain(self.doc.ancestors(node)).find_map(|n| r.styles.get(n).map(|s| s.cursor).filter(|c| *c != Cursor::Auto));
+        let Some(r) = guard.0.render.as_ref() else {
+            return "default";
+        };
+        let explicit = std::iter::once(node)
+            .chain(self.doc.ancestors(node))
+            .find_map(|n| {
+                r.styles
+                    .get(n)
+                    .map(|s| s.cursor)
+                    .filter(|c| *c != Cursor::Auto)
+            });
         if let Some(c) = explicit {
             return cursor_name(c);
         }
         if semantics::is_disabled(&self.doc, node) && semantics::is_interactive(&self.doc, node) {
             return "default";
         }
-        if std::iter::once(node).chain(self.doc.ancestors(node)).any(|n| (self.doc.is(n, "a") || self.doc.is(n, "area")) && self.doc.has_attr(n, "href")) {
+        if std::iter::once(node)
+            .chain(self.doc.ancestors(node))
+            .any(|n| {
+                (self.doc.is(n, "a") || self.doc.is(n, "area")) && self.doc.has_attr(n, "href")
+            })
+        {
             return "pointer";
         }
         if self.is_text_control(node) {
             return "text";
         }
-        if matches!(self.doc.tag(node), Some("button" | "select" | "summary" | "label")) || (self.doc.is(node, "input") && !self.is_text_control(node)) {
+        if matches!(
+            self.doc.tag(node),
+            Some("button" | "select" | "summary" | "label")
+        ) || (self.doc.is(node, "input") && !self.is_text_control(node))
+        {
             return "default";
         }
         // Over a text run the pointer is a beam.
         let zoom = inputs.zoom.max(1) as i64;
         let cx = Au::from_px_i32((i64::from(x) * 100 / zoom) as i32) + r.scroll.x;
         let cy = Au::from_px_i32((i64::from(y) * 100 / zoom) as i32) + r.scroll.y;
-        let on_text = r.tree.hit(cx, cy).last().is_some_and(|(f, _)| matches!(f.kind, FragmentKind::Text { .. }));
+        let on_text = r
+            .tree
+            .hit(cx, cy)
+            .last()
+            .is_some_and(|(f, _)| matches!(f.kind, FragmentKind::Text { .. }));
         if on_text {
             "text"
         } else {
@@ -1437,7 +1797,11 @@ impl WebDocument {
     /// axis. Returns whether it moved.
     pub fn scroll_pane(&mut self, id: &str, offset: i32, horizontal: bool) -> bool {
         let entry = self.scrolls.entry(id.to_owned()).or_insert((0, 0));
-        let slot = if horizontal { &mut entry.0 } else { &mut entry.1 };
+        let slot = if horizontal {
+            &mut entry.0
+        } else {
+            &mut entry.1
+        };
         let offset = offset.max(0);
         if *slot == offset {
             return false;
@@ -1454,9 +1818,17 @@ impl WebDocument {
     /// The document's scrollable height in CSS px at the last render.
     pub fn content_height(&self) -> Option<u32> {
         if let Some(s) = &self.script {
-            return Some(s.read(|realm| realm.fragment_tree().content_height.to_px_ceil().max(0) as u32));
+            return Some(
+                s.read(|realm| realm.fragment_tree().content_height.to_px_ceil().max(0) as u32),
+            );
         }
-        self.cache.lock().ok()?.0.render.as_ref().map(|r| r.tree.content_height.to_px_ceil().max(0) as u32)
+        self.cache
+            .lock()
+            .ok()?
+            .0
+            .render
+            .as_ref()
+            .map(|r| r.tree.content_height.to_px_ceil().max(0) as u32)
     }
 
     // -----------------------------------------------------------------------------
@@ -1469,7 +1841,12 @@ impl WebDocument {
             return self.script_scene(inputs);
         }
         let guard = self.render(inputs);
-        guard.0.render.as_ref().map(|r| r.scene.clone()).unwrap_or_else(|| Scene::new(inputs.width, inputs.height))
+        guard
+            .0
+            .render
+            .as_ref()
+            .map(|r| r.scene.clone())
+            .unwrap_or_else(|| Scene::new(inputs.width, inputs.height))
     }
 
     fn render(&self, inputs: Inputs<'_>) -> MutexGuard<'_, SendCache> {
@@ -1500,7 +1877,11 @@ impl WebDocument {
         let css_width = ((i64::from(key.width) * 100 + zoom - 1) / zoom).max(1) as u32;
         let css_height = ((i64::from(key.height) * 100 + zoom - 1) / zoom).max(1) as u32;
         let media = Media::with_size(css_width as i32, css_height as i32);
-        let focused_node = key.focused.as_deref().and_then(|id| self.node_for(id)).filter(|n| semantics::is_focusable(&self.doc, *n) || self.doc.is(*n, "select"));
+        let focused_node = key
+            .focused
+            .as_deref()
+            .and_then(|id| self.node_for(id))
+            .filter(|n| semantics::is_focusable(&self.doc, *n) || self.doc.is(*n, "select"));
         let values = self.live_values(&key.fields);
         let form = LiveForm { values: &values };
         let mut ctx = MatchContext::new();
@@ -1512,9 +1893,18 @@ impl WebDocument {
         let sheets = cache.sheets.as_deref().unwrap_or(&[]);
         let previous = cache.render.take();
         let styles = match previous {
-            Some(mut prev) if prev.key.generation == key.generation && prev.css_width == css_width && prev.css_height == css_height && prev.target == self.target => {
+            Some(mut prev)
+                if prev.key.generation == key.generation
+                    && prev.css_width == css_width
+                    && prev.css_height == css_height
+                    && prev.target == self.target =>
+            {
                 // Only interaction state moved: restyle what flipped.
-                let mut changed: Vec<NodeId> = prev.hovered.symmetric_difference(&ctx.hovered).copied().collect();
+                let mut changed: Vec<NodeId> = prev
+                    .hovered
+                    .symmetric_difference(&ctx.hovered)
+                    .copied()
+                    .collect();
                 for n in [prev.focused, focused_node].into_iter().flatten() {
                     if !changed.contains(&n) {
                         changed.push(n);
@@ -1530,16 +1920,28 @@ impl WebDocument {
                     }
                 }
                 if !changed.is_empty() {
-                    let _ = style::restyle_state(&self.doc, &mut prev.styles, &changed, sheets, &media, &ctx, Strictness::Lenient);
+                    let _ = style::restyle_state(
+                        &self.doc,
+                        &mut prev.styles,
+                        &changed,
+                        sheets,
+                        &media,
+                        &ctx,
+                        Strictness::Lenient,
+                    );
                 }
                 prev.styles
             }
-            _ => style::cascade(&self.doc, sheets, &media, &ctx, Strictness::Lenient).unwrap_or_default(),
+            _ => style::cascade(&self.doc, sheets, &media, &ctx, Strictness::Lenient)
+                .unwrap_or_default(),
         };
         // Layout, with the scroll offsets (sticky positioning follows them).
         let mut scroll_state = ScrollState::new();
         let root_x = self.scrolls.get("page").map_or(0, |s| s.0);
-        scroll_state.insert(Document::ROOT, (Au::from_px_i32(root_x), Au::from_px_i32(key.scroll_y)));
+        scroll_state.insert(
+            Document::ROOT,
+            (Au::from_px_i32(root_x), Au::from_px_i32(key.scroll_y)),
+        );
         let mut scroll_offsets: BTreeMap<NodeId, Point> = BTreeMap::new();
         for (id, (sx, sy)) in &self.scrolls {
             if id == "page" {
@@ -1551,14 +1953,37 @@ impl WebDocument {
                 scroll_offsets.insert(n, Point { x: p.0, y: p.1 });
             }
         }
-        let viewport = Viewport { width: key.width, height: key.height, scale: 1, zoom: key.zoom };
-        let sizes = ImageRefs { refs: &self.refs, images: &self.images };
-        let tree = layout::layout_with(&self.doc, &styles, viewport, LayoutOptions { images: &sizes, scroll: &scroll_state }, &mut cache.layout);
+        let viewport = Viewport {
+            width: key.width,
+            height: key.height,
+            scale: 1,
+            zoom: key.zoom,
+        };
+        let sizes = ImageRefs {
+            refs: &self.refs,
+            images: &self.images,
+        };
+        let tree = layout::layout_with(
+            &self.doc,
+            &styles,
+            viewport,
+            LayoutOptions {
+                images: &sizes,
+                scroll: &scroll_state,
+            },
+            &mut cache.layout,
+        );
         let max_y = (tree.content_height - tree.viewport_height).max(Au::ZERO);
         let max_x = (tree.content_width - tree.viewport_width).max(Au::ZERO);
-        let scroll = Point { x: Au::from_px_i32(root_x).clamp(Au::ZERO, max_x), y: Au::from_px_i32(key.scroll_y).clamp(Au::ZERO, max_y) };
+        let scroll = Point {
+            x: Au::from_px_i32(root_x).clamp(Au::ZERO, max_x),
+            y: Au::from_px_i32(key.scroll_y).clamp(Au::ZERO, max_y),
+        };
         let decoded = cache.decoded.as_ref().expect("decoded above");
-        let pixels = DecodedRefs { refs: &self.refs, decoded };
+        let pixels = DecodedRefs {
+            refs: &self.refs,
+            decoded,
+        };
         let mut pctx = PaintContext::new(&pixels);
         pctx.scroll = scroll;
         pctx.scroll_offsets = scroll_offsets.clone();
@@ -1577,7 +2002,19 @@ impl WebDocument {
         if let Some(notice) = &self.notice {
             paint_notice(&mut scene, notice);
         }
-        cache.render = Some(Render { key, hovered: ctx.hovered.clone(), focused: focused_node, target: self.target.clone(), css_width, css_height, styles, tree, scroll, scroll_offsets, scene });
+        cache.render = Some(Render {
+            key,
+            hovered: ctx.hovered.clone(),
+            focused: focused_node,
+            target: self.target.clone(),
+            css_width,
+            css_height,
+            styles,
+            tree,
+            scroll,
+            scroll_offsets,
+            scene,
+        });
         guard
     }
 
@@ -1585,7 +2022,9 @@ impl WebDocument {
         self.sheets
             .iter()
             .map(|s| {
-                let mut sheet = css::parse_stylesheet(&s.source, Origin::Author, Strictness::Lenient).unwrap_or_default();
+                let mut sheet =
+                    css::parse_stylesheet(&s.source, Origin::Author, Strictness::Lenient)
+                        .unwrap_or_default();
                 if !s.media.is_empty() {
                     let query = MediaQueryList::parse(&s.media);
                     let rules = std::mem::take(&mut sheet.rules);
@@ -1597,7 +2036,19 @@ impl WebDocument {
     }
 
     fn decode_images(&self) -> BTreeMap<String, RgbaImage> {
-        self.images.iter().map(|(url, a)| (url.clone(), RgbaImage { width: a.width, height: a.height, rgba: a.rgba.clone() })).collect()
+        self.images
+            .iter()
+            .map(|(url, a)| {
+                (
+                    url.clone(),
+                    RgbaImage {
+                        width: a.width,
+                        height: a.height,
+                        rgba: a.rgba.clone(),
+                    },
+                )
+            })
+            .collect()
     }
 
     /// Typed values by node, for paint and `:placeholder-shown`.
@@ -1671,9 +2122,26 @@ impl WebDocument {
         if self.script.is_some() {
             return self.projection().to_page(fields);
         }
-        let mut page = Page::new(if self.title.is_empty() { self.url.as_str() } else { self.title.as_str() });
-        page.lang = self.doc.document_element().and_then(|h| self.doc.attr(h, "lang")).map(str::to_owned).filter(|l| !l.is_empty());
-        let mut p = Projector { web: self, fields, tables: semantics::Tables::build(&self.doc), ids: BTreeSet::new(), texts: 0, out: Vec::new(), run: String::new() };
+        let mut page = Page::new(if self.title.is_empty() {
+            self.url.as_str()
+        } else {
+            self.title.as_str()
+        });
+        page.lang = self
+            .doc
+            .document_element()
+            .and_then(|h| self.doc.attr(h, "lang"))
+            .map(str::to_owned)
+            .filter(|l| !l.is_empty());
+        let mut p = Projector {
+            web: self,
+            fields,
+            tables: semantics::Tables::build(&self.doc),
+            ids: BTreeSet::new(),
+            texts: 0,
+            out: Vec::new(),
+            run: String::new(),
+        };
         if let Some(body) = self.doc.body() {
             p.walk_children(body);
         }
@@ -1689,8 +2157,15 @@ impl WebDocument {
         fn walk(elements: &[PageElement], out: &mut Vec<String>) {
             for e in elements {
                 match e {
-                    PageElement::Heading { text, .. } | PageElement::Text { text, .. } | PageElement::Link { text, .. } | PageElement::Button { text, .. } => out.push(text.clone()),
-                    PageElement::Input { label, value, .. } => out.push(if value.is_empty() { label.clone() } else { format!("{label}: {value}") }),
+                    PageElement::Heading { text, .. }
+                    | PageElement::Text { text, .. }
+                    | PageElement::Link { text, .. }
+                    | PageElement::Button { text, .. } => out.push(text.clone()),
+                    PageElement::Input { label, value, .. } => out.push(if value.is_empty() {
+                        label.clone()
+                    } else {
+                        format!("{label}: {value}")
+                    }),
                     PageElement::Form { children, .. } => walk(children, out),
                     PageElement::Image { alt, .. } => out.push(alt.clone()),
                     _ => {}
@@ -1706,11 +2181,22 @@ impl WebDocument {
 
 /// The request that carries a form data set (`(name, value, is a file)` entries) to
 /// `url`: a query string for GET, else a body in the form's encoding (HTML §4.10.21).
-pub(crate) fn encode_submission(mut url: Url, method: &str, enctype: &str, entries: &[(String, String, bool)]) -> HttpRequest {
+pub(crate) fn encode_submission(
+    mut url: Url,
+    method: &str,
+    enctype: &str,
+    entries: &[(String, String, bool)],
+) -> HttpRequest {
     let mut request = HttpRequest::get(url.as_str());
     if method == "GET" || method == "DIALOG" {
-        let query = url::form_urlencoded::Serializer::new(String::new()).extend_pairs(entries.iter().map(|(k, v, _)| (k.as_str(), v.as_str()))).finish();
-        url.set_query(if entries.is_empty() { None } else { Some(&query) });
+        let query = url::form_urlencoded::Serializer::new(String::new())
+            .extend_pairs(entries.iter().map(|(k, v, _)| (k.as_str(), v.as_str())))
+            .finish();
+        url.set_query(if entries.is_empty() {
+            None
+        } else {
+            Some(&query)
+        });
         request.url = url.to_string();
         return request;
     }
@@ -1724,13 +2210,22 @@ pub(crate) fn encode_submission(mut url: Url, method: &str, enctype: &str, entri
                 if *file {
                     body.extend_from_slice(format!("Content-Disposition: form-data; name=\"{}\"; filename=\"\"\r\nContent-Type: application/octet-stream\r\n\r\n", escape_disposition(name)).as_bytes());
                 } else {
-                    body.extend_from_slice(format!("Content-Disposition: form-data; name=\"{}\"\r\n\r\n", escape_disposition(name)).as_bytes());
+                    body.extend_from_slice(
+                        format!(
+                            "Content-Disposition: form-data; name=\"{}\"\r\n\r\n",
+                            escape_disposition(name)
+                        )
+                        .as_bytes(),
+                    );
                     body.extend_from_slice(value.as_bytes());
                 }
                 body.extend_from_slice(b"\r\n");
             }
             body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
-            request.headers.insert("content-type".into(), format!("multipart/form-data; boundary={boundary}"));
+            request.headers.insert(
+                "content-type".into(),
+                format!("multipart/form-data; boundary={boundary}"),
+            );
             request.body = body;
         }
         "text/plain" => {
@@ -1741,12 +2236,20 @@ pub(crate) fn encode_submission(mut url: Url, method: &str, enctype: &str, entri
                 body.push_str(value);
                 body.push_str("\r\n");
             }
-            request.headers.insert("content-type".into(), "text/plain".into());
+            request
+                .headers
+                .insert("content-type".into(), "text/plain".into());
             request.body = body.into_bytes();
         }
         _ => {
-            request.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
-            request.body = url::form_urlencoded::Serializer::new(String::new()).extend_pairs(entries.iter().map(|(k, v, _)| (k.as_str(), v.as_str()))).finish().into_bytes();
+            request.headers.insert(
+                "content-type".into(),
+                "application/x-www-form-urlencoded".into(),
+            );
+            request.body = url::form_urlencoded::Serializer::new(String::new())
+                .extend_pairs(entries.iter().map(|(k, v, _)| (k.as_str(), v.as_str())))
+                .finish()
+                .into_bytes();
         }
     }
     request
@@ -1796,7 +2299,12 @@ impl Projector<'_> {
     }
     /// The element's own `id` attribute, when it has a usable one.
     fn own_id(&self, node: NodeId) -> Option<String> {
-        self.web.doc.attr(node, "id").map(str::trim).filter(|v| !v.is_empty()).map(str::to_owned)
+        self.web
+            .doc
+            .attr(node, "id")
+            .map(str::trim)
+            .filter(|v| !v.is_empty())
+            .map(str::to_owned)
     }
     fn text_id(&mut self) -> String {
         self.texts += 1;
@@ -1838,7 +2346,8 @@ impl Projector<'_> {
                     return;
                 }
                 match tag.as_str() {
-                    "script" | "style" | "template" | "noscript" | "head" | "title" | "meta" | "link" | "svg" | "math" => {}
+                    "script" | "style" | "template" | "noscript" | "head" | "title" | "meta"
+                    | "link" | "svg" | "math" => {}
                     "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
                         self.flush();
                         let level = tag[1..].parse().unwrap_or(1);
@@ -1850,17 +2359,34 @@ impl Projector<'_> {
                         self.flush();
                         let mut text = semantics::collapse(&d.text_content(node));
                         if text.is_empty() {
-                            text = d.descendants(node).find_map(|n| d.attr(n, "alt").map(semantics::collapse)).unwrap_or_default();
+                            text = d
+                                .descendants(node)
+                                .find_map(|n| d.attr(n, "alt").map(semantics::collapse))
+                                .unwrap_or_default();
                         }
-                        let url = self.web.resolve(d.attr(node, "href").unwrap_or("")).map(|u| u.to_string()).unwrap_or_else(|| d.attr(node, "href").unwrap_or("").to_owned());
+                        let url = self
+                            .web
+                            .resolve(d.attr(node, "href").unwrap_or(""))
+                            .map(|u| u.to_string())
+                            .unwrap_or_else(|| d.attr(node, "href").unwrap_or("").to_owned());
                         let id = self.unique(self.web.id_of(node));
-                        self.out.push(PageElement::Link { id, text, url, style: None });
+                        self.out.push(PageElement::Link {
+                            id,
+                            text,
+                            url,
+                            style: None,
+                        });
                     }
                     "button" => {
                         self.flush();
                         let id = self.unique(self.web.id_of(node));
                         let text = semantics::label_of(d, &self.tables, node);
-                        self.out.push(PageElement::Button { id, text, action: self.form_action(node), style: None });
+                        self.out.push(PageElement::Button {
+                            id,
+                            text,
+                            action: self.form_action(node),
+                            style: None,
+                        });
                     }
                     "input" => {
                         self.flush();
@@ -1870,16 +2396,40 @@ impl Projector<'_> {
                         match kind.as_str() {
                             "hidden" => {}
                             "submit" | "button" | "reset" | "image" => {
-                                self.out.push(PageElement::Button { id, text: label, action: self.form_action(node), style: None });
+                                self.out.push(PageElement::Button {
+                                    id,
+                                    text: label,
+                                    action: self.form_action(node),
+                                    style: None,
+                                });
                             }
                             "checkbox" | "radio" => {
-                                let mark = if self.web.is_checked(node) { if kind == "radio" { "(o)" } else { "[x]" } } else if kind == "radio" { "( )" } else { "[ ]" };
-                                self.out.push(PageElement::Text { id, text: format!("{mark} {label}").trim().to_owned() });
+                                let mark = if self.web.is_checked(node) {
+                                    if kind == "radio" {
+                                        "(o)"
+                                    } else {
+                                        "[x]"
+                                    }
+                                } else if kind == "radio" {
+                                    "( )"
+                                } else {
+                                    "[ ]"
+                                };
+                                self.out.push(PageElement::Text {
+                                    id,
+                                    text: format!("{mark} {label}").trim().to_owned(),
+                                });
                             }
                             _ => {
                                 let value = self.web.value_of(node, self.fields);
-                                let placeholder = d.attr(node, "placeholder").unwrap_or("").to_owned();
-                                self.out.push(PageElement::Input { id, label, value, placeholder });
+                                let placeholder =
+                                    d.attr(node, "placeholder").unwrap_or("").to_owned();
+                                self.out.push(PageElement::Input {
+                                    id,
+                                    label,
+                                    value,
+                                    placeholder,
+                                });
                             }
                         }
                     }
@@ -1889,14 +2439,26 @@ impl Projector<'_> {
                         let label = semantics::label_of(d, &self.tables, node);
                         let value = self.web.value_of(node, self.fields);
                         let placeholder = d.attr(node, "placeholder").unwrap_or("").to_owned();
-                        self.out.push(PageElement::Input { id, label, value, placeholder });
+                        self.out.push(PageElement::Input {
+                            id,
+                            label,
+                            value,
+                            placeholder,
+                        });
                     }
                     "select" => {
                         self.flush();
                         let id = self.unique(self.web.id_of(node));
                         let label = semantics::label_of(d, &self.tables, node);
-                        let value = semantics::selected_option(d, node).map(|o| semantics::collapse(&d.text_content(o))).unwrap_or_default();
-                        self.out.push(PageElement::Input { id, label, value, placeholder: String::new() });
+                        let value = semantics::selected_option(d, node)
+                            .map(|o| semantics::collapse(&d.text_content(o)))
+                            .unwrap_or_default();
+                        self.out.push(PageElement::Input {
+                            id,
+                            label,
+                            value,
+                            placeholder: String::new(),
+                        });
                     }
                     "form" => {
                         self.flush();
@@ -1906,19 +2468,38 @@ impl Projector<'_> {
                         self.walk_children(node);
                         self.flush();
                         let children = std::mem::replace(&mut self.out, outer);
-                        self.out.push(PageElement::Form { id, action, children });
+                        self.out.push(PageElement::Form {
+                            id,
+                            action,
+                            children,
+                        });
                     }
                     "img" => {
                         let alt = semantics::collapse(d.attr(node, "alt").unwrap_or(""));
-                        let size = |a: &str| d.attr(node, a).and_then(|v| v.trim().parse::<u32>().ok()).filter(|v| *v > 0);
+                        let size = |a: &str| {
+                            d.attr(node, a)
+                                .and_then(|v| v.trim().parse::<u32>().ok())
+                                .filter(|v| *v > 0)
+                        };
                         let source = d.attr(node, "src").unwrap_or("").to_owned();
                         let resolved = self.web.resolve(&source).map(|u| u.to_string());
-                        let known = resolved.as_ref().and_then(|u| self.web.images.get(u)).map(|a| (a.width, a.height));
+                        let known = resolved
+                            .as_ref()
+                            .and_then(|u| self.web.images.get(u))
+                            .map(|a| (a.width, a.height));
                         match size("width").zip(size("height")).or(known) {
                             Some((width, height)) if !source.is_empty() => {
                                 self.flush();
                                 let id = self.unique(self.web.id_of(node));
-                                self.out.push(PageElement::Image { id, source: resolved.unwrap_or(source), alt, width: width.min(8192), height: height.min(8192), style: None, action: None });
+                                self.out.push(PageElement::Image {
+                                    id,
+                                    source: resolved.unwrap_or(source),
+                                    alt,
+                                    width: width.min(8192),
+                                    height: height.min(8192),
+                                    style: None,
+                                    action: None,
+                                });
                             }
                             _ => {
                                 if !alt.is_empty() {
@@ -1936,14 +2517,21 @@ impl Projector<'_> {
                         self.walk_children(node);
                         self.flush();
                     }
-                    "p" | "div" | "section" | "article" | "header" | "footer" | "nav" | "main" | "aside" | "ul" | "ol" | "menu" | "table" | "thead" | "tbody" | "tfoot" | "tr" | "td" | "th" | "caption" | "pre" | "blockquote" | "dl" | "dt" | "dd" | "figure" | "figcaption" | "details" | "summary" | "fieldset" | "legend" | "address" | "hr" | "center" | "body" | "html" | "label" | "option" | "optgroup" | "dialog" => {
+                    "p" | "div" | "section" | "article" | "header" | "footer" | "nav" | "main"
+                    | "aside" | "ul" | "ol" | "menu" | "table" | "thead" | "tbody" | "tfoot"
+                    | "tr" | "td" | "th" | "caption" | "pre" | "blockquote" | "dl" | "dt"
+                    | "dd" | "figure" | "figcaption" | "details" | "summary" | "fieldset"
+                    | "legend" | "address" | "hr" | "center" | "body" | "html" | "label"
+                    | "option" | "optgroup" | "dialog" => {
                         let own = self.own_id(node);
                         self.flush();
                         self.walk_children(node);
                         self.flush_as(own);
                     }
                     _ => {
-                        if d.text_content(node).is_empty() && !d.descendants(node).any(|n| d.is(n, "img")) {
+                        if d.text_content(node).is_empty()
+                            && !d.descendants(node).any(|n| d.is(n, "img"))
+                        {
                             return;
                         }
                         match self.own_id(node) {
@@ -1964,20 +2552,40 @@ impl Projector<'_> {
     }
     fn form_action(&self, node: NodeId) -> PageAction {
         let d = &self.web.doc;
-        let form = if d.is(node, "form") { Some(node) } else { self.web.form_owner(node) };
-        let attr = |name: &str| -> Option<String> {
-            let own = if d.is(node, "form") { None } else { d.attr(node, &format!("form{name}")) };
-            own.or_else(|| form.and_then(|f| d.attr(f, name))).map(|v| v.trim().to_owned()).filter(|v| !v.is_empty())
+        let form = if d.is(node, "form") {
+            Some(node)
+        } else {
+            self.web.form_owner(node)
         };
-        let method = attr("method").map(|m| m.to_ascii_uppercase()).filter(|m| m == "POST").unwrap_or_else(|| "GET".into());
-        let url = attr("action").and_then(|a| self.web.resolve(&a)).map(|u| u.to_string()).unwrap_or_else(|| {
-            let mut u = self.web.url.clone();
-            if let Some(i) = u.find('#') {
-                u.truncate(i);
-            }
-            u
-        });
-        PageAction { method, url, fields: BTreeMap::new() }
+        let attr = |name: &str| -> Option<String> {
+            let own = if d.is(node, "form") {
+                None
+            } else {
+                d.attr(node, &format!("form{name}"))
+            };
+            own.or_else(|| form.and_then(|f| d.attr(f, name)))
+                .map(|v| v.trim().to_owned())
+                .filter(|v| !v.is_empty())
+        };
+        let method = attr("method")
+            .map(|m| m.to_ascii_uppercase())
+            .filter(|m| m == "POST")
+            .unwrap_or_else(|| "GET".into());
+        let url = attr("action")
+            .and_then(|a| self.web.resolve(&a))
+            .map(|u| u.to_string())
+            .unwrap_or_else(|| {
+                let mut u = self.web.url.clone();
+                if let Some(i) = u.find('#') {
+                    u.truncate(i);
+                }
+                u
+            });
+        PageAction {
+            method,
+            url,
+            fields: BTreeMap::new(),
+        }
     }
 }
 
@@ -2032,19 +2640,39 @@ impl ImageCache for DecodedRefs<'_> {
 }
 
 pub(crate) fn input_type(doc: &Document, node: NodeId) -> String {
-    doc.attr(node, "type").unwrap_or("text").trim().to_ascii_lowercase()
+    doc.attr(node, "type")
+        .unwrap_or("text")
+        .trim()
+        .to_ascii_lowercase()
 }
 
 fn is_text_input_type(t: &str) -> bool {
-    !matches!(t, "checkbox" | "radio" | "submit" | "button" | "reset" | "hidden" | "image" | "file" | "color" | "range")
+    !matches!(
+        t,
+        "checkbox"
+            | "radio"
+            | "submit"
+            | "button"
+            | "reset"
+            | "hidden"
+            | "image"
+            | "file"
+            | "color"
+            | "range"
+    )
 }
 
 fn escape_disposition(name: &str) -> String {
-    name.replace('\r', "%0D").replace('\n', "%0A").replace('"', "%22")
+    name.replace('\r', "%0D")
+        .replace('\n', "%0A")
+        .replace('"', "%22")
 }
 
 fn percent_decode(s: &str) -> String {
-    url::form_urlencoded::parse(format!("k={}", s.replace('+', "%2B")).as_bytes()).next().map(|(_, v)| v.into_owned()).unwrap_or_else(|| s.to_owned())
+    url::form_urlencoded::parse(format!("k={}", s.replace('+', "%2B")).as_bytes())
+        .next()
+        .map(|(_, v)| v.into_owned())
+        .unwrap_or_else(|| s.to_owned())
 }
 
 /// The CSS name of a computed cursor.
@@ -2080,7 +2708,9 @@ fn css_urls(values: &[ComponentValue]) -> Vec<String> {
                 ComponentValue::Token(Token::Url(u)) => out.push(u.clone()),
                 ComponentValue::Function { name, args } => {
                     if name.eq_ignore_ascii_case("url") || name.eq_ignore_ascii_case("src") {
-                        if let Some(ComponentValue::Token(Token::String(s))) = args.iter().find(|a| !a.is_whitespace()) {
+                        if let Some(ComponentValue::Token(Token::String(s))) =
+                            args.iter().find(|a| !a.is_whitespace())
+                        {
                             out.push(s.clone());
                         }
                     } else {
@@ -2108,7 +2738,9 @@ fn sheet_urls(rules: &[Rule]) -> Vec<String> {
                     out.extend(css_urls(&d.value));
                 }
             }
-            Rule::Media { rules, .. } | Rule::Supports { rules, .. } | Rule::Layer { rules, .. } => out.extend(sheet_urls(rules)),
+            Rule::Media { rules, .. }
+            | Rule::Supports { rules, .. }
+            | Rule::Layer { rules, .. } => out.extend(sheet_urls(rules)),
             _ => {}
         }
     }
@@ -2127,7 +2759,12 @@ fn zoom_scene(scene: &mut Scene, percent: u32, width: u32, height: u32) {
         area.bounds = if original.target == "pane:page" {
             cw_scene::Rect::new(0, 0, width, height)
         } else {
-            cw_scene::Rect::new(p(original.bounds.x), p(original.bounds.y), q(original.bounds.width), q(original.bounds.height))
+            cw_scene::Rect::new(
+                p(original.bounds.x),
+                p(original.bounds.y),
+                q(original.bounds.width),
+                q(original.bounds.height),
+            )
         };
     }
 }
@@ -2138,11 +2775,41 @@ fn paint_notice(scene: &mut Scene, text: &str) {
     let h = 28u32.min(scene.height);
     let y = scene.height.saturating_sub(h) as i32;
     let base = 1u64 << 62;
-    let mut bar = Node::new(base, Rect::new(0, y, scene.width, h), Primitive::Box { fill: Color::rgb(255, 244, 229), border: Some(Color::rgb(230, 190, 120)), border_width: 1 });
+    let mut bar = Node::new(
+        base,
+        Rect::new(0, y, scene.width, h),
+        Primitive::Box {
+            fill: Color::rgb(255, 244, 229),
+            border: Some(Color::rgb(230, 190, 120)),
+            border_width: 1,
+        },
+    );
     bar.z = i32::MAX - 2;
     scene.nodes.push(bar);
-    let mut label = Node::new(base + 1, Rect::new(10, y + 6, scene.width.saturating_sub(20), h.saturating_sub(12)), Primitive::UiText { text: text.to_owned(), size: 13, color: Color::rgb(90, 60, 10), italic: false, lang: Default::default(), typeface: None });
+    let mut label = Node::new(
+        base + 1,
+        Rect::new(
+            10,
+            y + 6,
+            scene.width.saturating_sub(20),
+            h.saturating_sub(12),
+        ),
+        Primitive::UiText {
+            text: text.to_owned(),
+            size: 13,
+            color: Color::rgb(90, 60, 10),
+            italic: false,
+            lang: Default::default(),
+            typeface: None,
+        },
+    );
     label.z = i32::MAX - 1;
-    label.semantic = Some(cw_scene::Semantic { role: "status".into(), label: text.to_owned(), value: None, disabled: false, focusable: false });
+    label.semantic = Some(cw_scene::Semantic {
+        role: "status".into(),
+        label: text.to_owned(),
+        value: None,
+        disabled: false,
+        focusable: false,
+    });
     scene.nodes.push(label);
 }

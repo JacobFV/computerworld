@@ -11,22 +11,70 @@ use cw_service_static_site::StaticSite;
 use serde_json::Value;
 
 const SITES: &[(&str, &str)] = &[
-    ("apple", include_str!("../../../worlds/company-2026/sites/apple.json")),
-    ("aws", include_str!("../../../worlds/company-2026/sites/aws.json")),
-    ("cloudflare", include_str!("../../../worlds/company-2026/sites/cloudflare.json")),
-    ("crates", include_str!("../../../worlds/company-2026/sites/crates.json")),
-    ("docsrs", include_str!("../../../worlds/company-2026/sites/docsrs.json")),
-    ("figma", include_str!("../../../worlds/company-2026/sites/figma.json")),
-    ("guide", include_str!("../../../worlds/company-2026/sites/guide.json")),
-    ("intranet", include_str!("../../../worlds/company-2026/sites/intranet.json")),
-    ("microsoft", include_str!("../../../worlds/company-2026/sites/microsoft.json")),
-    ("northstar-status", include_str!("../../../worlds/company-2026/sites/northstar-status.json")),
-    ("northstar-www", include_str!("../../../worlds/company-2026/sites/northstar-www.json")),
-    ("npmjs", include_str!("../../../worlds/company-2026/sites/npmjs.json")),
-    ("pypi", include_str!("../../../worlds/company-2026/sites/pypi.json")),
-    ("stripe", include_str!("../../../worlds/company-2026/sites/stripe.json")),
-    ("whatsapp", include_str!("../../../worlds/company-2026/sites/whatsapp.json")),
-    ("zoom", include_str!("../../../worlds/company-2026/sites/zoom.json")),
+    (
+        "apple",
+        include_str!("../../../worlds/company-2026/sites/apple.json"),
+    ),
+    (
+        "aws",
+        include_str!("../../../worlds/company-2026/sites/aws.json"),
+    ),
+    (
+        "cloudflare",
+        include_str!("../../../worlds/company-2026/sites/cloudflare.json"),
+    ),
+    (
+        "crates",
+        include_str!("../../../worlds/company-2026/sites/crates.json"),
+    ),
+    (
+        "docsrs",
+        include_str!("../../../worlds/company-2026/sites/docsrs.json"),
+    ),
+    (
+        "figma",
+        include_str!("../../../worlds/company-2026/sites/figma.json"),
+    ),
+    (
+        "guide",
+        include_str!("../../../worlds/company-2026/sites/guide.json"),
+    ),
+    (
+        "intranet",
+        include_str!("../../../worlds/company-2026/sites/intranet.json"),
+    ),
+    (
+        "microsoft",
+        include_str!("../../../worlds/company-2026/sites/microsoft.json"),
+    ),
+    (
+        "northstar-status",
+        include_str!("../../../worlds/company-2026/sites/northstar-status.json"),
+    ),
+    (
+        "northstar-www",
+        include_str!("../../../worlds/company-2026/sites/northstar-www.json"),
+    ),
+    (
+        "npmjs",
+        include_str!("../../../worlds/company-2026/sites/npmjs.json"),
+    ),
+    (
+        "pypi",
+        include_str!("../../../worlds/company-2026/sites/pypi.json"),
+    ),
+    (
+        "stripe",
+        include_str!("../../../worlds/company-2026/sites/stripe.json"),
+    ),
+    (
+        "whatsapp",
+        include_str!("../../../worlds/company-2026/sites/whatsapp.json"),
+    ),
+    (
+        "zoom",
+        include_str!("../../../worlds/company-2026/sites/zoom.json"),
+    ),
 ];
 
 fn ctx() -> ServiceContext {
@@ -44,7 +92,10 @@ fn site(source: &str) -> (Value, String, Vec<String>) {
     let state = StaticSite
         .initialize(file["initial_state"].clone(), &ctx())
         .expect("seed passes the service's own gate");
-    let origin = format!("http://{}", file["domains"][0].as_str().expect("a first domain"));
+    let origin = format!(
+        "http://{}",
+        file["domains"][0].as_str().expect("a first domain")
+    );
     let entries = file["search_entries"]
         .as_array()
         .map(|list| {
@@ -65,7 +116,12 @@ fn page_ids(element: &Value, out: &mut Vec<String>) {
     if let Some(id) = element.get("id").and_then(Value::as_str) {
         out.push(id.to_owned());
     }
-    for child in element.get("children").and_then(Value::as_array).into_iter().flatten() {
+    for child in element
+        .get("children")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
         page_ids(child, out);
     }
 }
@@ -93,7 +149,11 @@ fn every_seeded_page_is_strict_html_that_keeps_its_ids() {
         for (path, seeded) in &pages {
             let response = get(&mut state, &format!("{origin}{path}"));
             assert_eq!(response.status, 200, "{name}{path}");
-            assert_eq!(response.header("content-type"), Some(HTML_MEDIA_TYPE), "{name}{path}");
+            assert_eq!(
+                response.header("content-type"),
+                Some(HTML_MEDIA_TYPE),
+                "{name}{path}"
+            );
             let html = String::from_utf8(response.body).expect("utf-8");
             validate_strict(&html).unwrap_or_else(|e| panic!("{name}{path}: {e:?}"));
             let doc = cw_web::html::parse(&html);
@@ -138,7 +198,11 @@ fn every_seeded_page_is_strict_html_that_keeps_its_ids() {
         // Reading never mutates: the same request twice is the same answer.
         let (path, _) = &pages[0];
         let once = get(&mut state, &format!("{origin}{path}"));
-        assert_eq!(once, get(&mut state, &format!("{origin}{path}")), "{name}{path} must be pure");
+        assert_eq!(
+            once,
+            get(&mut state, &format!("{origin}{path}")),
+            "{name}{path} must be pure"
+        );
     }
 }
 
@@ -149,9 +213,16 @@ fn the_records_page_is_strict_html_on_every_site() {
         let (mut state, origin, _) = site(source);
         let response = get(&mut state, &format!("{origin}/records"));
         assert_eq!(response.status, 200, "{name}/records");
-        assert_eq!(response.header("content-type"), Some(HTML_MEDIA_TYPE), "{name}/records");
+        assert_eq!(
+            response.header("content-type"),
+            Some(HTML_MEDIA_TYPE),
+            "{name}/records"
+        );
         let html = String::from_utf8(response.body).expect("utf-8");
         validate_strict(&html).unwrap_or_else(|e| panic!("{name}/records: {e:?}"));
-        assert!(cw_web::html::parse(&html).by_id("records").len() == 1, "{name}/records heading");
+        assert!(
+            cw_web::html::parse(&html).by_id("records").len() == 1,
+            "{name}/records heading"
+        );
     }
 }

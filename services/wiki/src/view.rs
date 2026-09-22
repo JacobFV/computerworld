@@ -166,8 +166,12 @@ fn category_links(s: &WikiState, category: &str, prefix: &str) -> Vec<Node> {
         .filter(|a| a.categories.iter().any(|c| c == category))
         .enumerate()
         .map(|(i, a)| {
-            link(&format!("{prefix}-{i}"), article_url(&a.id), a.title.as_str())
-                .class(&format!("mt mt-{}", media_type(a)))
+            link(
+                &format!("{prefix}-{i}"),
+                article_url(&a.id),
+                a.title.as_str(),
+            )
+            .class(&format!("mt mt-{}", media_type(a)))
         })
         .collect()
 }
@@ -223,7 +227,11 @@ fn shell(
                                 .class("links")
                                 .maybe(top.map(|id| link("nav-top", article_url(&id), "Top rated")))
                                 .when(random, |n| {
-                                    n.child(link("nav-random", random_href(random_next), "Random title"))
+                                    n.child(link(
+                                        "nav-random",
+                                        random_href(random_next),
+                                        "Random title",
+                                    ))
                                 }),
                         ),
                 ),
@@ -254,17 +262,21 @@ fn shell(
                         ),
                 )
                 .child(words)
-                .child(
-                    el("nav")
-                        .class("media")
-                        .children(category_links(s, "Collections", "nav-col")),
-                )
+                .child(el("nav").class("media").children(category_links(
+                    s,
+                    "Collections",
+                    "nav-col",
+                )))
                 .child(search_form(s)),
             div("subnav")
-                .child(el("nav").class("site").children(category_links(s, "Site", "nav-site")).when(
-                    random,
-                    |n| n.child(link("nav-random", random_href(random_next), "Random item")),
-                ))
+                .child(
+                    el("nav")
+                        .class("site")
+                        .children(category_links(s, "Site", "nav-site"))
+                        .when(random, |n| {
+                            n.child(link("nav-random", random_href(random_next), "Random item"))
+                        }),
+                )
                 .maybe(tabs.map(|t| tab_nav(&t))),
             el("main").id("content").class("content").children(main),
             foot,
@@ -302,13 +314,16 @@ fn shell(
                         el("nav")
                             .class("navbox")
                             .child(el("h3").text("Articles"))
-                            .child(el("ul").each(s.articles.values().take(12).enumerate(), |(i, a)| {
-                                el("li").child(link(
-                                    &format!("nav-art-{i}"),
-                                    article_url(&a.id),
-                                    a.title.as_str(),
-                                ))
-                            })),
+                            .child(el("ul").each(
+                                s.articles.values().take(12).enumerate(),
+                                |(i, a)| {
+                                    el("li").child(link(
+                                        &format!("nav-art-{i}"),
+                                        article_url(&a.id),
+                                        a.title.as_str(),
+                                    ))
+                                },
+                            )),
                     )
                 }),
             el("header")
@@ -368,9 +383,17 @@ fn card(s: &WikiState, id: &str, article: &Article, summary_key: &str) -> Node {
         .child(
             span("text")
                 .when(skin == "imdb", |t| {
-                    t.maybe(rating(article).map(|r| span("stars").child(span("star").text("★")).text(format!(" {r}"))))
+                    t.maybe(rating(article).map(|r| {
+                        span("stars")
+                            .child(span("star").text("★"))
+                            .text(format!(" {r}"))
+                    }))
                 })
-                .child(span("title").id(format!("{id}-title")).text(article.title.as_str()))
+                .child(
+                    span("title")
+                        .id(format!("{id}-title"))
+                        .text(article.title.as_str()),
+                )
                 .child(
                     span("summary")
                         .id(format!("{id}-{summary_key}"))
@@ -387,7 +410,9 @@ fn card(s: &WikiState, id: &str, article: &Article, summary_key: &str) -> Node {
 pub(crate) fn portal(s: &WikiState) -> SimResult<HttpResponse> {
     let skin = s.skin_name();
     let brand = brand_of(s);
-    let featured = s.article(&s.featured).or_else(|| s.articles.values().next());
+    let featured = s
+        .article(&s.featured)
+        .or_else(|| s.articles.values().next());
     let (welcome, featured_label, news_label, all_label, random_label) = match skin {
         "imdb" => (
             format!("What to watch on {brand}"),
@@ -440,10 +465,18 @@ pub(crate) fn portal(s: &WikiState) -> SimResult<HttpResponse> {
                     .child(
                         div("box-text")
                             .child(
-                                link("featured-title", article_url(&article.id), article.title.as_str())
-                                    .class("headline"),
+                                link(
+                                    "featured-title",
+                                    article_url(&article.id),
+                                    article.title.as_str(),
+                                )
+                                .class("headline"),
                             )
-                            .child(el("p").id("featured-summary").text(snippet(&article.summary))),
+                            .child(
+                                el("p")
+                                    .id("featured-summary")
+                                    .text(snippet(&article.summary)),
+                            ),
                     ),
             )
     });
@@ -455,10 +488,19 @@ pub(crate) fn portal(s: &WikiState) -> SimResult<HttpResponse> {
             el("ul")
                 .class("box-body")
                 .each(s.in_the_news.iter().enumerate(), |(i, item)| {
-                    el("li").child(link(&format!("news-{i}"), item.url.as_str(), item.label.as_str()))
+                    el("li").child(link(
+                        &format!("news-{i}"),
+                        item.url.as_str(),
+                        item.label.as_str(),
+                    ))
                 })
                 .when(s.in_the_news.is_empty(), |ul| {
-                    ul.child(el("li").id("news-empty").class("small").text("Nothing filed today."))
+                    ul.child(
+                        el("li")
+                            .id("news-empty")
+                            .class("small")
+                            .text("Nothing filed today."),
+                    )
                 }),
         );
     let main = vec![
@@ -501,7 +543,11 @@ fn infobox(s: &WikiState, article: &Article, with_image: bool) -> Node {
     el("aside")
         .id("infobox")
         .class("infobox")
-        .child(div("info-title").id("info-title").text(article.title.as_str()))
+        .child(
+            div("info-title")
+                .id("info-title")
+                .text(article.title.as_str()),
+        )
         .when(with_image, |b| {
             b.child(
                 el("figure")
@@ -526,15 +572,20 @@ fn toc(article: &Article) -> Node {
         .class("toc")
         .attr("aria-label", "Contents")
         .child(el("h2").id("toc-label").text("Contents"))
-        .child(el("ul").each(article.sections.iter().enumerate(), |(i, section)| {
-            el("li").child(
-                el("a")
-                    .id(format!("toc-{i}"))
-                    .attr("href", format!("{}?section={}", article_url(&article.id), section.id))
-                    .child(span("num").text(format!("{}", i + 1)))
-                    .child(text(format!(" {}", section.heading))),
-            )
-        }))
+        .child(
+            el("ul").each(article.sections.iter().enumerate(), |(i, section)| {
+                el("li").child(
+                    el("a")
+                        .id(format!("toc-{i}"))
+                        .attr(
+                            "href",
+                            format!("{}?section={}", article_url(&article.id), section.id),
+                        )
+                        .child(span("num").text(format!("{}", i + 1)))
+                        .child(text(format!(" {}", section.heading))),
+                )
+            }),
+        )
 }
 fn sections(article: &Article) -> Node {
     fragment(article.sections.iter().enumerate().map(|(i, section)| {
@@ -543,7 +594,11 @@ fn sections(article: &Article) -> Node {
             .child(
                 div("sec-head")
                     .id(format!("sec-{i}-head"))
-                    .child(el("h2").id(format!("sec-{i}-heading")).text(section.heading.as_str()))
+                    .child(
+                        el("h2")
+                            .id(format!("sec-{i}-heading"))
+                            .text(section.heading.as_str()),
+                    )
                     .child(
                         span("editlink")
                             .text("[")
@@ -555,7 +610,12 @@ fn sections(article: &Article) -> Node {
                             .text("]"),
                     ),
             )
-            .child(el("p").id(format!("sec-{i}-body")).class("prose").text(section.body.as_str()))
+            .child(
+                el("p")
+                    .id(format!("sec-{i}-body"))
+                    .class("prose")
+                    .text(section.body.as_str()),
+            )
     }))
 }
 fn references(article: &Article, heading: &str) -> Node {
@@ -565,13 +625,15 @@ fn references(article: &Article, heading: &str) -> Node {
     el("section")
         .class("sec refs")
         .child(div("sec-head").child(el("h2").id("refs-label").text(heading)))
-        .child(el("ol").each(article.references.iter().enumerate(), |(i, reference)| {
-            el("li").child(span("caret").text("^ ")).child(link(
-                &format!("ref-{i}"),
-                reference.url.as_str(),
-                reference.label.as_str(),
-            ))
-        }))
+        .child(
+            el("ol").each(article.references.iter().enumerate(), |(i, reference)| {
+                el("li").child(span("caret").text("^ ")).child(link(
+                    &format!("ref-{i}"),
+                    reference.url.as_str(),
+                    reference.label.as_str(),
+                ))
+            }),
+        )
 }
 fn see_also(s: &WikiState, article: &Article, heading: &str) -> Node {
     if article.see_also.is_empty() {
@@ -580,19 +642,21 @@ fn see_also(s: &WikiState, article: &Article, heading: &str) -> Node {
     el("section")
         .class("sec see")
         .child(div("sec-head").child(el("h2").id("see-label").text(heading)))
-        .child(el("ul").each(article.see_also.iter().enumerate(), |(i, target)| {
-            let title = s
-                .article(target)
-                .map(|a| a.title.clone())
-                .unwrap_or_else(|| target.replace('_', " "));
-            el("li").child(
-                el("a")
-                    .id(format!("see-{i}"))
-                    .attr("href", article_url(target))
-                    .child(art(None, "art", &title))
-                    .child(span("name").text(target.replace('_', " "))),
-            )
-        }))
+        .child(
+            el("ul").each(article.see_also.iter().enumerate(), |(i, target)| {
+                let title = s
+                    .article(target)
+                    .map(|a| a.title.clone())
+                    .unwrap_or_else(|| target.replace('_', " "));
+                el("li").child(
+                    el("a")
+                        .id(format!("see-{i}"))
+                        .attr("href", article_url(target))
+                        .child(art(None, "art", &title))
+                        .child(span("name").text(target.replace('_', " "))),
+                )
+            }),
+        )
 }
 /// The path of a category listing. Spaces become underscores, the way a title does.
 fn category_url(name: &str) -> String {
@@ -617,10 +681,13 @@ fn categories(article: &Article) -> Node {
 }
 fn latest(article: &Article) -> Node {
     match article.latest() {
-        Some(latest) => el("p").id("article-latest").class("small latest").text(format!(
-            "Revision {} · last edited by {} at tick {}",
-            latest.rev, latest.author, latest.tick
-        )),
+        Some(latest) => el("p")
+            .id("article-latest")
+            .class("small latest")
+            .text(format!(
+                "Revision {} · last edited by {} at tick {}",
+                latest.rev, latest.author, latest.tick
+            )),
         None => empty(),
     }
 }
@@ -633,22 +700,24 @@ fn cast(s: &WikiState, article: &Article) -> Node {
     el("section")
         .class("sec cast")
         .child(div("sec-head").child(el("h2").id("cast-label").text("Top cast")))
-        .child(div("cast-grid").each(names.split(", ").enumerate(), |(j, name)| {
-            let inner = [
-                span("avatar")
-                    .style(&format!("background-color: {}", tint(name)))
-                    .text(initials(name)),
-                span("name").text(name),
-            ];
-            match s.canonical(name) {
-                Some((target, _)) => el("a")
-                    .id(format!("cast-{j}"))
-                    .class("member")
-                    .attr("href", article_url(&target))
-                    .children(inner),
-                None => div("member").id(format!("cast-{j}")).children(inner),
-            }
-        }))
+        .child(
+            div("cast-grid").each(names.split(", ").enumerate(), |(j, name)| {
+                let inner = [
+                    span("avatar")
+                        .style(&format!("background-color: {}", tint(name)))
+                        .text(initials(name)),
+                    span("name").text(name),
+                ];
+                match s.canonical(name) {
+                    Some((target, _)) => el("a")
+                        .id(format!("cast-{j}"))
+                        .class("member")
+                        .attr("href", article_url(&target))
+                        .children(inner),
+                    None => div("member").id(format!("cast-{j}")).children(inner),
+                }
+            }),
+        )
 }
 
 /// The full article: lead, contents, sections, references, see also, categories.
@@ -673,7 +742,10 @@ fn article_view(s: &WikiState, requested: &str, random_next: u64) -> SimResult<H
             .class("small redirect")
             .text(format!("(Redirected from {})", alias.replace('_', " ")))
     });
-    let summary = el("p").id("article-summary").class("prose lead").text(article.summary.as_str());
+    let summary = el("p")
+        .id("article-summary")
+        .class("prose lead")
+        .text(article.summary.as_str());
     let main = match s.skin_name() {
         "imdb" => {
             let meta: Vec<&str> = ["Year", "Years", "Runtime", "Episodes", "Occupation"]
@@ -695,7 +767,10 @@ fn article_view(s: &WikiState, requested: &str, random_next: u64) -> SimResult<H
                                 .maybe(rating(article).map(|r| {
                                     div("rating")
                                         .id("rating")
-                                        .child(span("rating-label").text(format!("{} RATING", brand.to_uppercase())))
+                                        .child(
+                                            span("rating-label")
+                                                .text(format!("{} RATING", brand.to_uppercase())),
+                                        )
                                         .child(
                                             span("rating-value")
                                                 .child(span("star").text("★"))
@@ -726,8 +801,11 @@ fn article_view(s: &WikiState, requested: &str, random_next: u64) -> SimResult<H
             ]
         }
         "archive" => vec![
-            div(&format!("theatre mt-{}", media_type(article)))
-                .child(art(Some("info-image".into()), "stage", &article.title)),
+            div(&format!("theatre mt-{}", media_type(article))).child(art(
+                Some("info-image".into()),
+                "stage",
+                &article.title,
+            )),
             div("inner item")
                 .id("article-body")
                 .child(
@@ -735,7 +813,10 @@ fn article_view(s: &WikiState, requested: &str, random_next: u64) -> SimResult<H
                         .id("article-column")
                         .child(
                             div("item-head")
-                                .child(span(&format!("mt-icon mt-{}", media_type(article))).child(el("i")))
+                                .child(
+                                    span(&format!("mt-icon mt-{}", media_type(article)))
+                                        .child(el("i")),
+                                )
                                 .child(title),
                         )
                         .maybe(redirect)
@@ -760,7 +841,9 @@ fn article_view(s: &WikiState, requested: &str, random_next: u64) -> SimResult<H
         ],
         _ => vec![
             title,
-            el("p").class("siteSub").text(format!("From {brand}, the free encyclopedia")),
+            el("p")
+                .class("siteSub")
+                .text(format!("From {brand}, the free encyclopedia")),
             div("article-body")
                 .id("article-body")
                 .maybe(redirect)
@@ -864,7 +947,11 @@ pub(crate) fn talk_page(s: &WikiState, requested: &str) -> SimResult<HttpRespons
     };
     let article = &s.articles[&id];
     let page = div("inner plain")
-        .child(el("h1").id("talk-title").text(format!("Talk: {}", article.title)))
+        .child(
+            el("h1")
+                .id("talk-title")
+                .text(format!("Talk: {}", article.title)),
+        )
         .each(article.talk.iter().enumerate(), |(i, post)| {
             el("article")
                 .id(format!("talk-{i}"))
@@ -876,12 +963,32 @@ pub(crate) fn talk_page(s: &WikiState, requested: &str) -> SimResult<HttpRespons
                             span("avatar")
                                 .id(format!("talk-{i}-avatar"))
                                 .style(&format!("background-color: {}", tint(&post.author)))
-                                .text(post.author.chars().next().unwrap_or('?').to_uppercase().to_string()),
+                                .text(
+                                    post.author
+                                        .chars()
+                                        .next()
+                                        .unwrap_or('?')
+                                        .to_uppercase()
+                                        .to_string(),
+                                ),
                         )
-                        .child(span("author").id(format!("talk-{i}-author")).text(post.author.as_str()))
-                        .child(span("tick").id(format!("talk-{i}-tick")).text(format!("tick {}", post.tick))),
+                        .child(
+                            span("author")
+                                .id(format!("talk-{i}-author"))
+                                .text(post.author.as_str()),
+                        )
+                        .child(
+                            span("tick")
+                                .id(format!("talk-{i}-tick"))
+                                .text(format!("tick {}", post.tick)),
+                        ),
                 )
-                .child(el("p").id(format!("talk-{i}-text")).class("prose").text(post.text.as_str()))
+                .child(
+                    el("p")
+                        .id(format!("talk-{i}-text"))
+                        .class("prose")
+                        .text(post.text.as_str()),
+                )
         })
         .when(article.talk.is_empty(), |page| {
             page.child(
@@ -895,7 +1002,12 @@ pub(crate) fn talk_page(s: &WikiState, requested: &str) -> SimResult<HttpRespons
             form("reply", format!("/articles/{id}/talk"), "post")
                 .class("editor")
                 .child(label("reply-text", "Add a topic"))
-                .child(el("textarea").id("reply-text").attr("name", "text").attr("rows", "4"))
+                .child(
+                    el("textarea")
+                        .id("reply-text")
+                        .attr("name", "text")
+                        .attr("rows", "4"),
+                )
                 .child(button("reply-submit", "Add topic").class("btn primary")),
         );
     shell(
@@ -920,42 +1032,76 @@ pub(crate) fn history_page(s: &WikiState, requested: &str) -> SimResult<HttpResp
                 .id("hist-title")
                 .text(format!("Revision history of {}", article.title)),
         )
-        .child(el("ul").class("history").each(article.revisions.iter().rev(), |revision| {
-            // Where the entry leads: the section it changed, the article itself for the
-            // creation, and nowhere at all when the section it named has since been removed —
-            // the entry above it is often the revert that removed it, and a link into a page
-            // that no longer has that section would be a lie, so it is plain text instead.
-            let target = match &revision.section {
-                None => Some(article_url(&id)),
-                Some(sid) if article.section(sid).is_some() => {
-                    Some(format!("{}?section={sid}", article_url(&id)))
-                }
-                Some(_) => None,
-            };
-            let rev = revision.rev;
-            let comment = match target {
-                Some(target) => {
-                    link(&format!("rev-{rev}-comment"), target, revision.comment.as_str())
-                }
-                None => span("gone")
-                    .id(format!("rev-{rev}-comment"))
-                    .attr("title", "the section this touched is no longer in the article")
-                    .text(revision.comment.as_str()),
-            };
-            el("li")
-                .id(format!("rev-{rev}"))
-                .child(span("rev-id").id(format!("rev-{rev}-id")).text(format!("rev {rev}")))
-                .child(span("tick").id(format!("rev-{rev}-tick")).text(format!("tick {}", revision.tick)))
-                .child(span("author").id(format!("rev-{rev}-author")).text(revision.author.as_str()))
-                .child(span("comment").text("(").child(comment).text(")"))
-                .child(
-                    span(if current == Some(rev) { "mark current" } else { "mark" })
-                        .id(format!("rev-{rev}-mark"))
-                        .text(if current == Some(rev) { "current" } else { "superseded" }),
-                )
-        }))
+        .child(
+            el("ul")
+                .class("history")
+                .each(article.revisions.iter().rev(), |revision| {
+                    // Where the entry leads: the section it changed, the article itself for the
+                    // creation, and nowhere at all when the section it named has since been removed —
+                    // the entry above it is often the revert that removed it, and a link into a page
+                    // that no longer has that section would be a lie, so it is plain text instead.
+                    let target = match &revision.section {
+                        None => Some(article_url(&id)),
+                        Some(sid) if article.section(sid).is_some() => {
+                            Some(format!("{}?section={sid}", article_url(&id)))
+                        }
+                        Some(_) => None,
+                    };
+                    let rev = revision.rev;
+                    let comment = match target {
+                        Some(target) => link(
+                            &format!("rev-{rev}-comment"),
+                            target,
+                            revision.comment.as_str(),
+                        ),
+                        None => span("gone")
+                            .id(format!("rev-{rev}-comment"))
+                            .attr(
+                                "title",
+                                "the section this touched is no longer in the article",
+                            )
+                            .text(revision.comment.as_str()),
+                    };
+                    el("li")
+                        .id(format!("rev-{rev}"))
+                        .child(
+                            span("rev-id")
+                                .id(format!("rev-{rev}-id"))
+                                .text(format!("rev {rev}")),
+                        )
+                        .child(
+                            span("tick")
+                                .id(format!("rev-{rev}-tick"))
+                                .text(format!("tick {}", revision.tick)),
+                        )
+                        .child(
+                            span("author")
+                                .id(format!("rev-{rev}-author"))
+                                .text(revision.author.as_str()),
+                        )
+                        .child(span("comment").text("(").child(comment).text(")"))
+                        .child(
+                            span(if current == Some(rev) {
+                                "mark current"
+                            } else {
+                                "mark"
+                            })
+                            .id(format!("rev-{rev}-mark"))
+                            .text(if current == Some(rev) {
+                                "current"
+                            } else {
+                                "superseded"
+                            }),
+                        )
+                }),
+        )
         .when(article.revisions.is_empty(), |page| {
-            page.child(el("p").id("hist-empty").class("small").text("No revisions recorded."))
+            page.child(
+                el("p")
+                    .id("hist-empty")
+                    .class("small")
+                    .text("No revisions recorded."),
+            )
         });
     shell(
         s,
@@ -974,13 +1120,20 @@ pub(crate) fn results_page(s: &WikiState, query: &str) -> SimResult<HttpResponse
     }
     let hits = s.search(query);
     let page = div("inner plain")
-        .child(el("h1").id("results-title").text(format!("Search results for {query}")))
         .child(
-            el("p").id("results-count").class("small").text(match hits.len() {
-                0 => "No article matched.".to_owned(),
-                1 => "1 article matched.".to_owned(),
-                n => format!("{n} articles matched."),
-            }),
+            el("h1")
+                .id("results-title")
+                .text(format!("Search results for {query}")),
+        )
+        .child(
+            el("p")
+                .id("results-count")
+                .class("small")
+                .text(match hits.len() {
+                    0 => "No article matched.".to_owned(),
+                    1 => "1 article matched.".to_owned(),
+                    n => format!("{n} articles matched."),
+                }),
         )
         .child(div("cards hits").each(hits.iter().enumerate(), |(i, hit)| {
             card(s, &format!("hit-{i}"), &s.articles[&hit.id], "snippet")
@@ -993,7 +1146,14 @@ pub(crate) fn results_page(s: &WikiState, query: &str) -> SimResult<HttpResponse
                     .text("Try a different wording, or a broader term."),
             )
         });
-    shell(s, &format!("{query} — search results"), "results", None, 0, vec![page])
+    shell(
+        s,
+        &format!("{query} — search results"),
+        "results",
+        None,
+        0,
+        vec![page],
+    )
 }
 /// Everything filed under one category, which is where the chips on an article lead. A
 /// category with no members is a 404, not an empty page: nothing on the site links to one.
@@ -1014,13 +1174,20 @@ pub(crate) fn category_page(s: &WikiState, requested: &str) -> SimResult<HttpRes
     };
     let page = div("inner plain")
         .child(el("h1").id("cat-title").text(format!("Category: {name}")))
-        .child(el("p").id("cat-count").class("small").text(match members.len() {
-            1 => format!("1 {noun} in this category."),
-            n => format!("{n} {noun}s in this category."),
-        }))
-        .child(div("cards").each(members.iter().enumerate(), |(i, article)| {
-            card(s, &format!("all-{i}"), article, "summary")
-        }));
+        .child(
+            el("p")
+                .id("cat-count")
+                .class("small")
+                .text(match members.len() {
+                    1 => format!("1 {noun} in this category."),
+                    n => format!("{n} {noun}s in this category."),
+                }),
+        )
+        .child(
+            div("cards").each(members.iter().enumerate(), |(i, article)| {
+                card(s, &format!("all-{i}"), article, "summary")
+            }),
+        );
     shell(
         s,
         &format!("Category: {name} — {}", brand_of(s)),

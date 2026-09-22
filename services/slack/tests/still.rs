@@ -15,15 +15,34 @@ fn render(html: &str, file: &str, viewport: Viewport) {
     let mut sheets = Vec::new();
     for node in doc.descendants(Document::ROOT) {
         if doc.is(node, "style") {
-            sheets.push(parse_stylesheet(&doc.text_content(node), Origin::Author, Strictness::Strict).unwrap());
+            sheets.push(
+                parse_stylesheet(&doc.text_content(node), Origin::Author, Strictness::Strict)
+                    .unwrap(),
+            );
         }
     }
     let media = Media::with_size(viewport.width as i32, viewport.height as i32);
-    let styles = cw_web::style::cascade(&doc, &sheets, &media, &MatchContext::new(), Strictness::Strict).unwrap();
+    let styles = cw_web::style::cascade(
+        &doc,
+        &sheets,
+        &media,
+        &MatchContext::new(),
+        Strictness::Strict,
+    )
+    .unwrap();
     let tree = cw_web::layout::layout(&doc, &styles, viewport);
-    let scene = cw_web::paint::paint(&doc, &styles, &tree, viewport, &cw_web::paint::PaintContext::default());
+    let scene = cw_web::paint::paint(
+        &doc,
+        &styles,
+        &tree,
+        viewport,
+        &cw_web::paint::PaintContext::default(),
+    );
     for area in &scene.scrolls {
-        println!("scroll {} bounds {:?} offset {} extent {}", area.target, area.bounds, area.offset, area.extent);
+        println!(
+            "scroll {} bounds {:?} offset {} extent {}",
+            area.target, area.bounds, area.offset, area.extent
+        );
     }
     let frame = cw_render::Renderer::new().render(&scene);
     let mut out = Vec::new();
@@ -46,15 +65,36 @@ fn render(html: &str, file: &str, viewport: Viewport) {
 fn slack_stills() {
     let raw = std::fs::read_to_string("../../worlds/company-2026/sites/slack.json").unwrap();
     let site: Value = serde_json::from_str(&raw).unwrap();
-    let ctx = ServiceContext { actor: "alice".into(), source: "alice-mac".into(), tick: 60, seed: 1, instance: "slack".into() };
-    let mut state = SlackService.initialize(site["initial_state"].clone(), &ctx).unwrap();
-    let viewport = Viewport { width: 1280, height: 800, scale: 1, zoom: 100 };
+    let ctx = ServiceContext {
+        actor: "alice".into(),
+        source: "alice-mac".into(),
+        tick: 60,
+        seed: 1,
+        instance: "slack".into(),
+    };
+    let mut state = SlackService
+        .initialize(site["initial_state"].clone(), &ctx)
+        .unwrap();
+    let viewport = Viewport {
+        width: 1280,
+        height: 800,
+        scale: 1,
+        zoom: 100,
+    };
     for (url, file) in [
         ("http://slack.com/channels/eng", "slack.png"),
-        ("http://slack.com/channels/eng?thread=chat-1", "slack-thread.png"),
-        ("http://slack.com/channels/alice|bob?members=1", "slack-dm.png"),
+        (
+            "http://slack.com/channels/eng?thread=chat-1",
+            "slack-thread.png",
+        ),
+        (
+            "http://slack.com/channels/alice|bob?members=1",
+            "slack-dm.png",
+        ),
     ] {
-        let response = SlackService.handle(&mut state, &ctx, &HttpRequest::get(url)).unwrap();
+        let response = SlackService
+            .handle(&mut state, &ctx, &HttpRequest::get(url))
+            .unwrap();
         assert_eq!(response.status, 200);
         render(&String::from_utf8(response.body).unwrap(), file, viewport);
     }
@@ -68,6 +108,11 @@ fn repro_still() {
     let (Ok(html), Ok(png)) = (std::env::var("STILL_HTML"), std::env::var("STILL_PNG")) else {
         return;
     };
-    let viewport = Viewport { width: 400, height: 200, scale: 1, zoom: 100 };
+    let viewport = Viewport {
+        width: 400,
+        height: 200,
+        scale: 1,
+        zoom: 100,
+    };
     render(&std::fs::read_to_string(html).unwrap(), &png, viewport);
 }

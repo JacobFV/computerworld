@@ -11,7 +11,15 @@ use crate::script::{DefaultAction, Modifiers, Realm, UiEvent};
 
 fn mods_value(realm: &mut Realm, m: Modifiers) -> Value {
     let vm = realm.vm();
-    let o = cw_jsvm::builtins::new_obj_from(vm, vec![("ctrlKey", Value::Bool(m.ctrl)), ("shiftKey", Value::Bool(m.shift)), ("altKey", Value::Bool(m.alt)), ("metaKey", Value::Bool(m.meta))]);
+    let o = cw_jsvm::builtins::new_obj_from(
+        vm,
+        vec![
+            ("ctrlKey", Value::Bool(m.ctrl)),
+            ("shiftKey", Value::Bool(m.shift)),
+            ("altKey", Value::Bool(m.alt)),
+            ("metaKey", Value::Bool(m.meta)),
+        ],
+    );
     Value::Obj(o)
 }
 
@@ -62,11 +70,25 @@ fn update_hover(realm: &mut Realm, target: Option<NodeId>, x: i32, y: i32, m: Mo
         let ov = wrap(realm, old);
         let nv = wrap(realm, target);
         let mv = mods_value(realm, m);
-        realm.call_hook("hover", vec![ov, nv, Value::Num(x as f64), Value::Num(y as f64), mv]);
+        realm.call_hook(
+            "hover",
+            vec![ov, nv, Value::Num(x as f64), Value::Num(y as f64), mv],
+        );
     } else if let Some(t) = target {
         let tv = wrap(realm, Some(t));
         let mv = mods_value(realm, m);
-        realm.call_hook("pointer", vec![Value::str("move"), tv, Value::Num(x as f64), Value::Num(y as f64), Value::Num(0.0), mv, Value::Num(0.0)]);
+        realm.call_hook(
+            "pointer",
+            vec![
+                Value::str("move"),
+                tv,
+                Value::Num(x as f64),
+                Value::Num(y as f64),
+                Value::Num(0.0),
+                mv,
+                Value::Num(0.0),
+            ],
+        );
     }
 }
 
@@ -96,19 +118,29 @@ pub fn set_focus(realm: &mut Realm, target: Option<NodeId>, visible: bool) -> bo
 /// The focusable element for a click on `target` (itself or an ancestor).
 fn focus_target(realm: &Realm, target: NodeId) -> Option<NodeId> {
     let i = realm.inner.borrow();
-    std::iter::once(target).chain(i.doc.ancestors(target)).find(|n| i.is_focusable(*n))
+    std::iter::once(target)
+        .chain(i.doc.ancestors(target))
+        .find(|n| i.is_focusable(*n))
 }
 
 /// The activation behaviour of a click on `target`.
 fn activate(realm: &mut Realm, target: NodeId, m: Modifiers) -> DefaultAction {
     let chain: Vec<NodeId> = {
         let i = realm.inner.borrow();
-        std::iter::once(target).chain(i.doc.ancestors(target)).filter(|n| i.doc.is_element(*n)).collect()
+        std::iter::once(target)
+            .chain(i.doc.ancestors(target))
+            .filter(|n| i.doc.is_element(*n))
+            .collect()
     };
     for n in chain {
         let (tag, ty, href, disabled) = {
             let i = realm.inner.borrow();
-            (i.doc.tag(n).unwrap_or("").to_owned(), i.doc.attr(n, "type").unwrap_or("").to_ascii_lowercase(), i.doc.attr(n, "href").map(|h| i.resolve_url(h)), i.is_disabled(n))
+            (
+                i.doc.tag(n).unwrap_or("").to_owned(),
+                i.doc.attr(n, "type").unwrap_or("").to_ascii_lowercase(),
+                i.doc.attr(n, "href").map(|h| i.resolve_url(h)),
+                i.is_disabled(n),
+            )
         };
         if disabled {
             return DefaultAction::None;
@@ -123,7 +155,8 @@ fn activate(realm: &mut Realm, target: NodeId, m: Modifiers) -> DefaultAction {
                     let (cur, base_same) = {
                         let i = realm.inner.borrow();
                         let cur = i.url.clone();
-                        let same = cur.split('#').next() == href.split('#').next() && href.contains('#');
+                        let same =
+                            cur.split('#').next() == href.split('#').next() && href.contains('#');
                         (cur, same)
                     };
                     if base_same {
@@ -173,7 +206,13 @@ fn activate(realm: &mut Realm, target: NodeId, m: Modifiers) -> DefaultAction {
                     let i = realm.inner.borrow();
                     match i.doc.attr(n, "for") {
                         Some(id) => i.doc.by_id(id).first().copied(),
-                        None => i.doc.descendants(n).find(|c| *c != n && matches!(i.doc.tag(*c), Some("input" | "select" | "textarea" | "button"))),
+                        None => i.doc.descendants(n).find(|c| {
+                            *c != n
+                                && matches!(
+                                    i.doc.tag(*c),
+                                    Some("input" | "select" | "textarea" | "button")
+                                )
+                        }),
                     }
                 };
                 if let Some(c) = control {
@@ -184,21 +223,39 @@ fn activate(realm: &mut Realm, target: NodeId, m: Modifiers) -> DefaultAction {
                 return DefaultAction::None;
             }
             "summary" => {
-                let details = realm.inner.borrow().doc.parent(n).filter(|p| realm.inner.borrow().doc.is(*p, "details"));
+                let details = realm
+                    .inner
+                    .borrow()
+                    .doc
+                    .parent(n)
+                    .filter(|p| realm.inner.borrow().doc.is(*p, "details"));
                 if let Some(d) = details {
                     let open = realm.inner.borrow().doc.has_attr(d, "open");
-                    let _ = super::dom::set_attribute_value(realm.vm(), d, "open", if open { None } else { Some("") });
+                    let _ = super::dom::set_attribute_value(
+                        realm.vm(),
+                        d,
+                        "open",
+                        if open { None } else { Some("") },
+                    );
                     let dv = wrap(realm, Some(d));
                     realm.call_hook("toggle", vec![dv]);
                     return DefaultAction::Toggle(d);
                 }
             }
             "option" => {
-                let select = realm.inner.borrow().doc.ancestors(n).find(|a| realm.inner.borrow().doc.is(*a, "select"));
+                let select = realm
+                    .inner
+                    .borrow()
+                    .doc
+                    .ancestors(n)
+                    .find(|a| realm.inner.borrow().doc.is(*a, "select"));
                 if let Some(s) = select {
                     let was = realm.inner.borrow().is_checked(n);
                     let multiple = realm.inner.borrow().doc.has_attr(s, "multiple");
-                    realm.inner.borrow_mut().set_option_selected(n, if multiple { !was } else { true });
+                    realm
+                        .inner
+                        .borrow_mut()
+                        .set_option_selected(n, if multiple { !was } else { true });
                     let sv = wrap(realm, Some(s));
                     realm.call_hook("input", vec![sv.clone(), Value::Null, Value::str("")]);
                     realm.call_hook("change", vec![sv]);
@@ -215,7 +272,10 @@ fn activate(realm: &mut Realm, target: NodeId, m: Modifiers) -> DefaultAction {
 pub fn submit_form(realm: &mut Realm, form: NodeId, submitter: Option<NodeId>) -> DefaultAction {
     let no_validate = {
         let i = realm.inner.borrow();
-        i.doc.has_attr(form, "novalidate") || submitter.map(|s| i.doc.has_attr(s, "formnovalidate")).unwrap_or(false)
+        i.doc.has_attr(form, "novalidate")
+            || submitter
+                .map(|s| i.doc.has_attr(s, "formnovalidate"))
+                .unwrap_or(false)
     };
     if !no_validate {
         let fv = wrap(realm, Some(form));
@@ -231,12 +291,28 @@ pub fn submit_form(realm: &mut Realm, form: NodeId, submitter: Option<NodeId>) -
         return DefaultAction::Prevented;
     }
     let i = realm.inner.borrow();
-    let attr = |name: &str| submitter.and_then(|s| i.doc.attr(s, &format!("form{name}"))).or_else(|| i.doc.attr(form, name)).map(str::to_owned);
-    let action = attr("action").map(|a| i.resolve_url(&a)).unwrap_or_else(|| i.url.clone());
-    let method = attr("method").map(|m| m.to_ascii_lowercase()).filter(|m| m == "post" || m == "dialog").unwrap_or_else(|| "get".into());
+    let attr = |name: &str| {
+        submitter
+            .and_then(|s| i.doc.attr(s, &format!("form{name}")))
+            .or_else(|| i.doc.attr(form, name))
+            .map(str::to_owned)
+    };
+    let action = attr("action")
+        .map(|a| i.resolve_url(&a))
+        .unwrap_or_else(|| i.url.clone());
+    let method = attr("method")
+        .map(|m| m.to_ascii_lowercase())
+        .filter(|m| m == "post" || m == "dialog")
+        .unwrap_or_else(|| "get".into());
     let enctype = attr("enctype").unwrap_or_else(|| "application/x-www-form-urlencoded".into());
     let data = i.form_data_set(form, submitter);
-    DefaultAction::Submit { form, action, method, enctype, data }
+    DefaultAction::Submit {
+        form,
+        action,
+        method,
+        enctype,
+        data,
+    }
 }
 
 fn reset_form(realm: &mut Realm, form: NodeId) -> DefaultAction {
@@ -264,11 +340,17 @@ fn change_hash(realm: &mut Realm, old_url: &str, new_url: &str, push: bool) {
         let mut i = realm.inner.borrow_mut();
         i.url = new_url.to_owned();
         i.doc.url = new_url.to_owned();
-        i.target_id = new_url.split_once('#').map(|(_, h)| h.to_owned()).filter(|h| !h.is_empty());
+        i.target_id = new_url
+            .split_once('#')
+            .map(|(_, h)| h.to_owned())
+            .filter(|h| !h.is_empty());
         if push {
             let idx = i.history_index + 1;
             i.history.truncate(idx);
-            i.history.push(crate::script::inner::HistoryEntry { url: new_url.to_owned(), state: None });
+            i.history.push(crate::script::inner::HistoryEntry {
+                url: new_url.to_owned(),
+                state: None,
+            });
             i.history_index = idx;
         }
         if let Some(root) = i.doc.document_element() {
@@ -279,7 +361,9 @@ fn change_hash(realm: &mut Realm, old_url: &str, new_url: &str, push: bool) {
     // Scroll the target into view.
     let target = {
         let i = realm.inner.borrow();
-        i.target_id.clone().and_then(|t| i.doc.by_id(&t).first().copied())
+        i.target_id
+            .clone()
+            .and_then(|t| i.doc.by_id(&t).first().copied())
     };
     if let Some(t) = target {
         let mut i = realm.inner.borrow_mut();
@@ -301,15 +385,30 @@ fn click_node(realm: &mut Realm, target: NodeId, m: Modifiers, detail: u32) -> D
         let rects = i.rects_of(target);
         let (sx, sy) = i.window_scroll();
         match rects.first() {
-            Some(r) => ((r.origin.x - sx + r.size.width.scale(1, 2)).to_px_round(), (r.origin.y - sy + r.size.height.scale(1, 2)).to_px_round()),
+            Some(r) => (
+                (r.origin.x - sx + r.size.width.scale(1, 2)).to_px_round(),
+                (r.origin.y - sy + r.size.height.scale(1, 2)).to_px_round(),
+            ),
             None => (0, 0),
         }
     };
     click_at(realm, target, x, y, 0, m, detail)
 }
 
-fn click_at(realm: &mut Realm, target: NodeId, x: i32, y: i32, button: u8, m: Modifiers, detail: u32) -> DefaultAction {
-    let disabled = realm.inner.borrow().is_disabled(target) && matches!(realm.inner.borrow().doc.tag(target), Some("button" | "input" | "select" | "textarea" | "fieldset" | "option"));
+fn click_at(
+    realm: &mut Realm,
+    target: NodeId,
+    x: i32,
+    y: i32,
+    button: u8,
+    m: Modifiers,
+    detail: u32,
+) -> DefaultAction {
+    let disabled = realm.inner.borrow().is_disabled(target)
+        && matches!(
+            realm.inner.borrow().doc.tag(target),
+            Some("button" | "input" | "select" | "textarea" | "fieldset" | "option")
+        );
     let tv = wrap(realm, Some(target));
     let mv = mods_value(realm, m);
     // Pointer down: `:active`, then focus unless prevented.
@@ -318,7 +417,20 @@ fn click_at(realm: &mut Realm, target: NodeId, x: i32, y: i32, button: u8, m: Mo
         i.active = Some(target);
         i.touch_state(target);
     }
-    let down_prevented = !disabled && hook_bool(realm, "pointer", vec![Value::str("down"), tv.clone(), Value::Num(x as f64), Value::Num(y as f64), Value::Num(button as f64), mv.clone(), Value::Num(detail as f64)]);
+    let down_prevented = !disabled
+        && hook_bool(
+            realm,
+            "pointer",
+            vec![
+                Value::str("down"),
+                tv.clone(),
+                Value::Num(x as f64),
+                Value::Num(y as f64),
+                Value::Num(button as f64),
+                mv.clone(),
+                Value::Num(detail as f64),
+            ],
+        );
     let mut focused_now = None;
     if !down_prevented && button == 0 {
         let ft = focus_target(realm, target);
@@ -333,11 +445,26 @@ fn click_at(realm: &mut Realm, target: NodeId, x: i32, y: i32, button: u8, m: Mo
         i.touch_state(target);
     }
     if !disabled {
-        hook_bool(realm, "pointer", vec![Value::str("up"), tv.clone(), Value::Num(x as f64), Value::Num(y as f64), Value::Num(button as f64), mv.clone(), Value::Num(detail as f64)]);
+        hook_bool(
+            realm,
+            "pointer",
+            vec![
+                Value::str("up"),
+                tv.clone(),
+                Value::Num(x as f64),
+                Value::Num(y as f64),
+                Value::Num(button as f64),
+                mv.clone(),
+                Value::Num(detail as f64),
+            ],
+        );
     }
     if button == 2 || disabled {
         if !disabled {
-            realm.call_hook("contextmenu", vec![tv, Value::Num(x as f64), Value::Num(y as f64), mv]);
+            realm.call_hook(
+                "contextmenu",
+                vec![tv, Value::Num(x as f64), Value::Num(y as f64), mv],
+            );
         }
         return match focused_now {
             Some(f) => DefaultAction::Focus(f),
@@ -345,22 +472,45 @@ fn click_at(realm: &mut Realm, target: NodeId, x: i32, y: i32, button: u8, m: Mo
         };
     }
     if button == 1 {
-        realm.call_hook("auxclick", vec![tv, Value::Num(x as f64), Value::Num(y as f64), mv]);
+        realm.call_hook(
+            "auxclick",
+            vec![tv, Value::Num(x as f64), Value::Num(y as f64), mv],
+        );
         return DefaultAction::None;
     }
     // Checkbox/radio pre-activation: toggle before `click`, revert if prevented.
     let (is_check, was) = {
         let i = realm.inner.borrow();
-        let ty = i.doc.attr(target, "type").unwrap_or("").to_ascii_lowercase();
+        let ty = i
+            .doc
+            .attr(target, "type")
+            .unwrap_or("")
+            .to_ascii_lowercase();
         let is = i.doc.is(target, "input") && (ty == "checkbox" || ty == "radio");
         (is, if is { i.is_checked(target) } else { false })
     };
     if is_check {
-        let ty = realm.inner.borrow().doc.attr(target, "type").unwrap_or("").to_ascii_lowercase();
+        let ty = realm
+            .inner
+            .borrow()
+            .doc
+            .attr(target, "type")
+            .unwrap_or("")
+            .to_ascii_lowercase();
         let new = if ty == "radio" { true } else { !was };
         realm.inner.borrow_mut().set_checked(target, new);
     }
-    let prevented = hook_bool(realm, "click", vec![tv.clone(), Value::Num(x as f64), Value::Num(y as f64), mv.clone(), Value::Num(detail as f64)]);
+    let prevented = hook_bool(
+        realm,
+        "click",
+        vec![
+            tv.clone(),
+            Value::Num(x as f64),
+            Value::Num(y as f64),
+            mv.clone(),
+            Value::Num(detail as f64),
+        ],
+    );
     if prevented {
         if is_check {
             realm.inner.borrow_mut().set_checked(target, was);
@@ -392,11 +542,24 @@ fn activation_click(realm: &mut Realm, target: NodeId, m: Modifiers) -> DefaultA
         let rects = i.rects_of(target);
         let (sx, sy) = i.window_scroll();
         match rects.first() {
-            Some(r) => ((r.origin.x - sx + r.size.width.scale(1, 2)).to_px_round(), (r.origin.y - sy + r.size.height.scale(1, 2)).to_px_round()),
+            Some(r) => (
+                (r.origin.x - sx + r.size.width.scale(1, 2)).to_px_round(),
+                (r.origin.y - sy + r.size.height.scale(1, 2)).to_px_round(),
+            ),
             None => (0, 0),
         }
     };
-    let prevented = hook_bool(realm, "click", vec![tv, Value::Num(x as f64), Value::Num(y as f64), mv, Value::Num(0.0)]);
+    let prevented = hook_bool(
+        realm,
+        "click",
+        vec![
+            tv,
+            Value::Num(x as f64),
+            Value::Num(y as f64),
+            mv,
+            Value::Num(0.0),
+        ],
+    );
     if prevented {
         return DefaultAction::Prevented;
     }
@@ -404,18 +567,45 @@ fn activation_click(realm: &mut Realm, target: NodeId, m: Modifiers) -> DefaultA
 }
 
 /// The key sequence: keydown, keypress, beforeinput, edit, input, keyup.
-fn key_press(realm: &mut Realm, key: &str, code: &str, m: Modifiers, repeat: bool, down: bool, up: bool) -> DefaultAction {
+fn key_press(
+    realm: &mut Realm,
+    key: &str,
+    code: &str,
+    m: Modifiers,
+    repeat: bool,
+    down: bool,
+    up: bool,
+) -> DefaultAction {
     let target = {
         let i = realm.inner.borrow();
-        i.focused.or_else(|| i.doc.body()).or_else(|| i.doc.document_element())
+        i.focused
+            .or_else(|| i.doc.body())
+            .or_else(|| i.doc.document_element())
     };
-    let Some(target) = target else { return DefaultAction::None };
-    let code_s = if code.is_empty() { key_code(key) } else { code.to_owned() };
+    let Some(target) = target else {
+        return DefaultAction::None;
+    };
+    let code_s = if code.is_empty() {
+        key_code(key)
+    } else {
+        code.to_owned()
+    };
     let tv = wrap(realm, Some(target));
     let mv = mods_value(realm, m);
     let mut action = DefaultAction::None;
     if down {
-        let prevented = hook_bool(realm, "key", vec![Value::str("keydown"), tv.clone(), Value::str(key), Value::str(&code_s), mv.clone(), Value::Bool(repeat)]);
+        let prevented = hook_bool(
+            realm,
+            "key",
+            vec![
+                Value::str("keydown"),
+                tv.clone(),
+                Value::str(key),
+                Value::str(&code_s),
+                mv.clone(),
+                Value::Bool(repeat),
+            ],
+        );
         if !prevented {
             action = key_default(realm, target, key, m, &tv, &mv, &code_s);
         } else {
@@ -423,9 +613,24 @@ fn key_press(realm: &mut Realm, key: &str, code: &str, m: Modifiers, repeat: boo
         }
     }
     if up {
-        hook_bool(realm, "key", vec![Value::str("keyup"), tv.clone(), Value::str(key), Value::str(&code_s), mv.clone(), Value::Bool(false)]);
+        hook_bool(
+            realm,
+            "key",
+            vec![
+                Value::str("keyup"),
+                tv.clone(),
+                Value::str(key),
+                Value::str(&code_s),
+                mv.clone(),
+                Value::Bool(false),
+            ],
+        );
         if down && key == " " && !matches!(action, DefaultAction::Prevented) {
-            let is_button = matches!(realm.inner.borrow().doc.tag(target), Some("button")) || matches!(realm.inner.borrow().doc.attr(target, "type"), Some("checkbox" | "radio" | "submit" | "button" | "reset"));
+            let is_button = matches!(realm.inner.borrow().doc.tag(target), Some("button"))
+                || matches!(
+                    realm.inner.borrow().doc.attr(target, "type"),
+                    Some("checkbox" | "radio" | "submit" | "button" | "reset")
+                );
             if is_button {
                 action = click_node(realm, target, m, 1);
             }
@@ -444,15 +649,42 @@ fn key_code(key: &str) -> String {
     }
 }
 
-fn key_default(realm: &mut Realm, target: NodeId, key: &str, m: Modifiers, tv: &Value, mv: &Value, code: &str) -> DefaultAction {
+fn key_default(
+    realm: &mut Realm,
+    target: NodeId,
+    key: &str,
+    m: Modifiers,
+    tv: &Value,
+    mv: &Value,
+    code: &str,
+) -> DefaultAction {
     let _ = code;
     let printable = key.chars().count() == 1 && !m.ctrl && !m.meta && !m.alt;
     let (is_text, is_textarea, tag, ty) = {
         let i = realm.inner.borrow();
-        (i.is_text_control(target), i.doc.is(target, "textarea"), i.doc.tag(target).unwrap_or("").to_owned(), i.doc.attr(target, "type").unwrap_or("").to_ascii_lowercase())
+        (
+            i.is_text_control(target),
+            i.doc.is(target, "textarea"),
+            i.doc.tag(target).unwrap_or("").to_owned(),
+            i.doc
+                .attr(target, "type")
+                .unwrap_or("")
+                .to_ascii_lowercase(),
+        )
     };
     if printable {
-        let prevented = hook_bool(realm, "key", vec![Value::str("keypress"), tv.clone(), Value::str(key), Value::str(code), mv.clone(), Value::Bool(false)]);
+        let prevented = hook_bool(
+            realm,
+            "key",
+            vec![
+                Value::str("keypress"),
+                tv.clone(),
+                Value::str(key),
+                Value::str(code),
+                mv.clone(),
+                Value::Bool(false),
+            ],
+        );
         if prevented {
             return DefaultAction::Prevented;
         }
@@ -482,7 +714,15 @@ fn key_default(realm: &mut Realm, target: NodeId, key: &str, m: Modifiers, tv: &
         return DefaultAction::None;
     }
     if key == "Enter" && !is_textarea {
-        if tag == "button" || tag == "a" || tag == "summary" || (tag == "input" && matches!(ty.as_str(), "button" | "submit" | "reset" | "checkbox" | "radio")) {
+        if tag == "button"
+            || tag == "a"
+            || tag == "summary"
+            || (tag == "input"
+                && matches!(
+                    ty.as_str(),
+                    "button" | "submit" | "reset" | "checkbox" | "radio"
+                ))
+        {
             return click_node(realm, target, m, 1);
         }
         if tag == "input" {
@@ -490,7 +730,24 @@ fn key_default(realm: &mut Realm, target: NodeId, key: &str, m: Modifiers, tv: &
             if let Some(form) = form {
                 let submitter = {
                     let i = realm.inner.borrow();
-                    i.form_elements(form).into_iter().find(|e| (i.doc.is(*e, "button") && !matches!(i.doc.attr(*e, "type").map(|t| t.to_ascii_lowercase()).as_deref(), Some("button" | "reset"))) || (i.doc.is(*e, "input") && matches!(i.doc.attr(*e, "type").map(|t| t.to_ascii_lowercase()).as_deref(), Some("submit" | "image"))))
+                    i.form_elements(form).into_iter().find(|e| {
+                        (i.doc.is(*e, "button")
+                            && !matches!(
+                                i.doc
+                                    .attr(*e, "type")
+                                    .map(|t| t.to_ascii_lowercase())
+                                    .as_deref(),
+                                Some("button" | "reset")
+                            ))
+                            || (i.doc.is(*e, "input")
+                                && matches!(
+                                    i.doc
+                                        .attr(*e, "type")
+                                        .map(|t| t.to_ascii_lowercase())
+                                        .as_deref(),
+                                    Some("submit" | "image")
+                                ))
+                    })
                 };
                 match submitter {
                     Some(s) => return activation_click(realm, s, m),
@@ -513,7 +770,12 @@ fn key_default(realm: &mut Realm, target: NodeId, key: &str, m: Modifiers, tv: &
         (None, "deleteContentForward")
     } else if m.ctrl && key.eq_ignore_ascii_case("a") {
         let len = realm.inner.borrow().control_value(target).chars().count();
-        realm.inner.borrow_mut().form.selection.insert(target, (0, len));
+        realm
+            .inner
+            .borrow_mut()
+            .form
+            .selection
+            .insert(target, (0, len));
         return DefaultAction::None;
     } else {
         return DefaultAction::None;
@@ -522,7 +784,11 @@ fn key_default(realm: &mut Realm, target: NodeId, key: &str, m: Modifiers, tv: &
         return DefaultAction::None;
     }
     let dv = data.as_ref().map(|d| Value::str(d)).unwrap_or(Value::Null);
-    let prevented = hook_bool(realm, "beforeInput", vec![tv.clone(), dv.clone(), Value::str(input_type)]);
+    let prevented = hook_bool(
+        realm,
+        "beforeInput",
+        vec![tv.clone(), dv.clone(), Value::str(input_type)],
+    );
     if prevented {
         return DefaultAction::Prevented;
     }
@@ -531,10 +797,18 @@ fn key_default(realm: &mut Realm, target: NodeId, key: &str, m: Modifiers, tv: &
         let mut i = realm.inner.borrow_mut();
         let value = i.control_value(target);
         let chars: Vec<char> = value.chars().collect();
-        let (s, e) = i.form.selection.get(&target).copied().unwrap_or((chars.len(), chars.len()));
+        let (s, e) = i
+            .form
+            .selection
+            .get(&target)
+            .copied()
+            .unwrap_or((chars.len(), chars.len()));
         let (s, e) = (s.min(chars.len()), e.min(chars.len()));
         let (s, e) = (s.min(e), s.max(e));
-        let maxlen: Option<usize> = i.doc.attr(target, "maxlength").and_then(|v| v.trim().parse().ok());
+        let maxlen: Option<usize> = i
+            .doc
+            .attr(target, "maxlength")
+            .and_then(|v| v.trim().parse().ok());
         let (new_chars, caret): (Vec<char>, usize) = match input_type {
             "insertText" | "insertLineBreak" => {
                 let ins: Vec<char> = data.clone().unwrap_or_default().chars().collect();
@@ -591,19 +865,38 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
             update_hover(realm, t, x, y, modifiers);
             DefaultAction::None
         }
-        UiEvent::Click { x, y, button, modifiers, detail } => {
-            let Some(t) = target_at(realm, x, y) else { return DefaultAction::None };
+        UiEvent::Click {
+            x,
+            y,
+            button,
+            modifiers,
+            detail,
+        } => {
+            let Some(t) = target_at(realm, x, y) else {
+                return DefaultAction::None;
+            };
             update_hover(realm, Some(t), x, y, modifiers);
             click_at(realm, t, x, y, button, modifiers, detail.max(1))
         }
-        UiEvent::ClickNode { node, modifiers, detail } => {
+        UiEvent::ClickNode {
+            node,
+            modifiers,
+            detail,
+        } => {
             if realm.inner.borrow().doc.node(node).detached && node != Document::ROOT {
                 return DefaultAction::None;
             }
             click_node(realm, node, modifiers, detail.max(1))
         }
-        UiEvent::PointerDown { x, y, button, modifiers } => {
-            let Some(t) = target_at(realm, x, y) else { return DefaultAction::None };
+        UiEvent::PointerDown {
+            x,
+            y,
+            button,
+            modifiers,
+        } => {
+            let Some(t) = target_at(realm, x, y) else {
+                return DefaultAction::None;
+            };
             update_hover(realm, Some(t), x, y, modifiers);
             {
                 let mut i = realm.inner.borrow_mut();
@@ -612,7 +905,19 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
             }
             let tv = wrap(realm, Some(t));
             let mv = mods_value(realm, modifiers);
-            let prevented = hook_bool(realm, "pointer", vec![Value::str("down"), tv, Value::Num(x as f64), Value::Num(y as f64), Value::Num(button as f64), mv, Value::Num(1.0)]);
+            let prevented = hook_bool(
+                realm,
+                "pointer",
+                vec![
+                    Value::str("down"),
+                    tv,
+                    Value::Num(x as f64),
+                    Value::Num(y as f64),
+                    Value::Num(button as f64),
+                    mv,
+                    Value::Num(1.0),
+                ],
+            );
             if prevented {
                 return DefaultAction::Prevented;
             }
@@ -624,8 +929,15 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
             }
             DefaultAction::None
         }
-        UiEvent::PointerUp { x, y, button, modifiers } => {
-            let Some(t) = target_at(realm, x, y) else { return DefaultAction::None };
+        UiEvent::PointerUp {
+            x,
+            y,
+            button,
+            modifiers,
+        } => {
+            let Some(t) = target_at(realm, x, y) else {
+                return DefaultAction::None;
+            };
             let was_active = realm.inner.borrow().active;
             {
                 let mut i = realm.inner.borrow_mut();
@@ -634,9 +946,31 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
             }
             let tv = wrap(realm, Some(t));
             let mv = mods_value(realm, modifiers);
-            hook_bool(realm, "pointer", vec![Value::str("up"), tv.clone(), Value::Num(x as f64), Value::Num(y as f64), Value::Num(button as f64), mv.clone(), Value::Num(1.0)]);
+            hook_bool(
+                realm,
+                "pointer",
+                vec![
+                    Value::str("up"),
+                    tv.clone(),
+                    Value::Num(x as f64),
+                    Value::Num(y as f64),
+                    Value::Num(button as f64),
+                    mv.clone(),
+                    Value::Num(1.0),
+                ],
+            );
             if was_active == Some(t) && button == 0 {
-                let prevented = hook_bool(realm, "click", vec![tv, Value::Num(x as f64), Value::Num(y as f64), mv, Value::Num(1.0)]);
+                let prevented = hook_bool(
+                    realm,
+                    "click",
+                    vec![
+                        tv,
+                        Value::Num(x as f64),
+                        Value::Num(y as f64),
+                        mv,
+                        Value::Num(1.0),
+                    ],
+                );
                 if prevented {
                     return DefaultAction::Prevented;
                 }
@@ -644,20 +978,45 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
             }
             DefaultAction::None
         }
-        UiEvent::Key { key, code, modifiers, repeat } => key_press(realm, &key, &code, modifiers, repeat, true, true),
-        UiEvent::KeyHalf { key, code, modifiers, down } => key_press(realm, &key, &code, modifiers, false, down, !down),
+        UiEvent::Key {
+            key,
+            code,
+            modifiers,
+            repeat,
+        } => key_press(realm, &key, &code, modifiers, repeat, true, true),
+        UiEvent::KeyHalf {
+            key,
+            code,
+            modifiers,
+            down,
+        } => key_press(realm, &key, &code, modifiers, false, down, !down),
         UiEvent::TypeText { text } => {
             let mut last = DefaultAction::None;
             for c in text.chars() {
-                let key = if c == '\n' { "Enter".to_owned() } else { c.to_string() };
+                let key = if c == '\n' {
+                    "Enter".to_owned()
+                } else {
+                    c.to_string()
+                };
                 last = key_press(realm, &key, "", Modifiers::default(), false, true, true);
             }
             last
         }
-        UiEvent::SetValue { node, value, commit } => {
+        UiEvent::SetValue {
+            node,
+            value,
+            commit,
+        } => {
             let is_check = {
                 let i = realm.inner.borrow();
-                i.doc.is(node, "input") && matches!(i.doc.attr(node, "type").map(|t| t.to_ascii_lowercase()).as_deref(), Some("checkbox" | "radio"))
+                i.doc.is(node, "input")
+                    && matches!(
+                        i.doc
+                            .attr(node, "type")
+                            .map(|t| t.to_ascii_lowercase())
+                            .as_deref(),
+                        Some("checkbox" | "radio")
+                    )
             };
             if is_check {
                 let on = matches!(value.as_str(), "true" | "on" | "1" | "checked");
@@ -665,7 +1024,9 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
             } else if realm.inner.borrow().doc.is(node, "select") {
                 let mut i = realm.inner.borrow_mut();
                 let options = i.options_of(node);
-                let hit = options.iter().copied().find(|o| i.option_value(*o) == value || i.doc.text_content(*o).trim() == value);
+                let hit = options.iter().copied().find(|o| {
+                    i.option_value(*o) == value || i.doc.text_content(*o).trim() == value
+                });
                 if let Some(h) = hit {
                     i.set_option_selected(h, true);
                 }
@@ -673,7 +1034,10 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
                 realm.inner.borrow_mut().set_value(node, &value);
             }
             let tv = wrap(realm, Some(node));
-            realm.call_hook("input", vec![tv.clone(), Value::string(value), Value::str("insertText")]);
+            realm.call_hook(
+                "input",
+                vec![tv.clone(), Value::string(value), Value::str("insertText")],
+            );
             if commit {
                 realm.call_hook("change", vec![tv]);
             }
@@ -694,11 +1058,30 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
             }
             DefaultAction::None
         }
-        UiEvent::Wheel { x, y, delta_x, delta_y, modifiers } => {
-            let Some(t) = target_at(realm, x, y) else { return DefaultAction::None };
+        UiEvent::Wheel {
+            x,
+            y,
+            delta_x,
+            delta_y,
+            modifiers,
+        } => {
+            let Some(t) = target_at(realm, x, y) else {
+                return DefaultAction::None;
+            };
             let tv = wrap(realm, Some(t));
             let mv = mods_value(realm, modifiers);
-            let prevented = hook_bool(realm, "wheel", vec![tv, Value::Num(x as f64), Value::Num(y as f64), Value::Num(delta_x as f64), Value::Num(delta_y as f64), mv]);
+            let prevented = hook_bool(
+                realm,
+                "wheel",
+                vec![
+                    tv,
+                    Value::Num(x as f64),
+                    Value::Num(y as f64),
+                    Value::Num(delta_x as f64),
+                    Value::Num(delta_y as f64),
+                    mv,
+                ],
+            );
             if prevented {
                 return DefaultAction::Prevented;
             }
@@ -711,8 +1094,14 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
                 while let Some(c) = cur {
                     if let Some(tree) = i.tree.as_ref() {
                         if let Some((f, _)) = crate::script::inner::fragment_of(tree, c) {
-                            if let crate::layout::FragmentKind::Box { scroll: Some(s), .. } = &f.kind {
-                                if s.content_height > f.rect.size.height && c != Document::ROOT && !i.doc.is(c, "html") {
+                            if let crate::layout::FragmentKind::Box {
+                                scroll: Some(s), ..
+                            } = &f.kind
+                            {
+                                if s.content_height > f.rect.size.height
+                                    && c != Document::ROOT
+                                    && !i.doc.is(c, "html")
+                                {
                                     found = Some(c);
                                     break;
                                 }
@@ -723,21 +1112,43 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
                 }
                 found.unwrap_or(Document::ROOT)
             };
-            let before = realm.inner.borrow().scroll.get(&container).copied().unwrap_or((Au::ZERO, Au::ZERO));
+            let before = realm
+                .inner
+                .borrow()
+                .scroll
+                .get(&container)
+                .copied()
+                .unwrap_or((Au::ZERO, Au::ZERO));
             {
                 let mut i = realm.inner.borrow_mut();
-                i.set_scroll(container, before.0 + Au::from_px_i32(delta_x), before.1 + Au::from_px_i32(delta_y));
+                i.set_scroll(
+                    container,
+                    before.0 + Au::from_px_i32(delta_x),
+                    before.1 + Au::from_px_i32(delta_y),
+                );
                 i.ensure_layout();
             }
-            let after = realm.inner.borrow().scroll.get(&container).copied().unwrap_or((Au::ZERO, Au::ZERO));
+            let after = realm
+                .inner
+                .borrow()
+                .scroll
+                .get(&container)
+                .copied()
+                .unwrap_or((Au::ZERO, Au::ZERO));
             if before != after {
-                let tv = if container == Document::ROOT { Value::Null } else { wrap(realm, Some(container)) };
+                let tv = if container == Document::ROOT {
+                    Value::Null
+                } else {
+                    wrap(realm, Some(container))
+                };
                 realm.call_hook("scroll", vec![tv]);
             }
             DefaultAction::None
         }
         UiEvent::Focus { node } => {
-            let ok = node.map(|n| realm.inner.borrow().is_focusable(n)).unwrap_or(true);
+            let ok = node
+                .map(|n| realm.inner.borrow().is_focusable(n))
+                .unwrap_or(true);
             if !ok {
                 return DefaultAction::None;
             }
@@ -762,7 +1173,11 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
             let old = realm.inner.borrow().url.clone();
             let base = old.split('#').next().unwrap_or("").to_owned();
             let h = hash.trim_start_matches('#');
-            let new = if h.is_empty() { base } else { format!("{base}#{h}") };
+            let new = if h.is_empty() {
+                base
+            } else {
+                format!("{base}#{h}")
+            };
             if new != old {
                 change_hash(realm, &old, &new, true);
             }
@@ -786,7 +1201,11 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
                     let mut i = realm.inner.borrow_mut();
                     i.url = e.url.clone();
                     i.doc.url = e.url.clone();
-                    i.target_id = e.url.split_once('#').map(|(_, h)| h.to_owned()).filter(|h| !h.is_empty());
+                    i.target_id = e
+                        .url
+                        .split_once('#')
+                        .map(|(_, h)| h.to_owned())
+                        .filter(|h| !h.is_empty());
                     i.sheet_changed();
                 }
                 let st = e.state.map(Value::string).unwrap_or(Value::Null);

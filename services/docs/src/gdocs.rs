@@ -20,7 +20,9 @@ use super::blocks::{self, Kind};
 use super::{parse_cell, DocType, DocsState, Document, Screen, SHEET_COLUMNS};
 use cw_protocol::{HttpResponse, Result};
 use cw_service_common as web;
-use cw_service_common::html::{button, div, el, form, label, link, span, text_input, Document as Page, Html};
+use cw_service_common::html::{
+    button, div, el, form, label, link, span, text_input, Document as Page, Html,
+};
 
 const CSS: &str = include_str!("gdocs.css");
 /// Sheets taller than this are still stored; drawing every row would make the page unreadable.
@@ -42,12 +44,20 @@ fn kind_class(kind: DocType) -> &'static str {
 }
 /// The product's file icon: a tinted sheet of paper with its folded corner, drawn by the sheet.
 fn icon(kind: DocType) -> Html {
-    span(&format!("icon {}", kind_class(kind))).attr("aria-hidden", "true").child(el("i"))
+    span(&format!("icon {}", kind_class(kind)))
+        .attr("aria-hidden", "true")
+        .child(el("i"))
 }
 fn avatar(name: &str) -> Html {
     let tint = name.bytes().map(usize::from).sum::<usize>() % 6;
-    let initial: String = name.chars().next().map(|c| c.to_uppercase().collect()).unwrap_or_default();
-    span(&format!("avatar av{tint}")).attr("aria-hidden", "true").text(initial)
+    let initial: String = name
+        .chars()
+        .next()
+        .map(|c| c.to_uppercase().collect())
+        .unwrap_or_default();
+    span(&format!("avatar av{tint}"))
+        .attr("aria-hidden", "true")
+        .text(initial)
 }
 fn nav(current: Option<&str>) -> Html {
     el("nav").class("switch").attr("aria-label", "Files").each(
@@ -66,20 +76,41 @@ fn chrome(brand: &str, kind: DocType, current: Option<&str>, actor: &str) -> Htm
     el("header")
         .id("chrome")
         .class("bar")
-        .child(span("menu").attr("aria-hidden", "true").each(0..3, |_| el("i")))
-        .child(el("a").class("brand").attr("href", "/").attr("aria-label", brand).child(icon(kind)).child(span("name").id("chrome-brand").text(brand)))
+        .child(
+            span("menu")
+                .attr("aria-hidden", "true")
+                .each(0..3, |_| el("i")),
+        )
+        .child(
+            el("a")
+                .class("brand")
+                .attr("href", "/")
+                .attr("aria-label", brand)
+                .child(icon(kind))
+                .child(span("name").id("chrome-brand").text(brand)),
+        )
         .child(nav(current))
-        .child(div("who").child(span("actor").text(actor)).child(avatar(actor)))
+        .child(
+            div("who")
+                .child(span("actor").text(actor))
+                .child(avatar(actor)),
+        )
 }
 fn field(form_id: &str, name: &str, text: &str, value: &str) -> Html {
     let id = format!("{form_id}-{name}");
-    div("field").child(label(&id, text)).child(text_input(&id, name, value).attr("autocomplete", "off"))
+    div("field")
+        .child(label(&id, text))
+        .child(text_input(&id, name, value).attr("autocomplete", "off"))
 }
 fn area(form_id: &str, name: &str, text: &str, value: &str, rows: u32) -> Html {
     let id = format!("{form_id}-{name}");
-    div("field wide")
-        .child(label(&id, text))
-        .child(el("textarea").id(id.as_str()).attr("name", name).attr("rows", rows.to_string()).text(value))
+    div("field wide").child(label(&id, text)).child(
+        el("textarea")
+            .id(id.as_str())
+            .attr("name", name)
+            .attr("rows", rows.to_string())
+            .text(value),
+    )
 }
 /// What a file looks like from a distance: the top of the page, the corner of the grid, or
 /// the title slide.
@@ -91,14 +122,19 @@ fn cover(d: &Document) -> Html {
         DocType::Sheet => sheet.child(el("div").class("mini-grid").each(1..=6u32, |r| {
             div("r").each(0..4u8, |c| {
                 let name = format!("{}{r}", char::from(b'A' + c));
-                span(if r == 1 { "c h" } else { "c" }).text(d.cells.get(&name).cloned().unwrap_or_default())
+                span(if r == 1 { "c h" } else { "c" })
+                    .text(d.cells.get(&name).cloned().unwrap_or_default())
             })
         })),
         DocType::Slides => {
             let first = d.slides.first();
             sheet.child(
                 div("mini-slide")
-                    .child(el("p").class("h").text(first.map_or(d.title.as_str(), |s| s.title.as_str())))
+                    .child(
+                        el("p")
+                            .class("h")
+                            .text(first.map_or(d.title.as_str(), |s| s.title.as_str())),
+                    )
                     .child(el("p").text(first.map_or("", |s| s.body.as_str()))),
             )
         }
@@ -118,10 +154,23 @@ fn file_card(d: &Document, actor: &str) -> Html {
                     div("meta")
                         .id(format!("file-meta-{id}"))
                         .child(icon(d.doc_type))
-                        .child(span("kind").id(format!("file-kind-{id}")).text(d.doc_type.label()))
-                        .child(span("owner").id(format!("file-owner-{id}")).text(format!("{} · revision {}", d.owner, d.revision)))
+                        .child(
+                            span("kind")
+                                .id(format!("file-kind-{id}"))
+                                .text(d.doc_type.label()),
+                        )
+                        .child(
+                            span("owner")
+                                .id(format!("file-owner-{id}"))
+                                .text(format!("{} · revision {}", d.owner, d.revision)),
+                        )
                         .when(d.starred.contains(actor), |m| {
-                            m.child(span("starred").id(format!("file-star-{id}")).attr("aria-label", "Starred").text("★"))
+                            m.child(
+                                span("starred")
+                                    .id(format!("file-star-{id}"))
+                                    .attr("aria-label", "Starred")
+                                    .text("★"),
+                            )
                         }),
                 ),
         )
@@ -138,7 +187,11 @@ fn home(s: &DocsState, actor: &str, kind: Option<DocType>) -> Vec<Html> {
         Some(DocType::Slides) => "nav-slides",
     };
     let pick = el("select").id("create-type").attr("name", "type").each(
-        [(DocType::Doc, "Document"), (DocType::Sheet, "Spreadsheet"), (DocType::Slides, "Presentation")],
+        [
+            (DocType::Doc, "Document"),
+            (DocType::Sheet, "Spreadsheet"),
+            (DocType::Slides, "Presentation"),
+        ],
         |(k, text)| {
             el("option")
                 .attr("value", k.as_str())
@@ -169,7 +222,10 @@ fn home(s: &DocsState, actor: &str, kind: Option<DocType>) -> Vec<Html> {
                             .child(field("create", "readers", "Readers", ""))
                             .child(field("create", "writers", "Writers", ""))
                             .child(area("create", "body", "Content", "", 3))
-                            .child(div("actions").child(button("create-submit", "Create").class("primary"))),
+                            .child(
+                                div("actions")
+                                    .child(button("create-submit", "Create").class("primary")),
+                            ),
                     ),
             ),
     );
@@ -188,12 +244,23 @@ fn home(s: &DocsState, actor: &str, kind: Option<DocType>) -> Vec<Html> {
                     ))),
             )
             .child(if docs.is_empty() {
-                el("p").id("home-empty").class("none").text("Nothing here yet.")
+                el("p")
+                    .id("home-empty")
+                    .class("none")
+                    .text("Nothing here yet.")
             } else {
                 gallery("files", &docs, actor)
             }),
     );
-    vec![chrome(product(kind), kind.unwrap_or_default(), Some(current), actor), el("main").child(start).child(recent)]
+    vec![
+        chrome(
+            product(kind),
+            kind.unwrap_or_default(),
+            Some(current),
+            actor,
+        ),
+        el("main").child(start).child(recent),
+    ]
 }
 fn starred(s: &DocsState, actor: &str) -> Vec<Html> {
     let docs = s.starred(actor);
@@ -202,26 +269,69 @@ fn starred(s: &DocsState, actor: &str) -> Vec<Html> {
             .child(
                 div("recent-head")
                     .child(el("h1").id("starred-title").text("Starred"))
-                    .child(span("count").id("starred-note").text("A star is yours alone; other people keep their own.")),
+                    .child(
+                        span("count")
+                            .id("starred-note")
+                            .text("A star is yours alone; other people keep their own."),
+                    ),
             )
             .child(if docs.is_empty() {
-                el("p").id("starred-empty").class("none").text("You have not starred anything yet.")
+                el("p")
+                    .id("starred-empty")
+                    .class("none")
+                    .text("You have not starred anything yet.")
             } else {
                 gallery("starred-files", &docs, actor)
             }),
     );
-    vec![chrome("Google Docs", DocType::Doc, Some("nav-starred"), actor), el("main").child(body)]
+    vec![
+        chrome("Google Docs", DocType::Doc, Some("nav-starred"), actor),
+        el("main").child(body),
+    ]
 }
 /// The toolbar band. Every glyph is inert: the editor is the form under the page.
 fn toolbar(kind: DocType) -> Html {
     let groups: &[&[&str]] = match kind {
-        DocType::Doc => &[&["↶", "↷", "⎙"], &["100%"], &["Normal text"], &["Arial"], &["−", "11", "+"], &["B", "I", "U", "A"], &["≡", "☰", "⋮"]],
-        DocType::Sheet => &[&["↶", "↷", "⎙"], &["100%"], &["$", "%", ".0", "123"], &["Arial"], &["−", "10", "+"], &["B", "I", "S", "A"], &["▦", "≡", "Σ"]],
-        DocType::Slides => &[&["+", "↶", "↷", "⎙"], &["Fit"], &["▭", "◯", "╱"], &["Background"], &["Layout"], &["Theme"], &["Transition"]],
+        DocType::Doc => &[
+            &["↶", "↷", "⎙"],
+            &["100%"],
+            &["Normal text"],
+            &["Arial"],
+            &["−", "11", "+"],
+            &["B", "I", "U", "A"],
+            &["≡", "☰", "⋮"],
+        ],
+        DocType::Sheet => &[
+            &["↶", "↷", "⎙"],
+            &["100%"],
+            &["$", "%", ".0", "123"],
+            &["Arial"],
+            &["−", "10", "+"],
+            &["B", "I", "S", "A"],
+            &["▦", "≡", "Σ"],
+        ],
+        DocType::Slides => &[
+            &["+", "↶", "↷", "⎙"],
+            &["Fit"],
+            &["▭", "◯", "╱"],
+            &["Background"],
+            &["Layout"],
+            &["Theme"],
+            &["Transition"],
+        ],
     };
-    div("toolbar").attr("aria-hidden", "true").each(groups.iter(), |group| {
-        span("group").each(group.iter(), |glyph| span(if glyph.chars().count() > 2 { "tool wide" } else { "tool" }).text(*glyph))
-    })
+    div("toolbar")
+        .attr("aria-hidden", "true")
+        .each(groups.iter(), |group| {
+            span("group").each(group.iter(), |glyph| {
+                span(if glyph.chars().count() > 2 {
+                    "tool wide"
+                } else {
+                    "tool"
+                })
+                .text(*glyph)
+            })
+        })
 }
 /// Why a reader sees no editor. A form that could only ever answer 403 is a control in name
 /// alone, so the page says what is missing instead of drawing one.
@@ -230,21 +340,36 @@ fn readonly(id: &str, what: &str) -> Html {
 }
 fn prose(d: &Document, actor: &str) -> Html {
     let parsed = blocks::parse(&d.body);
-    let page = el("article").id("doc-page").class("paper").each(parsed.iter(), |b| {
-        let id = format!("body-line-{}", b.line);
-        let depth = if b.depth > 0 { " deep" } else { "" };
-        match &b.kind {
-            Kind::Gap => el("p").class("gap"),
-            Kind::Heading => el(if b.line == 0 { "h1" } else { "h2" }).id(id).children(blocks::inline(&b.words)),
-            Kind::Para => el("p").id(id).children(blocks::inline(&b.words)),
-            Kind::Bullet => div(&format!("item{depth}")).id(id).child(span("mark").text("●")).child(span("txt").children(blocks::inline(&b.words))),
-            Kind::Todo(done) => div(&format!("item todo{depth}"))
-                .id(id)
-                .child(span(if *done { "box done" } else { "box" }).text(if *done { "✓" } else { "" }))
-                .child(span("txt").children(blocks::inline(&b.words))),
-            Kind::Numbered(n) => div(&format!("item{depth}")).id(id).child(span("mark num").text(format!("{n}."))).child(span("txt").children(blocks::inline(&b.words))),
-        }
-    });
+    let page = el("article")
+        .id("doc-page")
+        .class("paper")
+        .each(parsed.iter(), |b| {
+            let id = format!("body-line-{}", b.line);
+            let depth = if b.depth > 0 { " deep" } else { "" };
+            match &b.kind {
+                Kind::Gap => el("p").class("gap"),
+                Kind::Heading => el(if b.line == 0 { "h1" } else { "h2" })
+                    .id(id)
+                    .children(blocks::inline(&b.words)),
+                Kind::Para => el("p").id(id).children(blocks::inline(&b.words)),
+                Kind::Bullet => div(&format!("item{depth}"))
+                    .id(id)
+                    .child(span("mark").text("●"))
+                    .child(span("txt").children(blocks::inline(&b.words))),
+                Kind::Todo(done) => div(&format!("item todo{depth}"))
+                    .id(id)
+                    .child(span(if *done { "box done" } else { "box" }).text(if *done {
+                        "✓"
+                    } else {
+                        ""
+                    }))
+                    .child(span("txt").children(blocks::inline(&b.words))),
+                Kind::Numbered(n) => div(&format!("item{depth}"))
+                    .id(id)
+                    .child(span("mark num").text(format!("{n}.")))
+                    .child(span("txt").children(blocks::inline(&b.words))),
+            }
+        });
     let mut column = div("column").child(page);
     if d.writable(actor) {
         column = column.child(
@@ -253,9 +378,16 @@ fn prose(d: &Document, actor: &str) -> Html {
                 .child(el("h2").id("edit-title").text("Edit"))
                 .child(
                     form("edit", format!("/documents/{}", d.id), "post")
-                        .child(field("edit", "revision", "Revision", &d.revision.to_string()))
+                        .child(field(
+                            "edit",
+                            "revision",
+                            "Revision",
+                            &d.revision.to_string(),
+                        ))
                         .child(area("edit", "body", "Content", &d.body, 12))
-                        .child(div("actions").child(button("edit-submit", "Save").class("primary"))),
+                        .child(
+                            div("actions").child(button("edit-submit", "Save").class("primary")),
+                        ),
                 ),
         );
     } else {
@@ -276,17 +408,36 @@ fn sheet(d: &Document, actor: &str) -> Html {
     let letter = |c: u8| char::from(b'A' + c);
     let head = el("tr")
         .child(el("th").id("sheet-corner").class("corner"))
-        .each(0..columns, |c| el("th").id(format!("sheet-col-{}", letter(c))).attr("scope", "col").text(letter(c).to_string()));
+        .each(0..columns, |c| {
+            el("th")
+                .id(format!("sheet-col-{}", letter(c)))
+                .attr("scope", "col")
+                .text(letter(c).to_string())
+        });
     let body = el("tbody").each(1..=rows, |r| {
         el("tr")
-            .child(el("th").id(format!("sheet-row-{r}")).attr("scope", "row").text(r.to_string()))
+            .child(
+                el("th")
+                    .id(format!("sheet-row-{r}"))
+                    .attr("scope", "row")
+                    .text(r.to_string()),
+            )
             .each(0..columns, |c| {
                 let name = format!("{}{r}", letter(c));
                 let value = d.cells.get(&name).cloned().unwrap_or_default();
-                let numeric = value.chars().next().is_some_and(|ch| ch.is_ascii_digit() || ch == '-' || ch == '$');
+                let numeric = value
+                    .chars()
+                    .next()
+                    .is_some_and(|ch| ch.is_ascii_digit() || ch == '-' || ch == '$');
                 el("td")
                     .id(format!("sheet-{name}"))
-                    .class(if r == 1 { "h" } else if numeric { "n" } else { "" })
+                    .class(if r == 1 {
+                        "h"
+                    } else if numeric {
+                        "n"
+                    } else {
+                        ""
+                    })
                     .text(value)
             })
     });
@@ -294,50 +445,120 @@ fn sheet(d: &Document, actor: &str) -> Html {
     // that could only ever answer 403 is a control in name alone.
     div("column sheet-column")
         .when(d.writable(actor), |c| {
-            c.child(el("h2").id("sheet-edit-title").class("sr").text("Edit a cell")).child(
+            c.child(
+                el("h2")
+                    .id("sheet-edit-title")
+                    .class("sr")
+                    .text("Edit a cell"),
+            )
+            .child(
                 form("cell", format!("/documents/{}/cells", d.id), "post")
                     .class("formula")
-                    .child(text_input("cell-cell", "cell", "").attr("aria-label", "Cell, for example B3").attr("placeholder", "A1").attr("autocomplete", "off"))
+                    .child(
+                        text_input("cell-cell", "cell", "")
+                            .attr("aria-label", "Cell, for example B3")
+                            .attr("placeholder", "A1")
+                            .attr("autocomplete", "off"),
+                    )
                     .child(span("fx").attr("aria-hidden", "true").text("fx"))
-                    .child(text_input("cell-value", "value", "").attr("aria-label", "Value").attr("placeholder", "Value").attr("autocomplete", "off"))
+                    .child(
+                        text_input("cell-value", "value", "")
+                            .attr("aria-label", "Value")
+                            .attr("placeholder", "Value")
+                            .attr("autocomplete", "off"),
+                    )
                     .child(button("cell-submit", "Set cell")),
             )
         })
-        .when(!d.writable(actor), |c| c.child(readonly("sheet-readonly", "sheet")))
-        .child(div("grid-wrap").child(el("table").id("sheet").child(el("thead").child(head)).child(body)))
-        .child(div("sheet-tabs").attr("aria-hidden", "true").child(span("add").text("+")).child(span("all").text("☰")).child(span("tab on").text("Sheet1")))
+        .when(!d.writable(actor), |c| {
+            c.child(readonly("sheet-readonly", "sheet"))
+        })
+        .child(
+            div("grid-wrap").child(
+                el("table")
+                    .id("sheet")
+                    .child(el("thead").child(head))
+                    .child(body),
+            ),
+        )
+        .child(
+            div("sheet-tabs")
+                .attr("aria-hidden", "true")
+                .child(span("add").text("+"))
+                .child(span("all").text("☰"))
+                .child(span("tab on").text("Sheet1")),
+        )
 }
 fn deck(d: &Document, actor: &str) -> Html {
-    let strip = div("filmstrip").attr("aria-hidden", "true").each(d.slides.iter().enumerate(), |(i, slide)| {
-        div(if i == 0 { "frame on" } else { "frame" })
-            .child(span("no").text((i + 1).to_string()))
-            .child(div("mini-slide").child(el("p").class("h").text(slide.title.as_str())).child(el("p").text(slide.body.as_str())))
-    });
+    let strip = div("filmstrip").attr("aria-hidden", "true").each(
+        d.slides.iter().enumerate(),
+        |(i, slide)| {
+            div(if i == 0 { "frame on" } else { "frame" })
+                .child(span("no").text((i + 1).to_string()))
+                .child(
+                    div("mini-slide")
+                        .child(el("p").class("h").text(slide.title.as_str()))
+                        .child(el("p").text(slide.body.as_str())),
+                )
+        },
+    );
     let mut column = div("column deck-column");
     if d.slides.is_empty() {
-        column = column.child(el("p").id("deck-empty").class("none").text("This deck has no slides yet."));
+        column = column.child(
+            el("p")
+                .id("deck-empty")
+                .class("none")
+                .text("This deck has no slides yet."),
+        );
     } else {
-        column = column.child(div("slides").id("deck").each(d.slides.iter().enumerate(), |(i, slide)| {
-            el("section")
-                .id(format!("slide-{i}"))
-                .class("slide")
-                .child(span("badge").id(format!("slide-no-{i}")).text(format!("Slide {}", i + 1)))
-                .child(el("h2").id(format!("slide-title-{i}")).text(slide.title.as_str()))
-                .child(el("p").id(format!("slide-body-{i}")).text(slide.body.as_str()))
-        }));
+        column = column.child(div("slides").id("deck").each(
+            d.slides.iter().enumerate(),
+            |(i, slide)| {
+                el("section")
+                    .id(format!("slide-{i}"))
+                    .class("slide")
+                    .child(
+                        span("badge")
+                            .id(format!("slide-no-{i}"))
+                            .text(format!("Slide {}", i + 1)),
+                    )
+                    .child(
+                        el("h2")
+                            .id(format!("slide-title-{i}"))
+                            .text(slide.title.as_str()),
+                    )
+                    .child(
+                        el("p")
+                            .id(format!("slide-body-{i}"))
+                            .text(slide.body.as_str()),
+                    )
+            },
+        ));
     }
     // As with the prose editor and the formula bar: only a writer is offered the slide form.
     if d.writable(actor) {
         column = column.child(
             el("section")
                 .class("panel editor")
-                .child(el("h2").id("deck-edit-title").text("Add or replace a slide"))
+                .child(
+                    el("h2")
+                        .id("deck-edit-title")
+                        .text("Add or replace a slide"),
+                )
                 .child(
                     form("slide", format!("/documents/{}/slides", d.id), "post")
-                        .child(field("slide", "index", "Slide number to replace, blank to add", ""))
+                        .child(field(
+                            "slide",
+                            "index",
+                            "Slide number to replace, blank to add",
+                            "",
+                        ))
                         .child(field("slide", "title", "Title", ""))
                         .child(area("slide", "body", "Body", "", 4))
-                        .child(div("actions").child(button("slide-submit", "Save slide").class("primary"))),
+                        .child(
+                            div("actions")
+                                .child(button("slide-submit", "Save slide").class("primary")),
+                        ),
                 ),
         );
     } else {
@@ -351,7 +572,14 @@ fn document(d: &Document, actor: &str) -> Vec<Html> {
     let titlebar = el("header")
         .id("head")
         .class("docbar")
-        .child(el("a").id("doc-home").class("home").attr("href", "/").attr("aria-label", format!("{} home", product(Some(d.doc_type)))).child(icon(d.doc_type)))
+        .child(
+            el("a")
+                .id("doc-home")
+                .class("home")
+                .attr("href", "/")
+                .attr("aria-label", format!("{} home", product(Some(d.doc_type))))
+                .child(icon(d.doc_type)),
+        )
         .child(
             div("titles")
                 .child(
@@ -361,13 +589,30 @@ fn document(d: &Document, actor: &str) -> Vec<Html> {
                             form("star-form", format!("/documents/{id}/star"), "post").child(
                                 button("star", if is_starred { "Starred" } else { "Star" })
                                     .class(if is_starred { "star on" } else { "star" })
-                                    .attr("aria-pressed", if is_starred { "true" } else { "false" }),
+                                    .attr(
+                                        "aria-pressed",
+                                        if is_starred { "true" } else { "false" },
+                                    ),
                             ),
                         )
-                        .child(span("meta").id("head-meta").text(format!("{} · owner {} · revision {}", d.doc_type.label(), d.owner, d.revision))),
+                        .child(span("meta").id("head-meta").text(format!(
+                            "{} · owner {} · revision {}",
+                            d.doc_type.label(),
+                            d.owner,
+                            d.revision
+                        ))),
                 )
                 .child(div("menus").attr("aria-hidden", "true").each(
-                    ["File", "Edit", "View", "Insert", "Format", "Tools", "Extensions", "Help"],
+                    [
+                        "File",
+                        "Edit",
+                        "View",
+                        "Insert",
+                        "Format",
+                        "Tools",
+                        "Extensions",
+                        "Help",
+                    ],
                     |m| span("").text(m),
                 )),
         )
@@ -375,17 +620,34 @@ fn document(d: &Document, actor: &str) -> Vec<Html> {
         .child(div("who").child(avatar(actor)));
     let notes = el("aside")
         .class("notes")
-        .child(el("h2").id("notes-title").text(format!("Comments ({})", d.comments.len())))
+        .child(
+            el("h2")
+                .id("notes-title")
+                .text(format!("Comments ({})", d.comments.len())),
+        )
         .each(d.comments.iter().enumerate(), |(i, c)| {
             div("note")
                 .id(format!("note-{i}"))
-                .child(div("note-head").child(avatar(&c.author)).child(span("by").id(format!("note-author-{i}")).text(format!("{} · tick {}", c.author, c.time))))
+                .child(
+                    div("note-head").child(avatar(&c.author)).child(
+                        span("by")
+                            .id(format!("note-author-{i}"))
+                            .text(format!("{} · tick {}", c.author, c.time)),
+                    ),
+                )
                 .child(el("p").id(format!("note-text-{i}")).text(c.text.as_str()))
         })
         .child(
             form("comment", format!("/documents/{id}/comments"), "post")
                 .class("note new")
-                .child(el("textarea").id("comment-text").attr("name", "text").attr("rows", "3").attr("aria-label", "Comment").attr("placeholder", "Add a comment"))
+                .child(
+                    el("textarea")
+                        .id("comment-text")
+                        .attr("name", "text")
+                        .attr("rows", "3")
+                        .attr("aria-label", "Comment")
+                        .attr("placeholder", "Add a comment"),
+                )
                 .child(div("actions").child(button("comment-submit", "Comment").class("primary"))),
         );
     let history = el("aside")
@@ -394,7 +656,10 @@ fn document(d: &Document, actor: &str) -> Vec<Html> {
         .each(d.history.iter().rev().take(10), |r| {
             div("rev")
                 .id(format!("history-{}", r.revision))
-                .text(format!("Revision {} · {} · tick {}", r.revision, r.author, r.time))
+                .text(format!(
+                    "Revision {} · {} · tick {}",
+                    r.revision, r.author, r.time
+                ))
         });
     let center = match d.doc_type {
         DocType::Doc => prose(d, actor),
@@ -404,13 +669,25 @@ fn document(d: &Document, actor: &str) -> Vec<Html> {
     vec![
         titlebar,
         toolbar(d.doc_type),
-        el("main").class("workspace").child(history).child(center).child(notes),
+        el("main")
+            .class("workspace")
+            .child(history)
+            .child(center)
+            .child(notes),
     ]
 }
 pub(crate) fn view(s: &DocsState, actor: &str, screen: Screen) -> Result<HttpResponse> {
     let (title, class, body) = match screen {
-        Screen::Home(kind) => (product(kind).to_owned(), format!("page-home {}", kind_class(kind.unwrap_or_default())), home(s, actor, kind)),
-        Screen::Starred => ("Starred · Google Docs".to_owned(), "page-home kind-doc".to_owned(), starred(s, actor)),
+        Screen::Home(kind) => (
+            product(kind).to_owned(),
+            format!("page-home {}", kind_class(kind.unwrap_or_default())),
+            home(s, actor, kind),
+        ),
+        Screen::Starred => (
+            "Starred · Google Docs".to_owned(),
+            "page-home kind-doc".to_owned(),
+            starred(s, actor),
+        ),
         Screen::Doc(id) => match s.read(actor, id) {
             Ok(d) => (
                 format!("{} · {}", d.title, product(Some(d.doc_type))),
@@ -420,7 +697,9 @@ pub(crate) fn view(s: &DocsState, actor: &str, screen: Screen) -> Result<HttpRes
             Err(e) => return web::error(403, e),
         },
     };
-    let or = |value: &Option<String>, fallback: &str| value.clone().unwrap_or_else(|| fallback.to_owned());
+    let or = |value: &Option<String>, fallback: &str| {
+        value.clone().unwrap_or_else(|| fallback.to_owned())
+    };
     let page = Page::new(title)
         .lang("en")
         .stylesheet(CSS)

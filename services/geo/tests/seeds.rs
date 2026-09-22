@@ -2,8 +2,8 @@
 //! a storyline fact that drifts out of the data, fails here rather than in the world build.
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
-use cw_service_geo::{GeoService, GeoState};
 use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
+use cw_service_geo::{GeoService, GeoState};
 use serde_json::Value;
 const GOOGLE_MAPS: &str = include_str!("../../../worlds/company-2026/sites/google-maps.json");
 const OSM: &str = include_str!("../../../worlds/company-2026/sites/osm.json");
@@ -54,13 +54,20 @@ impl Dom {
         !self.0.by_id(id).is_empty()
     }
     fn node(&self, id: &str) -> cw_web::dom::NodeId {
-        *self.0.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+        *self
+            .0
+            .by_id(id)
+            .first()
+            .unwrap_or_else(|| panic!("no element #{id}"))
     }
     fn text(&self, id: &str) -> String {
         self.0.text_content(self.node(id))
     }
     fn attr(&self, id: &str, name: &str) -> String {
-        self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+        self.0
+            .attr(self.node(id), name)
+            .unwrap_or_default()
+            .to_owned()
     }
     fn body_class(&self) -> String {
         let d = &self.0;
@@ -123,20 +130,29 @@ fn every_maps_page_the_seed_advertises_resolves() {
         "http://maps.google.com/search?q=convention%20center",
     ] {
         let dom = page(&mut state, "alice", url);
-        assert!(dom.has("hdr-search") && dom.has("hdr-q") && dom.has("nav-saved"), "{url}");
+        assert!(
+            dom.has("hdr-search") && dom.has("hdr-q") && dom.has("nav-saved"),
+            "{url}"
+        );
         assert!(dom.body_class().starts_with("skin-gmaps "), "{url}");
     }
     let home = page(&mut state, "alice", "http://maps.google.com/");
     assert_eq!(home.text("wordmark"), "Google Maps");
     assert_eq!(home.attr("chip-0", "href"), "/search?q=airport");
-    assert_eq!(home.attr("home-tile", "src"), "/map.rgba?w=768&h=480&center=northstar-hq&zoom=0");
+    assert_eq!(
+        home.attr("home-tile", "src"),
+        "/map.rgba?w=768&h=480&center=northstar-hq&zoom=0"
+    );
     let saved = page(&mut state, "carol", "http://maps.google.com/maps/saved");
     let names: Vec<String> = (0..4)
         .map(|i| format!("saved-{i}-name"))
         .filter(|id| saved.has(id))
         .map(|id| saved.text(&id))
         .collect();
-    assert!(names.iter().any(|n| n == "Cascade Convention Center"), "{names:?}");
+    assert!(
+        names.iter().any(|n| n == "Cascade Convention Center"),
+        "{names:?}"
+    );
 }
 #[test]
 fn openstreetmap_reads_the_same_places_in_metric_and_carries_its_notes() {
@@ -155,7 +171,9 @@ fn openstreetmap_reads_the_same_places_in_metric_and_carries_its_notes() {
         "/map.rgba?w=640&h=480&route=northstar-hq%7Cdevcon-center%7Ccycling&sel=devcon-center"
     );
     let notes = page(&mut state, "bob", "http://openstreetmap.org/maps/notes");
-    assert!(notes.text("n-0-text").contains("southbound platform entrance"));
+    assert!(notes
+        .text("n-0-text")
+        .contains("southbound platform entrance"));
     assert_eq!(notes.attr("n-0", "href"), "/maps/place/bayfront-depot");
     for url in [
         "http://openstreetmap.org/",
@@ -163,10 +181,21 @@ fn openstreetmap_reads_the_same_places_in_metric_and_carries_its_notes() {
         "http://openstreetmap.org/maps/place/bayfront-depot",
         "http://openstreetmap.org/search?q=market",
     ] {
-        assert!(page(&mut state, "bob", url).body_class().starts_with("skin-osm "), "{url}");
+        assert!(
+            page(&mut state, "bob", url)
+                .body_class()
+                .starts_with("skin-osm "),
+            "{url}"
+        );
     }
-    let depot = page(&mut state, "bob", "http://openstreetmap.org/maps/place/bayfront-depot");
-    assert!(depot.text("note-0-text").contains("southbound platform entrance"));
+    let depot = page(
+        &mut state,
+        "bob",
+        "http://openstreetmap.org/maps/place/bayfront-depot",
+    );
+    assert!(depot
+        .text("note-0-text")
+        .contains("southbound platform entrance"));
     let s: GeoState = serde_json::from_value(state).unwrap();
     assert_eq!(s.notes.len(), 3);
     assert_eq!(s.next_note, 4, "a new note must not reuse a seeded id");

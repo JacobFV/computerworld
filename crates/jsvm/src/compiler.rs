@@ -484,7 +484,12 @@ impl<'a> Compiler<'a> {
     /// each is consulted at run time before the static binding.
     fn with_chain(&self, name: &str) -> Vec<Name> {
         let mut chain = Vec::new();
-        if !self.any_with || name == "this" || name == "new.target" || name.starts_with('%') || name.starts_with('#') {
+        if !self.any_with
+            || name == "this"
+            || name == "new.target"
+            || name.starts_with('%')
+            || name.starts_with('#')
+        {
             return chain;
         }
         for f in self.funcs.iter().rev() {
@@ -496,7 +501,9 @@ impl<'a> Compiler<'a> {
                     chain.push(w.clone());
                 }
             }
-            if (!f.is_arrow() && name == "arguments" && f.kind != FuncKind::ClassInit) || f.self_name.as_deref() == Some(name) {
+            if (!f.is_arrow() && name == "arguments" && f.kind != FuncKind::ClassInit)
+                || f.self_name.as_deref() == Some(name)
+            {
                 return chain;
             }
         }
@@ -506,7 +513,14 @@ impl<'a> Compiler<'a> {
     /// Emits the run-time `with` lookups for `name`: for each object in the chain
     /// that has the name, `found` runs with that object on the stack; otherwise
     /// `fallback` runs. Both must leave the same stack shape.
-    fn emit_with_lookup(&mut self, chain: &[Name], name: &str, pos: Pos, found: &dyn Fn(&mut Self, u32), fallback: &dyn Fn(&mut Self)) {
+    fn emit_with_lookup(
+        &mut self,
+        chain: &[Name],
+        name: &str,
+        pos: Pos,
+        found: &dyn Fn(&mut Self, u32),
+        fallback: &dyn Fn(&mut Self),
+    ) {
         let c = self.str_const(name);
         let end = self.new_label();
         for w in chain {
@@ -526,7 +540,15 @@ impl<'a> Compiler<'a> {
     fn load_name(&mut self, name: &str, pos: Pos) {
         let chain = self.with_chain(name);
         if !chain.is_empty() {
-            self.emit_with_lookup(&chain, name, pos, &|c, k| { c.emit_at(Op::GetProp(k), pos); }, &|c| c.load_name_static(name, pos));
+            self.emit_with_lookup(
+                &chain,
+                name,
+                pos,
+                &|c, k| {
+                    c.emit_at(Op::GetProp(k), pos);
+                },
+                &|c| c.load_name_static(name, pos),
+            );
             return;
         }
         self.load_name_static(name, pos)
@@ -560,10 +582,24 @@ impl<'a> Compiler<'a> {
 
     /// Stores TOS into a name (consumes it). `init` for declarations.
     fn store_name(&mut self, name: &str, pos: Pos, init: bool) {
-        let chain = if init { Vec::new() } else { self.with_chain(name) };
+        let chain = if init {
+            Vec::new()
+        } else {
+            self.with_chain(name)
+        };
         if !chain.is_empty() {
             // [value] -> [] : obj.name = value through the binding object.
-            self.emit_with_lookup(&chain, name, pos, &|c, k| { c.emit(Op::Swap); c.emit_at(Op::SetProp(k), pos); c.emit(Op::Pop); }, &|c| c.store_name_static(name, pos, false));
+            self.emit_with_lookup(
+                &chain,
+                name,
+                pos,
+                &|c, k| {
+                    c.emit(Op::Swap);
+                    c.emit_at(Op::SetProp(k), pos);
+                    c.emit(Op::Pop);
+                },
+                &|c| c.store_name_static(name, pos, false),
+            );
             return;
         }
         self.store_name_static(name, pos, init)
@@ -641,9 +677,10 @@ impl<'a> Compiler<'a> {
                 }
                 self.collect_vars_stmt(body, out, strict, false);
             }
-            StmtKind::While(_, b) | StmtKind::DoWhile(b, _) | StmtKind::Labeled(_, b) | StmtKind::With(_, b) => {
-                self.collect_vars_stmt(b, out, strict, false)
-            }
+            StmtKind::While(_, b)
+            | StmtKind::DoWhile(b, _)
+            | StmtKind::Labeled(_, b)
+            | StmtKind::With(_, b) => self.collect_vars_stmt(b, out, strict, false),
             StmtKind::Block(b) => self.collect_vars(b, out, strict, false),
             StmtKind::Try {
                 block,
@@ -2403,7 +2440,18 @@ impl<'a> Compiler<'a> {
                 let chain = self.with_chain(n);
                 let pos = callee.pos;
                 let name = n.clone();
-                self.emit_with_lookup(&chain, n, pos, &|c, k| { c.emit_at(Op::GetPropKeep(k), pos); }, &|c| { c.emit(Op::Undef); c.load_name_static(&name, pos); });
+                self.emit_with_lookup(
+                    &chain,
+                    n,
+                    pos,
+                    &|c, k| {
+                        c.emit_at(Op::GetPropKeep(k), pos);
+                    },
+                    &|c| {
+                        c.emit(Op::Undef);
+                        c.load_name_static(&name, pos);
+                    },
+                );
                 Ok(true)
             }
             _ => {
@@ -2485,7 +2533,18 @@ impl<'a> Compiler<'a> {
                         if chain.is_empty() {
                             self.emit_at(Op::TypeofGlobal(c), pos);
                         } else {
-                            self.emit_with_lookup(&chain, n, pos, &|s, k| { s.emit_at(Op::GetProp(k), pos); s.emit_at(Op::Typeof, pos); }, &|s| { s.emit_at(Op::TypeofGlobal(c), pos); });
+                            self.emit_with_lookup(
+                                &chain,
+                                n,
+                                pos,
+                                &|s, k| {
+                                    s.emit_at(Op::GetProp(k), pos);
+                                    s.emit_at(Op::Typeof, pos);
+                                },
+                                &|s| {
+                                    s.emit_at(Op::TypeofGlobal(c), pos);
+                                },
+                            );
                         }
                         return Ok(());
                     }

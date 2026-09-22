@@ -136,7 +136,13 @@ fn youtube_is_browsed_searched_and_watched_through_the_agent_api() {
         "type",
         json!({"text": "determinism"}),
     );
-    act(&mut world, &session, "browser.v1", "key", json!({"key": "Enter"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "key",
+        json!({"key": "Enter"}),
+    );
     assert_eq!(
         browser(&world, &session)["url"],
         "http://youtube.com/results?search_query=determinism"
@@ -168,7 +174,10 @@ fn youtube_is_browsed_searched_and_watched_through_the_agent_api() {
         by_id(&all, "watch-channel-name")["url"],
         "http://youtube.com/channel/alice-builds"
     );
-    assert!(words(&watch).contains("views"), "the view count is readable");
+    assert!(
+        words(&watch).contains("views"),
+        "the view count is readable"
+    );
 
     // The watch page's controls: each is a button in its own form, and each posts and
     // comes back to the watch page with the state it changed showing.
@@ -180,7 +189,13 @@ fn youtube_is_browsed_searched_and_watched_through_the_agent_api() {
         "the button posts where the Page version's did"
     );
 
-    act(&mut world, &session, "browser.v1", "click", json!({"id": "watch-like"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id": "watch-like"}),
+    );
     let liked = page(&world, &session);
     let all = elements(&liked);
     assert_eq!(
@@ -188,20 +203,35 @@ fn youtube_is_browsed_searched_and_watched_through_the_agent_api() {
         "Remove like",
         "the like took, and the control is now the other way round"
     );
-    let landed = browser(&world, &session)["url"].as_str().unwrap().to_owned();
+    let landed = browser(&world, &session)["url"]
+        .as_str()
+        .unwrap()
+        .to_owned();
     assert!(
         landed.contains("determinism-intro"),
         "a control lands back on the page it was pressed from, not {landed}"
     );
     // Subscribe, and Save, which really puts the video in Watch later.
     assert!(label(by_id(&all, "watch-subscribe")).contains("Subscribe"));
-    act(&mut world, &session, "browser.v1", "click", json!({"id": "watch-subscribe"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id": "watch-subscribe"}),
+    );
     let all = elements(&page(&world, &session));
     assert!(
         label(by_id(&all, "watch-subscribe")).contains("Subscribed"),
         "the button says so now"
     );
-    act(&mut world, &session, "browser.v1", "click", json!({"id": "watch-later"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id": "watch-later"}),
+    );
     act(
         &mut world,
         &session,
@@ -214,7 +244,10 @@ fn youtube_is_browsed_searched_and_watched_through_the_agent_api() {
         words(&later).contains("What deterministic simulation actually means"),
         "Save put the video in Watch later"
     );
-    assert!(has(&elements(&later), "playlist-play"), "a built list plays");
+    assert!(
+        has(&elements(&later), "playlist-play"),
+        "a built list plays"
+    );
 }
 
 #[test]
@@ -249,9 +282,24 @@ fn spotify_plays_a_track_and_its_player_bar_runs_the_queue() {
         "navigate",
         json!({"url": "http://spotify.com/search"}),
     );
-    act(&mut world, &session, "browser.v1", "fill", json!({"id": "search-q", "value": "cold"}));
-    act(&mut world, &session, "browser.v1", "click", json!({"id": "search-submit"}));
-    assert_eq!(browser(&world, &session)["url"], "http://spotify.com/search?q=cold");
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "fill",
+        json!({"id": "search-q", "value": "cold"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id": "search-submit"}),
+    );
+    assert_eq!(
+        browser(&world, &session)["url"],
+        "http://spotify.com/search?q=cold"
+    );
     act(
         &mut world,
         &session,
@@ -266,7 +314,13 @@ fn spotify_plays_a_track_and_its_player_bar_runs_the_queue() {
     assert_eq!(by_id(&all, "track-play")["kind"], "button");
 
     // Press play: the bar picks the track up and the transport is live.
-    act(&mut world, &session, "browser.v1", "click", json!({"id": "track-play"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id": "track-play"}),
+    );
     let all = elements(&page(&world, &session));
     assert_eq!(label(by_id(&all, "bar-title")), "Cold Start");
     assert_eq!(label(by_id(&all, "bar-meta")), "Midnight Compiler");
@@ -274,10 +328,22 @@ fn spotify_plays_a_track_and_its_player_bar_runs_the_queue() {
     assert_eq!(label(by_id(&all, "player-toggle")), "Pause");
 
     // Pause, and the bar says so; next, and the queue moves on.
-    act(&mut world, &session, "browser.v1", "click", json!({"id": "player-toggle"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id": "player-toggle"}),
+    );
     let all = elements(&page(&world, &session));
     assert_eq!(label(by_id(&all, "player-toggle")), "Play");
-    act(&mut world, &session, "browser.v1", "click", json!({"id": "player-next"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id": "player-next"}),
+    );
     let all = elements(&page(&world, &session));
     assert_ne!(
         label(by_id(&all, "bar-title")),
@@ -286,7 +352,13 @@ fn spotify_plays_a_track_and_its_player_bar_runs_the_queue() {
     );
     // The volume slider: every fifth percent is its own control, and it really sets it.
     assert_eq!(by_id(&all, "player-volume-40")["kind"], "button");
-    act(&mut world, &session, "browser.v1", "click", json!({"id": "player-volume-40"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id": "player-volume-40"}),
+    );
     let catalog = act(
         &mut world,
         &session,

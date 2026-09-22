@@ -18,9 +18,9 @@ pub mod scripted;
 pub mod web_document;
 pub use omnibox::{omnibox, search_url, Typed, DEFAULT_SEARCH_ENGINE};
 pub use scripted::{ConsoleEntry, PendingNav};
-pub use web_document::{Inputs, Outcome, SheetSource, WebDocument};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
+pub use web_document::{Inputs, Outcome, SheetSource, WebDocument};
 
 pub use cw_protocol::RGBA_MEDIA_TYPE;
 const MAX_IMAGE_BYTES: usize = 4 * 1024 * 1024;
@@ -264,7 +264,9 @@ fn media_type(response: &HttpResponse) -> String {
 fn decode_image(media_type: &str, body: &[u8]) -> Result<ImageAsset> {
     let asset = match media_type {
         RGBA_MEDIA_TYPE => serde_json::from_slice::<ImageAsset>(body)?,
-        "image/png" => decode_png(body).ok_or_else(|| SimError::new("image_format", "undecodable PNG"))?,
+        "image/png" => {
+            decode_png(body).ok_or_else(|| SimError::new("image_format", "undecodable PNG"))?
+        }
         "image/jpeg" | "image/jpg" => {
             decode_jpeg(body).ok_or_else(|| SimError::new("image_format", "undecodable JPEG"))?
         }
@@ -282,7 +284,8 @@ fn decode_png(bytes: &[u8]) -> Option<ImageAsset> {
     let mut decoder = png::Decoder::new(std::io::Cursor::new(bytes));
     decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
     let mut reader = decoder.read_info().ok()?;
-    if u64::from(reader.info().width) * u64::from(reader.info().height) * 4 > MAX_IMAGE_BYTES as u64 {
+    if u64::from(reader.info().width) * u64::from(reader.info().height) * 4 > MAX_IMAGE_BYTES as u64
+    {
         return None;
     }
     let mut raw = vec![0; reader.output_buffer_size()];
@@ -348,7 +351,11 @@ fn decode_jpeg(bytes: &[u8]) -> Option<ImageAsset> {
             }
         }
     }
-    Some(ImageAsset { width, height, rgba })
+    Some(ImageAsset {
+        width,
+        height,
+        rgba,
+    })
 }
 /// A tab's back/forward stack, and the hash state the entries in it left behind.
 ///
@@ -746,7 +753,10 @@ impl BrowserState {
     pub fn new_tab(&mut self) -> usize {
         self.script_visibility(self.active, true);
         self.next_tab_id += 1;
-        self.tabs.push(Tab { id: self.next_tab_id, ..Tab::default() });
+        self.tabs.push(Tab {
+            id: self.next_tab_id,
+            ..Tab::default()
+        });
         self.active = self.tabs.len() - 1;
         self.active
     }
@@ -917,7 +927,11 @@ impl BrowserState {
             Some(Content::Web(web)) => web.initial_fields(),
             None => BTreeMap::new(),
         };
-        let (focused, scroll_y) = self.document().filter(|w| w.is_scripted()).map(|w| w.script_focus_and_scroll()).unwrap_or((None, 0));
+        let (focused, scroll_y) = self
+            .document()
+            .filter(|w| w.is_scripted())
+            .map(|w| w.script_focus_and_scroll())
+            .unwrap_or((None, 0));
         let tab = self.tab_mut();
         tab.fields = fields;
         tab.focused = focused;
@@ -1102,8 +1116,7 @@ impl BrowserState {
             let (content, images, image_errors, refresh) = if kind == PAGE_MEDIA_TYPE {
                 let page: Page = serde_json::from_slice(&response.body)?;
                 page.validate()?;
-                let (images, image_errors) =
-                    self.load_images(&page, &url, transport, fresh_images);
+                let (images, image_errors) = self.load_images(&page, &url, transport, fresh_images);
                 let refresh = response
                     .header("refresh")
                     .and_then(|value| parse_refresh(value, &url));
@@ -1120,7 +1133,13 @@ impl BrowserState {
                 let refresh = response
                     .header("refresh")
                     .map(str::to_owned)
-                    .or_else(|| if web.is_scripted() { web.script_meta_refresh() } else { web.meta_refresh() })
+                    .or_else(|| {
+                        if web.is_scripted() {
+                            web.script_meta_refresh()
+                        } else {
+                            web.meta_refresh()
+                        }
+                    })
                     .and_then(|value| parse_refresh(&value, &url));
                 (Content::Web(web), BTreeMap::new(), BTreeMap::new(), refresh)
             } else if let Some(page) = not_found_page(&url, &response) {
@@ -1178,11 +1197,15 @@ impl BrowserState {
             match plan {
                 web_document::SheetPlan::Inline { media, source } => {
                     let base = web.base.clone();
-                    web.add_sheet(&base, &media, source, &mut |u| self.fetch_text(u, transport));
+                    web.add_sheet(&base, &media, source, &mut |u| {
+                        self.fetch_text(u, transport)
+                    });
                 }
                 web_document::SheetPlan::Linked { url: link, media } => {
                     if let Some(source) = self.fetch_text(&link, transport) {
-                        web.add_sheet(&link, &media, source, &mut |u| self.fetch_text(u, transport));
+                        web.add_sheet(&link, &media, source, &mut |u| {
+                            self.fetch_text(u, transport)
+                        });
                     }
                 }
             }
@@ -1205,7 +1228,10 @@ impl BrowserState {
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
         let url = Url::parse(url).ok()?;
-        if !matches!(url.scheme(), "http" | "https") || !url.username().is_empty() || url.password().is_some() {
+        if !matches!(url.scheme(), "http" | "https")
+            || !url.username().is_empty()
+            || url.password().is_some()
+        {
             return None;
         }
         let response = self.fetch_resource(url, transport).ok()?;
@@ -1248,7 +1274,10 @@ impl BrowserState {
             }
             return Ok(response);
         }
-        Err(SimError::new("redirect_limit", "subresource redirect limit"))
+        Err(SimError::new(
+            "redirect_limit",
+            "subresource redirect limit",
+        ))
     }
     /// Show `page` as the tab's document at `url`, with no pictures to fetch.
     fn show(&mut self, url: String, page: Page, status: u16, replace: bool) {
@@ -1306,7 +1335,13 @@ impl BrowserState {
         }
     }
     /// The tab's document, fields and focus, split for a document action.
-    fn web_parts(&mut self) -> Option<(&mut WebDocument, &mut BTreeMap<String, String>, &mut Option<String>)> {
+    fn web_parts(
+        &mut self,
+    ) -> Option<(
+        &mut WebDocument,
+        &mut BTreeMap<String, String>,
+        &mut Option<String>,
+    )> {
         let tab = self.tab_mut();
         let position = tab.position;
         let Tab {
@@ -1334,8 +1369,16 @@ impl BrowserState {
                 *focused = Some(web.id_of(node));
                 return Ok(());
             }
-            if doc.is(node, "input") && matches!(web_document::input_type(doc, node).as_str(), "checkbox" | "radio") {
-                let on = matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "on" | "checked" | "yes");
+            if doc.is(node, "input")
+                && matches!(
+                    web_document::input_type(doc, node).as_str(),
+                    "checkbox" | "radio"
+                )
+            {
+                let on = matches!(
+                    value.trim().to_ascii_lowercase().as_str(),
+                    "1" | "true" | "on" | "checked" | "yes"
+                );
                 let mut scratch = BTreeMap::new();
                 if on != web.is_checked(node) {
                     let _ = web.click(node, &mut scratch, focused)?;
@@ -1497,7 +1540,14 @@ impl BrowserState {
         }
     }
     /// Clicks whatever is painted at `(x, y)` in a `width` x `height` viewport.
-    pub fn click_at<F>(&mut self, x: i32, y: i32, width: u32, height: u32, transport: &mut F) -> Result<()>
+    pub fn click_at<F>(
+        &mut self,
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+        transport: &mut F,
+    ) -> Result<()>
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
@@ -1505,7 +1555,9 @@ impl BrowserState {
             return self.script_click_at(x, y, width, height, transport);
         }
         let target = match self.document() {
-            Some(web) => web.hit(x, y, self.inputs(width, height)).map(|n| web.id_of(n)),
+            Some(web) => web
+                .hit(x, y, self.inputs(width, height))
+                .map(|n| web.id_of(n)),
             None => self
                 .scene(width, height)
                 .hit_test(x, y)
@@ -1556,7 +1608,8 @@ impl BrowserState {
     /// sideways shelves; any other name is an HTML scroll container's interaction id.
     pub fn scroll_pane(&mut self, pane: &str, offset: i32, horizontal: bool) -> bool {
         if self.document().is_some_and(WebDocument::is_scripted) {
-            return self.script_scroll::<script_driver::NoTransport>(pane, offset, horizontal, None);
+            return self
+                .script_scroll::<script_driver::NoTransport>(pane, offset, horizontal, None);
         }
         let offset = offset.max(0);
         let is_web = self.document().is_some();
@@ -1891,7 +1944,9 @@ fn html_source(kind: &str, url: &Url, response: &HttpResponse) -> Option<String>
             url.as_str(),
         )),
         k if k.starts_with("image/") || k == RGBA_MEDIA_TYPE => {
-            let size = decode_image(kind, &response.body).ok().map(|a| (a.width, a.height));
+            let size = decode_image(kind, &response.body)
+                .ok()
+                .map(|a| (a.width, a.height));
             Some(web_document::image_document(url.as_str(), size))
         }
         _ => None,
@@ -2020,7 +2075,6 @@ pub fn layout_page_with_images(
 ) -> Scene {
     page_scene::layout(page, fields, images, width, height, scroll_y)
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -2157,7 +2211,10 @@ mod tests {
         let mut http = world_of(&["github.com", "intranet.internal", "10.0.1.10", "localhost"]);
         for (typed, landed) in [
             ("github.com", "https://github.com/"),
-            ("github.com/northstar/atlas", "https://github.com/northstar/atlas"),
+            (
+                "github.com/northstar/atlas",
+                "https://github.com/northstar/atlas",
+            ),
             ("intranet.internal", "https://intranet.internal/"),
             ("10.0.1.10", "https://10.0.1.10/"),
             // A single label is a host when, and only when, the world resolves it.
@@ -2771,7 +2828,11 @@ mod web_tests {
         }
     }
     fn rgba(red: u8) -> HttpResponse {
-        let asset = ImageAsset { width: 2, height: 2, rgba: [red, 20, 30, 255].repeat(4) };
+        let asset = ImageAsset {
+            width: 2,
+            height: 2,
+            rgba: [red, 20, 30, 255].repeat(4),
+        };
         HttpResponse {
             status: 200,
             headers: BTreeMap::from([("content-type".into(), RGBA_MEDIA_TYPE.into())]),
@@ -2811,14 +2872,29 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
             "/style.css" => css("h1 { color: #ff0000 } .imported { color: #0000ff }"),
             "/imported.css" => css("h1 { font-size: 40px }"),
             "/logo.rgba" => rgba(200),
-            "/second" => html(200, "<title>Second</title><h1>Second page</h1><p class=imported>Blue text</p>"),
+            "/second" => html(
+                200,
+                "<title>Second</title><h1>Second page</h1><p class=imported>Blue text</p>",
+            ),
             "/search" => html(200, "<title>Results</title><p>Results</p>"),
             "/post" => html(200, "<title>Posted</title><p>Posted</p>"),
-            "/meta" => html(200, r#"<meta http-equiv="refresh" content="2; url=/second"><p>Soon</p>"#),
+            "/meta" => html(
+                200,
+                r#"<meta http-equiv="refresh" content="2; url=/second"><p>Soon</p>"#,
+            ),
             "/plain" => HttpResponse::text(200, "just <text>"),
-            "/tabs" => html(200, r#"<a id="l1" href="/">One</a><input id="i1"><button id="b1">B</button><input id="i2" tabindex="1">"#),
-            "/ids" => html(200, r#"<div><span id="doc-title">Documents</span></div><table><tr><td id="sheet-A1">Latency p95</td><td id="sheet-A2">412 ms</td></tr></table><p>plain <span id="inline-id">marked</span> prose</p>"#),
-            _ => html(404, "<title>Lost</title><h1>Lost page</h1><p>No such page here.</p>"),
+            "/tabs" => html(
+                200,
+                r#"<a id="l1" href="/">One</a><input id="i1"><button id="b1">B</button><input id="i2" tabindex="1">"#,
+            ),
+            "/ids" => html(
+                200,
+                r#"<div><span id="doc-title">Documents</span></div><table><tr><td id="sheet-A1">Latency p95</td><td id="sheet-A2">412 ms</td></tr></table><p>plain <span id="inline-id">marked</span> prose</p>"#,
+            ),
+            _ => html(
+                404,
+                "<title>Lost</title><h1>Lost page</h1><p>No such page here.</p>",
+            ),
         })
     }
     fn texts(scene: &Scene) -> Vec<(String, Color, u16)> {
@@ -2826,9 +2902,13 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
             .nodes
             .iter()
             .filter_map(|n| match &n.primitive {
-                Primitive::UiText { text, color, size, .. } | Primitive::UiTextBold { text, color, size, .. } | Primitive::Text { text, color, size } => {
-                    Some((text.clone(), *color, *size))
+                Primitive::UiText {
+                    text, color, size, ..
                 }
+                | Primitive::UiTextBold {
+                    text, color, size, ..
+                }
+                | Primitive::Text { text, color, size } => Some((text.clone(), *color, *size)),
                 _ => None,
             })
             .collect()
@@ -2836,7 +2916,8 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
     fn browser() -> (BrowserState, Vec<HttpRequest>) {
         let mut b = BrowserState::default();
         let mut requests = vec![];
-        b.navigate("http://site.test/", &mut |r| serve(&mut requests, r)).unwrap();
+        b.navigate("http://site.test/", &mut |r| serve(&mut requests, r))
+            .unwrap();
         (b, requests)
     }
 
@@ -2844,32 +2925,71 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
     fn an_html_response_renders_through_the_engine_with_its_sheets_and_pictures() {
         let (b, requests) = browser();
         let seen: Vec<&str> = requests.iter().map(|r| r.url.as_str()).collect();
-        assert_eq!(seen, ["http://site.test/", "http://site.test/style.css", "http://site.test/imported.css", "http://site.test/logo.rgba"]);
+        assert_eq!(
+            seen,
+            [
+                "http://site.test/",
+                "http://site.test/style.css",
+                "http://site.test/imported.css",
+                "http://site.test/logo.rgba"
+            ]
+        );
         let doc = b.document().expect("html document");
         assert_eq!(doc.title, "Home");
         assert_eq!(b.title().as_deref(), Some("Home"));
-        assert_eq!(doc.sheets().len(), 3, "linked, imported, inline in cascade order");
+        assert_eq!(
+            doc.sheets().len(),
+            3,
+            "linked, imported, inline in cascade order"
+        );
         assert_eq!(doc.sheets()[1].url, "http://site.test/imported.css");
         let scene = b.scene(800, 600);
         let texts = texts(&scene);
         let words: Vec<&str> = texts.iter().map(|t| t.0.as_str()).collect();
         assert!(words.iter().any(|w| w.contains("Welcome")), "{words:?}");
-        assert!(words.iter().any(|w| w.contains("quick brown fox")), "{words:?}");
+        assert!(
+            words.iter().any(|w| w.contains("quick brown fox")),
+            "{words:?}"
+        );
         // The linked sheet coloured the heading red and the imported one sized it.
         let heading = texts.iter().find(|t| t.0.contains("Welcome")).unwrap();
         assert_eq!(heading.1, Color::rgb(255, 0, 0));
         assert_eq!(heading.2, 40);
-        let pictures: Vec<_> = scene.nodes.iter().filter_map(|n| match &n.primitive { Primitive::Image { width, height, rgba } => Some((*width, *height, rgba[0], n.bounds)), _ => None }).collect();
-        assert!(pictures.iter().any(|p| p.2 == 200), "{pictures:?} {:?} {:?}", doc.images().keys().collect::<Vec<_>>(), doc.image_errors);
+        let pictures: Vec<_> = scene
+            .nodes
+            .iter()
+            .filter_map(|n| match &n.primitive {
+                Primitive::Image {
+                    width,
+                    height,
+                    rgba,
+                } => Some((*width, *height, rgba[0], n.bounds)),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            pictures.iter().any(|p| p.2 == 200),
+            "{pictures:?} {:?} {:?}",
+            doc.images().keys().collect::<Vec<_>>(),
+            doc.image_errors
+        );
         assert_eq!(scene.scrolls[0].target, "pane:page");
         assert!(scene.scrolls[0].extent > 3000);
         assert_eq!(b.tab().fields.get("q").map(String::as_str), Some(""));
         // The accessibility view lists the page's controls and text.
         let ax = b.semantics(800, 600);
-        assert!(ax.iter().any(|a| a.role == "link" && a.id == "next" && a.name == "Second page"));
-        assert!(ax.iter().any(|a| a.role == "heading" && a.name == "h1: Welcome aboard"));
-        assert!(ax.iter().any(|a| a.role == "textbox" && a.id == "q" && a.name == "Query"));
-        assert!(ax.iter().any(|a| a.role == "text" && a.name.contains("quick")));
+        assert!(ax
+            .iter()
+            .any(|a| a.role == "link" && a.id == "next" && a.name == "Second page"));
+        assert!(ax
+            .iter()
+            .any(|a| a.role == "heading" && a.name == "h1: Welcome aboard"));
+        assert!(ax
+            .iter()
+            .any(|a| a.role == "textbox" && a.id == "q" && a.name == "Query"));
+        assert!(ax
+            .iter()
+            .any(|a| a.role == "text" && a.name.contains("quick")));
         let page = b.current_page().unwrap();
         assert!(page.elements.iter().any(|e| matches!(e, PageElement::Link { id, url, .. } if id == "next" && url == "http://site.test/second")));
         assert!(page.elements.iter().any(|e| matches!(e, PageElement::Form { children, .. } if children.iter().any(|c| matches!(c, PageElement::Input { id, label, .. } if id == "q" && label == "Query")))));
@@ -2881,16 +3001,28 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
         // The agent is told to read `#sheet-A2`; the projection used to hand it
         // `text:4`, so the id it was given addressed nothing it could see.
         let (mut b, mut requests) = browser();
-        b.navigate("http://site.test/ids", &mut |r| serve(&mut requests, r)).unwrap();
+        b.navigate("http://site.test/ids", &mut |r| serve(&mut requests, r))
+            .unwrap();
         let page = b.current_page().unwrap();
-        let ids: Vec<(&str, &str)> = page.elements.iter().filter_map(|e| match e { PageElement::Text { id, text } => Some((id.as_str(), text.as_str())), _ => None }).collect();
+        let ids: Vec<(&str, &str)> = page
+            .elements
+            .iter()
+            .filter_map(|e| match e {
+                PageElement::Text { id, text } => Some((id.as_str(), text.as_str())),
+                _ => None,
+            })
+            .collect();
         assert!(ids.contains(&("sheet-A1", "Latency p95")), "{ids:?}");
         assert!(ids.contains(&("sheet-A2", "412 ms")), "{ids:?}");
         assert!(ids.contains(&("doc-title", "Documents")), "{ids:?}");
         assert!(ids.contains(&("inline-id", "marked")), "{ids:?}");
         // And the scene's semantic tree carries them too.
         let ax = b.semantics(800, 600);
-        assert!(ax.iter().any(|a| a.role == "cell" && a.id == "sheet-A2"), "{:?}", ax.iter().map(|a| (&a.role, &a.id)).collect::<Vec<_>>());
+        assert!(
+            ax.iter().any(|a| a.role == "cell" && a.id == "sheet-A2"),
+            "{:?}",
+            ax.iter().map(|a| (&a.role, &a.id)).collect::<Vec<_>>()
+        );
         assert!(ax.iter().any(|a| a.id == "doc-title"));
     }
 
@@ -2905,7 +3037,10 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
         assert_eq!(b.url(), Some("http://site.test/second"));
         assert_eq!(b.title().as_deref(), Some("Second"));
         // The imported rule is gone with the old document; the second page has no sheets.
-        let blue = texts(&b.scene(800, 600)).into_iter().find(|t| t.0.contains("Blue")).unwrap();
+        let blue = texts(&b.scene(800, 600))
+            .into_iter()
+            .find(|t| t.0.contains("Blue"))
+            .unwrap();
         assert_ne!(blue.1, Color::rgb(0, 0, 255));
         b.back(&mut |r| serve(&mut requests, r)).unwrap();
         assert_eq!(b.title().as_deref(), Some("Home"));
@@ -2919,27 +3054,53 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
         let (mut b, mut requests) = browser();
         b.fill("q", "rust lang").unwrap();
         b.click("agree", &mut |r| serve(&mut requests, r)).unwrap();
-        assert!(b.document().unwrap().is_checked(b.document().unwrap().node_for("agree").unwrap()));
-        assert!(b.semantics(800, 600).iter().any(|a| a.id == "agree" && a.checked == Some(true)));
+        assert!(b
+            .document()
+            .unwrap()
+            .is_checked(b.document().unwrap().node_for("agree").unwrap()));
+        assert!(b
+            .semantics(800, 600)
+            .iter()
+            .any(|a| a.id == "agree" && a.checked == Some(true)));
         b.fill("pick", "Beta").unwrap();
         b.click("go", &mut |r| serve(&mut requests, r)).unwrap();
-        assert_eq!(requests.last().unwrap().url, "http://site.test/search?q=rust+lang&agree=on&pick=b");
+        assert_eq!(
+            requests.last().unwrap().url,
+            "http://site.test/search?q=rust+lang&agree=on&pick=b"
+        );
         assert_eq!(b.title().as_deref(), Some("Results"));
         b.back(&mut |r| serve(&mut requests, r)).unwrap();
         b.fill("q", "again").unwrap();
         b.key("Enter", &mut |r| serve(&mut requests, r)).unwrap();
-        assert!(requests.last().unwrap().url.starts_with("http://site.test/search?q=again"), "{}", requests.last().unwrap().url);
+        assert!(
+            requests
+                .last()
+                .unwrap()
+                .url
+                .starts_with("http://site.test/search?q=again"),
+            "{}",
+            requests.last().unwrap().url
+        );
         b.back(&mut |r| serve(&mut requests, r)).unwrap();
         b.fill("q", "third").unwrap();
         b.submit("form", &mut |r| serve(&mut requests, r)).unwrap();
-        assert_eq!(requests.last().unwrap().url, "http://site.test/search?q=third&agree=on&pick=b");
+        assert_eq!(
+            requests.last().unwrap().url,
+            "http://site.test/search?q=third&agree=on&pick=b"
+        );
         // A required field left empty blocks the submission with a message.
         b.back(&mut |r| serve(&mut requests, r)).unwrap();
         let n = requests.len();
-        let err = b.click("try", &mut |r| serve(&mut requests, r)).unwrap_err();
+        let err = b
+            .click("try", &mut |r| serve(&mut requests, r))
+            .unwrap_err();
         assert!(err.message.contains("fill out"), "{}", err.message);
         assert_eq!(requests.len(), n);
-        assert!(b.scene(800, 600).nodes.iter().any(|n| n.semantic.as_ref().is_some_and(|s| s.role == "status")));
+        assert!(b
+            .scene(800, 600)
+            .nodes
+            .iter()
+            .any(|n| n.semantic.as_ref().is_some_and(|s| s.role == "status")));
     }
 
     #[test]
@@ -2948,16 +3109,31 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
         b.click("m", &mut |r| serve(&mut requests, r)).unwrap();
         assert_eq!(b.tab().focused.as_deref(), Some("m"));
         b.text("hello").unwrap();
-        b.key("Backspace", &mut |r| serve(&mut requests, r)).unwrap();
+        b.key("Backspace", &mut |r| serve(&mut requests, r))
+            .unwrap();
         b.key("Home", &mut |r| serve(&mut requests, r)).unwrap();
         b.text("say ").unwrap();
         assert_eq!(b.tab().fields["m"], "say hell");
         b.click("send", &mut |r| serve(&mut requests, r)).unwrap();
         let post = requests.last().unwrap();
-        assert_eq!((post.method.as_str(), post.url.as_str()), ("POST", "http://site.test/post"));
+        assert_eq!(
+            (post.method.as_str(), post.url.as_str()),
+            ("POST", "http://site.test/post")
+        );
         let body = String::from_utf8_lossy(&post.body);
-        let boundary = post.header("content-type").unwrap().split("boundary=").nth(1).unwrap().to_owned();
-        assert!(body.starts_with(&format!("--{boundary}\r\nContent-Disposition: form-data; name=\"m\"\r\n\r\nsay hell\r\n")), "{body}");
+        let boundary = post
+            .header("content-type")
+            .unwrap()
+            .split("boundary=")
+            .nth(1)
+            .unwrap()
+            .to_owned();
+        assert!(
+            body.starts_with(&format!(
+                "--{boundary}\r\nContent-Disposition: form-data; name=\"m\"\r\n\r\nsay hell\r\n"
+            )),
+            "{body}"
+        );
         assert!(body.contains("name=\"notes\"\r\n\r\na\r\nb\r\n"), "{body}");
         assert!(body.contains("name=\"h\"\r\n\r\n1\r\n"), "{body}");
         assert!(body.contains("name=\"send\"\r\n\r\nyes\r\n"), "{body}");
@@ -2969,14 +3145,16 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
     fn tab_walks_the_focus_order_and_space_activates() {
         let mut requests = vec![];
         let mut b = BrowserState::default();
-        b.navigate("http://site.test/tabs", &mut |r| serve(&mut requests, r)).unwrap();
+        b.navigate("http://site.test/tabs", &mut |r| serve(&mut requests, r))
+            .unwrap();
         let mut order = vec![];
         for _ in 0..5 {
             b.key("Tab", &mut |r| serve(&mut requests, r)).unwrap();
             order.push(b.tab().focused.clone().unwrap());
         }
         assert_eq!(order, ["i2", "l1", "i1", "b1", "i2"]);
-        b.key("Shift+Tab", &mut |r| serve(&mut requests, r)).unwrap();
+        b.key("Shift+Tab", &mut |r| serve(&mut requests, r))
+            .unwrap();
         assert_eq!(b.tab().focused.as_deref(), Some("b1"));
         b.key("Escape", &mut |r| serve(&mut requests, r)).unwrap();
         assert_eq!(b.tab().focused, None);
@@ -2993,16 +3171,22 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
     fn error_bodies_plain_text_and_meta_refresh() {
         let mut requests = vec![];
         let mut b = BrowserState::default();
-        b.navigate("http://site.test/nowhere", &mut |r| serve(&mut requests, r)).unwrap();
+        b.navigate("http://site.test/nowhere", &mut |r| serve(&mut requests, r))
+            .unwrap();
         assert_eq!(b.tab().history[0].status, 404);
         assert_eq!(b.title().as_deref(), Some("Lost"));
         assert!(b.document().unwrap().text().contains("Lost page"));
-        b.navigate("http://site.test/plain", &mut |r| serve(&mut requests, r)).unwrap();
+        b.navigate("http://site.test/plain", &mut |r| serve(&mut requests, r))
+            .unwrap();
         let words: Vec<String> = texts(&b.scene(400, 300)).into_iter().map(|t| t.0).collect();
         assert!(words.iter().any(|w| w.contains("just <text>")), "{words:?}");
-        b.navigate("http://site.test/meta", &mut |r| serve(&mut requests, r)).unwrap();
+        b.navigate("http://site.test/meta", &mut |r| serve(&mut requests, r))
+            .unwrap();
         let refresh = b.tab().history[b.tab().position].refresh.clone().unwrap();
-        assert_eq!((refresh.after_ms, refresh.url.as_str()), (2_000, "http://site.test/second"));
+        assert_eq!(
+            (refresh.after_ms, refresh.url.as_str()),
+            (2_000, "http://site.test/second")
+        );
         assert!(b.refresh_pending(0));
     }
 
@@ -3013,25 +3197,49 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
         b.step_zoom("in").unwrap();
         b.step_zoom("in").unwrap();
         let after = texts(&b.scene(600, 400));
-        let size = |t: &[(String, Color, u16)]| t.iter().find(|x| x.0.contains("Welcome")).unwrap().2;
-        assert!(size(&after) > size(&before), "{} vs {}", size(&after), size(&before));
+        let size =
+            |t: &[(String, Color, u16)]| t.iter().find(|x| x.0.contains("Welcome")).unwrap().2;
+        assert!(
+            size(&after) > size(&before),
+            "{} vs {}",
+            size(&after),
+            size(&before)
+        );
         assert_eq!(b.document().unwrap().last_viewport(), (600, 400, 125));
         b.step_zoom("reset").unwrap();
         let scene = b.scene(600, 400);
-        let link = scene.nodes.iter().find(|n| n.interaction.as_deref() == Some("next")).unwrap().bounds;
+        let link = scene
+            .nodes
+            .iter()
+            .find(|n| n.interaction.as_deref() == Some("next"))
+            .unwrap()
+            .bounds;
         let (lx, ly) = (link.x + 2, link.y + link.height as i32 / 2);
         assert_eq!(b.hover_at(lx, ly, 600, 400), Some("pointer"));
-        assert_eq!(b.document().unwrap().hovered(), b.document().unwrap().node_for("next"));
-        let input = scene.nodes.iter().find(|n| n.interaction.as_deref() == Some("q")).unwrap().bounds;
-        assert_eq!(b.cursor_at(input.x + 3, input.y + input.height as i32 / 2, 600, 400), Some("text"));
+        assert_eq!(
+            b.document().unwrap().hovered(),
+            b.document().unwrap().node_for("next")
+        );
+        let input = scene
+            .nodes
+            .iter()
+            .find(|n| n.interaction.as_deref() == Some("q"))
+            .unwrap()
+            .bounds;
+        assert_eq!(
+            b.cursor_at(input.x + 3, input.y + input.height as i32 / 2, 600, 400),
+            Some("text")
+        );
         assert_eq!(b.cursor_at(599, 399, 600, 400), Some("default"));
-        b.click_at(lx, ly, 600, 400, &mut |r| serve(&mut requests, r)).unwrap();
+        b.click_at(lx, ly, 600, 400, &mut |r| serve(&mut requests, r))
+            .unwrap();
         assert_eq!(b.title().as_deref(), Some("Second"));
         b.back(&mut |r| serve(&mut requests, r)).unwrap();
         b.fill("q", "kept").unwrap();
         b.click("agree", &mut |r| serve(&mut requests, r)).unwrap();
         let frame = b.scene(600, 400);
-        let restored: BrowserState = serde_json::from_slice(&serde_json::to_vec(&b).unwrap()).unwrap();
+        let restored: BrowserState =
+            serde_json::from_slice(&serde_json::to_vec(&b).unwrap()).unwrap();
         assert_eq!(restored, b);
         restored.validate_assets().unwrap();
         assert_eq!(restored.scene(600, 400), frame);

@@ -77,13 +77,28 @@ pub enum FontEnvironment {
 
 impl Default for Media {
     fn default() -> Self {
-        Media { width_px: 1280, height_px: 800, dppx: Number::from_i64(1), color_scheme: ColorScheme::Light, hover: HoverCapability::Hover, pointer: PointerCapability::Fine, reduced_motion: false, media_type: MediaType::Screen, display_mode: DisplayMode::Browser, fonts: FontEnvironment::Bundled }
+        Media {
+            width_px: 1280,
+            height_px: 800,
+            dppx: Number::from_i64(1),
+            color_scheme: ColorScheme::Light,
+            hover: HoverCapability::Hover,
+            pointer: PointerCapability::Fine,
+            reduced_motion: false,
+            media_type: MediaType::Screen,
+            display_mode: DisplayMode::Browser,
+            fonts: FontEnvironment::Bundled,
+        }
     }
 }
 
 impl Media {
     pub fn with_size(width_px: i32, height_px: i32) -> Media {
-        Media { width_px, height_px, ..Media::default() }
+        Media {
+            width_px,
+            height_px,
+            ..Media::default()
+        }
     }
 }
 
@@ -145,7 +160,11 @@ pub enum MediaFeature {
     /// `(hover)`, `(width)`: true when the feature's value is not zero/none.
     Boolean(String),
     /// `(width: 600px)`, `(min-width: 600px)` (as `Ge`), `(width >= 600px)`.
-    Compare { name: String, op: CompareOp, value: FeatureValue },
+    Compare {
+        name: String,
+        op: CompareOp,
+        value: FeatureValue,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -182,9 +201,22 @@ impl MediaQueryList {
     pub fn from_values(values: &[ComponentValue]) -> MediaQueryList {
         let trimmed = trim_ws(values);
         if trimmed.is_empty() {
-            return MediaQueryList { queries: Vec::new() };
+            return MediaQueryList {
+                queries: Vec::new(),
+            };
         }
-        let queries = split_commas(trimmed).into_iter().map(|q| MediaQuery::from_values(q).unwrap_or(MediaQuery { negated: true, only: false, media_type: None, condition: None, invalid: true })).collect();
+        let queries = split_commas(trimmed)
+            .into_iter()
+            .map(|q| {
+                MediaQuery::from_values(q).unwrap_or(MediaQuery {
+                    negated: true,
+                    only: false,
+                    media_type: None,
+                    condition: None,
+                    invalid: true,
+                })
+            })
+            .collect();
         MediaQueryList { queries }
     }
     pub fn is_empty(&self) -> bool {
@@ -220,19 +252,40 @@ impl MediaQuery {
     }
 
     fn from_values(values: &[ComponentValue]) -> Option<MediaQuery> {
-        let mut p = P { values: trim_ws(values), pos: 0 };
+        let mut p = P {
+            values: trim_ws(values),
+            pos: 0,
+        };
         if p.at_end() {
             return None;
         }
         // <media-condition> alone (starts with `(` or `not (`).
-        let starts_paren = |p: &P, n: usize| matches!(p.peek_at(n), Some(ComponentValue::Block { open: Token::OpenParen, .. }) | Some(ComponentValue::Function { .. }));
-        if starts_paren(&p, 0) || (p.ident_is(0, "not") && p.peek_at(1).is_some_and(|v| v.is_whitespace()) && starts_paren(&p, 2)) {
+        let starts_paren = |p: &P, n: usize| {
+            matches!(
+                p.peek_at(n),
+                Some(ComponentValue::Block {
+                    open: Token::OpenParen,
+                    ..
+                }) | Some(ComponentValue::Function { .. })
+            )
+        };
+        if starts_paren(&p, 0)
+            || (p.ident_is(0, "not")
+                && p.peek_at(1).is_some_and(|v| v.is_whitespace())
+                && starts_paren(&p, 2))
+        {
             let cond = parse_condition(&mut p, true)?;
             p.skip_ws();
             if !p.at_end() {
                 return None;
             }
-            return Some(MediaQuery { negated: false, only: false, media_type: None, condition: Some(cond), invalid: false });
+            return Some(MediaQuery {
+                negated: false,
+                only: false,
+                media_type: None,
+                condition: Some(cond),
+                invalid: false,
+            });
         }
         let mut negated = false;
         let mut only = false;
@@ -268,7 +321,13 @@ impl MediaQuery {
             }
             Some(c)
         };
-        Some(MediaQuery { negated, only, media_type, condition, invalid: false })
+        Some(MediaQuery {
+            negated,
+            only,
+            media_type,
+            condition,
+            invalid: false,
+        })
     }
 }
 
@@ -302,8 +361,14 @@ impl<'a> P<'a> {
 }
 
 fn trim_ws(values: &[ComponentValue]) -> &[ComponentValue] {
-    let start = values.iter().position(|v| !v.is_whitespace()).unwrap_or(values.len());
-    let end = values.iter().rposition(|v| !v.is_whitespace()).map_or(start, |e| e + 1);
+    let start = values
+        .iter()
+        .position(|v| !v.is_whitespace())
+        .unwrap_or(values.len());
+    let end = values
+        .iter()
+        .rposition(|v| !v.is_whitespace())
+        .map_or(start, |e| e + 1);
     &values[start..end.max(start)]
 }
 
@@ -348,16 +413,40 @@ fn parse_condition(p: &mut P, allow_or: bool) -> Option<MediaCondition> {
     if p.ident_is(0, "and") || p.ident_is(0, "or") {
         return None;
     }
-    Some(if joiner == "and" { MediaCondition::And(items) } else { MediaCondition::Or(items) })
+    Some(if joiner == "and" {
+        MediaCondition::And(items)
+    } else {
+        MediaCondition::Or(items)
+    })
 }
 
 fn parse_in_parens(p: &mut P) -> Option<MediaCondition> {
     match p.next()? {
-        ComponentValue::Block { open: Token::OpenParen, contents } => {
+        ComponentValue::Block {
+            open: Token::OpenParen,
+            contents,
+        } => {
             let inner = trim_ws(contents);
             // A nested condition.
-            let mut q = P { values: inner, pos: 0 };
-            let is_cond = matches!(q.peek_at(0), Some(ComponentValue::Block { open: Token::OpenParen, .. })) || (q.ident_is(0, "not") && q.peek_at(1).is_some_and(|v| v.is_whitespace()) && matches!(q.peek_at(2), Some(ComponentValue::Block { open: Token::OpenParen, .. })));
+            let mut q = P {
+                values: inner,
+                pos: 0,
+            };
+            let is_cond = matches!(
+                q.peek_at(0),
+                Some(ComponentValue::Block {
+                    open: Token::OpenParen,
+                    ..
+                })
+            ) || (q.ident_is(0, "not")
+                && q.peek_at(1).is_some_and(|v| v.is_whitespace())
+                && matches!(
+                    q.peek_at(2),
+                    Some(ComponentValue::Block {
+                        open: Token::OpenParen,
+                        ..
+                    })
+                ));
             if is_cond {
                 let c = parse_condition(&mut q, true);
                 q.skip_ws();
@@ -366,9 +455,15 @@ fn parse_in_parens(p: &mut P) -> Option<MediaCondition> {
                     _ => Some(MediaCondition::Unknown(serialize(contents))),
                 };
             }
-            Some(parse_feature_or_range(inner).unwrap_or_else(|| MediaCondition::Unknown(serialize(contents))))
+            Some(
+                parse_feature_or_range(inner)
+                    .unwrap_or_else(|| MediaCondition::Unknown(serialize(contents))),
+            )
         }
-        ComponentValue::Function { name, args } => Some(MediaCondition::Unknown(format!("{name}({})", serialize(args)))),
+        ComponentValue::Function { name, args } => Some(MediaCondition::Unknown(format!(
+            "{name}({})",
+            serialize(args)
+        ))),
         _ => None,
     }
 }
@@ -410,9 +505,21 @@ fn parse_feature(values: &[ComponentValue]) -> Option<MediaFeature> {
     let mut i = 0;
     while i < items.len() {
         let op = if is_delim(items[i], '<') || is_delim(items[i], '>') {
-            let c = if is_delim(items[i], '<') { CompareOp::Lt } else { CompareOp::Gt };
+            let c = if is_delim(items[i], '<') {
+                CompareOp::Lt
+            } else {
+                CompareOp::Gt
+            };
             if i + 1 < items.len() && is_delim(items[i + 1], '=') {
-                ops.push((i, i + 2, if c == CompareOp::Lt { CompareOp::Le } else { CompareOp::Ge }));
+                ops.push((
+                    i,
+                    i + 2,
+                    if c == CompareOp::Lt {
+                        CompareOp::Le
+                    } else {
+                        CompareOp::Ge
+                    },
+                ));
                 i += 2;
                 continue;
             }
@@ -433,13 +540,21 @@ fn parse_feature(values: &[ComponentValue]) -> Option<MediaFeature> {
             if let [l] = left {
                 if let Some(name) = ident(l) {
                     if !matches!(op, CompareOp::Eq) || right.len() == 1 {
-                        return Some(MediaFeature::Compare { name, op: *op, value: parse_value(right)? });
+                        return Some(MediaFeature::Compare {
+                            name,
+                            op: *op,
+                            value: parse_value(right)?,
+                        });
                     }
                 }
             }
             if let [r] = right {
                 if let Some(name) = ident(r) {
-                    return Some(MediaFeature::Compare { name, op: op.flip(), value: parse_value(left)? });
+                    return Some(MediaFeature::Compare {
+                        name,
+                        op: op.flip(),
+                        value: parse_value(left)?,
+                    });
                 }
             }
             None
@@ -480,13 +595,28 @@ fn parse_feature_or_range(values: &[ComponentValue]) -> Option<MediaCondition> {
             ComponentValue::Token(Token::Ident(i)) => i.to_ascii_lowercase(),
             _ => return None,
         };
-        let same_dir = matches!((op1, op2), (CompareOp::Lt | CompareOp::Le, CompareOp::Lt | CompareOp::Le) | (CompareOp::Gt | CompareOp::Ge, CompareOp::Gt | CompareOp::Ge));
+        let same_dir = matches!(
+            (op1, op2),
+            (CompareOp::Lt | CompareOp::Le, CompareOp::Lt | CompareOp::Le)
+                | (CompareOp::Gt | CompareOp::Ge, CompareOp::Gt | CompareOp::Ge)
+        );
         if !same_dir {
             return None;
         }
         let lo = parse_value(&items[..*s1])?;
         let hi = parse_value(&items[*e2..])?;
-        return Some(MediaCondition::And(vec![MediaCondition::Feature(MediaFeature::Compare { name: name.clone(), op: op1.flip(), value: lo }), MediaCondition::Feature(MediaFeature::Compare { name, op: *op2, value: hi })]));
+        return Some(MediaCondition::And(vec![
+            MediaCondition::Feature(MediaFeature::Compare {
+                name: name.clone(),
+                op: op1.flip(),
+                value: lo,
+            }),
+            MediaCondition::Feature(MediaFeature::Compare {
+                name,
+                op: *op2,
+                value: hi,
+            }),
+        ]));
     }
     None
 }
@@ -515,7 +645,9 @@ fn parse_value(items: &[&ComponentValue]) -> Option<FeatureValue> {
             } else if u == "dpi" {
                 Some(FeatureValue::Resolution(value.micro / 96))
             } else if u == "dpcm" {
-                Some(FeatureValue::Resolution(value.micro.saturating_mul(254) / 9600))
+                Some(FeatureValue::Resolution(
+                    value.micro.saturating_mul(254) / 9600,
+                ))
             } else {
                 length_micro(*value, unit).map(FeatureValue::Length)
             }
@@ -528,7 +660,9 @@ fn parse_value(items: &[&ComponentValue]) -> Option<FeatureValue> {
                 Some(FeatureValue::Ratio(n.micro, d.micro))
             }
         }
-        [ComponentValue::Token(Token::Ident(i))] => Some(FeatureValue::Ident(i.to_ascii_lowercase())),
+        [ComponentValue::Token(Token::Ident(i))] => {
+            Some(FeatureValue::Ident(i.to_ascii_lowercase()))
+        }
         _ => None,
     }
 }
@@ -581,20 +715,32 @@ impl MediaFeature {
             MediaFeature::Boolean(name) => Some(match name.as_str() {
                 "width" | "device-width" => media.width_px != 0,
                 "height" | "device-height" => media.height_px != 0,
-                "aspect-ratio" | "device-aspect-ratio" => media.width_px != 0 && media.height_px != 0,
-                "orientation" | "resolution" | "prefers-color-scheme" | "display-mode" | "color" | "color-gamut" => true,
+                "aspect-ratio" | "device-aspect-ratio" => {
+                    media.width_px != 0 && media.height_px != 0
+                }
+                "orientation"
+                | "resolution"
+                | "prefers-color-scheme"
+                | "display-mode"
+                | "color"
+                | "color-gamut" => true,
                 "hover" => media.hover == HoverCapability::Hover,
                 "any-hover" => media.hover == HoverCapability::Hover,
                 "pointer" | "any-pointer" => media.pointer != PointerCapability::None,
                 "prefers-reduced-motion" => media.reduced_motion,
-                "monochrome" | "grid" | "prefers-contrast" | "forced-colors" | "inverted-colors" => false,
+                "monochrome" | "grid" | "prefers-contrast" | "forced-colors"
+                | "inverted-colors" => false,
                 _ => return None,
             }),
             MediaFeature::Compare { name, op, value } => {
                 let ord = |actual: i64, wanted: i64| Some(op.holds(actual.cmp(&wanted)));
                 match (name.as_str(), value) {
-                    ("width" | "device-width", FeatureValue::Length(l)) => ord(px(media.width_px), *l),
-                    ("height" | "device-height", FeatureValue::Length(l)) => ord(px(media.height_px), *l),
+                    ("width" | "device-width", FeatureValue::Length(l)) => {
+                        ord(px(media.width_px), *l)
+                    }
+                    ("height" | "device-height", FeatureValue::Length(l)) => {
+                        ord(px(media.height_px), *l)
+                    }
                     ("aspect-ratio" | "device-aspect-ratio", v) => {
                         let (n, d) = match v {
                             FeatureValue::Ratio(n, d) => (*n, *d),
@@ -609,40 +755,52 @@ impl MediaFeature {
                         let rhs = (media.height_px as i128) * (n as i128);
                         Some(op.holds(lhs.cmp(&rhs)))
                     }
-                    ("orientation", FeatureValue::Ident(i)) if *op == CompareOp::Eq => Some(match i.as_str() {
-                        "portrait" => media.height_px >= media.width_px,
-                        "landscape" => media.width_px > media.height_px,
-                        _ => return None,
-                    }),
+                    ("orientation", FeatureValue::Ident(i)) if *op == CompareOp::Eq => {
+                        Some(match i.as_str() {
+                            "portrait" => media.height_px >= media.width_px,
+                            "landscape" => media.width_px > media.height_px,
+                            _ => return None,
+                        })
+                    }
                     ("resolution", FeatureValue::Resolution(r)) => ord(media.dppx.micro, *r),
-                    ("prefers-color-scheme", FeatureValue::Ident(i)) if *op == CompareOp::Eq => Some(match i.as_str() {
-                        "light" => media.color_scheme == ColorScheme::Light,
-                        "dark" => media.color_scheme == ColorScheme::Dark,
-                        _ => return None,
-                    }),
-                    ("prefers-reduced-motion", FeatureValue::Ident(i)) if *op == CompareOp::Eq => Some(match i.as_str() {
-                        "reduce" => media.reduced_motion,
-                        "no-preference" => !media.reduced_motion,
-                        _ => return None,
-                    }),
-                    ("hover" | "any-hover", FeatureValue::Ident(i)) if *op == CompareOp::Eq => Some(match i.as_str() {
-                        "hover" => media.hover == HoverCapability::Hover,
-                        "none" => media.hover == HoverCapability::None,
-                        _ => return None,
-                    }),
-                    ("pointer" | "any-pointer", FeatureValue::Ident(i)) if *op == CompareOp::Eq => Some(match i.as_str() {
-                        "fine" => media.pointer == PointerCapability::Fine,
-                        "coarse" => media.pointer == PointerCapability::Coarse,
-                        "none" => media.pointer == PointerCapability::None,
-                        _ => return None,
-                    }),
-                    ("display-mode", FeatureValue::Ident(i)) if *op == CompareOp::Eq => Some(match i.as_str() {
-                        "browser" => media.display_mode == DisplayMode::Browser,
-                        "minimal-ui" => media.display_mode == DisplayMode::MinimalUi,
-                        "standalone" => media.display_mode == DisplayMode::Standalone,
-                        "fullscreen" => media.display_mode == DisplayMode::Fullscreen,
-                        _ => return None,
-                    }),
+                    ("prefers-color-scheme", FeatureValue::Ident(i)) if *op == CompareOp::Eq => {
+                        Some(match i.as_str() {
+                            "light" => media.color_scheme == ColorScheme::Light,
+                            "dark" => media.color_scheme == ColorScheme::Dark,
+                            _ => return None,
+                        })
+                    }
+                    ("prefers-reduced-motion", FeatureValue::Ident(i)) if *op == CompareOp::Eq => {
+                        Some(match i.as_str() {
+                            "reduce" => media.reduced_motion,
+                            "no-preference" => !media.reduced_motion,
+                            _ => return None,
+                        })
+                    }
+                    ("hover" | "any-hover", FeatureValue::Ident(i)) if *op == CompareOp::Eq => {
+                        Some(match i.as_str() {
+                            "hover" => media.hover == HoverCapability::Hover,
+                            "none" => media.hover == HoverCapability::None,
+                            _ => return None,
+                        })
+                    }
+                    ("pointer" | "any-pointer", FeatureValue::Ident(i)) if *op == CompareOp::Eq => {
+                        Some(match i.as_str() {
+                            "fine" => media.pointer == PointerCapability::Fine,
+                            "coarse" => media.pointer == PointerCapability::Coarse,
+                            "none" => media.pointer == PointerCapability::None,
+                            _ => return None,
+                        })
+                    }
+                    ("display-mode", FeatureValue::Ident(i)) if *op == CompareOp::Eq => {
+                        Some(match i.as_str() {
+                            "browser" => media.display_mode == DisplayMode::Browser,
+                            "minimal-ui" => media.display_mode == DisplayMode::MinimalUi,
+                            "standalone" => media.display_mode == DisplayMode::Standalone,
+                            "fullscreen" => media.display_mode == DisplayMode::Fullscreen,
+                            _ => return None,
+                        })
+                    }
                     ("color", FeatureValue::Number(n)) => ord(8_000_000, n.micro),
                     ("monochrome", FeatureValue::Number(n)) => ord(0, n.micro),
                     _ => None,
@@ -719,7 +877,9 @@ struct Paren<'a>(&'a MediaCondition);
 impl fmt::Display for Paren<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            MediaCondition::And(_) | MediaCondition::Or(_) | MediaCondition::Not(_) => write!(f, "({})", self.0),
+            MediaCondition::And(_) | MediaCondition::Or(_) | MediaCondition::Not(_) => {
+                write!(f, "({})", self.0)
+            }
             c => write!(f, "{c}"),
         }
     }
@@ -728,10 +888,39 @@ impl fmt::Display for Paren<'_> {
 impl fmt::Display for FeatureValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FeatureValue::Length(l) => write!(f, "{}px", Number { micro: *l, int: l % 1_000_000 == 0 }.to_f64()),
+            FeatureValue::Length(l) => write!(
+                f,
+                "{}px",
+                Number {
+                    micro: *l,
+                    int: l % 1_000_000 == 0
+                }
+                .to_f64()
+            ),
             FeatureValue::Number(n) => write!(f, "{}", n.to_f64()),
-            FeatureValue::Ratio(n, d) => write!(f, "{} / {}", Number { micro: *n, int: true }.to_f64(), Number { micro: *d, int: true }.to_f64()),
-            FeatureValue::Resolution(r) => write!(f, "{}dppx", Number { micro: *r, int: true }.to_f64()),
+            FeatureValue::Ratio(n, d) => write!(
+                f,
+                "{} / {}",
+                Number {
+                    micro: *n,
+                    int: true
+                }
+                .to_f64(),
+                Number {
+                    micro: *d,
+                    int: true
+                }
+                .to_f64()
+            ),
+            FeatureValue::Resolution(r) => write!(
+                f,
+                "{}dppx",
+                Number {
+                    micro: *r,
+                    int: true
+                }
+                .to_f64()
+            ),
             FeatureValue::Ident(i) => f.write_str(i),
         }
     }
@@ -760,17 +949,26 @@ pub enum SupportsCondition {
     And(Vec<SupportsCondition>),
     Or(Vec<SupportsCondition>),
     /// `(property: value)`; `value` is trimmed of surrounding whitespace.
-    Declaration { property: String, value: Vec<ComponentValue> },
+    Declaration {
+        property: String,
+        value: Vec<ComponentValue>,
+    },
     /// `selector(<selector-list>)`: `Ok` when the selector parsed and every
     /// pseudo-element in it is supported.
-    Selector { text: String, supported: bool },
+    Selector {
+        text: String,
+        supported: bool,
+    },
     /// `<general-enclosed>`: never supported.
     Unknown(String),
 }
 
 /// Parses an `@supports` prelude; `None` means the rule is invalid and dropped.
 pub fn parse_supports_condition(values: &[ComponentValue]) -> Option<SupportsCondition> {
-    let mut p = P { values: trim_ws(values), pos: 0 };
+    let mut p = P {
+        values: trim_ws(values),
+        pos: 0,
+    };
     let c = parse_supports(&mut p)?;
     p.skip_ws();
     if p.at_end() {
@@ -785,7 +983,9 @@ fn parse_supports(p: &mut P) -> Option<SupportsCondition> {
     if p.ident_is(0, "not") {
         p.pos += 1;
         p.skip_ws();
-        return Some(SupportsCondition::Not(Box::new(parse_supports_in_parens(p)?)));
+        return Some(SupportsCondition::Not(Box::new(parse_supports_in_parens(
+            p,
+        )?)));
     }
     let first = parse_supports_in_parens(p)?;
     p.skip_ws();
@@ -806,15 +1006,31 @@ fn parse_supports(p: &mut P) -> Option<SupportsCondition> {
     if p.ident_is(0, "and") || p.ident_is(0, "or") {
         return None;
     }
-    Some(if joiner == "and" { SupportsCondition::And(items) } else { SupportsCondition::Or(items) })
+    Some(if joiner == "and" {
+        SupportsCondition::And(items)
+    } else {
+        SupportsCondition::Or(items)
+    })
 }
 
 fn parse_supports_in_parens(p: &mut P) -> Option<SupportsCondition> {
     match p.next()? {
-        ComponentValue::Block { open: Token::OpenParen, contents } => {
+        ComponentValue::Block {
+            open: Token::OpenParen,
+            contents,
+        } => {
             let inner = trim_ws(contents);
-            let mut q = P { values: inner, pos: 0 };
-            let is_cond = matches!(q.peek_at(0), Some(ComponentValue::Block { open: Token::OpenParen, .. }) | Some(ComponentValue::Function { .. })) || q.ident_is(0, "not");
+            let mut q = P {
+                values: inner,
+                pos: 0,
+            };
+            let is_cond = matches!(
+                q.peek_at(0),
+                Some(ComponentValue::Block {
+                    open: Token::OpenParen,
+                    ..
+                }) | Some(ComponentValue::Function { .. })
+            ) || q.ident_is(0, "not");
             if is_cond {
                 if let Some(c) = parse_supports(&mut q) {
                     q.skip_ws();
@@ -824,14 +1040,21 @@ fn parse_supports_in_parens(p: &mut P) -> Option<SupportsCondition> {
                 }
             }
             // A declaration: ident ':' value.
-            let mut q = P { values: inner, pos: 0 };
+            let mut q = P {
+                values: inner,
+                pos: 0,
+            };
             if let Some(ComponentValue::Token(Token::Ident(name))) = q.peek_at(0) {
                 q.pos += 1;
                 q.skip_ws();
                 if matches!(q.peek_at(0), Some(ComponentValue::Token(Token::Colon))) {
                     q.pos += 1;
                     let value = trim_ws(&inner[q.pos..]).to_vec();
-                    let property = if name.starts_with("--") { name.clone() } else { name.to_ascii_lowercase() };
+                    let property = if name.starts_with("--") {
+                        name.clone()
+                    } else {
+                        name.to_ascii_lowercase()
+                    };
                     return Some(SupportsCondition::Declaration { property, value });
                 }
             }
@@ -840,12 +1063,18 @@ fn parse_supports_in_parens(p: &mut P) -> Option<SupportsCondition> {
         ComponentValue::Function { name, args } if name.eq_ignore_ascii_case("selector") => {
             let text = serialize(args);
             let supported = match SelectorList::parse(args) {
-                Ok(list) => list.0.iter().all(|s| s.pseudo_element.is_none_or(|pe| pe.supported())),
+                Ok(list) => list
+                    .0
+                    .iter()
+                    .all(|s| s.pseudo_element.is_none_or(|pe| pe.supported())),
                 Err(_) => false,
             };
             Some(SupportsCondition::Selector { text, supported })
         }
-        ComponentValue::Function { name, args } => Some(SupportsCondition::Unknown(format!("{name}({})", serialize(args)))),
+        ComponentValue::Function { name, args } => Some(SupportsCondition::Unknown(format!(
+            "{name}({})",
+            serialize(args)
+        ))),
         _ => None,
     }
 }
@@ -885,7 +1114,10 @@ mod tests {
         assert!(eval("print, screen", &m));
         assert!(!eval("tv", &m));
         assert!(eval("not tv", &m));
-        let p = Media { media_type: MediaType::Print, ..Media::default() };
+        let p = Media {
+            media_type: MediaType::Print,
+            ..Media::default()
+        };
         assert!(eval("print", &p));
         assert!(!eval("screen and (width)", &p));
         // Grammar errors become `not all`.
@@ -895,7 +1127,10 @@ mod tests {
         assert!(!eval("only", &m));
         assert!(!eval("(width) or (height) and (hover)", &m));
         assert!(!eval("screen and (width) or (height)", &m));
-        assert_eq!(MediaQueryList::parse("screen and, print").to_string(), "not all, print");
+        assert_eq!(
+            MediaQueryList::parse("screen and, print").to_string(),
+            "not all, print"
+        );
     }
 
     #[test]
@@ -940,28 +1175,67 @@ mod tests {
         assert!(eval("(min-resolution: 96dpi)", &m));
         assert!(!eval("(min-resolution: 1.5dppx)", &m));
         assert!(eval("(resolution >= 1x)", &m));
-        let hi = Media { dppx: Number::parse("2").unwrap(), ..Media::default() };
+        let hi = Media {
+            dppx: Number::parse("2").unwrap(),
+            ..Media::default()
+        };
         assert!(eval("(min-resolution: 1.5dppx)", &hi));
         assert!(eval("(min-resolution: 192dpi)", &hi));
         assert!(eval("(prefers-color-scheme: light)", &m));
         assert!(!eval("(prefers-color-scheme: dark)", &m));
-        assert!(eval("(prefers-color-scheme: dark)", &Media { color_scheme: ColorScheme::Dark, ..m }));
+        assert!(eval(
+            "(prefers-color-scheme: dark)",
+            &Media {
+                color_scheme: ColorScheme::Dark,
+                ..m
+            }
+        ));
         assert!(!eval("(prefers-reduced-motion: reduce)", &m));
         assert!(eval("(prefers-reduced-motion: no-preference)", &m));
-        assert!(eval("(prefers-reduced-motion)", &Media { reduced_motion: true, ..m }));
+        assert!(eval(
+            "(prefers-reduced-motion)",
+            &Media {
+                reduced_motion: true,
+                ..m
+            }
+        ));
         assert!(eval("(hover: hover)", &m));
         assert!(eval("(hover)", &m));
         assert!(eval("(any-hover: hover)", &m));
         assert!(!eval("(hover: none)", &m));
-        assert!(eval("(hover: none)", &Media { hover: HoverCapability::None, ..m }));
+        assert!(eval(
+            "(hover: none)",
+            &Media {
+                hover: HoverCapability::None,
+                ..m
+            }
+        ));
         assert!(eval("(pointer: fine)", &m));
         assert!(eval("(any-pointer: fine)", &m));
         assert!(!eval("(pointer: coarse)", &m));
-        assert!(eval("(pointer: coarse)", &Media { pointer: PointerCapability::Coarse, ..m }));
-        assert!(!eval("(pointer)", &Media { pointer: PointerCapability::None, ..m }));
+        assert!(eval(
+            "(pointer: coarse)",
+            &Media {
+                pointer: PointerCapability::Coarse,
+                ..m
+            }
+        ));
+        assert!(!eval(
+            "(pointer)",
+            &Media {
+                pointer: PointerCapability::None,
+                ..m
+            }
+        ));
         assert!(eval("(display-mode: browser)", &m));
         assert!(!eval("(display-mode: standalone)", &m));
-        assert!(eval("(display-mode: standalone)", &Media { display_mode: DisplayMode::Standalone, ..m }));
+        assert!(eval(
+            "(display-mode: standalone)",
+            &Media {
+                display_mode: DisplayMode::Standalone,
+                ..m
+            }
+        ));
     }
 
     #[test]
@@ -987,29 +1261,61 @@ mod tests {
 
     #[test]
     fn serialization() {
-        assert_eq!(MediaQueryList::parse("SCREEN AND (MIN-WIDTH: 600px), print").to_string(), "screen and (min-width: 600px), print");
-        assert_eq!(MediaQueryList::parse("(width >= 600px) and (hover)").to_string(), "(min-width: 600px) and (hover)");
-        assert_eq!(MediaQueryList::parse("(width > 600px) and (600px < height)").to_string(), "(width > 600px) and (height > 600px)");
+        assert_eq!(
+            MediaQueryList::parse("SCREEN AND (MIN-WIDTH: 600px), print").to_string(),
+            "screen and (min-width: 600px), print"
+        );
+        assert_eq!(
+            MediaQueryList::parse("(width >= 600px) and (hover)").to_string(),
+            "(min-width: 600px) and (hover)"
+        );
+        assert_eq!(
+            MediaQueryList::parse("(width > 600px) and (600px < height)").to_string(),
+            "(width > 600px) and (height > 600px)"
+        );
         assert_eq!(MediaQueryList::parse("not print").to_string(), "not print");
-        assert_eq!(MediaQueryList::parse("not (hover)").to_string(), "not (hover)");
-        assert_eq!(MediaQueryList::parse("(600px <= width <= 900px)").to_string(), "(min-width: 600px) and (max-width: 900px)");
-        assert_eq!(MediaQueryList::parse("(aspect-ratio: 16/9)").to_string(), "(aspect-ratio: 16 / 9)");
-        assert_eq!(MediaQueryList::parse("(prefers-color-scheme: dark)").to_string(), "(prefers-color-scheme: dark)");
+        assert_eq!(
+            MediaQueryList::parse("not (hover)").to_string(),
+            "not (hover)"
+        );
+        assert_eq!(
+            MediaQueryList::parse("(600px <= width <= 900px)").to_string(),
+            "(min-width: 600px) and (max-width: 900px)"
+        );
+        assert_eq!(
+            MediaQueryList::parse("(aspect-ratio: 16/9)").to_string(),
+            "(aspect-ratio: 16 / 9)"
+        );
+        assert_eq!(
+            MediaQueryList::parse("(prefers-color-scheme: dark)").to_string(),
+            "(prefers-color-scheme: dark)"
+        );
         let q = MediaQueryList::parse("only screen and (max-width: 20em)");
         assert_eq!(MediaQueryList::parse(&q.to_string()), q);
     }
 
     #[test]
     fn supports_conditions() {
-        let ok = |p: &str, v: &[ComponentValue]| p == "display" && v.iter().any(|c| c.as_ident() == Some("grid"));
-        let ev = |s: &str| parse_supports_condition(&super::super::parser::parse_component_value_list(s)).map(|c| c.evaluate(&ok));
+        let ok = |p: &str, v: &[ComponentValue]| {
+            p == "display" && v.iter().any(|c| c.as_ident() == Some("grid"))
+        };
+        let ev = |s: &str| {
+            parse_supports_condition(&super::super::parser::parse_component_value_list(s))
+                .map(|c| c.evaluate(&ok))
+        };
         assert_eq!(ev("(display: grid)"), Some(true));
         assert_eq!(ev("(display: flex)"), Some(false));
         assert_eq!(ev("not (display: flex)"), Some(true));
         assert_eq!(ev("(display: grid) and (display: flex)"), Some(false));
         assert_eq!(ev("(display: grid) or (display: flex)"), Some(true));
-        assert_eq!(ev("((display: grid) or (display: flex)) and (not (display: flex))"), Some(true));
-        assert_eq!(ev("(display: grid) and (display: grid) or (display: grid)"), None);
+        assert_eq!(
+            ev("((display: grid) or (display: flex)) and (not (display: flex))"),
+            Some(true)
+        );
+        assert_eq!(
+            ev("(display: grid) and (display: grid) or (display: grid)"),
+            None
+        );
         assert_eq!(ev("display: grid"), None);
         assert_eq!(ev("selector(a:hover)"), Some(true));
         assert_eq!(ev("selector(a::first-line)"), Some(false));
@@ -1022,7 +1328,9 @@ mod tests {
         assert_eq!(ev("(--x: 1)"), Some(false));
         assert_eq!(ev("(display : grid )"), Some(true));
         assert_eq!(ev("( ( display: grid ) )"), Some(true));
-        match parse_supports_condition(&super::super::parser::parse_component_value_list("(DISPLAY: grid )")) {
+        match parse_supports_condition(&super::super::parser::parse_component_value_list(
+            "(DISPLAY: grid )",
+        )) {
             Some(SupportsCondition::Declaration { property, value }) => {
                 assert_eq!(property, "display");
                 assert_eq!(value.len(), 1);

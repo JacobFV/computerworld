@@ -26,7 +26,10 @@ fn world() -> (World, String) {
 }
 fn act(world: &mut World, session: &str, channel: &str, op: &str, payload: Value) -> Value {
     let result = world
-        .step(session, vec![ActionEnvelope::new(channel, op, MACHINE, payload)])
+        .step(
+            session,
+            vec![ActionEnvelope::new(channel, op, MACHINE, payload)],
+        )
         .unwrap();
     assert!(result.outcomes[0].success, "{op}: {:?}", result.outcomes[0]);
     result.outcomes[0].value.clone()
@@ -57,13 +60,20 @@ fn by_id<'a>(all: &'a [Value], id: &str) -> &'a Value {
         .unwrap_or_else(|| panic!("no element {id} in {all:?}"))
 }
 fn says(all: &[Value], needle: &str) -> bool {
-    all.iter().any(|e| e["text"].as_str().is_some_and(|t| t.contains(needle)))
+    all.iter()
+        .any(|e| e["text"].as_str().is_some_and(|t| t.contains(needle)))
 }
 
 /// The flow both products share, against one origin.
 fn drive(origin: &str, brand: &str, seeded: &str) {
     let (mut world, session) = world();
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url": format!("{origin}/")}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url": format!("{origin}/")}),
+    );
     let home = page(&world, &session);
     assert_eq!(home["title"], brand);
     let all = elements(&home);
@@ -80,11 +90,32 @@ fn drive(origin: &str, brand: &str, seeded: &str) {
 
     // Type a prompt into the composer and press Enter: a conversation starts and the
     // reply is a fact of this world with a citation to open.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"composer-message"}));
-    act(&mut world, &session, "keyboard.v1", "type", json!({"text":"What is the Atlas release code?"}));
-    act(&mut world, &session, "browser.v1", "key", json!({"key":"Enter"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"composer-message"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "keyboard.v1",
+        "type",
+        json!({"text":"What is the Atlas release code?"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "key",
+        json!({"key":"Enter"}),
+    );
     let chat = page(&world, &session);
-    assert_eq!(chat["title"], format!("What is the Atlas release code? - {brand}"));
+    assert_eq!(
+        chat["title"],
+        format!("What is the Atlas release code? - {brand}")
+    );
     let all = elements(&chat);
     assert!(says(&all, "What is the Atlas release code?"), "{all:?}");
     assert!(says(&all, "ATLAS-2026"), "{all:?}");
@@ -95,49 +126,134 @@ fn drive(origin: &str, brand: &str, seeded: &str) {
     // The new conversation is in the history, and that is its address.
     let mine = all
         .iter()
-        .filter(|e| e["kind"] == "link" && e["id"].as_str().is_some_and(|i| i.starts_with("side-conv-")))
+        .filter(|e| {
+            e["kind"] == "link"
+                && e["id"]
+                    .as_str()
+                    .is_some_and(|i| i.starts_with("side-conv-"))
+        })
         .map(|e| e["url"].as_str().unwrap().to_owned())
         .next_back()
         .unwrap();
 
     // A second turn through the composer's button, then regenerate and rename.
-    act(&mut world, &session, "browser.v1", "fill", json!({"id":"composer-message","value":"Who owns the Atlas launch?"}));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"composer-submit"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "fill",
+        json!({"id":"composer-message","value":"Who owns the Atlas launch?"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"composer-submit"}),
+    );
     let all = elements(&page(&world, &session));
     assert!(says(&all, "Carol"), "{all:?}");
     assert!(all.iter().any(|e| e["id"] == "msg-3-cite-0"));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"regenerate"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"regenerate"}),
+    );
     let all = elements(&page(&world, &session));
     assert!(says(&all, "Carol"), "a fact has one answer: {all:?}");
-    act(&mut world, &session, "browser.v1", "fill", json!({"id":"rename-title","value":"Release code"}));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"rename-submit"}));
-    assert_eq!(page(&world, &session)["title"], format!("Release code - {brand}"));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "fill",
+        json!({"id":"rename-title","value":"Release code"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"rename-submit"}),
+    );
+    assert_eq!(
+        page(&world, &session)["title"],
+        format!("Release code - {brand}")
+    );
 
     // The citation is a real link out of the site, and the history link comes back.
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url": mine}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url": mine}),
+    );
     assert_eq!(browser(&world, &session)["url"], mine);
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"msg-1-cite-0"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"msg-1-cite-0"}),
+    );
     assert_eq!(browser(&world, &session)["url"], source);
     act(&mut world, &session, "browser.v1", "back", json!({}));
-    assert_eq!(page(&world, &session)["title"], format!("Release code - {brand}"));
+    assert_eq!(
+        page(&world, &session)["title"],
+        format!("Release code - {brand}")
+    );
 
     // Deleting lands on the home page with the conversation gone from the history.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"delete"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"delete"}),
+    );
     let all = elements(&page(&world, &session));
     assert!(all.iter().any(|e| e["id"] == "composer-message"));
     assert!(!all.iter().any(|e| e["url"] == mine), "{all:?}");
 
     // A suggestion is a one-button form: clicking it asks that question.
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url": format!("{origin}/")}));
-    let suggestion = by_id(&elements(&page(&world, &session)), "suggestion-0")["text"].as_str().unwrap().to_owned();
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"suggestion-0"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url": format!("{origin}/")}),
+    );
+    let suggestion = by_id(&elements(&page(&world, &session)), "suggestion-0")["text"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"suggestion-0"}),
+    );
     let all = elements(&page(&world, &session));
     assert!(says(&all, &suggestion), "{all:?}");
-    assert!(all.iter().any(|e| e["id"] == "regenerate" && e["kind"] == "button"));
+    assert!(all
+        .iter()
+        .any(|e| e["id"] == "regenerate" && e["kind"] == "button"));
 
     // A seeded conversation opens from the sidebar.
-    act(&mut world, &session, "browser.v1", "click", json!({"id": format!("side-{seeded}")}));
-    assert_eq!(browser(&world, &session)["url"], format!("{origin}/c/{seeded}"));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id": format!("side-{seeded}")}),
+    );
+    assert_eq!(
+        browser(&world, &session)["url"],
+        format!("{origin}/c/{seeded}")
+    );
 }
 
 #[test]

@@ -90,7 +90,9 @@ fn selected_index(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     }
     let options = i.options_of(n);
     let selected = i.selected_options(n);
-    let idx = selected.first().and_then(|s| options.iter().position(|o| o == s));
+    let idx = selected
+        .first()
+        .and_then(|s| options.iter().position(|o| o == s));
     Ok(Value::Num(idx.map(|x| x as f64).unwrap_or(-1.0)))
 }
 
@@ -111,7 +113,10 @@ fn form_data_set(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let form = arg_node(vm, a, 0)?;
     let submitter = node_of(&a.arg(1));
     let pairs = inner(vm).borrow().form_data_set(form, submitter);
-    let items: Vec<Value> = pairs.into_iter().map(|(k, v)| vm.arr(vec![string_val(k), string_val(v)])).collect();
+    let items: Vec<Value> = pairs
+        .into_iter()
+        .map(|(k, v)| vm.arr(vec![string_val(k), string_val(v)]))
+        .collect();
     Ok(vm.arr(items))
 }
 
@@ -151,7 +156,10 @@ fn selection(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     }
     let (s, e) = i.form.selection.get(&n).copied().unwrap_or((len, len));
     drop(i);
-    Ok(vm.arr(vec![Value::Num(s.min(len) as f64), Value::Num(e.min(len) as f64)]))
+    Ok(vm.arr(vec![
+        Value::Num(s.min(len) as f64),
+        Value::Num(e.min(len) as f64),
+    ]))
 }
 
 fn custom_validity(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
@@ -168,7 +176,13 @@ fn custom_validity(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         i.touch_state(n);
         return Ok(Value::Undefined);
     }
-    let m = inner(vm).borrow().form.custom_validity.get(&n).cloned().unwrap_or_default();
+    let m = inner(vm)
+        .borrow()
+        .form
+        .custom_validity
+        .get(&n)
+        .cloned()
+        .unwrap_or_default();
     Ok(string_val(m))
 }
 
@@ -237,38 +251,64 @@ fn data_prop(attr: &str) -> Option<String> {
 }
 
 fn dataset_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
-    let (Key::Str(s), Some(id)) = (k, o.host_id()) else { return Ok(None) };
+    let (Key::Str(s), Some(id)) = (k, o.host_id()) else {
+        return Ok(None);
+    };
     let rc = inner(vm);
     let i = rc.borrow();
     Ok(i.doc.attr(NodeId(id), &data_attr(s)).map(Value::str))
 }
 fn dataset_set(vm: &mut Vm, o: &Obj, k: &Key, v: &Value) -> JsResult<Option<bool>> {
-    let (Key::Str(s), Some(id)) = (k, o.host_id()) else { return Ok(None) };
+    let (Key::Str(s), Some(id)) = (k, o.host_id()) else {
+        return Ok(None);
+    };
     let val = vm.to_string(v)?.to_string();
     set_attribute_value(vm, NodeId(id), &data_attr(s), Some(&val))?;
     Ok(Some(true))
 }
 fn dataset_delete(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<bool>> {
-    let (Key::Str(s), Some(id)) = (k, o.host_id()) else { return Ok(None) };
+    let (Key::Str(s), Some(id)) = (k, o.host_id()) else {
+        return Ok(None);
+    };
     set_attribute_value(vm, NodeId(id), &data_attr(s), None)?;
     Ok(Some(true))
 }
 fn dataset_keys(vm: &mut Vm, o: &Obj) -> JsResult<Vec<Key>> {
-    let Some(id) = o.host_id() else { return Ok(Vec::new()) };
+    let Some(id) = o.host_id() else {
+        return Ok(Vec::new());
+    };
     let rc = inner(vm);
     let i = rc.borrow();
-    Ok(i.doc.attrs(NodeId(id)).iter().filter_map(|a| data_prop(&a.name)).map(|p| Key::str(&p)).collect())
+    Ok(i.doc
+        .attrs(NodeId(id))
+        .iter()
+        .filter_map(|a| data_prop(&a.name))
+        .map(|p| Key::str(&p))
+        .collect())
 }
-pub static DATASET_HOOKS: HostHooks = HostHooks { class: "DOMStringMap", get: dataset_get, set: dataset_set, delete: dataset_delete, keys: dataset_keys };
+pub static DATASET_HOOKS: HostHooks = HostHooks {
+    class: "DOMStringMap",
+    get: dataset_get,
+    set: dataset_set,
+    delete: dataset_delete,
+    keys: dataset_keys,
+};
 
 // ---------------------------------------------------------------- token lists
 
 fn tokens_of(vm: &mut Vm, o: &Obj) -> Vec<String> {
-    let (Some(id), Some(Value::Str(attr))) = (o.host_id(), o.host_slot(1)) else { return Vec::new() };
+    let (Some(id), Some(Value::Str(attr))) = (o.host_id(), o.host_slot(1)) else {
+        return Vec::new();
+    };
     let rc = inner(vm);
     let i = rc.borrow();
     let mut out: Vec<String> = Vec::new();
-    for t in i.doc.attr(NodeId(id), &attr).unwrap_or("").split_ascii_whitespace() {
+    for t in i
+        .doc
+        .attr(NodeId(id), &attr)
+        .unwrap_or("")
+        .split_ascii_whitespace()
+    {
         if !out.iter().any(|x| x == t) {
             out.push(t.to_owned());
         }
@@ -285,7 +325,9 @@ fn tokens_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
     Ok(None)
 }
 fn tokens_keys(vm: &mut Vm, o: &Obj) -> JsResult<Vec<Key>> {
-    Ok((0..tokens_of(vm, o).len()).map(|i| Key::str(&i.to_string())).collect())
+    Ok((0..tokens_of(vm, o).len())
+        .map(|i| Key::str(&i.to_string()))
+        .collect())
 }
 fn no_set(_vm: &mut Vm, _o: &Obj, _k: &Key, _v: &Value) -> JsResult<Option<bool>> {
     Ok(None)
@@ -293,12 +335,20 @@ fn no_set(_vm: &mut Vm, _o: &Obj, _k: &Key, _v: &Value) -> JsResult<Option<bool>
 fn no_delete(_vm: &mut Vm, _o: &Obj, _k: &Key) -> JsResult<Option<bool>> {
     Ok(None)
 }
-pub static TOKENS_HOOKS: HostHooks = HostHooks { class: "DOMTokenList", get: tokens_get, set: no_set, delete: no_delete, keys: tokens_keys };
+pub static TOKENS_HOOKS: HostHooks = HostHooks {
+    class: "DOMTokenList",
+    get: tokens_get,
+    set: no_set,
+    delete: no_delete,
+    keys: tokens_keys,
+};
 
 // ---------------------------------------------------------------- attributes map
 
 fn attrs_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
-    let (Key::Str(s), Some(id)) = (k, o.host_id()) else { return Ok(None) };
+    let (Key::Str(s), Some(id)) = (k, o.host_id()) else {
+        return Ok(None);
+    };
     let n = NodeId(id);
     let name = {
         let rc = inner(vm);
@@ -314,17 +364,27 @@ fn attrs_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
         }
     };
     let Some(name) = name else { return Ok(None) };
-    let Some(hooks) = vm.global.own_value("%hooks") else { return Ok(None) };
+    let Some(hooks) = vm.global.own_value("%hooks") else {
+        return Ok(None);
+    };
     let f = vm.get_str(&hooks, "attrNode")?;
     let el = wrap_node(vm, n);
     Ok(Some(vm.call(&f, hooks, vec![el, string_val(name)])?))
 }
 fn attrs_keys(vm: &mut Vm, o: &Obj) -> JsResult<Vec<Key>> {
-    let Some(id) = o.host_id() else { return Ok(Vec::new()) };
+    let Some(id) = o.host_id() else {
+        return Ok(Vec::new());
+    };
     let n = inner(vm).borrow().doc.attrs(NodeId(id)).len();
     Ok((0..n).map(|i| Key::str(&i.to_string())).collect())
 }
-pub static ATTRS_HOOKS: HostHooks = HostHooks { class: "NamedNodeMap", get: attrs_get, set: no_set, delete: no_delete, keys: attrs_keys };
+pub static ATTRS_HOOKS: HostHooks = HostHooks {
+    class: "NamedNodeMap",
+    get: attrs_get,
+    set: no_set,
+    delete: no_delete,
+    keys: attrs_keys,
+};
 
 /// `W.elementPart(el, kind, protoName, attr?)`: `dataset`, `tokens`, `attributes`.
 fn element_part(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
@@ -338,19 +398,29 @@ fn element_part(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         "tokens" => &TOKENS_HOOKS,
         _ => &ATTRS_HOOKS,
     };
-    Ok(Value::Obj(vm.host_obj(proto, hooks, vec![Value::Num(n.0 as f64), extra])))
+    Ok(Value::Obj(vm.host_obj(
+        proto,
+        hooks,
+        vec![Value::Num(n.0 as f64), extra],
+    )))
 }
 
 fn tokens(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
-    let Value::Obj(o) = a.arg(0) else { return Ok(vm.arr(vec![])) };
+    let Value::Obj(o) = a.arg(0) else {
+        return Ok(vm.arr(vec![]));
+    };
     let t = tokens_of(vm, &o);
     Ok(super::str_array(vm, &t))
 }
 
 /// The element and attribute name of a token list or dataset part.
 fn part_owner(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
-    let Value::Obj(o) = a.arg(0) else { return Ok(Value::Null) };
-    let Some(id) = o.host_id() else { return Ok(Value::Null) };
+    let Value::Obj(o) = a.arg(0) else {
+        return Ok(Value::Null);
+    };
+    let Some(id) = o.host_id() else {
+        return Ok(Value::Null);
+    };
     Ok(wrap_node(vm, NodeId(id)))
 }
 

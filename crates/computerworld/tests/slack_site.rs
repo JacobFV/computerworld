@@ -25,7 +25,10 @@ fn world() -> (World, String) {
 }
 fn act(world: &mut World, session: &str, channel: &str, op: &str, payload: Value) -> Value {
     let result = world
-        .step(session, vec![ActionEnvelope::new(channel, op, MACHINE, payload)])
+        .step(
+            session,
+            vec![ActionEnvelope::new(channel, op, MACHINE, payload)],
+        )
         .unwrap();
     assert!(result.outcomes[0].success, "{op}: {:?}", result.outcomes[0]);
     result.outcomes[0].value.clone()
@@ -63,16 +66,28 @@ fn has_text(all: &[Value], needle: &str) -> bool {
 #[test]
 fn slack_is_read_and_written_through_the_agent_api() {
     let (mut world, session) = world();
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url":"http://slack.com/"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url":"http://slack.com/"}),
+    );
     let home = page(&world, &session);
     // The root lands on the first channel the actor is in.
-    assert_eq!(home["title"], "#atlas-release (Channel) - Northstar - Slack");
+    assert_eq!(
+        home["title"],
+        "#atlas-release (Channel) - Northstar - Slack"
+    );
     let all = elements(&home);
     // The sidebar rows are links, the composer a form with a labelled field.
     let random = by_id(&all, "nav-random");
     assert_eq!(random["kind"], "link");
     assert_eq!(random["url"], "http://slack.com/channels/random");
-    assert_eq!(by_id(&all, "dm-alice|bob")["url"], "http://slack.com/channels/alice|bob");
+    assert_eq!(
+        by_id(&all, "dm-alice|bob")["url"],
+        "http://slack.com/channels/alice|bob"
+    );
     assert_eq!(by_id(&all, "rail-dms")["kind"], "link");
     assert_eq!(by_id(&all, "send")["kind"], "form");
     assert_eq!(by_id(&all, "send-text")["kind"], "input");
@@ -81,59 +96,170 @@ fn slack_is_read_and_written_through_the_agent_api() {
     assert_eq!(by_id(&all, "start-admin")["kind"], "button");
 
     // Open #eng from the sidebar and read it.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"nav-eng"}));
-    assert_eq!(browser(&world, &session)["url"], "http://slack.com/channels/eng");
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"nav-eng"}),
+    );
+    assert_eq!(
+        browser(&world, &session)["url"],
+        "http://slack.com/channels/eng"
+    );
     let eng = page(&world, &session);
     assert_eq!(eng["title"], "#eng (Channel) - Northstar - Slack");
     let all = elements(&eng);
     assert!(has_text(&all, "Windows CI went red again."));
     assert!(has_text(&all, "17 new messages"));
-    assert_eq!(by_id(&all, "chat-1-replies")["url"], "http://slack.com/channels/eng?thread=chat-1");
-    assert_eq!(by_id(&all, "channel-members")["url"], "http://slack.com/channels/eng?members=1");
+    assert_eq!(
+        by_id(&all, "chat-1-replies")["url"],
+        "http://slack.com/channels/eng?thread=chat-1"
+    );
+    assert_eq!(
+        by_id(&all, "channel-members")["url"],
+        "http://slack.com/channels/eng?members=1"
+    );
 
     // Mark the channel read: a one-button form.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"read-submit"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"read-submit"}),
+    );
     let all = elements(&page(&world, &session));
     assert!(!all.iter().any(|e| e["id"] == "read-submit"));
 
     // Type a message into the composer and press Enter: the form posts and the page
     // that comes back holds the message.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"send-text"}));
-    act(&mut world, &session, "keyboard.v1", "type", json!({"text":"Green three times in a row."}));
-    act(&mut world, &session, "browser.v1", "key", json!({"key":"Enter"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"send-text"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "keyboard.v1",
+        "type",
+        json!({"text":"Green three times in a row."}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "key",
+        json!({"key":"Enter"}),
+    );
     let all = elements(&page(&world, &session));
     assert!(has_text(&all, "Green three times in a row."));
 
     // Fill and click the send button: the same form.
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url":"http://slack.com/channels/eng"}));
-    act(&mut world, &session, "browser.v1", "fill", json!({"id":"send-text","value":"Merging after lunch."}));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"send-submit"}));
-    assert!(has_text(&elements(&page(&world, &session)), "Merging after lunch."));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url":"http://slack.com/channels/eng"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "fill",
+        json!({"id":"send-text","value":"Merging after lunch."}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"send-submit"}),
+    );
+    assert!(has_text(
+        &elements(&page(&world, &session)),
+        "Merging after lunch."
+    ));
 
     // Open a thread from its reply count, answer in the pane, and land back in it.
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url":"http://slack.com/channels/eng"}));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"chat-1-replies"}));
-    assert_eq!(browser(&world, &session)["url"], "http://slack.com/channels/eng?thread=chat-1");
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url":"http://slack.com/channels/eng"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"chat-1-replies"}),
+    );
+    assert_eq!(
+        browser(&world, &session)["url"],
+        "http://slack.com/channels/eng?thread=chat-1"
+    );
     let all = elements(&page(&world, &session));
     assert_eq!(by_id(&all, "chat-1-reply-body")["label"], "Reply in thread");
-    assert_eq!(by_id(&all, "thread-close")["url"], "http://slack.com/channels/eng");
-    act(&mut world, &session, "browser.v1", "fill", json!({"id":"chat-1-reply-body","value":"Closing this out."}));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"chat-1-reply-submit"}));
+    assert_eq!(
+        by_id(&all, "thread-close")["url"],
+        "http://slack.com/channels/eng"
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "fill",
+        json!({"id":"chat-1-reply-body","value":"Closing this out."}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"chat-1-reply-submit"}),
+    );
     let all = elements(&page(&world, &session));
     assert!(has_text(&all, "Closing this out."));
-    assert!(all.iter().any(|e| e["id"] == "thread-close"), "the reply lands in its thread");
+    assert!(
+        all.iter().any(|e| e["id"] == "thread-close"),
+        "the reply lands in its thread"
+    );
     assert!(has_text(&all, "4 replies"));
 
     // A reaction chip reacts: carol and bob had eyes on chat-2, alice makes three.
-    act(&mut world, &session, "browser.v1", "navigate", json!({"url":"http://slack.com/channels/eng"}));
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"chat-2-react-eyes"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "navigate",
+        json!({"url":"http://slack.com/channels/eng"}),
+    );
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"chat-2-react-eyes"}),
+    );
     let all = elements(&page(&world, &session));
     let chip = by_id(&all, "chat-2-react-eyes");
     assert_eq!(chip["kind"], "button");
     assert!(chip["text"].as_str().unwrap().ends_with('3'), "{chip:?}");
 
     // Someone with no DM yet is one button away from one.
-    act(&mut world, &session, "browser.v1", "click", json!({"id":"start-admin"}));
+    act(
+        &mut world,
+        &session,
+        "browser.v1",
+        "click",
+        json!({"id":"start-admin"}),
+    );
     let dm = page(&world, &session);
     assert_eq!(dm["title"], "admin (DM) - Northstar - Slack");
     let all = elements(&dm);

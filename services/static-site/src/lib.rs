@@ -60,13 +60,16 @@ impl Service for StaticSite {
         }
         for (path, file) in initial["files"].as_object().unwrap() {
             if !path.starts_with('/') || path.ends_with('/') {
-                return Err(SimError::invalid("file paths must be absolute and name a file"));
+                return Err(SimError::invalid(
+                    "file paths must be absolute and name a file",
+                ));
             }
             let ok = match file {
                 Value::String(_) => true,
                 Value::Object(o) => {
                     o.get("text").is_some_and(Value::is_string)
-                        || o.get("bytes").is_some_and(|b| serde_json::from_value::<Vec<u8>>(b.clone()).is_ok())
+                        || o.get("bytes")
+                            .is_some_and(|b| serde_json::from_value::<Vec<u8>>(b.clone()).is_ok())
                 }
                 _ => false,
             };
@@ -133,12 +136,14 @@ impl Service for StaticSite {
         }
         if path == "/records" {
             let records = state["records"].as_object();
-            let list = el("dl").id("records-list").each(records.into_iter().flatten(), |(k, v)| {
-                cw_service_common::html::fragment([
-                    el("dt").id(format!("record-{k}")).text(k.as_str()),
-                    el("dd").id(format!("record-{k}-value")).text(v.to_string()),
-                ])
-            });
+            let list = el("dl")
+                .id("records-list")
+                .each(records.into_iter().flatten(), |(k, v)| {
+                    cw_service_common::html::fragment([
+                        el("dt").id(format!("record-{k}")).text(k.as_str()),
+                        el("dd").id(format!("record-{k}-value")).text(v.to_string()),
+                    ])
+                });
             let doc = HtmlDocument::new("Records")
                 .lang("en")
                 .stylesheet(RECORDS_CSS)
@@ -176,7 +181,11 @@ impl Service for StaticSite {
             let page = serde_json::from_value::<Page>(v.clone())?;
             return match wire::variant(state, "format", FORMATS)?.as_str() {
                 "page" => HttpResponse::page(&page),
-                _ => Ok(cw_service_common::html::HtmlResponse::new(200, cw_web::page::to_document(&page)).into()),
+                _ => Ok(cw_service_common::html::HtmlResponse::new(
+                    200,
+                    cw_web::page::to_document(&page),
+                )
+                .into()),
             };
         }
         if let Some(response) = serve_file(state, &path)? {
@@ -192,7 +201,11 @@ const RECORDS_CSS: &str = "body { font-family: sans-serif; margin: 16px; color: 
 fn serve_file(state: &Value, path: &str) -> Result<Option<HttpResponse>> {
     let files = state["files"].as_object();
     let Some(files) = files else { return Ok(None) };
-    let candidate = if path.ends_with('/') { format!("{path}index.html") } else { path.to_owned() };
+    let candidate = if path.ends_with('/') {
+        format!("{path}index.html")
+    } else {
+        path.to_owned()
+    };
     if let Some(file) = files.get(&candidate) {
         let (body, declared) = match file {
             Value::String(text) => (text.as_bytes().to_vec(), None),
@@ -202,7 +215,12 @@ fn serve_file(state: &Value, path: &str) -> Result<Option<HttpResponse>> {
                     (_, Some(b)) => serde_json::from_value::<Vec<u8>>(b.clone())?,
                     _ => Vec::new(),
                 };
-                (body, o.get("content_type").and_then(Value::as_str).map(str::to_owned))
+                (
+                    body,
+                    o.get("content_type")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned),
+                )
             }
             _ => return Ok(None),
         };
@@ -216,7 +234,10 @@ fn serve_file(state: &Value, path: &str) -> Result<Option<HttpResponse>> {
     if !path.ends_with('/') && files.contains_key(&format!("{path}/index.html")) {
         return Ok(Some(HttpResponse {
             status: 301,
-            headers: std::collections::BTreeMap::from([("location".to_owned(), format!("{path}/"))]),
+            headers: std::collections::BTreeMap::from([(
+                "location".to_owned(),
+                format!("{path}/"),
+            )]),
             body: Vec::new(),
         }));
     }
@@ -365,20 +386,39 @@ mod files_tests {
             )
             .unwrap();
         let home = get(&mut state, "/");
-        assert_eq!(home.header("content-type"), Some("text/html; charset=utf-8"));
+        assert_eq!(
+            home.header("content-type"),
+            Some("text/html; charset=utf-8")
+        );
         assert_eq!(home.body, b"<h1>Home</h1>");
         assert_eq!(get(&mut state, "/docs/").body, b"<p>Docs</p>");
         let redirect = get(&mut state, "/docs");
-        assert_eq!((redirect.status, redirect.header("location")), (301, Some("/docs/")));
-        assert_eq!(get(&mut state, "/style.css").header("content-type"), Some("text/css; charset=utf-8"));
-        assert_eq!(get(&mut state, "/app.js").header("content-type"), Some("text/javascript; charset=utf-8"));
+        assert_eq!(
+            (redirect.status, redirect.header("location")),
+            (301, Some("/docs/"))
+        );
+        assert_eq!(
+            get(&mut state, "/style.css").header("content-type"),
+            Some("text/css; charset=utf-8")
+        );
+        assert_eq!(
+            get(&mut state, "/app.js").header("content-type"),
+            Some("text/javascript; charset=utf-8")
+        );
         let logo = get(&mut state, "/logo.png");
         assert_eq!(logo.header("content-type"), Some("image/png"));
         assert_eq!(logo.body, vec![137, 80, 78, 71]);
-        assert_eq!(get(&mut state, "/notes.txt").header("content-type"), Some("text/x-notes"));
+        assert_eq!(
+            get(&mut state, "/notes.txt").header("content-type"),
+            Some("text/x-notes")
+        );
         assert_eq!(get(&mut state, "/missing.html").status, 404);
-        assert!(StaticSite.initialize(json!({"files":{"relative.html":"x"}}), &ctx()).is_err());
-        assert!(StaticSite.initialize(json!({"files":{"/x.html":7}}), &ctx()).is_err());
+        assert!(StaticSite
+            .initialize(json!({"files":{"relative.html":"x"}}), &ctx())
+            .is_err());
+        assert!(StaticSite
+            .initialize(json!({"files":{"/x.html":7}}), &ctx())
+            .is_err());
     }
 }
 
@@ -433,7 +473,11 @@ mod page_format_tests {
     }
     fn get(state: &mut Value, path: &str) -> HttpResponse {
         StaticSite
-            .handle(state, &ctx(), &HttpRequest::get(format!("http://site.test{path}")))
+            .handle(
+                state,
+                &ctx(),
+                &HttpRequest::get(format!("http://site.test{path}")),
+            )
             .unwrap()
     }
     fn seed() -> Value {
@@ -454,7 +498,10 @@ mod page_format_tests {
         let mut state = StaticSite.initialize(seed(), &ctx()).unwrap();
         let home = get(&mut state, "/");
         assert_eq!(home.status, 200);
-        assert_eq!(home.header("content-type"), Some("text/html; charset=utf-8"));
+        assert_eq!(
+            home.header("content-type"),
+            Some("text/html; charset=utf-8")
+        );
         let html = String::from_utf8(home.body).unwrap();
         validate_strict(&html).unwrap();
         let dom = cw_web::html::parse(&html);
@@ -466,7 +513,10 @@ mod page_format_tests {
         assert_eq!(dom.attr(dom.by_id("docs")[0], "href"), Some("/docs"));
         assert!(dom.is(dom.by_id("q")[0], "input"));
         let records = get(&mut state, "/records");
-        assert_eq!(records.header("content-type"), Some("text/html; charset=utf-8"));
+        assert_eq!(
+            records.header("content-type"),
+            Some("text/html; charset=utf-8")
+        );
         validate_strict(&String::from_utf8(records.body).unwrap()).unwrap();
     }
     /// `"format": "page"` is the escape hatch: the native media type, byte for byte the seed.
@@ -476,10 +526,16 @@ mod page_format_tests {
         seed["format"] = json!("page");
         let mut state = StaticSite.initialize(seed, &ctx()).unwrap();
         let home = get(&mut state, "/");
-        assert_eq!(home.header("content-type"), Some(cw_protocol::PAGE_MEDIA_TYPE));
+        assert_eq!(
+            home.header("content-type"),
+            Some(cw_protocol::PAGE_MEDIA_TYPE)
+        );
         let page: Page = serde_json::from_slice(&home.body).unwrap();
         assert_eq!(page.title, "Atlas");
-        assert_eq!(get(&mut state, "/records").header("content-type"), Some(cw_protocol::PAGE_MEDIA_TYPE));
+        assert_eq!(
+            get(&mut state, "/records").header("content-type"),
+            Some(cw_protocol::PAGE_MEDIA_TYPE)
+        );
         let mut bad = json!({"format": "xml"});
         bad["pages"] = json!({});
         assert!(StaticSite.initialize(bad, &ctx()).is_err());

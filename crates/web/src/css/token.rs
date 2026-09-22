@@ -10,9 +10,15 @@ pub struct Number {
 }
 
 impl Number {
-    pub const ZERO: Number = Number { micro: 0, int: true };
+    pub const ZERO: Number = Number {
+        micro: 0,
+        int: true,
+    };
     pub fn from_i64(v: i64) -> Number {
-        Number { micro: v * 1_000_000, int: true }
+        Number {
+            micro: v * 1_000_000,
+            int: true,
+        }
     }
     /// Parses `[+-]?digits[.digits][e[+-]digits]`; `None` if not a number.
     pub fn parse(s: &str) -> Option<Number> {
@@ -26,7 +32,9 @@ impl Number {
         let mut int_part: i64 = 0;
         let mut digits = 0;
         while i < b.len() && b[i].is_ascii_digit() {
-            int_part = int_part.saturating_mul(10).saturating_add((b[i] - b'0') as i64);
+            int_part = int_part
+                .saturating_mul(10)
+                .saturating_add((b[i] - b'0') as i64);
             i += 1;
             digits += 1;
         }
@@ -90,7 +98,10 @@ impl Number {
             }
             std::cmp::Ordering::Equal => {}
         }
-        Some(Number { micro: if neg { -micro } else { micro }, int: is_int })
+        Some(Number {
+            micro: if neg { -micro } else { micro },
+            int: is_int,
+        })
     }
     pub fn to_f64(self) -> f64 {
         self.micro as f64 / 1e6
@@ -98,12 +109,20 @@ impl Number {
     /// Value in thousandths, rounded half away from zero.
     pub fn milli(self) -> i32 {
         let v = self.micro;
-        let r = if v >= 0 { (v + 500) / 1000 } else { (v - 500) / 1000 };
+        let r = if v >= 0 {
+            (v + 500) / 1000
+        } else {
+            (v - 500) / 1000
+        };
         r.clamp(i32::MIN as i64, i32::MAX as i64) as i32
     }
     pub fn round(self) -> i32 {
         let v = self.micro;
-        let r = if v >= 0 { (v + 500_000) / 1_000_000 } else { (v - 500_000) / 1_000_000 };
+        let r = if v >= 0 {
+            (v + 500_000) / 1_000_000
+        } else {
+            (v - 500_000) / 1_000_000
+        };
         r.clamp(i32::MIN as i64, i32::MAX as i64) as i32
     }
     pub fn is_zero(self) -> bool {
@@ -122,16 +141,29 @@ pub enum Token {
     /// `@name`.
     AtKeyword(String),
     /// `#name`; `id` is true when it is a valid identifier (an id selector).
-    Hash { value: String, id: bool },
+    Hash {
+        value: String,
+        id: bool,
+    },
     String(String),
     BadString,
     /// `url(...)` unquoted form, value already unescaped.
     Url(String),
     BadUrl,
     Delim(char),
-    Number { text: String, value: Number },
-    Percentage { text: String, value: Number },
-    Dimension { text: String, value: Number, unit: String },
+    Number {
+        text: String,
+        value: Number,
+    },
+    Percentage {
+        text: String,
+        value: Number,
+    },
+    Dimension {
+        text: String,
+        value: Number,
+        unit: String,
+    },
     Whitespace,
     /// `<!--`
     Cdo,
@@ -153,9 +185,15 @@ pub enum Token {
 pub enum ComponentValue {
     Token(Token),
     /// `name(` ... `)`
-    Function { name: String, args: Vec<ComponentValue> },
+    Function {
+        name: String,
+        args: Vec<ComponentValue>,
+    },
     /// `{ ... }`, `[ ... ]` or `( ... )`.
-    Block { open: Token, contents: Vec<ComponentValue> },
+    Block {
+        open: Token,
+        contents: Vec<ComponentValue>,
+    },
 }
 
 impl ComponentValue {
@@ -186,14 +224,22 @@ mod tests {
 
     #[test]
     fn numbers() {
-        assert_eq!(Number::parse("12").unwrap(), Number { micro: 12_000_000, int: true });
+        assert_eq!(
+            Number::parse("12").unwrap(),
+            Number {
+                micro: 12_000_000,
+                int: true
+            }
+        );
         assert_eq!(Number::parse("-1.5").unwrap().micro, -1_500_000);
         assert_eq!(Number::parse(".5").unwrap().micro, 500_000);
         assert_eq!(Number::parse("+0.25").unwrap().milli(), 250);
         assert_eq!(Number::parse("1e3").unwrap().micro, 1_000_000_000);
         assert_eq!(Number::parse("2.5e-1").unwrap().micro, 250_000);
         assert!(Number::parse("abc").is_none());
-        assert!(!Number::parse("1.").unwrap().int || Number::parse("1.").unwrap().micro == 1_000_000);
+        assert!(
+            !Number::parse("1.").unwrap().int || Number::parse("1.").unwrap().micro == 1_000_000
+        );
         assert_eq!(Number::parse("0.9999999").unwrap().micro, 999_999);
         assert_eq!(Number::parse("-0.5").unwrap().round(), -1);
         assert_eq!(Number::parse("0.5").unwrap().round(), 1);

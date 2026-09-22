@@ -1,9 +1,9 @@
 //! The seeded Google Calendar in `worlds/company-2026/sites` must survive `initialize`, render,
 //! and — the bug this file exists to catch — carry times in microseconds rather than milliseconds.
 use cw_protocol::HttpRequest;
-use cw_service_common::html::validate_strict;
 use cw_sdk::{Service, ServiceContext};
 use cw_service_calendar::{civil, CalendarService, CalendarState, DAY_US, HOUR_US};
+use cw_service_common::html::validate_strict;
 use serde_json::Value;
 
 fn site() -> Value {
@@ -82,15 +82,20 @@ fn the_seeded_week_renders_and_its_rsvp_buttons_really_answer() {
     // Duplicate ids and CSS the engine does not render are test failures, not review notes.
     validate_strict(&body).expect("the week grid is well formed");
     let dom = cw_web::html::parse(&body);
-    let text = |id: &str| dom.text_content(*dom.by_id(id).first().unwrap_or_else(|| panic!("no #{id}")));
+    let text =
+        |id: &str| dom.text_content(*dom.by_id(id).first().unwrap_or_else(|| panic!("no #{id}")));
     assert_eq!(text("day-0-event-1-title"), "Atlas launch review");
-    assert_eq!(dom.attr(dom.by_id("day-0-head")[0], "aria-label"), Some("Thu 17 Sep"));
+    assert_eq!(
+        dom.attr(dom.by_id("day-0-head")[0], "aria-label"),
+        Some("Thu 17 Sep")
+    );
     assert_eq!(text("guest-bob-rsvp"), "Awaiting reply");
     // Every week and month the seed reaches validates, for every reader.
     for actor in ["alice", "bob", "carol"] {
         for day in (0..49).step_by(7) {
             for view in ["", "view=month&"] {
-                let (status, body) = page(&mut v, actor, &format!("http://calendar/?{view}day={day}"));
+                let (status, body) =
+                    page(&mut v, actor, &format!("http://calendar/?{view}day={day}"));
                 assert_eq!(status, 200);
                 validate_strict(&body).unwrap_or_else(|e| panic!("{actor} {view}day={day}: {e:?}"));
             }
@@ -98,7 +103,11 @@ fn the_seeded_week_renders_and_its_rsvp_buttons_really_answer() {
     }
     // DevCon runs Monday to Tuesday of the following week, in the all-day row of both days.
     let (_, trip) = page(&mut v, "carol", "http://calendar/?day=4");
-    assert!(trip.contains("DevCon Seattle 2026") && trip.contains("id=\"day-4-event-3\"") && trip.contains("id=\"day-5-event-3\""));
+    assert!(
+        trip.contains("DevCon Seattle 2026")
+            && trip.contains("id=\"day-4-event-3\"")
+            && trip.contains("id=\"day-5-event-3\"")
+    );
     // Bob has not answered yet; the page says so, and the button changes it.
     assert!(body.contains("Awaiting reply"));
     let rsvp = HttpRequest::json(

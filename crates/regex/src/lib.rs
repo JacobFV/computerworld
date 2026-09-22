@@ -759,7 +759,9 @@ impl<'a> Parser<'a> {
             'W' => ClassOrChar::Item(ClassItem::Word(true)),
             's' => ClassOrChar::Item(ClassItem::Space(false)),
             'S' => ClassOrChar::Item(ClassItem::Space(true)),
-            'p' | 'P' if !self.py() && self.flags.unicode => ClassOrChar::Item(self.unicode_property(start, c == 'P')?),
+            'p' | 'P' if !self.py() && self.flags.unicode => {
+                ClassOrChar::Item(self.unicode_property(start, c == 'P')?)
+            }
             _ => {
                 let _ = ascii;
                 self.i -= 1;

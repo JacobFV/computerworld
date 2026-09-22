@@ -22,7 +22,9 @@
 use crate::{AssistantState, Message};
 use cw_protocol::{HttpResponse, Result as SimResult};
 use cw_service_common as web;
-use cw_service_common::html::{button, div, el, form, hidden, link, span, text_input, Document, Html as Node};
+use cw_service_common::html::{
+    button, div, el, form, hidden, link, span, text_input, Document, Html as Node,
+};
 
 const BASE: &str = include_str!("base.css");
 const CHATGPT: &str = include_str!("chatgpt.css");
@@ -42,9 +44,16 @@ impl Chrome {
             _ => "chatgpt",
         };
         let claude = skin == "claude";
-        let pick = |v: &Option<String>, d: &str| v.clone().filter(|c| rgb(c).is_some()).unwrap_or_else(|| d.to_owned());
+        let pick = |v: &Option<String>, d: &str| {
+            v.clone()
+                .filter(|c| rgb(c).is_some())
+                .unwrap_or_else(|| d.to_owned())
+        };
         let accent = pick(&s.theme.accent, if claude { "#c15f3c" } else { "#10a37f" });
-        let paper = pick(&s.theme.background, if claude { "#faf9f5" } else { "#212121" });
+        let paper = pick(
+            &s.theme.background,
+            if claude { "#faf9f5" } else { "#212121" },
+        );
         let surface = pick(&s.theme.surface, if claude { "#f0eee6" } else { "#2f2f2f" });
         let ink = pick(&s.theme.ink, if claude { "#1f1e1d" } else { "#ececec" });
         let muted = pick(&s.theme.muted, if claude { "#6b6a65" } else { "#9b9b9b" });
@@ -53,7 +62,10 @@ impl Chrome {
         // A dark shell puts its history on a darker band and its cards on the surface;
         // a light one puts the history on the surface and its cards on white.
         let (side, card) = if dark {
-            (format!("#{:02x}{:02x}{:02x}", pr / 10 * 7, pg / 10 * 7, pb / 10 * 7), surface.clone())
+            (
+                format!("#{:02x}{:02x}{:02x}", pr / 10 * 7, pg / 10 * 7, pb / 10 * 7),
+                surface.clone(),
+            )
         } else {
             (surface.clone(), "#ffffff".to_owned())
         };
@@ -72,7 +84,11 @@ impl Chrome {
         Document::new(title)
             .lang("en")
             .stylesheet(BASE)
-            .stylesheet(if self.skin == "claude" { CLAUDE } else { CHATGPT })
+            .stylesheet(if self.skin == "claude" {
+                CLAUDE
+            } else {
+                CHATGPT
+            })
             .root_style(&self.root)
             .body_class(&format!("skin-{} {page_class}", self.skin))
             .body([body])
@@ -89,7 +105,10 @@ fn rgb(colour: &str) -> Option<(u8, u8, u8)> {
     }
 }
 fn initial(name: &str) -> String {
-    name.chars().next().map(|c| c.to_uppercase().to_string()).unwrap_or_else(|| "?".into())
+    name.chars()
+        .next()
+        .map(|c| c.to_uppercase().to_string())
+        .unwrap_or_else(|| "?".into())
 }
 fn model(s: &AssistantState) -> &str {
     if s.model_label.is_empty() {
@@ -100,40 +119,91 @@ fn model(s: &AssistantState) -> &str {
 }
 
 /// Sidebar + main column, the layout both products share.
-fn shell(s: &AssistantState, chrome: &Chrome, actor: &str, active: Option<&str>, title: &str, page_class: &str, main: Vec<Node>) -> SimResult<HttpResponse> {
-    let chats = el("nav").class("chats").attr("aria-label", "Chats").each(s.mine(actor), |c| {
-        let id = format!("side-{}", c.id);
-        el("a")
-            .id(id.as_str())
-            .class(if active == Some(c.id.as_str()) { "chat on" } else { "chat" })
-            .attr("href", format!("/c/{}", c.id))
-            .child(span("title").id(format!("{id}-title")).text(c.title.as_str()))
-    });
+fn shell(
+    s: &AssistantState,
+    chrome: &Chrome,
+    actor: &str,
+    active: Option<&str>,
+    title: &str,
+    page_class: &str,
+    main: Vec<Node>,
+) -> SimResult<HttpResponse> {
+    let chats = el("nav")
+        .class("chats")
+        .attr("aria-label", "Chats")
+        .each(s.mine(actor), |c| {
+            let id = format!("side-{}", c.id);
+            el("a")
+                .id(id.as_str())
+                .class(if active == Some(c.id.as_str()) {
+                    "chat on"
+                } else {
+                    "chat"
+                })
+                .attr("href", format!("/c/{}", c.id))
+                .child(
+                    span("title")
+                        .id(format!("{id}-title"))
+                        .text(c.title.as_str()),
+                )
+        });
     let side = el("aside")
         .id("sidebar")
         .class("sidebar")
         .child(
             div("brand")
                 .id("side-brand")
-                .child(span("logo").id("side-logo").attr("aria-hidden", "true").text(initial(&s.brand)))
+                .child(
+                    span("logo")
+                        .id("side-logo")
+                        .attr("aria-hidden", "true")
+                        .text(initial(&s.brand)),
+                )
                 .child(span("name").id("side-brand-name").text(s.brand.as_str())),
         )
         .child(link("side-new", "/", "New chat").class("new"))
-        .child(el("p").id("side-label").class("label").text(if chrome.skin == "claude" { "Recents" } else { "Chats" }))
+        .child(
+            el("p")
+                .id("side-label")
+                .class("label")
+                .text(if chrome.skin == "claude" {
+                    "Recents"
+                } else {
+                    "Chats"
+                }),
+        )
         .child(chats)
-        .when(s.mine(actor).next().is_none(), |n| n.child(el("p").id("side-empty").class("empty").text("No conversations yet.")))
+        .when(s.mine(actor).next().is_none(), |n| {
+            n.child(
+                el("p")
+                    .id("side-empty")
+                    .class("empty")
+                    .text("No conversations yet."),
+            )
+        })
         .child(
             div("account")
                 .id("side-account")
-                .child(span("avatar").attr("aria-hidden", "true").text(initial(actor)))
+                .child(
+                    span("avatar")
+                        .attr("aria-hidden", "true")
+                        .text(initial(actor)),
+                )
                 .child(span("who").id("side-account-name").text(actor)),
         );
-    let body = div("shell").id("shell").child(side).child(el("main").id("main").class("main").children(main));
+    let body = div("shell")
+        .id("shell")
+        .child(side)
+        .child(el("main").id("main").class("main").children(main));
     web::html::page(&chrome.document(title, page_class, body))
 }
 /// The message box. One line, so Enter sends, which is what both products do.
 fn composer(s: &AssistantState, chrome: &Chrome, action: &str) -> Node {
-    let placeholder = if chrome.skin == "claude" { "How can I help you today?" } else { "Ask anything" };
+    let placeholder = if chrome.skin == "claude" {
+        "How can I help you today?"
+    } else {
+        "Ask anything"
+    };
     form("composer", action, "post").class("composer").child(
         div("card")
             .child(
@@ -149,7 +219,12 @@ fn composer(s: &AssistantState, chrome: &Chrome, action: &str) -> Node {
                 div("tools")
                     .child(span("grow"))
                     .child(span("picker").text(model(s)))
-                    .child(button("composer-submit", "").class("send").attr("aria-label", "Send message").child(span("arrow").child(el("i")))),
+                    .child(
+                        button("composer-submit", "")
+                            .class("send")
+                            .attr("aria-label", "Send message")
+                            .child(span("arrow").child(el("i"))),
+                    ),
             ),
     )
 }
@@ -160,24 +235,43 @@ pub(crate) fn home(s: &AssistantState, actor: &str) -> SimResult<HttpResponse> {
         g => g,
     };
     let hero = div("hero")
-        .child(el("h1").id("home-greeting").class("greeting").child(span("spark").attr("aria-hidden", "true").child(el("i")).child(el("i"))).text(greeting))
+        .child(
+            el("h1")
+                .id("home-greeting")
+                .class("greeting")
+                .child(
+                    span("spark")
+                        .attr("aria-hidden", "true")
+                        .child(el("i"))
+                        .child(el("i")),
+                )
+                .text(greeting),
+        )
         .child(composer(s, &chrome, "/conversations"))
         .when(!s.suggestions.is_empty(), |n| {
-            n.child(div("suggestions").id("suggestions").each(s.suggestions.iter().enumerate(), |(i, text)| {
-                form(&format!("suggestion-{i}-form"), "/conversations", "post")
-                    .child(hidden("message", text))
-                    .child(button(&format!("suggestion-{i}"), text.as_str()))
-            }))
+            n.child(div("suggestions").id("suggestions").each(
+                s.suggestions.iter().enumerate(),
+                |(i, text)| {
+                    form(&format!("suggestion-{i}-form"), "/conversations", "post")
+                        .child(hidden("message", text))
+                        .child(button(&format!("suggestion-{i}"), text.as_str()))
+                },
+            ))
         });
     let main = vec![
         // The product's name, not a menu: there is one model here, so there is nothing
         // for a caret to open.
-        el("header").class("topbar").child(span("product").id("top-product").text(s.brand.as_str())),
+        el("header")
+            .class("topbar")
+            .child(span("product").id("top-product").text(s.brand.as_str())),
         hero,
         if s.model_label.is_empty() {
             web::html::empty()
         } else {
-            el("p").id("home-model").class("fine").text(format!("{} · deterministic replies, citations you can check", s.model_label))
+            el("p").id("home-model").class("fine").text(format!(
+                "{} · deterministic replies, citations you can check",
+                s.model_label
+            ))
         },
     ];
     shell(s, &chrome, actor, None, &s.brand, "page-home", main)
@@ -188,17 +282,36 @@ fn turn(index: usize, message: &Message, actor: &str) -> Node {
     el("article")
         .id(id.as_str())
         .class(if mine { "msg user" } else { "msg assistant" })
-        .child(span("avatar").id(format!("{id}-avatar")).attr("aria-hidden", "true").text(if mine { initial(actor) } else { "AI".to_owned() }))
+        .child(
+            span("avatar")
+                .id(format!("{id}-avatar"))
+                .attr("aria-hidden", "true")
+                .text(if mine {
+                    initial(actor)
+                } else {
+                    "AI".to_owned()
+                }),
+        )
         .child(
             div("bubble")
                 .id(format!("{id}-card"))
-                .child(el("p").id(format!("{id}-text")).class("text").text(message.text.as_str()))
+                .child(
+                    el("p")
+                        .id(format!("{id}-text"))
+                        .class("text")
+                        .text(message.text.as_str()),
+                )
                 .when(!message.citations.is_empty(), |n| {
                     n.child(
                         div("sources")
                             .child(span("label").id(format!("{id}-sources")).text("Sources"))
                             .each(message.citations.iter().enumerate(), |(k, c)| {
-                                link(&format!("{id}-cite-{k}"), c.url.as_str(), format!("[{}] {}", k + 1, c.label)).class("cite")
+                                link(
+                                    &format!("{id}-cite-{k}"),
+                                    c.url.as_str(),
+                                    format!("[{}] {}", k + 1, c.label),
+                                )
+                                .class("cite")
                             }),
                     )
                 }),
@@ -213,27 +326,61 @@ pub(crate) fn conversation(s: &AssistantState, actor: &str, id: &str) -> SimResu
     let head = el("header")
         .id("head")
         .class("topbar")
-        .child(el("h1").id("head-title").class("title").text(c.title.as_str()))
+        .child(
+            el("h1")
+                .id("head-title")
+                .class("title")
+                .text(c.title.as_str()),
+        )
         .child(span("badge").id("head-model").text(model(s)))
         .child(span("grow"))
         .child(
             form("rename", format!("/conversations/{id}/rename"), "post")
                 .class("rename")
-                .child(text_input("rename-title", "title", &c.title).attr("aria-label", "Rename conversation"))
+                .child(
+                    text_input("rename-title", "title", &c.title)
+                        .attr("aria-label", "Rename conversation"),
+                )
                 .child(button("rename-submit", "Rename")),
         )
-        .child(form("delete-form", format!("/conversations/{id}/delete"), "post").child(button("delete", "Delete").class("danger").attr("aria-label", "Delete conversation")));
+        .child(
+            form("delete-form", format!("/conversations/{id}/delete"), "post").child(
+                button("delete", "Delete")
+                    .class("danger")
+                    .attr("aria-label", "Delete conversation"),
+            ),
+        );
     let thread = div("thread")
         .id("thread")
         .each(c.messages.iter().enumerate(), |(i, m)| turn(i, m, actor))
         .child(
-            div("controls")
-                .id("turn-controls")
-                .child(form("regenerate-form", format!("/conversations/{id}/regenerate"), "post").child(button("regenerate", "Regenerate").class("ghost"))),
+            div("controls").id("turn-controls").child(
+                form(
+                    "regenerate-form",
+                    format!("/conversations/{id}/regenerate"),
+                    "post",
+                )
+                .child(button("regenerate", "Regenerate").class("ghost")),
+            ),
         );
     let dock = div("dock")
-        .child(composer(s, &chrome, &format!("/conversations/{id}/messages")))
-        .child(el("p").id("dock-note").class("fine").text(format!("{} can make mistakes. Open the sources to check.", s.brand)));
+        .child(composer(
+            s,
+            &chrome,
+            &format!("/conversations/{id}/messages"),
+        ))
+        .child(el("p").id("dock-note").class("fine").text(format!(
+            "{} can make mistakes. Open the sources to check.",
+            s.brand
+        )));
     let title = format!("{} - {}", c.title, s.brand);
-    shell(s, &chrome, actor, Some(id), &title, "page-chat", vec![head, thread, dock])
+    shell(
+        s,
+        &chrome,
+        actor,
+        Some(id),
+        &title,
+        "page-chat",
+        vec![head, thread, dock],
+    )
 }

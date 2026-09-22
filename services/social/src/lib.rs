@@ -16,8 +16,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 mod view;
-pub use view::{skin_of, SKINS};
 use view::View;
+pub use view::{skin_of, SKINS};
 pub struct SocialService;
 pub fn register(registry: &mut Registry) -> SimResult<()> {
     registry.register(SocialService)
@@ -606,7 +606,9 @@ mod tests {
         (body, doc)
     }
     fn one(doc: &cw_web::dom::Document, id: &str) -> cw_web::dom::NodeId {
-        *doc.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+        *doc.by_id(id)
+            .first()
+            .unwrap_or_else(|| panic!("no element #{id}"))
     }
     /// Every page an agent can reach must survive the strict validator: unique ids and only
     /// HTML and CSS the engine renders. A duplicate id would make a control ambiguous to click.
@@ -656,7 +658,10 @@ mod tests {
             assert_eq!(doc.attr(node, "href"), Some(href), "{id}");
         }
         assert_eq!(doc.text_content(one(&doc, "nav-home-text")), "Home");
-        assert_eq!(doc.text_content(one(&doc, "p-1002-text")), "Anyone at Northstar free?");
+        assert_eq!(
+            doc.text_content(one(&doc, "p-1002-text")),
+            "Anyone at Northstar free?"
+        );
         assert_eq!(doc.text_content(one(&doc, "p-1002-handle")), "@tweber · 5t");
         assert!(doc.by_id("p-1001-verified").len() == 1 && doc.by_id("p-1002-verified").is_empty());
         let compose = one(&doc, "compose");
@@ -687,11 +692,17 @@ mod tests {
         assert_eq!(doc.text_content(one(&doc, "handle")), "@tweber");
         assert_eq!(doc.text_content(one(&doc, "followers")), "40122 followers");
         assert_eq!(doc.text_content(one(&doc, "follow-label")), "Following");
-        assert_eq!(doc.attr(one(&doc, "follow-form"), "action"), Some("/accounts/tweber/follow"));
+        assert_eq!(
+            doc.attr(one(&doc, "follow-form"), "action"),
+            Some("/accounts/tweber/follow")
+        );
         let (_, doc) = html(&get(&mut state, "http://x.com/alicechen"));
         assert!(doc.by_id("follow").is_empty(), "nobody follows themselves");
         let (_, doc) = html(&get(&mut state, "http://x.com/alicechen/status/p-1001"));
-        assert_eq!(doc.attr(one(&doc, "reply"), "action"), Some("/posts/p-1001/replies"));
+        assert_eq!(
+            doc.attr(one(&doc, "reply"), "action"),
+            Some("/posts/p-1001/replies")
+        );
         assert_eq!(doc.attr(one(&doc, "reply-text"), "name"), Some("text"));
         assert!(doc.is(one(&doc, "reply-submit"), "button"));
         assert_eq!(doc.text_content(one(&doc, "replies-title")), "0 replies");
@@ -701,12 +712,21 @@ mod tests {
         assert_eq!(doc.attr(search, "method"), Some("post"));
         assert_eq!(doc.attr(one(&doc, "search-q"), "name"), Some("q"));
         assert_eq!(doc.attr(one(&doc, "search-q"), "value"), Some("atlas"));
-        assert_eq!(doc.text_content(one(&doc, "feed-title")), "1 result for \"atlas\"");
+        assert_eq!(
+            doc.text_content(one(&doc, "feed-title")),
+            "1 result for \"atlas\""
+        );
         let (_, doc) = html(&get(&mut state, "http://x.com/messages/c-1"));
-        assert_eq!(doc.attr(one(&doc, "thread-c-1"), "href"), Some("/messages/c-1"));
+        assert_eq!(
+            doc.attr(one(&doc, "thread-c-1"), "href"),
+            Some("/messages/c-1")
+        );
         assert_eq!(doc.text_content(one(&doc, "open-title")), "Comment?");
         assert_eq!(doc.text_content(one(&doc, "dm-dm-1-text")), "Got a minute?");
-        assert_eq!(doc.attr(one(&doc, "dm"), "action"), Some("/messages/c-1/messages"));
+        assert_eq!(
+            doc.attr(one(&doc, "dm"), "action"),
+            Some("/messages/c-1/messages")
+        );
         assert_eq!(doc.attr(one(&doc, "dm-text"), "name"), Some("text"));
         assert!(doc.is(one(&doc, "dm-submit"), "button"));
     }
@@ -738,29 +758,55 @@ mod tests {
             let mut state = SocialService.initialize(seed, &ctx("alice")).unwrap();
             let s: SocialState = web::load(&state).unwrap();
             assert_eq!(skin_of(&s), expect, "{brand} in {mode}");
-            for path in ["/", "/explore", "/local", "/search?q=atlas", "/search", "/messages",
-                         "/messaging", "/messages/c-1", "/messaging/c-1",
-                         "/alicechen", "/tweber", "/tweber/status/p-1003"] {
+            for path in [
+                "/",
+                "/explore",
+                "/local",
+                "/search?q=atlas",
+                "/search",
+                "/messages",
+                "/messaging",
+                "/messages/c-1",
+                "/messaging/c-1",
+                "/alicechen",
+                "/tweber",
+                "/tweber/status/p-1003",
+            ] {
                 for actor in ["alice", "carol"] {
                     let r = SocialService
-                        .handle(&mut state, &ctx(actor), &HttpRequest::get(format!("http://site.example{path}")))
+                        .handle(
+                            &mut state,
+                            &ctx(actor),
+                            &HttpRequest::get(format!("http://site.example{path}")),
+                        )
                         .unwrap();
-                    if actor == "carol" && (path.starts_with("/messaging/") || path.starts_with("/messages/")) {
+                    if actor == "carol"
+                        && (path.starts_with("/messaging/") || path.starts_with("/messages/"))
+                    {
                         assert_eq!(r.status, 403);
                         continue;
                     }
                     assert_eq!(r.status, 200, "{brand} {path}");
                     let (body, _) = html(&r);
-                    assert!(body.contains(&format!("skin-{expect} mode-{mode}")), "{brand} {path}");
+                    assert!(
+                        body.contains(&format!("skin-{expect} mode-{mode}")),
+                        "{brand} {path}"
+                    );
                 }
             }
         }
         let mut named = seed();
         named["skin"] = json!("mastodon");
         let state = SocialService.initialize(named, &ctx("alice")).unwrap();
-        assert_eq!(skin_of(&web::load::<SocialState>(&state).unwrap()), "mastodon");
+        assert_eq!(
+            skin_of(&web::load::<SocialState>(&state).unwrap()),
+            "mastodon"
+        );
         assert_eq!(state["skin"], "mastodon");
-        assert!(live().get("skin").is_none(), "an unnamed skin stays out of the state");
+        assert!(
+            live().get("skin").is_none(),
+            "an unnamed skin stays out of the state"
+        );
     }
     #[test]
     fn seed_shape_and_references_are_gated_at_load() {
@@ -795,7 +841,9 @@ mod tests {
         assert!(body.contains("Atlas 1.0 is out."), "own post is on home");
         assert!(body.contains("Anyone at Northstar free?"), "followed post");
         assert!(
-            body.contains("<form id=\"p-1002-like-form\" action=\"/posts/p-1002/like\" method=\"post\""),
+            body.contains(
+                "<form id=\"p-1002-like-form\" action=\"/posts/p-1002/like\" method=\"post\""
+            ),
             "like is a real control"
         );
     }

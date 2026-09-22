@@ -86,13 +86,28 @@ pub struct FetchResponse {
 
 impl FetchResponse {
     pub fn ok(url: &str, content_type: &str, body: &[u8]) -> FetchResponse {
-        FetchResponse { status: 200, status_text: "OK".into(), headers: vec![("content-type".into(), content_type.into())], body: body.to_vec(), url: url.to_owned() }
+        FetchResponse {
+            status: 200,
+            status_text: "OK".into(),
+            headers: vec![("content-type".into(), content_type.into())],
+            body: body.to_vec(),
+            url: url.to_owned(),
+        }
     }
     pub fn not_found(url: &str) -> FetchResponse {
-        FetchResponse { status: 404, status_text: "Not Found".into(), headers: vec![], body: Vec::new(), url: url.to_owned() }
+        FetchResponse {
+            status: 404,
+            status_text: "Not Found".into(),
+            headers: vec![],
+            body: Vec::new(),
+            url: url.to_owned(),
+        }
     }
     pub fn header(&self, name: &str) -> Option<&str> {
-        self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| v.as_str())
+        self.headers
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case(name))
+            .map(|(_, v)| v.as_str())
     }
 }
 
@@ -120,12 +135,21 @@ pub trait ScriptHostDocument {
     /// A form submitted by script (`form.submit()`, `element.click()` on a submit
     /// button): the browser performs the request. The default navigates to the
     /// action with the data as a query string.
-    fn submit_form(&mut self, action: &str, method: &str, enctype: &str, data: &[(String, String)]) {
+    fn submit_form(
+        &mut self,
+        action: &str,
+        method: &str,
+        enctype: &str,
+        data: &[(String, String)],
+    ) {
         let _ = enctype;
         if method == "post" {
             self.navigate(action);
         } else {
-            let query: Vec<String> = data.iter().map(|(k, v)| format!("{}={}", urlencode(k), urlencode(v))).collect();
+            let query: Vec<String> = data
+                .iter()
+                .map(|(k, v)| format!("{}={}", urlencode(k), urlencode(v)))
+                .collect();
             let base = action.split(['?', '#']).next().unwrap_or(action);
             self.navigate(&format!("{base}?{}", query.join("&")));
         }
@@ -174,7 +198,9 @@ pub fn urlencode(s: &str) -> String {
     let mut out = String::new();
     for b in s.bytes() {
         match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'*' | b'-' | b'.' | b'_' => out.push(b as char),
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'*' | b'-' | b'.' | b'_' => {
+                out.push(b as char)
+            }
             b' ' => out.push('+'),
             _ => out.push_str(&format!("%{b:02X}")),
         }
@@ -201,10 +227,16 @@ pub struct MemoryHost {
 
 impl MemoryHost {
     pub fn new() -> MemoryHost {
-        MemoryHost { seed: 0x1234_5678_9ABC_DEF1, ..Default::default() }
+        MemoryHost {
+            seed: 0x1234_5678_9ABC_DEF1,
+            ..Default::default()
+        }
     }
     pub fn with_response(mut self, url: &str, content_type: &str, body: &str) -> MemoryHost {
-        self.responses.insert(url.to_owned(), FetchResponse::ok(url, content_type, body.as_bytes()));
+        self.responses.insert(
+            url.to_owned(),
+            FetchResponse::ok(url, content_type, body.as_bytes()),
+        );
         self
     }
     fn area(&self, area: StorageArea) -> &std::collections::BTreeMap<String, String> {
@@ -272,8 +304,18 @@ impl ScriptHostDocument for MemoryHost {
         // name=value; attributes: keep the pair, replace an existing name.
         let pair = cookie.split(';').next().unwrap_or("").trim();
         let name = pair.split('=').next().unwrap_or("").trim();
-        let mut pairs: Vec<String> = self.cookies.split("; ").filter(|p| !p.is_empty() && p.split('=').next().unwrap_or("").trim() != name).map(str::to_owned).collect();
-        if !pair.is_empty() && !cookie.contains("max-age=0") && !cookie.to_ascii_lowercase().contains("expires=thu, 01 jan 1970") {
+        let mut pairs: Vec<String> = self
+            .cookies
+            .split("; ")
+            .filter(|p| !p.is_empty() && p.split('=').next().unwrap_or("").trim() != name)
+            .map(str::to_owned)
+            .collect();
+        if !pair.is_empty()
+            && !cookie.contains("max-age=0")
+            && !cookie
+                .to_ascii_lowercase()
+                .contains("expires=thu, 01 jan 1970")
+        {
             pairs.push(pair.to_owned());
         }
         self.cookies = pairs.join("; ");
@@ -298,40 +340,101 @@ pub struct Modifiers {
 pub enum UiEvent {
     /// The pointer moved: `mousemove`, and `mouseover`/`mouseout`/`mouseenter`/
     /// `mouseleave` when the hovered element changed (`:hover` follows).
-    PointerMove { x: i32, y: i32, modifiers: Modifiers },
+    PointerMove {
+        x: i32,
+        y: i32,
+        modifiers: Modifiers,
+    },
     /// `pointerdown`/`mousedown` at a point, focus change, `pointerup`/`mouseup`, then
     /// `click` (and `dblclick` when `detail` is 2) with the activation behaviour.
-    Click { x: i32, y: i32, button: u8, modifiers: Modifiers, detail: u32 },
+    Click {
+        x: i32,
+        y: i32,
+        button: u8,
+        modifiers: Modifiers,
+        detail: u32,
+    },
     /// The same sequence targeted at an element (the agent's element actions).
-    ClickNode { node: NodeId, modifiers: Modifiers, detail: u32 },
+    ClickNode {
+        node: NodeId,
+        modifiers: Modifiers,
+        detail: u32,
+    },
     /// Only the press or release half of a click.
-    PointerDown { x: i32, y: i32, button: u8, modifiers: Modifiers },
-    PointerUp { x: i32, y: i32, button: u8, modifiers: Modifiers },
+    PointerDown {
+        x: i32,
+        y: i32,
+        button: u8,
+        modifiers: Modifiers,
+    },
+    PointerUp {
+        x: i32,
+        y: i32,
+        button: u8,
+        modifiers: Modifiers,
+    },
     /// A key press to the focused element: `keydown`, `keypress` for printable keys,
     /// `beforeinput`, the value edit, `input`, then `keyup`. `key` is the DOM key
     /// value (`"a"`, `"Enter"`, `"Backspace"`), `code` the physical code (empty to
     /// derive it from `key`).
-    Key { key: String, code: String, modifiers: Modifiers, repeat: bool },
+    Key {
+        key: String,
+        code: String,
+        modifiers: Modifiers,
+        repeat: bool,
+    },
     /// Only `keydown` (`down: true`) or `keyup`.
-    KeyHalf { key: String, code: String, modifiers: Modifiers, down: bool },
+    KeyHalf {
+        key: String,
+        code: String,
+        modifiers: Modifiers,
+        down: bool,
+    },
     /// Types a string into the focused control, one key at a time.
-    TypeText { text: String },
+    TypeText {
+        text: String,
+    },
     /// Sets a control's value as if the user edited it, firing `input` (and `change`
     /// when `commit`).
-    SetValue { node: NodeId, value: String, commit: bool },
+    SetValue {
+        node: NodeId,
+        value: String,
+        commit: bool,
+    },
     /// Scrolls a scroll container (`None` is the viewport) to the offsets; `scroll`
     /// fires on the element or the document.
-    Scroll { node: Option<NodeId>, x: i32, y: i32 },
+    Scroll {
+        node: Option<NodeId>,
+        x: i32,
+        y: i32,
+    },
     /// A wheel at a point; the nearest scroll container scrolls unless prevented.
-    Wheel { x: i32, y: i32, delta_x: i32, delta_y: i32, modifiers: Modifiers },
-    Focus { node: Option<NodeId> },
+    Wheel {
+        x: i32,
+        y: i32,
+        delta_x: i32,
+        delta_y: i32,
+        modifiers: Modifiers,
+    },
+    Focus {
+        node: Option<NodeId>,
+    },
     /// The viewport changed: `resize` and `matchMedia` change events.
-    Resize { width: u32, height: u32 },
+    Resize {
+        width: u32,
+        height: u32,
+    },
     /// The browser changed the URL fragment (back/forward, address bar).
-    HashChange { hash: String },
+    HashChange {
+        hash: String,
+    },
     /// The browser went back or forward in the realm's own history entries.
-    HistoryGo { delta: i32 },
-    Visibility { hidden: bool },
+    HistoryGo {
+        delta: i32,
+    },
+    Visibility {
+        hidden: bool,
+    },
     /// `pageshow` after the document became the shown page.
     PageShow,
     /// `beforeunload`, `pagehide`, `unload`.
@@ -348,7 +451,13 @@ pub enum DefaultAction {
     /// Follow a link (resolved URL).
     Navigate(String),
     /// Submit a form: the encoded data set is ready for the browser's transport.
-    Submit { form: NodeId, action: String, method: String, enctype: String, data: Vec<(String, String)> },
+    Submit {
+        form: NodeId,
+        action: String,
+        method: String,
+        enctype: String,
+        data: Vec<(String, String)>,
+    },
     /// A checkbox, radio, `<details>` or `<dialog>` toggled (already applied to the
     /// document; the browser repaints).
     Toggle(NodeId),
@@ -362,7 +471,9 @@ pub enum DefaultAction {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Input {
     RunDocument,
-    RunUntilIdle { advance_ms: u32 },
+    RunUntilIdle {
+        advance_ms: u32,
+    },
     Dispatch(UiEvent),
     AfterLayout,
     AnimationFrame,
@@ -396,7 +507,14 @@ pub struct Realm {
     state: RealmState,
 }
 
-const PRELUDE: &str = concat!(include_str!("web/01-core.js"), include_str!("web/02-node.js"), include_str!("web/03-element.js"), include_str!("web/04-html-elements.js"), include_str!("web/05-cssom.js"), include_str!("web/06-window.js"));
+const PRELUDE: &str = concat!(
+    include_str!("web/01-core.js"),
+    include_str!("web/02-node.js"),
+    include_str!("web/03-element.js"),
+    include_str!("web/04-html-elements.js"),
+    include_str!("web/05-cssom.js"),
+    include_str!("web/06-window.js")
+);
 
 impl Realm {
     /// Creates the realm for `html` at `url`; nothing runs until `run_document`.
@@ -408,7 +526,13 @@ impl Realm {
     /// afterwards the realm is live on `host`.
     pub fn restore(state: &RealmState, host: Box<dyn ScriptHostDocument>) -> Realm {
         let inputs = state.inputs.clone();
-        let mut realm = Self::build(&state.html, &state.url, host, Journal::replay(state.journal.clone()), Vec::new());
+        let mut realm = Self::build(
+            &state.html,
+            &state.url,
+            host,
+            Journal::replay(state.journal.clone()),
+            Vec::new(),
+        );
         realm.state.step_budget = state.step_budget;
         for input in inputs {
             match input {
@@ -431,19 +555,39 @@ impl Realm {
         realm
     }
 
-    fn build(html: &str, url: &str, host: Box<dyn ScriptHostDocument>, journal: Journal, inputs: Vec<Input>) -> Realm {
+    fn build(
+        html: &str,
+        url: &str,
+        host: Box<dyn ScriptHostDocument>,
+        journal: Journal,
+        inputs: Vec<Input>,
+    ) -> Realm {
         let inner = Rc::new(RefCell::new(Inner::new(host, journal, url)));
-        let mut bridge = Box::new(bridge::Bridge { inner: inner.clone() });
+        let mut bridge = Box::new(bridge::Bridge {
+            inner: inner.clone(),
+        });
         // SAFETY: the bridge lives in a box the realm keeps until after the VM is
         // dropped (declared after `vm`, so dropped after it), its address is stable,
         // and it is reached only through `vm.host` from here on.
-        let host_ref: &'static mut bridge::Bridge = unsafe { &mut *(&mut *bridge as *mut bridge::Bridge) };
+        let host_ref: &'static mut bridge::Bridge =
+            unsafe { &mut *(&mut *bridge as *mut bridge::Bridge) };
         let mut vm = Vm::new(host_ref, vec!["/usr/bin/browser".into()], Vec::new(), None);
         vm.stack_limit = 20;
         let any: Rc<dyn std::any::Any> = inner.clone();
         vm.embedder = Some(any);
         bindings::install(&mut vm);
-        let mut realm = Realm { vm, _bridge: bridge, inner, state: RealmState { html: html.to_owned(), url: url.to_owned(), inputs, journal: Vec::new(), step_budget: 0 } };
+        let mut realm = Realm {
+            vm,
+            _bridge: bridge,
+            inner,
+            state: RealmState {
+                html: html.to_owned(),
+                url: url.to_owned(),
+                inputs,
+                journal: Vec::new(),
+                step_budget: 0,
+            },
+        };
         realm.run_prelude();
         realm
     }
@@ -463,7 +607,10 @@ impl Realm {
                 let stack = self.vm.get_str(v, "stack").ok();
                 match stack {
                     Some(Value::Str(s)) => s.to_string(),
-                    _ => self.vm.inspect_default(v).unwrap_or_else(|_| "error".into()),
+                    _ => self
+                        .vm
+                        .inspect_default(v)
+                        .unwrap_or_else(|_| "error".into()),
                 }
             }
             Ctl::Exit(c) => format!("exit {c}"),
@@ -499,7 +646,12 @@ impl Realm {
     /// The world-clock time (microseconds) the earliest pending timer is due at.
     pub fn next_timer_micros(&self) -> Option<i64> {
         let start = self.vm.start_micros;
-        self.vm.timers.iter().map(|t| if t.immediate { 0.0 } else { t.when }).fold(None, |m: Option<f64>, w| Some(m.map_or(w, |m| m.min(w)))).map(|ms| start + (ms * 1000.0) as i64)
+        self.vm
+            .timers
+            .iter()
+            .map(|t| if t.immediate { 0.0 } else { t.when })
+            .fold(None, |m: Option<f64>, w| Some(m.map_or(w, |m| m.min(w))))
+            .map(|ms| start + (ms * 1000.0) as i64)
     }
 
     /// Whether the page has `requestAnimationFrame` callbacks waiting for a frame.
@@ -590,7 +742,12 @@ impl Realm {
 
     /// Every canvas with pixels, keyed by node.
     pub fn canvases(&self) -> Vec<(NodeId, RgbaImage)> {
-        self.inner.borrow().canvases.iter().map(|(n, c)| (*n, c.image())).collect()
+        self.inner
+            .borrow()
+            .canvases
+            .iter()
+            .map(|(n, c)| (*n, c.image()))
+            .collect()
     }
 
     /// Parses the page, running its scripts as the parser reaches them (`defer`
@@ -653,8 +810,17 @@ impl Realm {
         let (is_async, is_defer, has_src, is_module) = {
             let inner = self.inner.borrow();
             let d = &inner.doc;
-            let ty = d.attr(script, "type").unwrap_or("").trim().to_ascii_lowercase();
-            (d.has_attr(script, "async"), d.has_attr(script, "defer"), d.has_attr(script, "src"), ty == "module")
+            let ty = d
+                .attr(script, "type")
+                .unwrap_or("")
+                .trim()
+                .to_ascii_lowercase();
+            (
+                d.has_attr(script, "async"),
+                d.has_attr(script, "defer"),
+                d.has_attr(script, "src"),
+                ty == "module",
+            )
         };
         if is_module || (is_defer && has_src) {
             self.inner.borrow_mut().deferred_scripts.push(script);
@@ -676,7 +842,11 @@ impl Realm {
             let mut inner = self.inner.borrow_mut();
             let already = !inner.executed_scripts.insert(script);
             let d = &inner.doc;
-            let ty = d.attr(script, "type").unwrap_or("").trim().to_ascii_lowercase();
+            let ty = d
+                .attr(script, "type")
+                .unwrap_or("")
+                .trim()
+                .to_ascii_lowercase();
             let src = d.attr(script, "src").map(|s| inner.resolve_url(s));
             let text = d.text_content(script);
             (ty, src, text, d.has_attr(script, "nomodule"), already)
@@ -685,16 +855,35 @@ impl Realm {
             return;
         }
         self.arm();
-        let is_js = ty.is_empty() || matches!(ty.as_str(), "text/javascript" | "application/javascript" | "text/ecmascript" | "application/ecmascript" | "module" | "text/jscript" | "text/x-javascript" | "text/babel");
+        let is_js = ty.is_empty()
+            || matches!(
+                ty.as_str(),
+                "text/javascript"
+                    | "application/javascript"
+                    | "text/ecmascript"
+                    | "application/ecmascript"
+                    | "module"
+                    | "text/jscript"
+                    | "text/x-javascript"
+                    | "text/babel"
+            );
         if !is_js || nomodule || ty == "text/babel" {
             return;
         }
         let is_module = ty == "module";
         let (source, name) = match &src {
             Some(url) => {
-                let r = self.inner.borrow_mut().host_fetch(&FetchRequest { url: url.clone(), method: "GET".into(), headers: vec![], body: None });
+                let r = self.inner.borrow_mut().host_fetch(&FetchRequest {
+                    url: url.clone(),
+                    method: "GET".into(),
+                    headers: vec![],
+                    body: None,
+                });
                 match r {
-                    Ok(resp) if resp.status < 400 => (String::from_utf8_lossy(&resp.body).into_owned(), url.clone()),
+                    Ok(resp) if resp.status < 400 => (
+                        String::from_utf8_lossy(&resp.body).into_owned(),
+                        url.clone(),
+                    ),
                     _ => {
                         let w = self.wrap(script);
                         self.call_hook("scriptError", vec![w]);
@@ -702,7 +891,10 @@ impl Realm {
                     }
                 }
             }
-            None => (text, format!("{}#inline-{}", self.inner.borrow().url, script.0)),
+            None => (
+                text,
+                format!("{}#inline-{}", self.inner.borrow().url, script.0),
+            ),
         };
         {
             let mut inner = self.inner.borrow_mut();
@@ -724,7 +916,10 @@ impl Realm {
 
     fn run_module(&mut self, source: &str, url: &str) {
         let path = bridge::module_path(url);
-        self.inner.borrow_mut().module_sources.insert(path.clone(), source.to_owned());
+        self.inner
+            .borrow_mut()
+            .module_sources
+            .insert(path.clone(), source.to_owned());
         let dir = match path.rfind('/') {
             Some(i) => path[..i].to_owned(),
             None => "/".into(),
@@ -746,7 +941,10 @@ impl Realm {
             Ok(v) => match &v {
                 Value::Str(s) => Ok(s.to_string()),
                 Value::Undefined => Ok(String::new()),
-                other => self.vm.inspect_default(other).map_err(|_| "inspect failed".to_owned()),
+                other => self
+                    .vm
+                    .inspect_default(other)
+                    .map_err(|_| "inspect failed".to_owned()),
             },
             Err(e) => {
                 let text = self.error_text(&e);
@@ -775,7 +973,9 @@ impl Realm {
             }
             Ctl::Fatal(v) => {
                 let text = self.error_text(&Ctl::Fatal(v));
-                self.inner.borrow_mut().log(LogLevel::Error, &format!("Fatal: {text}"));
+                self.inner
+                    .borrow_mut()
+                    .log(LogLevel::Error, &format!("Fatal: {text}"));
             }
             Ctl::Exit(_) => {}
         }
@@ -799,7 +999,9 @@ impl Realm {
 
     fn call_hook_result(&mut self, name: &str, args: Vec<Value>) -> Result<Value, Ctl> {
         let hooks = self.vm.global.own_value("%hooks");
-        let Some(hooks) = hooks else { return Ok(Value::Undefined) };
+        let Some(hooks) = hooks else {
+            return Ok(Value::Undefined);
+        };
         let f = self.vm.get_str(&hooks, name)?;
         if !f.is_callable() {
             return Ok(Value::Undefined);
@@ -823,7 +1025,8 @@ impl Realm {
                     Some(s) => s,
                     None => continue,
                 };
-                let handled = matches!(&p.borrow().kind, cw_jsvm::value::Kind::Promise(pd) if pd.handled);
+                let handled =
+                    matches!(&p.borrow().kind, cw_jsvm::value::Kind::Promise(pd) if pd.handled);
                 if st != cw_jsvm::value::PromiseState::Rejected || handled {
                     continue;
                 }
@@ -873,7 +1076,13 @@ impl Realm {
         let mut next_frame = self.vm.clock() + 16.0;
         loop {
             ran |= self.run_due();
-            let next = self.vm.timers.iter().filter(|t| !t.immediate).map(|t| t.when).fold(None, |m: Option<f64>, w| Some(m.map_or(w, |m| m.min(w))));
+            let next = self
+                .vm
+                .timers
+                .iter()
+                .filter(|t| !t.immediate)
+                .map(|t| t.when)
+                .fold(None, |m: Option<f64>, w| Some(m.map_or(w, |m| m.min(w))));
             let has_frames = self.inner.borrow().has_raf;
             let mut target = match next {
                 Some(w) if w <= deadline => w,
@@ -914,7 +1123,13 @@ impl Realm {
                 ran = true;
             }
             // Immediates (`setImmediate`, used internally for port tasks).
-            let ids: Vec<u64> = self.vm.timers.iter().filter(|t| t.immediate).map(|t| t.id).collect();
+            let ids: Vec<u64> = self
+                .vm
+                .timers
+                .iter()
+                .filter(|t| t.immediate)
+                .map(|t| t.id)
+                .collect();
             for id in ids {
                 if let Some(i) = self.vm.timers.iter().position(|t| t.id == id) {
                     let r = self.vm.fire_timer(i);
@@ -984,7 +1199,11 @@ impl Realm {
         }
         for a in starts {
             let target = self.wrap(a.node);
-            let hook = if a.is_animation { "cssAnimation" } else { "cssTransition" };
+            let hook = if a.is_animation {
+                "cssAnimation"
+            } else {
+                "cssTransition"
+            };
             self.call_hook(
                 hook,
                 vec![

@@ -76,7 +76,15 @@ pub fn document_image_urls(doc: &Document, styles: &StyleSet) -> Vec<String> {
         if let Some(src) = element_image_source(doc, node) {
             push(src);
         }
-        for style in [styles.get(node), styles.before(node), styles.after(node), styles.marker(node)].into_iter().flatten() {
+        for style in [
+            styles.get(node),
+            styles.before(node),
+            styles.after(node),
+            styles.marker(node),
+        ]
+        .into_iter()
+        .flatten()
+        {
             for u in style_image_urls(style) {
                 push(u);
             }
@@ -91,7 +99,13 @@ pub fn element_image_source(doc: &Document, node: NodeId) -> Option<&str> {
     let tag = doc.tag(node)?;
     match tag {
         "img" | "embed" => doc.attr(node, "src"),
-        "input" if doc.attr(node, "type").is_some_and(|t| t.eq_ignore_ascii_case("image")) => doc.attr(node, "src"),
+        "input"
+            if doc
+                .attr(node, "type")
+                .is_some_and(|t| t.eq_ignore_ascii_case("image")) =>
+        {
+            doc.attr(node, "src")
+        }
         "object" => doc.attr(node, "data"),
         _ => None,
     }

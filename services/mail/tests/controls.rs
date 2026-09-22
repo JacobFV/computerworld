@@ -17,7 +17,10 @@ use std::collections::BTreeSet;
 const HOST: &str = "http://mail";
 
 fn site(name: &str) -> Value {
-    let path = format!("{}/../../worlds/company-2026/sites/{name}.json", env!("CARGO_MANIFEST_DIR"));
+    let path = format!(
+        "{}/../../worlds/company-2026/sites/{name}.json",
+        env!("CARGO_MANIFEST_DIR")
+    );
     serde_json::from_str(&std::fs::read_to_string(path).expect("site file")).expect("valid JSON")
 }
 fn context(actor: &str) -> ServiceContext {
@@ -31,16 +34,32 @@ fn context(actor: &str) -> ServiceContext {
 }
 /// One request against a copy of the state: probing a control never changes the mailbox the
 /// crawl is reading, so the pages stay the ones the seed describes.
-fn request(state: &Value, actor: &str, method: &str, url: &str, fields: &[(String, String)]) -> HttpResponse {
-    let pairs: Vec<(&str, &str)> = fields.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+fn request(
+    state: &Value,
+    actor: &str,
+    method: &str,
+    url: &str,
+    fields: &[(String, String)],
+) -> HttpResponse {
+    let pairs: Vec<(&str, &str)> = fields
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
     let mut r = if method == "post" {
         HttpRequest::get(format!("{HOST}{url}"))
     } else {
-        HttpRequest::get(format!("{HOST}{}{}", url, href("", &pairs).replacen('?', if url.contains('?') { "&" } else { "?" }, 1)))
+        HttpRequest::get(format!(
+            "{HOST}{}{}",
+            url,
+            href("", &pairs).replacen('?', if url.contains('?') { "&" } else { "?" }, 1)
+        ))
     };
     if method == "post" {
         r.method = "POST".into();
-        r.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        r.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
         r.body = href("", &pairs).trim_start_matches('?').as_bytes().to_vec();
     }
     MailService
@@ -55,7 +74,9 @@ fn shape(url: &str) -> String {
     while let Some(cut) = rest.find("mail-") {
         out.push_str(&rest[..cut + 5]);
         rest = &rest[cut + 5..];
-        let digits = rest.find(|c: char| !c.is_ascii_digit()).unwrap_or(rest.len());
+        let digits = rest
+            .find(|c: char| !c.is_ascii_digit())
+            .unwrap_or(rest.len());
         out.push('N');
         rest = &rest[digits..];
     }
@@ -94,7 +115,16 @@ impl<'a> Crawl<'a> {
         let mut queue: Vec<String> = vec!["/".into(), "/?folder=inbox&compose=1".into()];
         queue.extend(FOLDERS.iter().map(|f| format!("/?folder={f}")));
         let kinds = queue.iter().map(|u| shape(u)).collect();
-        Crawl { state, actor, name, queue, kinds, probed: BTreeSet::new(), pages: 0, controls: 0 }
+        Crawl {
+            state,
+            actor,
+            name,
+            queue,
+            kinds,
+            probed: BTreeSet::new(),
+            pages: 0,
+            controls: 0,
+        }
     }
     /// Ask for one control's target once. Every page a link points at must render; a form may
     /// answer with a domain error (an empty compose is a 400), but never with "no such route".
@@ -106,7 +136,11 @@ impl<'a> Crawl<'a> {
             return 200;
         }
         let status = request(self.state, self.actor, method, url, fields).status;
-        assert!(status != 404 && status != 405, "{}: {what} {method} {url} answered {status}", self.name);
+        assert!(
+            status != 404 && status != 405,
+            "{}: {what} {method} {url} answered {status}",
+            self.name
+        );
         if method == "get" {
             assert_eq!(status, 200, "{}: {what} {method} {url}", self.name);
         }
@@ -116,7 +150,11 @@ impl<'a> Crawl<'a> {
     fn submit(&mut self, doc: &Document, form: NodeId) {
         let action = attr(doc, form, "action");
         let form_id = attr(doc, form, "id");
-        assert!(!action.is_empty(), "{}: form #{form_id} posts nowhere", self.name);
+        assert!(
+            !action.is_empty(),
+            "{}: form #{form_id} posts nowhere",
+            self.name
+        );
         let method = match attr(doc, form, "method").to_lowercase().as_str() {
             "post" => "post",
             _ => "get",
@@ -131,20 +169,32 @@ impl<'a> Crawl<'a> {
                     if matches!(kind.as_str(), "submit" | "button" | "image") {
                         submitters.push(node);
                     } else {
-                        assert!(!name.is_empty(), "{}: an input of #{form_id} has no name", self.name);
+                        assert!(
+                            !name.is_empty(),
+                            "{}: an input of #{form_id} has no name",
+                            self.name
+                        );
                         fields.push((name, attr(doc, node, "value")));
                     }
                 }
                 Some("textarea") => {
                     let name = attr(doc, node, "name");
-                    assert!(!name.is_empty(), "{}: a textarea of #{form_id} has no name", self.name);
+                    assert!(
+                        !name.is_empty(),
+                        "{}: a textarea of #{form_id} has no name",
+                        self.name
+                    );
                     fields.push((name, doc.text_content(node)));
                 }
                 Some("button") => submitters.push(node),
                 _ => {}
             }
         }
-        assert!(!submitters.is_empty(), "{}: form #{form_id} has nothing to submit it", self.name);
+        assert!(
+            !submitters.is_empty(),
+            "{}: form #{form_id} has nothing to submit it",
+            self.name
+        );
         for node in submitters {
             let mut sent = fields.clone();
             let name = attr(doc, node, "name");
@@ -155,9 +205,18 @@ impl<'a> Crawl<'a> {
                 t if t.is_empty() => action.clone(),
                 t => t,
             };
-            assert!(internal(&target), "{}: #{form_id} submits off-site to {target}", self.name);
+            assert!(
+                internal(&target),
+                "{}: #{form_id} submits off-site to {target}",
+                self.name
+            );
             let id = attr(doc, node, "id");
-            self.probe(method, &target, &sent, &format!("button #{id} of form #{form_id}"));
+            self.probe(
+                method,
+                &target,
+                &sent,
+                &format!("button #{id} of form #{form_id}"),
+            );
         }
     }
     fn page(&mut self, url: &str) {
@@ -180,7 +239,14 @@ impl<'a> Crawl<'a> {
         let doc = cw_web::html::parse(&html);
         self.pages += 1;
         let text = doc.body().map(|b| doc.text_content(b)).unwrap_or_default();
-        for slop in ["Lorem ipsum", "TODO", "FIXME", "1 items", "undefined", "NaN"] {
+        for slop in [
+            "Lorem ipsum",
+            "TODO",
+            "FIXME",
+            "1 items",
+            "undefined",
+            "NaN",
+        ] {
             assert!(!text.contains(slop), "{}: {url} says {slop:?}", self.name);
         }
         for node in doc.descendants(Document::ROOT) {
@@ -188,7 +254,11 @@ impl<'a> Crawl<'a> {
             match doc.tag(node) {
                 Some("a") => {
                     let target = attr(&doc, node, "href");
-                    assert!(!target.is_empty() && target != "#", "{}: {url} has a link #{id} to nowhere", self.name);
+                    assert!(
+                        !target.is_empty() && target != "#",
+                        "{}: {url} has a link #{id} to nowhere",
+                        self.name
+                    );
                     if !internal(&target) {
                         continue;
                     }
@@ -199,7 +269,8 @@ impl<'a> Crawl<'a> {
                 }
                 Some("form") => self.submit(&doc, node),
                 Some("button") => assert!(
-                    doc.ancestors(node).any(|a| doc.is(a, "form")) || !attr(&doc, node, "formaction").is_empty(),
+                    doc.ancestors(node).any(|a| doc.is(a, "form"))
+                        || !attr(&doc, node, "formaction").is_empty(),
                     "{}: {url} draws a button #{id} that submits nothing",
                     self.name
                 ),
@@ -218,16 +289,30 @@ impl<'a> Crawl<'a> {
 /// matches nothing, a labelled and starred and read message, and a mailbox with no mail at all.
 fn variants(name: &str, actor: &str) -> Vec<(String, Value)> {
     let initial = site(name)["initial_state"].clone();
-    let base = MailService.initialize(initial.clone(), &context(actor)).expect("seed initialises");
+    let base = MailService
+        .initialize(initial.clone(), &context(actor))
+        .expect("seed initialises");
     let post = |state: &Value, url: &str, fields: &[(&str, &str)]| {
         let mut next = state.clone();
-        let pairs: Vec<(String, String)> = fields.iter().map(|(k, v)| ((*k).to_owned(), (*v).to_owned())).collect();
-        let sent: Vec<(&str, &str)> = pairs.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+        let pairs: Vec<(String, String)> = fields
+            .iter()
+            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+            .collect();
+        let sent: Vec<(&str, &str)> = pairs
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
         let mut r = HttpRequest::get(format!("{HOST}{url}"));
         r.method = "POST".into();
-        r.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        r.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
         r.body = href("", &sent).trim_start_matches('?').as_bytes().to_vec();
-        let status = MailService.handle(&mut next, &context(actor), &r).unwrap().status;
+        let status = MailService
+            .handle(&mut next, &context(actor), &r)
+            .unwrap()
+            .status;
         assert_eq!(status, 200, "{name}: setting up {url}");
         next
     };
@@ -245,16 +330,28 @@ fn variants(name: &str, actor: &str) -> Vec<(String, Value)> {
     empty["next_id"] = serde_json::json!(0);
     vec![
         ("seeded".to_owned(), base.clone()),
-        ("searching".to_owned(), post(&base, "/search", &[("q", "no such mail")])),
+        (
+            "searching".to_owned(),
+            post(&base, "/search", &[("q", "no such mail")]),
+        ),
         (
             "labelled".to_owned(),
             post(
-                &post(&base, &format!("/messages/{mine}"), &[("label", "Crawl"), ("read", "true")]),
+                &post(
+                    &base,
+                    &format!("/messages/{mine}"),
+                    &[("label", "Crawl"), ("read", "true")],
+                ),
                 &format!("/messages/{mine}"),
                 &[("star", "toggle")],
             ),
         ),
-        ("empty".to_owned(), MailService.initialize(empty, &context(actor)).expect("an empty seed initialises")),
+        (
+            "empty".to_owned(),
+            MailService
+                .initialize(empty, &context(actor))
+                .expect("an empty seed initialises"),
+        ),
     ]
 }
 
@@ -262,12 +359,20 @@ fn variants(name: &str, actor: &str) -> Vec<(String, Value)> {
 fn every_link_form_and_button_of_every_page_of_every_skin_is_answered() {
     let mut pages = 0;
     let mut controls = 0;
-    for (name, actor) in [("google-mail", "alice"), ("outlook-mail", "bob"), ("mail-com", "carol")] {
+    for (name, actor) in [
+        ("google-mail", "alice"),
+        ("outlook-mail", "bob"),
+        ("mail-com", "carol"),
+    ] {
         let mut kinds = BTreeSet::new();
         for (variant, state) in variants(name, actor) {
             let mut crawl = Crawl::new(&state, actor, format!("{name}/{variant}"));
             crawl.run();
-            assert!(crawl.pages >= 6, "{name}/{variant}: only {} pages walked", crawl.pages);
+            assert!(
+                crawl.pages >= 6,
+                "{name}/{variant}: only {} pages walked",
+                crawl.pages
+            );
             pages += crawl.pages;
             controls += crawl.controls;
             kinds.append(&mut crawl.kinds);
@@ -282,47 +387,79 @@ fn every_link_form_and_button_of_every_page_of_every_skin_is_answered() {
             "/threads/mail-N",
             "/?folder=all&label=X",
         ] {
-            assert!(kinds.contains(kind), "{name}: the crawl never reached {kind}");
+            assert!(
+                kinds.contains(kind),
+                "{name}: the crawl never reached {kind}"
+            );
         }
     }
     println!("{pages} pages walked, {controls} controls followed");
-    assert!(pages >= 100 && controls >= 1500, "{pages} pages, {controls} controls");
+    assert!(
+        pages >= 100 && controls >= 1500,
+        "{pages} pages, {controls} controls"
+    );
 }
 
 /// The named controls a reader looks for are the ones that act, in every skin: the star in a row
 /// is a button of its own form, the rail's labels are links, and the toolbar's one icon refreshes.
 #[test]
 fn the_list_controls_post_and_navigate_rather_than_decorate() {
-    for (name, actor) in [("google-mail", "alice"), ("outlook-mail", "bob"), ("mail-com", "carol")] {
+    for (name, actor) in [
+        ("google-mail", "alice"),
+        ("outlook-mail", "bob"),
+        ("mail-com", "carol"),
+    ] {
         let (_, labelled) = variants(name, actor).swap_remove(2);
         let label_href = "/?folder=all&label=Crawl";
         let response = request(&labelled, actor, "get", "/", &[]);
         let doc = cw_web::html::parse(&String::from_utf8(response.body).unwrap());
         let tag = doc
             .descendants(Document::ROOT)
-            .find(|n| attr(&doc, *n, "id").starts_with("label-") && !attr(&doc, *n, "href").is_empty())
+            .find(|n| {
+                attr(&doc, *n, "id").starts_with("label-") && !attr(&doc, *n, "href").is_empty()
+            })
             .unwrap_or_else(|| panic!("{name}: the rail has no label link"));
         assert_eq!(doc.tag(tag), Some("a"), "{name}: a label is a link");
         assert!(
-            doc.descendants(Document::ROOT).any(|n| attr(&doc, n, "href") == label_href),
+            doc.descendants(Document::ROOT)
+                .any(|n| attr(&doc, n, "href") == label_href),
             "{name}: the new label is not in the rail"
         );
-        let refresh = *doc.by_id("list-refresh").first().expect("a refresh control");
-        assert_eq!((doc.tag(refresh), attr(&doc, refresh, "href").as_str()), (Some("a"), "/?folder=inbox"), "{name}");
+        let refresh = *doc
+            .by_id("list-refresh")
+            .first()
+            .expect("a refresh control");
+        assert_eq!(
+            (doc.tag(refresh), attr(&doc, refresh, "href").as_str()),
+            (Some("a"), "/?folder=inbox"),
+            "{name}"
+        );
         // The label view is reachable and holds the message that was labelled.
         let filtered = request(&labelled, actor, "get", label_href, &[]);
         assert_eq!(filtered.status, 200);
         let doc = cw_web::html::parse(&String::from_utf8(filtered.body).unwrap());
-        assert!(doc.body().map(|b| doc.text_content(b)).unwrap_or_default().contains("Crawl"), "{name}");
+        assert!(
+            doc.body()
+                .map(|b| doc.text_content(b))
+                .unwrap_or_default()
+                .contains("Crawl"),
+            "{name}"
+        );
         let row = doc
             .descendants(Document::ROOT)
             .find(|n| doc.tag(*n) == Some("button") && attr(&doc, *n, "id").ends_with("-star"))
             .unwrap_or_else(|| panic!("{name}: no star button in the label view"));
         assert_eq!(attr(&doc, row, "name"), "star");
         assert_eq!(attr(&doc, row, "value"), "toggle");
-        let form = doc.ancestors(row).find(|a| doc.is(*a, "form")).expect("the star's form");
+        let form = doc
+            .ancestors(row)
+            .find(|a| doc.is(*a, "form"))
+            .expect("the star's form");
         assert_eq!(attr(&doc, form, "method"), "post");
-        assert!(attr(&doc, form, "action").starts_with("/messages/"), "{name}");
+        assert!(
+            attr(&doc, form, "action").starts_with("/messages/"),
+            "{name}"
+        );
         // Pressing it comes back to the label view it was pressed in, not to some other folder.
         let id = attr(&doc, row, "id");
         let pressed = request(
@@ -330,13 +467,32 @@ fn the_list_controls_post_and_navigate_rather_than_decorate() {
             actor,
             "post",
             &attr(&doc, form, "action"),
-            &[("folder".into(), "all".into()), ("filter".into(), "Crawl".into()), ("thread".into(), String::new()), ("star".into(), "toggle".into())],
+            &[
+                ("folder".into(), "all".into()),
+                ("filter".into(), "Crawl".into()),
+                ("thread".into(), String::new()),
+                ("star".into(), "toggle".into()),
+            ],
         );
         assert_eq!(pressed.status, 200);
         let after = cw_web::html::parse(&String::from_utf8(pressed.body).unwrap());
-        assert_eq!(attr(&after, *after.by_id("list-refresh").first().unwrap(), "href"), label_href, "{name}");
-        let again = *after.by_id(&id).first().unwrap_or_else(|| panic!("{name}: the row is gone"));
-        assert!(after.has_class(again, "on") != doc.has_class(row, "on"), "{name}: the star flipped");
+        assert_eq!(
+            attr(
+                &after,
+                *after.by_id("list-refresh").first().unwrap(),
+                "href"
+            ),
+            label_href,
+            "{name}"
+        );
+        let again = *after
+            .by_id(&id)
+            .first()
+            .unwrap_or_else(|| panic!("{name}: the row is gone"));
+        assert!(
+            after.has_class(again, "on") != doc.has_class(row, "on"),
+            "{name}: the star flipped"
+        );
     }
 }
 
@@ -356,7 +512,10 @@ fn the_plain_mailbox_posts_only_to_routes_it_has() {
             continue;
         }
         forms += 1;
-        let url = element["action"]["url"].as_str().expect("an action url").to_owned();
+        let url = element["action"]["url"]
+            .as_str()
+            .expect("an action url")
+            .to_owned();
         assert!(internal(&url), "the plain page posts off-site to {url}");
         let fields: Vec<(String, String)> = element["action"]["fields"]
             .as_object()
@@ -365,7 +524,13 @@ fn the_plain_mailbox_posts_only_to_routes_it_has() {
             .map(|k| (k.clone(), String::new()))
             .collect();
         let status = request(&state, "alice", "post", &url, &fields).status;
-        assert!(status != 404 && status != 405, "plain: {url} answered {status}");
+        assert!(
+            status != 404 && status != 405,
+            "plain: {url} answered {status}"
+        );
     }
-    assert!(forms >= 2, "the plain page has the compose form and one per message");
+    assert!(
+        forms >= 2,
+        "the plain page has the compose form and one per message"
+    );
 }

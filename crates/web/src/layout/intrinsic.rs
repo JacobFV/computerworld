@@ -12,7 +12,14 @@ use crate::style::{BoxSizing, LengthPercentage, Sizing};
 
 /// `(min-content, max-content)` border-box widths of a box.
 pub fn min_max(ctx: &LayoutContext, id: BoxId) -> (Au, Au) {
-    if let Some(v) = ctx.cache.borrow().intrinsic.get(id.index()).copied().flatten() {
+    if let Some(v) = ctx
+        .cache
+        .borrow()
+        .intrinsic
+        .get(id.index())
+        .copied()
+        .flatten()
+    {
         return v;
     }
     let v = compute(ctx, id);
@@ -41,7 +48,8 @@ pub fn edges_h(ctx: &LayoutContext, id: BoxId) -> Au {
 /// Horizontal margins with percentages as zero.
 pub fn margins_h(ctx: &LayoutContext, id: BoxId) -> Au {
     let s = ctx.style(id);
-    s.margin.left.resolve(Au::ZERO).unwrap_or(Au::ZERO) + s.margin.right.resolve(Au::ZERO).unwrap_or(Au::ZERO)
+    s.margin.left.resolve(Au::ZERO).unwrap_or(Au::ZERO)
+        + s.margin.right.resolve(Au::ZERO).unwrap_or(Au::ZERO)
 }
 
 /// Content-box `(min, max)` of a block container's contents, ignoring its own
@@ -98,13 +106,26 @@ fn compute(ctx: &LayoutContext, id: BoxId) -> (Au, Au) {
     let b = &ctx.tree[id];
     let s = &b.style;
     match &b.kind {
-        BoxKind::Text(_) | BoxKind::Inline | BoxKind::Br(_) | BoxKind::Wbr | BoxKind::Col(_) | BoxKind::ColGroup(_) => (Au::ZERO, Au::ZERO),
+        BoxKind::Text(_)
+        | BoxKind::Inline
+        | BoxKind::Br(_)
+        | BoxKind::Wbr
+        | BoxKind::Col(_)
+        | BoxKind::ColGroup(_) => (Au::ZERO, Au::ZERO),
         BoxKind::Marker(t) => {
             let w = text::measure(&s.font, t, s.letter_spacing, s.word_spacing);
             (w, w)
         }
         BoxKind::Replaced(rb) => {
-            let size = block::replaced_size(ctx, id, rb, &Cb { width: Au::ZERO, height: None });
+            let size = block::replaced_size(
+                ctx,
+                id,
+                rb,
+                &Cb {
+                    width: Au::ZERO,
+                    height: None,
+                },
+            );
             let e = edges_h(ctx, id);
             (size.width + e, size.width + e)
         }

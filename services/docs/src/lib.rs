@@ -822,7 +822,10 @@ mod tests {
             self.0.tag(self.node(id)).unwrap_or_default().to_owned()
         }
         fn attr(&self, id: &str, name: &str) -> String {
-            self.0.attr(self.node(id), name).unwrap_or_default().to_owned()
+            self.0
+                .attr(self.node(id), name)
+                .unwrap_or_default()
+                .to_owned()
         }
         fn text(&self, id: &str) -> String {
             cw_web::paint::semantics::collapse(&self.0.text_content(self.node(id)))
@@ -837,8 +840,15 @@ mod tests {
                     }
                 }
                 if self.0.is(node, "form") {
-                    let method = self.0.attr(node, "method").unwrap_or("get").to_ascii_uppercase();
-                    out.push((method, self.0.attr(node, "action").unwrap_or("/").to_owned()));
+                    let method = self
+                        .0
+                        .attr(node, "method")
+                        .unwrap_or("get")
+                        .to_ascii_uppercase();
+                    out.push((
+                        method,
+                        self.0.attr(node, "action").unwrap_or("/").to_owned(),
+                    ));
                 }
             }
             out
@@ -873,7 +883,11 @@ mod tests {
                 let what = format!("{skin} {path}");
                 let dom = Dom::of(
                     &DocsService
-                        .handle(&mut state, &c, &HttpRequest::get(format!("http://docs{path}")))
+                        .handle(
+                            &mut state,
+                            &c,
+                            &HttpRequest::get(format!("http://docs{path}")),
+                        )
                         .unwrap(),
                     &what,
                 );
@@ -889,8 +903,10 @@ mod tests {
                     } else {
                         let mut r = HttpRequest::get(url);
                         r.method = method.clone();
-                        r.headers
-                            .insert("content-type".into(), "application/x-www-form-urlencoded".into());
+                        r.headers.insert(
+                            "content-type".into(),
+                            "application/x-www-form-urlencoded".into(),
+                        );
                         r
                     };
                     let mut probe = state.clone();
@@ -909,7 +925,11 @@ mod tests {
             // An unknown file type is still a bad request, whatever the skin wears.
             assert_eq!(
                 DocsService
-                    .handle(&mut state, &c, &HttpRequest::get("http://docs/?type=nonesuch"))
+                    .handle(
+                        &mut state,
+                        &c,
+                        &HttpRequest::get("http://docs/?type=nonesuch")
+                    )
                     .unwrap()
                     .status,
                 400
@@ -933,10 +953,18 @@ mod tests {
         assert_eq!(home.text("home-count"), "3 files shared with you");
         // The word on the tab and the word over the gallery it opens are the same word, and
         // one file is one file: `Slides` is already plural and a count of one is singular.
-        for (path, title) in [("/?type=doc", "Docs"), ("/?type=sheet", "Sheets"), ("/?type=slides", "Slides")] {
+        for (path, title) in [
+            ("/?type=doc", "Docs"),
+            ("/?type=sheet", "Sheets"),
+            ("/?type=slides", "Slides"),
+        ] {
             let tab = Dom::of(
                 &DocsService
-                    .handle(&mut state, &c, &HttpRequest::get(format!("http://docs{path}")))
+                    .handle(
+                        &mut state,
+                        &c,
+                        &HttpRequest::get(format!("http://docs{path}")),
+                    )
                     .unwrap(),
                 path,
             );
@@ -950,16 +978,25 @@ mod tests {
             ("nav-slides", "/?type=slides"),
             ("nav-starred", "/starred"),
         ] {
-            assert_eq!((home.tag(id), home.attr(id, "href")), ("a".into(), href.into()));
+            assert_eq!(
+                (home.tag(id), home.attr(id, "href")),
+                ("a".into(), href.into())
+            );
         }
         // A file is one link, carrying its own caption.
         assert_eq!(
-            (home.tag("file-q3-metrics"), home.attr("file-q3-metrics", "href")),
+            (
+                home.tag("file-q3-metrics"),
+                home.attr("file-q3-metrics", "href")
+            ),
             ("a".into(), "/documents/q3-metrics".into())
         );
         assert_eq!(home.text("file-kind-q3-metrics"), "Sheet");
         assert_eq!(home.text("file-owner-atlas-launch"), "carol · revision 2");
-        assert!(home.has("file-star-atlas-launch"), "alice starred the checklist");
+        assert!(
+            home.has("file-star-atlas-launch"),
+            "alice starred the checklist"
+        );
         // The create form posts the same four fields plus the type the Page version gained.
         assert_eq!(
             (home.attr("create", "action"), home.attr("create", "method")),
@@ -981,14 +1018,24 @@ mod tests {
 
         let doc = Dom::of(
             &DocsService
-                .handle(&mut state, &c, &HttpRequest::get("http://docs/documents/atlas-launch"))
+                .handle(
+                    &mut state,
+                    &c,
+                    &HttpRequest::get("http://docs/documents/atlas-launch"),
+                )
                 .unwrap(),
             "gdocs document",
         );
         assert_eq!(doc.text("head-title"), "Atlas launch checklist");
         assert_eq!(doc.text("head-meta"), "Doc · owner carol · revision 2");
-        assert_eq!(doc.attr("star-form", "action"), "/documents/atlas-launch/star");
-        assert_eq!((doc.tag("star"), doc.text("star")), ("button".into(), "Starred".into()));
+        assert_eq!(
+            doc.attr("star-form", "action"),
+            "/documents/atlas-launch/star"
+        );
+        assert_eq!(
+            (doc.tag("star"), doc.text("star")),
+            ("button".into(), "Starred".into())
+        );
         assert!(doc.has("doc-page") && doc.has("body-line-0"));
         // `body-link-<n>` numbers by word position over the whole body, as the Page did.
         assert_eq!(
@@ -1015,7 +1062,11 @@ mod tests {
 
         let sheet = Dom::of(
             &DocsService
-                .handle(&mut state, &c, &HttpRequest::get("http://docs/documents/q3-metrics"))
+                .handle(
+                    &mut state,
+                    &c,
+                    &HttpRequest::get("http://docs/documents/q3-metrics"),
+                )
                 .unwrap(),
             "gdocs sheet",
         );
@@ -1024,19 +1075,28 @@ mod tests {
         assert_eq!(sheet.text("sheet-B2"), "184 ms");
         assert_eq!(sheet.attr("cell", "action"), "/documents/q3-metrics/cells");
         assert_eq!(
-            (sheet.attr("cell-cell", "name"), sheet.attr("cell-value", "name")),
+            (
+                sheet.attr("cell-cell", "name"),
+                sheet.attr("cell-value", "name")
+            ),
             ("cell".into(), "value".into())
         );
 
         // alice may only read the deck, so she is not offered the slide form; carol owns it.
         let read_only = Dom::of(
             &DocsService
-                .handle(&mut state, &c, &HttpRequest::get("http://docs/documents/atlas-launch-review"))
+                .handle(
+                    &mut state,
+                    &c,
+                    &HttpRequest::get("http://docs/documents/atlas-launch-review"),
+                )
                 .unwrap(),
             "gdocs deck as a reader",
         );
         assert!(!read_only.has("slide") && !read_only.has("slide-submit"));
-        assert!(read_only.text("deck-readonly").starts_with("You can read this deck"));
+        assert!(read_only
+            .text("deck-readonly")
+            .starts_with("You can read this deck"));
         let deck = Dom::of(
             &DocsService
                 .handle(
@@ -1049,7 +1109,10 @@ mod tests {
         );
         assert_eq!(deck.text("slide-title-0"), "Where we are");
         assert_eq!(deck.text("slide-body-1"), "One vendor is late.");
-        assert_eq!(deck.attr("slide", "action"), "/documents/atlas-launch-review/slides");
+        assert_eq!(
+            deck.attr("slide", "action"),
+            "/documents/atlas-launch-review/slides"
+        );
         assert_eq!(deck.attr("slide-index", "name"), "index");
     }
     /// The Notion skin keeps the ids the `plain` page exposed, chrome and all.
@@ -1082,29 +1145,48 @@ mod tests {
 
         let page = Dom::of(
             &DocsService
-                .handle(&mut state, &c, &HttpRequest::get("http://docs/documents/atlas-launch"))
+                .handle(
+                    &mut state,
+                    &c,
+                    &HttpRequest::get("http://docs/documents/atlas-launch"),
+                )
                 .unwrap(),
             "notion document",
         );
         assert_eq!(page.text("document-title"), "Atlas launch checklist");
-        assert!(page.text("document-body").contains("Release code: ATLAS-2026"));
+        assert!(page
+            .text("document-body")
+            .contains("Release code: ATLAS-2026"));
         assert_eq!(
             page.attr("body-link-7", "href"),
             "http://github.com/northstar/atlas"
         );
         assert_eq!(page.text("crumb-meta"), "Revision 2 · owner carol");
-        assert_eq!(page.attr("star-form", "action"), "/documents/atlas-launch/star");
         assert_eq!(
-            (page.attr("edit", "action"), page.attr("edit-revision", "value")),
+            page.attr("star-form", "action"),
+            "/documents/atlas-launch/star"
+        );
+        assert_eq!(
+            (
+                page.attr("edit", "action"),
+                page.attr("edit-revision", "value")
+            ),
             ("/documents/atlas-launch".into(), "2".into())
         );
         assert_eq!(page.tag("comment-0"), "div");
-        assert_eq!(page.attr("comment", "action"), "/documents/atlas-launch/comments");
+        assert_eq!(
+            page.attr("comment", "action"),
+            "/documents/atlas-launch/comments"
+        );
         assert_eq!(page.attr("comment-text", "name"), "text");
 
         let sheet = Dom::of(
             &DocsService
-                .handle(&mut state, &c, &HttpRequest::get("http://docs/documents/q3-metrics"))
+                .handle(
+                    &mut state,
+                    &c,
+                    &HttpRequest::get("http://docs/documents/q3-metrics"),
+                )
                 .unwrap(),
             "notion sheet",
         );

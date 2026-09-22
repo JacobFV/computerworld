@@ -421,7 +421,10 @@ mod tests {
     /// validator (known CSS only, unique ids) before a test reads it.
     fn rendered(response: &HttpResponse) -> Dom {
         assert_eq!(response.status, 200);
-        assert_eq!(response.header("content-type"), Some(web::html::HTML_MEDIA_TYPE));
+        assert_eq!(
+            response.header("content-type"),
+            Some(web::html::HTML_MEDIA_TYPE)
+        );
         let html = std::str::from_utf8(&response.body).unwrap();
         web::html::validate_strict(html).unwrap_or_else(|e| panic!("strict: {e:?}"));
         cw_web::html::parse(html)
@@ -430,19 +433,26 @@ mod tests {
         *doc.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"))
     }
     fn attr<'a>(doc: &'a Dom, id: &str, name: &str) -> &'a str {
-        doc.attr(node(doc, id), name).unwrap_or_else(|| panic!("#{id} has no {name}"))
+        doc.attr(node(doc, id), name)
+            .unwrap_or_else(|| panic!("#{id} has no {name}"))
     }
     fn text_of(doc: &Dom, id: &str) -> String {
         doc.text_content(node(doc, id))
     }
     fn title(doc: &Dom) -> String {
-        let t = doc.descendants(Dom::ROOT).find(|n| doc.is(*n, "title")).expect("a title");
+        let t = doc
+            .descendants(Dom::ROOT)
+            .find(|n| doc.is(*n, "title"))
+            .expect("a title");
         doc.text_content(t)
     }
     fn form_post(url: &str, body: &str) -> HttpRequest {
         let mut r = HttpRequest::get(url);
         r.method = "POST".into();
-        r.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        r.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
         r.body = body.as_bytes().to_vec();
         r
     }
@@ -619,7 +629,10 @@ mod tests {
         assert_eq!(attr(&doc, "composer-message", "name"), "message");
         assert_eq!(doc.tag(node(&doc, "composer-submit")), Some("button"));
         assert_eq!(attr(&doc, "suggestion-1-form", "action"), "/conversations");
-        assert_eq!(text_of(&doc, "suggestion-1"), "What is the Atlas release code?");
+        assert_eq!(
+            text_of(&doc, "suggestion-1"),
+            "What is the Atlas release code?"
+        );
         assert_eq!(attr(&doc, "side-new", "href"), "/");
         assert_eq!(attr(&doc, "side-conv-1", "href"), "/c/conv-1");
         assert_eq!(text_of(&doc, "side-conv-1-title"), "Deterministic services");
@@ -641,38 +654,117 @@ mod tests {
         let view = HttpRequest::get(format!("http://chatgpt.com/c/{id}"));
         let doc = rendered(&AssistantService.handle(&mut state, &ctx(), &view).unwrap());
         assert_eq!(title(&doc), "What is the Atlas release code? - ChatGPT");
-        assert_eq!(text_of(&doc, "msg-0-text"), "What is the Atlas release code?");
+        assert_eq!(
+            text_of(&doc, "msg-0-text"),
+            "What is the Atlas release code?"
+        );
         assert!(text_of(&doc, "msg-1-text").contains("ATLAS-2026"));
         assert_eq!(text_of(&doc, "msg-1-sources"), "Sources");
         assert!(attr(&doc, "msg-1-cite-0", "href").contains("atlas-launch"));
-        assert_eq!(attr(&doc, "composer", "action"), format!("/conversations/{id}/messages"));
-        assert_eq!(attr(&doc, "regenerate-form", "action"), format!("/conversations/{id}/regenerate"));
+        assert_eq!(
+            attr(&doc, "composer", "action"),
+            format!("/conversations/{id}/messages")
+        );
+        assert_eq!(
+            attr(&doc, "regenerate-form", "action"),
+            format!("/conversations/{id}/regenerate")
+        );
         assert_eq!(doc.tag(node(&doc, "regenerate")), Some("button"));
-        assert_eq!(attr(&doc, "rename", "action"), format!("/conversations/{id}/rename"));
+        assert_eq!(
+            attr(&doc, "rename", "action"),
+            format!("/conversations/{id}/rename")
+        );
         assert_eq!(attr(&doc, "rename-title", "name"), "title");
-        assert_eq!(attr(&doc, "rename-title", "value"), "What is the Atlas release code?");
-        assert_eq!(attr(&doc, "delete-form", "action"), format!("/conversations/{id}/delete"));
+        assert_eq!(
+            attr(&doc, "rename-title", "value"),
+            "What is the Atlas release code?"
+        );
+        assert_eq!(
+            attr(&doc, "delete-form", "action"),
+            format!("/conversations/{id}/delete")
+        );
         assert!(attr(&doc, &format!("side-{id}"), "class").contains("on"));
-        for kept in ["shell", "sidebar", "main", "side-brand", "side-logo", "side-brand-name", "side-label", "head", "head-title", "head-model", "msg-0", "msg-0-card", "msg-0-avatar", "turn-controls", "rename-submit", "delete"] {
+        for kept in [
+            "shell",
+            "sidebar",
+            "main",
+            "side-brand",
+            "side-logo",
+            "side-brand-name",
+            "side-label",
+            "head",
+            "head-title",
+            "head-model",
+            "msg-0",
+            "msg-0-card",
+            "msg-0-avatar",
+            "turn-controls",
+            "rename-submit",
+            "delete",
+        ] {
             node(&doc, kept);
         }
         // The forms the page offers work as a browser submits them: urlencoded posts that
         // answer with the conversation page, and a delete that lands back on the home page.
         let sent = AssistantService
-            .handle(&mut state, &ctx(), &form_post(&format!("http://chatgpt.com/conversations/{id}/messages"), "message=who+owns+the+atlas+launch"))
+            .handle(
+                &mut state,
+                &ctx(),
+                &form_post(
+                    &format!("http://chatgpt.com/conversations/{id}/messages"),
+                    "message=who+owns+the+atlas+launch",
+                ),
+            )
             .unwrap();
         let doc = rendered(&sent);
         assert_eq!(text_of(&doc, "msg-2-text"), "who owns the atlas launch");
         assert!(text_of(&doc, "msg-3-text").contains("Carol"));
         let renamed = AssistantService
-            .handle(&mut state, &ctx(), &form_post(&format!("http://chatgpt.com/conversations/{id}/rename"), "title=Release+code"))
+            .handle(
+                &mut state,
+                &ctx(),
+                &form_post(
+                    &format!("http://chatgpt.com/conversations/{id}/rename"),
+                    "title=Release+code",
+                ),
+            )
             .unwrap();
         assert_eq!(text_of(&rendered(&renamed), "head-title"), "Release code");
-        rendered(&AssistantService.handle(&mut state, &ctx(), &form_post(&format!("http://chatgpt.com/conversations/{id}/regenerate"), "")).unwrap());
-        let gone = rendered(&AssistantService.handle(&mut state, &ctx(), &form_post(&format!("http://chatgpt.com/conversations/{id}/delete"), "")).unwrap());
+        rendered(
+            &AssistantService
+                .handle(
+                    &mut state,
+                    &ctx(),
+                    &form_post(
+                        &format!("http://chatgpt.com/conversations/{id}/regenerate"),
+                        "",
+                    ),
+                )
+                .unwrap(),
+        );
+        let gone = rendered(
+            &AssistantService
+                .handle(
+                    &mut state,
+                    &ctx(),
+                    &form_post(&format!("http://chatgpt.com/conversations/{id}/delete"), ""),
+                )
+                .unwrap(),
+        );
         assert!(gone.by_id(&format!("side-{id}")).is_empty());
         node(&gone, "home-greeting");
-        let started = rendered(&AssistantService.handle(&mut state, &ctx(), &form_post("http://chatgpt.com/conversations", "message=Explain+git+rebase")).unwrap());
+        let started = rendered(
+            &AssistantService
+                .handle(
+                    &mut state,
+                    &ctx(),
+                    &form_post(
+                        "http://chatgpt.com/conversations",
+                        "message=Explain+git+rebase",
+                    ),
+                )
+                .unwrap(),
+        );
         assert_eq!(text_of(&started, "msg-0-text"), "Explain git rebase");
         let id = "conv-1".to_owned();
         let view = HttpRequest::get(format!("http://chatgpt.com/c/{id}"));
@@ -736,8 +828,14 @@ mod tests {
                 .unwrap(),
         );
         assert_eq!(title(&page), "Assistant");
-        let root = page.descendants(Dom::ROOT).find(|n| page.is(*n, "html")).unwrap();
-        assert!(page.attr(root, "style").unwrap().contains("--accent: #10a37f"));
+        let root = page
+            .descendants(Dom::ROOT)
+            .find(|n| page.is(*n, "html"))
+            .unwrap();
+        assert!(page
+            .attr(root, "style")
+            .unwrap()
+            .contains("--accent: #10a37f"));
         node(&page, "side-empty");
         assert!(page.by_id("suggestions").is_empty() && page.by_id("home-model").is_empty());
     }

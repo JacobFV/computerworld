@@ -12,7 +12,10 @@ use crate::layout::block::{self, AbsRequest, Bfc, BlockResult, Cb, MarginSet};
 use crate::layout::boxes::{BoxId, BoxKind, Dim};
 use crate::layout::fragment::{CollapsedBorders, Fragment, FragmentKind};
 use crate::layout::{intrinsic, LayoutContext};
-use crate::style::{BorderCollapse, BorderSide, BorderStyle, BoxSizing, Direction, EmptyCells, LengthPercentage, Sizing, TableLayout, VerticalAlign};
+use crate::style::{
+    BorderCollapse, BorderSide, BorderStyle, BoxSizing, Direction, EmptyCells, LengthPercentage,
+    Sizing, TableLayout, VerticalAlign,
+};
 
 /// A cell placed in the grid.
 #[derive(Clone, Copy, Debug)]
@@ -47,7 +50,9 @@ pub struct Structure {
 
 impl Structure {
     pub fn slot(&self, r: usize, c: usize) -> Option<usize> {
-        self.slots.get(r).and_then(|row| row.get(c).copied().flatten())
+        self.slots
+            .get(r)
+            .and_then(|row| row.get(c).copied().flatten())
     }
 }
 
@@ -89,10 +94,21 @@ pub fn structure(ctx: &LayoutContext, grid: BoxId) -> Structure {
         if ctx.tree[g].kind != BoxKind::RowGroup {
             continue;
         }
-        let rows: Vec<BoxId> = ctx.tree.children(g).iter().copied().filter(|r| ctx.tree[*r].kind == BoxKind::Row).collect();
+        let rows: Vec<BoxId> = ctx
+            .tree
+            .children(g)
+            .iter()
+            .copied()
+            .filter(|r| ctx.tree[*r].kind == BoxKind::Row)
+            .collect();
         let n = rows.len();
         for (i, r) in rows.into_iter().enumerate() {
-            st.rows.push(RowInfo { id: r, group: g, first_in_group: i == 0, last_in_group: i + 1 == n });
+            st.rows.push(RowInfo {
+                id: r,
+                group: g,
+                first_in_group: i == 0,
+                last_in_group: i + 1 == n,
+            });
         }
     }
     let nrows = st.rows.len();
@@ -101,14 +117,22 @@ pub fn structure(ctx: &LayoutContext, grid: BoxId) -> Structure {
         let row = st.rows[r].id;
         let mut c = 0usize;
         for &cell in ctx.tree.children(row) {
-            let BoxKind::Cell(cb) = &ctx.tree[cell].kind else { continue };
+            let BoxKind::Cell(cb) = &ctx.tree[cell].kind else {
+                continue;
+            };
             while slots[r].get(c).copied().flatten().is_some() {
                 c += 1;
             }
             let colspan = cb.colspan.max(1) as usize;
             let rowspan = (cb.rowspan.max(1) as usize).min(nrows - r);
             let idx = st.cells.len();
-            st.cells.push(GridCell { id: cell, row: r, col: c, rowspan, colspan });
+            st.cells.push(GridCell {
+                id: cell,
+                row: r,
+                col: c,
+                rowspan,
+                colspan,
+            });
             for rr in r..r + rowspan {
                 if slots[rr].len() < c + colspan {
                     slots[rr].resize(c + colspan, None);
@@ -122,7 +146,12 @@ pub fn structure(ctx: &LayoutContext, grid: BoxId) -> Structure {
             c += colspan;
         }
     }
-    st.ncols = slots.iter().map(|r| r.len()).max().unwrap_or(0).max(cols.len());
+    st.ncols = slots
+        .iter()
+        .map(|r| r.len())
+        .max()
+        .unwrap_or(0)
+        .max(cols.len());
     for r in &mut slots {
         r.resize(st.ncols, None);
     }
@@ -189,7 +218,11 @@ fn resolve(a: (BorderSide, u8), b: (BorderSide, u8)) -> (BorderSide, u8) {
         return if a.0.width > b.0.width { a } else { b };
     }
     if style_rank(sa) != style_rank(sb) {
-        return if style_rank(sa) > style_rank(sb) { a } else { b };
+        return if style_rank(sa) > style_rank(sb) {
+            a
+        } else {
+            b
+        };
     }
     if a.1 >= b.1 {
         a
@@ -199,7 +232,11 @@ fn resolve(a: (BorderSide, u8), b: (BorderSide, u8)) -> (BorderSide, u8) {
 }
 
 fn none_side() -> BorderSide {
-    BorderSide { width: Au::ZERO, style: BorderStyle::None, color: cw_scene::Color(0, 0, 0, 255) }
+    BorderSide {
+        width: Au::ZERO,
+        style: BorderStyle::None,
+        color: cw_scene::Color(0, 0, 0, 255),
+    }
 }
 
 /// Resolves the collapsed borders of every edge.
@@ -317,7 +354,10 @@ pub fn collapse_borders(ctx: &LayoutContext, grid: BoxId, st: &Structure) -> Col
             vertical[r][c] = best.0;
         }
     }
-    CollapsedGrid { horizontal, vertical }
+    CollapsedGrid {
+        horizontal,
+        vertical,
+    }
 }
 
 fn widest(sides: impl Iterator<Item = BorderSide>) -> BorderSide {
@@ -332,7 +372,10 @@ fn widest(sides: impl Iterator<Item = BorderSide>) -> BorderSide {
         }
     }
     match hidden {
-        Some(h) if !best.style.is_visible() => BorderSide { width: Au::ZERO, ..h },
+        Some(h) if !best.style.is_visible() => BorderSide {
+            width: Au::ZERO,
+            ..h
+        },
         _ => best,
     }
 }
@@ -344,14 +387,28 @@ fn half(w: Au) -> Au {
 /// The four resolved borders of a cell in the collapsing model (widest along each side).
 fn cell_collapsed(cg: &CollapsedGrid, cell: &GridCell) -> CollapsedBorders {
     let top = widest((cell.col..cell.col + cell.colspan).map(|c| cg.horizontal[cell.row][c]));
-    let bottom = widest((cell.col..cell.col + cell.colspan).map(|c| cg.horizontal[cell.row + cell.rowspan][c]));
+    let bottom = widest(
+        (cell.col..cell.col + cell.colspan).map(|c| cg.horizontal[cell.row + cell.rowspan][c]),
+    );
     let left = widest((cell.row..cell.row + cell.rowspan).map(|r| cg.vertical[r][cell.col]));
-    let right = widest((cell.row..cell.row + cell.rowspan).map(|r| cg.vertical[r][cell.col + cell.colspan]));
-    CollapsedBorders { top, right, bottom, left }
+    let right = widest(
+        (cell.row..cell.row + cell.rowspan).map(|r| cg.vertical[r][cell.col + cell.colspan]),
+    );
+    CollapsedBorders {
+        top,
+        right,
+        bottom,
+        left,
+    }
 }
 
 fn cell_border_used(cb: &CollapsedBorders) -> Edges {
-    Edges { top: half(cb.top.used_width()), right: half(cb.right.used_width()), bottom: half(cb.bottom.used_width()), left: half(cb.left.used_width()) }
+    Edges {
+        top: half(cb.top.used_width()),
+        right: half(cb.right.used_width()),
+        bottom: half(cb.bottom.used_width()),
+        left: half(cb.left.used_width()),
+    }
 }
 
 /// Everything about a table's geometry decided before rows are laid out.
@@ -372,7 +429,11 @@ fn prepare(ctx: &LayoutContext, grid: BoxId) -> Prep {
     let s = ctx.style(grid);
     let st = structure(ctx, grid);
     let collapse = s.border_collapse == BorderCollapse::Collapse;
-    let collapsed = if collapse { Some(collapse_borders(ctx, grid, &st)) } else { None };
+    let collapsed = if collapse {
+        Some(collapse_borders(ctx, grid, &st))
+    } else {
+        None
+    };
     let mut cell_borders = Vec::with_capacity(st.cells.len());
     let mut cell_collapsed = Vec::with_capacity(st.cells.len());
     for cell in &st.cells {
@@ -396,19 +457,44 @@ fn prepare(ctx: &LayoutContext, grid: BoxId) -> Prep {
             let bottom = widest((0..ncols).map(|c| cg.horizontal[nrows][c]));
             let left = widest((0..nrows).map(|r| cg.vertical[r][0]));
             let right = widest((0..nrows).map(|r| cg.vertical[r][ncols]));
-            let outer = CollapsedBorders { top, right, bottom, left };
+            let outer = CollapsedBorders {
+                top,
+                right,
+                bottom,
+                left,
+            };
             // With no rows the table's own borders apply.
             let b = if nrows == 0 || ncols == 0 {
                 s.used_border_widths()
             } else {
-                Edges { top: half(top.used_width()), right: half(right.used_width()), bottom: half(bottom.used_width()), left: half(left.used_width()) }
+                Edges {
+                    top: half(top.used_width()),
+                    right: half(right.used_width()),
+                    bottom: half(bottom.used_width()),
+                    left: half(left.used_width()),
+                }
             };
             (Edges::ZERO, b, Some(outer), (Au::ZERO, Au::ZERO))
         }
-        None => (block::padding_edges(s, Au::ZERO), s.used_border_widths(), None, s.border_spacing),
+        None => (
+            block::padding_edges(s, Au::ZERO),
+            s.used_border_widths(),
+            None,
+            s.border_spacing,
+        ),
     };
     let cols = column_constraints(ctx, &st, &cell_borders, spacing.0);
-    Prep { st, collapsed, cell_borders, cell_collapsed, cols, padding, border, outer, spacing }
+    Prep {
+        st,
+        collapsed,
+        cell_borders,
+        cell_collapsed,
+        cols,
+        padding,
+        border,
+        outer,
+        spacing,
+    }
 }
 
 fn cell_collapsed_of(cg: &CollapsedGrid, cell: &GridCell) -> CollapsedBorders {
@@ -416,7 +502,12 @@ fn cell_collapsed_of(cg: &CollapsedGrid, cell: &GridCell) -> CollapsedBorders {
 }
 
 /// Column min/max/percent/fixed constraints (§17.5.2.2 steps 1–3).
-fn column_constraints(ctx: &LayoutContext, st: &Structure, cell_borders: &[Edges], hspacing: Au) -> Vec<ColInfo> {
+fn column_constraints(
+    ctx: &LayoutContext,
+    st: &Structure,
+    cell_borders: &[Edges],
+    hspacing: Au,
+) -> Vec<ColInfo> {
     let n = st.ncols;
     let mut cols = vec![ColInfo::default(); n];
     for (c, col) in cols.iter_mut().enumerate() {
@@ -428,7 +519,9 @@ fn column_constraints(ctx: &LayoutContext, st: &Structure, cell_borders: &[Edges
                     col.min = col.min.max(w);
                     col.max = col.max.max(w);
                 }
-                Sizing::Set(LengthPercentage::Percent(p)) => col.percent = Some(col.percent.map_or(p, |q| q.max(p))),
+                Sizing::Set(LengthPercentage::Percent(p)) => {
+                    col.percent = Some(col.percent.map_or(p, |q| q.max(p)))
+                }
                 _ => {
                     if let BoxKind::Col(cb) | BoxKind::ColGroup(cb) = &ctx.tree[b].kind {
                         match cb.width {
@@ -437,7 +530,9 @@ fn column_constraints(ctx: &LayoutContext, st: &Structure, cell_borders: &[Edges
                                 col.min = col.min.max(w);
                                 col.max = col.max.max(w);
                             }
-                            Some(Dim::Percent(p)) => col.percent = Some(col.percent.map_or(p, |q| q.max(p))),
+                            Some(Dim::Percent(p)) => {
+                                col.percent = Some(col.percent.map_or(p, |q| q.max(p)))
+                            }
                             None => {}
                         }
                     }
@@ -469,13 +564,22 @@ fn column_constraints(ctx: &LayoutContext, st: &Structure, cell_borders: &[Edges
         let cell = st.cells[i];
         let range = cell.col..(cell.col + cell.colspan).min(n);
         let span_spacing = hspacing * (cell.colspan as i32 - 1);
-        let sum_min: Au = range.clone().map(|c| cols[c].min).fold(Au::ZERO, |a, b| a + b);
-        let sum_max: Au = range.clone().map(|c| cols[c].max).fold(Au::ZERO, |a, b| a + b);
+        let sum_min: Au = range
+            .clone()
+            .map(|c| cols[c].min)
+            .fold(Au::ZERO, |a, b| a + b);
+        let sum_max: Au = range
+            .clone()
+            .map(|c| cols[c].max)
+            .fold(Au::ZERO, |a, b| a + b);
         let need_min = mn - span_spacing - sum_min;
         if need_min > Au::ZERO {
             distribute(&mut cols, range.clone(), need_min, true);
         }
-        let sum_max2: Au = range.clone().map(|c| cols[c].max).fold(Au::ZERO, |a, b| a + b);
+        let sum_max2: Au = range
+            .clone()
+            .map(|c| cols[c].max)
+            .fold(Au::ZERO, |a, b| a + b);
         let need_max = mx - span_spacing - sum_max2.max(sum_max);
         if need_max > Au::ZERO {
             distribute(&mut cols, range.clone(), need_max, false);
@@ -483,7 +587,10 @@ fn column_constraints(ctx: &LayoutContext, st: &Structure, cell_borders: &[Edges
         if let Some(p) = pct {
             let have: i32 = range.clone().filter_map(|c| cols[c].percent).sum();
             if p > have {
-                let free: Vec<usize> = range.clone().filter(|c| cols[*c].percent.is_none()).collect();
+                let free: Vec<usize> = range
+                    .clone()
+                    .filter(|c| cols[*c].percent.is_none())
+                    .collect();
                 if !free.is_empty() {
                     let each = (p - have) / free.len() as i32;
                     for c in free {
@@ -512,8 +619,17 @@ fn distribute(cols: &mut [ColInfo], range: std::ops::Range<usize>, extra: Au, to
     }
     let slack = |c: usize| (cols[c].max - cols[c].min).max(Au::ZERO);
     let total_slack: Au = idx.iter().map(|&c| slack(c)).fold(Au::ZERO, |a, b| a + b);
-    let weight = |cols: &[ColInfo], c: usize| if to_min && total_slack > Au::ZERO { (cols[c].max - cols[c].min).max(Au::ZERO) } else { cols[c].max };
-    let total: Au = idx.iter().map(|&c| weight(cols, c)).fold(Au::ZERO, |a, b| a + b);
+    let weight = |cols: &[ColInfo], c: usize| {
+        if to_min && total_slack > Au::ZERO {
+            (cols[c].max - cols[c].min).max(Au::ZERO)
+        } else {
+            cols[c].max
+        }
+    };
+    let total: Au = idx
+        .iter()
+        .map(|&c| weight(cols, c))
+        .fold(Au::ZERO, |a, b| a + b);
     let mut given = Au::ZERO;
     let n = idx.len();
     for (k, &c) in idx.iter().enumerate() {
@@ -578,8 +694,14 @@ fn cell_widths(ctx: &LayoutContext, id: BoxId, border: Edges) -> (Au, Au, Option
 pub fn grid_intrinsic_widths(ctx: &LayoutContext, grid: BoxId) -> (Au, Au) {
     let prep = prepare(ctx, grid);
     let s = ctx.style(grid);
-    let extra = prep.padding.horizontal() + prep.border.horizontal() + prep.spacing.0 * (prep.cols.len() as i32 + 1);
-    let extra = if prep.cols.is_empty() { prep.padding.horizontal() + prep.border.horizontal() } else { extra };
+    let extra = prep.padding.horizontal()
+        + prep.border.horizontal()
+        + prep.spacing.0 * (prep.cols.len() as i32 + 1);
+    let extra = if prep.cols.is_empty() {
+        prep.padding.horizontal() + prep.border.horizontal()
+    } else {
+        extra
+    };
     let sum_min: Au = prep.cols.iter().map(|c| c.min).fold(Au::ZERO, |a, b| a + b);
     let sum_max: Au = prep.cols.iter().map(|c| c.max).fold(Au::ZERO, |a, b| a + b);
     let (mut mn, mut mx) = (sum_min + extra, sum_max + extra);
@@ -592,10 +714,25 @@ pub fn grid_intrinsic_widths(ctx: &LayoutContext, grid: BoxId) -> (Au, Au) {
         mx = mn;
     }
     // Percentage columns widen the max-content width so they get their share.
-    let pct_total: i32 = prep.cols.iter().filter_map(|c| c.percent).sum::<i32>().min(10_000);
+    let pct_total: i32 = prep
+        .cols
+        .iter()
+        .filter_map(|c| c.percent)
+        .sum::<i32>()
+        .min(10_000);
     if pct_total > 0 && pct_total < 10_000 {
-        let pct_max: Au = prep.cols.iter().filter(|c| c.percent.is_some()).map(|c| c.max).fold(Au::ZERO, |a, b| a + b);
-        let non_pct: Au = prep.cols.iter().filter(|c| c.percent.is_none()).map(|c| c.max).fold(Au::ZERO, |a, b| a + b);
+        let pct_max: Au = prep
+            .cols
+            .iter()
+            .filter(|c| c.percent.is_some())
+            .map(|c| c.max)
+            .fold(Au::ZERO, |a, b| a + b);
+        let non_pct: Au = prep
+            .cols
+            .iter()
+            .filter(|c| c.percent.is_none())
+            .map(|c| c.max)
+            .fold(Au::ZERO, |a, b| a + b);
         let by_pct = pct_max.scale(10_000, pct_total);
         let by_rest = non_pct.scale(10_000, 10_000 - pct_total);
         mx = mx.max(by_pct.max(by_rest) + extra);
@@ -624,7 +761,8 @@ fn used_table_width(ctx: &LayoutContext, grid: BoxId, cb: &Cb, avail: Au) -> Au 
         // §17.5.2.1: with the fixed algorithm the table is exactly as wide as
         // specified; the cells' contents do not widen it (they overflow instead).
         Sizing::Set(lp) if s.table_layout == TableLayout::Fixed => {
-            let edges = block::padding_edges(s, cb.width).horizontal() + s.used_border_widths().horizontal();
+            let edges = block::padding_edges(s, cb.width).horizontal()
+                + s.used_border_widths().horizontal();
             lp.resolve(cb.width).max(edges)
         }
         Sizing::Set(lp) => lp.resolve(cb.width).max(mn),
@@ -661,7 +799,11 @@ fn distribute_columns(cols: &[ColInfo], inner: Au, fixed_layout: bool) -> Vec<Au
             let each = rem / auto.len() as i32;
             let mut given = Au::ZERO;
             for (k, &i) in auto.iter().enumerate() {
-                w[i] = if k + 1 == auto.len() { rem - given } else { each };
+                w[i] = if k + 1 == auto.len() {
+                    rem - given
+                } else {
+                    each
+                };
                 given += w[i];
             }
         } else if used < inner {
@@ -669,7 +811,13 @@ fn distribute_columns(cols: &[ColInfo], inner: Au, fixed_layout: bool) -> Vec<Au
             let extra = inner - used;
             let mut given = Au::ZERO;
             for i in 0..n {
-                let share = if i + 1 == n { extra - given } else if used > Au::ZERO { extra.scale(w[i].0, used.0) } else { extra / n as i32 };
+                let share = if i + 1 == n {
+                    extra - given
+                } else if used > Au::ZERO {
+                    extra.scale(w[i].0, used.0)
+                } else {
+                    extra / n as i32
+                };
                 w[i] += share;
                 given += share;
             }
@@ -678,11 +826,19 @@ fn distribute_columns(cols: &[ColInfo], inner: Au, fixed_layout: bool) -> Vec<Au
     }
     // Automatic layout.
     let pct_total: i32 = cols.iter().filter_map(|c| c.percent).sum();
-    let scale = if pct_total > 10_000 { 10_000 } else { pct_total };
+    let scale = if pct_total > 10_000 {
+        10_000
+    } else {
+        pct_total
+    };
     let mut pct_targets = Au::ZERO;
     for (i, c) in cols.iter().enumerate() {
         if let Some(p) = c.percent {
-            let p = if pct_total > 10_000 { (p as i64 * scale as i64 / pct_total as i64) as i32 } else { p };
+            let p = if pct_total > 10_000 {
+                (p as i64 * scale as i64 / pct_total as i64) as i32
+            } else {
+                p
+            };
             w[i] = inner.percent_of(p).max(c.min);
             pct_targets += w[i];
         }
@@ -694,7 +850,10 @@ fn distribute_columns(cols: &[ColInfo], inner: Au, fixed_layout: bool) -> Vec<Au
     if rem < sum_min {
         // Shrink percentage columns towards their minimums.
         let short = sum_min - rem;
-        let mut slack: Au = (0..n).filter(|&i| cols[i].percent.is_some()).map(|i| w[i] - cols[i].min).fold(Au::ZERO, |a, b| a + b);
+        let mut slack: Au = (0..n)
+            .filter(|&i| cols[i].percent.is_some())
+            .map(|i| w[i] - cols[i].min)
+            .fold(Au::ZERO, |a, b| a + b);
         let mut left = short;
         for i in (0..n).filter(|&i| cols[i].percent.is_some()) {
             if slack <= Au::ZERO || left <= Au::ZERO {
@@ -705,7 +864,11 @@ fn distribute_columns(cols: &[ColInfo], inner: Au, fixed_layout: bool) -> Vec<Au
             left -= give;
             slack -= give;
         }
-        rem = inner - (0..n).filter(|&i| cols[i].percent.is_some()).map(|i| w[i]).fold(Au::ZERO, |a, b| a + b);
+        rem = inner
+            - (0..n)
+                .filter(|&i| cols[i].percent.is_some())
+                .map(|i| w[i])
+                .fold(Au::ZERO, |a, b| a + b);
     }
     if np.is_empty() {
         // Only percentage columns: leftover goes to them proportionally.
@@ -714,14 +877,22 @@ fn distribute_columns(cols: &[ColInfo], inner: Au, fixed_layout: bool) -> Vec<Au
             let extra = inner - total;
             let mut given = Au::ZERO;
             for i in 0..n {
-                let share = if i + 1 == n { extra - given } else { extra.scale(w[i].0, total.0) };
+                let share = if i + 1 == n {
+                    extra - given
+                } else {
+                    extra.scale(w[i].0, total.0)
+                };
                 w[i] += share;
                 given += share;
             }
         } else if total < inner {
             let each = inner / n as i32;
             for (i, v) in w.iter_mut().enumerate() {
-                *v = if i + 1 == n { inner - each * (n as i32 - 1) } else { each };
+                *v = if i + 1 == n {
+                    inner - each * (n as i32 - 1)
+                } else {
+                    each
+                };
             }
         }
         return w;
@@ -733,17 +904,23 @@ fn distribute_columns(cols: &[ColInfo], inner: Au, fixed_layout: bool) -> Vec<Au
         let extra = rem - sum_max;
         if extra > Au::ZERO {
             // To auto columns proportionally to max, else fixed ones, else percent ones.
-            let auto: Vec<usize> = np.iter().copied().filter(|&i| cols[i].fixed.is_none()).collect();
-            let targets: Vec<usize> = if !auto.is_empty() {
-                auto
-            } else {
-                np.clone()
-            };
+            let auto: Vec<usize> = np
+                .iter()
+                .copied()
+                .filter(|&i| cols[i].fixed.is_none())
+                .collect();
+            let targets: Vec<usize> = if !auto.is_empty() { auto } else { np.clone() };
             let total: Au = targets.iter().map(|&i| w[i]).fold(Au::ZERO, |a, b| a + b);
             let mut given = Au::ZERO;
             let m = targets.len();
             for (k, &i) in targets.iter().enumerate() {
-                let share = if k + 1 == m { extra - given } else if total > Au::ZERO { extra.scale(w[i].0, total.0) } else { extra / m as i32 };
+                let share = if k + 1 == m {
+                    extra - given
+                } else if total > Au::ZERO {
+                    extra.scale(w[i].0, total.0)
+                } else {
+                    extra / m as i32
+                };
                 w[i] += share;
                 given += share;
             }
@@ -754,7 +931,13 @@ fn distribute_columns(cols: &[ColInfo], inner: Au, fixed_layout: bool) -> Vec<Au
         let mut given = Au::ZERO;
         let m = np.len();
         for (k, &i) in np.iter().enumerate() {
-            let share = if k + 1 == m { extra - given } else if range > Au::ZERO { extra.scale((cols[i].max - cols[i].min).0, range.0) } else { extra / m as i32 };
+            let share = if k + 1 == m {
+                extra - given
+            } else if range > Au::ZERO {
+                extra.scale((cols[i].max - cols[i].min).0, range.0)
+            } else {
+                extra / m as i32
+            };
             w[i] = cols[i].min + share;
             given += share;
         }
@@ -776,14 +959,23 @@ struct CellLayout {
     is_empty: bool,
 }
 
-fn layout_cell(ctx: &LayoutContext, cell: &GridCell, border: Edges, width: Au, collapsed: Option<CollapsedBorders>) -> CellLayout {
+fn layout_cell(
+    ctx: &LayoutContext,
+    cell: &GridCell,
+    border: Edges,
+    width: Au,
+    collapsed: Option<CollapsedBorders>,
+) -> CellLayout {
     let id = cell.id;
     let b = &ctx.tree[id];
     let s = &b.style;
     let p = block::padding_edges(s, width);
     let content_w = (width - p.horizontal() - border.horizontal()).max(Au::ZERO);
     let mut bfc = Bfc::new();
-    let cb = Cb { width: content_w, height: None };
+    let cb = Cb {
+        width: content_w,
+        height: None,
+    };
     let contents = block::layout_contents(ctx, id, &cb, &mut bfc, Point::default(), false, false);
     let mut content_h = contents.height.max(bfc.float_bottom());
     let ev = p.vertical() + border.vertical();
@@ -792,7 +984,17 @@ fn layout_cell(ctx: &LayoutContext, cell: &GridCell, border: Edges, width: Au, c
     }
     content_h = block::clamp_height(s, content_h, None, ev);
     let baseline = contents.first_baseline.map(|bl| bl + border.top + p.top);
-    let mut frag = Fragment::new(FragmentKind::Box { source: b.source, padding: p, border, replaced: None, scroll: None, baseline }, Rect::new(Au::ZERO, Au::ZERO, width, content_h + ev));
+    let mut frag = Fragment::new(
+        FragmentKind::Box {
+            source: b.source,
+            padding: p,
+            border,
+            replaced: None,
+            scroll: None,
+            baseline,
+        },
+        Rect::new(Au::ZERO, Au::ZERO, width, content_h + ev),
+    );
     let cx = border.left + p.left;
     let cy = border.top + p.top;
     let mut abs = contents.abs;
@@ -804,7 +1006,14 @@ fn layout_cell(ctx: &LayoutContext, cell: &GridCell, border: Edges, width: Au, c
         frag.children.push(c);
     }
     frag.collapsed_borders = collapsed.map(Box::new);
-    CellLayout { idx: 0, fragment: frag, content_height: content_h + ev, baseline, abs, is_empty }
+    CellLayout {
+        idx: 0,
+        fragment: frag,
+        content_height: content_h + ev,
+        baseline,
+        abs,
+        is_empty,
+    }
 }
 
 /// The laid-out grid box at the origin, with its unresolved absolute requests and
@@ -827,7 +1036,11 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
     let fixed_layout = s.table_layout == TableLayout::Fixed && !matches!(s.width, Sizing::Auto);
     let widths = distribute_columns(&prep.cols, inner, fixed_layout);
     let col_sum: Au = widths.iter().copied().fold(Au::ZERO, |a, b| a + b);
-    let content_w = if ncols == 0 { (used_width - edges_h).max(Au::ZERO) } else { (col_sum + hs * (ncols as i32 + 1)).max(used_width - edges_h) };
+    let content_w = if ncols == 0 {
+        (used_width - edges_h).max(Au::ZERO)
+    } else {
+        (col_sum + hs * (ncols as i32 + 1)).max(used_width - edges_h)
+    };
     let rtl = s.direction == Direction::Rtl;
     // Column x offsets (content-box relative), left to right in the visual order.
     let mut col_x = Vec::with_capacity(ncols + 1);
@@ -856,7 +1069,13 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
     let mut cells: Vec<CellLayout> = Vec::with_capacity(st.cells.len());
     for (i, cell) in st.cells.iter().enumerate() {
         let (_, w) = col_left(cell.col, cell.colspan.min(ncols - cell.col));
-        let mut cl = layout_cell(ctx, cell, prep.cell_borders[i], w, prep.cell_collapsed[i].clone());
+        let mut cl = layout_cell(
+            ctx,
+            cell,
+            prep.cell_borders[i],
+            w,
+            prep.cell_collapsed[i].clone(),
+        );
         cl.idx = i;
         cells.push(cl);
     }
@@ -888,7 +1107,10 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
                 }
             }
         }
-        for cl in cells.iter().filter(|c| st.cells[c.idx].row == r && st.cells[c.idx].rowspan == 1) {
+        for cl in cells
+            .iter()
+            .filter(|c| st.cells[c.idx].row == r && st.cells[c.idx].rowspan == 1)
+        {
             let cell = st.cells[cl.idx];
             let va = ctx.style(cell.id).vertical_align;
             let h = match (va, cl.baseline, row_baseline[r]) {
@@ -908,14 +1130,27 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
             continue;
         }
         let end = (cell.row + cell.rowspan).min(nrows);
-        let total: Au = row_h[cell.row..end].iter().copied().fold(Au::ZERO, |a, b| a + b) + vs * (end as i32 - cell.row as i32 - 1);
+        let total: Au = row_h[cell.row..end]
+            .iter()
+            .copied()
+            .fold(Au::ZERO, |a, b| a + b)
+            + vs * (end as i32 - cell.row as i32 - 1);
         if cl.content_height > total {
             let extra = cl.content_height - total;
-            let sum: Au = row_h[cell.row..end].iter().copied().fold(Au::ZERO, |a, b| a + b);
+            let sum: Au = row_h[cell.row..end]
+                .iter()
+                .copied()
+                .fold(Au::ZERO, |a, b| a + b);
             let mut given = Au::ZERO;
             let n = end - cell.row;
             for (k, r) in (cell.row..end).enumerate() {
-                let share = if k + 1 == n { extra - given } else if sum > Au::ZERO { extra.scale(row_h[r].0, sum.0) } else { extra / n as i32 };
+                let share = if k + 1 == n {
+                    extra - given
+                } else if sum > Au::ZERO {
+                    extra.scale(row_h[r].0, sum.0)
+                } else {
+                    extra / n as i32
+                };
                 row_h[r] += share;
                 given += share;
             }
@@ -923,14 +1158,25 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
     }
     // Table height: extra space goes to the rows.
     let edges_v = prep.padding.vertical() + prep.border.vertical();
-    let rows_total: Au = row_h.iter().copied().fold(Au::ZERO, |a, b| a + b) + if nrows > 0 { vs * (nrows as i32 + 1) } else { Au::ZERO };
+    let rows_total: Au = row_h.iter().copied().fold(Au::ZERO, |a, b| a + b)
+        + if nrows > 0 {
+            vs * (nrows as i32 + 1)
+        } else {
+            Au::ZERO
+        };
     let content_h = match block::resolve_size(s.height, cb.height, edges_v, BoxSizing::BorderBox) {
         Some(h) if h > rows_total && nrows > 0 => {
             let extra = h - rows_total;
             let sum: Au = row_h.iter().copied().fold(Au::ZERO, |a, b| a + b);
             let mut given = Au::ZERO;
             for r in 0..nrows {
-                let share = if r + 1 == nrows { extra - given } else if sum > Au::ZERO { extra.scale(row_h[r].0, sum.0) } else { extra / nrows as i32 };
+                let share = if r + 1 == nrows {
+                    extra - given
+                } else if sum > Au::ZERO {
+                    extra.scale(row_h[r].0, sum.0)
+                } else {
+                    extra / nrows as i32
+                };
                 row_h[r] += share;
                 given += share;
             }
@@ -952,7 +1198,14 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
     let cx = prep.border.left + prep.padding.left;
     let cy = prep.border.top + prep.padding.top;
     let mut grid_frag = Fragment::new(
-        FragmentKind::Box { source: ctx.tree[grid].source, padding: prep.padding, border: prep.border, replaced: None, scroll: None, baseline: None },
+        FragmentKind::Box {
+            source: ctx.tree[grid].source,
+            padding: prep.padding,
+            border: prep.border,
+            replaced: None,
+            scroll: None,
+            baseline: None,
+        },
         Rect::new(Au::ZERO, Au::ZERO, content_w + edges_h, content_h + edges_v),
     );
     grid_frag.collapsed_borders = prep.outer.map(Box::new);
@@ -966,14 +1219,39 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
                 let (first, span) = column_range(st, c);
                 if let Some(first) = first {
                     let (x0, w) = col_left(first, span.min(ncols - first));
-                    let f = Fragment::new(FragmentKind::Box { source: cbx.source, padding: Edges::ZERO, border: Edges::ZERO, replaced: None, scroll: None, baseline: None }, Rect::new(cx + x0, cy + vs, w, content_h - vs * 2));
+                    let f = Fragment::new(
+                        FragmentKind::Box {
+                            source: cbx.source,
+                            padding: Edges::ZERO,
+                            border: Edges::ZERO,
+                            replaced: None,
+                            scroll: None,
+                            baseline: None,
+                        },
+                        Rect::new(cx + x0, cy + vs, w, content_h - vs * 2),
+                    );
                     grid_frag.children.push(f);
-                    if cbx.kind != BoxKind::Col(crate::layout::boxes::ColBox { span: 0, width: None }) {
+                    if cbx.kind
+                        != BoxKind::Col(crate::layout::boxes::ColBox {
+                            span: 0,
+                            width: None,
+                        })
+                    {
                         for &k in ctx.tree.children(c) {
                             let (kf, ks) = column_range(st, k);
                             if let Some(kf) = kf {
                                 let (kx, kw) = col_left(kf, ks.min(ncols - kf));
-                                let f = Fragment::new(FragmentKind::Box { source: ctx.tree[k].source, padding: Edges::ZERO, border: Edges::ZERO, replaced: None, scroll: None, baseline: None }, Rect::new(cx + kx, cy + vs, kw, content_h - vs * 2));
+                                let f = Fragment::new(
+                                    FragmentKind::Box {
+                                        source: ctx.tree[k].source,
+                                        padding: Edges::ZERO,
+                                        border: Edges::ZERO,
+                                        replaced: None,
+                                        scroll: None,
+                                        baseline: None,
+                                    },
+                                    Rect::new(cx + kx, cy + vs, kw, content_h - vs * 2),
+                                );
                                 grid_frag.children.push(f);
                             }
                         }
@@ -997,11 +1275,31 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
         // Row groups and rows span the columns and the spacing between them, not
         // the spacing outside the first and last column (Blink's section geometry).
         let rows_w = (content_w - hs * 2).max(Au::ZERO);
-        let mut gf = Fragment::new(FragmentKind::Box { source: ctx.tree[g].source, padding: Edges::ZERO, border: Edges::ZERO, replaced: None, scroll: None, baseline: None }, Rect::new(cx + hs, cy + gy, rows_w, gh.max(Au::ZERO)));
+        let mut gf = Fragment::new(
+            FragmentKind::Box {
+                source: ctx.tree[g].source,
+                padding: Edges::ZERO,
+                border: Edges::ZERO,
+                replaced: None,
+                scroll: None,
+                baseline: None,
+            },
+            Rect::new(cx + hs, cy + gy, rows_w, gh.max(Au::ZERO)),
+        );
         for rr in start..end {
             let row = &st.rows[rr];
             let ry = row_y[rr] - gy;
-            let mut rf = Fragment::new(FragmentKind::Box { source: ctx.tree[row.id].source, padding: Edges::ZERO, border: Edges::ZERO, replaced: None, scroll: None, baseline: None }, Rect::new(Au::ZERO, ry, rows_w, row_h[rr]));
+            let mut rf = Fragment::new(
+                FragmentKind::Box {
+                    source: ctx.tree[row.id].source,
+                    padding: Edges::ZERO,
+                    border: Edges::ZERO,
+                    replaced: None,
+                    scroll: None,
+                    baseline: None,
+                },
+                Rect::new(Au::ZERO, ry, rows_w, row_h[rr]),
+            );
             for slot in cells.iter_mut() {
                 let Some(cl) = slot else { continue };
                 let cell = st.cells[cl.idx];
@@ -1039,7 +1337,11 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
                 }
                 block::finish_fragment(ctx, cell.id, &mut cl.fragment);
                 let mut abs = cl.abs;
-                let unresolved = if ctx.style(cell.id).is_positioned() { block::resolve_absolutes(ctx, &mut cl.fragment, abs) } else { std::mem::take(&mut abs) };
+                let unresolved = if ctx.style(cell.id).is_positioned() {
+                    block::resolve_absolutes(ctx, &mut cl.fragment, abs)
+                } else {
+                    std::mem::take(&mut abs)
+                };
                 let mut unresolved = unresolved;
                 block::translate_requests(&mut unresolved, x0 + cx, cy + row_y[cell.row]);
                 abs_all.extend(unresolved);
@@ -1052,7 +1354,11 @@ fn layout_grid(ctx: &LayoutContext, grid: BoxId, used_width: Au, cb: &Cb) -> Gri
         grid_frag.children.push(gf);
     }
     block::finish_fragment(ctx, grid, &mut grid_frag);
-    GridLayout { fragment: grid_frag, abs: abs_all, baseline: first_baseline }
+    GridLayout {
+        fragment: grid_frag,
+        abs: abs_all,
+        baseline: first_baseline,
+    }
 }
 
 /// The first column index and span covered by a `<col>`/`<colgroup>` box.
@@ -1074,10 +1380,23 @@ fn column_range(st: &Structure, b: BoxId) -> (Option<usize>, usize) {
 /// margins and floats, the grid the width; captions above and below. `avail` is the
 /// shrink-to-fit availability for floats, absolutes and inline tables.
 #[allow(clippy::too_many_arguments)]
-pub fn layout_wrapper(ctx: &LayoutContext, wrapper: BoxId, cb: &Cb, bfc: &mut Bfc, cb_origin: Point, y_in: Au, avail: Option<Au>) -> BlockResult {
+pub fn layout_wrapper(
+    ctx: &LayoutContext,
+    wrapper: BoxId,
+    cb: &Cb,
+    bfc: &mut Bfc,
+    cb_origin: Point,
+    y_in: Au,
+    avail: Option<Au>,
+) -> BlockResult {
     let wb = &ctx.tree[wrapper];
     let ws = &wb.style;
-    let grid = ctx.tree.children(wrapper).iter().copied().find(|c| ctx.tree[*c].kind == BoxKind::Table);
+    let grid = ctx
+        .tree
+        .children(wrapper)
+        .iter()
+        .copied()
+        .find(|c| ctx.tree[*c].kind == BoxKind::Table);
     let (mt, mb) = block::vertical_margins(ws, cb.width);
     let ml0 = ws.margin.left.resolve(cb.width).unwrap_or(Au::ZERO);
     let mr0 = ws.margin.right.resolve(cb.width).unwrap_or(Au::ZERO);
@@ -1115,19 +1434,42 @@ pub fn layout_wrapper(ctx: &LayoutContext, wrapper: BoxId, cb: &Cb, bfc: &mut Bf
     let mut caps: Vec<(BoxId, bool)> = Vec::new();
     for &c in ctx.tree.children(wrapper) {
         if ctx.tree[c].kind == BoxKind::Caption {
-            caps.push((c, ctx.style(c).caption_side == crate::style::CaptionSide::Bottom));
+            caps.push((
+                c,
+                ctx.style(c).caption_side == crate::style::CaptionSide::Bottom,
+            ));
         }
     }
     let wrapper_w = used_w;
     let (_, ml, mr) = block::block_horizontal(ws, avail_w, Some(wrapper_w), Au::ZERO);
-    let mut frag = Fragment::new(FragmentKind::Box { source: wb.source, padding: Edges::ZERO, border: Edges::ZERO, replaced: None, scroll: None, baseline: None }, Rect::new(x_base + ml, y, wrapper_w, Au::ZERO));
+    let mut frag = Fragment::new(
+        FragmentKind::Box {
+            source: wb.source,
+            padding: Edges::ZERO,
+            border: Edges::ZERO,
+            replaced: None,
+            scroll: None,
+            baseline: None,
+        },
+        Rect::new(x_base + ml, y, wrapper_w, Au::ZERO),
+    );
     let mut cy = Au::ZERO;
     let mut abs = Vec::new();
     let mut baseline = None;
-    let cap_cb = Cb { width: wrapper_w, height: None };
+    let cap_cb = Cb {
+        width: wrapper_w,
+        height: None,
+    };
     let lay_caption = |c: BoxId, cy: &mut Au, frag: &mut Fragment, abs: &mut Vec<AbsRequest>| {
         let mut b2 = Bfc::new();
-        let r = block::layout_block_level(ctx, c, &cap_cb, &mut b2, Point::default(), *cy + r_margin_top(ctx, c, wrapper_w));
+        let r = block::layout_block_level(
+            ctx,
+            c,
+            &cap_cb,
+            &mut b2,
+            Point::default(),
+            *cy + r_margin_top(ctx, c, wrapper_w),
+        );
         let mut f = r.fragment;
         let bottom = f.rect.bottom() + r.margin.bottom;
         block::translate_requests(&mut abs.clone(), Au::ZERO, Au::ZERO);
@@ -1157,9 +1499,25 @@ pub fn layout_wrapper(ctx: &LayoutContext, wrapper: BoxId, cb: &Cb, bfc: &mut Bf
         lay_caption(c, &mut cy, &mut frag, &mut abs);
     }
     frag.rect.size.height = cy;
-    let unresolved = if ws.is_positioned() { block::resolve_absolutes(ctx, &mut frag, abs) } else { abs };
+    let unresolved = if ws.is_positioned() {
+        block::resolve_absolutes(ctx, &mut frag, abs)
+    } else {
+        abs
+    };
     block::finish_fragment(ctx, wrapper, &mut frag);
-    BlockResult { fragment: frag, margin: Edges { top: mt, right: mr, bottom: mb, left: ml }, bottom_margins: MarginSet::of(mb), abs: unresolved, first_baseline: baseline, last_baseline: baseline }
+    BlockResult {
+        fragment: frag,
+        margin: Edges {
+            top: mt,
+            right: mr,
+            bottom: mb,
+            left: ml,
+        },
+        bottom_margins: MarginSet::of(mb),
+        abs: unresolved,
+        first_baseline: baseline,
+        last_baseline: baseline,
+    }
 }
 
 fn r_margin_top(ctx: &LayoutContext, c: BoxId, cbw: Au) -> Au {

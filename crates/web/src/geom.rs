@@ -20,7 +20,11 @@ impl Au {
     /// when parsing literal values; layout arithmetic stays in `Au`.
     pub fn from_f64_px(px: f64) -> Au {
         let v = px * Self::PER_PX as f64;
-        let r = if v >= 0.0 { (v + 0.5).floor() } else { (v - 0.5).ceil() };
+        let r = if v >= 0.0 {
+            (v + 0.5).floor()
+        } else {
+            (v - 0.5).ceil()
+        };
         Au(r.clamp(Self::MIN.0 as f64, Self::MAX.0 as f64) as i32)
     }
     /// Nearest whole pixel, half away from zero.
@@ -42,10 +46,18 @@ impl Au {
         self.0 as f64 / Self::PER_PX as f64
     }
     pub fn min(self, o: Au) -> Au {
-        if self <= o { self } else { o }
+        if self <= o {
+            self
+        } else {
+            o
+        }
     }
     pub fn max(self, o: Au) -> Au {
-        if self >= o { self } else { o }
+        if self >= o {
+            self
+        } else {
+            o
+        }
     }
     pub fn clamp(self, lo: Au, hi: Au) -> Au {
         self.max(lo).min(hi)
@@ -58,7 +70,11 @@ impl Au {
         debug_assert!(den != 0);
         let v = self.0 as i64 * num as i64;
         let d = den as i64;
-        let r = if (v >= 0) == (d > 0) { (v + d.abs() / 2) / d } else { (v - d.abs() / 2) / d };
+        let r = if (v >= 0) == (d > 0) {
+            (v + d.abs() / 2) / d
+        } else {
+            (v - d.abs() / 2) / d
+        };
         Au(r.clamp(Self::MIN.0 as i64, Self::MAX.0 as i64) as i32)
     }
     /// A percentage (in 1/100 of a percent, so 50% is 5000) of a base length,
@@ -135,7 +151,10 @@ pub struct Rect {
 
 impl Rect {
     pub fn new(x: Au, y: Au, width: Au, height: Au) -> Rect {
-        Rect { origin: Point { x, y }, size: Size { width, height } }
+        Rect {
+            origin: Point { x, y },
+            size: Size { width, height },
+        }
     }
     pub fn right(&self) -> Au {
         self.origin.x + self.size.width
@@ -144,7 +163,13 @@ impl Rect {
         self.origin.y + self.size.height
     }
     pub fn translate(self, dx: Au, dy: Au) -> Rect {
-        Rect { origin: Point { x: self.origin.x + dx, y: self.origin.y + dy }, size: self.size }
+        Rect {
+            origin: Point {
+                x: self.origin.x + dx,
+                y: self.origin.y + dy,
+            },
+            size: self.size,
+        }
     }
     pub fn contains(&self, x: Au, y: Au) -> bool {
         x >= self.origin.x && x < self.right() && y >= self.origin.y && y < self.bottom()
@@ -154,7 +179,11 @@ impl Rect {
         let y0 = self.origin.y.max(o.origin.y);
         let x1 = self.right().min(o.right());
         let y1 = self.bottom().min(o.bottom());
-        if x1 > x0 && y1 > y0 { Some(Rect::new(x0, y0, x1 - x0, y1 - y0)) } else { None }
+        if x1 > x0 && y1 > y0 {
+            Some(Rect::new(x0, y0, x1 - x0, y1 - y0))
+        } else {
+            None
+        }
     }
     pub fn union(self, o: Rect) -> Rect {
         let x0 = self.origin.x.min(o.origin.x);
@@ -170,7 +199,12 @@ impl Rect {
         let y0 = self.origin.y.to_px_round();
         let x1 = self.right().to_px_round();
         let y1 = self.bottom().to_px_round();
-        cw_scene::Rect { x: x0, y: y0, width: (x1 - x0).max(0) as u32, height: (y1 - y0).max(0) as u32 }
+        cw_scene::Rect {
+            x: x0,
+            y: y0,
+            width: (x1 - x0).max(0) as u32,
+            height: (y1 - y0).max(0) as u32,
+        }
     }
 }
 
@@ -184,9 +218,19 @@ pub struct Edges {
 }
 
 impl Edges {
-    pub const ZERO: Edges = Edges { top: Au::ZERO, right: Au::ZERO, bottom: Au::ZERO, left: Au::ZERO };
+    pub const ZERO: Edges = Edges {
+        top: Au::ZERO,
+        right: Au::ZERO,
+        bottom: Au::ZERO,
+        left: Au::ZERO,
+    };
     pub fn uniform(v: Au) -> Edges {
-        Edges { top: v, right: v, bottom: v, left: v }
+        Edges {
+            top: v,
+            right: v,
+            bottom: v,
+            left: v,
+        }
     }
     pub fn horizontal(&self) -> Au {
         self.left + self.right
@@ -195,14 +239,24 @@ impl Edges {
         self.top + self.bottom
     }
     pub fn inset(&self, r: Rect) -> Rect {
-        Rect::new(r.origin.x + self.left, r.origin.y + self.top, (r.size.width - self.horizontal()).max(Au::ZERO), (r.size.height - self.vertical()).max(Au::ZERO))
+        Rect::new(
+            r.origin.x + self.left,
+            r.origin.y + self.top,
+            (r.size.width - self.horizontal()).max(Au::ZERO),
+            (r.size.height - self.vertical()).max(Au::ZERO),
+        )
     }
 }
 
 impl Add for Edges {
     type Output = Edges;
     fn add(self, o: Edges) -> Edges {
-        Edges { top: self.top + o.top, right: self.right + o.right, bottom: self.bottom + o.bottom, left: self.left + o.left }
+        Edges {
+            top: self.top + o.top,
+            right: self.right + o.right,
+            bottom: self.bottom + o.bottom,
+            left: self.left + o.left,
+        }
     }
 }
 

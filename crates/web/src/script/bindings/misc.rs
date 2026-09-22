@@ -15,7 +15,11 @@ use crate::script::{FetchRequest, StorageArea};
 fn fetch(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let url = arg_str(vm, a, 0)?;
     let method = arg_str(vm, a, 1)?;
-    let method = if method.is_empty() { "GET".to_owned() } else { method.to_ascii_uppercase() };
+    let method = if method.is_empty() {
+        "GET".to_owned()
+    } else {
+        method.to_ascii_uppercase()
+    };
     let mut headers = Vec::new();
     for pair in array_values(vm, &a.arg(2))? {
         let items = array_values(vm, &pair)?;
@@ -34,13 +38,31 @@ fn fetch(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         v => Some(vm.to_string(&v)?.as_bytes().to_vec()),
     };
     let url = inner(vm).borrow().resolve_url(&url);
-    let r = inner(vm).borrow_mut().host_fetch(&FetchRequest { url, method, headers, body });
+    let r = inner(vm).borrow_mut().host_fetch(&FetchRequest {
+        url,
+        method,
+        headers,
+        body,
+    });
     match r {
         Ok(resp) => {
-            let hs: Vec<Value> = resp.headers.iter().map(|(k, v)| vm.arr(vec![string_val(k.to_ascii_lowercase()), Value::str(v)])).collect();
+            let hs: Vec<Value> = resp
+                .headers
+                .iter()
+                .map(|(k, v)| vm.arr(vec![string_val(k.to_ascii_lowercase()), Value::str(v)]))
+                .collect();
             let hv = vm.arr(hs);
             let body = vm.new_typed(TypedKind::Uint8, resp.body.clone(), None);
-            let o = cw_jsvm::builtins::new_obj_from(vm, vec![("status", Value::Num(resp.status as f64)), ("statusText", string_val(resp.status_text.clone())), ("url", string_val(resp.url.clone())), ("headers", hv), ("body", Value::Obj(body))]);
+            let o = cw_jsvm::builtins::new_obj_from(
+                vm,
+                vec![
+                    ("status", Value::Num(resp.status as f64)),
+                    ("statusText", string_val(resp.status_text.clone())),
+                    ("url", string_val(resp.url.clone())),
+                    ("headers", hv),
+                    ("body", Value::Obj(body)),
+                ],
+            );
             Ok(Value::Obj(o))
         }
         Err(_) => Ok(Value::Null),
@@ -69,7 +91,21 @@ fn area_of(o: &Obj) -> StorageArea {
 }
 
 fn storage_member(name: &str) -> bool {
-    matches!(name, "length" | "key" | "getItem" | "setItem" | "removeItem" | "clear" | "constructor" | "then" | "toString" | "valueOf" | "toJSON" | "hasOwnProperty") || name.starts_with("__")
+    matches!(
+        name,
+        "length"
+            | "key"
+            | "getItem"
+            | "setItem"
+            | "removeItem"
+            | "clear"
+            | "constructor"
+            | "then"
+            | "toString"
+            | "valueOf"
+            | "toJSON"
+            | "hasOwnProperty"
+    ) || name.starts_with("__")
 }
 
 fn storage_get(vm: &mut Vm, o: &Obj, k: &Key) -> JsResult<Option<Value>> {
@@ -101,24 +137,41 @@ fn storage_keys(vm: &mut Vm, o: &Obj) -> JsResult<Vec<Key>> {
     let keys = inner(vm).borrow_mut().host_storage_keys(area_of(o));
     Ok(keys.iter().map(|k| Key::str(k)).collect())
 }
-pub static STORAGE_HOOKS: HostHooks = HostHooks { class: "Storage", get: storage_get, set: storage_set, delete: storage_delete, keys: storage_keys };
+pub static STORAGE_HOOKS: HostHooks = HostHooks {
+    class: "Storage",
+    get: storage_get,
+    set: storage_set,
+    delete: storage_delete,
+    keys: storage_keys,
+};
 
 /// `W.storage(area)`: the `Storage` object (0 local, 1 session).
 fn storage(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let area = arg_num(vm, a, 0)? as u32;
     let proto = inner(vm).borrow().protos.get("Storage").cloned();
-    Ok(Value::Obj(vm.host_obj(proto, &STORAGE_HOOKS, vec![Value::Num(area as f64)])))
+    Ok(Value::Obj(vm.host_obj(
+        proto,
+        &STORAGE_HOOKS,
+        vec![Value::Num(area as f64)],
+    )))
 }
 
 /// `W.storageOp(area, op, key, value)`.
 fn storage_op(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
-    let area = if arg_num(vm, a, 0)? as u32 == 1 { StorageArea::Session } else { StorageArea::Local };
+    let area = if arg_num(vm, a, 0)? as u32 == 1 {
+        StorageArea::Session
+    } else {
+        StorageArea::Local
+    };
     let op = arg_str(vm, a, 1)?;
     let key = arg_str(vm, a, 2)?;
     let rc = inner(vm);
     let mut i = rc.borrow_mut();
     Ok(match op.as_str() {
-        "get" => i.host_storage_get(area, &key).map(string_val).unwrap_or(Value::Null),
+        "get" => i
+            .host_storage_get(area, &key)
+            .map(string_val)
+            .unwrap_or(Value::Null),
         "set" => {
             let v = arg_str(vm, a, 3)?;
             i.host_storage_set(area, &key, &v);
@@ -152,12 +205,28 @@ fn history_op(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     Ok(match op.as_str() {
         "length" => Value::Num(i.history.len() as f64),
         "index" => Value::Num(i.history_index as f64),
-        "state" => i.history.get(i.history_index).and_then(|e| e.state.clone()).map(string_val).unwrap_or(Value::Null),
+        "state" => i
+            .history
+            .get(i.history_index)
+            .and_then(|e| e.state.clone())
+            .map(string_val)
+            .unwrap_or(Value::Null),
         "push" | "replace" => {
-            let state = if a.arg(1).is_nullish() { None } else { Some(vm.to_string(&a.arg(1))?.to_string()) };
+            let state = if a.arg(1).is_nullish() {
+                None
+            } else {
+                Some(vm.to_string(&a.arg(1))?.to_string())
+            };
             let url = arg_str(vm, a, 2)?;
-            let url = if url.is_empty() { i.url.clone() } else { i.resolve_url(&url) };
-            let entry = HistoryEntry { url: url.clone(), state };
+            let url = if url.is_empty() {
+                i.url.clone()
+            } else {
+                i.resolve_url(&url)
+            };
+            let entry = HistoryEntry {
+                url: url.clone(),
+                state,
+            };
             if op == "push" {
                 let idx = i.history_index + 1;
                 i.history.truncate(idx);
@@ -181,7 +250,10 @@ fn history_op(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
             let state = i.history[target as usize].state.clone();
             set_url(&mut i, &url);
             drop(i);
-            vm.arr(vec![string_val(url), state.map(string_val).unwrap_or(Value::Null)])
+            vm.arr(vec![
+                string_val(url),
+                state.map(string_val).unwrap_or(Value::Null),
+            ])
         }
         "setUrl" => {
             let url = arg_str(vm, a, 1)?;
@@ -196,7 +268,10 @@ fn history_op(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
 fn set_url(i: &mut crate::script::inner::Inner, url: &str) {
     i.url = url.to_owned();
     i.doc.url = url.to_owned();
-    let target = url.split_once('#').map(|(_, h)| h.to_owned()).filter(|h| !h.is_empty());
+    let target = url
+        .split_once('#')
+        .map(|(_, h)| h.to_owned())
+        .filter(|h| !h.is_empty());
     if target != i.target_id {
         i.target_id = target;
         if let Some(root) = i.doc.document_element() {
@@ -292,14 +367,20 @@ fn url_info(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
 
 /// Decodes UTF-8 bytes (a `Uint8Array`) to a string, lossily.
 fn utf8_decode(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
-    let Value::Obj(o) = a.arg(0) else { return Ok(Value::str("")) };
+    let Value::Obj(o) = a.arg(0) else {
+        return Ok(Value::str(""));
+    };
     let bytes = vm.typed_bytes(&o).unwrap_or_default();
     Ok(string_val(String::from_utf8_lossy(&bytes).into_owned()))
 }
 
 fn utf8_encode(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let s = arg_str(vm, a, 0)?;
-    Ok(Value::Obj(vm.new_typed(TypedKind::Uint8, s.into_bytes(), None)))
+    Ok(Value::Obj(vm.new_typed(
+        TypedKind::Uint8,
+        s.into_bytes(),
+        None,
+    )))
 }
 
 fn set_referrer(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {

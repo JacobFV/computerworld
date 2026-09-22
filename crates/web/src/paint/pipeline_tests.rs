@@ -18,7 +18,12 @@ use crate::{Strictness, Viewport};
 const YELLOW_1X1: &str = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR42mP4%2F58BAAT%2FAf9jgNErAAAAAElFTkSuQmCC";
 const RED_64: &str = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAFSDNYfAAAAaklEQVR42u3XQQrAIAwAQeP%2F%2F6wf8CJBJTK9lnQ7FpHGaOurt1I34nfH9pMMZAZ8BwMGEvvh%2BBsJCAgICLwIOA8EBAQEBAQEBAQEBK79H5RfIQAAAAAAAAAAAAAAAAAAAAAAAAAAAID%2FABMSqAfj%2FsLmvAAAAABJRU5ErkJggg%3D%3D";
 
-const VP: Viewport = Viewport { width: 400, height: 300, scale: 1, zoom: 100 };
+const VP: Viewport = Viewport {
+    width: 400,
+    height: 300,
+    scale: 1,
+    zoom: 100,
+};
 
 struct Page {
     doc: Document,
@@ -38,49 +43,103 @@ fn render_with(html: &str, scroll_y: Au, overlay_scrollbars: bool) -> Page {
 
 /// Renders `html` with the document scrolled to `scroll_y` and each named element
 /// scrolled to its own offset (measured from the start of its scrollable area).
-fn render_scrolled(html: &str, scroll_y: Au, inner: &[(&str, Au)], overlay_scrollbars: bool) -> Page {
+fn render_scrolled(
+    html: &str,
+    scroll_y: Au,
+    inner: &[(&str, Au)],
+    overlay_scrollbars: bool,
+) -> Page {
     let doc = crate::html::parse(html);
     let mut sheets = Vec::new();
     for n in doc.descendants(Document::ROOT) {
         if doc.is(n, "style") {
-            sheets.push(parse_stylesheet(&doc.text_content(n), Origin::Author, Strictness::Lenient).expect("stylesheet"));
+            sheets.push(
+                parse_stylesheet(&doc.text_content(n), Origin::Author, Strictness::Lenient)
+                    .expect("stylesheet"),
+            );
         }
     }
     let media = Media::with_size(VP.width as i32, VP.height as i32);
-    let styles = crate::style::cascade(&doc, &sheets, &media, &MatchContext::new(), Strictness::Lenient).expect("cascade");
+    let styles = crate::style::cascade(
+        &doc,
+        &sheets,
+        &media,
+        &MatchContext::new(),
+        Strictness::Lenient,
+    )
+    .expect("cascade");
     let images = ImageMap::from_document(&doc, &styles);
     let mut scroll = ScrollState::new();
     scroll.insert(Document::ROOT, (Au::ZERO, scroll_y));
     for (id, y) in inner {
-        scroll.insert(*doc.by_id(id).first().unwrap_or_else(|| panic!("no #{id}")), (Au::ZERO, *y));
+        scroll.insert(
+            *doc.by_id(id).first().unwrap_or_else(|| panic!("no #{id}")),
+            (Au::ZERO, *y),
+        );
     }
-    let mut cache = LayoutCache { overlay_scrollbars, ..LayoutCache::default() };
-    let tree = layout_with(&doc, &styles, VP, LayoutOptions { images: &images, scroll: &scroll }, &mut cache);
+    let mut cache = LayoutCache {
+        overlay_scrollbars,
+        ..LayoutCache::default()
+    };
+    let tree = layout_with(
+        &doc,
+        &styles,
+        VP,
+        LayoutOptions {
+            images: &images,
+            scroll: &scroll,
+        },
+        &mut cache,
+    );
     let mut ctx = PaintContext::new(&images);
-    if let FragmentKind::Box { scroll: Some(info), .. } = &tree.root.kind {
-        ctx.scroll = Point { x: info.scroll_x, y: info.scroll_y };
+    if let FragmentKind::Box {
+        scroll: Some(info), ..
+    } = &tree.root.kind
+    {
+        ctx.scroll = Point {
+            x: info.scroll_x,
+            y: info.scroll_y,
+        };
     }
     let scene = paint(&doc, &styles, &tree, VP, &ctx);
-    Page { doc, styles, tree, scene }
+    Page {
+        doc,
+        styles,
+        tree,
+        scene,
+    }
 }
 
 impl Page {
     fn by_id(&self, id: &str) -> NodeId {
-        *self.doc.by_id(id).first().unwrap_or_else(|| panic!("no #{id}"))
+        *self
+            .doc
+            .by_id(id)
+            .first()
+            .unwrap_or_else(|| panic!("no #{id}"))
     }
     /// The absolute border box of the first box fragment of `#id`, and the fragment.
     fn frag(&self, id: &str) -> Option<(Rect, &Fragment)> {
         let node = self.by_id(id);
         let mut found = None;
         self.tree.root.walk(Point::default(), &mut |f, abs| {
-            if found.is_none() && matches!(f.kind, FragmentKind::Box { .. } | FragmentKind::InlineBox { .. }) && f.source().is_some_and(|s| s.node() == node && !s.is_anonymous()) {
+            if found.is_none()
+                && matches!(
+                    f.kind,
+                    FragmentKind::Box { .. } | FragmentKind::InlineBox { .. }
+                )
+                && f.source()
+                    .is_some_and(|s| s.node() == node && !s.is_anonymous())
+            {
                 found = Some((abs, f));
             }
         });
         found
     }
     fn rect(&self, id: &str) -> Rect {
-        self.frag(id).unwrap_or_else(|| panic!("#{id} generates no box")).0
+        self.frag(id)
+            .unwrap_or_else(|| panic!("#{id} generates no box"))
+            .0
     }
     /// The colour of the topmost opaque rectangle covering the pixel: enough to read
     /// solid-colour test pages without rasterising.
@@ -88,7 +147,11 @@ impl Page {
         self.scene.nodes.iter().rev().find_map(|n| {
             let inside = n.bounds.contains(x, y) && n.clip.is_none_or(|c| c.contains(x, y));
             match &n.primitive {
-                Primitive::Box { fill, .. } | Primitive::RoundedBox { fill, .. } if inside && fill.3 == 255 => Some(*fill),
+                Primitive::Box { fill, .. } | Primitive::RoundedBox { fill, .. }
+                    if inside && fill.3 == 255 =>
+                {
+                    Some(*fill)
+                }
                 _ => None,
             }
         })
@@ -113,7 +176,9 @@ const GREEN: Color = Color(0, 128, 0, 255);
 
 #[test]
 fn img_with_a_data_url_takes_its_intrinsic_size_and_paints() {
-    let p = render(&format!("<!doctype html><body style='margin:0'><img id=i src=\"{RED_64}\" alt=''>"));
+    let p = render(&format!(
+        "<!doctype html><body style='margin:0'><img id=i src=\"{RED_64}\" alt=''>"
+    ));
     let r = p.rect("i");
     assert_eq!((r.size.width, r.size.height), (px(64), px(64)));
     assert_eq!(p.images().len(), 1, "the decoded image is painted");
@@ -123,7 +188,10 @@ fn img_with_a_data_url_takes_its_intrinsic_size_and_paints() {
 #[test]
 fn background_image_from_a_data_url_tiles_the_box() {
     let p = render(&format!("<!doctype html><style>body {{ margin: 0 }} #b {{ width: 20px; height: 10px; background: red url({YELLOW_1X1}) }}</style><div id=b></div>"));
-    assert!(!p.images().is_empty(), "the 1x1 tile is painted over the fallback colour");
+    assert!(
+        !p.images().is_empty(),
+        "the 1x1 tile is painted over the fallback colour"
+    );
     assert!(p.images().iter().all(|(_, w, h)| (*w, *h) == (1, 1)));
 }
 
@@ -136,27 +204,51 @@ fn object_that_cannot_load_renders_its_fallback_and_a_loaded_image_object_render
         "<!doctype html><body style='margin:0'><div id=host><object id=a data=\"data:application/x-unknown,ERROR\"><object id=b data=\"404.html\" type=\"text/html\"><object id=c data=\"{RED_64}\">ERROR</object></object></object></div>"
     ));
     let (rc, fc) = p.frag("c").expect("the innermost object has a box");
-    assert!(matches!(&fc.kind, FragmentKind::Box { replaced: Some(Replaced::Image { .. }), .. }), "the image object is replaced content");
+    assert!(
+        matches!(
+            &fc.kind,
+            FragmentKind::Box {
+                replaced: Some(Replaced::Image { .. }),
+                ..
+            }
+        ),
+        "the image object is replaced content"
+    );
     assert_eq!((rc.size.width, rc.size.height), (px(64), px(64)));
     let (_, fa) = p.frag("a").expect("the outer object has a box");
-    assert!(matches!(&fa.kind, FragmentKind::InlineBox { .. }), "a fallen-back object is an inline box, not a 300x150 placeholder: {:?}", fa.kind);
+    assert!(
+        matches!(&fa.kind, FragmentKind::InlineBox { .. }),
+        "a fallen-back object is an inline box, not a 300x150 placeholder: {:?}",
+        fa.kind
+    );
     let mut texts = Vec::new();
     p.tree.root.walk(Point::default(), &mut |f, _| {
         if let FragmentKind::Text { text, .. } = &f.kind {
             texts.push(text.clone());
         }
     });
-    assert!(texts.iter().all(|t| !t.contains("ERROR")), "the image's fallback text is not rendered: {texts:?}");
+    assert!(
+        texts.iter().all(|t| !t.contains("ERROR")),
+        "the image's fallback text is not rendered: {texts:?}"
+    );
     assert_eq!(p.images().len(), 1);
 }
 
 #[test]
 fn replaced_elements_clip_their_overflow_in_the_ua_sheet() {
-    let p = render(&format!("<!doctype html><img id=i src=\"{RED_64}\"><button id=b>Go</button>"));
+    let p = render(&format!(
+        "<!doctype html><img id=i src=\"{RED_64}\"><button id=b>Go</button>"
+    ));
     let s = p.styles.get(p.by_id("i")).unwrap();
-    assert_eq!((s.overflow_x, s.overflow_y), (crate::style::Overflow::Clip, crate::style::Overflow::Clip));
+    assert_eq!(
+        (s.overflow_x, s.overflow_y),
+        (crate::style::Overflow::Clip, crate::style::Overflow::Clip)
+    );
     // A `<button>`'s label wraps (`white-space: normal`); only input buttons are `pre`.
-    assert_eq!(p.styles.get(p.by_id("b")).unwrap().white_space, crate::style::WhiteSpace::Normal);
+    assert_eq!(
+        p.styles.get(p.by_id("b")).unwrap().white_space,
+        crate::style::WhiteSpace::Normal
+    );
 }
 
 #[test]
@@ -175,10 +267,16 @@ fn fragment_navigation_scrolls_a_viewport_whose_overflow_is_hidden() {
     let html = "<!doctype html><style>html { overflow: hidden } body { margin: 0 } #gap { height: 1000px } #top { height: 50px; background: green } #tail { height: 1000px }</style><div id=gap></div><div id=top></div><div id=tail></div>";
     let p = render_with(html, px(1000), false);
     match &p.tree.root.kind {
-        FragmentKind::Box { scroll: Some(info), .. } => assert_eq!(info.scroll_y, px(1000)),
+        FragmentKind::Box {
+            scroll: Some(info), ..
+        } => assert_eq!(info.scroll_y, px(1000)),
         k => panic!("root has no scroll info: {k:?}"),
     }
-    assert_eq!(p.top_fill(10, 10), Some(GREEN), "#top is at the top of the viewport, not scrolled past it");
+    assert_eq!(
+        p.top_fill(10, 10),
+        Some(GREEN),
+        "#top is at the top of the viewport, not scrolled past it"
+    );
     assert_eq!(p.top_fill(10, 49), Some(GREEN));
     assert_ne!(p.top_fill(10, 51), Some(GREEN));
 }
@@ -199,7 +297,11 @@ fn positioned_descendants_of_a_z_auto_box_interleave_with_the_parent_context_in_
     // the fixed box hangs off the viewport's fragment, after everything in `<html>`.
     let html = "<!doctype html><style>body { margin: 0 } #picture { position: relative; height: 100px } #bad { margin: 0; position: fixed; top: 10px; left: 10px; width: 50px; height: 20px; background: red } #eyes { position: absolute; top: 0; left: 0; width: 100px; height: 50px; background: green }</style><div id=picture><p id=bad></p><div id=eyes></div></div>";
     let p = render(html);
-    assert_eq!(p.top_fill(20, 20), Some(GREEN), "the later absolute box covers the earlier fixed one");
+    assert_eq!(
+        p.top_fill(20, 20),
+        Some(GREEN),
+        "the later absolute box covers the earlier fixed one"
+    );
     // And the other way round: a fixed box that follows paints on top.
     let html = "<!doctype html><style>body { margin: 0 } #picture { position: relative; height: 100px } #late { margin: 0; position: fixed; top: 10px; left: 10px; width: 50px; height: 20px; background: green } #eyes { position: absolute; top: 0; left: 0; width: 100px; height: 50px; background: red }</style><div id=picture><div id=eyes></div><p id=late></p></div>";
     assert_eq!(render(html).top_fill(20, 20), Some(GREEN));
@@ -224,7 +326,11 @@ fn margins_inside_an_empty_block_collapse_through_it_and_clearance_can_be_negati
     let html = "<!doctype html><style>body { margin: 0 } #forehead { height: 12px; margin-bottom: 48px } #nose { float: left; width: 50px; height: 48px; margin: -24px 0 -12px } #empty { margin: 75px } #empty div { margin: 0 24px -72px 48px } #smile { margin: 60px 36px; clear: both; height: 10px }</style><div id=forehead></div><div id=nose></div><div id=empty><div></div></div><div id=smile></div>";
     let p = render(html);
     assert_eq!(p.rect("nose").origin.y, px(12 + 48 - 24));
-    assert_eq!(p.rect("smile").origin.y, px(36 + 48 - 12), "the smile's border edge is at the float's bottom margin edge");
+    assert_eq!(
+        p.rect("smile").origin.y,
+        px(36 + 48 - 12),
+        "the smile's border edge is at the float's bottom margin edge"
+    );
 }
 
 #[test]
@@ -244,18 +350,32 @@ fn button_contents_are_centred_vertically_in_an_explicit_height() {
     let p = render(html);
     let (b, s) = (p.rect("b"), p.rect("s"));
     assert_eq!(b.size.height, px(60));
-    assert_eq!(s.origin.y - b.origin.y, px(20), "20px of content in 60px: 20px above it");
+    assert_eq!(
+        s.origin.y - b.origin.y,
+        px(20),
+        "20px of content in 60px: 20px above it"
+    );
     let (tall, t) = (p.rect("tall"), p.rect("t"));
-    assert_eq!(t.origin.y, tall.origin.y, "an auto-height button has nothing to distribute");
+    assert_eq!(
+        t.origin.y, tall.origin.y,
+        "an auto-height button has nothing to distribute"
+    );
 }
 
 #[test]
 fn overlay_scrollbars_take_no_space_from_a_scroll_container() {
     let html = "<!doctype html><style>body { margin: 0 } #s { width: 200px; height: 100px; overflow: auto } #c { height: 500px }</style><div id=s><div id=c></div></div>";
-    assert_eq!(render_with(html, Au::ZERO, false).rect("c").size.width, px(185), "a classic bar reserves 15px");
-    assert_eq!(render_with(html, Au::ZERO, true).rect("c").size.width, px(200), "an overlay bar reserves nothing");
+    assert_eq!(
+        render_with(html, Au::ZERO, false).rect("c").size.width,
+        px(185),
+        "a classic bar reserves 15px"
+    );
+    assert_eq!(
+        render_with(html, Au::ZERO, true).rect("c").size.width,
+        px(200),
+        "an overlay bar reserves nothing"
+    );
 }
-
 
 // --- The gaps the service-migration pages hit ---------------------------------
 
@@ -270,14 +390,21 @@ fn pixels(p: &Page) -> Pixels {
 impl Pixels {
     fn at(&self, x: u32, y: u32) -> Color {
         let i = ((y * self.0.width + x) * 4) as usize;
-        Color(self.0.rgba[i], self.0.rgba[i + 1], self.0.rgba[i + 2], self.0.rgba[i + 3])
+        Color(
+            self.0.rgba[i],
+            self.0.rgba[i + 1],
+            self.0.rgba[i + 2],
+            self.0.rgba[i + 3],
+        )
     }
 }
 
 /// The string a text node draws, whichever text primitive it is.
 fn label(n: &cw_scene::Node) -> Option<&str> {
     match &n.primitive {
-        Primitive::Text { text, .. } | Primitive::UiText { text, .. } | Primitive::UiTextBold { text, .. } => Some(text),
+        Primitive::Text { text, .. }
+        | Primitive::UiText { text, .. }
+        | Primitive::UiTextBold { text, .. } => Some(text),
         _ => None,
     }
 }
@@ -297,7 +424,11 @@ fn a_background_with_unequal_radii_and_a_border_with_a_transparent_side_still_pa
     assert_eq!(f.at(59, 0), WHITE, "the 8px top-right corner is cut away");
     // The bordered box starts at y = 40: left and bottom borders paint, the top does not.
     assert_eq!(f.at(1, 60), INK, "the left border");
-    assert_eq!(f.at(30, 84), INK, "the bottom border, under the 12px corners");
+    assert_eq!(
+        f.at(30, 84),
+        INK,
+        "the bottom border, under the 12px corners"
+    );
     assert_eq!(f.at(30, 41), WHITE, "the transparent top border");
 }
 
@@ -308,11 +439,21 @@ fn three_borders_on_a_zero_sized_box_paint_a_triangle() {
     // between two full-height borders is empty, so nothing was drawn at all.
     let html = "<!doctype html><body style='margin:0'><div id=t style='width:0;height:0;border-top:12px solid transparent;border-bottom:12px solid transparent;border-right:18px solid #080'></div>";
     let p = render(html);
-    assert_eq!(p.rect("t").size, crate::geom::Size { width: px(18), height: px(24) });
+    assert_eq!(
+        p.rect("t").size,
+        crate::geom::Size {
+            width: px(18),
+            height: px(24)
+        }
+    );
     let f = pixels(&p);
     assert_eq!(f.at(16, 12), INK, "the wide end of the triangle");
     assert_eq!(f.at(3, 12), INK, "and its tip, halfway up");
-    assert_eq!(f.at(3, 2), WHITE, "the corner above the hypotenuse is clear");
+    assert_eq!(
+        f.at(3, 2),
+        WHITE,
+        "the corner above the hypotenuse is clear"
+    );
     assert_eq!(f.at(3, 21), WHITE, "and the one below it");
 }
 
@@ -324,9 +465,25 @@ fn an_absolutely_positioned_flex_container_paints_once_and_keeps_its_text() {
     // element's own inset.
     let html = "<!doctype html><body style='margin:0'><div style='position:relative;width:60px;height:40px'><span id=x style='position:absolute;left:10px;top:5px;display:inline-flex;width:30px;height:30px;border-radius:50%;background:#080'>AB</span></div>";
     let p = render(html);
-    assert_eq!(p.rect("x").origin, Point { x: px(10), y: px(5) });
-    let fills: Vec<_> = p.scene.nodes.iter().filter(|n| matches!(&n.primitive, Primitive::RoundedBox { fill, .. } if *fill == INK)).map(|n| n.bounds).collect();
-    assert_eq!(fills.len(), 1, "one background, not one per copy of the box: {fills:?}");
+    assert_eq!(
+        p.rect("x").origin,
+        Point {
+            x: px(10),
+            y: px(5)
+        }
+    );
+    let fills: Vec<_> = p
+        .scene
+        .nodes
+        .iter()
+        .filter(|n| matches!(&n.primitive, Primitive::RoundedBox { fill, .. } if *fill == INK))
+        .map(|n| n.bounds)
+        .collect();
+    assert_eq!(
+        fills.len(),
+        1,
+        "one background, not one per copy of the box: {fills:?}"
+    );
     let texts: Vec<&str> = p.scene.nodes.iter().filter_map(label).collect();
     assert_eq!(texts, ["AB"], "the flex container's text survives");
 }
@@ -338,27 +495,64 @@ fn a_reversed_column_scrolls_to_the_content_above_it() {
     // offset clamped to zero and the content above could never be reached.
     let html = "<!doctype html><style>body { margin: 0 } #s { height: 100px; overflow-y: auto; display: flex; flex-direction: column-reverse } div div { flex: none; height: 60px }</style><div id=s><div id=a>a</div><div id=b>b</div><div id=c>c</div></div>";
     let info_of = |p: &Page| match &p.frag("s").unwrap().1.kind {
-        FragmentKind::Box { scroll: Some(i), .. } => *i,
+        FragmentKind::Box {
+            scroll: Some(i), ..
+        } => *i,
         _ => panic!("#s is not a scroll container"),
     };
     // Where the line of text `c` — the first item, at the top of the area — is drawn.
-    let c_at = |p: &Page| p.scene.nodes.iter().find(|n| label(n) == Some("c")).expect("the first item's text").bounds.y;
+    let c_at = |p: &Page| {
+        p.scene
+            .nodes
+            .iter()
+            .find(|n| label(n) == Some("c"))
+            .expect("the first item's text")
+            .bounds
+            .y
+    };
     let p = render(html);
     let info = info_of(&p);
-    assert_eq!(info.content_height, px(180), "three 60px items are the scrollable height");
-    assert_eq!(info.origin_y, px(-80), "80px of them sit above the padding box");
+    assert_eq!(
+        info.content_height,
+        px(180),
+        "three 60px items are the scrollable height"
+    );
+    assert_eq!(
+        info.origin_y,
+        px(-80),
+        "80px of them sit above the padding box"
+    );
     assert!(info.shows_y_bar, "and `auto` therefore shows a bar");
-    assert_eq!(p.rect("a").origin.y, px(40), "at rest the last item is at the bottom");
-    assert!(p.rect("c").origin.y < Au::ZERO, "and the first is out of sight above");
+    assert_eq!(
+        p.rect("a").origin.y,
+        px(40),
+        "at rest the last item is at the bottom"
+    );
+    assert!(
+        p.rect("c").origin.y < Au::ZERO,
+        "and the first is out of sight above"
+    );
     assert!(c_at(&p) < 0, "nothing of it is painted inside the box");
     // An offset is measured from the start of the scrollable area, as `scrollTop`
     // is, so 0 is the top of the first item — not the resting place, which is the
     // end. The whole 80px above the box is reachable.
     let top = render_scrolled(html, Au::ZERO, &[("s", Au::ZERO)], false);
-    assert_eq!(info_of(&top).scroll_y, px(-80), "the contents drop by the 80px above the box");
-    assert_eq!(c_at(&top), c_at(&p) + 80, "and the first item comes into view");
+    assert_eq!(
+        info_of(&top).scroll_y,
+        px(-80),
+        "the contents drop by the 80px above the box"
+    );
+    assert_eq!(
+        c_at(&top),
+        c_at(&p) + 80,
+        "and the first item comes into view"
+    );
     let end = render_scrolled(html, Au::ZERO, &[("s", px(80))], false);
-    assert_eq!(info_of(&end).scroll_y, Au::ZERO, "the maximum offset is where layout put them");
+    assert_eq!(
+        info_of(&end).scroll_y,
+        Au::ZERO,
+        "the maximum offset is where layout put them"
+    );
     assert_eq!(c_at(&end), c_at(&p));
 }
 
@@ -369,7 +563,12 @@ fn an_emoji_measures_as_wide_as_it_is_painted() {
     // A flex item sized from that measurement was too narrow and its text spilled.
     let html = "<!doctype html><body style='margin:0'><button id=b style='display:inline-flex;font:16px sans-serif'>\u{1f525} 2</button>";
     let p = render(html);
-    let text = p.scene.nodes.iter().find(|n| label(n) == Some("\u{1f525} 2")).expect("the label");
+    let text = p
+        .scene
+        .nodes
+        .iter()
+        .find(|n| label(n) == Some("\u{1f525} 2"))
+        .expect("the label");
     let button = p.rect("b");
     assert!(
         Au::from_px_i32(text.bounds.right()) <= button.right(),
@@ -387,8 +586,16 @@ fn an_inset_shadow_on_a_round_box_is_a_ring() {
     let f = pixels(&render(html));
     assert_eq!(f.at(20, 2), INK, "the ring at the top of the circle");
     assert_eq!(f.at(2, 20), INK, "and at its left");
-    assert_eq!(f.at(20, 20), Color(43, 45, 49, 255), "the fill inside the ring");
-    assert_eq!(f.at(2, 2), WHITE, "the corner outside the circle is untouched");
+    assert_eq!(
+        f.at(20, 20),
+        Color(43, 45, 49, 255),
+        "the fill inside the ring"
+    );
+    assert_eq!(
+        f.at(2, 2),
+        WHITE,
+        "the corner outside the circle is untouched"
+    );
 }
 
 #[test]
@@ -397,7 +604,11 @@ fn a_scaled_box_paints_scaled() {
     // a `transform` moved only its children and looked like it had done nothing.
     let html = "<!doctype html><body style='margin:0'><div style='width:100px;height:100px'><div id=a style='width:40px;height:40px;background:#080;transform:scale(2)'></div></div>";
     let f = pixels(&render(html));
-    assert_eq!(f.at(55, 55), INK, "40x40 scaled about its centre reaches 60,60");
+    assert_eq!(
+        f.at(55, 55),
+        INK,
+        "40x40 scaled about its centre reaches 60,60"
+    );
     assert_eq!(f.at(65, 65), WHITE, "but no further");
 }
 
@@ -409,13 +620,22 @@ fn a_scroll_container_paints_a_bar_in_the_gutter_it_reserved() {
     let track = p.scene.nodes.iter().find(|n| matches!(&n.primitive, Primitive::Box { fill, .. } if *fill == super::SCROLLBAR_TRACK)).expect("a track");
     assert_eq!(track.bounds, cw_scene::Rect::new(185, 0, 15, 100));
     let thumb = p.scene.nodes.iter().find(|n| matches!(&n.primitive, Primitive::RoundedBox { fill, .. } if *fill == super::SCROLLBAR_THUMB)).expect("a thumb");
-    assert_eq!((thumb.bounds.y, thumb.bounds.height), (0, 20), "at the top, a fifth of the track");
+    assert_eq!(
+        (thumb.bounds.y, thumb.bounds.height),
+        (0, 20),
+        "at the top, a fifth of the track"
+    );
     let scrolled = render_scrolled(html, Au::ZERO, &[("s", px(400))], false);
     let thumb = scrolled.scene.nodes.iter().find(|n| matches!(&n.primitive, Primitive::RoundedBox { fill, .. } if *fill == super::SCROLLBAR_THUMB)).expect("a thumb");
-    assert_eq!(thumb.bounds.y, 80, "scrolled to the end it sits at the bottom");
+    assert_eq!(
+        thumb.bounds.y, 80,
+        "scrolled to the end it sits at the bottom"
+    );
     // An overlay host reserves no gutter, so it draws no bar.
     let overlay = render_with(html, Au::ZERO, true);
-    assert!(!overlay.scene.nodes.iter().any(|n| matches!(&n.primitive, Primitive::Box { fill, .. } if *fill == super::SCROLLBAR_TRACK)));
+    assert!(!overlay.scene.nodes.iter().any(
+        |n| matches!(&n.primitive, Primitive::Box { fill, .. } if *fill == super::SCROLLBAR_TRACK)
+    ));
 }
 
 #[test]
@@ -423,11 +643,23 @@ fn a_fractional_font_size_does_not_weld_a_word_to_the_inline_box_after_it() {
     // A scene's text size is a whole number of pixels, so a 14.67px face was drawn
     // at 15px while layout placed the next box for 14.67px: over a few words the
     // extra third of a pixel per em ate the space and the page read "one twoSPAN".
-    for size in ["13px", "14px", "14.67px", "15px", "15.5px", "16px", "18.25px"] {
+    for size in [
+        "13px", "14px", "14.67px", "15px", "15.5px", "16px", "18.25px",
+    ] {
         let html = format!("<!doctype html><body style='margin:0;font-family:Arial'><p id=p style='font-size:{size}'>one two three four five <span id=s>SPAN</span></p>");
         let p = render(&html);
-        let run = p.scene.nodes.iter().find(|n| label(n).is_some_and(|t| t.starts_with("one two"))).expect("the prose");
-        let span = p.scene.nodes.iter().find(|n| label(n) == Some("SPAN")).expect("the span");
+        let run = p
+            .scene
+            .nodes
+            .iter()
+            .find(|n| label(n).is_some_and(|t| t.starts_with("one two")))
+            .expect("the prose");
+        let span = p
+            .scene
+            .nodes
+            .iter()
+            .find(|n| label(n) == Some("SPAN"))
+            .expect("the span");
         // The run's node is its advance plus two pixels of slack; the advance may
         // still round up by the one pixel `text_width` adds, but no more: the space
         // before the span has to survive.
@@ -450,11 +682,23 @@ fn an_element_with_an_id_is_addressable_in_the_semantic_tree() {
         .scene
         .nodes
         .iter()
-        .filter_map(|n| Some((n.interaction.as_deref()?, n.semantic.as_ref()?.role.as_str(), n.semantic.as_ref()?.label.as_str())))
+        .filter_map(|n| {
+            Some((
+                n.interaction.as_deref()?,
+                n.semantic.as_ref()?.role.as_str(),
+                n.semantic.as_ref()?.label.as_str(),
+            ))
+        })
         .collect();
     assert!(named.contains(&("sheet-A2", "cell", "412 ms")), "{named:?}");
-    assert!(named.contains(&("title", "generic", "Documents")), "{named:?}");
-    assert!(!named.iter().any(|(_, _, label)| *label == "plain"), "an id-less span stays out: {named:?}");
+    assert!(
+        named.contains(&("title", "generic", "Documents")),
+        "{named:?}"
+    );
+    assert!(
+        !named.iter().any(|(_, _, label)| *label == "plain"),
+        "an id-less span stays out: {named:?}"
+    );
 }
 
 // --- The second sweep ---------------------------------------------------------
@@ -467,7 +711,11 @@ fn a_box_sized_only_by_aspect_ratio_takes_its_height_in_the_flow() {
     let html = "<!doctype html><style>body{margin:0}.ar{width:160px;aspect-ratio:16/9;background:#080}.after{width:60px;height:20px;background:#008}</style><div class=ar id=a></div><div class=after id=b></div>";
     let p = render(html);
     assert_eq!(p.rect("a").size.height, px(90), "16:9 of 160px");
-    assert_eq!(p.rect("b").origin.y, px(90), "the next block starts below it");
+    assert_eq!(
+        p.rect("b").origin.y,
+        px(90),
+        "the next block starts below it"
+    );
     let f = pixels(&p);
     assert_eq!(f.at(80, 45), INK, "and nothing paints over it");
 }
@@ -478,11 +726,23 @@ fn a_placeholder_takes_the_colour_its_pseudo_element_was_given() {
     // an author's `input::placeholder { color: … }` could reach it.
     let html = "<!doctype html><style>input{width:200px;border:0;font:16px Arial}#g::placeholder{color:#080}</style><input id=g placeholder=hint><input id=d placeholder=hint>";
     let p = render(html);
-    let colours: Vec<Color> = p.scene.nodes.iter().filter(|n| label(n) == Some("hint")).filter_map(|n| match &n.primitive {
-        Primitive::Text { color, .. } | Primitive::UiText { color, .. } | Primitive::UiTextBold { color, .. } => Some(*color),
-        _ => None,
-    }).collect();
-    assert_eq!(colours, [INK, Color(117, 117, 117, 255)], "the styled one, then the UA grey");
+    let colours: Vec<Color> = p
+        .scene
+        .nodes
+        .iter()
+        .filter(|n| label(n) == Some("hint"))
+        .filter_map(|n| match &n.primitive {
+            Primitive::Text { color, .. }
+            | Primitive::UiText { color, .. }
+            | Primitive::UiTextBold { color, .. } => Some(*color),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        colours,
+        [INK, Color(117, 117, 117, 255)],
+        "the styled one, then the UA grey"
+    );
 }
 
 #[test]
@@ -494,7 +754,11 @@ fn an_inset_shadow_with_an_offset_is_a_band_not_a_hairline() {
     let f = pixels(&p);
     assert_eq!(f.at(80, 2), INK, "the band starts at the top of the box");
     assert_eq!(f.at(80, 38), INK, "and runs the whole 40px");
-    assert_eq!(f.at(80, 50), Color(238, 238, 238, 255), "below it the box shows through");
+    assert_eq!(
+        f.at(80, 50),
+        Color(238, 238, 238, 255),
+        "below it the box shows through"
+    );
 }
 
 #[test]
@@ -503,9 +767,16 @@ fn a_dotted_border_follows_the_corner_radius() {
     // painted as a dotted square.
     let html = "<!doctype html><style>body{margin:0}span{display:block;width:34px;height:34px;border-radius:50%;border:5px dotted #080}</style><span id=s></span>";
     let f = pixels(&render(html));
-    assert_eq!(f.at(2, 2), WHITE, "the corner of the border box stays clear");
+    assert_eq!(
+        f.at(2, 2),
+        WHITE,
+        "the corner of the border box stays clear"
+    );
     assert_eq!(f.at(41, 41), WHITE);
-    assert!((0..44).any(|y| f.at(22, y) == INK), "and the ring passes through the top of the circle");
+    assert!(
+        (0..44).any(|y| f.at(22, y) == INK),
+        "and the ring passes through the top of the circle"
+    );
 }
 
 #[test]
@@ -519,7 +790,10 @@ fn overflow_wrap_does_not_disable_the_ellipsis() {
     let lines: Vec<&str> = p.scene.nodes.iter().filter_map(label).collect();
     assert_eq!(lines.len(), 2, "one line each: {lines:?}");
     assert_eq!(lines[0], lines[1], "and `overflow-wrap` changed nothing");
-    assert!(lines[0].ends_with('\u{2026}'), "both end in an ellipsis: {lines:?}");
+    assert!(
+        lines[0].ends_with('\u{2026}'),
+        "both end in an ellipsis: {lines:?}"
+    );
 }
 
 #[test]
@@ -531,9 +805,21 @@ fn scrollbar_width_none_takes_no_gutter_and_paints_no_bar() {
         let painted = p.scene.nodes.iter().any(|n| matches!(&n.primitive, Primitive::Box { fill, .. } if *fill == super::SCROLLBAR_TRACK));
         (width, painted)
     };
-    assert_eq!(bar(""), (px(185), true), "a desktop bar takes 15px and is drawn");
-    assert_eq!(bar("scrollbar-width:none"), (px(200), false), "`none` takes nothing and draws nothing");
-    assert_eq!(bar("scrollbar-width:thin"), (px(200) - Au(crate::layout::scroll::BAR.0 / 2), true), "`thin` takes half");
+    assert_eq!(
+        bar(""),
+        (px(185), true),
+        "a desktop bar takes 15px and is drawn"
+    );
+    assert_eq!(
+        bar("scrollbar-width:none"),
+        (px(200), false),
+        "`none` takes nothing and draws nothing"
+    );
+    assert_eq!(
+        bar("scrollbar-width:thin"),
+        (px(200) - Au(crate::layout::scroll::BAR.0 / 2), true),
+        "`thin` takes half"
+    );
 }
 
 #[test]
@@ -543,9 +829,18 @@ fn shadows_paint_behind_what_they_belong_to() {
     // hidden by its glyphs, and an offset box shadow by its own background.
     let html = "<!doctype html><style>body{margin:0;background:#fff;font:48px Arial}p{margin:0;color:#000;text-shadow:0 0 0 #d00}</style><p id=p>Ag</p>";
     let f = pixels(&render(html));
-    assert!(!(0..60).flat_map(|y| (0..80).map(move |x| (x, y))).any(|(x, y)| f.at(x, y) == Color(221, 0, 0, 255)), "no pixel of the shadow shows");
+    assert!(
+        !(0..60)
+            .flat_map(|y| (0..80).map(move |x| (x, y)))
+            .any(|(x, y)| f.at(x, y) == Color(221, 0, 0, 255)),
+        "no pixel of the shadow shows"
+    );
     let html = "<!doctype html><style>body{margin:0}div{width:100px;height:60px;background:#eee;box-shadow:20px 20px 0 #080}</style><div id=d></div>";
     let f = pixels(&render(html));
-    assert_eq!(f.at(60, 40), Color(238, 238, 238, 255), "the box covers the shadow under it");
+    assert_eq!(
+        f.at(60, 40),
+        Color(238, 238, 238, 255),
+        "the box covers the shadow under it"
+    );
     assert_eq!(f.at(110, 70), INK, "which still shows past its corner");
 }

@@ -1040,10 +1040,31 @@ pub fn install(vm: &mut Vm) {
     // Array.prototype[Symbol.unscopables]: a null-prototype object naming the
     // methods a `with (array)` must not see.
     let unscopables = vm.obj_with(None, Kind::Ordinary);
-    for name in ["at", "copyWithin", "entries", "fill", "find", "findIndex", "findLast", "findLastIndex", "flat", "flatMap", "includes", "keys", "toReversed", "toSorted", "toSpliced", "values"] {
+    for name in [
+        "at",
+        "copyWithin",
+        "entries",
+        "fill",
+        "find",
+        "findIndex",
+        "findLast",
+        "findLastIndex",
+        "flat",
+        "flatMap",
+        "includes",
+        "keys",
+        "toReversed",
+        "toSorted",
+        "toSpliced",
+        "values",
+    ] {
         unscopables.set_prop(name, Value::Bool(true), ALL);
     }
-    proto.set_sym(&vm.syms.unscopables.clone(), Value::Obj(unscopables), CONFIGURABLE);
+    proto.set_sym(
+        &vm.syms.unscopables.clone(),
+        Value::Obj(unscopables),
+        CONFIGURABLE,
+    );
     vm.method(&ctor, "from", 1, from);
     vm.method(&ctor, "of", 0, of);
     let sp = vm.native_fn("get [Symbol.species]", 0, species_getter);

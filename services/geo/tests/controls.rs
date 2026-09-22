@@ -154,7 +154,11 @@ fn looks_pressable_but_is_not(html: &str) -> (Vec<String>, usize) {
         if !doc.is_element(node) {
             continue;
         }
-        let classes: Vec<&str> = doc.attr(node, "class").unwrap_or_default().split_whitespace().collect();
+        let classes: Vec<&str> = doc
+            .attr(node, "class")
+            .unwrap_or_default()
+            .split_whitespace()
+            .collect();
         if classes.contains(&"off") {
             continue;
         }
@@ -162,7 +166,11 @@ fn looks_pressable_but_is_not(html: &str) -> (Vec<String>, usize) {
             continue;
         };
         seen += 1;
-        if is_interactive(&doc, node) || doc.ancestors(node).any(|a| doc.is_element(a) && is_interactive(&doc, a)) {
+        if is_interactive(&doc, node)
+            || doc
+                .ancestors(node)
+                .any(|a| doc.is_element(a) && is_interactive(&doc, a))
+        {
             continue;
         }
         out.push(format!(
@@ -176,7 +184,11 @@ fn looks_pressable_but_is_not(html: &str) -> (Vec<String>, usize) {
 fn render(raw: &str, host: &str, actor: &str, path: &str) -> String {
     let mut state = load(raw);
     let r = GeoService
-        .handle(&mut state, &ctx(actor), &HttpRequest::get(format!("http://{host}{path}")))
+        .handle(
+            &mut state,
+            &ctx(actor),
+            &HttpRequest::get(format!("http://{host}{path}")),
+        )
         .unwrap();
     assert_eq!(r.status, 200, "{path}");
     String::from_utf8(r.body).unwrap()
@@ -185,20 +197,59 @@ fn render(raw: &str, host: &str, actor: &str, path: &str) -> String {
 #[test]
 fn nothing_that_is_drawn_as_pressable_is_inert() {
     let pages = [
-        (GOOGLE_MAPS, "maps.google.com", "alice", ["/", "/maps/saved", "/maps/notes", "/search?q=cafe",
-            "/maps/place/harborline-coffee", "/maps/place/harborline-coffee?zoom=0",
-            "/maps/dir?from=northstar-hq&to=devcon-center&mode=driving"].as_slice()),
-        (OSM, "openstreetmap.org", "bob", ["/", "/maps/saved", "/maps/notes", "/search?q=market",
-            "/maps/place/bayfront-depot", "/maps/place/bayfront-depot?zoom=6",
-            "/maps/dir?from=northstar-hq&to=devcon-center&mode=cycling"].as_slice()),
-        (WEATHER, "weather.com", "alice", ["/", "/weather/today/l/seattle", "/weather/tenday/l/seattle",
-            "/search?q=seattle", "/maps/saved", "/maps/place/northstar-hq"].as_slice()),
+        (
+            GOOGLE_MAPS,
+            "maps.google.com",
+            "alice",
+            [
+                "/",
+                "/maps/saved",
+                "/maps/notes",
+                "/search?q=cafe",
+                "/maps/place/harborline-coffee",
+                "/maps/place/harborline-coffee?zoom=0",
+                "/maps/dir?from=northstar-hq&to=devcon-center&mode=driving",
+            ]
+            .as_slice(),
+        ),
+        (
+            OSM,
+            "openstreetmap.org",
+            "bob",
+            [
+                "/",
+                "/maps/saved",
+                "/maps/notes",
+                "/search?q=market",
+                "/maps/place/bayfront-depot",
+                "/maps/place/bayfront-depot?zoom=6",
+                "/maps/dir?from=northstar-hq&to=devcon-center&mode=cycling",
+            ]
+            .as_slice(),
+        ),
+        (
+            WEATHER,
+            "weather.com",
+            "alice",
+            [
+                "/",
+                "/weather/today/l/seattle",
+                "/weather/tenday/l/seattle",
+                "/search?q=seattle",
+                "/maps/saved",
+                "/maps/place/northstar-hq",
+            ]
+            .as_slice(),
+        ),
     ];
     let mut out = String::new();
     for (raw, host, actor, paths) in pages {
         for path in paths {
             let (faults, seen) = looks_pressable_but_is_not(&render(raw, host, actor, path));
-            assert!(seen >= 3, "{host}{path} wears none of the pressable classes; the check is vacuous");
+            assert!(
+                seen >= 3,
+                "{host}{path} wears none of the pressable classes; the check is vacuous"
+            );
             for fault in faults {
                 out.push_str(&format!("{host}{path}: {fault}\n"));
             }

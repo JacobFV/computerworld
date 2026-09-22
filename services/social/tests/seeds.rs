@@ -2,8 +2,8 @@
 //! initialises, or a `search_entries` URL that does not resolve to a page, is a broken site — the
 //! search engines index those URLs and an agent will click them.
 use cw_protocol::HttpRequest;
-use cw_service_common::html::validate_strict;
 use cw_sdk::{Service, ServiceContext};
+use cw_service_common::html::validate_strict;
 use cw_service_social::{SocialService, SocialState};
 use serde_json::Value;
 const ACTORS: [&str; 4] = ["alice", "bob", "carol", "admin"];
@@ -169,22 +169,46 @@ fn the_seeded_world_survives_being_used() {
 /// validator for every actor: unique ids and only HTML and CSS the engine renders.
 #[test]
 fn every_page_of_every_seeded_site_is_strictly_valid_html() {
-    let skins = ["x", "bsky", "mastodon", "facebook", "instagram", "linkedin", "pinterest"];
+    let skins = [
+        "x",
+        "bsky",
+        "mastodon",
+        "facebook",
+        "instagram",
+        "linkedin",
+        "pinterest",
+    ];
     for (name, skin) in SITES.iter().zip(skins) {
         let (file, state) = load(name);
         let s: SocialState = serde_json::from_value(state.clone()).unwrap();
         assert_eq!(cw_service_social::skin_of(&s), skin, "{name}");
         let domain = file["domains"][0].as_str().unwrap();
-        let mut paths: Vec<String> = ["/", "/explore", "/local", "/search", "/search?q=a", "/messages", "/messaging"]
-            .iter()
-            .map(|p| (*p).to_owned())
-            .collect();
+        let mut paths: Vec<String> = [
+            "/",
+            "/explore",
+            "/local",
+            "/search",
+            "/search?q=a",
+            "/messages",
+            "/messaging",
+        ]
+        .iter()
+        .map(|p| (*p).to_owned())
+        .collect();
         paths.extend(s.accounts.keys().map(|h| format!("/{h}")));
-        paths.extend(s.posts.values().map(|p| format!("/{}/status/{}", p.author, p.id)));
+        paths.extend(
+            s.posts
+                .values()
+                .map(|p| format!("/{}/status/{}", p.author, p.id)),
+        );
         for actor in ACTORS {
             let mut state = state.clone();
             let mut paths = paths.clone();
-            let root = if s.professional() { "messaging" } else { "messages" };
+            let root = if s.professional() {
+                "messaging"
+            } else {
+                "messages"
+            };
             paths.extend(s.inbox(actor).iter().map(|c| format!("/{root}/{}", c.id)));
             for path in &paths {
                 let url = format!("http://{domain}{path}");

@@ -85,7 +85,12 @@ pub fn font_metrics(font: &Font) -> FontMetrics {
     } else {
         round_px(size, gap, upem)
     };
-    FontMetrics { ascent, descent, line_gap, x_height: size.scale(xh, upem) }
+    FontMetrics {
+        ascent,
+        descent,
+        line_gap,
+        x_height: size.scale(xh, upem),
+    }
 }
 
 /// The leading above the baseline of an inline box whose line height is `lh` and
@@ -137,8 +142,17 @@ fn fallback_advance(typeface: Typeface, style: cw_scene::Style, c: char) -> i64 
         }
         let mut buf = [0u8; 4];
         // `text_width` rounds up to whole pixels; at REF_SIZE that is a part in 4096.
-        let v = i64::from(metrics::text_width(typeface, style, c.encode_utf8(&mut buf), REF_SIZE)) * 64;
-        let v = if v == 0 { i64::from(REF_SIZE) * 64 * 3 / 5 } else { v };
+        let v = i64::from(metrics::text_width(
+            typeface,
+            style,
+            c.encode_utf8(&mut buf),
+            REF_SIZE,
+        )) * 64;
+        let v = if v == 0 {
+            i64::from(REF_SIZE) * 64 * 3 / 5
+        } else {
+            v
+        };
         cache.borrow_mut().insert((typeface, style, c), v);
         v
     })
@@ -151,7 +165,8 @@ fn fallback_advance(typeface: Typeface, style: cw_scene::Style, c: char) -> i64 
 /// DejaVu faces, the monospace ones). It applies whatever `letter-spacing` is: see
 /// `kern_spaced`.
 pub fn kern(font: &Font, left: char, right: char) -> Au {
-    let Some((units, upem)) = metrics::kern_units(font.typeface, font.scene_style(), left, right) else {
+    let Some((units, upem)) = metrics::kern_units(font.typeface, font.scene_style(), left, right)
+    else {
         return Au::ZERO;
     };
     let den = i64::from(upem);
@@ -266,7 +281,12 @@ pub struct CollapseState {
 }
 
 /// CSS Text §4.1 white-space processing for one text node.
-pub fn process(text: &str, ws: WhiteSpace, tt: TextTransform, state: &mut CollapseState) -> Vec<PChar> {
+pub fn process(
+    text: &str,
+    ws: WhiteSpace,
+    tt: TextTransform,
+    state: &mut CollapseState,
+) -> Vec<PChar> {
     let chars = transform(text, tt);
     let mut out: Vec<PChar> = Vec::with_capacity(chars.len());
     let collapses = ws.collapses();
@@ -290,7 +310,11 @@ pub fn process(text: &str, ws: WhiteSpace, tt: TextTransform, state: &mut Collap
                     while out.last().is_some_and(|p| p.kind == CharKind::Space) {
                         out.pop();
                     }
-                    out.push(PChar { ch: '\n', kind: CharKind::Newline, src });
+                    out.push(PChar {
+                        ch: '\n',
+                        kind: CharKind::Newline,
+                        src,
+                    });
                     state.after_space = false;
                     state.at_start = true;
                     i += 1;
@@ -301,7 +325,11 @@ pub fn process(text: &str, ws: WhiteSpace, tt: TextTransform, state: &mut Collap
                 }
                 // Segment break becomes a space (then collapses).
                 if !state.after_space {
-                    out.push(PChar { ch: ' ', kind: CharKind::Space, src });
+                    out.push(PChar {
+                        ch: ' ',
+                        kind: CharKind::Space,
+                        src,
+                    });
                     state.after_space = true;
                 }
                 i += 1;
@@ -309,7 +337,11 @@ pub fn process(text: &str, ws: WhiteSpace, tt: TextTransform, state: &mut Collap
             }
             if is_space {
                 if !state.after_space {
-                    out.push(PChar { ch: ' ', kind: CharKind::Space, src });
+                    out.push(PChar {
+                        ch: ' ',
+                        kind: CharKind::Space,
+                        src,
+                    });
                     state.after_space = true;
                 }
                 i += 1;
@@ -337,7 +369,11 @@ pub fn process(text: &str, ws: WhiteSpace, tt: TextTransform, state: &mut Collap
                     _ => CharKind::Other,
                 }
             };
-            out.push(PChar { ch: if is_nl { '\n' } else { c }, kind, src });
+            out.push(PChar {
+                ch: if is_nl { '\n' } else { c },
+                kind,
+                src,
+            });
             state.after_space = false;
             state.at_start = false;
         }
@@ -349,7 +385,9 @@ pub fn process(text: &str, ws: WhiteSpace, tt: TextTransform, state: &mut Collap
 /// Whether the text is nothing but collapsible white space under `ws`.
 pub fn is_collapsible_whitespace(text: &str, ws: WhiteSpace) -> bool {
     match ws {
-        WhiteSpace::Normal | WhiteSpace::NoWrap => text.chars().all(|c| matches!(c, ' ' | '\t' | '\n' | '\r')),
+        WhiteSpace::Normal | WhiteSpace::NoWrap => {
+            text.chars().all(|c| matches!(c, ' ' | '\t' | '\n' | '\r'))
+        }
         WhiteSpace::PreLine => text.chars().all(|c| matches!(c, ' ' | '\t')),
         _ => text.is_empty(),
     }
@@ -378,7 +416,9 @@ pub fn break_between(prev: char, next: char, wb: WordBreak) -> bool {
         WordBreak::BreakAll => !next.is_ascii_punctuation() || is_hyphen(prev),
         WordBreak::KeepAll => is_hyphen(prev) && next.is_alphanumeric(),
         WordBreak::Normal | WordBreak::BreakWord => {
-            (is_hyphen(prev) && next.is_alphanumeric() && !is_hyphen(next)) || is_cjk(prev) || is_cjk(next)
+            (is_hyphen(prev) && next.is_alphanumeric() && !is_hyphen(next))
+                || is_cjk(prev)
+                || is_cjk(next)
         }
     }
 }
@@ -408,7 +448,14 @@ pub fn counter_text(n: i32, style: crate::style::ListStyleType) -> String {
             while v > 0 {
                 let r = (v - 1) % 26;
                 let c = (b'a' + r as u8) as char;
-                s.insert(0, if style == L::UpperAlpha { c.to_ascii_uppercase() } else { c });
+                s.insert(
+                    0,
+                    if style == L::UpperAlpha {
+                        c.to_ascii_uppercase()
+                    } else {
+                        c
+                    },
+                );
                 v = (v - 1) / 26;
             }
             s
@@ -418,7 +465,19 @@ pub fn counter_text(n: i32, style: crate::style::ListStyleType) -> String {
                 return n.to_string();
             }
             const T: [(i32, &str); 13] = [
-                (1000, "m"), (900, "cm"), (500, "d"), (400, "cd"), (100, "c"), (90, "xc"), (50, "l"), (40, "xl"), (10, "x"), (9, "ix"), (5, "v"), (4, "iv"), (1, "i"),
+                (1000, "m"),
+                (900, "cm"),
+                (500, "d"),
+                (400, "cd"),
+                (100, "c"),
+                (90, "xc"),
+                (50, "l"),
+                (40, "xl"),
+                (10, "x"),
+                (9, "ix"),
+                (5, "v"),
+                (4, "iv"),
+                (1, "i"),
             ];
             let mut v = n;
             let mut s = String::new();
@@ -428,7 +487,11 @@ pub fn counter_text(n: i32, style: crate::style::ListStyleType) -> String {
                     v -= val;
                 }
             }
-            if style == L::UpperRoman { s.to_ascii_uppercase() } else { s }
+            if style == L::UpperRoman {
+                s.to_ascii_uppercase()
+            } else {
+                s
+            }
         }
     }
 }
@@ -450,13 +513,26 @@ mod tests {
 
     #[test]
     fn collapsing_and_preserving() {
-        let mut st = CollapseState { after_space: false, at_start: true };
-        let p = process("  a \n\t b  ", WhiteSpace::Normal, TextTransform::None, &mut st);
+        let mut st = CollapseState {
+            after_space: false,
+            at_start: true,
+        };
+        let p = process(
+            "  a \n\t b  ",
+            WhiteSpace::Normal,
+            TextTransform::None,
+            &mut st,
+        );
         let s: String = p.iter().map(|c| c.ch).collect();
         assert_eq!(s, " a b ");
         assert!(st.after_space);
         let mut st = CollapseState::default();
-        let p = process("x  \n  y", WhiteSpace::PreLine, TextTransform::None, &mut st);
+        let p = process(
+            "x  \n  y",
+            WhiteSpace::PreLine,
+            TextTransform::None,
+            &mut st,
+        );
         let s: String = p.iter().map(|c| c.ch).collect();
         assert_eq!(s, "x\ny");
         let mut st = CollapseState::default();
@@ -501,9 +577,19 @@ mod tests {
         assert_eq!(m.ascent, Au::from_px_i32(15));
         assert_eq!(m.descent, Au::from_px_i32(4));
         assert_eq!(m.normal_line_height(), Au::from_px_i32(19));
-        assert_eq!(advance(&s.font, 'a'), Au(metrics::advance(Typeface::DejaVu, false, 'a', 16) as i32));
-        assert_eq!(kern(&s.font, 'T', 'a'), Au::ZERO, "DejaVu is laid out unkerned");
-        assert_eq!(measure(&s.font, "a b", Au(1), Au(2)), advance(&s.font, 'a') + advance(&s.font, ' ') + advance(&s.font, 'b') + Au(3) + Au(2));
+        assert_eq!(
+            advance(&s.font, 'a'),
+            Au(metrics::advance(Typeface::DejaVu, false, 'a', 16) as i32)
+        );
+        assert_eq!(
+            kern(&s.font, 'T', 'a'),
+            Au::ZERO,
+            "DejaVu is laid out unkerned"
+        );
+        assert_eq!(
+            measure(&s.font, "a b", Au(1), Au(2)),
+            advance(&s.font, 'a') + advance(&s.font, ' ') + advance(&s.font, 'b') + Au(3) + Au(2)
+        );
     }
     #[test]
     fn kerning_matches_chromium_and_letter_spacing_disables_it() {
@@ -513,21 +599,39 @@ mod tests {
         let sum = |font: &Font, t: &str| t.chars().fold(Au::ZERO, |w, c| w + advance(font, c));
         // Chromium: "Talk" in 13 px Liberation Sans is 23.118 px (24.559 unkerned).
         let talk = measure(&font, "Talk", Au::ZERO, Au::ZERO);
-        assert!((talk.0 - (23.118f64 * 64.0).round() as i32).abs() <= 1, "{talk:?}");
+        assert!(
+            (talk.0 - (23.118f64 * 64.0).round() as i32).abs() <= 1,
+            "{talk:?}"
+        );
         assert!((sum(&font, "Talk").0 - (24.559f64 * 64.0).round() as i32).abs() <= 1);
         assert_eq!(talk, sum(&font, "Talk") + kern(&font, 'T', 'a'));
         // The same quantisation as the scene metrics at a whole size.
-        assert_eq!(kern(&font, 'T', 'a').0 as i64, metrics::kern(Typeface::Arimo, false, 'T', 'a', 13));
+        assert_eq!(
+            kern(&font, 'T', 'a').0 as i64,
+            metrics::kern(Typeface::Arimo, false, 'T', 'a', 13)
+        );
         // A fractional size kerns at that size: -227 units at 12.5 px is -88.7/64 px.
         font.size = Au::from_f64_px(12.5);
         assert_eq!(kern(&font, 'T', 'a'), Au(-89));
         // letter-spacing adds to the kerned advance; it does not turn kerning off.
         font.size = Au::from_px_i32(13);
         let spaced = measure(&font, "Talk", Au(64), Au::ZERO);
-        assert_eq!(spaced, measure(&font, "Talk", Au::ZERO, Au::ZERO) + Au(64 * 4));
-        assert!(spaced < sum(&font, "Talk") + Au(64 * 4), "the T-a pair still kerns");
-        assert_eq!(kern_spaced(&font, Some('T'), 'a', Au(64)), kern(&font, 'T', 'a'));
-        assert_eq!(kern_spaced(&font, Some('T'), 'a', Au::ZERO), kern(&font, 'T', 'a'));
+        assert_eq!(
+            spaced,
+            measure(&font, "Talk", Au::ZERO, Au::ZERO) + Au(64 * 4)
+        );
+        assert!(
+            spaced < sum(&font, "Talk") + Au(64 * 4),
+            "the T-a pair still kerns"
+        );
+        assert_eq!(
+            kern_spaced(&font, Some('T'), 'a', Au(64)),
+            kern(&font, 'T', 'a')
+        );
+        assert_eq!(
+            kern_spaced(&font, Some('T'), 'a', Au::ZERO),
+            kern(&font, 'T', 'a')
+        );
         assert_eq!(kern_spaced(&font, None, 'a', Au::ZERO), Au::ZERO);
     }
 }

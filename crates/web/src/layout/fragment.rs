@@ -34,7 +34,11 @@ pub enum StyleSource {
 impl StyleSource {
     pub fn node(self) -> NodeId {
         match self {
-            StyleSource::Element(n) | StyleSource::Before(n) | StyleSource::After(n) | StyleSource::Marker(n) | StyleSource::Anonymous(n) => n,
+            StyleSource::Element(n)
+            | StyleSource::Before(n)
+            | StyleSource::After(n)
+            | StyleSource::Marker(n)
+            | StyleSource::Anonymous(n) => n,
         }
     }
     pub fn is_anonymous(self) -> bool {
@@ -180,7 +184,9 @@ impl Fragment {
     }
     pub fn source(&self) -> Option<StyleSource> {
         match &self.kind {
-            FragmentKind::Box { source, .. } | FragmentKind::InlineBox { source, .. } | FragmentKind::Text { source, .. } => Some(*source),
+            FragmentKind::Box { source, .. }
+            | FragmentKind::InlineBox { source, .. }
+            | FragmentKind::Text { source, .. } => Some(*source),
             FragmentKind::Line => None,
         }
     }
@@ -208,7 +214,13 @@ pub struct FragmentTree {
 impl FragmentTree {
     /// Every fragment whose absolute rect contains the point, innermost last.
     pub fn hit(&self, x: Au, y: Au) -> Vec<(&Fragment, Rect)> {
-        fn visit<'a>(f: &'a Fragment, origin: crate::geom::Point, x: Au, y: Au, out: &mut Vec<(&'a Fragment, Rect)>) {
+        fn visit<'a>(
+            f: &'a Fragment,
+            origin: crate::geom::Point,
+            x: Au,
+            y: Au,
+            out: &mut Vec<(&'a Fragment, Rect)>,
+        ) {
             if f.hidden_for_paint {
                 return;
             }
@@ -229,7 +241,13 @@ impl FragmentTree {
         let mut out = Vec::new();
         self.root.walk(crate::geom::Point::default(), &mut |f, r| {
             if let Some(s) = f.source() {
-                if !s.is_anonymous() && s.node() == node && matches!(f.kind, FragmentKind::Box { .. } | FragmentKind::InlineBox { .. }) {
+                if !s.is_anonymous()
+                    && s.node() == node
+                    && matches!(
+                        f.kind,
+                        FragmentKind::Box { .. } | FragmentKind::InlineBox { .. }
+                    )
+                {
                     out.push(r);
                 }
             }

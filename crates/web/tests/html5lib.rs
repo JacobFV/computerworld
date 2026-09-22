@@ -14,10 +14,19 @@ use std::path::{Path, PathBuf};
 /// tests exercise `document.write` and DOM mutation from inline scripts while parsing;
 /// this parser never runs script (the `script` module will, through the session).
 const KNOWN_FAILURES: &[(&str, &str)] = &[
-    ("scripted/adoption01.dat:0", "script mutates an attribute mid-parse"),
-    ("scripted/ark.dat:0", "script mutates an attribute mid-parse"),
+    (
+        "scripted/adoption01.dat:0",
+        "script mutates an attribute mid-parse",
+    ),
+    (
+        "scripted/ark.dat:0",
+        "script mutates an attribute mid-parse",
+    ),
     ("scripted/webkit01.dat:0", "document.write"),
-    ("scripted/webkit01.dat:1", "document.write of nested scripts"),
+    (
+        "scripted/webkit01.dat:1",
+        "document.write of nested scripts",
+    ),
 ];
 
 #[derive(Debug, Default, Clone)]
@@ -47,7 +56,10 @@ fn parse_dat(file: &str, text: &str) -> Vec<Case> {
     let mut data_lines: Vec<&str> = Vec::new();
     let mut doc_lines: Vec<&str> = Vec::new();
     let lines: Vec<&str> = text.split('\n').collect();
-    let finish = |cur: &mut Option<Case>, data_lines: &mut Vec<&str>, doc_lines: &mut Vec<&str>, cases: &mut Vec<Case>| {
+    let finish = |cur: &mut Option<Case>,
+                  data_lines: &mut Vec<&str>,
+                  doc_lines: &mut Vec<&str>,
+                  cases: &mut Vec<Case>| {
         if let Some(mut c) = cur.take() {
             c.data = data_lines.join("\n");
             // The document section runs to the blank line before the next #data (or EOF).
@@ -64,7 +76,11 @@ fn parse_dat(file: &str, text: &str) -> Vec<Case> {
     for (i, line) in lines.iter().enumerate() {
         if *line == "#data" && (section == Section::None || section == Section::Document) {
             finish(&mut cur, &mut data_lines, &mut doc_lines, &mut cases);
-            cur = Some(Case { file: file.to_owned(), line: i + 1, ..Default::default() });
+            cur = Some(Case {
+                file: file.to_owned(),
+                line: i + 1,
+                ..Default::default()
+            });
             section = Section::Data;
             continue;
         }
@@ -117,11 +133,18 @@ fn dump_node(doc: &Document, node: NodeId, depth: usize, out: &mut String) {
             }
             return;
         }
-        NodeKind::DocType { name, public_id, system_id } => {
+        NodeKind::DocType {
+            name,
+            public_id,
+            system_id,
+        } => {
             if public_id.is_empty() && system_id.is_empty() {
                 let _ = writeln!(out, "| {indent}<!DOCTYPE {name}>");
             } else {
-                let _ = writeln!(out, "| {indent}<!DOCTYPE {name} \"{public_id}\" \"{system_id}\">");
+                let _ = writeln!(
+                    out,
+                    "| {indent}<!DOCTYPE {name} \"{public_id}\" \"{system_id}\">"
+                );
             }
         }
         NodeKind::Comment(c) => {
@@ -135,7 +158,10 @@ fn dump_node(doc: &Document, node: NodeId, depth: usize, out: &mut String) {
             let mut names: Vec<(String, &str)> = attrs
                 .iter()
                 .map(|a| {
-                    let name = match (*ns != Namespace::Html).then(|| html::foreign_attribute_namespace(&a.name)).flatten() {
+                    let name = match (*ns != Namespace::Html)
+                        .then(|| html::foreign_attribute_namespace(&a.name))
+                        .flatten()
+                    {
                         Some((prefix, local)) => format!("{prefix} {local}"),
                         None => a.name.clone(),
                     };
@@ -182,7 +208,11 @@ fn run_case(case: &Case, scripting: bool) -> String {
                 (Namespace::Html, ctx.as_str())
             };
             let mut doc = Document::new();
-            let context = doc.create(NodeKind::Element { ns, tag: tag.to_owned(), attrs: Vec::new() });
+            let context = doc.create(NodeKind::Element {
+                ns,
+                tag: tag.to_owned(),
+                attrs: Vec::new(),
+            });
             let nodes = html::parse_fragment_with_options(&mut doc, context, &case.data, &options);
             let holder = doc.create(NodeKind::DocumentFragment);
             for n in nodes {
@@ -201,7 +231,8 @@ fn dat_files() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/html5lib");
     let mut files = Vec::new();
     for sub in [dir.clone(), dir.join("scripted")] {
-        for entry in fs::read_dir(&sub).expect("tests/html5lib exists; run tools/fetch-html5lib.py") {
+        for entry in fs::read_dir(&sub).expect("tests/html5lib exists; run tools/fetch-html5lib.py")
+        {
             let p = entry.unwrap().path();
             if p.extension().is_some_and(|e| e == "dat") {
                 files.push(p);
@@ -223,7 +254,11 @@ fn html5lib_tree_construction() {
     let mut fixed: Vec<String> = Vec::new();
     for path in &files {
         let text = fs::read_to_string(path).unwrap();
-        let rel = path.strip_prefix(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/html5lib")).unwrap().to_string_lossy().into_owned();
+        let rel = path
+            .strip_prefix(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/html5lib"))
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
         for case in parse_dat(&rel, &text) {
             let modes: Vec<bool> = match case.scripting {
                 Some(s) => vec![s],
@@ -252,12 +287,25 @@ fn html5lib_tree_construction() {
             }
         }
     }
-    eprintln!("html5lib tree-construction: {passed}/{total} passed, {} failed, {} known failures", failures.len(), KNOWN_FAILURES.len());
+    eprintln!(
+        "html5lib tree-construction: {passed}/{total} passed, {} failed, {} known failures",
+        failures.len(),
+        KNOWN_FAILURES.len()
+    );
     for f in &unexpected {
         eprintln!("{f}");
     }
-    assert!(fixed.is_empty(), "known failures now pass; remove them: {fixed:?}");
-    assert!(unexpected.is_empty(), "{} unexpected html5lib failures ({}/{} passed)", unexpected.len(), passed, total);
+    assert!(
+        fixed.is_empty(),
+        "known failures now pass; remove them: {fixed:?}"
+    );
+    assert!(
+        unexpected.is_empty(),
+        "{} unexpected html5lib failures ({}/{} passed)",
+        unexpected.len(),
+        passed,
+        total
+    );
 }
 
 /// Reports parse throughput on a synthetic 1 MB document. Run with
@@ -265,7 +313,9 @@ fn html5lib_tree_construction() {
 #[test]
 #[ignore]
 fn html_parse_timing() {
-    let mut src = String::from("<!DOCTYPE html><html><head><title>t</title><style>body{margin:0}</style></head><body>");
+    let mut src = String::from(
+        "<!DOCTYPE html><html><head><title>t</title><style>body{margin:0}</style></head><body>",
+    );
     let mut i = 0;
     while src.len() < 1_000_000 {
         let _ = writeln!(
@@ -291,10 +341,18 @@ fn html_parse_timing() {
     }
     let started = std::time::Instant::now();
     let doc = html::parse(&src);
-    eprintln!("adoption stress: {} nodes in {:?}", doc.len(), started.elapsed());
+    eprintln!(
+        "adoption stress: {} nodes in {:?}",
+        doc.len(),
+        started.elapsed()
+    );
     let src = "<b>".repeat(50_000) + "x";
     let started = std::time::Instant::now();
     let doc = html::parse(&src);
-    eprintln!("50k nested <b>: {} nodes in {:?}", doc.len(), started.elapsed());
+    eprintln!(
+        "50k nested <b>: {} nodes in {:?}",
+        doc.len(),
+        started.elapsed()
+    );
     assert!(elapsed.as_secs_f64() < 1.0, "1 MB parse took {elapsed:?}");
 }

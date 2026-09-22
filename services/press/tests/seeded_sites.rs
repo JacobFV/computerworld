@@ -102,16 +102,24 @@ fn get(state: &mut Value, url: &str) -> HttpResponse {
 fn page(state: &mut Value, url: &str) -> Dom {
     let response = get(state, url);
     assert_eq!(response.status, 200, "{url}");
-    assert_eq!(response.header("content-type"), Some(HTML_MEDIA_TYPE), "{url}");
+    assert_eq!(
+        response.header("content-type"),
+        Some(HTML_MEDIA_TYPE),
+        "{url}"
+    );
     let html = String::from_utf8(response.body).expect("utf-8");
     validate_strict(&html).unwrap_or_else(|e| panic!("{url}: {e:?}"));
     cw_web::html::parse(&html)
 }
 fn node(doc: &Dom, id: &str) -> cw_web::dom::NodeId {
-    *doc.by_id(id).first().unwrap_or_else(|| panic!("no element #{id}"))
+    *doc.by_id(id)
+        .first()
+        .unwrap_or_else(|| panic!("no element #{id}"))
 }
 fn attr(doc: &Dom, id: &str, name: &str) -> String {
-    doc.attr(node(doc, id), name).unwrap_or_else(|| panic!("#{id} has no {name}")).to_owned()
+    doc.attr(node(doc, id), name)
+        .unwrap_or_else(|| panic!("#{id} has no {name}"))
+        .to_owned()
 }
 fn doc_text(doc: &Dom, id: &str) -> String {
     doc.text_content(node(doc, id))
@@ -130,9 +138,18 @@ fn every_page_a_seed_names_resolves_on_every_publication() {
         let (mut state, origin, entries) = site(source);
         let blog = state["layout"] == "blog";
         let front = page(&mut state, &format!("{origin}/"));
-        let skin = state["skin"].as_str().expect("every shipped publication names its skin");
-        assert!(front.has_class(front.body().unwrap(), &format!("skin-{skin}")), "{name} wears {skin}");
-        assert_eq!(doc_text(&front, "masthead-brand"), state["brand"].as_str().unwrap(), "{name} wordmark");
+        let skin = state["skin"]
+            .as_str()
+            .expect("every shipped publication names its skin");
+        assert!(
+            front.has_class(front.body().unwrap(), &format!("skin-{skin}")),
+            "{name} wears {skin}"
+        );
+        assert_eq!(
+            doc_text(&front, "masthead-brand"),
+            state["brand"].as_str().unwrap(),
+            "{name} wordmark"
+        );
         assert_eq!(attr(&front, "masthead-home", "href"), "/");
         assert_eq!(attr(&front, "masthead-saved", "href"), "/saved");
         assert_eq!(attr(&front, "masthead-follow-form", "action"), "/follow");
@@ -143,9 +160,16 @@ fn every_page_a_seed_names_resolves_on_every_publication() {
             let expected = if blog {
                 format!("/posts/{id}")
             } else {
-                format!("/{}/{id}", state["articles"][&id]["year"].as_str().unwrap_or("2026"))
+                format!(
+                    "/{}/{id}",
+                    state["articles"][&id]["year"].as_str().unwrap_or("2026")
+                )
             };
-            assert_eq!(attr(&front, &format!("card-{id}"), "href"), expected, "{name} card {id}");
+            assert_eq!(
+                attr(&front, &format!("card-{id}"), "href"),
+                expected,
+                "{name} card {id}"
+            );
             assert_eq!(
                 doc_text(&front, &format!("card-{id}-title")),
                 state["articles"][&id]["title"].as_str().unwrap()
@@ -160,7 +184,11 @@ fn every_page_a_seed_names_resolves_on_every_publication() {
             .collect();
         assert!(hrefs.len() > 8, "{name} front page links");
         for href in hrefs {
-            assert_eq!(get(&mut state, &format!("{origin}{href}")).status, 200, "{name}{href}");
+            assert_eq!(
+                get(&mut state, &format!("{origin}{href}")).status,
+                200,
+                "{name}{href}"
+            );
         }
         page(&mut state, &format!("{origin}/archive"));
         page(&mut state, &format!("{origin}/saved"));
@@ -172,7 +200,11 @@ fn every_page_a_seed_names_resolves_on_every_publication() {
             .collect();
         for id in &sections {
             let listing = page(&mut state, &format!("{origin}/{id}"));
-            assert_eq!(attr(&listing, &format!("masthead-{id}"), "href"), format!("/{id}"), "{name}/{id}");
+            assert_eq!(
+                attr(&listing, &format!("masthead-{id}"), "href"),
+                format!("/{id}"),
+                "{name}/{id}"
+            );
         }
         for id in ids(&state) {
             let article = state["articles"][&id].clone();
@@ -182,12 +214,24 @@ fn every_page_a_seed_names_resolves_on_every_publication() {
                 format!("/{}/{id}", article["year"].as_str().unwrap_or("2026"))
             };
             let story = page(&mut state, &format!("{origin}{path}"));
-            assert_eq!(doc_text(&story, "article-title"), article["title"].as_str().unwrap());
-            assert_eq!(attr(&story, "comment", "action"), format!("/articles/{id}/comments"));
+            assert_eq!(
+                doc_text(&story, "article-title"),
+                article["title"].as_str().unwrap()
+            );
+            assert_eq!(
+                attr(&story, "comment", "action"),
+                format!("/articles/{id}/comments")
+            );
             assert_eq!(attr(&story, "comment-text", "name"), "text");
-            assert_eq!(attr(&story, "article-save-form", "action"), format!("/articles/{id}/save"));
+            assert_eq!(
+                attr(&story, "article-save-form", "action"),
+                format!("/articles/{id}/save")
+            );
             for (i, link) in article["links"].as_array().unwrap().iter().enumerate() {
-                assert_eq!(attr(&story, &format!("article-ref-{i}"), "href"), link["url"].as_str().unwrap());
+                assert_eq!(
+                    attr(&story, &format!("article-ref-{i}"), "href"),
+                    link["url"].as_str().unwrap()
+                );
             }
             for comment in article["comments"].as_array().unwrap() {
                 let cid = comment["id"].as_str().unwrap();
@@ -204,10 +248,19 @@ fn every_page_a_seed_names_resolves_on_every_publication() {
             );
             for tag in article["tags"].as_array().unwrap() {
                 let tag = tag.as_str().unwrap();
-                assert_eq!(attr(&story, &format!("article-tag-{tag}"), "href"), format!("/tag/{tag}"));
+                assert_eq!(
+                    attr(&story, &format!("article-tag-{tag}"), "href"),
+                    format!("/tag/{tag}")
+                );
                 let tagged = page(&mut state, &format!("{origin}/tag/{tag}"));
-                assert_eq!(attr(&tagged, "list-follow-form", "action"), format!("/tags/{tag}/follow"));
-                assert!(!tagged.by_id(&format!("card-{id}")).is_empty(), "{name} tag {tag} lists {id}");
+                assert_eq!(
+                    attr(&tagged, "list-follow-form", "action"),
+                    format!("/tags/{tag}/follow")
+                );
+                assert!(
+                    !tagged.by_id(&format!("card-{id}")).is_empty(),
+                    "{name} tag {tag} lists {id}"
+                );
             }
         }
         for url in &entries {
@@ -291,16 +344,29 @@ fn a_reader_can_comment_save_follow_and_subscribe_on_every_publication() {
         // the reader was on, as strict HTML, showing what changed.
         let mut form = HttpRequest::get(format!("{origin}/articles/{id}/comments"));
         form.method = "POST".into();
-        form.headers.insert("content-type".into(), "application/x-www-form-urlencoded".into());
+        form.headers.insert(
+            "content-type".into(),
+            "application/x-www-form-urlencoded".into(),
+        );
         form.body = b"text=Posted+from+the+form.".to_vec();
         let shown = PressService.handle(&mut state, &ctx(), &form).unwrap();
         assert_eq!(shown.status, 200, "{name} form comment");
         let html = String::from_utf8(shown.body).unwrap();
         validate_strict(&html).unwrap_or_else(|e| panic!("{name}: {e:?}"));
         let shown = cw_web::html::parse(&html);
-        assert_eq!(doc_text(&shown, "comments-heading"), format!("{} comments", before + 2));
-        assert!(html.contains("Posted from the form."), "{name} shows the new comment");
-        assert_eq!(doc_text(&shown, "article-save"), "Saved", "{name} shows the saved state");
+        assert_eq!(
+            doc_text(&shown, "comments-heading"),
+            format!("{} comments", before + 2)
+        );
+        assert!(
+            html.contains("Posted from the form."),
+            "{name} shows the new comment"
+        );
+        assert_eq!(
+            doc_text(&shown, "article-save"),
+            "Saved",
+            "{name} shows the saved state"
+        );
         // Everything that just happened has to survive a checkpoint.
         let bytes = serde_json::to_vec(&state).unwrap();
         assert_eq!(

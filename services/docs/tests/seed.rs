@@ -55,13 +55,23 @@ fn every_indexed_page_of_both_skins_is_strict_html() {
                 .handle(&mut state, &ctx("alice"), &HttpRequest::get(url))
                 .unwrap();
             assert_eq!(response.status, 200, "{url}");
-            assert_eq!(response.header("content-type"), Some(HTML_MEDIA_TYPE), "{url}");
+            assert_eq!(
+                response.header("content-type"),
+                Some(HTML_MEDIA_TYPE),
+                "{url}"
+            );
             let html = String::from_utf8(response.body).unwrap();
             validate_strict(&html).unwrap_or_else(|e| panic!("{kind} {url}: {e:?}"));
             // A search hit is a claim that the page exists and says what the index says it
             // says; the indexed title carries the product suffix, the page carries the stem.
             let title = entry["title"].as_str().unwrap_or_default();
-            let stem = title.split(" - ").next().unwrap_or(title).split(" · ").next().unwrap_or(title);
+            let stem = title
+                .split(" - ")
+                .next()
+                .unwrap_or(title)
+                .split(" · ")
+                .next()
+                .unwrap_or(title);
             assert!(
                 stem.is_empty() || html.contains(&cw_service_common::html::escaped(stem)),
                 "{url}: the page never says {stem:?}"

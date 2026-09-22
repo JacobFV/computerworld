@@ -172,8 +172,8 @@ impl ChatState {
 use cw_protocol::{HttpRequest, HttpResponse, Result as SimResult};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
-use web::html::{self, button, div, el, form, span, text_input, Document, Html};
 use serde_json::{json, Value};
+use web::html::{self, button, div, el, form, span, text_input, Document, Html};
 pub struct ChatService;
 pub fn register(registry: &mut Registry) -> SimResult<()> {
     registry.register(ChatService)
@@ -194,7 +194,12 @@ fn initials(name: &str) -> String {
 }
 /// The other people in a DM, from this actor's point of view.
 fn dm_title(c: &Channel, actor: &str) -> String {
-    let others: Vec<&str> = c.members.iter().map(String::as_str).filter(|m| *m != actor).collect();
+    let others: Vec<&str> = c
+        .members
+        .iter()
+        .map(String::as_str)
+        .filter(|m| *m != actor)
+        .collect();
     if others.is_empty() {
         c.title.clone()
     } else {
@@ -216,7 +221,11 @@ fn message(conversation: &str, c: &Channel, m: &Message, grouped: bool) -> Html 
                 .attr("placeholder", "React")
                 .attr("autocomplete", "off"),
         )
-        .child(button(&format!("{}-react-submit", m.id), "+").attr("aria-label", "Add reaction").attr("title", "Add reaction"));
+        .child(
+            button(&format!("{}-react-submit", m.id), "+")
+                .attr("aria-label", "Add reaction")
+                .attr("title", "Add reaction"),
+        );
     // A reaction already on the message is drawn as a pill beside the field that adds
     // one, so it has to be a control too: pressing it joins that reaction, which is the
     // POST the field beside it already makes.
@@ -224,7 +233,10 @@ fn message(conversation: &str, c: &Channel, m: &Message, grouped: bool) -> Html 
         form(&format!("{}-reactions", m.id), route, "post")
             .class("given")
             .each(&m.reactions, |(name, who)| {
-                let label = format!("{name} · {}", who.iter().cloned().collect::<Vec<_>>().join(", "));
+                let label = format!(
+                    "{name} · {}",
+                    who.iter().cloned().collect::<Vec<_>>().join(", ")
+                );
                 el("button")
                     .id(format!("{}-reacted-{name}", m.id))
                     .class("reaction")
@@ -245,7 +257,10 @@ fn message(conversation: &str, c: &Channel, m: &Message, grouped: bool) -> Html 
         .when(parent.is_some(), |n| n.class("reply"))
         .child(
             span("avatar")
-                .style(&format!("background-color: {}", web::avatar_tint(&m.author)))
+                .style(&format!(
+                    "background-color: {}",
+                    web::avatar_tint(&m.author)
+                ))
                 .text(initials(&m.author)),
         )
         .child(
@@ -287,7 +302,10 @@ fn view(s: &ChatState, actor: &str, channel: Option<&str>) -> SimResult<HttpResp
             .child(span("mark").text(mark))
             .child(span("label").text(label))
     };
-    let mut channels = el("nav").class("nav").attr("aria-label", "Channels").child(el("h2").class("nav-title").text("Channels"));
+    let mut channels = el("nav")
+        .class("nav")
+        .attr("aria-label", "Channels")
+        .child(el("h2").class("nav-title").text("Channels"));
     let mut joined = 0;
     for (id, c) in &s.channels {
         if c.members.contains(actor) {
@@ -299,11 +317,16 @@ fn view(s: &ChatState, actor: &str, channel: Option<&str>) -> SimResult<HttpResp
     if joined == 0 {
         channels = channels.child(el("p").class("nav-empty").text("No channels here yet."));
     }
-    let mut dms = el("nav").class("nav").attr("aria-label", "Direct messages").child(el("h2").class("nav-title").text("Direct messages"));
+    let mut dms = el("nav")
+        .class("nav")
+        .attr("aria-label", "Direct messages")
+        .child(el("h2").class("nav-title").text("Direct messages"));
     let mut open_dms = 0;
     for (id, c) in &s.dms {
         if c.members.contains(actor) {
-            dms = dms.child(row(&format!("dm-{id}"), id, "@", &c.title).attr("title", dm_title(c, actor)));
+            dms = dms.child(
+                row(&format!("dm-{id}"), id, "@", &c.title).attr("title", dm_title(c, actor)),
+            );
             open_dms += 1;
         }
     }
@@ -332,14 +355,22 @@ fn view(s: &ChatState, actor: &str, channel: Option<&str>) -> SimResult<HttpResp
         .child(div("navs").child(channels).child(dms))
         .child(
             div("me")
-                .child(span("avatar small").style(&format!("background-color: {}", web::avatar_tint(actor))).text(initials(actor)))
+                .child(
+                    span("avatar small")
+                        .style(&format!("background-color: {}", web::avatar_tint(actor)))
+                        .text(initials(actor)),
+                )
                 .child(span("me-name").text(actor)),
         );
     let main = match open {
         None => el("main").class("main blank").child(
             div("welcome")
                 .child(el("p").class("welcome-title").text("Welcome to Chat"))
-                .child(el("p").class("welcome-text").text("Pick a channel on the left to start reading.")),
+                .child(
+                    el("p")
+                        .class("welcome-text")
+                        .text("Pick a channel on the left to start reading."),
+                ),
         ),
         Some((id, c)) => {
             let is_dm = !s.channels.contains_key(id);
@@ -361,11 +392,15 @@ fn view(s: &ChatState, actor: &str, channel: Option<&str>) -> SimResult<HttpResp
                         .class("head")
                         .child(span("head-mark").text(if is_dm { "@" } else { "#" }))
                         .child(el("h2").id("channel").text(c.title.as_str()))
-                        .child(span("head-members").attr("title", people.as_str()).text(format!(
-                            "{} member{}",
-                            c.members.len(),
-                            if c.members.len() == 1 { "" } else { "s" }
-                        ))),
+                        .child(
+                            span("head-members")
+                                .attr("title", people.as_str())
+                                .text(format!(
+                                    "{} member{}",
+                                    c.members.len(),
+                                    if c.members.len() == 1 { "" } else { "s" }
+                                )),
+                        ),
                 )
                 .child(list)
                 .child(
@@ -374,7 +409,10 @@ fn view(s: &ChatState, actor: &str, channel: Option<&str>) -> SimResult<HttpResp
                         .child(
                             text_input("send-text", "text", "")
                                 .attr("aria-label", "Message")
-                                .attr("placeholder", format!("Message {}{}", if is_dm { "" } else { "#" }, c.title))
+                                .attr(
+                                    "placeholder",
+                                    format!("Message {}{}", if is_dm { "" } else { "#" }, c.title),
+                                )
                                 .attr("autocomplete", "off"),
                         )
                         .child(button("send-submit", "Send")),

@@ -2,7 +2,10 @@ use super::*;
 
 #[test]
 fn prelude_loads_and_console_works() {
-    let out = eval_logs("<p id=p>hi</p>", "console.log(typeof window, typeof document, document.getElementById('p').textContent);");
+    let out = eval_logs(
+        "<p id=p>hi</p>",
+        "console.log(typeof window, typeof document, document.getElementById('p').textContent);",
+    );
     assert_eq!(out, "object object hi");
 }
 

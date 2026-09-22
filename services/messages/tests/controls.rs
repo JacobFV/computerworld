@@ -34,7 +34,10 @@ fn seeded() -> Value {
 /// the selected row does in Messages for Mac. Every other control must go somewhere.
 fn open_rows(state: &Value) -> Vec<String> {
     let s: MessagesState = serde_json::from_value(state.clone()).unwrap();
-    s.conversations.keys().map(|id| format!("row-{id}")).collect()
+    s.conversations
+        .keys()
+        .map(|id| format!("row-{id}"))
+        .collect()
 }
 
 #[test]

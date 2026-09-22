@@ -16,13 +16,29 @@ fn render(html: &str, file: &str, viewport: Viewport) {
     let mut sheets = Vec::new();
     for node in doc.descendants(Document::ROOT) {
         if doc.is(node, "style") {
-            sheets.push(parse_stylesheet(&doc.text_content(node), Origin::Author, Strictness::Strict).unwrap());
+            sheets.push(
+                parse_stylesheet(&doc.text_content(node), Origin::Author, Strictness::Strict)
+                    .unwrap(),
+            );
         }
     }
     let media = Media::with_size(viewport.width as i32, viewport.height as i32);
-    let styles = cw_web::style::cascade(&doc, &sheets, &media, &MatchContext::new(), Strictness::Strict).unwrap();
+    let styles = cw_web::style::cascade(
+        &doc,
+        &sheets,
+        &media,
+        &MatchContext::new(),
+        Strictness::Strict,
+    )
+    .unwrap();
     let tree = cw_web::layout::layout(&doc, &styles, viewport);
-    let scene = cw_web::paint::paint(&doc, &styles, &tree, viewport, &cw_web::paint::PaintContext::default());
+    let scene = cw_web::paint::paint(
+        &doc,
+        &styles,
+        &tree,
+        viewport,
+        &cw_web::paint::PaintContext::default(),
+    );
     let frame = cw_render::Renderer::new().render(&scene);
     let mut out = Vec::new();
     {
@@ -32,7 +48,9 @@ fn render(html: &str, file: &str, viewport: Viewport) {
         let mut writer = encoder.write_header().unwrap();
         writer.write_image_data(&frame.rgba).unwrap();
     }
-    let target = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../research/site-stills").join(file);
+    let target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../research/site-stills")
+        .join(file);
     std::fs::create_dir_all(target.parent().unwrap()).unwrap();
     std::fs::write(&target, out).unwrap_or_else(|e| panic!("write {}: {e}", target.display()));
     println!("wrote {}", target.display());
@@ -42,38 +60,91 @@ fn render(html: &str, file: &str, viewport: Viewport) {
 type Inner = (&'static str, &'static str, &'static str);
 /// (site, host, inner pages).
 const SITES: &[(&str, &str, &[Inner])] = &[
-    ("amazon", "amazon.com", &[("detail", "/dp/b0monitor27", "alice"), ("cart", "/cart", "carol"), ("orders", "/orders", "alice")]),
-    ("ebay", "ebay.com", &[("detail", "/dp/115402998811", "alice")]),
-    ("etsy", "etsy.com", &[("detail", "/dp/et-mug-slab", "alice")]),
-    ("airbnb", "airbnb.com", &[("detail", "/dp/cabin-skykomish-aframe", "bob")]),
-    ("booking", "booking.com", &[("detail", "/dp/lis-miradouro-hotel", "carol")]),
+    (
+        "amazon",
+        "amazon.com",
+        &[
+            ("detail", "/dp/b0monitor27", "alice"),
+            ("cart", "/cart", "carol"),
+            ("orders", "/orders", "alice"),
+        ],
+    ),
+    (
+        "ebay",
+        "ebay.com",
+        &[("detail", "/dp/115402998811", "alice")],
+    ),
+    (
+        "etsy",
+        "etsy.com",
+        &[("detail", "/dp/et-mug-slab", "alice")],
+    ),
+    (
+        "airbnb",
+        "airbnb.com",
+        &[("detail", "/dp/cabin-skykomish-aframe", "bob")],
+    ),
+    (
+        "booking",
+        "booking.com",
+        &[("detail", "/dp/lis-miradouro-hotel", "carol")],
+    ),
     ("uber", "uber.com", &[("cart", "/cart", "bob")]),
     ("doordash", "doordash.com", &[("cart", "/cart", "bob")]),
-    ("ticketmaster", "ticketmaster.com", &[("event", "/event/devcon-2026", "carol"), ("order", "/orders/TM-2210", "carol")]),
+    (
+        "ticketmaster",
+        "ticketmaster.com",
+        &[
+            ("event", "/event/devcon-2026", "carol"),
+            ("order", "/orders/TM-2210", "carol"),
+        ],
+    ),
 ];
 
 #[test]
 #[ignore]
 fn storefront_stills() {
-    let only: Vec<String> = std::env::var("STILL_SITES").map(|v| v.split(',').map(str::to_owned).collect()).unwrap_or_default();
-    let viewport = Viewport { width: 1280, height: 900, scale: 1, zoom: 100 };
+    let only: Vec<String> = std::env::var("STILL_SITES")
+        .map(|v| v.split(',').map(str::to_owned).collect())
+        .unwrap_or_default();
+    let viewport = Viewport {
+        width: 1280,
+        height: 900,
+        scale: 1,
+        zoom: 100,
+    };
     for (site, host, inner) in SITES {
         if !only.is_empty() && !only.iter().any(|s| s == site) {
             continue;
         }
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("../../worlds/company-2026/sites/{site}.json"));
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../worlds/company-2026/sites/{site}.json"));
         let seed: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
-        let ctx = |actor: &str| ServiceContext { actor: actor.into(), source: "alice-mac".into(), tick: 1, seed: 1, instance: (*site).into() };
-        let mut state = ShopService.initialize(seed["initial_state"].clone(), &ctx("alice")).unwrap();
+        let ctx = |actor: &str| ServiceContext {
+            actor: actor.into(),
+            source: "alice-mac".into(),
+            tick: 1,
+            seed: 1,
+            instance: (*site).into(),
+        };
+        let mut state = ShopService
+            .initialize(seed["initial_state"].clone(), &ctx("alice"))
+            .unwrap();
         let mut shoot = |url: String, actor: &str, file: String| {
-            let response = ShopService.handle(&mut state, &ctx(actor), &HttpRequest::get(&url)).unwrap();
+            let response = ShopService
+                .handle(&mut state, &ctx(actor), &HttpRequest::get(&url))
+                .unwrap();
             assert_eq!(response.status, 200, "{url}");
             render(&String::from_utf8(response.body).unwrap(), &file, viewport);
         };
         shoot(format!("http://{host}/"), "alice", format!("{site}.png"));
         if std::env::var("STILL_HOME_ONLY").is_err() {
             for (suffix, page, actor) in *inner {
-                shoot(format!("http://{host}{page}"), actor, format!("{site}-{suffix}.png"));
+                shoot(
+                    format!("http://{host}{page}"),
+                    actor,
+                    format!("{site}-{suffix}.png"),
+                );
             }
         }
     }
@@ -83,7 +154,18 @@ fn storefront_stills() {
 #[test]
 #[ignore]
 fn scratch() {
-    let Ok(input) = std::env::var("STILL_HTML") else { return };
+    let Ok(input) = std::env::var("STILL_HTML") else {
+        return;
+    };
     let out = std::env::var("STILL_OUT").unwrap_or_else(|_| "scratch.png".into());
-    render(&std::fs::read_to_string(input).unwrap(), &out, Viewport { width: 600, height: 300, scale: 1, zoom: 100 });
+    render(
+        &std::fs::read_to_string(input).unwrap(),
+        &out,
+        Viewport {
+            width: 600,
+            height: 300,
+            scale: 1,
+            zoom: 100,
+        },
+    );
 }
