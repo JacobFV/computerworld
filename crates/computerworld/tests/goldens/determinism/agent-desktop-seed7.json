@@ -2,7 +2,7 @@
   "corpus_version": 1,
   "scenario": "agent-desktop-seed7",
   "world": "worlds/agent-desktop/world.json",
-  "world_definition_sha256": "f0099ef90aa6686022bfe1ca37f5b9ff798f8554dd833a871a523c81361de19c",
+  "world_definition_sha256": "9053f3e349c553f0491bcbc122c11820c83e73513133697fa6a72621bdcfb8e5",
   "seed": 7,
   "actor": "ada",
   "machines": [
