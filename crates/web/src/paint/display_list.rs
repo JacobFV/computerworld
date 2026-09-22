@@ -385,7 +385,7 @@ fn paint_scrollbars(p: &mut Painter, f: &Fragment, state: &State) {
         let t = if horizontal { SRect::new(track.x + at, track.y + 2, thumb, track.height.saturating_sub(4)) } else { SRect::new(track.x + 2, track.y + at, track.width.saturating_sub(4), thumb) };
         (track, t)
     };
-    let mut emit = |p: &mut Painter, track: SRect, thumb: SRect| {
+    let emit = |p: &mut Painter, track: SRect, thumb: SRect| {
         if track.width == 0 || track.height == 0 {
             return;
         }

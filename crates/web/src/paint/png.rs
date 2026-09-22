@@ -296,7 +296,7 @@ pub fn decode_png(bytes: &[u8]) -> Option<RgbaImage> {
                 }
                 header = Some(h);
             }
-            b"PLTE" => palette = data.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect(),
+            b"PLTE" => palette = data.as_chunks::<3>().0.to_vec(),
             b"tRNS" => trns = data.to_vec(),
             b"IDAT" => idat.extend_from_slice(data),
             b"IEND" => break,

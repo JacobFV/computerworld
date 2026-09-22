@@ -173,7 +173,6 @@ fn centred_baseline(r: SRect, size: u16) -> i32 {
     r.y + ((r.height as i32 - size as i32) / 2).max(0) + size as i32 - 1
 }
 
-#[allow(clippy::too_many_arguments)]
 /// The colour the control's hint text takes: its cascaded `::placeholder` colour,
 /// which the UA sheet sets to a grey and an author rule can override. Without a
 /// document (a hand-built fragment tree) the UA grey is used directly.
@@ -181,6 +180,7 @@ fn placeholder_color(p: &Painter, node: NodeId) -> Color {
     p.styles.placeholder(node).map(|s| s.color).unwrap_or(PLACEHOLDER_TEXT)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn paint_control(p: &mut Painter, key: (NodeId, u32), state: &State, style: &ComputedStyle, node: NodeId, kind: ControlKind, content: Rect, rect_y: i32, disabled: bool, baseline: Option<crate::geom::Au>) {
     let r = snap(content);
     if r.width == 0 || r.height == 0 || kind == ControlKind::Hidden {

@@ -345,7 +345,7 @@ fn paint_dashed_side(p: &mut Painter, key: (NodeId, u32), state: &State, rect: S
     let mut at: i64 = 0;
     let mut run: Vec<(i32, i32)> = Vec::new();
     let mut count = 0;
-    let mut flush = |p: &mut Painter, run: &mut Vec<(i32, i32)>, count: &mut u32| {
+    let flush = |p: &mut Painter, run: &mut Vec<(i32, i32)>, count: &mut u32| {
         if run.len() < 2 && !dotted {
             run.clear();
             return;

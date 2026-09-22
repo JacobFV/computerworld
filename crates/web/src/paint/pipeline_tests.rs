@@ -272,11 +272,6 @@ impl Pixels {
         let i = ((y * self.0.width + x) * 4) as usize;
         Color(self.0.rgba[i], self.0.rgba[i + 1], self.0.rgba[i + 2], self.0.rgba[i + 3])
     }
-    /// How many pixels of `rect` are `color` exactly.
-    fn count(&self, rect: (u32, u32, u32, u32), color: Color) -> u32 {
-        let (x0, y0, w, h) = rect;
-        (y0..y0 + h).flat_map(|y| (x0..x0 + w).map(move |x| (x, y))).filter(|&(x, y)| self.at(x, y) == color).count() as u32
-    }
 }
 
 /// The string a text node draws, whichever text primitive it is.

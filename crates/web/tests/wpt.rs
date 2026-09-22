@@ -261,6 +261,7 @@ fn render_caught(rel: &str) -> Result<cw_scene::Scene, String> {
     })
 }
 
+#[cfg(feature = "pipeline")]
 struct PairOutcome {
     test: String,
     kind: String,
@@ -269,11 +270,13 @@ struct PairOutcome {
     detail: String,
 }
 
+#[cfg(feature = "pipeline")]
 struct DirOutcome {
     dir: String,
     outcomes: Vec<PairOutcome>,
 }
 
+#[cfg(feature = "pipeline")]
 impl DirOutcome {
     fn passed(&self) -> usize {
         self.outcomes.iter().filter(|o| o.passed).count()
@@ -333,6 +336,7 @@ fn run_all(m: &Manifest) -> Vec<DirOutcome> {
     out
 }
 
+#[cfg(feature = "pipeline")]
 fn report(commit: &str, dirs: &[DirOutcome], expectations: &BTreeMap<String, usize>) -> String {
     let total: usize = dirs.iter().map(|d| d.outcomes.len()).sum();
     let passed: usize = dirs.iter().map(DirOutcome::passed).sum();

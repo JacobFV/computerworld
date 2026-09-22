@@ -1421,14 +1421,12 @@ pub fn intrinsic_widths(ctx: &LayoutContext, container: BoxId) -> (Au, Au) {
                         run += mn + a.margin.horizontal();
                         min = min.max(run - run_trailing);
                         run = Au::ZERO;
-                        run_trailing = Au::ZERO;
                         u.width
                     }
                     _ => {
                         if u.break_before {
                             min = min.max(run - run_trailing);
                             run = Au::ZERO;
-                            run_trailing = Au::ZERO;
                         }
                         run += u.width;
                         u.width

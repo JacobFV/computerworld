@@ -1023,8 +1023,7 @@ fn the_root_scroll_offset_is_applied_once() {
     root.establishes_stacking_context = true;
     root.children = vec![boxf(1, rect(0, 150, 50, 20))];
     let t = FragmentTree { root, content_width: au(200), content_height: au(1000), viewport_width: au(200), viewport_height: au(200) };
-    let mut ctx = PaintContext::default();
-    ctx.scroll = crate::geom::Point { x: Au::ZERO, y: au(100) };
+    let ctx = PaintContext { scroll: crate::geom::Point { x: Au::ZERO, y: au(100) }, ..Default::default() };
     let scene = paint_fragments(&styles, &t, viewport(200, 200), &ctx);
     let bg = scene.nodes.iter().find(|n| decode(n.id).0 == 1 && decode(n.id).2 == parts::BACKGROUND).expect("background");
     assert_eq!(bg.bounds.y, 50, "150px down the page, scrolled by 100px");
