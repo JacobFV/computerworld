@@ -1,5 +1,5 @@
 //! The sample clips seeded into users' movie folders are made by this engine, not by
-//! hand: every file under `worlds/company-2026/files` named by `cw_video::samples::files`
+//! hand: every file under `worlds/company-2026/samples` named by `cw_video::samples::files`
 //! must be exactly what the generators write. Regenerate them with
 //! `CW_UPDATE_SAMPLES=1 cargo test -p cw-video --test samples`, then run
 //! `node scripts/build-live-world.mjs` to seed them.
@@ -7,7 +7,7 @@ use cw_video::{samples, Media, MediaKind};
 use std::path::PathBuf;
 
 fn files() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../worlds/company-2026/files")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../worlds/company-2026/samples")
 }
 
 #[test]

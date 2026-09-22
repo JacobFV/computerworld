@@ -50,7 +50,7 @@ optimized copy is; the file on disk is untouched.
 
 Each machine's media folder is seeded (by `scripts/build-live-world.mjs`) with five files
 the engine generates deterministically in `cw_video::samples` and checks in under
-`worlds/company-2026/files`: `Countdown.apng` (a 3 s film-leader countdown), `Color
+`worlds/company-2026/samples`: `Countdown.apng` (a 3 s film-leader countdown), `Color
 Bars.apng` (2 s of 75% bars with a moving marker), `Sunset.apng` (3 s), `Countdown
 Beeps.wav` (a beep each second) and `Music Bed.wav` (4 s of chords), all 320×180 at
 12 fps and 11 025 Hz mono. `crates/video/tests/samples.rs` fails if a checked-in file is

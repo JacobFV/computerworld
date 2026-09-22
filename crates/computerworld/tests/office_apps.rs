@@ -15,7 +15,7 @@ const H: u32 = 800;
 
 fn sample(name: &str) -> Vec<u8> {
     std::fs::read(format!(
-        "{}/../../worlds/company-2026/files/{name}",
+        "{}/../../worlds/company-2026/samples/{name}",
         env!("CARGO_MANIFEST_DIR")
     ))
     .unwrap()

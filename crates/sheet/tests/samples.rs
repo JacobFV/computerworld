@@ -1,5 +1,5 @@
 //! The sample spreadsheet files seeded into users' Documents folders are made by this
-//! engine, not by hand: `worlds/company-2026/files/Budget.xlsx` and `Sales.csv` must be
+//! engine, not by hand: `worlds/company-2026/samples/Budget.xlsx` and `Sales.csv` must be
 //! exactly what these builders write. Regenerate them with
 //! `CW_UPDATE_SAMPLES=1 cargo test -p cw-sheet --test samples`, then run
 //! `scripts/build-content.sh` to seed them.
@@ -10,7 +10,7 @@ use std::path::PathBuf;
 const EPOCH_UNIX_US: i64 = 1_789_635_600_000_000;
 
 fn files() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../worlds/company-2026/files")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../worlds/company-2026/samples")
 }
 fn range(text: &str) -> Range {
     Range::parse(text).expect("range")

@@ -116,6 +116,27 @@ hand-written computers, network and `.internal` services stay pretty-printed.
 `scripts/build-content.sh` runs the index, the world build and the live site world's
 regeneration, and is idempotent.
 
+## The directories
+
+`world.yml` is the blueprint and `world.json` beside it is what it resolves to; the other
+five directories are what the blueprint and the site build read.
+
+| Directory | Read by | Becomes |
+|---|---|---|
+| `home/` | `world.yml`'s `copy:` blocks | The files the three desktops start with. `home/all` is overlaid with `home/macos`, `home/windows` or `home/ubuntu` per machine. |
+| `sites/` | `world.yml`'s `include:` list | One service per file, each placing its own node, link and DNS records. |
+| `index/` | each search engine's `from_file:` | The harvested search index, written by `scripts/build-search-index.mjs`. |
+| `network/` | `world.yml`'s `include:` list | Topology with no service behind it — currently just the unplugged bedroom speaker. |
+| `samples/` | `scripts/build-live-world.mjs` | The documents and media the live site's machines start with. |
+
+`samples/` is the one that does not reach `world.json`. Its eight files are written by the
+engines themselves rather than by hand — `Budget.xlsx` and `Sales.csv` by `cw-sheet`,
+`Inventory.db` by `cw-sql`, the three `.apng` movies and two `.wav` sounds by `cw-video` —
+so a spreadsheet a user opens in-world is real output of the spreadsheet engine and not a
+prop. `crates/{sheet,sql,video}/tests/samples.rs` pin their bytes and regenerate them with
+`CW_UPDATE_SAMPLES=1`; `scripts/build-live-world.mjs` base64-encodes them into each virtual
+machine's `Documents/` and `Movies/` folders in `site/world-definition.js`.
+
 `cargo test -p computerworld --test internet_links` is the guard: it asks every declared
 domain to answer, checks alternate domains serve the same page as their canonical one,
 crawls every link two levels deep, and resolves every indexed search result. A dead

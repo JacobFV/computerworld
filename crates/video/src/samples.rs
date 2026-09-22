@@ -1,7 +1,7 @@
 //! The sample media the reference world seeds each machine's movies folder with. They
 //! are drawn and synthesised here, deterministically, rather than recorded: a leader
 //! countdown, broadcast colour bars, a sunset over the sea, a beep track and a short
-//! piece of music. `tests/samples.rs` checks the files under `worlds/company-2026/files`
+//! piece of music. `tests/samples.rs` checks the files under `worlds/company-2026/samples`
 //! are exactly these.
 use crate::{apng, wav};
 use cw_raster::{fmath, Canvas, Rgba};

@@ -1,5 +1,5 @@
 //! The sample database seeded into users' Documents folders is written by this engine:
-//! `worlds/company-2026/files/Inventory.db` must be exactly these bytes. Regenerate it
+//! `worlds/company-2026/samples/Inventory.db` must be exactly these bytes. Regenerate it
 //! with `CW_UPDATE_SAMPLES=1 cargo test -p cw-sql --test samples`, then run
 //! `scripts/build-content.sh` to seed it.
 use cw_sql::{Database, Value};
@@ -98,7 +98,7 @@ fn the_seeded_inventory_database_is_what_the_engine_writes() {
     let orders = back.query("SELECT count(*) FROM orders").unwrap();
     assert_eq!(orders.rows, vec![vec![Value::Integer(60)]]);
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../worlds/company-2026/files/Inventory.db");
+        .join("../../worlds/company-2026/samples/Inventory.db");
     if std::env::var_os("CW_UPDATE_SAMPLES").is_some() {
         std::fs::write(&path, &bytes).unwrap();
         return;
