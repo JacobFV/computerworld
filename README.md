@@ -110,7 +110,7 @@ Rust SDKs ([custom app](docs/custom-application.md), [custom service](docs/custo
 
 The [documentation site](https://jacobfv.github.io/computerworld/docs/) has the guides in
 reading order and the Python, JavaScript and Rust API references. The sources are in
-[`docs/`](docs/):
+[`docs/`](docs/README.md), indexed there in the same order:
 
 | To | Read |
 |---|---|
