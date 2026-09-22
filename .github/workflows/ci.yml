@@ -24,10 +24,11 @@ jobs:
           node scripts/build-docs.mjs --check
           cargo doc --no-deps -p computerworld --lib
   format:
-    # Its own job, not a step inside `rust`: `cargo fmt --all -- --check` fails
-    # today on a reformat spanning 246 files, and as a step it took the tests,
-    # the lint, the Wasm build and the generated-content check down with it. On
-    # its own it says exactly one thing, and the rest of the workflow reports.
+    # Its own job, not a step inside `rust`: a formatting failure says nothing
+    # about whether the code works, but as the second line of test-all.sh it
+    # stopped the workspace tests, clippy, the Wasm build and the
+    # generated-content check from running at all. Here it costs a checkout and
+    # rustfmt, answers in seconds, and masks nothing.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
