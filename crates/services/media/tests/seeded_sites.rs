@@ -8,7 +8,8 @@ use cw_service_media::MediaService;
 use serde_json::Value;
 const YOUTUBE: &str = include_str!("../../../../worlds/company-2026/sites/youtube.json");
 const SPOTIFY: &str = include_str!("../../../../worlds/company-2026/sites/spotify.json");
-const YOUTUBE_MUSIC: &str = include_str!("../../../../worlds/company-2026/sites/youtube-music.json");
+const YOUTUBE_MUSIC: &str =
+    include_str!("../../../../worlds/company-2026/sites/youtube-music.json");
 fn ctx() -> ServiceContext {
     ServiceContext {
         actor: "alice".into(),

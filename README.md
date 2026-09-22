@@ -100,7 +100,9 @@ and runnable demos in [`examples/`](examples/).
   persistent sessions, portable snapshots and recorded-action replay.
 
 The reference world, `worlds/company-2026/world.json`, is five computers on three OS
-profiles with the services and sites above. Worlds are data: write your own with the
+profiles with the services and sites above. Worlds are data, and [`worlds/`](worlds/)
+holds three of them — the company, [one desktop for one agent](worlds/agent-desktop), and
+[a machine with no network at all](worlds/unrelated-lab). Write your own with the
 [world schema](docs/world-schema.md), and add applications and services through small
 Rust SDKs ([custom app](docs/custom-application.md), [custom service](docs/custom-service.md)).
 
