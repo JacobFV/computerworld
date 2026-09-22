@@ -27,7 +27,7 @@ Abbreviations: **SCE** = `jacobfv/synthetic-computer-environment`; **TCN** =
 | Browser/visual interaction | SynthUX input/frame provenance scaffolding + SCE network-backed navigation | SynthUX `viewport/{viewport,driver}.py`; SCE client `apps/BrowserApp.tsx` | Actual Playwright/React/iframe paths; SynthUX native observation can echo requested arguments | URL/history/storage/input semantics; derive observations from actual visible state, never action intent; keep real-browser bridge optional |
 | Fast synthetic renderer | None of the examined predecessors | Existing browser/DOM paths provide comparison workloads | Canvas/native shell layers still rely on browser execution | New semantic/layout/scene/raster separation; benchmark rather than claim speedup |
 | Agent/evaluator separation | TCN actor projection and gated evaluator probes | `generators/computer/`, adapter/frame tests | symbolic-ai-models typed action/perception/state boundaries; Synthex task predicates | Explicit actor grants and evaluator handle; public objective separate from private predicates/answers |
-| Agent/model decoupling | symbolic-ai-models environment-facing contracts | See `research/lineage-boundaries.md` for exact paths | TCN representation and SynthUX grammar coupling | Typed actions, local observation and effect accounting; exclude model architecture/training machinery |
+| Agent/model decoupling | symbolic-ai-models environment-facing contracts | See `research/notes/lineage-boundaries.md` for exact paths | TCN representation and SynthUX grammar coupling | Typed actions, local observation and effect accounting; exclude model architecture/training machinery |
 
 ## Established lineage
 

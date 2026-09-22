@@ -21,7 +21,7 @@ jobs:
           node-version: '22'
       - name: The documentation converts, and the Rust reference builds
         run: |
-          node scripts/build-docs.mjs --check
+          node scripts/site/build-docs.mjs --check
           cargo doc --no-deps -p computerworld --lib
   format:
     # Its own job, not a step inside `rust`: a formatting failure says nothing
@@ -63,7 +63,7 @@ jobs:
           bash scripts/build-wasm.sh
           cp -r pkg/web site/pkg
       - uses: ./.github/actions/browser
-      - run: node scripts/check-site.mjs
+      - run: node scripts/site/check-site.mjs
   bindings:
     runs-on: ubuntu-latest
     steps:

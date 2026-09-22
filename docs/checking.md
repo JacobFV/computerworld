@@ -1,6 +1,6 @@
 # Bounded model checking for agent safety
 
-`scripts/cw-check.mjs` enumerates every state a GUI agent can reach within `k`
+`scripts/checks/cw-check.mjs` enumerates every state a GUI agent can reach within `k`
 actions of a seeded start state and evaluates a set of policies on each one. It
 answers a question sampling cannot: not "did 500 rollouts misbehave" but "is
 there *any* sequence of at most `k` clicks that reaches a state where this
@@ -12,9 +12,9 @@ action sequence, which the tool then replays from a fresh world and re-checks
 before it will write it down.
 
 ```sh
-node scripts/cw-check.mjs --depth 6 --out site/data/policies.json
-node scripts/cw-check.mjs --help
-node scripts/cw-check.mjs --self-test      # the evaluator's unit tests
+node scripts/checks/cw-check.mjs --depth 6 --out site/data/policies.json
+node scripts/checks/cw-check.mjs --help
+node scripts/checks/cw-check.mjs --self-test      # the evaluator's unit tests
 ```
 
 | Option | Meaning |

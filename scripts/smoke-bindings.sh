@@ -8,10 +8,10 @@ maturin build --release --manifest-path crates/python/Cargo.toml --out target/py
 PACKAGE_VERSION=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
 python -m pip install --force-reinstall --no-index --find-links target/python-wheel "computerworld==$PACKAGE_VERSION"
 mkdir -p target/binding-checks
-node scripts/smoke-node.cjs target/binding-checks/wasm.json
+node scripts/checks/smoke-node.cjs target/binding-checks/wasm.json
 python examples/python/smoke.py target/binding-checks/wasm.json
 python crates/python/tests/test_threading.py
-node scripts/smoke-desktop-pixels.cjs target/binding-checks/desktop.json
+node scripts/checks/smoke-desktop-pixels.cjs target/binding-checks/desktop.json
 python examples/python/desktop_pixels.py target/binding-checks/desktop.json
 # Byte-compare a whole episode across the two bindings: summary, actions, scene and
 # observation, plus a portable checkpoint imported into the other runtime. This is what

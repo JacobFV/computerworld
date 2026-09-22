@@ -10,7 +10,7 @@
 import { begin, run, installFontPack } from './engine.js';
 
 const WASM = new URL('./pkg/computerworld_bg.wasm', import.meta.url);
-const WORLD = new URL('./world-definition.js', import.meta.url);
+const WORLD = new URL('./generated/world-definition.js', import.meta.url);
 
 // How much stays running behind the visitor. Each scene is a world of its own, so a
 // visitor who walks the whole slideshow would otherwise be holding dozens of them — and a
@@ -92,7 +92,7 @@ async function arrive(report) {
     new Response(wasm.body.pipeThrough(counting()), { headers: { 'content-type': 'application/wasm' } }));
   const text = await source;
   report(false);
-  // `export default <JSON>;`, written by scripts/build-live-world.mjs. The braces are cut
+  // `export default <JSON>;`, written by scripts/content/build-live-world.mjs. The braces are cut
   // out here rather than in each worker, but the text is what travels: a worker parses it
   // into a definition of its own, since a world may not be shared between them.
   const start = text.indexOf('{'), end = text.lastIndexOf('}') + 1;
@@ -406,13 +406,13 @@ export async function boot(report) {
     }
   }
 
-  // What `scripts/render-site-stills.mjs` waits on before it saves a screen, and the one
+  // What `scripts/site/render-site-stills.mjs` waits on before it saves a screen, and the one
   // thing about the fonts the page outside this file can see. A fresh promise each time it
   // is read, because which workers have machines — and so which have fetched fonts — is
   // settled by where the visitor has been.
   Object.defineProperty(window, 'computerworldFonts', { configurable: true, get: () => host.fonts() });
 
-  // What a machine is showing, for `scripts/render-site-stills.mjs`, which saves these
+  // What a machine is showing, for `scripts/site/render-site-stills.mjs`, which saves these
   // frames to disk as the stills the page puts behind its machines. It cannot read them
   // off the canvas: a canvas whose control has gone to a worker hands a page back the
   // frame it was first given, however many have been drawn since.

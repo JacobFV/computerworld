@@ -1,5 +1,5 @@
 //! Stills of github.com and gitlab.com rendered through the engine, for the record under
-//! `research/site-stills/`. Ignored by default: a picture, not a gate.
+//! `research/studies/site-stills/`. Ignored by default: a picture, not a gate.
 //! `cargo test -p cw-service-git --test still -- --ignored`.
 mod support;
 use cw_protocol::HttpRequest;

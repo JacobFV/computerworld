@@ -15,7 +15,7 @@ selected:
   (`@page`, `media="print"`), nests another document (`iframe`, `object`, `embed`,
   `video`, `canvas`), or declares `@font-face` in the document or a linked stylesheet
   other than `fonts/ahem.css` (the runner maps Ahem to a bundled monospace face);
-- whole leaf directories are taken in the plan's order (`docs/web-engine-plan.md`,
+- whole leaf directories are taken in the plan's order (`docs/contracts/web-engine-plan.md`,
   Verification) while the running total stays under `CAP` pairs; a directory that does
   not fit is skipped and listed in the README as the next step. Directories named in
   `OUT_OF_SCOPE` (tentative specs, animation and invalidation tests, hidpi, multicol,

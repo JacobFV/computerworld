@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-python3 scripts/check-boundaries.py
+python3 scripts/checks/test_boundaries.py
+python3 scripts/checks/check-boundaries.py
 # Formatting is gated by the `format` job in CI, not here. It used to be the line
 # below this one, and because `set -e` stops the script, a formatting failure
 # meant none of the checks that follow ever ran. Run `cargo fmt --all -- --check`
@@ -20,7 +21,7 @@ generated_files=(worlds/company-2026/world.json
                  worlds/company-2026/index/bing-search.json
                  worlds/company-2026/index/ddg-search.json
                  worlds/agent-desktop/world.json
-                 site/world-definition.js)
+                 site/generated/world-definition.js)
 for file in "${generated_files[@]}"; do
   mkdir -p "$generated/$(dirname "$file")"
   cp "$file" "$generated/$file"

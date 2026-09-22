@@ -1,0 +1,13 @@
+# Keep reference data in version control while collapsing generated diffs on GitHub.
+site/generated/world-definition.js linguist-generated=true
+site/data/policies.json linguist-generated=true
+worlds/*/world.json linguist-generated=true
+worlds/*/index/*.json linguist-generated=true
+benchmarks/results/** linguist-generated=true
+research/studies/**/*.scene.json linguist-generated=true
+crates/web/tests/**/*.chromium.json linguist-generated=true
+crates/web/tests/wpt/manifest.json linguist-generated=true
+crates/web/tests/vendor/** linguist-vendored=true
+crates/render/assets/** linguist-vendored=true
+crates/scene/src/kerning_data.rs linguist-generated=true
+crates/tz/src/data.rs linguist-generated=true

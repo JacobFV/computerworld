@@ -116,7 +116,7 @@ impl Page {
     }
 }
 
-/// Renders a page through the engine to `research/site-stills/<file>`.
+/// Renders a page through the engine to `research/studies/site-stills/<file>`.
 pub fn still(html: &str, file: &str, width: u32, height: u32) {
     use cw_web::css::{parse_stylesheet, MatchContext, Media, Origin};
     use cw_web::{Strictness, Viewport};
@@ -163,7 +163,7 @@ pub fn still(html: &str, file: &str, width: u32, height: u32) {
         writer.write_image_data(&frame.rgba).unwrap();
     }
     let target = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../research/site-stills")
+        .join("../../../research/studies/site-stills")
         .join(file);
     std::fs::create_dir_all(target.parent().unwrap()).unwrap();
     std::fs::write(&target, out).unwrap_or_else(|e| panic!("write {}: {e}", target.display()));

@@ -1,6 +1,6 @@
 # cw-web: contracts between the modules
 
-Read docs/web-engine-plan.md first. This file fixes the interfaces the modules meet at,
+Read docs/contracts/web-engine-plan.md first. This file fixes the interfaces the modules meet at,
 so they can be built in parallel. A module may add to its own API freely; the shared
 types in `geom.rs`, `dom/`, and `style/computed.rs` change only by agreement (edit and
 tell the other owners).

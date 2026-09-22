@@ -34,23 +34,23 @@ against 2,340 ms when the same code ran in the tab.
 One consequence, for anything reading a machine's pixels: a canvas whose control has gone
 to a worker hands the page back the frame it was first given, not the frame it is showing.
 `window.computerworldFrame(<machine id>)` asks the machine itself and is what
-`scripts/render-site-stills.mjs` saves.
+`scripts/site/render-site-stills.mjs` saves.
 
 `.github/workflows/pages.yml` deploys it: it builds the Wasm bundle into `site/pkg/`
 for `live.js` to import, and the documentation into `site/docs/`, where
-`scripts/build-docs.mjs` turns `docs/*.md` into pages with the guides in reading order
+`scripts/site/build-docs.mjs` turns `docs/*.md` into pages with the guides in reading order
 (the order is in the script) and `cargo doc` supplies the Rust reference under
 `site/docs/api/rust/`. Both directories are generated and git-ignored.
-`world-definition.js` — the world the machines run in — is generated too, but checked in:
-`scripts/build-live-world.mjs` writes it from `worlds/company-2026/world.json`, and
+`generated/world-definition.js` — the world the machines run in — is generated too, but checked in:
+`scripts/content/build-live-world.mjs` writes it from `worlds/company-2026/world.json`, and
 `scripts/build-content.sh` runs that alongside the other generators.
 
 ```sh
 # Preview (the machines need the Wasm bundle built once)
 bash scripts/build-wasm.sh && cp -r pkg/web site/pkg
-node scripts/build-docs.mjs
+node scripts/site/build-docs.mjs
 cargo doc --no-deps -p computerworld --lib && cp -r target/doc site/docs/api/rust
-node scripts/serve-site.mjs 8000
+node scripts/site/serve-site.mjs 8000
 ```
 
 ## The cast
@@ -69,7 +69,7 @@ To add one, write `scenes/<id>.js`, import it in `cast.js`, and render its still
 
 ```sh
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs CHROME_BIN=/usr/bin/google-chrome \
-  node scripts/render-site-stills.mjs <scene id>      # or no id, for all of them
+  node scripts/site/render-site-stills.mjs <scene id>      # or no id, for all of them
 ```
 
 `site/media/scenes/<machine>.jpg` is what a machine shows until it is running, and all it

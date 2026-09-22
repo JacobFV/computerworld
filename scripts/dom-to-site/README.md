@@ -4,7 +4,7 @@ A prototype that turns a real page's DOM into a computerworld site seed: the JSO
 `static-site` (or `press`) service is initialised with, in the shape of
 `worlds/company-2026/sites/<id>.json`. Node 18+, ESM, no dependencies beyond the
 Playwright module already on this machine for the capture step. The assessment behind it
-is in [`research/dom-to-site.md`](../../research/dom-to-site.md).
+is in [`research/notes/dom-to-site.md`](../../research/notes/dom-to-site.md).
 
 ```
 capture.mjs   real page  ->  <name>.capture.json + <name>.capture.png   (Playwright)

@@ -1,6 +1,6 @@
 //! Page rendering as HTML. The three engines serve identical routes; the skin decides
 //! what they look like, which is the whole difference between a Google results page
-//! and a Bing one. The markup follows `research/google-ceiling/mock.html` and the
+//! and a Bing one. The markup follows `research/studies/google-ceiling/mock.html` and the
 //! stylesheet is `search.css` next to this file; the palette a seed carries goes on
 //! `<html>` as custom properties so the sheet stays one static file.
 //!

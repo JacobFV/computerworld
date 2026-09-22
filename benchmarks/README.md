@@ -73,3 +73,11 @@ substitute it for dirty-reset performance. `summarize.py` preserves per-run p50
 ranges and operation samples. `machine.py` captures executable, world, lockfile,
 font and Wasm artifact hashes. Linux RSS includes allocator-retained memory;
 Wasm linear memory is a high-water allocation and does not shrink on handle free.
+
+## Recorded results and local runs
+
+`results/` contains selected, committed measurements supporting the performance
+report; these are reference evidence, not a cache. Use
+`BENCH_OUTPUT=benchmarks/results/local-<run>/result.json` for exploratory runs (the
+`local-*` directories are ignored), or write to `target/benchmarks/`. Promote a
+result deliberately with its workload, machine metadata and interpretation.

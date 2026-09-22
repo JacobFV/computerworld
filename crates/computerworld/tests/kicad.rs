@@ -687,10 +687,10 @@ fn the_three_desktops_have_kicad_and_the_phones_do_not() {
             "{machine}: the project manager did not paint"
         );
     }
-    // The live site world (scripts/build-live-world.mjs) installs it on desktops only.
+    // The live site world (scripts/content/build-live-world.mjs) installs it on desktops only.
     let text = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../site/world-definition.js"
+        "/../../site/generated/world-definition.js"
     ))
     .unwrap();
     let json = text

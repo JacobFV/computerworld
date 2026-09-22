@@ -59,7 +59,7 @@
 // STILLS
 //
 // Each machine's still is site/media/scenes/<machine id>.jpg, rendered from the real
-// thing by `node scripts/render-site-stills.mjs [scene-id ...]`. A machine whose still
+// thing by `node scripts/site/render-site-stills.mjs [scene-id ...]`. A machine whose still
 // has not been rendered yet shows an empty screen rather than a broken image, so a new
 // scene can land before its pictures do. The stills are all asked for within a second or
 // two of the page opening — the slide in the middle and the ones a keypress away first,

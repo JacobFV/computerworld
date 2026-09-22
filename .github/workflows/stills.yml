@@ -47,4 +47,4 @@ jobs:
         run: cp -r pkg/web site/pkg
       - uses: ./.github/actions/browser
       - name: The stills still show what the machines draw
-        run: node scripts/render-site-stills.mjs --check
+        run: node scripts/site/render-site-stills.mjs --check

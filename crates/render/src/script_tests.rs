@@ -28,7 +28,7 @@ const SAMPLES: &[(&str, &str)] = &[
     ("myanmar", "မင်္ဂလာပါ ကမ္ဘာ"),
     ("sinhala", "ආයුබෝවන් ලෝකය"),
 ];
-/// The multi-script golden scene, shared with `scripts/smoke-node.cjs`.
+/// The multi-script golden scene, shared with `scripts/checks/smoke-node.cjs`.
 const SCENE: &str = include_str!("../tests/scripts-scene.json");
 const SCENE_SHA256: &str = "a5c6132a7f8f967f99cb79df655841f8e57bf9393f370894fe509840c91e1f1f";
 

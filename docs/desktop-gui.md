@@ -27,7 +27,7 @@ A browser-only actor without `application.v1` receives a content-only browser
 scene, including on graphical profiles. Desktop dimensions are caller-selected;
 the project site's live machines use 1280×800 desktops and 390×844 phones.
 
-[Visual archaeology](../research/desktop-visuals.md) and the [overhaul reference review](../research/desktop-fidelity-references.md)
+[Visual archaeology](../research/studies/desktop-fidelity/desktop-visuals.md) and the [overhaul reference review](../research/studies/desktop-fidelity/desktop-fidelity-references.md)
 record predecessor paths and official visual references. Original generated
 wallpapers and platform-inspired icon assets are bundled alongside the attributed
 Ubuntu wallpaper and Yaru icons. See [asset provenance and licensing](../crates/render/assets/README.md).
@@ -420,7 +420,7 @@ HTML/JavaScript are not implemented. Rendering detail does not imply those featu
 - `crates/computerworld/tests/native_apps.rs`: a native application opens in its own
   window and never in the browser, and survives a snapshot round trip.
 - `crates/render/tests/wasm-gui.cjs`: native/Wasm raster parity.
-- `scripts/smoke-desktop-pixels.cjs` plus `examples/python/desktop_pixels.py`: portable
+- `scripts/checks/smoke-desktop-pixels.cjs` plus `examples/python/desktop_pixels.py`: portable
   Node/Python desktop checkpoints and RGBA comparisons.
 - [Programmatic interaction demos](programmatic-computer-use.md): reusable external
   Python/JavaScript usage, snapshot branches and cross-binding comparisons.

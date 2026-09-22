@@ -77,7 +77,7 @@ jobs:
           manylinux: ${{ matrix.manylinux }}
           args: --release --locked --out target/release-wheels
       - name: Install candidate wheel in a fresh environment and run real computer interaction
-        run: python scripts/package-release-smoke.py
+        run: python scripts/release/package-release-smoke.py
       - uses: actions/upload-artifact@v4
         with:
           name: python-${{ matrix.target }}
@@ -114,9 +114,9 @@ jobs:
       - name: Clear release outputs restored from the cache
         run: rm -rf target/release-assets target/release-unpacked target/release-node-evidence
       - run: bash scripts/build-wasm.sh
-      - run: python scripts/package-release.py
+      - run: python scripts/release/package-release.py
       - name: Pack the npm package, install it in an empty project and run a machine from it
-        run: python scripts/package-npm.py
+        run: python scripts/release/package-npm.py
       - name: Test the packaged Node binding outside the source tree
         run: |
           mkdir -p target/release-unpacked

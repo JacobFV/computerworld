@@ -1,4 +1,4 @@
-//! Renders docs.google.com and notion.so through the engine to `research/site-stills/`.
+//! Renders docs.google.com and notion.so through the engine to `research/studies/site-stills/`.
 //! Ignored by default: pictures for the record, not a gate.
 //! `cargo test -p cw-service-docs --test still -- --ignored`.
 use cw_protocol::HttpRequest;
@@ -48,7 +48,7 @@ fn render(html: &str, file: &str, viewport: Viewport) {
         writer.write_image_data(&frame.rgba).unwrap();
     }
     let target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../research/site-stills")
+        .join("../../../research/studies/site-stills")
         .join(file);
     std::fs::create_dir_all(target.parent().unwrap()).unwrap();
     std::fs::write(&target, out).unwrap_or_else(|e| panic!("write {}: {e}", target.display()));

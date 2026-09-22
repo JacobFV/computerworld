@@ -1,5 +1,5 @@
 //! Renders every publication's front page (and one article each) through the engine to
-//! `research/site-stills/<site>.png`. Ignored by default: pictures for the record, not
+//! `research/studies/site-stills/<site>.png`. Ignored by default: pictures for the record, not
 //! a gate. `cargo test -p cw-service-press --test still -- --ignored`; `PRESS_STILL=bbc,cnn`
 //! renders only those sites.
 use cw_protocol::HttpRequest;
@@ -100,7 +100,7 @@ fn render(html: &str, file: &str, viewport: Viewport) {
         writer.write_image_data(&frame.rgba).unwrap();
     }
     let target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../research/site-stills")
+        .join("../../../research/studies/site-stills")
         .join(file);
     std::fs::write(&target, out).unwrap_or_else(|e| panic!("write {}: {e}", target.display()));
     println!("wrote {}", target.display());

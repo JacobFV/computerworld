@@ -309,7 +309,7 @@ bold. None of it is fetched unless a page draws those glyphs; the project site w
 at boot only for regular SC and KR and the two emoji faces (6.4 MB gzip, of which the
 colour emoji are 2.8 MB) and fetches the rest behind them.
 
-The web faces (Milestone 0a of `docs/web-engine-plan.md`) — Arimo, Tinos, Cousine,
+The web faces (Milestone 0a of `docs/contracts/web-engine-plan.md`) — Arimo, Tinos, Cousine,
 Gelasio, Carlito, Caladea, Lato, Source Sans 3, Source Serif 4, Poppins, Montserrat,
 Playfair Display and JetBrains Mono, four faces each, subset to DejaVu's coverage —
 are embedded in the module, since a page's body text cannot wait for a fetch the way
@@ -372,7 +372,7 @@ compiler flags each saved roughly 0.5–0.85 MB gzip.
 What moved, and what did not:
 
 - **Pixels.** Every frame that shows a wallpaper changed, because the decoded wallpaper
-  pixels changed. Native and Wasm still agree bit for bit: `scripts/smoke-desktop-pixels.cjs`
+  pixels changed. Native and Wasm still agree bit for bit: `scripts/checks/smoke-desktop-pixels.cjs`
   followed by `examples/python/desktop_pixels.py` re-renders all five OS themes natively
   from the Wasm checkpoint and matches every hash. The decoder is `jpeg-decoder` with its
   `platform_independent` feature, which compiles out the SSSE3/NEON/`simd128` kernels
@@ -449,7 +449,7 @@ and are not reproduced by `benchmarks/run-all.sh`. There is no episode-throughpu
 benchmark in `benchmarks/`; the closest supported statement this repo can make is
 the per-operation actor-step cost in the native world table. The process count is
 structural rather than measured: no binding spawns a subprocess or requires a
-simulation server, which `scripts/check-boundaries.py` enforces.
+simulation server, which `scripts/checks/check-boundaries.py` enforces.
 
 ## Limits and next measurements
 

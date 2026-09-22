@@ -1,4 +1,4 @@
-//! Renders each geo site's main page through the engine to `research/site-stills/<site>.png`.
+//! Renders each geo site's main page through the engine to `research/studies/site-stills/<site>.png`.
 //! The map a page names is fetched from the same service (`GET /map.rgba`) and handed to
 //! layout and paint the way the browser does. Ignored by default: pictures for the record,
 //! not a gate. `cargo test -p cw-service-geo --test still -- --ignored`.
@@ -32,7 +32,7 @@ fn fetch(state: &mut Value, actor: &str, url: &str) -> Vec<u8> {
 fn render(state: &mut Value, actor: &str, origin: &str, path: &str, file: &str) {
     let html = String::from_utf8(fetch(state, actor, &format!("{origin}{path}"))).unwrap();
     let target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../research/site-stills")
+        .join("../../../research/studies/site-stills")
         .join(file);
     draw(&html, &target, |src| {
         fetch(state, actor, &format!("{origin}{src}"))

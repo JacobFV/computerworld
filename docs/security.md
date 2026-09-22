@@ -8,7 +8,7 @@ real traffic requires a separately supplied capability adapter as well as policy
 
 Pure simulation crates may parse IP addresses using `std::net` value types but
 must not open sockets, spawn processes, read host files/time, or draw host random
-bytes. [`scripts/check-boundaries.py`](../scripts/check-boundaries.py) checks
+bytes. [`scripts/checks/check-boundaries.py`](../scripts/checks/check-boundaries.py) checks
 for forbidden dependencies and common imports. It is a development guard, not a
 formal whole-program capability proof. The core also compiles for ordinary
 browser Wasm.

@@ -1,7 +1,7 @@
 //! Web search: google.com, bing.com and duckduckgo.com are three instances of one engine over
 //! one index, differing by skin, ranking weights, bangs and whether history is retained.
 //!
-//! The index is static and generated — `scripts/build-search-index.mjs` splices every other
+//! The index is static and generated — `scripts/content/build-search-index.mjs` splices every other
 //! site's `search_entries` into `documents` — because `Service::initialize` has no network
 //! handle to crawl with. Every engine therefore has to work with an index of any size, empty
 //! included, and a seeded entry is a promise that the link resolves, gated at load below.
@@ -454,7 +454,7 @@ mod tests {
         let raw = SITES.iter().find(|(name, _)| *name == id).unwrap().1;
         serde_json::from_str::<Value>(raw).unwrap()["initial_state"].clone()
     }
-    /// What `scripts/build-search-index.mjs` does, over an index the test controls: one shared
+    /// What `scripts/content/build-search-index.mjs` does, over an index the test controls: one shared
     /// document set, each engine's own `authority_overrides` applied.
     fn seeded(id: &str, documents: &[Value]) -> Value {
         let file: Value =
@@ -1086,7 +1086,7 @@ mod tests {
         assert_eq!(text_of(&home, "search-lucky"), "First hit");
         assert!(has(&home, "recent-0") && has(&home, "trend-0") && has(&home, "bang-gh"));
     }
-    /// The Google home page is the mock in `research/google-ceiling`: header links, the
+    /// The Google home page is the mock in `research/studies/google-ceiling`: header links, the
     /// six-colour mark, the pill, the two buttons, the footer band, and the same ids the
     /// `Page` version had so an agent's script keeps working.
     #[test]

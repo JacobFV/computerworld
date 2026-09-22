@@ -47,18 +47,18 @@ Browser work needs Playwright and Chrome from outside the project:
     PLAYWRIGHT_MODULE=/usr/lib/chatgpt/resources/cua_node/lib/node_modules/playwright/index.mjs
     CHROME_BIN=/usr/bin/google-chrome
 
-`scripts/check-site.mjs` is the one thing in CI that opens the page: it asserts
+`scripts/site/check-site.mjs` is the one thing in CI that opens the page: it asserts
 that machines come up in both hosts the page can use (workers with an
 OffscreenCanvas, and the tab), that a pointer over one machine redraws that
 machine and none beside it, that fullscreen and retirement behave, and that a
 page whose worker will not load falls back rather than spinning. Run it after
 any change to `site/live.js`, `site/worker.js`, `site/engine.js` or `site/app.js`.
 
-`scripts/render-site-stills.mjs` renders every machine's still by opening the
+`scripts/site/render-site-stills.mjs` renders every machine's still by opening the
 real site and letting the scenes boot; `--check` compares instead of writing,
 and the nightly `stills` workflow runs it over the whole cast, because the
 pictures drift silently as the engine's rendering changes.
-`scripts/serve-site.mjs` serves `site/` with the media types the bundle needs.
+`scripts/site/serve-site.mjs` serves `site/` with the media types the bundle needs.
 
 ## Profile before fixing
 

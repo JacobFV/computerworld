@@ -5,8 +5,8 @@ on:
     paths:
       - 'site/**'
       - 'docs/**'
-      - 'scripts/build-docs.mjs'
-      - 'scripts/build-live-world.mjs'
+      - 'scripts/site/build-docs.mjs'
+      - 'scripts/content/build-live-world.mjs'
       - 'crates/**'
       - 'worlds/**'
       - 'scripts/build-wasm.sh'
@@ -41,19 +41,19 @@ jobs:
       - run: bash scripts/build-wasm.sh
       - name: Build the documentation
         run: |
-          node scripts/build-docs.mjs
+          node scripts/site/build-docs.mjs
           cargo doc --no-deps -p computerworld --lib
           mkdir -p site/docs/api
           cp -r target/doc site/docs/api/rust
       # site/live.js imports the bundle from site/pkg/ and the world from
-      # site/world-definition.js, which scripts/build-content.sh keeps generated.
+      # site/generated/world-definition.js, which scripts/build-content.sh keeps generated.
       - name: Assemble the site
         run: cp -r pkg/web site/pkg
       - uses: ./.github/actions/browser
       - name: The machines run in the bundle about to be deployed
         # Gating the deploy rather than only the push: what ships is this bundle with this
         # site, and the pair of them is what has to work.
-        run: node scripts/check-site.mjs
+        run: node scripts/site/check-site.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

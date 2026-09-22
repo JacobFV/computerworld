@@ -1,5 +1,5 @@
 //! Renders each seeded discussion site's main page (and one thread page) through the engine
-//! to `research/site-stills/<site>.png`. Ignored by default: pictures for the record, not a
+//! to `research/studies/site-stills/<site>.png`. Ignored by default: pictures for the record, not a
 //! gate. `cargo test -p cw-service-forum --test still -- --ignored`.
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
@@ -51,7 +51,7 @@ fn render(html: &str, file: &str, viewport: Viewport) {
         PathBuf::from(file)
     } else {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../research/site-stills")
+            .join("../../../research/studies/site-stills")
             .join(file)
     };
     std::fs::write(&target, out).unwrap_or_else(|e| panic!("write {}: {e}", target.display()));

@@ -1,7 +1,7 @@
 //! A deterministic web engine for the simulated browser: HTML to a DOM, CSS through
 //! the cascade to computed styles, fixed-point layout, and paint to a `cw_scene::Scene`.
 //! See `DESIGN.md` for the contracts between the modules and
-//! `docs/web-engine-plan.md` for the milestones.
+//! `docs/contracts/web-engine-plan.md` for the milestones.
 
 pub mod css;
 pub mod dom;

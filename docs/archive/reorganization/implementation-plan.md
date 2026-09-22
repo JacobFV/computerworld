@@ -42,7 +42,7 @@ outside Task 1. Consume current paths; produce the structure in design.md.
 
 - [ ] Move records/contracts and group research studies and scripts.
 - [ ] Rewrite relative references according to source/destination paths; retain stable guide URLs.
-- [ ] Move site/world-definition.js to site/generated/world-definition.js; update imports and generators.
+- [ ] Move the existing site world to site/generated/world-definition.js; update imports and generators.
 - [ ] Add repository, scripts and evidence navigation guidance and generated-file attributes.
 - [ ] Run docs generation/check, script syntax checks and generated-content comparison. Expected: pass, generated world bytes unchanged.
 - [ ] Commit the verified migration.

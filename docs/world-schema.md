@@ -37,7 +37,7 @@ See [creating a world](custom-world.md) and the
 `worlds/company-2026/world.json` is **generated**, not hand-written: it is resolved from
 [`worlds/company-2026/world.yml`](../worlds/company-2026/world.yml) by `cw-world`, which
 merges in `sites/*.json`, seeds the desktops from `home/` and derives each service's node,
-link and DNS records. `scripts/build-search-index.mjs` builds the search index the engines
+link and DNS records. `scripts/content/build-search-index.mjs` builds the search index the engines
 pull in, and `scripts/build-content.sh` runs the pipeline. Edit the blueprint, not the
 output; `scripts/test-all.sh` fails if the two have drifted.
 

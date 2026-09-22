@@ -215,7 +215,7 @@ fn color_emoji_draw_in_colour_and_fall_back_to_monochrome() {
     let faded = Renderer::new().render(&scene);
     assert_ne!(faded, face);
     assert!(colourful(&faded) > 0);
-    // Pinned: native and Wasm must agree (scripts/smoke-node.cjs checks the
+    // Pinned: native and Wasm must agree (scripts/checks/smoke-node.cjs checks the
     // multi-script scene, which carries these emoji too).
     assert_eq!(
         hash(&face),

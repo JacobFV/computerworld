@@ -26,7 +26,7 @@ point, not an untrusted plugin sandbox.
 [`computer-interaction.mjs`](javascript/computer-interaction.mjs) is a persistent
 JavaScript → Wasm session: keyboard and pointer input, rendering and replay. It is
 also the demo shipped inside the npm package, so its path is part of a published
-layout — `scripts/package-release.py` copies this directory verbatim.
+layout — `scripts/release/package-release.py` copies this directory verbatim.
 
 ## Python — `python/`
 
@@ -36,7 +36,7 @@ layout — `scripts/package-release.py` copies this directory verbatim.
 |---|---|
 | [`computer_interaction.py`](python/computer_interaction.py) | The same session as the JavaScript demo, against the native extension. `--compare <dir>` checks it against the JavaScript run's output, which is what makes the two bindings' agreement a test rather than a claim; change one and change the other. |
 | [`desktop_pixels.py`](python/desktop_pixels.py) | Cross-binding parity: imports a Node/Wasm desktop checkpoint and re-renders it. |
-| [`smoke.py`](python/smoke.py) | The wheel works at all. Run against an installed package; `scripts/package-release-smoke.py` uses it on release artifacts. |
+| [`smoke.py`](python/smoke.py) | The wheel works at all. Run against an installed package; `scripts/release/package-release-smoke.py` uses it on release artifacts. |
 
 `scripts/smoke-bindings.sh` runs the JavaScript and Python programs together and
 diffs their outputs; CI runs the same pair on every push.

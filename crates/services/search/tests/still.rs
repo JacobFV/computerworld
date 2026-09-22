@@ -1,4 +1,4 @@
-//! Renders the Google home page through the engine to `research/google-ceiling/engine.png`,
+//! Renders the Google home page through the engine to `research/studies/google-ceiling/engine.png`,
 //! the companion of `mock.html` (Chromium) in that directory. Ignored by default: it is a
 //! picture for the record, not a gate. `cargo test -p cw-service-search --test still -- --ignored`.
 use cw_protocol::HttpRequest;
@@ -50,7 +50,7 @@ fn render(html: &str, path: &str, viewport: Viewport) {
         writer.write_image_data(&frame.rgba).unwrap();
     }
     let target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../research/google-ceiling")
+        .join("../../../research/studies/google-ceiling")
         .join(path);
     std::fs::write(&target, out).unwrap_or_else(|e| panic!("write {}: {e}", target.display()));
     println!("wrote {}", target.display());

@@ -1,6 +1,6 @@
 //! The world the live machines on the project site run in, checked against the engine.
 //!
-//! `scripts/build-live-world.mjs` writes `site/world-definition.js` from the reference
+//! `scripts/content/build-live-world.mjs` writes `site/generated/world-definition.js` from the reference
 //! world: seven devices on five graphical OS profiles, with the native applications and
 //! documents each platform ships. `site/live.js` imports that file and nothing else, so
 //! a definition that no longer boots is a broken home page.
@@ -18,12 +18,12 @@ use serde_json::json;
 fn live_world() -> WorldDefinition {
     let text = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../site/world-definition.js"
+        "/../../site/generated/world-definition.js"
     ))
-    .expect("site/world-definition.js is missing: run scripts/build-content.sh");
+    .expect("site/generated/world-definition.js is missing: run scripts/build-content.sh");
     let json = text
         .split_once("export default ")
-        .expect("site/world-definition.js is not the generated module")
+        .expect("site/generated/world-definition.js is not the generated module")
         .1
         .trim()
         .trim_end_matches(';');

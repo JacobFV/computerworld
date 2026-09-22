@@ -146,7 +146,7 @@ conical) and sweep gradients with pad/repeat/reflect extension, clip boxes, tran
 composite layers with every Porter-Duff operator and the separable blend modes (the
 rainbow and waving flags use soft light and source-in). IEEE-754 basic operations and
 `sqrt` are exact on every target and Rust does not fuse multiply-adds, so a colour glyph
-is the same bits natively and in Wasm (`scripts/smoke-node.cjs` checks the
+is the same bits natively and in Wasm (`scripts/checks/smoke-node.cjs` checks the
 multi-script frame, colour emoji included). Colour glyphs composite over the text's
 alpha mask in a colour layer of the text block and take the node's opacity and clip;
 they ignore the text colour. Without the colour file the monochrome glyphs draw in the
@@ -179,7 +179,7 @@ embedded; a bold CJK face has the same glyph order and advances as its regular t
 (checked by `build-fonts.py`) and lays out with its stub. Before a pack file is
 installed its glyphs draw as boxes at their final positions; after, every renderer
 drops its cached text and repaints fully on its next frame. With the pack installed,
-Wasm renders exactly the native pixels: `scripts/smoke-node.cjs` checks the
+Wasm renders exactly the native pixels: `scripts/checks/smoke-node.cjs` checks the
 multi-script frame of `tests/scripts-scene.json` against the hash
 `multi_script_scene_is_pinned` pins natively. The project site fetches the everyday
 files (regular SC and KR, both emoji faces) during boot, alongside the first paint, and

@@ -1,5 +1,5 @@
 //! Renders the three sites' main pages (and one article page each) through the engine to
-//! `research/site-stills/`. Ignored by default: pictures for the record, not a gate.
+//! `research/studies/site-stills/`. Ignored by default: pictures for the record, not a gate.
 //! `cargo test -p cw-service-wiki --test still -- --ignored`.
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
@@ -48,7 +48,7 @@ fn render(html: &str, path: &str, viewport: Viewport) {
         writer.write_image_data(&frame.rgba).unwrap();
     }
     let target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../research/site-stills")
+        .join("../../../research/studies/site-stills")
         .join(path);
     std::fs::create_dir_all(target.parent().unwrap()).unwrap();
     std::fs::write(&target, out).unwrap_or_else(|e| panic!("write {}: {e}", target.display()));

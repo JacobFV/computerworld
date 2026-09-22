@@ -1,6 +1,6 @@
 # Acid2
 
-The Second Acid Test, as a Milestone 2 gate for the web engine (`docs/web-engine-plan.md`,
+The Second Acid Test, as a Milestone 2 gate for the web engine (`docs/contracts/web-engine-plan.md`,
 Verification).
 
 ## Provenance

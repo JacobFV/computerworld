@@ -1,5 +1,5 @@
 //! Renders the seeded Google Calendar week through the engine to
-//! `research/site-stills/google-calendar.png`. Ignored by default: it is a picture for the
+//! `research/studies/site-stills/google-calendar.png`. Ignored by default: it is a picture for the
 //! record, not a gate. `cargo test -p cw-service-calendar --test still -- --ignored`.
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
@@ -50,7 +50,7 @@ fn render(html: &str, file: &str, viewport: Viewport) {
         writer.write_image_data(&frame.rgba).unwrap();
     }
     let target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../research/site-stills")
+        .join("../../../research/studies/site-stills")
         .join(file);
     std::fs::write(&target, out).unwrap_or_else(|e| panic!("write {}: {e}", target.display()));
     println!("wrote {}", target.display());

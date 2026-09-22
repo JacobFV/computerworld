@@ -1,4 +1,4 @@
-//! Renders chatgpt.com and claude.ai through the engine to `research/site-stills/`:
+//! Renders chatgpt.com and claude.ai through the engine to `research/studies/site-stills/`:
 //! `openai.png` and `anthropic.png` (the home pages), and `openai-chat.png` and
 //! `anthropic-chat.png` (a seeded conversation). Ignored by default: pictures for the
 //! record, not a gate. `cargo test -p cw-service-assistant --test still -- --ignored`.
@@ -62,7 +62,7 @@ fn render(html: &str, file: &str, viewport: Viewport) {
         writer.write_image_data(&frame.rgba).unwrap();
     }
     let target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../research/site-stills")
+        .join("../../../research/studies/site-stills")
         .join(file);
     std::fs::write(&target, out).unwrap_or_else(|e| panic!("write {}: {e}", target.display()));
     println!("wrote {}", target.display());

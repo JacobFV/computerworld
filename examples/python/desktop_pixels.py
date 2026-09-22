@@ -8,7 +8,7 @@ Run: python examples/python/desktop_pixels.py [checkpoint.json]
 The checkpoint is produced by the Wasm side, not by this script:
 
     bash scripts/build-wasm.sh
-    node scripts/smoke-desktop-pixels.cjs target/binding-checks/desktop.json
+    node scripts/checks/smoke-desktop-pixels.cjs target/binding-checks/desktop.json
 
 Checkpoint, wheel and Wasm bundle must all be built from the same revision.
 `scripts/smoke-bindings.sh` does that in order; see docs/determinism.md.
@@ -24,7 +24,7 @@ from computerworld import World
 checkpoint = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[2] / 'target/binding-checks/desktop.json'
 if not checkpoint.exists():
     raise SystemExit(f'No checkpoint at {checkpoint}. Generate one with:\n'
-                     '  bash scripts/build-wasm.sh && node scripts/smoke-desktop-pixels.cjs')
+                     '  bash scripts/build-wasm.sh && node scripts/checks/smoke-desktop-pixels.cjs')
 data = json.loads(checkpoint.read_text(encoding='utf-8'))
 w = World(data['definition'], 0)
 try:

@@ -77,7 +77,7 @@ rustup target add wasm32-unknown-unknown
 # Match Cargo.lock; currently 0.2.128.
 cargo install wasm-bindgen-cli --version 0.2.128 --locked
 bash scripts/build-wasm.sh
-node scripts/smoke-node.cjs
+node scripts/checks/smoke-node.cjs
 node examples/javascript/computer-interaction.mjs
 ```
 
@@ -146,7 +146,7 @@ desktop state machine. Run it locally with
 
 ```sh
 bash scripts/build-wasm.sh && cp -r pkg/web site/pkg
-node scripts/serve-site.mjs 8000
+node scripts/site/serve-site.mjs 8000
 ```
 
 Do not install a host-fetch adapter just to make synthetic domains work. A real

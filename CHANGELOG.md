@@ -47,7 +47,7 @@ DNS conventions by name.
   node, link and DNS records from where it sits. `cw-world build` writes the world;
   `cw-world check` fails if a written world has drifted from its blueprint. The resolver is
   pure — it reads through a `Files` provider and an explicit map of environment values — so
-  the crate is inside the ambient-capability boundary that `scripts/check-boundaries.py`
+  the crate is inside the ambient-capability boundary that `scripts/checks/check-boundaries.py`
   enforces, and the binary is the only part that touches the host.
 - **The copy happens while the world is built, not after it boots.** Seeding a running
   machine would fail three ways, all of them silent: `Runtime::reset` restores the
@@ -61,7 +61,7 @@ DNS conventions by name.
   home folders are the files under `home/`; and the device presentations that used to be a
   constant in `scripts/build-world.mjs` are declared in the blueprint like everything else.
 - **`scripts/build-world.mjs` and `scripts/build-home.mjs` are gone.**
-  `scripts/build-search-index.mjs` no longer edits a built world: it writes each engine's
+  `scripts/content/build-search-index.mjs` no longer edits a built world: it writes each engine's
   index to `worlds/company-2026/index/`, which the world pulls in with `from_file`. This
   removes the undocumented coupling that made the four steps order-dependent for a reason
   that was about JSON formatting rather than about content.
@@ -71,7 +71,7 @@ DNS conventions by name.
   blueprint that misspells a key does not build, and the message names the key it was
   probably meant to be.
 
-`worlds/company-2026/world.json` and `site/world-definition.js` are byte-identical to what
+`worlds/company-2026/world.json` and `site/generated/world-definition.js` are byte-identical to what
 was checked in. `examples/worlds/agent-desktop.json` moves two lines:
 `initial_files` is sorted now that it is seeded from a directory, and the map it
 deserialises into was already sorted, so the world it describes is the same one. The
@@ -182,8 +182,8 @@ is written anywhere. Every service was rewritten onto it.
   archive and the three Playwright suites that drove it (`scripts/test-browser.mjs`,
   `test-desktops.mjs`, `test-desktop-overhaul.mjs`). The project site's home page already
   shows live machines, and an owner console is not part of the product. The world those
-  machines run in is still generated: `scripts/build-live-world.mjs` (formerly
-  `examples/browser/build.mjs`) now writes `site/world-definition.js`, and the Wasm bundle
+  machines run in is still generated: `scripts/content/build-live-world.mjs` (formerly
+  `examples/browser/build.mjs`) now writes `site/generated/world-definition.js`, and the Wasm bundle
   the page imports is assembled at `site/pkg/`. The engine half of the browser suite —
   every machine in that world runs a command, every declared service answers a page, and
   nothing outside the world is reachable — is now
@@ -274,7 +274,7 @@ is written anywhere. Every service was rewritten onto it.
   for sticky headers; images take a style and an action; rows justify and give natural
   width to unflexed children; the icon set is the whole bundled symbol set plus git and
   chat glyphs; `services/common` gains `rest`, `pills`, `chip`, `avatar`, `inline_link`.
-- **Automatic site conversion, assessed.** `research/dom-to-site.md` and
+- **Automatic site conversion, assessed.** `research/notes/dom-to-site.md` and
   `scripts/dom-to-site/` capture a real page's box tree with Playwright and convert it to
   a site seed, validated and rendered in the in-world browser, scoring 0.9 fidelity on a
   fixture news page. It is a prototype, not a tool.
@@ -289,7 +289,7 @@ version are both `0.1.1`; snapshots from 0.1.0 are rejected, as every version's 
   gate now compares all five wheel platforms and Node/Wasm.
 - npm is published by a trusted publisher (OIDC), like PyPI; no token exists.
 - The site has a docs page: the guides in reading order and the Rust, Python and
-  JavaScript API references, built from `docs/` by `scripts/build-docs.mjs`.
+  JavaScript API references, built from `docs/` by `scripts/site/build-docs.mjs`.
 
 ## 0.1.0 — 2026-09-19
 
@@ -303,7 +303,7 @@ and state hashes, which cover the engine version, differ from alpha.3's for the 
 - `pip install computerworld`: wheels for Linux x86-64 (manylinux2014), macOS arm64 and
   Windows x64 on PyPI, CPython 3.9+ abi3. No source distribution.
 - `npm install computerworld`: one package for Node and the browser
-  (`scripts/package-npm.py`). `exports` sends Node to the CommonJS glue and everything
+  (`scripts/release/package-npm.py`). `exports` sends Node to the CommonJS glue and everything
   else to the ES module; the Wasm, the font pack, the notices and the reference world
   are in it once. Every candidate build installs the packed tarball into an empty
   project and runs a machine through `require` and `import`.
@@ -332,7 +332,7 @@ and state hashes, which cover the engine version, differ from alpha.3's for the 
   on a breakpoint, spreadsheets, a JOIN in DB Browser, Slack, Linear, a pull request,
   video timelines, and seven pairs of phones, two of them in one conversation. Each
   scene runs in a world of its own and only the nearest stay running. Its stills are
-  rendered by booting the page (`scripts/render-site-stills.mjs`).
+  rendered by booting the page (`scripts/site/render-site-stills.mjs`).
 
 ## 0.1.0-alpha.3 — 2026-09-18
 
@@ -533,7 +533,7 @@ Eleven new service crates — `assistant`, `bank`, `drive`, `forum`, `geo`, `med
 world is no longer an intranet with a handful of pages: it declares many more
 service instances and a browsable synthetic web of independent sites under
 `worlds/company-2026/sites/`, built by `scripts/build-world.mjs` and
-`scripts/build-search-index.mjs`. Counts change per revision; read
+`scripts/content/build-search-index.mjs`. Counts change per revision; read
 `worlds/company-2026/world.json` rather than quoting a number.
 
 ### Page model

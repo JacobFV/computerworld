@@ -103,7 +103,7 @@ never directly in `world.json`. The basename must equal the `id`.
 }
 ```
 
-`search_entries` is build-only: `scripts/build-search-index.mjs` harvests it into
+`search_entries` is build-only: `scripts/content/build-search-index.mjs` harvests it into
 `index/<engine>.json`, which each engine pulls in with `{"from_file": ...}`, and
 `defaults.build_only` in `world.yml` strips it before the service reaches the world. That
 is what makes a search result a link that really resolves. Its `vertical` is one of the
@@ -125,17 +125,17 @@ five directories are what the blueprint and the site build read.
 |---|---|---|
 | `home/` | `world.yml`'s `copy:` blocks | The files the three desktops start with. `home/all` is overlaid with `home/macos`, `home/windows` or `home/ubuntu` per machine. |
 | `sites/` | `world.yml`'s `include:` list | One service per file, each placing its own node, link and DNS records. |
-| `index/` | each search engine's `from_file:` | The harvested search index, written by `scripts/build-search-index.mjs`. |
+| `index/` | each search engine's `from_file:` | The harvested search index, written by `scripts/content/build-search-index.mjs`. |
 | `network/` | `world.yml`'s `include:` list | Topology with no service behind it — currently just the unplugged bedroom speaker. |
-| `samples/` | `scripts/build-live-world.mjs` | The documents and media the live site's machines start with. |
+| `samples/` | `scripts/content/build-live-world.mjs` | The documents and media the live site's machines start with. |
 
 `samples/` is the one that does not reach `world.json`. Its eight files are written by the
 engines themselves rather than by hand — `Budget.xlsx` and `Sales.csv` by `cw-sheet`,
 `Inventory.db` by `cw-sql`, the three `.apng` movies and two `.wav` sounds by `cw-video` —
 so a spreadsheet a user opens in-world is real output of the spreadsheet engine and not a
 prop. `crates/{sheet,sql,video}/tests/samples.rs` pin their bytes and regenerate them with
-`CW_UPDATE_SAMPLES=1`; `scripts/build-live-world.mjs` base64-encodes them into each virtual
-machine's `Documents/` and `Movies/` folders in `site/world-definition.js`.
+`CW_UPDATE_SAMPLES=1`; `scripts/content/build-live-world.mjs` base64-encodes them into each virtual
+machine's `Documents/` and `Movies/` folders in `site/generated/world-definition.js`.
 
 `cargo test -p computerworld --test internet_links` is the guard: it asks every declared
 domain to answer, checks alternate domains serve the same page as their canonical one,

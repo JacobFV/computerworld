@@ -1,6 +1,6 @@
 # Migrating a service from `Page` to HTML
 
-Milestone 5 of [web-engine-plan.md](web-engine-plan.md): services serve HTML, the
+Milestone 5 of [web-engine-plan.md](contracts/web-engine-plan.md): services serve HTML, the
 browser renders it through the `cw-web` engine, and `Page` stays behind a converter
 (`cw_web::page::to_document`) for what has not moved yet. This is the recipe, with
 `crates/services/search` (google.com, bing.com, duckduckgo.com) as the worked example.
