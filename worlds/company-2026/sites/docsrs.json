@@ -357,5 +357,5 @@
     {"url":"http://docs.rs/hashseed","title":"hashseed 0.2.1 — docs.rs","snippet":"API documentation for hashseed: modules rng, split, distr. Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform.","vertical": "all","authority":7,"keywords":["hashseed","docs","rust","api","hashseed"]},
     {"url":"http://docs.rs/tokenbucket-rs","title":"tokenbucket-rs 0.5.2 — docs.rs","snippet":"API documentation for tokenbucket-rs: modules bucket, clock. Token-bucket rate limiter with an injectable clock; sync try_take and async wait.","vertical": "all","authority":7,"keywords":["tokenbucket-rs","docs","rust","api","tokenbucket_rs"]}
   ],
-  "network_node": {"address":"203.0.113.135","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
+  "place": {"address":"203.0.113.135","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
 }

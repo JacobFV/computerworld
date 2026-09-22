@@ -4,7 +4,7 @@
   "node": "substack",
   "domains": ["substack.com", "www.substack.com"],
   "port": 80,
-  "network_node": {
+  "place": {
     "address": "203.0.113.145",
     "zone": "internet",
     "link": {"from": "pop-west", "latency_us": 1500}

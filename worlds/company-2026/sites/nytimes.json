@@ -4,7 +4,7 @@
   "node": "nytimes",
   "domains": ["nytimes.com", "www.nytimes.com"],
   "port": 80,
-  "network_node": {
+  "place": {
     "address": "203.0.113.141",
     "zone": "internet",
     "link": {"from": "pop-east", "latency_us": 1200}

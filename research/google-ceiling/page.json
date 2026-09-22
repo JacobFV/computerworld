@@ -4,7 +4,7 @@
   "node": "google-home",
   "domains": ["google.com", "www.google.com"],
   "port": 80,
-  "network_node": {"address": "203.0.113.250", "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}},
+  "place": {"address": "203.0.113.250", "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}},
   "initial_state": {
     "pages": {
       "/": {

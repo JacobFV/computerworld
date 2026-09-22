@@ -86,12 +86,12 @@ export function validatePage(page, where = 'page') {
   visit(page.elements ?? [], 0, `${where}.elements`);
   return problems;
 }
-/// The site-file shape build-world.mjs splices, with the static-site service's own checks.
+/// The site-file shape a blueprint includes, with the static-site service's own checks.
 export function validateSite(site) {
   const problems = [];
   for (const k of ['id', 'kind', 'node']) if (!site[k]) problems.push(`site: ${k} is required`);
   if (!Array.isArray(site.domains) || !site.domains.length) problems.push('site: domains must be a non-empty array');
-  if (site.network_node && (!site.network_node.address || !site.network_node.link?.from)) problems.push('site: network_node needs address and link.from');
+  if (site.place && (!site.place.address || !site.place.link?.from)) problems.push('site: place needs address and link.from');
   if (site.kind === 'static-site') {
     const state = site.initial_state ?? {};
     for (const k of ['pages', 'records', 'assets']) if (state[k] !== undefined && (typeof state[k] !== 'object' || Array.isArray(state[k]))) problems.push(`site: ${k} must be an object`);

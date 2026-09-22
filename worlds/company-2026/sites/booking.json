@@ -4,7 +4,7 @@
   "node": "booking",
   "domains": ["booking.com", "www.booking.com"],
   "port": 80,
-  "network_node": {"address": "198.51.100.111", "zone": "internet", "link": {"from": "pop-eu", "latency_us": 2200}},
+  "place": {"address": "198.51.100.111", "zone": "internet", "link": {"from": "pop-eu", "latency_us": 2200}},
   "initial_state": {
     "mode": "retail",
     "brand": "Booking.com",

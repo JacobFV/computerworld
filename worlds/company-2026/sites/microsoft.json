@@ -944,7 +944,7 @@
     },
     "records": {}
   },
-  "network_node": {
+  "place": {
     "address": "203.0.113.111",
     "zone": "internet",
     "link": {"from":"pop-west","latency_us":1500}

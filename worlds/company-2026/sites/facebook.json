@@ -728,7 +728,7 @@
       ]
     }
   ],
-  "network_node": {
+  "place": {
     "address": "198.51.100.100",
     "zone": "internet",
     "link": {

@@ -187,7 +187,7 @@
       "keywords": ["mail.com", "www.mail.com", "email"]
     }
   ],
-  "network_node": {
+  "place": {
     "address": "198.51.100.130",
     "zone": "internet",
     "link": {"from": "pop-eu", "latency_us": 2200}

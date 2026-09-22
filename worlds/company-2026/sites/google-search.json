@@ -33,7 +33,7 @@
       "alice": ["27 inch 4k usb-c monitor", "shipping atlas", "deterministic simulation"],
       "carol": ["devcon seattle tickets", "atlas launch checklist"]
     },
-    "documents": []
+    "documents": {"from_file": "index/google-search.json"}
   },
   "search_entries": [
     {

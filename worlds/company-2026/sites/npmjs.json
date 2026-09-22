@@ -317,5 +317,5 @@
     {"url":"http://npmjs.com/package/eventbus-ts","title":"eventbus-ts — npm","snippet":"A typed event emitter. Declare the event map once and every on(), emit() and off() is checked. v2.2.0, MIT.","vertical": "all","authority":7,"keywords":["eventbus-ts","npm","javascript","emitter","declare","checked"]},
     {"url":"http://npmjs.com/package/zod-lite","title":"zod-lite — npm","snippet":"Runtime schema validation with inferred static types, in 3 KB. The common subset of the well-known API. v0.7.4, MIT.","vertical": "all","authority":7,"keywords":["zod-lite","npm","javascript","runtime","schema","validation"]}
   ],
-  "network_node": {"address":"203.0.113.132","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
+  "place": {"address":"203.0.113.132","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
 }

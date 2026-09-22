@@ -8,7 +8,7 @@
     "portland.craigslist.org"
   ],
   "port": 80,
-  "network_node": {
+  "place": {
     "address": "198.51.100.121",
     "zone": "internet",
     "link": {

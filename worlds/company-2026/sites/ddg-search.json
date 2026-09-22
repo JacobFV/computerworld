@@ -35,7 +35,7 @@
       {"text": "GitHub", "url": "http://github.com/"}
     ],
     "history": {},
-    "documents": []
+    "documents": {"from_file": "index/ddg-search.json"}
   },
   "search_entries": [
     {

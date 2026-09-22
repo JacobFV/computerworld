@@ -1015,7 +1015,7 @@
       ]
     }
   ],
-  "network_node": {
+  "place": {
     "address": "203.0.113.104",
     "zone": "internet",
     "link": {

@@ -7,7 +7,7 @@
 //
 // Emits a file in the shape of worlds/company-2026/sites/<site-id>.json: a static-site
 // service whose "/" page is the converted capture, stub pages for every same-site link
-// (so the internet_links crawl finds no dead link), and `network_node` so the site brings
+// (so the internet_links crawl finds no dead link), and `place` so the site brings
 // its own host. `--as press` instead emits a seed for the press service, synthesised from
 // the headlines the capture contains: a real backend behind a familiar front page.
 //
@@ -470,7 +470,7 @@ const site = {
   node,
   domains: [domain, ...(domain.startsWith('www.') ? [] : [`www.${domain}`])],
   port: 80,
-  network_node: {address: flag('--address', '203.0.113.250'), zone: 'internet', link: {from: flag('--link', 'pop-west'), latency_us: 1500}},
+  place: {address: flag('--address', '203.0.113.250'), zone: 'internet', link: {from: flag('--link', 'pop-west'), latency_us: 1500}},
 };
 if (as === 'press') {
   site.initial_state = pressSeed();

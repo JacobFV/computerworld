@@ -1,0 +1,77 @@
+# One desktop an agent can use, as a blueprint.
+#
+#     cargo run -p cw-blueprint --bin cw-world -- \
+#       build examples/worlds/agent-desktop/world.yml -o examples/worlds/agent-desktop.json
+#
+# Everything the machine starts with is an ordinary file under `home/`, the wiki's
+# pages are a JSON file of their own, and placing the wiki derives its node, its
+# link and its DNS record. `${AGENT_USER}` shows an input: build with
+# `--set AGENT_USER=noor` for the same world under a different name.
+schema_version: 1
+id: "agent-desktop"
+inputs:
+  AGENT_USER: {default: "ada", description: "the workstation's user"}
+profiles:
+  - id: "ubuntu"
+    name: "Ubuntu 24.04 workstation"
+    family: "linux"
+    home: "/home/{user}"
+    case_sensitive: true
+    shell: "posix"
+computers:
+  - id: "workstation"
+    profile: "ubuntu"
+    address: "10.0.0.10"
+    user: "${AGENT_USER}"
+    copy:
+      - {from: "home"}
+    installed_apps:
+      - "terminal"
+      - "browser"
+      - "files"
+      - "editor"
+      - "calculator"
+      - "calendar"
+      - "notes"
+      - "photos"
+      - "spreadsheet"
+      - "code"
+    packages: ["coreutils", "git", "curl"]
+network:
+  nodes:
+    - {id: "workstation", address: "10.0.0.10", zone: "local"}
+  links: []
+  dns: []
+  routes: []
+  gateway: {allow_local: true, allow_internet: false, allow_host: false}
+services:
+  - id: "wiki"
+    kind: "static-site"
+    node: "intranet-server"
+    domains: ["wiki.internal"]
+    port: 80
+    initial_state: {from_file: "wiki/state.json"}
+    place:
+      address: "10.0.1.10"
+      zone: "local"
+      link: {from: "workstation", latency_us: 10}
+      dns:
+        local: {ttl_us: 60000000, resolver: "intranet-server"}
+metadata:
+  description: "One Ubuntu desktop for one agent: a user, the everyday applications, two seeded documents and an intranet wiki to browse. Copy this file and the session grants in docs/custom-world.md rather than hand-writing a world."
+  desktop_themes: {workstation: "ubuntu"}
+  device_presentations:
+    workstation: {kind: "laptop"}
+  actor_session:
+    actor: "ada"
+    machines: ["workstation"]
+    actions:
+      - "terminal.v1"
+      - "filesystem.v1"
+      - "application.v1"
+      - "browser.v1"
+      - "keyboard.v1"
+      - "pointer.v1"
+      - "http.v1"
+    observations: ["terminal.v1", "semantic.v1"]
+    action_budget: 1024

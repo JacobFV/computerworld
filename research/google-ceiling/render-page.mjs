@@ -16,8 +16,8 @@ const require = createRequire(import.meta.url);
 const wasm = require(`${root}/pkg/node/computerworld.js`);
 const site = JSON.parse(await readFile(siteFile, 'utf8'));
 const service = {...site};
-for (const key of ['search_entries', 'authority_overrides', 'network_node']) delete service[key];
-const address = site.network_node?.address ?? '203.0.113.250';
+for (const key of ['search_entries', 'authority_overrides', 'place']) delete service[key];
+const address = site.place?.address ?? '203.0.113.250';
 const definition = {
   schema_version: 1, id: `google-ceiling-${site.id}`,
   profiles: [{id: 'ubuntu', name: 'Ubuntu 24.04 workstation', family: 'linux', home: '/home/{user}', case_sensitive: true, shell: 'posix'}],

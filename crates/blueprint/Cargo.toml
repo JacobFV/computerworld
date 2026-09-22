@@ -1,0 +1,10 @@
+[package]
+name = "cw-blueprint"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Resolve a world blueprint — YAML, declared inputs, included fragments and copied directories — into a hermetic world definition"
+
+[dependencies]
+cw-protocol = { path = "../protocol" }

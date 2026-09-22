@@ -8,7 +8,7 @@
     "notion.site"
   ],
   "port": 80,
-  "network_node": {
+  "place": {
     "address": "198.51.100.123",
     "zone": "internet",
     "link": {

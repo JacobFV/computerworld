@@ -331,5 +331,5 @@
     {"url":"http://archive.org/wiki/Donate","title":"Donate to the Internet Archive","snippet":"No advertising, no paywall. A donation of any size keeps the collections online.","vertical":"all","authority":6,"keywords":["donate","internet archive","support"]},
     {"url":"http://archive.org/wiki/Terms","title":"Terms of Use — Internet Archive","snippet":"Short terms governing access, removal and conduct across the collections.","vertical":"all","authority":5,"keywords":["terms of use","internet archive","policy"]}
   ],
-  "network_node": {"address":"203.0.113.131","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
+  "place": {"address":"203.0.113.131","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
 }

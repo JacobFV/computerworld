@@ -18,8 +18,8 @@
       "address": "10.0.0.10",
       "user": "ada",
       "initial_files": {
-        "Documents/handbook.txt": "Onboarding\n==========\n\n1. Read the notes in ~/Documents.\n2. The team wiki is at http://wiki.internal/.\n3. Report the quarter's totals in report.md.\n",
         "Documents/expenses.csv": "month,category,amount\nJanuary,travel,1280\nJanuary,software,450\nFebruary,travel,910\nFebruary,software,450\nMarch,travel,1605\nMarch,software,450\n",
+        "Documents/handbook.txt": "Onboarding\n==========\n\n1. Read the notes in ~/Documents.\n2. The team wiki is at http://wiki.internal/.\n3. Report the quarter's totals in report.md.\n",
         "Documents/report.md": "# Quarterly report\n\nTotals go here.\n",
         "notes.txt": "Ask the handbook first: ~/Documents/handbook.txt\n"
       },

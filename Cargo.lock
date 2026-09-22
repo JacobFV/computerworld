@@ -265,6 +265,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-blueprint"
+version = "0.2.0"
+dependencies = [
+ "cw-protocol",
+]
+
+[[package]]
 name = "cw-browser"
 version = "0.2.0"
 dependencies = [

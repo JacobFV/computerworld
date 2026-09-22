@@ -349,5 +349,5 @@
     {"url":"http://crates.io/crates/hashseed","title":"hashseed — crates.io","snippet":"Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform. v0.2.1, MIT.","vertical": "all","authority":7,"keywords":["hashseed","rust","crate","cargo","seeded","splittable","pseudo"]},
     {"url":"http://crates.io/crates/tokenbucket-rs","title":"tokenbucket-rs — crates.io","snippet":"Token-bucket rate limiter with an injectable clock; sync try_take and async wait. v0.5.2, MIT.","vertical": "all","authority":7,"keywords":["tokenbucket-rs","rust","crate","cargo","bucket","limiter","injectable"]}
   ],
-  "network_node": {"address":"203.0.113.134","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
+  "place": {"address":"203.0.113.134","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
 }

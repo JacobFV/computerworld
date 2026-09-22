@@ -34,8 +34,13 @@ a snapshot resumes one.
 See [creating a world](custom-world.md) and the
 [company blueprint](../worlds/company-2026/world.json).
 
-`worlds/company-2026/world.json` is **generated**, not hand-written: `scripts/build-world.mjs`
-splices in `worlds/company-2026/sites/*.json` and `scripts/build-search-index.mjs`
-builds its search index, with `scripts/build-content.sh` running the pipeline. The
-reference computers' `device_presentations` are declared in `build-world.mjs`. Edit
-the inputs, not the output. Your own worlds are of course plain JSON.
+`worlds/company-2026/world.json` is **generated**, not hand-written: it is resolved from
+[`worlds/company-2026/world.yml`](../worlds/company-2026/world.yml) by `cw-world`, which
+merges in `sites/*.json`, seeds the desktops from `home/` and derives each service's node,
+link and DNS records. `scripts/build-search-index.mjs` builds the search index the engines
+pull in, and `scripts/build-content.sh` runs the pipeline. Edit the blueprint, not the
+output; `scripts/test-all.sh` fails if the two have drifted.
+
+A world of your own may be written either way. This document describes the definition,
+which is plain JSON; [world blueprints](blueprint.md) describe the source form it can be
+generated from — YAML, declared inputs, included fragments and copied directories.

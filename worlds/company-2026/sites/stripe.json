@@ -212,7 +212,7 @@
       ]
     }
   ],
-  "network_node": {
+  "place": {
     "address": "203.0.113.123",
     "zone": "internet",
     "link": {

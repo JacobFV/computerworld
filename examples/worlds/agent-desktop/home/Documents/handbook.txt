@@ -1,0 +1,6 @@
+Onboarding
+==========
+
+1. Read the notes in ~/Documents.
+2. The team wiki is at http://wiki.internal/.
+3. Report the quarter's totals in report.md.

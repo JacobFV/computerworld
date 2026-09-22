@@ -103,16 +103,18 @@ never directly in `world.json`. The basename must equal the `id`.
 }
 ```
 
-`search_entries` is build-only: `scripts/build-search-index.mjs` harvests it into the
-search engines' indexes and strips it before the splice, which is what makes a search
-result a link that really resolves. Its `vertical` is one of the engines' `all`, `news`,
-`videos` or `images`. `network_node` (see the header of `scripts/build-world.mjs`) lets a
-site bring its own host on a documentation-range address; the splice also emits a DNS A
-record for every domain a site declares, so no name depends on the runtime's auto-add. In
-`world.json` a spliced service is written on one line — the seed file is the reviewable
-copy — while the hand-written computers, network and `.internal` services stay
-pretty-printed. `scripts/build-content.sh` runs the splice, the
-index and the live site world's regeneration, and is idempotent.
+`search_entries` is build-only: `scripts/build-search-index.mjs` harvests it into
+`index/<engine>.json`, which each engine pulls in with `{"from_file": ...}`, and
+`defaults.build_only` in `world.yml` strips it before the service reaches the world. That
+is what makes a search result a link that really resolves. Its `vertical` is one of the
+engines' `all`, `news`, `videos` or `images`. `place` lets a site bring its own host on a
+documentation-range address, and derives the node, the link and a DNS A record for every
+domain the site declares, so no name depends on the runtime's auto-add — see
+[world blueprints](../../docs/blueprint.md). In `world.json` a service that came from its
+own file is written on one line — the seed file is the reviewable copy — while the
+hand-written computers, network and `.internal` services stay pretty-printed.
+`scripts/build-content.sh` runs the index, the world build and the live site world's
+regeneration, and is idempotent.
 
 `cargo test -p computerworld --test internet_links` is the guard: it asks every declared
 domain to answer, checks alternate domains serve the same page as their canonical one,

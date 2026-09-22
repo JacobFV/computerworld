@@ -49,6 +49,7 @@ const sections = [
   { title: 'Building worlds', pages: [
     { file: 'world-schema.md', blurb: 'The world definition: computers, OS profiles, network, services.' },
     { file: 'custom-world.md', blurb: 'Writing a world of your own.' },
+    { file: 'blueprint.md', blurb: 'Building a world from YAML, directories and declared inputs.' },
     { file: 'application-sdk.md', blurb: 'What an application is to the kernel.' },
     { file: 'custom-application.md', blurb: 'Adding a native application.' },
     { file: 'service-sdk.md', blurb: 'What a service is to the network.' },

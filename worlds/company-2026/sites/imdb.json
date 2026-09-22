@@ -446,5 +446,5 @@
     {"url":"http://imdb.com/wiki/Iron_Tide","title":"Iron Tide (2011) — IMDb","snippet":"A salvage crew races a private navy to a wreck in the Barents Sea. Action-adventure, 6.8/10.","vertical":"all","authority":6,"keywords":["iron tide","action","salvage","renard"]},
     {"url":"http://imdb.com/wiki/Lanterns_of_Vesper_Street","title":"Lanterns of Vesper Street (1998) — IMDb","snippet":"Marchetti's debut: a girl takes over the lamplighter's job on a street about to be electrified.","vertical":"all","authority":6,"keywords":["lanterns of vesper street","1998","coming of age","trieste"]}
   ],
-  "network_node": {"address":"203.0.113.130","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
+  "place": {"address":"203.0.113.130","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
 }

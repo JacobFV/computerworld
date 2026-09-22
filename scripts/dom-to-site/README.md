@@ -30,7 +30,7 @@ node compare.mjs fixtures/news.capture.json fixtures/news.render.scene.json fixt
 `convert.mjs --as press` emits a seed for the press service instead (headlines, deks,
 bylines and sections synthesised from the capture; bodies are not copied), which
 `render.mjs` also loads. The converted file can be dropped into
-`worlds/company-2026/sites/` as is: it carries `network_node`, so `scripts/build-world.mjs`
+`worlds/company-2026/sites/` as is: it carries `place`, so `cw-world`
 gives it a host, and stub pages for every same-site link so the `internet_links` crawl
 finds nothing dead.
 

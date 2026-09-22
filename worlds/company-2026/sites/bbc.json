@@ -4,7 +4,7 @@
   "node": "bbc",
   "domains": ["bbc.com", "www.bbc.com", "bbc.co.uk", "www.bbc.co.uk", "news.bbc.co.uk"],
   "port": 80,
-  "network_node": {
+  "place": {
     "address": "203.0.113.142",
     "zone": "internet",
     "link": {"from": "pop-eu", "latency_us": 2200}

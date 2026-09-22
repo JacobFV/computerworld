@@ -4,7 +4,7 @@
   "node": "ebay",
   "domains": ["ebay.com", "www.ebay.com", "m.ebay.com"],
   "port": 80,
-  "network_node": {"address": "198.51.100.110", "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}},
+  "place": {"address": "198.51.100.110", "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}},
   "initial_state": {
     "mode": "retail",
     "brand": "eBay",

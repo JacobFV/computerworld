@@ -15,12 +15,19 @@ cargo build -p cw-wasm --target wasm32-unknown-unknown --release
 # against a fresh regeneration, not against git, so an uncommitted tree still checks out.
 generated=$(mktemp -d)
 trap 'rm -rf "$generated"' EXIT
-cp worlds/company-2026/world.json "$generated/world.json"
-cp site/world-definition.js "$generated/world-definition.js"
+generated_files=(worlds/company-2026/world.json
+                 worlds/company-2026/index/google-search.json
+                 worlds/company-2026/index/bing-search.json
+                 worlds/company-2026/index/ddg-search.json
+                 examples/worlds/agent-desktop.json
+                 site/world-definition.js)
+for file in "${generated_files[@]}"; do
+  mkdir -p "$generated/$(dirname "$file")"
+  cp "$file" "$generated/$file"
+done
 scripts/build-content.sh >/dev/null
-for pair in "worlds/company-2026/world.json:world.json" \
-            "site/world-definition.js:world-definition.js"; do
-  cmp -s "${pair%%:*}" "$generated/${pair##*:}" \
-    || { echo "generated content is stale: run scripts/build-content.sh" >&2; exit 1; }
+for file in "${generated_files[@]}"; do
+  cmp -s "$file" "$generated/$file" \
+    || { echo "generated content is stale: run scripts/build-content.sh ($file)" >&2; exit 1; }
 done
 # Binding execution checks run separately after their generated artifacts exist.

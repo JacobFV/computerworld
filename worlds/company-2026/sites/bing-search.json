@@ -34,7 +34,7 @@
     "history": {
       "bob": ["flaky test windows", "meridian labs"]
     },
-    "documents": []
+    "documents": {"from_file": "index/bing-search.json"}
   },
   "search_entries": [
     {

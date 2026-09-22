@@ -7,7 +7,7 @@
     "www.quora.com"
   ],
   "port": 80,
-  "network_node": {
+  "place": {
     "address": "198.51.100.122",
     "zone": "internet",
     "link": {

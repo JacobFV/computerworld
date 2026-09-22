@@ -6,7 +6,7 @@
     "kitchen.speaker.internal"
   ],
   "port": 80,
-  "network_node": {
+  "place": {
     "address": "10.0.2.21",
     "zone": "local",
     "link": {

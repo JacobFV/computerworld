@@ -339,5 +339,5 @@
     {"url":"http://pypi.org/project/seedrng","title":"seedrng · PyPI","snippet":"Seeded, splittable random streams that give the same numbers on every platform and Python version. Version 2.0.0, MIT.","vertical": "all","authority":7,"keywords":["seedrng","pypi","python","pip","seeded","splittable","random"]},
     {"url":"http://pypi.org/project/walkdir-py","title":"walkdir-py · PyPI","snippet":"Walk a directory tree and get paths back in sorted order, so a build that lists files is reproducible. Version 1.2.0, MIT.","vertical": "all","authority":7,"keywords":["walkdir-py","pypi","python","pip","directory","sorted","reproducible"]}
   ],
-  "network_node": {"address":"203.0.113.133","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
+  "place": {"address":"203.0.113.133","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
 }

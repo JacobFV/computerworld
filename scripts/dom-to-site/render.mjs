@@ -25,8 +25,8 @@ try { wasm = require(`${root}/pkg/node/computerworld.js`); } catch (e) { console
 
 const site = JSON.parse(await readFile(siteFile, 'utf8'));
 const service = {...site};
-for (const key of ['search_entries', 'authority_overrides', 'network_node']) delete service[key];
-const address = site.network_node?.address ?? '203.0.113.250';
+for (const key of ['search_entries', 'authority_overrides', 'place']) delete service[key];
+const address = site.place?.address ?? '203.0.113.250';
 /// One workstation and the site, on documentation-range addresses, nothing else.
 const definition = {
   schema_version: 1,

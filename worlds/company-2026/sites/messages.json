@@ -6,7 +6,7 @@
     "messages.internal"
   ],
   "port": 80,
-  "network_node": {
+  "place": {
     "address": "10.0.1.14",
     "zone": "local",
     "link": {

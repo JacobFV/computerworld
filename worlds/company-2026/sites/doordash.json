@@ -4,7 +4,7 @@
   "node": "doordash",
   "domains": ["doordash.com", "www.doordash.com"],
   "port": 80,
-  "network_node": {"address": "198.51.100.114", "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}},
+  "place": {"address": "198.51.100.114", "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}},
   "initial_state": {
     "mode": "retail",
     "brand": "DoorDash",

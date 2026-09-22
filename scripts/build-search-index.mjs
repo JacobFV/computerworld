@@ -6,9 +6,26 @@
 // interleaving. The index is a pure function of the sites files instead, and the engines differ
 // only by their `authority_overrides`, which is what makes two engines disagree on ranking.
 //
-// Run after build-world.mjs: it writes into services that the splice has already landed.
-import {readSites, readWorld, siteIds, write, worldUrl} from './build-world.mjs';
+// Each engine's index is written to worlds/company-2026/index/<engine>.json and pulled into the
+// world by that engine's `{"from_file": ...}` in sites/<engine>.json. It is data the blueprint
+// reads, not a stage that reaches into a built world and edits it, so it may run before or after
+// `cw-world build` and never has to agree with it about formatting.
+import {readdir, readFile, writeFile} from 'node:fs/promises';
+const root = new URL('../', import.meta.url);
+const sitesUrl = new URL('worlds/company-2026/sites/', root);
+const indexUrl = new URL('worlds/company-2026/index/', root);
 const ENGINES = ['google-search', 'bing-search', 'ddg-search'];
+
+async function readSites() {
+  const names = (await readdir(sitesUrl)).filter((n) => n.endsWith('.json')).sort();
+  return Promise.all(names.map(async (name) => {
+    const site = JSON.parse(await readFile(new URL(name, sitesUrl), 'utf8'));
+    const id = name.slice(0, -'.json'.length);
+    if (site.id !== id) throw new Error(`${name}: id "${site.id}" must match the file name`);
+    return site;
+  }));
+}
+
 function index(sites) {
   const documents = [];
   for (const site of sites) {
@@ -21,30 +38,25 @@ function index(sites) {
   // (site, url) is a total order, so the generated array diffs cleanly whatever the read order.
   return documents.sort((a, b) => a.site.localeCompare(b.site) || a.url.localeCompare(b.url));
 }
+
 async function main() {
-  const world = await readWorld();
   const sites = await readSites();
   const documents = index(sites);
-  let written = 0;
   for (const id of ENGINES) {
-    const at = world.services.findIndex((s) => s.id === id);
-    if (at < 0) continue; // The package that owns this engine has not landed it yet.
-    const overrides = (sites.find((s) => s.id === id) ?? {}).authority_overrides ?? {};
-    // An engine refuses to initialise on a vertical it does not list, which would take the
-    // whole world down for one site's typo; such an entry is left out and named instead.
-    const verticals = new Set(world.services[at].initial_state.verticals ?? ['all']);
+    const seed = sites.find((s) => s.id === id);
+    if (!seed) throw new Error(`no site file for the search engine "${id}"`);
+    const overrides = seed.authority_overrides ?? {};
+    // An engine refuses to initialise on a vertical it does not declare, so a typo in an entry is
+    // dropped with a warning rather than taking the whole world down at boot.
+    const verticals = new Set(seed.initial_state.verticals ?? ['all']);
     const known = documents.filter((d) => {
       if (verticals.has(d.vertical)) return true;
       console.warn(`${id}: skipping ${d.url}: unknown vertical "${d.vertical}"`);
       return false;
     });
-    world.services[at].initial_state = {
-      ...world.services[at].initial_state,
-      documents: known.map((d) => (d.site in overrides ? {...d, authority: overrides[d.site]} : d)),
-    };
-    written += 1;
+    const ranked = known.map((d) => (d.site in overrides ? {...d, authority: overrides[d.site]} : d));
+    await writeFile(new URL(`${id}.json`, indexUrl), `${JSON.stringify(ranked, null, 2)}\n`);
   }
-  await write(worldUrl, world, siteIds(sites));
-  console.log(`Indexed ${documents.length} document(s) into ${written} of ${ENGINES.length} engine(s).`);
+  console.log(`Indexed ${documents.length} document(s) into ${ENGINES.length} engine(s).`);
 }
 await main();

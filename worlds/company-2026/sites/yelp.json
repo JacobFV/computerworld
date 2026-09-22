@@ -8,7 +8,7 @@
     "m.yelp.com"
   ],
   "port": 80,
-  "network_node": {
+  "place": {
     "address": "198.51.100.120",
     "zone": "internet",
     "link": {

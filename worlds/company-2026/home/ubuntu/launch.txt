@@ -1,0 +1,4 @@
+Project: Atlas
+Checklist: launch
+Status: pending
+Documents: http://docs.internal/

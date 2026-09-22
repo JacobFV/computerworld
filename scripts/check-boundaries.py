@@ -11,6 +11,7 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 PURE = ('protocol', 'determinism', 'artwork', 'computer', 'network', 'scene', 'render', 'cad', 'raster', 'eda',
+        'blueprint',
         'sdk', 'browser', 'applications', 'kernel', 'environment', 'trajectory',
         'evaluation', 'services', 'computerworld', 'sheet', 'sql', 'script-host', 'pyvm',
         'jsvm', 'regex', 'video', 'zlib', 'tz')
