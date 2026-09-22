@@ -90,6 +90,7 @@ From the tagged source checkout with Rust, Python, Node, `maturin` and the locke
 `wasm-bindgen-cli` installed:
 
 ```sh
+cargo fmt --all -- --check
 bash scripts/test-all.sh
 bash scripts/smoke-bindings.sh
 node examples/javascript/computer-interaction.mjs --output target/javascript-demo

@@ -2,7 +2,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 python3 scripts/check-boundaries.py
-cargo fmt --all -- --check
+# Formatting is gated by the `format` job in CI, not here: the tree carries a
+# reformat that touches 246 files, and while it is outstanding a combined gate
+# would hide whether the tests, the lint and the Wasm build are sound. Run
+# `cargo fmt --all -- --check` to see what that job sees.
 cargo test --workspace
 cargo test -p cw-host-adapters --features native-http
 cargo clippy --workspace --all-targets -- -D warnings

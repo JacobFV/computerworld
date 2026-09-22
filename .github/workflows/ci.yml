@@ -23,6 +23,18 @@ jobs:
         run: |
           node scripts/build-docs.mjs --check
           cargo doc --no-deps -p computerworld --lib
+  format:
+    # Its own job, not a step inside `rust`: `cargo fmt --all -- --check` fails
+    # today on a reformat spanning 246 files, and as a step it took the tests,
+    # the lint, the Wasm build and the generated-content check down with it. On
+    # its own it says exactly one thing, and the rest of the workflow reports.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
   site:
     # The page is the only part of this project nothing else in CI exercises: the Rust
     # suites prove the engine and the bindings smoke test proves the two language
