@@ -1,0 +1,18 @@
+[package]
+name = "cw-service-forum"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[dependencies]
+cw-protocol = { path = "../../protocol" }
+cw-sdk = { path = "../../sdk" }
+serde.workspace = true
+serde_json.workspace = true
+cw-service-common = { path = "../common" }
+
+[dev-dependencies]
+url.workspace = true
+cw-service-common = { path = "../common", features = ["validate"] }
+cw-web = { path = "../../web" }
+cw-render = { path = "../../render" }
+png = "0.17"

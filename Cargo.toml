@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "services/*", "benchmarks/runner"]
+# The site crates under `crates/services/` join through `cw-services`, which depends
+# on every one of them; a path dependency inside the workspace is already a member.
+members = ["crates/*", "benchmarks/runner"]
 default-members = ["crates/computerworld"]
 
 [workspace.package]

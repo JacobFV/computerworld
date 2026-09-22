@@ -79,7 +79,7 @@ Scene layout is a deliberately smaller system than the web engine above it: it i
 layout for native pages, and it does not claim CSS, vertical or justified text or
 browser compositor compatibility. Native applications should be designed for that
 contract. Web pages are not: they go through `cw-web`, which is where CSS, the DOM and
-script live, and which is what every `services/*` site is written against. The limits
+script live, and which is what every `crates/services/*` site is written against. The limits
 that remain — no vertical writing modes, no synthetic italics where a face lacks a
 slant — are listed with the supported property table in
 `crates/web/src/style/properties/mod.rs` and enforced for authored sites by

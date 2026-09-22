@@ -6,29 +6,29 @@ license.workspace = true
 [dependencies]
 cw-protocol = { path = "../protocol" }
 cw-sdk = { path = "../sdk" }
-cw-service-git = { path = "../../services/git" }
-cw-service-issues = { path = "../../services/issues" }
-cw-service-static-site = { path = "../../services/static-site" }
-cw-service-mail = { path = "../../services/mail" }
-cw-service-chat = { path = "../../services/chat" }
-cw-service-messages = { path = "../../services/messages" }
-cw-service-slack = { path = "../../services/slack" }
-cw-service-discord = { path = "../../services/discord" }
-cw-service-docs = { path = "../../services/docs" }
-cw-service-calendar = { path = "../../services/calendar" }
-cw-service-assistant = { path = "../../services/assistant" }
-cw-service-bank = { path = "../../services/bank" }
-cw-service-drive = { path = "../../services/drive" }
-cw-service-forum = { path = "../../services/forum" }
-cw-service-geo = { path = "../../services/geo" }
-cw-service-media = { path = "../../services/media" }
-cw-service-press = { path = "../../services/press" }
-cw-service-search = { path = "../../services/search" }
-cw-service-shop = { path = "../../services/shop" }
-cw-service-speaker = { path = "../../services/speaker" }
-cw-service-social = { path = "../../services/social" }
-cw-service-wiki = { path = "../../services/wiki" }
+cw-service-git = { path = "./git" }
+cw-service-issues = { path = "./issues" }
+cw-service-static-site = { path = "./static-site" }
+cw-service-mail = { path = "./mail" }
+cw-service-chat = { path = "./chat" }
+cw-service-messages = { path = "./messages" }
+cw-service-slack = { path = "./slack" }
+cw-service-discord = { path = "./discord" }
+cw-service-docs = { path = "./docs" }
+cw-service-calendar = { path = "./calendar" }
+cw-service-assistant = { path = "./assistant" }
+cw-service-bank = { path = "./bank" }
+cw-service-drive = { path = "./drive" }
+cw-service-forum = { path = "./forum" }
+cw-service-geo = { path = "./geo" }
+cw-service-media = { path = "./media" }
+cw-service-press = { path = "./press" }
+cw-service-search = { path = "./search" }
+cw-service-shop = { path = "./shop" }
+cw-service-speaker = { path = "./speaker" }
+cw-service-social = { path = "./social" }
+cw-service-wiki = { path = "./wiki" }
 [dev-dependencies]
 serde_json.workspace = true
-cw-service-common = { path = "../../services/common", features = ["validate"] }
+cw-service-common = { path = "./common", features = ["validate"] }
 cw-web = { path = "../web" }

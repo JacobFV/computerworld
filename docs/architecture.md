@@ -32,8 +32,10 @@ do not know which produced it.
 
 ## The crates
 
-The workspace is `crates/*` (the engine), `services/*` (one crate per synthetic site
-family) and `benchmarks/runner`. The engine crates group as follows.
+The workspace is `crates/*` (the engine), `crates/services/*` (one crate per synthetic site
+family) and `benchmarks/runner`. The site crates are not listed as members: each is a path
+dependency of `cw-services`, which is enough to make it one. The engine crates group as
+follows.
 
 **Spine.** `cw-protocol` owns portable definitions and envelopes. `cw-sdk` owns trusted
 extension traits and registration. `cw-determinism` provides logical clocks, seeded
@@ -42,9 +44,9 @@ projects actor capabilities and observations; `cw-trajectory` and `cw-evaluation
 separate recording and evaluation surfaces.
 
 **Machines and the network.** `cw-computer` and `cw-network` own machine and
-communication mechanics. `cw-services` holds the shared service runtime that the
-`services/*` crates build on. `cw-host-adapters` is the only crate permitted real host
-I/O and is opt-in behind explicit policy.
+communication mechanics. `cw-service-common` holds the shared service runtime that the
+site crates build on, and `cw-services` re-exports all of them as one bundle. `cw-host-adapters`
+is the only crate permitted real host I/O and is opt-in behind explicit policy.
 
 **The browser.** `cw-web` is the web engine: an HTML 5 tokenizer and tree builder, a CSS
 Syntax 3 parser and Selectors 4 matcher, a cascade over one table of 124 longhands,

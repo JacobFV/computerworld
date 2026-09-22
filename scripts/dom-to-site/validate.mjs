@@ -1,5 +1,5 @@
 // A JavaScript mirror of the checks in crates/protocol/src/lib.rs (`Page::validate`,
-// `Style::validate`, `PageTheme::validate`) and services/static-site/src/lib.rs
+// `Style::validate`, `PageTheme::validate`) and crates/services/static-site/src/lib.rs
 // (`StaticSite::initialize`). The authoritative check is the Rust one; render.mjs runs it
 // by loading the seed into the Wasm build, which parses every page through serde. This
 // mirror gives a converter its errors without a build.

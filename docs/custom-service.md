@@ -35,7 +35,7 @@ layer.
 
 For a site that is just a directory of authored files, the `static-site` service's
 `files` map serves `.html`, `.css`, `.js` and pictures with their media types; see
-[services/static-site/README.md](../services/static-site/README.md).
+[crates/services/static-site/README.md](../crates/services/static-site/README.md).
 
 ## Moving an old service over
 

@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PURE = ('protocol', 'determinism', 'artwork', 'computer', 'network', 'scene', 'render', 'cad', 'raster', 'eda',
         'blueprint',
         'sdk', 'browser', 'applications', 'kernel', 'environment', 'trajectory',
-        'evaluation', 'services', 'computerworld', 'sheet', 'sql', 'script-host', 'pyvm',
+        'evaluation', 'computerworld', 'sheet', 'sql', 'script-host', 'pyvm',
         'jsvm', 'regex', 'video', 'zlib', 'tz')
 FORBIDDEN_DEPS = {'tokio', 'async-std', 'reqwest', 'hyper', 'ureq', 'surf',
                   'getrandom', 'rand', 'chrono', 'web-sys', 'js-sys', 'pyo3'}
@@ -26,7 +26,7 @@ GROUPED_IMPORT = re.compile(
     re.S,
 )
 errors = []
-for directory in [ROOT / 'crates' / name for name in PURE] + sorted((ROOT / 'services').glob('*')):
+for directory in [ROOT / 'crates' / name for name in PURE] + sorted((ROOT / 'crates' / 'services').glob('*')):
     manifest = directory / 'Cargo.toml'
     if not manifest.exists():
         continue

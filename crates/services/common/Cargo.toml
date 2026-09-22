@@ -1,0 +1,19 @@
+[package]
+name = "cw-service-common"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[dependencies]
+cw-protocol = { path = "../../protocol" }
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+cw-web = { path = "../../web", optional = true }
+
+[features]
+# `html::validate_strict`: runs a page through the engine strictly. Meant for a
+# service's tests: enable it from `[dev-dependencies]`, not from `[dependencies]`.
+validate = ["dep:cw-web"]
+
+[dev-dependencies]
+cw-web = { path = "../../web" }

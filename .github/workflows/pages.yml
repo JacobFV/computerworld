@@ -8,7 +8,7 @@ on:
       - 'scripts/build-docs.mjs'
       - 'scripts/build-live-world.mjs'
       - 'crates/**'
-      - 'services/**'
+      - 'crates/services/**'
       - 'worlds/**'
       - 'scripts/build-wasm.sh'
       - '.github/workflows/pages.yml'

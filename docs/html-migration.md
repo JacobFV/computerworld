@@ -3,7 +3,7 @@
 Milestone 5 of [web-engine-plan.md](web-engine-plan.md): services serve HTML, the
 browser renders it through the `cw-web` engine, and `Page` stays behind a converter
 (`cw_web::page::to_document`) for what has not moved yet. This is the recipe, with
-`services/search` (google.com, bing.com, duckduckgo.com) as the worked example.
+`crates/services/search` (google.com, bing.com, duckduckgo.com) as the worked example.
 
 ## What to replace
 
@@ -23,7 +23,7 @@ browser renders it through the `cw-web` engine, and `Page` stays behind a conver
 | `PageTheme` colours read at render time | custom properties on `<html style>` (`--accent`, `--ink`, `--muted`, `--surface`, `--paper`), read by the sheet with `var()` |
 | a query string built by hand | `href("/search", &[("q", query), ("v", vertical)])` |
 
-The stylesheet is a real file next to the source (`services/search/src/search.css`),
+The stylesheet is a real file next to the source (`crates/services/search/src/search.css`),
 included with `include_str!` and handed to `Document::stylesheet`, which emits one
 `<style>` in `<head>`. It uses only what the engine renders, which the strict
 validator checks; `crates/web/src/style/properties/mod.rs` lists the longhands and
@@ -47,7 +47,7 @@ Keep every id the `Page` version had on the element that plays the same role:
 
 ## The worked example: search
 
-`services/search/src/view.rs` before: `Chrome::mark` built a `Row` of coloured
+`crates/services/search/src/view.rs` before: `Chrome::mark` built a `Row` of coloured
 `Styled` letters, `box_` a `PageElement::Form` with an `Input` and two `Button`s whose
 `PageAction`s carried `$q`, `snippet` a `card_action` with three `styled` texts.
 
@@ -62,7 +62,7 @@ custom properties; the skin (`google`, `bing`, `ddg`, `plain`) is `body.skin-<na
 and `search.css` keys the letter-spacing, the icons and the radii on it. Long result
 lists are paged (`page-<n>`, `page-prev`, `page-next`, `?p=<n>`).
 
-The tests (`services/search/src/lib.rs`) parse every response with
+The tests (`crates/services/search/src/lib.rs`) parse every response with
 `cw_web::html::parse`, find elements with `Document::by_id`, read `href`, `action`
 and `value` attributes, and run `validate_strict` on every page they fetch. The
 browser-level test (`crates/computerworld/tests/google_search.rs`) navigates to

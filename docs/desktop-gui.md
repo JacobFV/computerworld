@@ -206,7 +206,7 @@ listed in [action-families.md](action-families.md#music-player-controls).
   Tapping a line seeks to it. A song with none says so, and YouTube Music greys the tab
   out, as it does.
 - **Casting is real.** The account's speakers are `speaker` services on the network
-  (`crates/../services/speaker`: Living Room, Kitchen, Office TV in the reference
+  (`crates/services/speaker`: Living Room, Kitchen, Office TV in the reference
   world). Opening AirPlay, Cast or Cast to device asks each one whether it is there; one
   that does not answer is shown disabled with why. Picking one hands it the session —
   the queue, the position, the repeat mode and the volume — which it carries forward on

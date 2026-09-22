@@ -56,7 +56,7 @@ and the body. `HtmlResponse::ok(&doc)` (or `html::page(&doc)` for a `Result`) is
 Page responses carry only their content type, so HTML responses do too.
 
 **The CSS file convention.** Each service keeps its stylesheet as a real `.css` file
-next to its source (`services/search/src/search.css`), pulled in with `include_str!`
+next to its source (`crates/services/search/src/search.css`), pulled in with `include_str!`
 and passed to `Document::stylesheet`, which emits it as one inline `<style>`: one
 request per page, nothing for the browser to fetch, and the strict validator sees
 the whole page in one string. The sheet is static; what varies per instance (a
