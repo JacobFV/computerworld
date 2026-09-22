@@ -1,8 +1,42 @@
 [workspace]
 resolver = "2"
-# The site crates under `crates/services/` join through `cw-services`, which depends
-# on every one of them; a path dependency inside the workspace is already a member.
-members = ["crates/*", "benchmarks/runner"]
+# Group directories are not packages; enumerate the package levels explicitly.
+members = [
+    "crates/core/*",
+    "crates/machines/*",
+    "crates/languages/*",
+    "crates/web/*",
+    "crates/graphics/*",
+    "crates/engines/*",
+    "crates/bindings/*",
+    "crates/applications",
+    "crates/services",
+    "crates/services/assistant",
+    "crates/services/bank",
+    "crates/services/calendar",
+    "crates/services/chat",
+    "crates/services/common",
+    "crates/services/discord",
+    "crates/services/docs",
+    "crates/services/drive",
+    "crates/services/forum",
+    "crates/services/geo",
+    "crates/services/git",
+    "crates/services/issues",
+    "crates/services/mail",
+    "crates/services/media",
+    "crates/services/messages",
+    "crates/services/press",
+    "crates/services/search",
+    "crates/services/shop",
+    "crates/services/slack",
+    "crates/services/social",
+    "crates/services/speaker",
+    "crates/services/static-site",
+    "crates/services/wiki",
+    "crates/computerworld",
+    "benchmarks/runner",
+]
 default-members = ["crates/computerworld"]
 
 [workspace.package]

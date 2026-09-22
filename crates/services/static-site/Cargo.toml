@@ -4,12 +4,12 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 [dependencies]
-cw-protocol = { path = "../../protocol" }
-cw-sdk = { path = "../../sdk" }
+cw-protocol = { path = "../../core/protocol" }
+cw-sdk = { path = "../../core/sdk" }
 serde_json.workspace = true
 url.workspace = true
 cw-service-common = { path = "../common" }
-cw-web = { path = "../../web" }
+cw-web = { path = "../../web/engine" }
 
 [dev-dependencies]
 cw-service-common = { path = "../common", features = ["validate"] }

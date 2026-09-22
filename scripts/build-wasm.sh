@@ -54,13 +54,13 @@ wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target nodejs 
 for package in pkg/web pkg/node; do
   mkdir -p "$package/notices"
   cp LICENSE "$package/notices/PROJECT-LICENSE.txt"
-  cp crates/render/assets/FONT-LICENSE.txt crates/render/assets/YARU-COPYRIGHT.txt crates/render/assets/UBUNTU-WALLPAPER-COPYRIGHT.txt crates/render/assets/fonts/*.txt "$package/notices/"
-  cp crates/render/assets/README.md "$package/notices/ASSET-ATTRIBUTION.md"
+  cp crates/graphics/render/assets/FONT-LICENSE.txt crates/graphics/render/assets/YARU-COPYRIGHT.txt crates/graphics/render/assets/UBUNTU-WALLPAPER-COPYRIGHT.txt crates/graphics/render/assets/fonts/*.txt "$package/notices/"
+  cp crates/graphics/render/assets/README.md "$package/notices/ASSET-ATTRIBUTION.md"
   # The CJK/emoji font pack is not in the module (native builds embed it). Pages
   # fetch `fonts/<file>` on demand and hand the bytes to `installFont`; see
-  # crates/render/assets/README.md. Its OFL notices are among fonts/*.txt above.
+  # crates/graphics/render/assets/README.md. Its OFL notices are among fonts/*.txt above.
   mkdir -p "$package/fonts"
-  cp crates/render/assets/fonts/pack/*.ttf "$package/fonts/"
+  cp crates/graphics/render/assets/fonts/pack/*.ttf "$package/fonts/"
 done
 
 for package in pkg/web pkg/node; do

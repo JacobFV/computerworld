@@ -110,9 +110,9 @@ assert.equal(phone.removeComputer,undefined);
 // Complex scripts: Hebrew, Arabic, Thai, Devanagari, Bengali, Georgian and Armenian
 // are in the module; CJK, emoji and eight more scripts are the on-demand font pack. Before the pack is installed those glyphs are boxes; once
 // it is, the frame must equal the native renderer's pinned hash for the same scene
-// (crates/render/src/script_tests.rs, multi_script_scene_is_pinned).
+// (crates/graphics/render/src/script_tests.rs, multi_script_scene_is_pinned).
 const { installFont, fontPackStatus } = require('../../pkg/node/computerworld.js');
-const scriptsScene = JSON.parse(fs.readFileSync(path.join(__dirname,'../../crates/render/tests/scripts-scene.json'),'utf8'));
+const scriptsScene = JSON.parse(fs.readFileSync(path.join(__dirname,'../../crates/graphics/render/tests/scripts-scene.json'),'utf8'));
 const sha256 = bytes => require('node:crypto').createHash('sha256').update(bytes).digest('hex');
 const nativeScriptsHash = 'a5c6132a7f8f967f99cb79df655841f8e57bf9393f370894fe509840c91e1f1f';
 const scriptRenderer = new SceneRenderer();

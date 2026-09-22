@@ -1,0 +1,17 @@
+[package]
+name = "cw-environment"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[dependencies]
+cw-protocol = { path = "../protocol" }
+cw-kernel = { path = "../kernel" }
+cw-computer = { path = "../../machines/computer" }
+cw-browser = { path = "../../web/browser" }
+cw-applications = { path = "../../applications" }
+cw-raster = { path = "../../engines/raster" }
+cw-scene = { path = "../../graphics/scene" }
+cw-trajectory = { path = "../trajectory" }
+serde.workspace = true
+serde_json.workspace = true
+cw-sdk = { path = "../sdk" }

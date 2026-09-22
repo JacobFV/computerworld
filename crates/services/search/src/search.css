@@ -1,6 +1,6 @@
 /* The search engines' stylesheet. One file for the three skins: the palette comes in
    as custom properties on <html> (see view.rs), the skin as a class on <body>.
-   Measurements follow research/studies/google-ceiling/mock.html, which follows google.com. */
+   Measurements follow research/google-ceiling/mock.html, which follows google.com. */
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 html {

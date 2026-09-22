@@ -94,7 +94,7 @@ shortcut off entirely, which is about 2.3× slower and produces the same answers
 
 ## The constraint language
 
-`crates/evaluation/src/lib.rs` defines `Predicate` — `Equals`, `Exists`, `All`,
+`crates/core/evaluation/src/lib.rs` defines `Predicate` — `Equals`, `Exists`, `All`,
 `Any`, `Not`, evaluated against the `inspect()` JSON through a JSON Pointer. It
 is a Rust type with no Wasm or Python binding, so the checker reimplements it in
 JavaScript, in the shape serde serializes it and with the same semantics: a

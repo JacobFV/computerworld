@@ -495,7 +495,7 @@ fn a_finger_draws_on_a_phone_canvas_without_triggering_shell_gestures() {
 #[test]
 fn jpeg_photos_open_in_the_editors() {
     let mut s = session("carol-ubuntu", "virtual-ubuntu-24", &["gimp"]);
-    let jpeg = include_bytes!("../../render/assets/wallpapers/macos.jpg");
+    let jpeg = include_bytes!("../../graphics/render/assets/wallpapers/macos.jpg");
     let actor = s.actor.clone();
     s.world
         .runtime_mut()

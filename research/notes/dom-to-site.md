@@ -13,10 +13,10 @@ an existing service supply the behaviour.
 
 ## 1. What the target format can and cannot express
 
-The format is `cw_protocol::Page` (`crates/protocol/src/lib.rs`, from the `Page` struct
+The format is `cw_protocol::Page` (`crates/core/protocol/src/lib.rs`, from the `Page` struct
 near line 430 through `PageAction`): a title, an optional `PageTheme`, an optional `lang`,
 and a tree of `PageElement`s. The browser lays it out in
-`crates/browser/src/page_scene.rs` (`Layout::place`, `row`, `grid`, `layout_scrolled`).
+`crates/web/browser/src/page_scene.rs` (`Layout::place`, `row`, `grid`, `layout_scrolled`).
 
 ### Elements
 
@@ -29,7 +29,7 @@ and a tree of `PageElement`s. The browser lays it out in
 | `card` | Filled, optionally bordered, padded container; with `action` the whole card is one click target | Default padding 14, radius 10, fill = theme surface; `#00000000` is a valid transparent fill |
 | `thumbnail` | Flat colour block with a centred label, optional `action` | The stand-in for every photo, avatar and logo |
 | `badge`, `divider`, `icon`, `spacer` | Pill, 1 px rule, one of ~65 bundled symbols (`PAGE_ICONS`), vertical gap | A `spacer` inside a `row` is a flexible push (no style → flex 1) |
-| `image` | RGBA pixels served by the same origin as `application/vnd.computerworld.rgba+json` (`{width, height, rgba}`) | Same-origin only, ≤ 4 MiB decoded, 16 MiB browser cache (`crates/browser/src/lib.rs` `MAX_IMAGE_BYTES`, `MAX_CACHE_BYTES`) |
+| `image` | RGBA pixels served by the same origin as `application/vnd.computerworld.rgba+json` (`{width, height, rgba}`) | Same-origin only, ≤ 4 MiB decoded, 16 MiB browser cache (`crates/web/browser/src/lib.rs` `MAX_IMAGE_BYTES`, `MAX_CACHE_BYTES`) |
 
 `PageTheme` gives accent, background, surface, ink, muted, `content_width` and `font` (a
 CSS family list resolved to a bundled face); a themed
@@ -50,7 +50,7 @@ neither.
   absolute/fixed/sticky` (only the top/bottom `pin` on top-level elements), no overlays,
   overflow clipping except `scroll_x`, no z-order, no line-height or letter-spacing, no
   text decoration except what a link pill implies.
-- Typography: the bundled families only (`crates/scene/src/metrics.rs`: DejaVu, the Noto
+- Typography: the bundled families only (`crates/graphics/scene/src/metrics.rs`: DejaVu, the Noto
   packs for scripts, the terminal mono). No web fonts, so widths differ from the capture.
 - Behaviour: no JavaScript, hover, focus styles, menus, tabs, carousels, infinite scroll or
   client-side search. Every state change is a GET/POST to a service.

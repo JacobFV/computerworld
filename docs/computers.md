@@ -32,7 +32,7 @@ format, smart HTTP wire protocol or SHA-1 object identity. Adapt workflows and
 fixtures rather than treating existing `.git` directories as directly compatible.
 
 Focused implementation and regression tests live in
-[`crates/computer`](../crates/computer). The
+[`crates/machines/computer`](../crates/machines/computer). The
 [company example](../examples/native/company.rs) demonstrates composition with
 network services.
 

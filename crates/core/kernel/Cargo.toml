@@ -1,0 +1,15 @@
+[package]
+name = "cw-kernel"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cw-protocol = { path = "../protocol" }
+cw-determinism = { path = "../determinism" }
+cw-computer = { path = "../../machines/computer" }
+cw-network = { path = "../../machines/network" }
+cw-sdk = { path = "../sdk" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true

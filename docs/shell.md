@@ -1,9 +1,9 @@
 # Shell support matrix
 
-The simulated shell in `crates/computer` is a bounded reimplementation, not a POSIX
+The simulated shell in `crates/machines/computer` is a bounded reimplementation, not a POSIX
 shell. This page is the published surface: if a flag is not listed here it is not
 supported, and invoking it **fails with a non-zero status** rather than being ignored.
-`crates/computer/tests/shell_conformance.rs` runs every row below, so the table cannot
+`crates/machines/computer/tests/shell_conformance.rs` runs every row below, so the table cannot
 drift away from the code.
 
 Two words are used throughout:
@@ -61,7 +61,7 @@ The `reason` half is `strerror`'s wording, mapped from the VFS's own errors:
 | invalid path | `Invalid argument` |
 
 An unknown or unimplemented flag is **always** status `2` and **always** names itself.
-`crates/computer/tests/shell_conformance.rs` runs every command in the table below with
+`crates/machines/computer/tests/shell_conformance.rs` runs every command in the table below with
 an invented long flag and an invented short flag and asserts both are refused by name;
 a flag that is accepted and then ignored is the one bug this suite exists to prevent.
 Where a flag is accepted but does nothing, the table says so explicitly and gives the
@@ -245,7 +245,7 @@ every replay.
 | `systemctl` / `service` | `start stop restart status` | every flag (`--user`, `--now`, `--no-pager` … all imply machinery this world lacks), `enable` `disable` `daemon-reload` | modelled against the process table and the service adapter |
 | `apt` / `apt-get` / `brew` / `winget` / `pip` / `npm` | `install`, `remove`/`uninstall`, `list` | `update` `upgrade` `search` | modelled against the package manager, offline |
 | `curl` / `wget` | `-X` / `--request`, `-d` / `--data` / `--data-raw`, `-H` / `--header`, `-o` / `--output`, `-f` / `--fail`; `-s` / `--silent` and `-S` / `--show-error` accepted and inert **because there is no progress meter and no TTY** | `-L` `-I` `-u` `-k` `-A`, and every other flag, refused by name | modelled against the network adapter |
-| `git` | `init`, `clone`, `add [-A] PATH…`, `status`, `commit -m MSG` (`-a`/`-am`), `log`, `diff [--staged\|--cached]`, `reset [--soft\|--mixed\|--hard] [REV] [--] [PATH…]`, `restore [--staged] [--worktree] [--source=REV] PATH…`, `checkout`/`switch [-b\|-c] BRANCH`, `checkout -- PATH…`, `branch [NAME]`, `remote [add NAME URL]`, `fetch`, `pull`, `push`, `config KEY [VALUE]`, `-C DIR` | every other subcommand and every global option, refused by name with status `2` | modelled, content-addressed (`crates/computer/src/git.rs`): objects, refs and the index are the repository's own state under `.git/state.json`, and the worktree is the machine's files. See *git* below |
+| `git` | `init`, `clone`, `add [-A] PATH…`, `status`, `commit -m MSG` (`-a`/`-am`), `log`, `diff [--staged\|--cached]`, `reset [--soft\|--mixed\|--hard] [REV] [--] [PATH…]`, `restore [--staged] [--worktree] [--source=REV] PATH…`, `checkout`/`switch [-b\|-c] BRANCH`, `checkout -- PATH…`, `branch [NAME]`, `remote [add NAME URL]`, `fetch`, `pull`, `push`, `config KEY [VALUE]`, `-C DIR` | every other subcommand and every global option, refused by name with status `2` | modelled, content-addressed (`crates/machines/computer/src/git.rs`): objects, refs and the index are the repository's own state under `.git/state.json`, and the worktree is the machine's files. See *git* below |
 | `sqlite3` | `[OPTIONS] [FILE [SQL…]]`; SQL and dot-commands on stdin (pipe, heredoc, `<`); `-header -noheader -csv -column -list -line -json -box -table -markdown -tabs -quote -html -ascii -separator SEP -newline SEP -nullvalue TEXT -cmd CMD -init FILE -bail -echo -version -help`; `-batch -readonly -safe` accepted and inert | every other option, refused by name with status `2`; an interactive prompt | modelled: the `cw-sql` engine over the VFS, reading and writing real SQLite 3 files; see *sqlite3* below |
 | `sh` / `bash` | `-c SCRIPT [NAME [ARG…]]`, script path plus arguments | `-e` `-x` | modelled; a nested run of the same shell, with its own budget and its own function table |
 | `break` / `continue` / `return` | `[N]` | — | modelled as shell signals; see *Grammar* |
@@ -310,7 +310,7 @@ would escape the extraction directory.
 
 ## awk
 
-`awk` (`crates/computer/src/awk.rs`) is the POSIX language, not a field-printing
+`awk` (`crates/machines/computer/src/awk.rs`) is the POSIX language, not a field-printing
 shortcut: a lexer, a recursive-descent parser and an interpreter with the whole value
 model. `gawk`, `mawk` and `nawk` are the same command.
 
@@ -357,7 +357,7 @@ rather than a number it can compare against.
 
 ## sed
 
-`sed` (`crates/computer/src/sed.rs`) runs a real cycle: a pattern space, a hold space,
+`sed` (`crates/machines/computer/src/sed.rs`) runs a real cycle: a pattern space, a hold space,
 an append queue, branch labels and a program counter. `-i` and `-s` process each file
 separately; otherwise every operand is one stream, so `$` is the last line of the last
 file and line numbers run on.
@@ -422,7 +422,7 @@ untracked file is moved to the trash instead).
 
 ## sqlite3
 
-`sqlite3` runs the pure `cw-sql` engine (`crates/sql`), which follows SQLite 3.45.1's
+`sqlite3` runs the pure `cw-sql` engine (`crates/engines/sql`), which follows SQLite 3.45.1's
 dialect, messages and shell output. `FILE` is resolved against the working directory and
 read and written through the same permission checks as `cat` and a redirect; `:memory:`
 or no file is a scratch database. Every argument after `FILE` is run in order (SQL or a
@@ -504,7 +504,7 @@ and tracebacks for Python; `console.log` / `util.inspect` formatting, uncaught-e
 reports (source line, caret, stack with Node's internal frames, `Node.js v24.21.0`),
 unhandled rejections and exit codes for Node. Conformance corpora of whole programs
 with outputs recorded from CPython 3.12 and Node 24.21 live in
-`crates/pyvm/tests/programs` and `crates/jsvm/tests/programs`.
+`crates/languages/pyvm/tests/programs` and `crates/languages/jsvm/tests/programs`.
 
 `node` implements the language through ES2023 (classes with private members,
 generators, async functions and async iterators, destructuring, spread, optional
@@ -648,7 +648,7 @@ library's, byte for byte, at every level, window size, memory level and strategy
 Node ships Chromium's fork of zlib, whose string hashing differs, and CPython links
 the system zlib; the port reproduces both, so `zlib.deflateSync` in the simulated
 `node` and `zlib.compress` in the simulated `python3` agree with the real programs
-(and with each other's decompressors). `crates/zlib/tests/vectors.json` holds the
+(and with each other's decompressors). `crates/languages/zlib/tests/vectors.json` holds the
 hashes of 434 outputs recorded from CPython 3.12 and Node 24.21 for that check.
 
 * **Python**: `zlib` (`compress`, `decompress`, `compressobj`/`decompressobj` with
@@ -724,7 +724,7 @@ language falls back to `en-US`.
   locale's, with glibc's `-`, `_`, `0` and `^` flags. A locale outside the
   fourteen raises `locale.Error`, as CPython does for one that is not installed.
 * **Time zones**: `zoneinfo.ZoneInfo` and `Intl`'s `timeZone` option know the
-  70-odd IANA zones in `crates/tz` (every offset in use, and the places a
+  70-odd IANA zones in `crates/languages/tz` (every offset in use, and the places a
   world's machines and services are plausibly in), with their transitions
   between 1970 and 2050, their abbreviations and their aliases (`US/Eastern`,
   `Asia/Calcutta`). A local time that happens twice or never resolves the way
@@ -732,14 +732,14 @@ language falls back to `en-US`.
   something a program formats *with*, not somewhere the machine is.
 
 The data is compiled in and generated by hand from the host's own libraries, so
-the simulated runtimes agree with the real ones: `crates/jsvm/data/cldr.json`
-(261 KiB, recorded from Node 24.21's ICU by `crates/jsvm/tools/generate_cldr.js`,
+the simulated runtimes agree with the real ones: `crates/languages/jsvm/data/cldr.json`
+(261 KiB, recorded from Node 24.21's ICU by `crates/languages/jsvm/tools/generate_cldr.js`,
 parsed on the first `Intl` use and never otherwise),
-`crates/pyvm/src/locale_data.rs` (18 KiB, recorded from the host's glibc by
-`crates/pyvm/tools/generate_locales.py`; Arabic and Hindi are filled in from the
-CLDR file, since glibc had no data for them there) and `crates/tz/src/data.rs`
+`crates/languages/pyvm/src/locale_data.rs` (18 KiB, recorded from the host's glibc by
+`crates/languages/pyvm/tools/generate_locales.py`; Arabic and Hindi are filled in from the
+CLDR file, since glibc had no data for them there) and `crates/languages/tz/src/data.rs`
 (134 KiB of source for 6,219 transitions, from the host's IANA database by
-`crates/tz/tools/generate.py`). Together that is about 410 KiB of tables in the
+`crates/languages/tz/tools/generate.py`). Together that is about 410 KiB of tables in the
 binary.
 
 ### Debugging
@@ -776,14 +776,14 @@ sees the timer fire first. A timer started inside a callback counts from the
 moment it is started, as `Environment::GetNow` does, so work done in a callback
 pushes back what was queued behind it. The rates are model constants (not
 measurements of any real machine); they are calibrated so that the orderings
-recorded from Node 24.21 in `crates/jsvm/tests/programs` come out the same way.
+recorded from Node 24.21 in `crates/languages/jsvm/tests/programs` come out the same way.
 
 Known gaps shared by both: no native extensions. Strings that contain unpaired
 UTF-16 surrogates are carried as the replacement character.
 
 ## Process table
 
-Every process on a machine is a real entry in `crates/computer/src/process.rs`, and
+Every process on a machine is a real entry in `crates/machines/computer/src/process.rs`, and
 `ps`, `top`, `pgrep`, `pkill`, `kill`, `free` and `lsof` all read that one table. There
 are four kinds of entry, and nothing else is ever in it:
 
@@ -860,7 +860,7 @@ process's `RSS` is the footprint of the program it runs, plus what it is actuall
 holding — for a window, the bytes of the document it has open. Every number is fixed
 when the process starts, so `ps` reports the same figure on every replay, and the
 ordering is the ordering the real programs would have. The program table
-(`crates/computer/src/process.rs`) is:
+(`crates/machines/computer/src/process.rs`) is:
 
 | Program | RSS |
 | --- | --- |
@@ -873,7 +873,7 @@ ordering is the ordering the real programs would have. The program table
 | `sh`, `bash`, `sudo` | 3 MiB |
 | any other command | 2 MiB |
 
-and the application table (`crates/environment/src/lib.rs`) is:
+and the application table (`crates/core/environment/src/lib.rs`) is:
 
 | Application | RSS |
 | --- | --- |

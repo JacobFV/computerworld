@@ -1,0 +1,29 @@
+[package]
+name = "cw-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cw-scene = { path = "../scene" }
+png = "0.17"
+# `platform_independent` compiles out the SSSE3 / NEON / simd128 IDCT and
+# colour-convert kernels, which are not bit-identical to the scalar ones; the
+# renderer must produce the same pixels natively and under Wasm. It also drops
+# the default `rayon` dependency, which is both non-deterministic and unbuildable
+# for wasm32-unknown-unknown. Cargo features are additive, so nothing downstream
+# can turn this back off.
+jpeg-decoder = { version = "0.3", default-features = false, features = [
+    "platform_independent",
+] }
+fontdue = "=0.9.3"
+# Shapes colour emoji clusters with the colour font and walks its COLR paint graph
+# (`rustybuzz::ttf_parser`); the same pinned version the scene crate lays out with.
+rustybuzz = "=0.14.1"
+serde.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+cw-protocol = { path = "../../core/protocol" }
+serde_json.workspace = true
+proptest.workspace = true

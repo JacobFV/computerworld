@@ -24,7 +24,7 @@ Google homepage, or is the format itself the ceiling? Everything here is in
    runs as insets, `spacer`s for exact vertical rhythm, a `card` with a transparent-ish
    white fill and a GET `action` for the pill, `icon`s with actions, styled `button`s and
    `link`s, and `pin: "top"` / `pin: "bottom"` rows for the header and footer. It was
-   iterated against the renderer's layout code (`crates/browser/src/page_scene.rs`), not
+   iterated against the renderer's layout code (`crates/web/browser/src/page_scene.rs`), not
    guessed: every height in it was computed from `place`, `row` and `layout_scrolled`.
    Rendered through the in-world browser (the Node Wasm build, freshly rebuilt from the
    working tree) by `render-page.mjs`, which maximises the browser window and sizes the

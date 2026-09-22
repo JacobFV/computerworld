@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // Dump what Chromium computes for a fixture page: every element's box and a fixed set of
 // computed properties, every text node's line boxes, and a screenshot. The engine's own
-// dump (`crates/web/tests/parity.rs`) has the same shape, and `compare.mjs` reads both.
+// dump (`crates/web/engine/tests/parity.rs`) has the same shape, and `compare.mjs` reads both.
 //
 //   PLAYWRIGHT_MODULE=/usr/lib/chatgpt/resources/cua_node/lib/node_modules/playwright/index.mjs \
 //   CHROME_BIN=/usr/bin/google-chrome \
-//     node scripts/web-parity/dump.mjs crates/web/tests/parity/google-1998.html \
+//     node scripts/web-parity/dump.mjs crates/web/engine/tests/parity/google-1998.html \
 //       [--width 1280] [--height 800] [--dpr 1] [--out <name>.chromium.json] [--full] \
 //       [--props extra-a,extra-b] [--state states.json]
 //
@@ -27,10 +27,10 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import {PROPERTIES} from './common.mjs';
 
 // The same third-party bundles the Rust harness serves at https://example.test/vendor/*
-// (see crates/web/tests/vendor/), so a fixture loaded from a file: URL that links
+// (see crates/web/engine/tests/vendor/), so a fixture loaded from a file: URL that links
 // `/vendor/whatever` (root-relative, exactly as the Rust test expects it) gets the real
 // file instead of a filesystem 404.
-const vendorDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'crates', 'web', 'tests', 'vendor');
+const vendorDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'crates', 'web', 'engine', 'tests', 'vendor');
 const VENDOR_MIME = {'.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json'};
 
 const args = process.argv.slice(2);

@@ -2,7 +2,7 @@
   "world": "company-2026",
   "generated": "2026-09-21T05:11:21.144Z",
   "engine_version": "0.2.0",
-  "checker": "scripts/checks/cw-check.mjs",
+  "checker": "scripts/cw-check.mjs",
   "seed": 7,
   "flow": "the pull-request review-and-merge flow on http://github.com/northstar/atlas",
   "actor": "alice",

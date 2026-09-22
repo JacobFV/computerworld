@@ -140,6 +140,23 @@ Python from source (`pip install .`, Rust required) and the Wasm build
 [JavaScript](docs/wasm.md) guides. The site, including the docs, is in
 [`site/`](site/README.md). Issues and pull requests are welcome.
 
+## Repository map
+
+| Directory | What belongs here |
+| --- | --- |
+| [`crates/`](crates/README.md) | Runtime packages grouped by subsystem, with their tests and fixtures |
+| [`worlds/`](worlds/README.md) | World blueprints, input assets and checked-in generated definitions |
+| [`examples/`](examples/README.md) | Runnable examples for each language binding |
+| [`site/`](site/README.md) | Project website, live scenes and generated site world |
+| [`docs/`](docs/README.md) | Current guides; contracts and historical records have separate subdirectories |
+| [`scripts/`](scripts/README.md) | Build, release, content and verification tools |
+| [`benchmarks/`](benchmarks/README.md) | Measurement runners and selected baseline evidence |
+| [`research/`](research/README.md) | Research notes and self-contained studies |
+
+Generated build output lives in ignored `target/`, `pkg/`, `site/pkg/` and
+`site/docs/`. Committed generated world data and reference captures are intentional;
+see each directory's README before regenerating them.
+
 ## Scope
 
 Fidelity is bounded on purpose and documented per subsystem: POSIX and PowerShell
@@ -151,4 +168,4 @@ hostile memory access in the same process.
 
 The engine is an independent implementation informed by
 [eleven predecessor repositories](research/sources.json). Font and asset attribution is in
-[the render asset notices](crates/render/assets/README.md). MIT licensed.
+[the render asset notices](crates/graphics/render/assets/README.md). MIT licensed.

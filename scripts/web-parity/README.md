@@ -1,6 +1,6 @@
 # Layout parity against Chromium
 
-The web engine in `crates/web` is measured against Chromium, which Playwright drives
+The web engine in `crates/web/engine` is measured against Chromium, which Playwright drives
 through the same module the capture pipeline uses. For every fixture page Chromium dumps
 each element's box and a fixed set of computed properties; the engine dumps the same at
 the same viewport; the two are compared with a small tolerance, and a report says what
@@ -11,25 +11,25 @@ would otherwise blur.
 
 | Path | What |
 |---|---|
-| `crates/web/tests/parity/<name>.html` | A fixture: a self-contained page, CSS inline, no external requests, synthetic text |
-| `crates/web/tests/parity/<name>.chromium.json` | Chromium's dump of it (checked in) |
-| `crates/web/tests/parity/<name>.chromium.png` | Chromium's screenshot of the viewport |
-| `crates/web/tests/parity/<name>.fonts.json` | Each distinct `font-family` list the page asks for and the platform face Chromium shaped it with |
-| `crates/web/tests/parity/thresholds.json` | The pass rate each fixture must reach (0 to 1) |
-| `crates/web/target-parity/<name>.engine.json` | The engine's dump, same shape (written by the Rust runner; not checked in) |
-| `crates/web/target-parity/<name>.engine.png` | The engine's raster through `cw-render` |
-| `crates/web/target-parity/<name>.report.md` | Pass count, mismatches by property, worst offenders with expected and got |
-| `crates/web/target-parity/<name>.compare.png` | Chromium, the engine and their difference side by side (from `compare.mjs`) |
-| `crates/web/tests/ref/<name>.html`, `<name>-ref.html` | Reftest pairs: two documents that must paint to the same scene |
-| `crates/web/tests/modern_layout.rs` | Regression tests for the engine bugs the modern fixtures exposed: small documents through the whole pipeline, rects and computed values asserted by element id |
-| `crates/web/src/paint/pipeline_tests.rs` | Regression tests for the engine bugs the migrated services exposed: the smallest page that showed each one, through the whole pipeline, asserted on the scene or on the raster |
-| `crates/web/tests/wpt/` | The web-platform-tests reftest corpus (sparse, pinned; `manifest.json`, `expectations.json`, `README.md`, `LICENSE.md`), produced by `crates/web/tools/fetch-wpt.py` |
-| `crates/web/target-parity/wpt-report.md` | Pass counts per WPT directory and the outcome of every pair (written by `crates/web/tests/wpt.rs`) |
+| `crates/web/engine/tests/parity/<name>.html` | A fixture: a self-contained page, CSS inline, no external requests, synthetic text |
+| `crates/web/engine/tests/parity/<name>.chromium.json` | Chromium's dump of it (checked in) |
+| `crates/web/engine/tests/parity/<name>.chromium.png` | Chromium's screenshot of the viewport |
+| `crates/web/engine/tests/parity/<name>.fonts.json` | Each distinct `font-family` list the page asks for and the platform face Chromium shaped it with |
+| `crates/web/engine/tests/parity/thresholds.json` | The pass rate each fixture must reach (0 to 1) |
+| `crates/web/engine/target-parity/<name>.engine.json` | The engine's dump, same shape (written by the Rust runner; not checked in) |
+| `crates/web/engine/target-parity/<name>.engine.png` | The engine's raster through `cw-render` |
+| `crates/web/engine/target-parity/<name>.report.md` | Pass count, mismatches by property, worst offenders with expected and got |
+| `crates/web/engine/target-parity/<name>.compare.png` | Chromium, the engine and their difference side by side (from `compare.mjs`) |
+| `crates/web/engine/tests/ref/<name>.html`, `<name>-ref.html` | Reftest pairs: two documents that must paint to the same scene |
+| `crates/web/engine/tests/modern_layout.rs` | Regression tests for the engine bugs the modern fixtures exposed: small documents through the whole pipeline, rects and computed values asserted by element id |
+| `crates/web/engine/src/paint/pipeline_tests.rs` | Regression tests for the engine bugs the migrated services exposed: the smallest page that showed each one, through the whole pipeline, asserted on the scene or on the raster |
+| `crates/web/engine/tests/wpt/` | The web-platform-tests reftest corpus (sparse, pinned; `manifest.json`, `expectations.json`, `README.md`, `LICENSE.md`), produced by `crates/web/engine/tools/fetch-wpt.py` |
+| `crates/web/engine/target-parity/wpt-report.md` | Pass counts per WPT directory and the outcome of every pair (written by `crates/web/engine/tests/wpt.rs`) |
 
 Scripts: `dump.mjs` (Chromium side), `compare.mjs` (reports and pictures), `common.mjs`
 (the property list and comparison rules, shared by both). The Rust side is
-`crates/web/tests/parity.rs`, `crates/web/tests/reftest.rs`, `crates/web/tests/wpt.rs`
-and their shared `crates/web/tests/support/mod.rs`, which holds the same rules in Rust
+`crates/web/engine/tests/parity.rs`, `crates/web/engine/tests/reftest.rs`, `crates/web/engine/tests/wpt.rs`
+and their shared `crates/web/engine/tests/support/mod.rs`, which holds the same rules in Rust
 so `cargo test` needs no Node.
 
 ## The dump
@@ -90,7 +90,7 @@ export CHROME_BIN=/usr/bin/google-chrome
 1. **Regenerate a Chromium dump** after editing a fixture (or adding one):
 
    ```sh
-   node scripts/web-parity/dump.mjs crates/web/tests/parity/google-1998.html
+   node scripts/web-parity/dump.mjs crates/web/engine/tests/parity/google-1998.html
    ```
 
    Defaults: 1280×800, device pixel ratio 1, screenshot of the viewport (`--full` for the
@@ -110,10 +110,10 @@ export CHROME_BIN=/usr/bin/google-chrome
    The `pipeline` feature compiles the calls into `html::parse`, `css::parse_stylesheet`
    and `style::cascade`; without it those tests are ignored and only the dump format,
    thresholds and reftest file layout are checked. The runner writes the engine dump,
-   PNG and `report.md` for every fixture into `crates/web/target-parity/` whether or not
+   PNG and `report.md` for every fixture into `crates/web/engine/target-parity/` whether or not
    the threshold is met.
 
-3. **Read the reports**: `crates/web/target-parity/<name>.report.md` lists the pass
+3. **Read the reports**: `crates/web/engine/target-parity/<name>.report.md` lists the pass
    count, mismatches per property (which tells you whether it is the cascade, the
    block layout or the text that is off) and the forty worst nodes with expected and got
    values. For pictures:
@@ -154,7 +154,7 @@ listed in `TOLERANCE` may differ by the stated number of pixels for the stated r
 (none does today). `tests/pending/` holds pairs the engine does not pass yet.
 
 
-`crates/web/tests/ref/<name>.html` and `<name>-ref.html` are two documents that must
+`crates/web/engine/tests/ref/<name>.html` and `<name>-ref.html` are two documents that must
 paint identically: the runner parses, cascades, lays out and paints both at 1280×800
 and compares scene digests (`Scene::stamp` after erasing node ids, since the two DOMs
 have different node numbering). A failing pair leaves `ref-<name>.test.png` and
@@ -167,18 +167,18 @@ the tree builder's implied elements.
 
 ## Web Platform Tests
 
-`crates/web/tests/wpt/` is a sparse, pinned copy of web-platform-tests (commit and
-tarball SHA-256 in `crates/web/tools/fetch-wpt.py`; `python3 crates/web/tools/fetch-wpt.py`
+`crates/web/engine/tests/wpt/` is a sparse, pinned copy of web-platform-tests (commit and
+tarball SHA-256 in `crates/web/engine/tools/fetch-wpt.py`; `python3 crates/web/engine/tools/fetch-wpt.py`
 regenerates it, `--check` verifies the manifest). It holds reftests only, whole leaf
 directories in the plan's order under a budget of about 1,500 pairs, excluding tests that
 need script, SVG, vertical writing modes, `reftest-wait`, print media, nested documents
-or real web fonts; `crates/web/tests/wpt/README.md` lists the directories, the pairs per
-directory and the exclusion counts. The runner `crates/web/tests/wpt.rs` renders each
+or real web fonts; `crates/web/engine/tests/wpt/README.md` lists the directories, the pairs per
+directory and the exclusion counts. The runner `crates/web/engine/tests/wpt.rs` renders each
 pair at 800×600 (the WPT default), resolving `<link rel=stylesheet>` and `@import` from
 the tree and mapping `font-family: Ahem` to the bundled JetBrains Mono on both sides,
 compares the rasters (`rel=match` must be identical, `rel=mismatch` must differ), writes
 `target-parity/wpt-report.md` grouped by directory, and fails only when a directory's pass
-count drops below `crates/web/tests/wpt/expectations.json` (0 everywhere to start; raise an
+count drops below `crates/web/engine/tests/wpt/expectations.json` (0 everywhere to start; raise an
 entry to just under the achieved count once it holds).
 
 ## The fixtures

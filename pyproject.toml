@@ -8,24 +8,24 @@ requires-python = ">=3.9"
 description = "Deterministic synthetic computer worlds powered by one Rust runtime"
 license = { text = "MIT" }
 [tool.maturin]
-manifest-path = "crates/python/Cargo.toml"
+manifest-path = "crates/bindings/python/Cargo.toml"
 module-name = "computerworld"
 include = [
   { path = "worlds/**/*", format = "sdist" },
   { path = "examples/native/**/*", format = "sdist" },
-  { path = "crates/render/assets/FONT-LICENSE.txt", format = "wheel" },
-  { path = "crates/render/assets/YARU-COPYRIGHT.txt", format = "wheel" },
-  { path = "crates/render/assets/UBUNTU-WALLPAPER-COPYRIGHT.txt", format = "wheel" },
-  { path = "crates/render/assets/fonts/INTER-OFL.txt", format = "wheel" },
-  { path = "crates/render/assets/fonts/OPENSANS-OFL.txt", format = "wheel" },
-  { path = "crates/render/assets/fonts/ROBOTO-OFL.txt", format = "wheel" },
-  { path = "crates/render/assets/fonts/UBUNTU-UFL.txt", format = "wheel" },
-  { path = "crates/render/assets/fonts/NOTOSANSHEBREW-OFL.txt", format = "wheel" },
-  { path = "crates/render/assets/fonts/NOTOSANSARABIC-OFL.txt", format = "wheel" },
-  { path = "crates/render/assets/fonts/NOTOSANSTHAI-OFL.txt", format = "wheel" },
-  { path = "crates/render/assets/fonts/NOTOSANSDEVANAGARI-OFL.txt", format = "wheel" },
-  { path = "crates/render/assets/fonts/NOTOSANSSC-OFL.txt", format = "wheel" },
-  { path = "crates/render/assets/fonts/NOTOSANSKR-OFL.txt", format = "wheel" },
-  { path = "crates/render/assets/fonts/NOTOEMOJI-OFL.txt", format = "wheel" },
-  { path = "crates/render/assets/README.md", format = "wheel" },
+  { path = "crates/graphics/render/assets/FONT-LICENSE.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/YARU-COPYRIGHT.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/UBUNTU-WALLPAPER-COPYRIGHT.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/fonts/INTER-OFL.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/fonts/OPENSANS-OFL.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/fonts/ROBOTO-OFL.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/fonts/UBUNTU-UFL.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/fonts/NOTOSANSHEBREW-OFL.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/fonts/NOTOSANSARABIC-OFL.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/fonts/NOTOSANSTHAI-OFL.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/fonts/NOTOSANSDEVANAGARI-OFL.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/fonts/NOTOSANSSC-OFL.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/fonts/NOTOSANSKR-OFL.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/fonts/NOTOEMOJI-OFL.txt", format = "wheel" },
+  { path = "crates/graphics/render/assets/README.md", format = "wheel" },
 ]

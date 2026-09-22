@@ -63,7 +63,7 @@ See [historical records](archive/README.md) and [binding contracts](contracts/RE
 Plans and reports rather than guides. A **contract** is still binding on the code;
 a **record** describes a decision already taken and is not current guidance.
 
-- [Plan: a real web engine for the in-world browser](contracts/web-engine-plan.md) — **contract.** The web engine’s milestones, constraints and gates. Its milestones shipped in 0.2.0, but `crates/web/src/lib.rs` and `crates/web/DESIGN.md` still point here for the contract the engine is held to.
+- [Plan: a real web engine for the in-world browser](contracts/web-engine-plan.md) — **contract.** The web engine’s milestones, constraints and gates. Its milestones shipped in 0.2.0, but `crates/web/engine/src/lib.rs` and `crates/web/engine/DESIGN.md` still point here for the contract the engine is held to.
 - [Architecture proposal — approved](archive/architecture-proposal.md) — **record.** The phase-2 design, approved 2026-09-17. Superseded by the guides above; kept for why the shape was chosen.
 - [Parallel implementation and verification plan](archive/implementation-plan.md) — **record.** The acceptance plan that phase-2 approval authorised, 2026-09-17.
 - [Implementation and verification report](archive/final-report.md) — **record.** What was measured and what was still missing when the implementation was reported complete.

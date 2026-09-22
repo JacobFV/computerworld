@@ -1,6 +1,6 @@
 # World and topology schema
 
-The authoritative Rust schema is [`cw-protocol`](../crates/protocol/src/lib.rs).
+The authoritative Rust schema is [`cw-protocol`](../crates/core/protocol/src/lib.rs).
 JSON uses `schema_version: 1`; reject unsupported versions rather than silently
 interpreting them. `WorldDefinition::from_json` parses and validates the definition.
 

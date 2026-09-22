@@ -24,44 +24,65 @@
 
 ### Task 1: Extract oversized modules
 
-Own crates/environment/src, crates/applications/src/lib.rs and its new sibling modules,
-and crates/computer/src/shell.rs and its new shell child modules. Consume existing
+Own crates/core/environment/src, crates/applications/src/lib.rs and its new sibling modules,
+and crates/machines/computer/src/shell.rs and its new shell child modules. Consume existing
 public APIs; produce identical APIs with implementations grouped by responsibility.
 
-- [ ] Read the existing type/method boundaries and select cohesive groups.
-- [ ] Run existing tests as the baseline; preserve tests while moving them with their code.
-- [ ] Extract environment dispatch, scene/observation and snapshot helpers; desktop/application state responsibilities; shell lexing/expansion/parser/command responsibilities as warranted by the code.
-- [ ] Keep module-level imports explicit where practical and internal visibility narrow.
-- [ ] Run affected tests, determinism corpus and formatting. Expected: pass with no behavior changes.
-- [ ] Commit only the owned files and report counts and verification.
+- [x] Read the existing type/method boundaries and select cohesive groups.
+- [x] Run existing tests as the baseline; preserve tests while moving them with their code.
+- [x] Extract environment dispatch, scene/observation and snapshot helpers; desktop/application state responsibilities; shell lexing/expansion/parser/command responsibilities as warranted by the code.
+- [x] Keep module-level imports explicit where practical and internal visibility narrow.
+- [x] Run affected tests, determinism corpus and formatting. Expected: pass with no behavior changes.
+- [x] Commit only the owned files and report counts and verification.
 
 ### Task 2: Organize documentation, research, scripts and generated artifacts
 
 Own docs, research, scripts, site/generated, .github, .gitattributes, and references
 outside Task 1. Consume current paths; produce the structure in design.md.
 
-- [ ] Move records/contracts and group research studies and scripts.
-- [ ] Rewrite relative references according to source/destination paths; retain stable guide URLs.
-- [ ] Move the existing site world to site/generated/world-definition.js; update imports and generators.
-- [ ] Add repository, scripts and evidence navigation guidance and generated-file attributes.
-- [ ] Run docs generation/check, script syntax checks and generated-content comparison. Expected: pass, generated world bytes unchanged.
-- [ ] Commit the verified migration.
+- [x] Move records/contracts and group research studies and scripts.
+- [x] Rewrite relative references according to source/destination paths; retain stable guide URLs.
+- [x] Move the existing site world to site/generated/world-definition.js; update imports and generators.
+- [x] Add repository, scripts and evidence navigation guidance and generated-file attributes.
+- [x] Run docs generation/check, script syntax checks and generated-content comparison. Expected: pass, generated world bytes unchanged.
+- [x] Commit the verified migration.
 
 ### Task 3: Group workspace crates
 
 Own manifests, crate directory moves, path references, boundary checker and navigation.
 Consumes completed Tasks 1 and 2. Produces grouped directories with the same packages.
 
-- [ ] Record Cargo metadata; move crates according to design.md.
-- [ ] Rewrite manifest relative paths, embedded resources, repository-relative references and script root discovery.
-- [ ] Replace implicit workspace discovery with explicit package group globs.
-- [ ] Adapt boundary discovery to nested packages so all simulation libraries are covered.
-- [ ] Compare Cargo metadata package names, features, dependency edges and target types. Expected: no semantic changes.
-- [ ] Run workspace tests, clippy, formatting, Wasm, documentation, generated-content, packaging and browser checks. Expected: pass or documented pre-existing/environment limitation with evidence.
-- [ ] Commit the verified migration.
+- [x] Record Cargo metadata; move crates according to design.md.
+- [x] Rewrite manifest relative paths, embedded resources, repository-relative references and script root discovery.
+- [x] Replace implicit workspace discovery with explicit package group globs.
+- [x] Adapt boundary discovery to nested packages so all simulation libraries are covered.
+- [x] Compare Cargo metadata package names, features, dependency edges and target types. Expected: no semantic changes.
+- [x] Run workspace tests, clippy, formatting, Wasm, documentation, generated-content, packaging and browser checks. Expected: pass or documented pre-existing/environment limitation with evidence.
+- [x] Commit the verified migration.
 
 ### Task 4: Review and integrate
 
-- [ ] Independently review the full migration and verify fixes.
+- [x] Independently review the full migration and verify fixes.
 - [ ] Fast-forward the original clean checkout to the verified branch.
 - [ ] Confirm clean status and summarize the structure, tests and any remaining limitations.
+
+## Verification recorded on 2026-09-22
+
+- Workspace: 2,875 tests passed across 296 suites; 65 explicitly ignored.
+- Native HTTP host adapter: 3 tests passed.
+- Final restored-resource checks: 86 tests passed; 1 ignored.
+- Final determinism and documented-router checks: 13 passed; 2 ignored.
+- Rust 1.98 clippy with warnings denied, rustfmt, and Rust documentation passed.
+- Cargo metadata preserves all 58 packages, features, dependency declarations and target kinds.
+- All six generated world/index artifacts reproduced byte-for-byte.
+- Five nested-package isolation regressions, 32 documentation pages and navigation links passed.
+- The rebuilt Wasm bundle passed all eight browser checks. npm install smoke and the unpacked Node release example passed.
+- Python wheel build/install, five threading checks, state/pixel/checkpoint parity with Wasm,
+  replay, fork and the ASCII-locale demo passed. All 14 declared wheel attribution files match their sources.
+- The source distribution resolves the complete 53-package Python dependency closure offline;
+  standalone tooling and other bindings are intentionally outside that dependency closure.
+- Independent review found and verified fixes for a fixture checksum, a source-scanning test,
+  historical capture/benchmark provenance and embedded runtime text. No findings remain open.
+
+Historical fixture and runtime-resource bytes are preserved. The renamed Svelte generator
+retains its original provenance banner because the fixture checksum pins those bytes.

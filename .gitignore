@@ -11,4 +11,4 @@
 /site/pkg/
 /site/docs/
 /.claude/worktrees/
-crates/web/target-parity/
+crates/web/engine/target-parity/

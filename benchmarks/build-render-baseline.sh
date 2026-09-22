@@ -20,6 +20,8 @@ start=root.index('[workspace.package]')
 header='[workspace]\nresolver="2"\nmembers=["crates/scene","crates/render","benchmarks/runner"]\n\n'
 (p/'Cargo.toml').write_text(header+root[start:])
 manifest=pathlib.Path('benchmarks/runner/Cargo.toml').read_text()
+# Historical source archives retain the old layout; only today's runner moved.
+manifest=manifest.replace('../../crates/graphics/', '../../crates/')
 manifest='\n'.join(line for line in manifest.splitlines() if not line.startswith('computerworld ='))+'\n'
 (p/'benchmarks/runner/Cargo.toml').write_text(manifest)
 PY

@@ -5,13 +5,13 @@
 //   node scripts/web-parity/compare.mjs <name> [--threshold 0.9]
 //   node scripts/web-parity/compare.mjs --all
 //
-// Reads crates/web/tests/parity/<name>.chromium.json (+ .chromium.png, .fonts.json) and
-// crates/web/target-parity/<name>.engine.json (+ .engine.png, written by
+// Reads crates/web/engine/tests/parity/<name>.chromium.json (+ .chromium.png, .fonts.json) and
+// crates/web/engine/target-parity/<name>.engine.json (+ .engine.png, written by
 // `cargo test -p cw-web --features pipeline --test parity`), writes
-// crates/web/target-parity/<name>.report.md and <name>.compare.png. Exits 1 when the
+// crates/web/engine/target-parity/<name>.report.md and <name>.compare.png. Exits 1 when the
 // pass rate is below the threshold (default: the fixture's entry in thresholds.json).
 //
-// The rules are the same as the Rust runner's (crates/web/tests/support/mod.rs):
+// The rules are the same as the Rust runner's (crates/web/engine/tests/support/mod.rs):
 // - every rect edge within RECT_PX (1 px) of Chromium's;
 // - widths and heights of text-dependent boxes (inline, table parts, floats, absolutes)
 //   within TEXT_PX (2 px), since the faces differ and advances are quantised;
@@ -25,8 +25,8 @@ import {PROPERTIES, LENGTH_PROPERTIES, INFORMATIONAL, RECT_PX, TEXT_PX, textDepe
 import {encodePNG, decodePNG} from '../dom-to-site/png.mjs';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
-const fixtures = join(root, 'crates/web/tests/parity');
-const outDir = join(root, 'crates/web/target-parity');
+const fixtures = join(root, 'crates/web/engine/tests/parity');
+const outDir = join(root, 'crates/web/engine/target-parity');
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {

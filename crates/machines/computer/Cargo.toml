@@ -1,0 +1,19 @@
+[package]
+name = "cw-computer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+regex = "1"
+cw-protocol = { path = "../../core/protocol" }
+cw-sql = { path = "../../engines/sql" }
+cw-script-host = { path = "../../languages/script-host" }
+cw-pyvm = { path = "../../languages/pyvm" }
+cw-jsvm = { path = "../../languages/jsvm" }
+cw-zlib = { path = "../../languages/zlib" }
+[dev-dependencies]
+proptest.workspace = true

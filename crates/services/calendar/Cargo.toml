@@ -5,15 +5,15 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-cw-protocol = { path = "../../protocol" }
-cw-sdk = { path = "../../sdk" }
+cw-protocol = { path = "../../core/protocol" }
+cw-sdk = { path = "../../core/sdk" }
 serde.workspace = true
 serde_json.workspace = true
 cw-service-common = { path = "../common" }
 
 [dev-dependencies]
 cw-service-common = { path = "../common", features = ["validate"] }
-cw-web = { path = "../../web" }
-cw-render = { path = "../../render" }
+cw-web = { path = "../../web/engine" }
+cw-render = { path = "../../graphics/render" }
 png = "0.17"
 url.workspace = true

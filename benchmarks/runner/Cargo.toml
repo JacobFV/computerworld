@@ -8,6 +8,6 @@ publish = false
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
-cw-scene = { path = "../../crates/scene" }
-cw-render = { path = "../../crates/render" }
+cw-scene = { path = "../../crates/graphics/scene" }
+cw-render = { path = "../../crates/graphics/render" }
 computerworld = { path = "../../crates/computerworld" }

@@ -112,11 +112,12 @@ fn never_routed(refusal: &str) -> bool {
 #[test]
 fn the_document_names_every_target_family_the_router_handles() {
     // The reverse direction: a target the router grew but nobody wrote down.
-    let source = include_str!("../../environment/src/desktop_extensions.rs");
-    let shell = include_str!("../../environment/src/lib.rs");
+    let source = include_str!("../../core/environment/src/desktop_extensions.rs");
+    let shell = include_str!("../../core/environment/src/dispatch.rs");
+    let scene = include_str!("../../core/environment/src/scene.rs");
     let mut missing = Vec::new();
     let mut found = Vec::new();
-    for text in [source, shell] {
+    for text in [source, shell, scene] {
         for piece in text.split("strip_prefix(\"shell:").skip(1) {
             let Some(name) = piece.split('"').next() else {
                 continue;
@@ -139,6 +140,22 @@ fn the_document_names_every_target_family_the_router_handles() {
         "only found {} target families to check; the extraction has broken: {found:#?}",
         found.len()
     );
+    // These families live in the action dispatcher. Keep a canary for that
+    // module so a future extraction cannot silently narrow the source scan.
+    for family in [
+        "shell:insert:",
+        "shell:key:",
+        "shell:launch:",
+        "shell:open:",
+        "shell:plane:",
+        "shell:tab:",
+        "shell:type:",
+    ] {
+        assert!(
+            found.iter().any(|name| name == family),
+            "router scan missed {family}"
+        );
+    }
     missing.sort();
     missing.dedup();
     assert!(

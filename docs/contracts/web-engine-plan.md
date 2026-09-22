@@ -4,7 +4,7 @@ Status: **M1, M2, M4 and M5 shipped in 0.2.0 (2026-09-20)**; M3 shipped with the
 the frameworks in M4 cannot run without it. `cw-web` is the engine described below, and
 every service serves HTML through it. What follows is the plan as written on 2026-09-19,
 kept because the constraints, the architecture and the gates are still the contract the
-engine is held to; read `crates/web/DESIGN.md` for the interfaces as built, the 0.2.0
+engine is held to; read `crates/web/engine/DESIGN.md` for the interfaces as built, the 0.2.0
 entry in `CHANGELOG.md` for what the gates actually returned, and
 [html-migration.md](../html-migration.md) for the migration recipe. M0's remaining item —
 deleting the old page renderer once nothing depends on it — is still open: `Page` is
@@ -46,7 +46,7 @@ that feed it.
   world clock (`docs/determinism.md`), never the host's.
 - **Snapshots.** The browser session is part of the checkpoint. A DOM, its stylesheets,
   the JS heap and pending timers must serialise. The JS VM already serialises its heap
-  for snapshots (`crates/jsvm`), so this is an extension, not a new capability.
+  for snapshots (`crates/languages/jsvm`), so this is an extension, not a new capability.
 - **Budget.** The Wasm build is 26 MB, mostly fonts and world data. The engine's code
   can be a few MB; a frame of a typical page must lay out and paint in the same
   order of time the current renderer takes, because rollouts render thousands of frames.
@@ -64,8 +64,8 @@ that feed it.
 
 ## Architecture
 
-New crate `crates/web` with these modules, each with its own conformance tests. The
-existing `crates/browser` becomes the chrome (tabs, address bar, history, cursor) around
+New crate `crates/web/engine` with these modules, each with its own conformance tests. The
+existing `crates/web/browser` becomes the chrome (tabs, address bar, history, cursor) around
 it, and `cw_protocol::Page` becomes one more input format, converted to HTML plus an
 internal stylesheet, so nothing existing breaks during migration.
 

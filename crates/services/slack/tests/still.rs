@@ -53,7 +53,8 @@ fn render(html: &str, file: &str, viewport: Viewport) {
         let mut writer = encoder.write_header().unwrap();
         writer.write_image_data(&frame.rgba).unwrap();
     }
-    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../research/studies/site-stills");
+    let dir =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../research/studies/site-stills");
     std::fs::create_dir_all(&dir).unwrap();
     let target = dir.join(file);
     std::fs::write(&target, out).unwrap_or_else(|e| panic!("write {}: {e}", target.display()));

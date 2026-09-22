@@ -4,8 +4,8 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 [dependencies]
-cw-protocol = { path = "../protocol" }
-cw-sdk = { path = "../sdk" }
+cw-protocol = { path = "../core/protocol" }
+cw-sdk = { path = "../core/sdk" }
 cw-service-git = { path = "./git" }
 cw-service-issues = { path = "./issues" }
 cw-service-static-site = { path = "./static-site" }
@@ -31,4 +31,4 @@ cw-service-wiki = { path = "./wiki" }
 [dev-dependencies]
 serde_json.workspace = true
 cw-service-common = { path = "./common", features = ["validate"] }
-cw-web = { path = "../web" }
+cw-web = { path = "../web/engine" }

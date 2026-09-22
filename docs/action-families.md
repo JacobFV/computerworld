@@ -2,9 +2,9 @@
 
 Reference for every built-in action family, its operations, payload shape and
 return value, plus the observation channels and the privileged/actor split.
-Derived from `crates/environment/src/lib.rs` (`Environment::dispatch`,
+Derived from `crates/core/environment/src/lib.rs` (`Environment::dispatch`,
 `Environment::observe`, `Environment::scene`) and
-`crates/environment/src/desktop_extensions.rs`. When this file and the code
+`crates/core/environment/src/desktop_extensions.rs`. When this file and the code
 disagree, the code is right.
 
 ## The grant model
@@ -33,7 +33,7 @@ refusal also carries a `reason` from a closed vocabulary — which grant is miss
 what is not there — whose message is likewise a compile-time constant. See
 [Errors and refusals](agent-api.md#errors-and-refusals) for the whole table.
 
-Two presets exist in `crates/protocol/src/lib.rs`:
+Two presets exist in `crates/core/protocol/src/lib.rs`:
 
 | Preset | actions | observations |
 |---|---|---|
@@ -42,7 +42,7 @@ Two presets exist in `crates/protocol/src/lib.rs`:
 
 ## Built-in action families
 
-The seven built-in families are `BUILTIN_FAMILIES` in `crates/environment/src/lib.rs`.
+The seven built-in families are `BUILTIN_FAMILIES` in `crates/core/environment/src/lib.rs`.
 Every one is actor-available: possession of the family in `actions` is the entire
 permission. There are no owner-only operations *inside* a family — the
 privileged/actor split is at the handle level (see below).
@@ -348,7 +348,7 @@ Launching a kind the machine does not have installed is `not_found`.
 
 #### Video editor controls
 
-The video editors are interfaces over one engine (`crates/video`, see
+The video editors are interfaces over one engine (`crates/engines/video`, see
 [video-editing.md](video-editing.md)): Clipchamp (`clipchamp`) on Windows 11, iMovie
 (`imovie`) on macOS and iOS, Kdenlive (`kdenlive`) on Ubuntu and the Android video editor
 (`videoeditor`). Launched with a folder as `argument` the import sheet starts there (the
@@ -419,7 +419,7 @@ a menu, a popup or the composer.
 
 #### Image editor controls
 
-The image editors are interfaces over one engine (`crates/raster`): Windows 11 Paint
+The image editors are interfaces over one engine (`crates/engines/raster`): Windows 11 Paint
 (`paint:`), macOS Preview (`preview:`) and Pixelmator Pro (`pixelmator:`), GIMP
 (`gimp:`) and Pinta (`pinta:`) on Ubuntu, Sketchbook (`sketchbook:`) on Android, and
 the phones' photo editors inside Photos (`photos:edit:`). Launched with an image path
@@ -464,7 +464,7 @@ shows the layer moving during the drag.
 
 #### Spreadsheet controls
 
-`spreadsheet` is each platform's own spreadsheet over one engine (`crates/sheet`):
+`spreadsheet` is each platform's own spreadsheet over one engine (`crates/engines/sheet`):
 Excel on Windows, Numbers on macOS and iOS, LibreOffice Calc on Ubuntu and Google
 Sheets on Android; `excel` is Microsoft Excel as a second application on the Mac.
 Launched on nothing they open on `~/Documents` (Excel's Open page, Numbers' document
@@ -513,7 +513,7 @@ click) edits. Keys follow Excel with `Meta` as `Ctrl`: arrows (with `Shift` to e
 #### Database controls
 
 `database` is DB Browser for SQLite on Windows and Ubuntu and TablePlus on macOS,
-over the `crates/sql` engine; phones have none. Launched with a `.db`, `.sqlite`,
+over the `crates/engines/sql` engine; phones have none. Launched with a `.db`, `.sqlite`,
 `.sqlite3` or `.db3` path it opens that SQLite file. Changes stay in the open
 connection until Write Changes (TablePlus's Commit, `Ctrl+S`) writes the whole file;
 Revert Changes returns to what the file holds. Every control is

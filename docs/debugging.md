@@ -190,9 +190,9 @@ let (_, events) = session.handle(Request::ConfigurationDone, &mut runner);
 // events contains Stopped { reason: "breakpoint", .. }
 ```
 
-`crates/computer/tests/debug_session.rs` walks a whole session this way, including
+`crates/machines/computer/tests/debug_session.rs` walks a whole session this way, including
 changing a variable at a stop and watching the program print the new value;
-`crates/computer/tests/debug_adapters.rs` drives the same two runtimes through the
+`crates/machines/computer/tests/debug_adapters.rs` drives the same two runtimes through the
 machine's own requests, snapshot and all.
 
 ## The view
@@ -227,7 +227,7 @@ cannot evaluate shows nothing. The plate is a region (`code:hover`) whose label 
 `name: value`, so `semantic.v1` reads it, and it goes away when the pointer moves off
 the name, when the program moves and when the session ends.
 
-`crates/computer/tests/debug_seam.rs` drives the whole seam with an adapter of its own,
+`crates/machines/computer/tests/debug_seam.rs` drives the whole seam with an adapter of its own,
 and `crates/applications/src/apps/code/tests.rs` drives the view against replies, so both
 halves are tested against the contract an adapter has to meet — including what the view
 does when a machine has no adapter for a runtime: it says so and runs the file in the

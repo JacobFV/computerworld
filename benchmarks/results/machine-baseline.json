@@ -1,6 +1,6 @@
 {
   "revision": "af208d1ab51769d724c76311143071db04a691c7",
-  "worktree_status": "M Cargo.toml\n M README.md\n M benchmarks/README.md\n M benchmarks/bindings.mjs\n M benchmarks/browser-render.mjs\n M benchmarks/machine.py\n M benchmarks/predecessor.mjs\n M benchmarks/runner/src/bin/many_worlds.rs\n M benchmarks/runner/src/bin/world.rs\n M benchmarks/runner/src/main.rs\n M crates/wasm/src/lib.rs\n M docs/performance.md\n M scripts/checks/smoke-node.cjs\n?? benchmarks/results/\n?? benchmarks/run-all.sh",
+  "worktree_status": "M Cargo.toml\n M README.md\n M benchmarks/README.md\n M benchmarks/bindings.mjs\n M benchmarks/browser-render.mjs\n M benchmarks/machine.py\n M benchmarks/predecessor.mjs\n M benchmarks/runner/src/bin/many_worlds.rs\n M benchmarks/runner/src/bin/world.rs\n M benchmarks/runner/src/main.rs\n M crates/wasm/src/lib.rs\n M docs/performance.md\n M scripts/smoke-node.cjs\n?? benchmarks/results/\n?? benchmarks/run-all.sh",
   "diff_sha256": "b3f01ea5ef6776ab3df825218f81aa3636ff4c06e5462506610c6a335a7dbd63",
   "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6",
   "kernel": {

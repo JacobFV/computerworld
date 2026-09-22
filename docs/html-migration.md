@@ -26,8 +26,8 @@ browser renders it through the `cw-web` engine, and `Page` stays behind a conver
 The stylesheet is a real file next to the source (`crates/services/search/src/search.css`),
 included with `include_str!` and handed to `Document::stylesheet`, which emits one
 `<style>` in `<head>`. It uses only what the engine renders, which the strict
-validator checks; `crates/web/src/style/properties/mod.rs` lists the longhands and
-`crates/web/src/style/shorthands.rs` the shorthands.
+validator checks; `crates/web/engine/src/style/properties/mod.rs` lists the longhands and
+`crates/web/engine/src/style/shorthands.rs` the shorthands.
 
 ## Keeping the ids
 

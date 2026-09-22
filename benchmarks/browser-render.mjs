@@ -78,7 +78,7 @@ try {
   await page.goto(origin + "/mail");
   await page.locator(".mail-row").first().waitFor();
   await page.addStyleTag({
-    content: `@font-face{font-family:fixture;src:url('${origin}/crates/render/assets/DejaVuSansMono.ttf')}*{font-family:fixture!important;font-size:14px!important;font-weight:400!important;letter-spacing:0.571289px!important}`,
+    content: `@font-face{font-family:fixture;src:url('${origin}/crates/graphics/render/assets/DejaVuSansMono.ttf')}*{font-family:fixture!important;font-size:14px!important;font-weight:400!important;letter-spacing:0.571289px!important}`,
   });
   await page.evaluate(() => document.fonts.ready);
   const mailSemantic = await page.locator(".mail-row").allTextContents();
@@ -184,7 +184,7 @@ try {
   // Separate primitive isolation: identical content, geometry and font source.
   await page.goto(origin + "/mail");
   await page.setContent(
-    `<style>@font-face{font-family:fixture;src:url('${origin}/crates/render/assets/DejaVuSansMono.ttf')}body{margin:0;background:white}.row{position:absolute;height:22px;width:320px;font:16px/20px fixture;white-space:pre;overflow:hidden}</style><div id="dom"></div><canvas id="canvas" width="1280" height="720" style="display:none"></canvas>`,
+    `<style>@font-face{font-family:fixture;src:url('${origin}/crates/graphics/render/assets/DejaVuSansMono.ttf')}body{margin:0;background:white}.row{position:absolute;height:22px;width:320px;font:16px/20px fixture;white-space:pre;overflow:hidden}</style><div id="dom"></div><canvas id="canvas" width="1280" height="720" style="display:none"></canvas>`,
   );
   await page.evaluate(async (origin) => {
     const wasm = await import(origin + "/pkg/web/computerworld.js");

@@ -6,7 +6,7 @@ Every gap below was hit while migrating a service from Page JSON to HTML (milest
 at the end of the sweep. Entries that no longer reproduce are recorded at the bottom rather than
 deleted, so nobody re-opens them — in particular **all nine of the originally reported gaps are
 now fixed**, and so is everything the verification sweep found bar the property catalogue. Each
-fix carries a regression test in `crates/web/src/paint/pipeline_tests.rs`.
+fix carries a regression test in `crates/web/engine/src/paint/pipeline_tests.rs`.
 
 ## Harness
 
@@ -24,7 +24,7 @@ CW_STILL_HTML=/tmp/repro.html CW_STILL_OUT=/tmp/out.png \
 
 Several of these are only decidable by measuring the PNG rather than looking at it — the
 gutter-and-thumb question below was called wrongly by eye twice. When a gap is fixed, add a
-regression test: a reftest pair under `crates/web/tests/ref/` whose two sides are visually
+regression test: a reftest pair under `crates/web/engine/tests/ref/` whose two sides are visually
 equivalent, or a paint/layout unit test asserting the box the node produces.
 
 ---
@@ -50,7 +50,7 @@ reproduces as `Unsupported { kind: Property, name: "…", detail: "unknown prope
 Only three cost the migration anything: `mask-image` (Reddit and Quora fade a truncated post body
 with a gradient mask — `-webkit-line-clamp` was used instead, and works, ellipsis included),
 `filter`, and `resize: vertical` on textareas. `scrollbar-width` was on this list and is now
-supported (see below). These three are in `crates/web/src/style/properties/`, which the style
+supported (see below). These three are in `crates/web/engine/src/style/properties/`, which the style
 owner holds.
 
 ## 2. `cw_web::page::to_document` can emit a nested `<a>`, which duplicates the outer id
@@ -95,7 +95,7 @@ forgotten.
    its text. It now paints one circle at the requested offset with the text inside — the
    avatar/presence-dot pattern discord, slack and social all use.
 5. **`flex-direction: column-reverse` in an `overflow-y: auto` container could not be scrolled
-   back.** `crates/web/src/layout/scroll.rs::attach_scroll_info` now tracks a non-positive
+   back.** `crates/web/engine/src/layout/scroll.rs::attach_scroll_info` now tracks a non-positive
    `origin_x`/`origin_y` over the children's overflow and shifts the caller's offset by it, so the
    start-overflow is reachable. `justify-content: flex-end` on an overflowing column behaves the
    same way, so bottom-anchored transcripts work either way (`margin-top: auto` on the first child
@@ -116,14 +116,14 @@ forgotten.
    `<div style="width:160px;height:80px;overflow-y:auto;background:#ff0"><div style="height:300px;background:#f0f"></div></div>`:
    content stops at x = 144, the 15px gutter carries `SCROLLBAR_TRACK` (#f1f1f1) and a
    `SCROLLBAR_THUMB` (#c1c1c1) rounded thumb 21px long at the top, moving as the offset changes
-   (`crates/web/src/paint/display_list.rs:384-387`). With `LayoutCache::overlay_scrollbars` the
+   (`crates/web/engine/src/paint/display_list.rs:384-387`). With `LayoutCache::overlay_scrollbars` the
    container reserves nothing, as Chromium's overlay bars do. This one reads as "a blank strip" at
    thumbnail size — measure the pixels before re-opening it.
 
 # Behaviour change worth knowing about
 
 **The Page projector now breaks an id-bearing inline element out of the text run around it.**
-`Projector::walk`/`flush_as` in `crates/browser/src/web_document.rs` splits
+`Projector::walk`/`flush_as` in `crates/web/browser/src/web_document.rs` splits
 `<span id=a><span id=b>147</span> points by <a id=c>tomw</a> 31t ago</span>` into four projected
 elements: `b` = "147", an anonymous `text:N` = "points by", the link `c`, and `a` carrying only the
 trailing residue. Each id became individually addressable, which is the point of the change and a

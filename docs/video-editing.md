@@ -1,7 +1,7 @@
 # Video editing
 
 Every graphical machine has a video editor, each the platform's own and each an
-interface over one deterministic engine, `crates/video` (`cw-video`):
+interface over one deterministic engine, `crates/engines/video` (`cw-video`):
 
 | Platform | Application (kind) | Media folder |
 |---|---|---|
@@ -53,7 +53,7 @@ the engine generates deterministically in `cw_video::samples` and checks in unde
 `worlds/company-2026/samples`: `Countdown.apng` (a 3 s film-leader countdown), `Color
 Bars.apng` (2 s of 75% bars with a moving marker), `Sunset.apng` (3 s), `Countdown
 Beeps.wav` (a beep each second) and `Music Bed.wav` (4 s of chords), all 320×180 at
-12 fps and 11 025 Hz mono. `crates/video/tests/samples.rs` fails if a checked-in file is
+12 fps and 11 025 Hz mono. `crates/engines/video/tests/samples.rs` fails if a checked-in file is
 not byte-for-byte what the generators write; regenerate with
 `CW_UPDATE_SAMPLES=1 cargo test -p cw-video --test samples`.
 

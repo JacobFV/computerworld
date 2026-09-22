@@ -11,12 +11,12 @@ default = ["render"]
 render = ["dep:cw-render", "dep:png", "dep:jpeg-decoder"]
 
 [dependencies]
-cw-protocol = { path = "../protocol" }
-cw-sdk = { path = "../sdk" }
-cw-kernel = { path = "../kernel" }
-cw-environment = { path = "../environment" }
-cw-scene = { path = "../scene" }
-cw-render = { path = "../render", optional = true }
+cw-protocol = { path = "../core/protocol" }
+cw-sdk = { path = "../core/sdk" }
+cw-kernel = { path = "../core/kernel" }
+cw-environment = { path = "../core/environment" }
+cw-scene = { path = "../graphics/scene" }
+cw-render = { path = "../graphics/render", optional = true }
 # Screenshot encoding only; the renderer itself decodes with its own copy.
 png = { version = "0.17", optional = true }
 # Opening JPEG photos in the image editors. Same pinned, integer-only build the
@@ -31,17 +31,17 @@ sha2.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
-cw-network = { path = "../network" }
+cw-network = { path = "../machines/network" }
 # `internet_links` reads the HTML the migrated sites now serve, to follow their links.
-cw-web = { path = "../web" }
+cw-web = { path = "../web/engine" }
 url.workspace = true
-cw-cad = { path = "../cad" }
+cw-cad = { path = "../engines/cad" }
 cw-applications = { path = "../applications" }
-cw-raster = { path = "../raster" }
-cw-sheet = { path = "../sheet" }
-cw-sql = { path = "../sql" }
-cw-eda = { path = "../eda" }
-cw-video = { path = "../video" }
+cw-raster = { path = "../engines/raster" }
+cw-sheet = { path = "../engines/sheet" }
+cw-sql = { path = "../engines/sql" }
+cw-eda = { path = "../engines/eda" }
+cw-video = { path = "../engines/video" }
 png = "0.17"
 
 [[example]]

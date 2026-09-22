@@ -56,7 +56,7 @@ DNS conventions by name.
   filesystem to copy from.
 - **The reference company is now one of its own users.** `worlds/company-2026/world.yml` is
   598 lines and resolves to the same 3,738,557 bytes, verified byte for byte by
-  `crates/blueprint/tests/reference_blueprint.rs`. 46 of its 102 network nodes, 46 of its
+  `crates/core/blueprint/tests/reference_blueprint.rs`. 46 of its 102 network nodes, 46 of its
   102 links and 118 of its 230 DNS records are derived rather than written; the desktops'
   home folders are the files under `home/`; and the device presentations that used to be a
   constant in `scripts/build-world.mjs` are declared in the blueprint like everything else.
@@ -350,8 +350,8 @@ marketing site does not load it until a visitor asks for it.
 ### Language runtimes
 
 - `python3` and `node` are real interpreters in the machine shell, not shims:
-  `crates/pyvm` runs a CPython-3.12-conformant subset with a standard library, and
-  `crates/jsvm` an ES2020 interpreter checked against Node 24 byte for byte. Both
+  `crates/languages/pyvm` runs a CPython-3.12-conformant subset with a standard library, and
+  `crates/languages/jsvm` an ES2020 interpreter checked against Node 24 byte for byte. Both
   run scripts, `-c`/`-e`, modules, stdin programs and shebangs, with the VFS as
   their filesystem and the world's entropy as their randomness.
 - They reach the simulated network (`socket`, `http.client`, `urllib`, `requests`;
@@ -365,10 +365,10 @@ marketing site does not load it until a visitor asks for it.
   `setTimeout(f, 0)` against `setImmediate` falls out of the program rather than a
   rule.
 - ECMA-402 for Node and `locale`/`zoneinfo` for Python, from recorded CLDR and ICU
-  data, across fourteen locales and the world's time zones (`crates/tz`).
+  data, across fourteen locales and the world's time zones (`crates/languages/tz`).
 - Both have a REPL — `python3` and `node` with no arguments, and `input()`/`readline`
   mid-program — resumed across world actions by journal replay.
-- `crates/zlib` is a byte-exact deflate, inflate, gzip, brotli and crc32. It is the
+- `crates/languages/zlib` is a byte-exact deflate, inflate, gzip, brotli and crc32. It is the
   one compressor in the world: Python's `zlib`/`gzip`, Node's `zlib`, `tar -z`,
   `gzip` and method-8 zip members all go through it.
 
@@ -380,26 +380,26 @@ marketing site does not load it until a visitor asks for it.
   running the machine's shell, Problems fed by real tracebacks, and **Run and Debug**
   over a DAP-shaped seam the runtimes fill — breakpoints with conditions, hit counts
   and logpoints, stepping, call stacks, scopes, watches and the Debug Console.
-- **FreeCAD** on an exact B-rep kernel (`crates/cad`): analytic and traced surfaces,
+- **FreeCAD** on an exact B-rep kernel (`crates/engines/cad`): analytic and traced surfaces,
   robust booleans, general fillets and chamfers, Part Design features, exact mass
   properties, STEP AP214/AP242 in and out, and native file dialogs on all three
   desktops.
-- **KiCad** (`crates/eda`): an interactive walkaround router, any-angle footprints,
+- **KiCad** (`crates/engines/eda`): an interactive walkaround router, any-angle footprints,
   Gummel-Poon and body-effect device models, adaptive transient and digital
   simulation, symbol and footprint editors, a 3D viewer, hierarchical sheets and
   buses.
-- **Video editing** (`crates/video`): Clipchamp, iMovie, Kdenlive and a mobile
+- **Video editing** (`crates/engines/video`): Clipchamp, iMovie, Kdenlive and a mobile
   editor over one engine — timelines, trims, transitions, titles and export.
-- **Image editing** (`crates/raster`): Paint, Preview, Photos, Pixelmator Pro, GIMP,
+- **Image editing** (`crates/engines/raster`): Paint, Preview, Photos, Pixelmator Pro, GIMP,
   Pinta and Sketchbook, with live hover readouts and brush outlines, live filter,
   move and gradient previews, gradient, clone, heal, repair, path and curve tools,
   and XCF, JPEG, PNG and BMP files.
-- **Spreadsheets and databases** (`crates/sheet`, `crates/sql`): merged cells,
+- **Spreadsheets and databases** (`crates/engines/sheet`, `crates/engines/sql`): merged cells,
   borders, conditional formatting, pivot tables, draggable charts and coloured
   formula references; XLSX, ODS and CSV; a SQLite-compatible engine with triggers,
   `WITHOUT ROWID` tables and covering-index query plans, `sqlite3` in the shell, and
   table and index designers in the database clients.
-- **Music** (`crates/artwork`): Apple Music, YouTube Music, Media Player and
+- **Music** (`crates/graphics/artwork`): Apple Music, YouTube Music, Media Player and
   Rhythmbox, with generated cover art, real volume, synced lyrics, casting, live
   bars and sideways shelves, plus music.youtube.com and the Spotify web player.
 
@@ -617,7 +617,7 @@ downsampled; the dotted zero's dot was faint against `8`. Fixed-pitch glyphs are
 grid-fitted with integer-only arithmetic: bars snap to one whole row, `~` is rasterised
 at 2x and box-filtered back for real amplitude, and a dotted zero's interior mark is
 scaled to full opacity. Output stays bit-for-bit reproducible.
-[crates/render/assets/README.md](crates/render/assets/README.md) records which glyphs
+[crates/graphics/render/assets/README.md](crates/graphics/render/assets/README.md) records which glyphs
 remain ambiguous, at which sizes, with measurements.
 
 ### Rendering

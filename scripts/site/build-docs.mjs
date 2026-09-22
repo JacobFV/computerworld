@@ -337,7 +337,7 @@ wide.addEventListener('change', (e) => { if (e.matches && side.classList.contain
 // in its first lines; this says which kind it is from the outside, where it matters most:
 // a reader in `docs/` cannot otherwise tell a live contract from a dated record.
 const unpublished = [
-  { file: 'contracts/web-engine-plan.md', kind: 'contract', blurb: 'The web engine\u2019s milestones, constraints and gates. Its milestones shipped in 0.2.0, but `crates/web/src/lib.rs` and `crates/web/DESIGN.md` still point here for the contract the engine is held to.' },
+  { file: 'contracts/web-engine-plan.md', kind: 'contract', blurb: 'The web engine\u2019s milestones, constraints and gates. Its milestones shipped in 0.2.0, but `crates/web/engine/src/lib.rs` and `crates/web/engine/DESIGN.md` still point here for the contract the engine is held to.' },
   { file: 'archive/architecture-proposal.md', kind: 'record', blurb: 'The phase-2 design, approved 2026-09-17. Superseded by the guides above; kept for why the shape was chosen.' },
   { file: 'archive/implementation-plan.md', kind: 'record', blurb: 'The acceptance plan that phase-2 approval authorised, 2026-09-17.' },
   { file: 'archive/final-report.md', kind: 'record', blurb: 'What was measured and what was still missing when the implementation was reported complete.' },

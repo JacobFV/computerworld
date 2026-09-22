@@ -90,7 +90,7 @@ definition.metadata.desktop_apps=[...nativeApps,...editorApps,...officeApps];
 for(const computer of definition.computers){for(const id of imageEditors[computer.profile]||[])if(!computer.installed_apps.includes(id))computer.installed_apps.push(id);}
 for(const computer of definition.computers){for(const id of officeInstalls[computer.profile]||[])if(!computer.installed_apps.includes(id))computer.installed_apps.push(id);}
 // Documents for them to open: a workbook, a CSV export and a SQLite database, written by
-// the engines themselves (crates/sheet/tests/samples.rs, crates/sql/tests/samples.rs)
+// the engines themselves (crates/engines/sheet/tests/samples.rs, crates/engines/sql/tests/samples.rs)
 // and checked in under worlds/company-2026/samples. Binary files travel base64-encoded.
 const sample=name=>readFile(new URL(`../../worlds/company-2026/samples/${name}`,import.meta.url));
 const budget=(await sample('Budget.xlsx')).toString('base64');
@@ -103,7 +103,7 @@ for(const computer of definition.computers){
 }
 // Video editors are each platform's own: Clipchamp on Windows, iMovie on the Mac and the
 // iPhone, Kdenlive on Ubuntu and the Android editor. Each machine's movies folder holds
-// the sample clips and sounds the engine generates (crates/video/tests/samples.rs):
+// the sample clips and sounds the engine generates (crates/engines/video/tests/samples.rs):
 // Animated PNG movies and WAV audio, checked in under worlds/company-2026/samples.
 const videoApps=[
  {id:'clipchamp',label:'Clipchamp',kind:'native',url:'',icon:'clipchamp'},

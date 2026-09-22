@@ -3,7 +3,7 @@ import json,subprocess,platform,pathlib,hashlib,gzip,os
 def cmd(args):
  try:return subprocess.check_output(args,text=True,stderr=subprocess.STDOUT).strip()
  except Exception as e:return str(e)
-files=['Cargo.lock','worlds/company-2026/world.json','crates/render/assets/DejaVuSansMono.ttf','pkg/web/computerworld_bg.wasm','pkg/web/computerworld.js','benchmarks/runner/src/bin/world.rs','benchmarks/runner/src/main.rs','benchmarks/browser-render.mjs','benchmarks/predecessor.mjs','target/release/world','target/release/cw-benchmarks','target/release/many_worlds']
+files=['Cargo.lock','worlds/company-2026/world.json','crates/graphics/render/assets/DejaVuSansMono.ttf','pkg/web/computerworld_bg.wasm','pkg/web/computerworld.js','benchmarks/runner/src/bin/world.rs','benchmarks/runner/src/main.rs','benchmarks/browser-render.mjs','benchmarks/predecessor.mjs','target/release/world','target/release/cw-benchmarks','target/release/many_worlds']
 assets={}
 for p in files:
  if pathlib.Path(p).exists():

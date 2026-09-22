@@ -1,0 +1,13 @@
+[package]
+name = "cw-sql"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "A pure, deterministic SQLite-compatible SQL engine that reads and writes the SQLite 3 file format"
+
+[dependencies]
+cw-determinism = { path = "../../core/determinism" }
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

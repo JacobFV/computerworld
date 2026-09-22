@@ -30,7 +30,7 @@ the project site's live machines use 1280×800 desktops and 390×844 phones.
 [Visual archaeology](../research/studies/desktop-fidelity/desktop-visuals.md) and the [overhaul reference review](../research/studies/desktop-fidelity/desktop-fidelity-references.md)
 record predecessor paths and official visual references. Original generated
 wallpapers and platform-inspired icon assets are bundled alongside the attributed
-Ubuntu wallpaper and Yaru icons. See [asset provenance and licensing](../crates/render/assets/README.md).
+Ubuntu wallpaper and Yaru icons. See [asset provenance and licensing](../crates/graphics/render/assets/README.md).
 No desktop asset requires a runtime network request.
 
 ## Window and application interaction
@@ -159,7 +159,7 @@ themselves from it: bash's `user@host:~/dir$` (GNOME Terminal's title is
 ### KiCad
 
 `kicad` is KiCad 8, installed on the reference world's macOS, Windows and Ubuntu
-desktops (not the phones). Its engine is `crates/eda`, a pure crate: schematic
+desktops (not the phones). Its engine is `crates/engines/eda`, a pure crate: schematic
 capture with connectivity, ERC, KiCad and SPICE netlists and a BOM; a SPICE-class
 simulator (modified nodal analysis, dense LU with partial pivoting, Newton–Raphson with
 junction limiting, gmin and source stepping; diode, BJT, level-1 MOSFET, controlled
@@ -189,7 +189,7 @@ Music on Android, Media Player on Windows 11 and Rhythmbox on Ubuntu. Its contro
 listed in [action-families.md](action-families.md#music-player-controls).
 
 - **Artwork is real artwork.** Every album, artist and playlist has a cover generated
-  from its id by `crates/artwork`: a palette and a composition (a sunset, a Bauhaus
+  from its id by `crates/graphics/artwork`: a palette and a composition (a sunset, a Bauhaus
   grid, waves, orbits, shards, stripes, a halftone) laid out in a 1000-unit square. The
   players draw it with the renderer's own shapes at any size, round for an artist's
   avatar; the sites serve the same composition rasterised from `GET /art/<key>` (see
@@ -387,7 +387,7 @@ and view size. The model is real, in the `cw-cad` kernel:
   and view, and the model is recomputed from it on restore.
 - Launched with no file, FreeCAD starts its file dialogs on `~/Documents/Parts` when
   that folder exists (the reference desktops seed it with parts modelled by the kernel:
-  `crates/cad/tests/samples.rs`), else on `~/Documents`. A file manager opens
+  `crates/engines/cad/tests/samples.rs`), else on `~/Documents`. A file manager opens
   `*.FCStd.json`, STEP, STL, OBJ and DXF files with FreeCAD and `*.kicad_pro`,
   `*.kicad_sch` and `*.kicad_pcb` with KiCad (`cw_applications::opener`).
 
@@ -419,7 +419,7 @@ HTML/JavaScript are not implemented. Rendering detail does not imply those featu
   by pointer events aimed at what the scene paints.
 - `crates/computerworld/tests/native_apps.rs`: a native application opens in its own
   window and never in the browser, and survives a snapshot round trip.
-- `crates/render/tests/wasm-gui.cjs`: native/Wasm raster parity.
+- `crates/graphics/render/tests/wasm-gui.cjs`: native/Wasm raster parity.
 - `scripts/checks/smoke-desktop-pixels.cjs` plus `examples/python/desktop_pixels.py`: portable
   Node/Python desktop checkpoints and RGBA comparisons.
 - [Programmatic interaction demos](programmatic-computer-use.md): reusable external

@@ -322,8 +322,8 @@ a CJK glyph can. `scripts/build-wasm.sh` before and after, same toolchain:
 | Change | +4,961,427 (+18.9%) | +2,884,643 (+27.7%) |
 
 The fifty-two font files are 4,583,364 raw / 2,762,660 gzip of that (per family in
-`crates/render/assets/README.md`, "Web faces"); the rest is their advance table
-(`crates/scene/src/metrics_web.rs`, 6,700 lines of `(codepoint, advance)` pairs) and
+`crates/graphics/render/assets/README.md`, "Web faces"); the rest is their advance table
+(`crates/graphics/scene/src/metrics_web.rs`, 6,700 lines of `(codepoint, advance)` pairs) and
 the alias resolver. A text-scripts-only subset would have saved under 8%, so the symbol
 blocks were kept. Moving the web faces to the on-demand pack (drawing in DejaVu at the
 face's own advances until each file arrives) is the lever if the module must shrink.

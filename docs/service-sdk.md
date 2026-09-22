@@ -175,7 +175,7 @@ names one of `cw_protocol::PAGE_ICONS` (`play`, `pause`, `skip-next`, `shuffle`,
 `issue-closed`, `check`, `x-circle`, `comment`, `hash`, `lock`, `bell`, `at`, `emoji`,
 `paperclip`, `bold`, `italic`, `send`, `thread`, `more`, `chevron-down`,
 `chevron-right`, `star-filled`, …: the list is exactly the symbol set every renderer
-bundles, checked by `Page::validate` and by `crates/render/tests/icon_assets.rs`), and carries a
+bundles, checked by `Page::validate` and by `crates/graphics/render/tests/icon_assets.rs`), and carries a
 `label`, which is required and is its accessible name. `Style::size` is the glyph's
 size in pixels (20 by default), `color` tints it, and `padding`, `background`, `border`
 and `radius` make the box around it; with a `PageAction` that box is one click target

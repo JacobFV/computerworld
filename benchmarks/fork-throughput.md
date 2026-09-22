@@ -92,7 +92,7 @@ as the contrast: it is the "fork an empty world" number, and it is not the one t
 
 ## What is actually shared and what is copied
 
-From `crates/kernel/src/lib.rs`: `Runtime` holds `state: Arc<State>` and `Snapshot` holds
+From `crates/core/kernel/src/lib.rs`: `Runtime` holds `state: Arc<State>` and `Snapshot` holds
 the same `Arc<State>`, the `Arc<WorldDefinition>` and a small module-version map. Inside
 `State`, computers are a `BTreeMap<String, Arc<Computer>>`, the network is `Arc<Network>`,
 each service's state is an `Arc<Value>` and the event log is `Arc<Vec<EventRecord>>`. Below

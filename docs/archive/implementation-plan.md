@@ -48,7 +48,7 @@ several agents at once. Commits remain small and buildable where feasible.
 
 | Arm / owned area | Inputs | Promised outputs | Tests | Can start before dependencies finish? | Integration point |
 |---|---|---|---|---|---|
-| A. Protocol / `crates/protocol` and schema fixtures | Approved schema and version policy | Validated generic definitions, IDs, effects, stable encodings and errors | Round-trip/canonicalization, invalid topology/unknown kinds, golden vectors | Immediately | Contract freeze; all arms import one crate |
+| A. Protocol / `crates/core/protocol` and schema fixtures | Approved schema and version policy | Validated generic definitions, IDs, effects, stable encodings and errors | Round-trip/canonicalization, invalid topology/unknown kinds, golden vectors | Immediately | Contract freeze; all arms import one crate |
 | B. Determinism/kernel / `determinism`, `kernel` | A + SDK signatures | Clock/RNG/ID state, scheduler, transactions, kernel snapshot/restore, typed registry dispatch | Stable ordering, budgets, RNG independence, mid-event restore, fork isolation | Immediately with fake computer/network/module handlers | First slice orchestrator |
 | C. Computer / `computer` | A and context/effect signatures | VFS, process programs, shell, packages, local Git state | SCE regression ports, property tests, isolation, restart/listener cleanup | Immediately against context stubs | Terminal and network commands into slice |
 | D. Network / `network` | A + scheduler effect signatures | Source-aware DNS/routing, streams/datagrams/HTTP, gateway decisions, trace records | DNS expiry, loopback, denied routes, listener ownership, redirect/rebinding policy | Immediately with fake service handler and logical queue | Real request path into slice |

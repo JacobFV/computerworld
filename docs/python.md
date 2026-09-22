@@ -46,7 +46,7 @@ To build distributable wheels instead:
 
 ```sh
 python -m pip install 'maturin>=1.7,<2'
-maturin build --release --manifest-path crates/python/Cargo.toml
+maturin build --release --manifest-path crates/bindings/python/Cargo.toml
 python -m pip install --force-reinstall target/wheels/computerworld-0.2.0-*.whl
 python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
 # Expected: 0.2.0 0.2.0
@@ -119,7 +119,7 @@ If a call panics inside the simulation, the lock is poisoned and every later cal
 world raises `RuntimeError` naming the situation. That is a deliberate change from
 earlier alpha builds, where the objects were marked `unsendable` and a call from a second
 thread **aborted the interpreter** instead of raising. Nothing here aborts the host
-process. `crates/python/tests/test_threading.py` asserts both halves: a call from a
+process. `crates/bindings/python/tests/test_threading.py` asserts both halves: a call from a
 second thread succeeds, and a poisoned world raises rather than dying.
 
 `Environment` exposes `id`, `step`, `observe`, `scene(width=1024, height=768)` and

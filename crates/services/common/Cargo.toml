@@ -4,11 +4,11 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 [dependencies]
-cw-protocol = { path = "../../protocol" }
+cw-protocol = { path = "../../core/protocol" }
 serde.workspace = true
 serde_json.workspace = true
 url.workspace = true
-cw-web = { path = "../../web", optional = true }
+cw-web = { path = "../../web/engine", optional = true }
 
 [features]
 # `html::validate_strict`: runs a page through the engine strictly. Meant for a
@@ -16,4 +16,4 @@ cw-web = { path = "../../web", optional = true }
 validate = ["dep:cw-web"]
 
 [dev-dependencies]
-cw-web = { path = "../../web" }
+cw-web = { path = "../../web/engine" }
