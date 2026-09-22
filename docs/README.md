@@ -46,6 +46,7 @@ CI and fails if the two have drifted apart.
 
 ## Project
 
+- [Working on ComputerWorld](contributing.md) — Find the owning package, run development checks and regenerate site content.
 - [Provenance matrix — before architecture](provenance.md) — What was learned from the predecessor repositories.
 - [Provenance and migration](migration.md) — Moving between 0.x releases, and what the predecessor projects left behind.
 - [Release process](releasing.md) — How a release is built, verified and published.

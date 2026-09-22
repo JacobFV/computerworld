@@ -71,6 +71,7 @@ const sections = [
     { file: 'performance.md', blurb: 'Measurements and what they were measured on.' },
   ]},
   { title: 'Project', pages: [
+    { file: 'contributing.md', blurb: 'Find the owning package, run development checks and regenerate site content.' },
     { file: 'provenance.md', blurb: 'What was learned from the predecessor repositories.' },
     { file: 'migration.md', blurb: 'Moving between 0.x releases, and what the predecessor projects left behind.' },
     { file: 'releasing.md', blurb: 'How a release is built, verified and published.' },
