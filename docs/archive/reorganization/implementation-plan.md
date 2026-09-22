@@ -63,8 +63,8 @@ Consumes completed Tasks 1 and 2. Produces grouped directories with the same pac
 ### Task 4: Review and integrate
 
 - [x] Independently review the full migration and verify fixes.
-- [ ] Fast-forward the original clean checkout to the verified branch.
-- [ ] Confirm clean status and summarize the structure, tests and any remaining limitations.
+- [x] Fast-forward the original clean checkout to the verified branch.
+- [x] Confirm clean status and summarize the structure, tests and any remaining limitations.
 
 ## Verification recorded on 2026-09-22
 
@@ -86,3 +86,7 @@ Consumes completed Tasks 1 and 2. Produces grouped directories with the same pac
 
 Historical fixture and runtime-resource bytes are preserved. The renamed Svelte generator
 retains its original provenance banner because the fixture checksum pins those bytes.
+
+Integrated into the original `main` checkout. Ignored parity output and Python caches
+were relocated without deletion; generated site docs and bindings were refreshed.
+Post-integration documentation, package discovery and isolation checks pass.
