@@ -255,9 +255,9 @@ would be overwritten by the next build, so the drift is caught instead.
 
 ## Two worked examples
 
-[`examples/worlds/agent-desktop/world.yml`](../examples/worlds/agent-desktop/world.yml)
+[`worlds/agent-desktop/world.yml`](../worlds/agent-desktop/world.yml)
 is one machine, one service and one input, and builds
-[`examples/worlds/agent-desktop.json`](../examples/worlds/agent-desktop.json).
+[`worlds/agent-desktop/world.json`](../worlds/agent-desktop/world.json).
 
 [`worlds/company-2026/world.yml`](../worlds/company-2026/world.yml) is the
 reference company: six hundred lines that resolve to the three-and-a-half-megabyte

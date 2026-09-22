@@ -4,7 +4,7 @@
 
 If what you want is *one machine an agent can use* — a desktop, a browser, the
 everyday applications and a couple of documents — copy
-[`examples/worlds/agent-desktop.json`](../examples/worlds/agent-desktop.json) instead
+[`worlds/agent-desktop/world.json`](../worlds/agent-desktop/world.json) instead
 of writing a world from scratch. It is one Ubuntu workstation for the user `ada`, with
 Terminal, Files, Text Editor, Firefox, Calculator, Calendar, Notes, Image Viewer,
 LibreOffice Calc and Visual Studio Code installed, three seeded documents under
@@ -16,7 +16,7 @@ session is a copy rather than a guess:
 
 ```rust
 let definition = computerworld::WorldDefinition::from_json(include_str!(
-    "../examples/worlds/agent-desktop.json"
+    "../worlds/agent-desktop/world.json"
 ))?;
 let config: computerworld::EnvironmentConfig =
     serde_json::from_value(definition.metadata["actor_session"].clone())?;
@@ -35,7 +35,7 @@ session only, so it cannot rot.
 
 ## Anything else
 
-Start with [`examples/custom-world`](../examples/custom-world), or copy the
+Start with [`worlds/unrelated-lab`](../worlds/unrelated-lab), or copy the
 structure of [`worlds/company-2026/world.json`](../worlds/company-2026/world.json)
 and replace its fixtures. The kernel has no required company domain or machine.
 
@@ -44,7 +44,7 @@ itself: it is the same schema in YAML, with the files a machine starts with kept
 real files in a directory, services split one to a file, each service's node, link
 and DNS records derived from where it sits, and the environment it reads declared
 up front. `cw-world build` resolves one into an ordinary world definition;
-[`examples/worlds/agent-desktop/world.yml`](../examples/worlds/agent-desktop/world.yml)
+[`worlds/agent-desktop/world.yml`](../worlds/agent-desktop/world.yml)
 is the world above, written that way.
 
 1. Define OS profiles and each machine's address, user and initial files.

@@ -83,7 +83,7 @@ fn the_reference_world_round_trips_byte_for_byte() {
 
 #[test]
 fn the_example_world_round_trips_byte_for_byte() {
-    let path = repo_path("examples/worlds/agent-desktop.json");
+    let path = repo_path("worlds/agent-desktop/world.json");
     let text = fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let world = json::parse(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let written = json::write(&world, Format::Pretty) + "\n";

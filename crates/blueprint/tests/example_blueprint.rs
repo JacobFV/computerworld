@@ -4,7 +4,7 @@ use host::Host;
 use std::collections::BTreeMap;
 
 fn built(supplied: &BTreeMap<String, String>) -> cw_blueprint::Resolved {
-    let files = Host::at("examples/worlds/agent-desktop");
+    let files = Host::at("worlds/agent-desktop");
     cw_blueprint::resolve("world.yml", &files, supplied)
         .unwrap_or_else(|e| panic!("resolving the example blueprint: {e}"))
 }
@@ -14,7 +14,7 @@ fn the_example_blueprint_rebuilds_the_example_world_byte_for_byte() {
     let built = built(&BTreeMap::new()).to_world_json();
     let checked_in = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../examples/worlds/agent-desktop.json"),
+            .join("../../worlds/agent-desktop/world.json"),
     )
     .unwrap();
     assert_eq!(built, checked_in, "run: scripts/build-content.sh");

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerate everything derived from worlds/company-2026/{world.yml,sites,home,files}.
+# Regenerate every world's world.json from its blueprint, and what is derived from them.
 #
 # The world itself is resolved by cw-world from worlds/company-2026/world.yml: the
 # includes splice in the site files, the `copy:` blocks seed the desktops from
@@ -11,6 +11,5 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 node scripts/build-search-index.mjs
 cargo run --quiet -p cw-blueprint --bin cw-world -- build worlds/company-2026/world.yml
-cargo run --quiet -p cw-blueprint --bin cw-world -- \
-  build examples/worlds/agent-desktop/world.yml -o examples/worlds/agent-desktop.json
+cargo run --quiet -p cw-blueprint --bin cw-world -- build worlds/agent-desktop/world.yml
 node scripts/build-live-world.mjs

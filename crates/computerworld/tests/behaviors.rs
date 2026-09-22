@@ -64,7 +64,7 @@ fn shell(world: &mut World, session: &str, machine: &str, command: &str) -> Stri
 #[test]
 fn unrelated_world_runs_without_reference_services() {
     let definition = cw_protocol::WorldDefinition::from_json(include_str!(
-        "../../../examples/custom-world/world.json"
+        "../../../worlds/unrelated-lab/world.json"
     ))
     .unwrap();
     let mut world = World::new(definition, 9).unwrap();
@@ -622,7 +622,7 @@ fn native_image_is_fetched_over_network_and_survives_portable_checkpoint() {
         }
     }
     let mut definition = cw_protocol::WorldDefinition::from_json(include_str!(
-        "../../../examples/custom-world/world.json"
+        "../../../worlds/unrelated-lab/world.json"
     ))
     .unwrap();
     definition.network.nodes.push(cw_protocol::NetworkNode {
@@ -719,7 +719,7 @@ fn native_image_is_fetched_over_network_and_survives_portable_checkpoint() {
 #[test]
 fn package_removal_and_installation_control_application_launch() {
     let mut definition = cw_protocol::WorldDefinition::from_json(include_str!(
-        "../../../examples/custom-world/world.json"
+        "../../../worlds/unrelated-lab/world.json"
     ))
     .unwrap();
     definition.computers[0].packages.push("editor".into());

@@ -35,7 +35,7 @@ fn main() -> Result<()> {
     let mut registry = Registry::new();
     registry.register(Counter)?;
     let mut definition =
-        cw_protocol::WorldDefinition::from_json(include_str!("../custom-world/world.json"))?;
+        cw_protocol::WorldDefinition::from_json(include_str!("../../worlds/unrelated-lab/world.json"))?;
     definition.network.nodes.push(cw_protocol::NetworkNode {
         id: "counter-node".into(),
         address: "192.0.2.20".into(),

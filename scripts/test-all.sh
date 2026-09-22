@@ -19,7 +19,7 @@ generated_files=(worlds/company-2026/world.json
                  worlds/company-2026/index/google-search.json
                  worlds/company-2026/index/bing-search.json
                  worlds/company-2026/index/ddg-search.json
-                 examples/worlds/agent-desktop.json
+                 worlds/agent-desktop/world.json
                  site/world-definition.js)
 for file in "${generated_files[@]}"; do
   mkdir -p "$generated/$(dirname "$file")"

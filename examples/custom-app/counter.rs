@@ -44,7 +44,7 @@ impl Application for Counter {
 }
 fn main() -> Result<()> {
     let mut definition =
-        cw_protocol::WorldDefinition::from_json(include_str!("../custom-world/world.json"))?;
+        cw_protocol::WorldDefinition::from_json(include_str!("../../worlds/unrelated-lab/world.json"))?;
     definition.computers[0]
         .installed_apps
         .push("example.counter".into());

@@ -10,7 +10,7 @@
 //! What is covered
 //! ---------------
 //! * Five scenarios over two worlds (`worlds/company-2026/world.json` and
-//!   `examples/worlds/agent-desktop.json`), five seeds and four machines — one of
+//!   `worlds/agent-desktop/world.json`), five seeds and four machines — one of
 //!   them a Windows box, so a second shell dialect is in the mix — 300 to 360
 //!   steps each, 1 to 3 actions a step, over all seven built-in action families.
 //! * `state_hash()` after **every** step, not only at the end, so a divergence is
@@ -81,7 +81,7 @@ const BLESS_VAR: &str = "CW_BLESS_DETERMINISM_CORPUS";
 const BLESS_PHRASE: &str = "yes-i-intend-to-change-observable-behaviour";
 
 const COMPANY: &str = include_str!("../../../worlds/company-2026/world.json");
-const AGENT_DESKTOP: &str = include_str!("../../../examples/worlds/agent-desktop.json");
+const AGENT_DESKTOP: &str = include_str!("../../../worlds/agent-desktop/world.json");
 
 const ALL_FAMILIES: &[&str] = &[
     "terminal.v1",
@@ -112,7 +112,7 @@ impl WorldKind {
     fn name(self) -> &'static str {
         match self {
             WorldKind::Company => "worlds/company-2026/world.json",
-            WorldKind::AgentDesktop => "examples/worlds/agent-desktop.json",
+            WorldKind::AgentDesktop => "worlds/agent-desktop/world.json",
         }
     }
     /// Addresses the scripts navigate to. Small static sites on purpose: the engine

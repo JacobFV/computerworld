@@ -6,7 +6,7 @@
 use computerworld::{ActionEnvelope, EnvironmentConfig, World, WorldDefinition};
 use serde_json::{json, Value};
 
-const DEFINITION: &str = include_str!("../../../examples/worlds/agent-desktop.json");
+const DEFINITION: &str = include_str!("../../../worlds/agent-desktop/world.json");
 const MACHINE: &str = "workstation";
 
 /// The world and an actor session built from the grants the file itself publishes.

@@ -1,7 +1,6 @@
 # One desktop an agent can use, as a blueprint.
 #
-#     cargo run -p cw-blueprint --bin cw-world -- \
-#       build examples/worlds/agent-desktop/world.yml -o examples/worlds/agent-desktop.json
+#     cargo run -p cw-blueprint --bin cw-world -- build worlds/agent-desktop/world.yml
 #
 # Everything the machine starts with is an ordinary file under `home/`, the wiki's
 # pages are a JSON file of their own, and placing the wiki derives its node, its

@@ -19,7 +19,7 @@ from computerworld import World
 
 ROOT = Path(__file__).resolve().parents[3]
 DEFINITION = json.loads(
-    (ROOT / "examples/worlds/agent-desktop.json").read_text(encoding="utf-8")
+    (ROOT / "worlds/agent-desktop/world.json").read_text(encoding="utf-8")
 )
 MACHINE = "workstation"
 
