@@ -56,10 +56,15 @@ adapter. The [migration notes](migration.md) document that boundary.
 
 ## Completed verification evidence
 
-The final full `scripts/test-all.sh` [acceptance pass](../artifacts/acceptance.json)
-recorded **178 passing test executions** (160 workspace unit/integration/doc tests
-plus 3 optional native HTTP adapter tests), zero failures. The complete
-[acceptance log](../artifacts/acceptance.log) is retained. It completed formatting, pure-core dependency/host
+The raw evidence this section once linked — acceptance logs, console reports and
+screenshots under `artifacts/` — is no longer kept. The runs were one-off, nothing
+regenerated them, and the desktop screenshots among them had gone stale. The measured
+results are below; the suites that produced them are still in the repository and can be
+run again.
+
+The final full `scripts/test-all.sh` acceptance pass recorded **178 passing test
+executions** (160 workspace unit/integration/doc tests plus 3 optional native HTTP
+adapter tests), zero failures. It completed formatting, pure-core dependency/host
 boundary checks, strict workspace Clippy and a release `wasm32-unknown-unknown`
 build, including the final device-lifecycle changes.
 
@@ -71,18 +76,18 @@ service diagnosis, structured observations without rasterization, hit testing an
 deterministic direct rendering. Unit/property tests cover filesystem and protocol
 invariants, transport policy, scheduling, application dispatch and scene damage.
 
-[Node/Wasm and Python verification](../artifacts/bindings-verification.log) exercises
+Node/Wasm and Python verification exercised
 cross-language checkpoint/hash parity, reset,
 fork and rendering against the same canonical runtime. Native/Wasm rendering
 matched the golden RGBA hash
 `01455c4eaa6c1eca6900b545f69bba35ad9428fb66275a41df86268ae3595ec6`.
 The native company, custom-service and custom-application examples ran successfully.
 
-The [browser console report](../artifacts/browser-verification.json) recorded seven
+The browser console report recorded seven
 computers, forty-seven services, 343 events and **zero host network requests during
 the episode** after static assets were loaded. It was written by the browser suite that
 has since been removed with the console, so it is a dated record rather than a regenerated
-one. Real browser pointer/keyboard input,
+one, and the report itself is no longer kept. Real browser pointer/keyboard input,
 terminal execution, reset, checkpoint/fork, deterministic rendering and actor
 restrictions were exercised. A phone is added, browses and writes a file; removal,
 topology checkpoint restoration and fork preserve state; a headless server runs
@@ -139,7 +144,7 @@ separate release work; this workspace does not claim those guarantees.
 
 ## OS desktop follow-up
 
-Five native desktop/mobile shells now render and interact through the canonical Rust scene pipeline. The [desktop GUI notes](desktop-gui.md) describe profiles, controls, rendering and fidelity limits; [source archaeology](../research/desktop-visuals.md) identifies the recovered predecessor patterns. All five pass [offline browser verification](../artifacts/desktop-verification.json). The most recent acceptance suite passes 178 tests, with zero failures. Cross-language desktop checkpoint restoration reproduces identical semantic state and pixels. The performance table above remains the previously pinned benchmark run, not a new measurement of desktop-shell workloads.
+Five native desktop/mobile shells now render and interact through the canonical Rust scene pipeline. The [desktop GUI notes](desktop-gui.md) describe profiles, controls, rendering and fidelity limits; [source archaeology](../research/desktop-visuals.md) identifies the recovered predecessor patterns. All five passed offline browser verification. The most recent acceptance suite passes 178 tests, with zero failures. Cross-language desktop checkpoint restoration reproduces identical semantic state and pixels. The performance table above remains the previously pinned benchmark run, not a new measurement of desktop-shell workloads.
 
 ## Desktop overhaul and consumer examples
 
@@ -147,8 +152,8 @@ Desktop windows now retain individual geometry, stacking, minimized/maximized/sn
 
 The new [Python and JavaScript walkthrough](programmatic-computer-use.md) runs equivalent persistent-session actions, exports observations/scenes/pixels/trajectories, restores snapshots, forks and verifies replay. Cross-language checks compare exact scene and pixel output. Repository publication is at https://github.com/JacobFV/computerworld; PyPI/npm releases remain separate work.
 
-The photographic assets materially increase the Wasm download: see the current [binding measurements](../artifacts/overhaul-bindings.json). The performance table above measures the earlier pinned workloads, not the new asset-rich shells. Desktop shells remain visual approximations: typography, mobile system panels, native settings and application breadth do not reproduce every real OS behavior.
+The photographic assets materially increase the Wasm download; the measured sizes are two paragraphs below. The performance table above measures the earlier pinned workloads, not the new asset-rich shells. Desktop shells remain visual approximations: typography, mobile system panels, native settings and application breadth do not reproduce every real OS behavior.
 
 The final overhaul native verification passed **203 tests** and strict workspace Clippy. Python/Node examples reproduce identical state, scenes and pixels after 11 input actions. Current Wasm is 17,165,529 bytes raw / 12,254,195 gzip; the locally built Python wheel is 13,683,421 bytes. Asset/font copyright notices ship with both bindings. These are local verification results, not a claim of completed remote CI or published package registries.
 
-Browser verification at the time also passed all five OS profiles: 55 overhaul interaction checks, the existing desktop suite and the world-console lifecycle suite, with zero outbound requests after boot. [Visual review](../artifacts/overhaul-visual-review.json) records remaining fidelity gaps separately from behavior checks.
+Browser verification at the time also passed all five OS profiles: 55 overhaul interaction checks, the existing desktop suite and the world-console lifecycle suite, with zero outbound requests after boot. A visual review recorded remaining fidelity gaps separately from behavior checks.

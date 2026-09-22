@@ -380,8 +380,7 @@ What moved, and what did not:
   floating-point chroma upsampler never runs. `wallpapers_decode_to_pinned_pixels` pins
   each decoded wallpaper's SHA-256. No text glyph moved: subsetting keeps outlines and
   advances, the renderer's pinned frame hashes and `smoke-node.cjs`'s fixture hash are
-  unchanged, and `metrics_data.rs` needed no regeneration. Committed screenshots under
-  `artifacts/` that show a desktop are stale until they are regenerated.
+  unchanged, and `metrics_data.rs` needed no regeneration.
 - **Unsupported scripts.** Text in a script outside the DejaVu coverage set (Hebrew,
   Arabic, Thai, CJK and others) rendered as the `.notdef` box after this change. The
   complex-script work above restored Hebrew, Arabic and Thai and added Devanagari, CJK

@@ -1,5 +1,7 @@
 //! Renders every native OS shell in representative states to PNG files.
 //! Usage: cargo run --release --example os-gallery -- [output-dir] [theme,theme...]
+//! The default output directory is `target/gallery`: these are pictures to look at
+//! once, not something the repository keeps.
 use computerworld::{reference_world, ActionEnvelope, EnvironmentConfig, World};
 use serde_json::{json, Value};
 use std::{fs::File, io::BufWriter, path::Path};
@@ -144,7 +146,7 @@ impl Gallery {
 }
 fn main() {
     let mut args = std::env::args().skip(1);
-    let out = args.next().unwrap_or_else(|| "artifacts/gallery".into());
+    let out = args.next().unwrap_or_else(|| "target/gallery".into());
     let themes = args
         .next()
         .unwrap_or_else(|| "macos,windows,ubuntu,ios,android".into());
