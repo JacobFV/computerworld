@@ -113,13 +113,13 @@ fn no_page_of_any_seeded_site_draws_a_control_that_cannot_act() {
 fn world_domains() -> BTreeSet<String> {
     // The reference company's own sites, and the internet it joins.
     let dirs = ["company-2026", "internet"]
-        .map(|w| format!("{}/../../../worlds/{w}/sites", env!("CARGO_MANIFEST_DIR")));
+        .map(|w| format!("{}/../../../worlds/{w}/services", env!("CARGO_MANIFEST_DIR")));
     let mut out = BTreeSet::new();
     for entry in dirs
         .iter()
         .flat_map(|dir| std::fs::read_dir(dir).expect(dir).flatten())
     {
-        let Ok(text) = std::fs::read_to_string(entry.path()) else {
+        let Ok(text) = std::fs::read_to_string(entry.path().join("service.json")) else {
             continue;
         };
         let Ok(file) = serde_json::from_str::<Value>(&text) else {

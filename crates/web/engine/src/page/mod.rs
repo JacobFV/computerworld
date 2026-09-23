@@ -1475,10 +1475,10 @@ mod tests {
         let mut files: Vec<std::path::PathBuf> = Vec::new();
         for root in ["company-2026", "internet"].map(|w| worlds.join(w)) {
             files.extend(
-                std::fs::read_dir(root.join("sites"))
-                    .expect("a world's sites directory")
-                    .filter_map(|e| e.ok().map(|e| e.path()))
-                    .filter(|p| p.extension().is_some_and(|x| x == "json")),
+                std::fs::read_dir(root.join("services"))
+                    .expect("a world's services directory")
+                    .filter_map(|e| e.ok().map(|e| e.path().join("service.json")))
+                    .filter(|p| p.is_file()),
             );
             files.push(root.join("world.json"));
         }
