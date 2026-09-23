@@ -1,7 +1,7 @@
 //! The sample parts seeded into users' `Documents/Parts` folders are modelled by this
-//! kernel, not by hand: `worlds/company-2026/home/all/Documents/Parts/*.FCStd.json`,
-//! `home/macos/Documents/Parts/*` and the bracket's STEP must be exactly what these
-//! builders write. Regenerate them with
+//! kernel, not by hand: the bracket's `Documents/Parts/*.FCStd.json` on every desktop
+//! under `worlds/company-2026/computers`, and the rest of `Documents/Parts` on
+//! alice-mac, must be exactly what these builders write. Regenerate them with
 //! `CW_UPDATE_SAMPLES=1 cargo test -p cw-cad --test samples`, then run
 //! `scripts/build-content.sh` to seed them.
 use cw_cad::document::*;
@@ -12,8 +12,21 @@ use std::path::PathBuf;
 /// The world's first tick, as the STEP header records it.
 const STAMP: &str = "2026-09-17T09:00:00";
 
-fn home() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../worlds/company-2026/home")
+/// Where a sample lands, given as `<desktop>/<path in its home>`: `all` is every
+/// desktop, and `macos`, `windows` or `ubuntu` the one desktop of that family.
+fn homes(path: &str) -> Vec<PathBuf> {
+    let computers =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../worlds/company-2026/computers");
+    let (which, rest) = path.split_once('/').unwrap();
+    [
+        ("macos", "alice-mac/root/Users/alice"),
+        ("windows", "bob-windows/root/C/Users/bob"),
+        ("ubuntu", "carol-ubuntu/root/home/carol"),
+    ]
+    .iter()
+    .filter(|(family, _)| which == "all" || which == *family)
+    .map(|(_, home)| computers.join(home).join(rest))
+    .collect()
 }
 fn on(plane: BasePlane) -> Support {
     Support::Plane { plane }
@@ -465,18 +478,19 @@ pub fn enclosure_lid() -> Document {
 }
 
 fn check(path: &str, bytes: &[u8]) {
-    let path = home().join(path);
-    if std::env::var_os("CW_UPDATE_SAMPLES").is_some() {
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(&path, bytes).unwrap();
-        return;
+    for path in homes(path) {
+        if std::env::var_os("CW_UPDATE_SAMPLES").is_some() {
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(&path, bytes).unwrap();
+            continue;
+        }
+        let current = std::fs::read(&path).unwrap_or_default();
+        assert!(
+            current == bytes,
+            "{} is not what the kernel writes; regenerate with CW_UPDATE_SAMPLES=1",
+            path.display()
+        );
     }
-    let current = std::fs::read(&path).unwrap_or_default();
-    assert!(
-        current == bytes,
-        "{} is not what the kernel writes; regenerate with CW_UPDATE_SAMPLES=1",
-        path.display()
-    );
 }
 fn all_ok(doc: &mut Document) -> Model {
     let m = recompute(doc);

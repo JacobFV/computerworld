@@ -1,7 +1,7 @@
 //! The KiCad projects seeded into users' home folders are designed by this engine, not
-//! by hand: everything under `worlds/company-2026/home/all/Documents/KiCad/sensor-node`
-//! and `worlds/company-2026/home/windows/Documents/KiCad/rc-filter` must be exactly what
-//! these generators write. Regenerate with
+//! by hand: `Documents/KiCad/sensor-node` on every desktop under
+//! `worlds/company-2026/computers`, and `Documents/KiCad/rc-filter` on bob-windows, must
+//! be exactly what these generators write. Regenerate with
 //! `CW_UPDATE_SAMPLES=1 cargo test -p cw-eda --test samples`, then run
 //! `scripts/build-content.sh` to seed them.
 //!
@@ -20,8 +20,21 @@ use cw_eda::schematic::{ortho, LabelKind, Schematic};
 use cw_eda::zones;
 use std::path::PathBuf;
 
-fn home() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../worlds/company-2026/home")
+/// Where a sample lands, given as `<desktop>/<path in its home>`: `all` is every
+/// desktop, and `macos`, `windows` or `ubuntu` the one desktop of that family.
+fn homes(path: &str) -> Vec<PathBuf> {
+    let computers =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../worlds/company-2026/computers");
+    let (which, rest) = path.split_once('/').unwrap();
+    [
+        ("macos", "alice-mac/root/Users/alice"),
+        ("windows", "bob-windows/root/C/Users/bob"),
+        ("ubuntu", "carol-ubuntu/root/home/carol"),
+    ]
+    .iter()
+    .filter(|(family, _)| which == "all" || which == *family)
+    .map(|(_, home)| computers.join(home).join(rest))
+    .collect()
 }
 
 fn wire(s: &mut Schematic, a: Pt, b: Pt, vertical_first: bool) {
@@ -395,20 +408,22 @@ fn project_files(name: &str, s: &Schematic, b: &Board) -> Vec<(String, String)> 
 }
 
 fn check(dir: &str, files: &[(String, String)]) {
-    let folder = home().join(dir);
-    if std::env::var_os("CW_UPDATE_SAMPLES").is_some() {
-        std::fs::create_dir_all(&folder).unwrap();
-        for (name, text) in files {
-            std::fs::write(folder.join(name), text).unwrap();
+    for folder in homes(dir) {
+        if std::env::var_os("CW_UPDATE_SAMPLES").is_some() {
+            std::fs::create_dir_all(&folder).unwrap();
+            for (name, text) in files {
+                std::fs::write(folder.join(name), text).unwrap();
+            }
+            continue;
         }
-        return;
-    }
-    for (name, text) in files {
-        let current = std::fs::read_to_string(folder.join(name)).unwrap_or_default();
-        assert!(
-            current == *text,
-            "{dir}/{name} is not what the engine writes; regenerate with CW_UPDATE_SAMPLES=1"
-        );
+        for (name, text) in files {
+            let current = std::fs::read_to_string(folder.join(name)).unwrap_or_default();
+            assert!(
+                current == *text,
+                "{}/{name} is not what the engine writes; regenerate with CW_UPDATE_SAMPLES=1",
+                folder.display()
+            );
+        }
     }
 }
 

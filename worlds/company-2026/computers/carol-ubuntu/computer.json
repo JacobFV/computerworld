@@ -1,0 +1,8 @@
+{
+  "id": "carol-ubuntu",
+  "profile": "ubuntu",
+  "address": "10.0.0.12",
+  "user": "carol",
+  "installed_apps": ["terminal", "browser", "editor", "files", "desktop", "code", "freecad"],
+  "packages": ["coreutils", "git", "curl"]
+}

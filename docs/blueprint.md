@@ -63,6 +63,41 @@ Every path is relative to the blueprint's own directory and may not climb out of
 it, so a world is built from the files that travel with it and from nothing else.
 A symbolic link is refused rather than followed.
 
+## `computers/` — one directory per machine
+
+A computer can be declared inline, as above, or in a file of its own. A world's
+machines read best as a directory each:
+
+```
+world.yml
+world.json
+computers/
+  carol-ubuntu/
+    computer.json
+    root/home/carol/notes.txt
+```
+
+`computer.json` is one computer on its own — recognised, when included, by its
+`profile`, which no world document has — and `root/` beside it is that machine's
+filesystem: `root/home/carol/notes.txt` is `/home/carol/notes.txt` on it, and so
+`~/notes.txt`. On a Windows machine the top directory is the drive, so
+`root/C/Users/bob` is `C:/Users/bob`. A directory may name an input, as in
+`root/home/${AGENT_USER}`, and substitutes like any other string.
+
+```yaml
+computers: []
+include:
+  - computers/carol-ubuntu/computer.json
+  - computers/app-server/computer.json
+```
+
+Include them in the order they should appear, and give `computers:` its place
+in the blueprint so the world file keeps the order it was written in. A glob such
+as `computers/*/computer.json` works too, and orders them by name.
+
+`root/` is a `copy:` entry with `to: /`, inserted ahead of any the computer
+states, so the rules below apply to it.
+
 ## `copy:` — a machine seeded from real files
 
 `initial_files` is the right shape for the engine and the wrong shape for a
@@ -80,7 +115,8 @@ in it, undiffable and unopenable. `copy:` names directories instead.
 Entries overlay in order, so `home/all` then `home/ubuntu` reads the way it is
 written: where both hold the same path, the second wins. `to:` defaults to `~`,
 the user's home folder, which is where a relative `initial_files` path already
-resolves; an absolute `to:` such as `/etc` seeds an absolute path. A file whose
+resolves; an absolute `to:` such as `/etc` seeds an absolute path, and `to: /`
+mirrors the machine as `root/` does above. A file whose
 bytes are valid UTF-8 lands in `initial_files`, and anything else is base64 in
 `initial_binary_files`. `.DS_Store`, `.gitkeep` and `.git` are never seeded.
 
@@ -137,9 +173,10 @@ and `network.nodes` by `id`, `network.dns` by `name`, `network.links` and
 `installed_apps: [terminal]` means those applications and not those on top of
 whatever was there.
 
-A fragment is either a whole world document or **one service on its own**,
-recognised by its `kind`, which no world document has. That is what lets a
-directory of service files be a directory of service files.
+A fragment is a whole world document, **one service on its own**, recognised by
+its `kind`, or **one computer on its own**, recognised by its `profile` — keys no
+world document has. That is what lets a directory of service files be a directory
+of service files, and a machine be a directory of its own.
 
 ## `from_file:` — a value that lives in its own file
 
@@ -263,7 +300,7 @@ is one machine, one service and one input, and builds
 
 [`worlds/company-2026/world.yml`](../worlds/company-2026/world.yml) is the
 reference company: six hundred lines that resolve to the three-and-a-half-megabyte
-world file beside it. Three desktops seeded from `home/`, eighty-seven services
+world file beside it. Five machines under `computers/`, each seeded from its own `root/`, eighty-seven services
 each in its own file under `sites/`, and forty-six of its hundred and two nodes,
 forty-six of its hundred and two links and a hundred and eighteen of its two
 hundred and thirty DNS records derived from a `place:` block rather than written.

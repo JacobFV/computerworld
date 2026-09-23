@@ -1,0 +1,8 @@
+{
+  "id": "app-server",
+  "profile": "ubuntu",
+  "address": "10.0.0.13",
+  "user": "admin",
+  "installed_apps": ["terminal", "browser", "editor", "files", "desktop"],
+  "packages": ["coreutils", "git", "curl"]
+}

@@ -2,10 +2,11 @@
 #
 #     cargo run -p cw-blueprint --bin cw-world -- build worlds/agent-desktop/world.yml
 #
-# Everything the machine starts with is an ordinary file under `home/`, the wiki
-# starts as the wiki service's own fresh install, and placing it derives its node,
-# its link and its DNS record. `${AGENT_USER}` shows an input: build with
-# `--set AGENT_USER=noor` for the same world under a different name.
+# Everything the machine starts with is an ordinary file under
+# `computers/workstation/root/`, the wiki starts as the wiki service's own fresh
+# install, and placing it derives its node, its link and its DNS record. `${AGENT_USER}` shows an input — it names both
+# the user and their home directory under `root/home/` — so building with
+# `--set AGENT_USER=noor` gives the same world under a different name.
 schema_version: 1
 id: "agent-desktop"
 # Offline on purpose: its gateway is closed, and a determinism run over it stays seconds long.
@@ -19,25 +20,10 @@ profiles:
     home: "/home/{user}"
     case_sensitive: true
     shell: "posix"
-computers:
-  - id: "workstation"
-    profile: "ubuntu"
-    address: "10.0.0.10"
-    user: "${AGENT_USER}"
-    copy:
-      - {from: "home"}
-    installed_apps:
-      - "terminal"
-      - "browser"
-      - "files"
-      - "editor"
-      - "calculator"
-      - "calendar"
-      - "notes"
-      - "photos"
-      - "spreadsheet"
-      - "code"
-    packages: ["coreutils", "git", "curl"]
+# The machine is `computers/workstation/`: its definition, and under `root/` the
+# files it starts with at their own paths on it.
+computers: []
+include: ["computers/workstation/computer.json"]
 network:
   nodes:
     - {id: "workstation", address: "10.0.0.10", zone: "local"}

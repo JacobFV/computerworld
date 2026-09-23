@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "telemetry"
+version = "0.3.1"
+description = "Parse and summarise Atlas sensor-node measurement logs"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [{name = "Carol Nguyen", email = "carol@northstar.example"}]
+dependencies = []
+
+[project.scripts]
+telemetry = "telemetry.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["telemetry*"]
+
+[tool.ruff]
+line-length = 100

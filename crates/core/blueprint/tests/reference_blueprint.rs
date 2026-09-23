@@ -77,11 +77,16 @@ fn a_blueprint_says_which_files_it_was_built_from() {
     let resolved = cw_blueprint::resolve("world.yml", &files, &BTreeMap::new()).unwrap();
     assert!(resolved.read.contains("world.yml"));
     assert!(resolved.read.contains("sites/northstar-www.json"));
-    assert!(resolved.read.contains("home/ubuntu/notes.txt"));
+    assert!(resolved
+        .read
+        .contains("computers/carol-ubuntu/computer.json"));
+    assert!(resolved
+        .read
+        .contains("computers/carol-ubuntu/root/home/carol/notes.txt"));
     assert!(resolved
         .read
         .iter()
-        .any(|p| p.starts_with("home/all/Documents/")));
+        .any(|p| p.starts_with("computers/alice-mac/root/Users/alice/Documents/")));
     assert!(
         resolved.inputs.is_empty(),
         "the reference world declares no inputs"

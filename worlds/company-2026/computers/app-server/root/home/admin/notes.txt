@@ -1,0 +1,1 @@
+Welcome admin. Start at http://intranet.internal/

@@ -13,9 +13,10 @@
 //! definition make two unlike worlds compare equal; and the Wasm build has no
 //! filesystem to copy from at all. Folding the bytes into the definition is what
 //! keeps all three honest.
+use crate::inputs::Interpolator;
 use crate::node::Node;
 use crate::{known_keys, Error, Files};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 const COPY_KEYS: &[&str] = &["from", "to", "exclude"];
 /// Names never seeded, whatever a blueprint says. These are artifacts of the
@@ -27,12 +28,19 @@ const DEFAULT_BYTES_PER_COMPUTER: u64 = 3 * 1024 * 1024;
 
 /// Apply every computer's `copy:` entries, folding the files into `initial_files`
 /// and `initial_binary_files`.
+///
+/// An entry whose `to:` is `/` mirrors the machine's filesystem: its directories
+/// are the machine's absolute paths, `${NAME}` in them substitutes like anywhere
+/// else, and on a Windows machine the top-level directory is the drive letter.
+/// What lands inside the user's home folder is written home-relative, which is
+/// what every other entry already writes.
 pub fn seed(
     document: &mut Node,
     files: &dyn Files,
     limits: Option<&Node>,
     source: &str,
     read: &mut BTreeSet<String>,
+    interp: &mut Interpolator<'_>,
 ) -> Result<(), Error> {
     let ceiling = match limits {
         Some(node) => {
@@ -52,6 +60,20 @@ pub fn seed(
         }
         None => DEFAULT_BYTES_PER_COMPUTER,
     };
+
+    // Each profile's home template and whether its paths start with a drive.
+    let profiles: BTreeMap<String, (String, bool)> = document
+        .get("profiles")
+        .and_then(Node::as_list)
+        .unwrap_or(&[])
+        .iter()
+        .filter_map(|p| {
+            let id = p.get("id")?.as_str()?.to_string();
+            let home = p.get("home").and_then(Node::as_str).unwrap_or("");
+            let drives = p.get("family").and_then(Node::as_str) == Some("windows");
+            Some((id, (home.to_string(), drives)))
+        })
+        .collect();
 
     let Some(computers) = document
         .as_map_mut()
@@ -78,6 +100,13 @@ pub fn seed(
         let Some(entries) = entries.as_list() else {
             return Err(Error::at(source, format!("computer {id}: copy is a list")));
         };
+        let user = map.get("user").and_then(Node::as_str).unwrap_or("");
+        let (home, drives) = map
+            .get("profile")
+            .and_then(Node::as_str)
+            .and_then(|p| profiles.get(p))
+            .map(|(home, drives)| (home.replace("{user}", user), *drives))
+            .unwrap_or_default();
 
         // Later entries overlay earlier ones, so `home/all` then `home/ubuntu`
         // reads the way it is written: the profile's own file wins.
@@ -140,7 +169,15 @@ pub fn seed(
                 read.insert(path.clone());
                 let content = files.read(&path).map_err(|e| Error::at(&path, e))?;
                 bytes += content.len() as u64;
-                let destination = join(to, relative);
+                let destination = if to == "/" {
+                    let relative = interp
+                        .text(relative, &format!("computer {id}'s {path}"))
+                        .map_err(|e| e.within(source))?
+                        .unwrap_or_else(|| relative.to_string());
+                    mirror(&relative, &home, drives)
+                } else {
+                    join(to, relative)
+                };
                 match seeded.iter_mut().find(|(p, _)| *p == destination) {
                     Some(slot) => slot.1 = content,
                     None => seeded.push((destination, content)),
@@ -202,6 +239,23 @@ fn join(to: &str, relative: &str) -> String {
         "~" | "" => relative.to_string(),
         _ if to.starts_with("~/") => format!("{}/{relative}", &to[2..]),
         _ => format!("{to}/{relative}"),
+    }
+}
+
+/// Where a file under a `to: /` directory lands: at its own path from the
+/// machine's root, with the first directory a drive on a Windows machine, and
+/// home-relative when it is inside `home`.
+fn mirror(relative: &str, home: &str, drives: bool) -> String {
+    let absolute = match relative.split_once('/') {
+        Some((drive, rest)) if drives && drive.len() == 1 => format!("{drive}:/{rest}"),
+        _ => format!("/{relative}"),
+    };
+    match absolute
+        .strip_prefix(home)
+        .and_then(|r| r.strip_prefix('/'))
+    {
+        Some(inside) if !home.is_empty() => inside.to_string(),
+        _ => absolute,
     }
 }
 
@@ -287,8 +341,23 @@ mod tests {
     fn seeded(document: &str, files: &Fake) -> Node {
         let mut document = yaml::parse(document).unwrap();
         let mut read = BTreeSet::new();
-        seed(&mut document, files, None, "w.yml", &mut read).unwrap();
+        seed(
+            &mut document,
+            files,
+            None,
+            "w.yml",
+            &mut read,
+            &mut no_inputs(),
+        )
+        .unwrap();
         document
+    }
+
+    fn no_inputs() -> Interpolator<'static> {
+        static NONE: std::sync::OnceLock<(crate::inputs::Inputs, BTreeMap<String, String>)> =
+            std::sync::OnceLock::new();
+        let (inputs, values) = NONE.get_or_init(Default::default);
+        Interpolator::new(inputs, values)
     }
 
     fn computer(world: &Node) -> &Node {
@@ -380,6 +449,100 @@ mod tests {
         assert_eq!(join("/etc/", "hosts"), "/etc/hosts");
     }
 
+    const PROFILES: &str = "profiles:\n  - id: mac\n    family: macos\n    home: /Users/{user}\n  - id: win\n    family: windows\n    home: C:/Users/{user}\n";
+
+    #[test]
+    fn a_root_directory_mirrors_the_machine_and_home_stays_relative() {
+        let files = Fake::with(&[
+            ("root/Users/alice/notes.txt", b"hi\n"),
+            ("root/etc/motd", b"welcome\n"),
+        ]);
+        let world = seeded(
+            &format!("{PROFILES}computers:\n  - id: a\n    profile: mac\n    user: alice\n    copy:\n      - {{from: root, to: /}}\n"),
+            &files,
+        );
+        let seeded = computer(&world)
+            .get("initial_files")
+            .unwrap()
+            .as_map()
+            .unwrap();
+        assert_eq!(
+            seeded.keys().collect::<Vec<_>>(),
+            ["/etc/motd", "notes.txt"]
+        );
+    }
+
+    #[test]
+    fn a_computer_file_is_seeded_from_the_root_beside_it() {
+        let files = Fake::with(&[
+            (
+                "world.yml",
+                b"schema_version: 1\nid: w\ninternet: false\nprofiles:\n  - {id: u, name: U, family: linux, home: \"/home/{user}\", shell: posix}\ninclude: [computers/*/computer.json]\n",
+            ),
+            (
+                "computers/lab/computer.json",
+                b"{\"id\": \"lab\", \"profile\": \"u\", \"address\": \"10.0.0.2\", \"user\": \"ada\", \"installed_apps\": [\"terminal\"]}",
+            ),
+            ("computers/lab/root/home/ada/notes.txt", b"hi\n"),
+        ]);
+        let resolved = crate::resolve("world.yml", &files, &BTreeMap::new()).unwrap();
+        let lab = computer(&resolved.world).as_map().unwrap();
+        assert_eq!(
+            lab.keys().collect::<Vec<_>>(),
+            [
+                "id",
+                "profile",
+                "address",
+                "user",
+                "initial_files",
+                "installed_apps"
+            ]
+        );
+        let seeded = lab.get("initial_files").unwrap().as_map().unwrap();
+        assert_eq!(seeded.keys().collect::<Vec<_>>(), ["notes.txt"]);
+    }
+
+    #[test]
+    fn a_windows_root_starts_with_the_drive() {
+        assert_eq!(mirror("C/Users/bob/a.txt", "C:/Users/bob", true), "a.txt");
+        assert_eq!(
+            mirror("D/data/a.txt", "C:/Users/bob", true),
+            "D:/data/a.txt"
+        );
+        assert_eq!(
+            mirror("C/Users/bob/a.txt", "/home/bob", false),
+            "/C/Users/bob/a.txt"
+        );
+        assert_eq!(mirror("home/bobby/a", "/home/bob", false), "/home/bobby/a");
+    }
+
+    #[test]
+    fn a_root_directory_may_name_the_user_by_input() {
+        let files = Fake::with(&[("root/home/${WHO}/notes.txt", b"hi\n")]);
+        let mut document = yaml::parse(
+            "profiles:\n  - id: u\n    home: /home/{user}\ncomputers:\n  - id: a\n    profile: u\n    user: noor\n    copy:\n      - {from: root, to: /}\n",
+        )
+        .unwrap();
+        let inputs = crate::inputs::parse(&yaml::parse("WHO: ada\n").unwrap(), "w.yml").unwrap();
+        let values = BTreeMap::from([("WHO".to_string(), "noor".to_string())]);
+        let mut interp = Interpolator::new(&inputs, &values);
+        seed(
+            &mut document,
+            &files,
+            None,
+            "w.yml",
+            &mut BTreeSet::new(),
+            &mut interp,
+        )
+        .unwrap();
+        let seeded = computer(&document)
+            .get("initial_files")
+            .unwrap()
+            .as_map()
+            .unwrap();
+        assert_eq!(seeded.keys().collect::<Vec<_>>(), ["notes.txt"]);
+    }
+
     #[test]
     fn tool_droppings_are_never_seeded() {
         let files = Fake::with(&[
@@ -452,6 +615,7 @@ mod tests {
             Some(&limits),
             "w.yml",
             &mut BTreeSet::new(),
+            &mut no_inputs(),
         )
         .unwrap_err()
         .to_string();
@@ -466,7 +630,15 @@ mod tests {
     fn a_missing_directory_is_refused() {
         let files = Fake::with(&[("elsewhere/a.txt", b"a")]);
         let mut document = yaml::parse(ONE).unwrap();
-        assert!(seed(&mut document, &files, None, "w.yml", &mut BTreeSet::new()).is_err());
+        assert!(seed(
+            &mut document,
+            &files,
+            None,
+            "w.yml",
+            &mut BTreeSet::new(),
+            &mut no_inputs()
+        )
+        .is_err());
     }
 
     #[test]

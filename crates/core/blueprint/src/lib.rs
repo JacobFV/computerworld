@@ -247,15 +247,23 @@ pub fn resolve(
     };
     let values = inputs::resolve(&declared, supplied)?;
 
-    let (mut document, compact_services, secrets) = {
-        let mut interp = inputs::Interpolator::new(&declared, &values);
-        let loaded = merge::load(path, files, &mut read, &mut interp)?;
-        (
-            loaded.document,
-            loaded.fragment_services,
-            std::mem::take(&mut interp.used),
-        )
-    };
+    let mut interp = inputs::Interpolator::new(&declared, &values);
+    let loaded = merge::load(path, files, &mut read, &mut interp)?;
+    let (mut document, compact_services) = (loaded.document, loaded.fragment_services);
+
+    place::sort_dns(&mut document);
+    let limits = document.as_map_mut().and_then(|m| m.remove("limits"));
+    // A `root/` directory's paths are written into the world too, so a secret
+    // named in one is refused along with one anywhere else.
+    copy::seed(
+        &mut document,
+        files,
+        limits.as_ref(),
+        path,
+        &mut read,
+        &mut interp,
+    )?;
+    let secrets = std::mem::take(&mut interp.used);
     if !secrets.is_empty() {
         return Err(Error::at(
             path,
@@ -266,10 +274,6 @@ pub fn resolve(
             ),
         ));
     }
-
-    place::sort_dns(&mut document);
-    let limits = document.as_map_mut().and_then(|m| m.remove("limits"));
-    copy::seed(&mut document, files, limits.as_ref(), path, &mut read)?;
 
     {
         let Some(map) = document.as_map_mut() else {

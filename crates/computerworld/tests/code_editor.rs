@@ -487,7 +487,7 @@ fn source_control_initialises_stages_and_commits_with_the_machines_git() {
     assert_eq!(code["scm"]["repo"], true);
     assert_eq!(code["scm"]["branch"], "main");
     // The four files this test seeds are untracked, alongside whatever the reference
-    // world's ~/project already holds (worlds/company-2026/home).
+    // world's ~/project already holds (worlds/company-2026/computers).
     let changes = code["scm"]["changes"].as_array().unwrap();
     let untracked = changes.len();
     for name in ["main.py", "run.sh", "README.md", "src/app.js"] {

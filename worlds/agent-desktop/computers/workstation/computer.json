@@ -1,0 +1,8 @@
+{
+  "id": "workstation",
+  "profile": "ubuntu",
+  "address": "10.0.0.10",
+  "user": "${AGENT_USER}",
+  "installed_apps": ["terminal", "browser", "files", "editor", "calculator", "calendar", "notes", "photos", "spreadsheet", "code"],
+  "packages": ["coreutils", "git", "curl"]
+}

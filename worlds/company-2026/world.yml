@@ -4,7 +4,7 @@
 #
 #     cargo run -p cw-blueprint --bin cw-world -- build worlds/company-2026/world.yml
 #
-# The three desktops are seeded from `home/`, every service but the six below
+# Each machine is a directory under `computers/`, every service but the six below
 # comes from its own file under `sites/`, and each of those places its own node,
 # link and DNS records through the `place:` block and the defaults here. The
 # public web is not declared here: the world joins the built-in internet
@@ -38,62 +38,10 @@ profiles:
     home: "/home/{user}"
     case_sensitive: true
     shell: "posix"
-computers:
-  - id: "alice-mac"
-    profile: "macos"
-    address: "10.0.0.10"
-    user: "alice"
-    copy:
-      - {from: "home/all"}
-      - {from: "home/macos"}
-    installed_apps: ["terminal", "browser", "editor", "files", "desktop", "code", "freecad"]
-    packages: ["coreutils", "git", "curl"]
-  - id: "bob-windows"
-    profile: "windows"
-    address: "10.0.0.11"
-    user: "bob"
-    copy:
-      - {from: "home/all"}
-      - {from: "home/windows"}
-    installed_apps: ["terminal", "browser", "editor", "files", "desktop", "code", "freecad"]
-    packages: ["coreutils", "git", "curl"]
-  - id: "carol-ubuntu"
-    profile: "ubuntu"
-    address: "10.0.0.12"
-    user: "carol"
-    copy:
-      - {from: "home/all"}
-      - {from: "home/ubuntu"}
-    installed_apps: ["terminal", "browser", "editor", "files", "desktop", "code", "freecad"]
-    packages: ["coreutils", "git", "curl"]
-  - id: "app-server"
-    profile: "ubuntu"
-    address: "10.0.0.13"
-    user: "admin"
-    initial_files:
-      "launch.txt": |
-        Project: Atlas
-        Checklist: launch
-        Status: pending
-        Documents: http://docs.internal/
-      "notes.txt": |
-        Welcome admin. Start at http://intranet.internal/
-    installed_apps: ["terminal", "browser", "editor", "files", "desktop"]
-    packages: ["coreutils", "git", "curl"]
-  - id: "git-server"
-    profile: "ubuntu"
-    address: "10.0.0.14"
-    user: "admin"
-    initial_files:
-      "launch.txt": |
-        Project: Atlas
-        Checklist: launch
-        Status: pending
-        Documents: http://docs.internal/
-      "notes.txt": |
-        Welcome admin. Start at http://intranet.internal/
-    installed_apps: ["terminal", "browser", "editor", "files", "desktop"]
-    packages: ["coreutils", "git", "curl"]
+# Each machine is `computers/<id>/computer.json`, with the files it starts with
+# under `computers/<id>/root/` at their own paths on it. They are listed in
+# `include:` in the order they appear, and land here.
+computers: []
 network:
   nodes:
     - {id: "alice-mac", address: "10.0.0.10", zone: "local"}
@@ -405,6 +353,11 @@ metadata:
     "app-server": "server"
     "git-server": "server"
 include:
+  - "computers/alice-mac/computer.json"
+  - "computers/bob-windows/computer.json"
+  - "computers/carol-ubuntu/computer.json"
+  - "computers/app-server/computer.json"
+  - "computers/git-server/computer.json"
   - "sites/intranet.json"
   - "sites/guide.json"
   - "sites/alice-blog.json"

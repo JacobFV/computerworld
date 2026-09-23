@@ -1,0 +1,8 @@
+{
+  "id": "alice-mac",
+  "profile": "macos",
+  "address": "10.0.0.10",
+  "user": "alice",
+  "installed_apps": ["terminal", "browser", "editor", "files", "desktop", "code", "freecad"],
+  "packages": ["coreutils", "git", "curl"]
+}

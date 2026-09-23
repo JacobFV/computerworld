@@ -52,7 +52,7 @@ five directories are what the blueprint and the site build read.
 
 | Directory | Read by | Becomes |
 |---|---|---|
-| `home/` | `world.yml`'s `copy:` blocks | The files the three desktops start with. `home/all` is overlaid with `home/macos`, `home/windows` or `home/ubuntu` per machine. |
+| `computers/` | `world.yml`'s `include:` list | One directory per machine: `computer.json` is its definition, and `root/` holds the files it starts with at the paths they have on it — `alice-mac/root/Users/alice`, `bob-windows/root/C/Users/bob` (the top directory is the drive), `carol-ubuntu/root/home/carol`. |
 | `sites/` | `world.yml`'s `include:` list | The company's own services, one per file, each placing its own node, link and DNS records. |
 | `overlays/` | `world.yml`'s `internet_overlays:` | The company's own content on the internet's shared sites, merged into each as the internet joins. |
 | `network/` | `world.yml`'s `include:` list | Topology with no service behind it — currently just the unplugged bedroom speaker. |

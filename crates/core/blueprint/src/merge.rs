@@ -94,7 +94,7 @@ fn load_one(
     interp.walk(&mut own, "").map_err(|e| e.within(path))?;
     substitute_files(&mut own, files, read, path)?;
     if !root {
-        own = as_world_fragment(own, path)?;
+        own = as_world_fragment(own, path, files)?;
     }
 
     if !root {
@@ -159,27 +159,73 @@ fn load_one(
     Ok(document)
 }
 
-/// A fragment may be a whole world document or one service on its own. A service
-/// is recognised by its `kind`, which no world document has — so a directory of
-/// service files needs no wrapper object repeated ninety-three times.
-fn as_world_fragment(node: Node, path: &str) -> Result<Node, Error> {
+/// A fragment may be a whole world document, one service on its own or one
+/// computer on its own. A service is recognised by its `kind` and a computer by
+/// its `profile`, neither of which a world document has — so a directory of
+/// service files needs no wrapper object repeated ninety-three times, and a
+/// computer lives in `computers/<id>/computer.json` beside the files it holds.
+fn as_world_fragment(node: Node, path: &str, files: &dyn Files) -> Result<Node, Error> {
     let Some(map) = node.as_map() else {
         return Err(Error::at(path, "a fragment is a mapping"));
     };
-    if !map.contains_key("kind") {
+    let key = if map.contains_key("kind") {
+        "services"
+    } else if map.contains_key("profile") {
+        "computers"
+    } else {
         return Ok(node);
-    }
+    };
+    let what = if key == "services" {
+        "a service"
+    } else {
+        "a computer"
+    };
     for directive in ["include", "extends"] {
         if map.contains_key(directive) {
             return Err(Error::at(
                 path,
-                format!("a service fragment cannot {directive}"),
+                format!("{what} fragment cannot {directive}"),
             ));
         }
     }
+    let node = if key == "computers" {
+        with_root(node, path, files)?
+    } else {
+        node
+    };
     let mut world = Map::new();
-    world.insert("services", Node::List(vec![node]));
+    world.insert(key, Node::List(vec![node]));
     Ok(Node::Map(world))
+}
+
+/// A computer fragment with a `root/` directory beside it starts with that
+/// directory as its filesystem: `root/home/carol/notes.txt` is
+/// `/home/carol/notes.txt` on the machine. It is copied before any `copy:` the
+/// computer states, so a stated entry can still overlay it, and the seeded files
+/// sit after `user`, where a hand-written computer keeps them.
+fn with_root(mut node: Node, path: &str, files: &dyn Files) -> Result<Node, Error> {
+    let root = match path.rsplit_once('/') {
+        Some((dir, _)) => format!("{dir}/root"),
+        None => "root".to_string(),
+    };
+    if !files.is_dir(&root) {
+        return Ok(node);
+    }
+    let mut entry = Map::new();
+    entry.insert("from", Node::string(root));
+    entry.insert("to", Node::string("/"));
+    let Some(map) = node.as_map_mut() else {
+        return Err(Error::at(path, "a computer is a mapping"));
+    };
+    match map.get_mut("copy") {
+        Some(Node::List(entries)) => entries.insert(0, Node::Map(entry)),
+        Some(_) => return Err(Error::at(path, "copy is a list")),
+        None => {
+            let at = map.position("user").map_or(map.len(), |i| i + 1);
+            map.insert_at(at, "copy", Node::List(vec![Node::Map(entry)]));
+        }
+    }
+    Ok(node)
 }
 
 fn service_ids(document: &Node) -> Vec<String> {

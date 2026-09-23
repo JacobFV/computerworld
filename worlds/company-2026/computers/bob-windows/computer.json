@@ -1,0 +1,8 @@
+{
+  "id": "bob-windows",
+  "profile": "windows",
+  "address": "10.0.0.11",
+  "user": "bob",
+  "installed_apps": ["terminal", "browser", "editor", "files", "desktop", "code", "freecad"],
+  "packages": ["coreutils", "git", "curl"]
+}
