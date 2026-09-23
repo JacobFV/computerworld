@@ -2,9 +2,9 @@
 #
 #     cargo run -p cw-blueprint --bin cw-world -- build worlds/agent-desktop/world.yml
 #
-# Everything the machine starts with is an ordinary file under `home/`, the wiki's
-# pages are a JSON file of their own, and placing the wiki derives its node, its
-# link and its DNS record. `${AGENT_USER}` shows an input: build with
+# Everything the machine starts with is an ordinary file under `home/`, the wiki
+# starts as the wiki service's own fresh install, and placing it derives its node,
+# its link and its DNS record. `${AGENT_USER}` shows an input: build with
 # `--set AGENT_USER=noor` for the same world under a different name.
 schema_version: 1
 id: "agent-desktop"
@@ -45,11 +45,11 @@ network:
   gateway: {allow_local: true, allow_internet: false, allow_host: false}
 services:
   - id: "wiki"
-    kind: "static-site"
+    kind: "wiki"
     node: "intranet-server"
     domains: ["wiki.internal"]
     port: 80
-    initial_state: {from_file: "wiki/state.json"}
+    initial_state: {brand: "Team wiki"}
     place:
       address: "10.0.1.10"
       zone: "local"

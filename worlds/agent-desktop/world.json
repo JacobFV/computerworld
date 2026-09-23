@@ -82,55 +82,14 @@
   "services": [
     {
       "id": "wiki",
-      "kind": "static-site",
+      "kind": "wiki",
       "node": "intranet-server",
       "domains": [
         "wiki.internal"
       ],
       "port": 80,
       "initial_state": {
-        "pages": {
-          "/": {
-            "version": 1,
-            "title": "Team wiki",
-            "elements": [
-              {
-                "kind": "heading",
-                "id": "title",
-                "text": "Team wiki",
-                "level": 1
-              },
-              {
-                "kind": "text",
-                "id": "intro",
-                "text": "Everything the workstation needs is under ~/Documents. Expenses are recorded per month in expenses.csv."
-              },
-              {
-                "kind": "link",
-                "id": "expenses",
-                "text": "Expense policy",
-                "url": "http://wiki.internal/expenses"
-              }
-            ]
-          },
-          "/expenses": {
-            "version": 1,
-            "title": "Expense policy",
-            "elements": [
-              {
-                "kind": "heading",
-                "id": "title",
-                "text": "Expense policy",
-                "level": 1
-              },
-              {
-                "kind": "text",
-                "id": "rule",
-                "text": "Travel and software are reported separately. The quarterly total is the sum of every row in expenses.csv."
-              }
-            ]
-          }
-        }
+        "brand": "Team wiki"
       }
     }
   ],

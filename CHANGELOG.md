@@ -95,6 +95,12 @@ determinism corpus passes without regeneration.
   rather than by locale. `site/generated/world-definition.js` shrinks from 7,750,810 to
   6,724,131 bytes. The company scenarios' state hashes in the determinism corpus are
   regenerated; their steps, events and projections are unchanged.
+- **A wiki placed with no content is a fresh install.** A `wiki` service seeded without
+  `articles` starts with an editable Main Page; `articles: {}` is still an empty wiki. The
+  agent desktop's intranet is now that service with only a `brand`, and
+  `worlds/agent-desktop/wiki/` is gone, taking its hand-written two-page static site with
+  it. The agent-desktop scenarios in the determinism corpus visit `/wiki/Main_Page` in
+  place of `/expenses` and are regenerated.
 
 ### Known
 

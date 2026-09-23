@@ -134,7 +134,7 @@ impl WorldKind {
             ],
             WorldKind::AgentDesktop => &[
                 "http://wiki.internal/",
-                "http://wiki.internal/expenses",
+                "http://wiki.internal/wiki/Main_Page",
                 "http://wiki.internal/missing",
                 "file:///etc/passwd",
             ],

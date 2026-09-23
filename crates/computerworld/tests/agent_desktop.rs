@@ -85,7 +85,11 @@ fn the_example_world_is_a_working_agent_desktop_out_of_the_box() {
         "navigate",
         json!({"url":"http://wiki.internal/"}),
     );
-    assert_eq!(page["title"], json!("Team wiki"), "{page}");
+    assert_eq!(
+        page["title"],
+        json!("Team wiki — The free encyclopedia"),
+        "{page}"
+    );
     // Applications launch, and an open window is a process on the machine.
     act(
         &mut world,

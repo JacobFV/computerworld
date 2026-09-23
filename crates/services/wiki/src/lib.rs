@@ -321,6 +321,30 @@ pub struct WikiService;
 pub fn register(registry: &mut Registry) -> SimResult<()> {
     registry.register(WikiService)
 }
+/// What a wiki seeded without `articles` starts with: the one page a fresh install has, so
+/// a world can place a wiki without writing its content. `articles: {}` is an empty wiki.
+fn main_page(brand: &str) -> Article {
+    Article {
+        id: "Main_Page".into(),
+        title: "Main Page".into(),
+        summary: format!("{brand} is set up, and nothing has been written here yet."),
+        sections: vec![Section {
+            id: "getting-started".into(),
+            heading: "Getting started".into(),
+            body: "Edit this section to write the first entry. Every change is kept under \
+                   History, and the discussion about it under Talk."
+                .into(),
+        }],
+        revisions: vec![Revision {
+            rev: 1,
+            author: "setup".into(),
+            tick: 0,
+            comment: "Created the main page".into(),
+            section: None,
+        }],
+        ..Article::default()
+    }
+}
 const BRAND: &str = "Wikipedia";
 const TAGLINE: &str = "The free encyclopedia";
 /// The looks one set of routes can wear: wikipedia.org, imdb.com, archive.org.
@@ -345,6 +369,10 @@ impl Service for WikiService {
         }
         if s.tagline.is_empty() {
             s.tagline = TAGLINE.into();
+        }
+        if gated.get("articles").is_none() {
+            let page = main_page(&s.brand);
+            s.articles.insert(page.id.clone(), page);
         }
         if !s.skin.is_empty() && !SKINS.contains(&s.skin.as_str()) {
             return Err(SimError::invalid(format!(
@@ -831,7 +859,9 @@ mod tests {
     /// A site can be bound to a node before its content lands; an empty encyclopedia is a page.
     #[test]
     fn an_empty_encyclopedia_still_serves_a_themed_portal() {
-        let mut state = WikiService.initialize(json!({}), &ctx()).unwrap();
+        let mut state = WikiService
+            .initialize(json!({"articles": {}}), &ctx())
+            .unwrap();
         let page = rendered(&get(&mut state, "http://wikipedia.org/"));
         assert_eq!(page.title(), "Wikipedia — The free encyclopedia");
         assert_eq!(page.text("news-empty"), "Nothing filed today.");
@@ -843,6 +873,37 @@ mod tests {
         assert_eq!(
             get(&mut state, "http://wikipedia.org/wiki/Special:Random").status,
             404
+        );
+    }
+    /// A wiki placed with no content comes up as a fresh install: one editable Main Page.
+    #[test]
+    fn an_unseeded_wiki_starts_with_a_main_page_it_can_edit() {
+        let mut state = WikiService
+            .initialize(json!({"brand": "Team wiki"}), &ctx())
+            .unwrap();
+        let portal = rendered(&get(&mut state, "http://wiki.internal/"));
+        assert_eq!(portal.text("featured-title"), "Main Page");
+        let page = rendered(&get(&mut state, "http://wiki.internal/wiki/Main_Page"));
+        assert!(page
+            .text("article-summary")
+            .starts_with("Team wiki is set up"));
+        let mut s: WikiState = serde_json::from_value(state).unwrap();
+        let revision = s
+            .edit(
+                "bob",
+                "Main_Page",
+                "getting-started",
+                "Expenses go in expenses.csv.",
+                "",
+                12,
+            )
+            .unwrap();
+        assert_eq!(revision.rev, 2, "the setup revision is the first one");
+        assert_eq!(
+            WikiService.initialize(Value::Null, &ctx()).unwrap()["articles"]
+                .as_object()
+                .map(|a| a.len()),
+            Some(1)
         );
     }
     #[test]

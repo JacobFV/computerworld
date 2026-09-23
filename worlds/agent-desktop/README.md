@@ -1,7 +1,8 @@
 # Agent desktop
 
 One Ubuntu workstation for one agent: a user, the everyday applications, two seeded
-documents under `home/`, and an intranet wiki to browse. It is the middle size — bigger
+documents under `home/`, and an intranet wiki to browse, which starts as the wiki
+service's own fresh install. It is the middle size — bigger
 than [`unrelated-lab`](../unrelated-lab), which has no network at all, and small enough
 that a determinism run over it finishes in seconds where the
 [reference company](../company-2026) would not.

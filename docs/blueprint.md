@@ -50,7 +50,7 @@ services:
     kind: wiki
     node: intranet-server
     domains: [wiki.internal]
-    initial_state: {from_file: wiki/state.json}
+    initial_state: {brand: Team wiki}
     place:
       address: 10.0.1.10
       zone: local
@@ -146,8 +146,12 @@ directory of service files be a directory of service files.
 Anywhere a value belongs, `{from_file: <path>}` becomes that file's contents:
 
 ```yaml
-    initial_state: {from_file: wiki/state.json}
+    initial_state: {from_file: shop/catalog.json}
 ```
+
+A service that has a default needs none of this: a wiki with no `articles` starts
+with its own Main Page, and a search engine with no `documents` indexes the sites
+beside it. Reach for `from_file` when the content really is the world's own.
 
 Substitution does not reach inside a loaded file: data is data.
 
