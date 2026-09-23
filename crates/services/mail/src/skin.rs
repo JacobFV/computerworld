@@ -8,8 +8,9 @@
 //! `row-<id>` (the row is one link, with `-sender`, `-subject`, `-snippet`, `-time`,
 //! `-count` and `-avatar` inside), `new` (the compose form: `new-to`, `new-cc`,
 //! `new-subject`, `new-body`, `new-submit`), `read-<id>` with `-star`, `-read`, `-archive`
-//! (three buttons of one form), `-permalink`, `-link-<n>`, the `read-<id>-label` form, and
-//! `reply` (`reply-to`, `reply-subject`, `reply-body`, `reply-submit`).
+//! (three buttons of one form), `-permalink`, `-link-<n>`, `-file-<n>` (an attachment, a
+//! link its browser saves to Downloads), the `read-<id>-label` form, and `reply`
+//! (`reply-to`, `reply-subject`, `reply-body`, `reply-submit`).
 //!
 //! Every control here acts. `row-<id>-star` is the submit button of `row-<id>-star-form`,
 //! which posts `star=toggle` to `/messages/<id>` and comes back to the view it was pressed
@@ -17,7 +18,7 @@
 //! folder. Nothing is drawn that cannot be pressed: there is no fake category strip, no
 //! select-all box, no app launcher and no hamburger, because this world has no page script
 //! and nothing behind them.
-use crate::{stamp, MailState, Message, Nav};
+use crate::{attachment_size, stamp, url_name, MailState, Message, Nav};
 use cw_protocol::{HttpResponse, Result};
 use cw_service_common::html::{
     button, div, el, empty, form, fragment, hidden, href, label, link, span, text_input, Document,
@@ -113,6 +114,14 @@ fn at(folder: &str, thread: Option<&str>, compose: bool) -> String {
         params.push(("compose", "1"));
     }
     href("/", &params)
+}
+/// A file size the way a mail client writes it under an attachment.
+fn size(bytes: usize) -> String {
+    match bytes {
+        0..1024 => format!("{bytes} B"),
+        1024..1_048_576 => format!("{} KB", bytes.div_ceil(1024)),
+        _ => format!("{:.1} MB", bytes as f64 / 1_048_576.0),
+    }
 }
 fn snippet(body: &str, width: usize) -> String {
     let flat = body.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -610,6 +619,23 @@ impl View<'_> {
                         .id(format!("read-{id}-body"))
                         .child(prose(&format!("read-{id}"), &m.body)),
                 )
+                .when(!m.attachments.is_empty(), |a| {
+                    a.child(
+                        div("msg-files")
+                            .id(format!("read-{id}-files"))
+                            .attr("aria-label", "Attachments")
+                            .each(m.attachments.iter().enumerate(), |(i, (file, data))| {
+                                link(
+                                    &format!("read-{id}-file-{i}"),
+                                    format!("/attachments/{id}/{}", url_name(file)),
+                                    file.as_str(),
+                                )
+                                .class("file")
+                                .attr("download", file.as_str())
+                                .child(span("file-size").text(size(attachment_size(data))))
+                            }),
+                    )
+                })
                 .child(
                     form(&format!("read-{id}-actions"), route.as_str(), "post")
                         .class("msg-actions")

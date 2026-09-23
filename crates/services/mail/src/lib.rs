@@ -58,6 +58,10 @@ pub struct Message {
     /// mailbox written before threads existed serialises exactly as it did before.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub thread_id: String,
+    /// Attached files: name → the file's bytes in standard base64. Absent when there are
+    /// none, so a message without attachments serialises exactly as it did before them.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub attachments: BTreeMap<String, String>,
     pub mailboxes: BTreeMap<String, Mailbox>,
 }
 impl Message {
@@ -84,6 +88,85 @@ pub struct SendMail {
     pub cc: Vec<String>,
     pub subject: String,
     pub body: String,
+    /// Files to attach, name → base64, as [`Message::attachments`] holds them.
+    pub attachments: BTreeMap<String, String>,
+}
+/// The most one message may carry in attachments, decoded. The whole mailbox rides in the
+/// world's state, so a message is a letter and not a file share.
+pub const ATTACHMENT_BYTES: usize = 8 * 1024 * 1024;
+/// Refuse attachments a mail client would: a name that is a path, or is empty or hidden,
+/// bytes that are not base64, and more than [`ATTACHMENT_BYTES`] in all.
+pub fn check_attachments(attachments: &BTreeMap<String, String>) -> Result<(), String> {
+    let mut total = 0usize;
+    for (name, data) in attachments {
+        if name.trim().is_empty()
+            || name.starts_with('.')
+            || name.contains(['/', '\\', '\0'])
+            || name.chars().count() > 128
+        {
+            return Err(format!("{name:?} is not an attachment name"));
+        }
+        total += cw_protocol::decode_base64(data)
+            .map_err(|e| format!("attachment {name:?} is not base64: {e}"))?
+            .len();
+    }
+    if total > ATTACHMENT_BYTES {
+        return Err(format!(
+            "attachments total {total} bytes; a message holds at most {ATTACHMENT_BYTES}"
+        ));
+    }
+    Ok(())
+}
+/// The media type a file's extension names, for serving it and for its chip.
+pub fn media_type(name: &str) -> &'static str {
+    let ext = name.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase());
+    match ext.as_deref() {
+        Some("txt" | "log") => "text/plain; charset=utf-8",
+        Some("md") => "text/markdown; charset=utf-8",
+        Some("csv") => "text/csv; charset=utf-8",
+        Some("ics") => "text/calendar; charset=utf-8",
+        Some("json") => "application/json",
+        Some("pdf") => "application/pdf",
+        Some("zip") => "application/zip",
+        Some("png") => "image/png",
+        Some("jpg" | "jpeg") => "image/jpeg",
+        _ => "application/octet-stream",
+    }
+}
+/// How many bytes a base64 attachment holds, without decoding it.
+pub fn attachment_size(data: &str) -> usize {
+    let data = data.trim_end();
+    let pad = data.bytes().rev().take_while(|b| *b == b'=').count();
+    (data.len() / 4 * 3).saturating_sub(pad)
+}
+/// A name as it appears in an attachment's URL: everything but unreserved characters
+/// percent-encoded, so a name with spaces is still one path segment.
+pub fn url_name(name: &str) -> String {
+    let mut out = String::new();
+    for b in name.bytes() {
+        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    out
+}
+fn from_url_name(segment: &str) -> Option<String> {
+    let bytes = segment.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            let hex = std::str::from_utf8(bytes.get(i + 1..i + 3)?).ok()?;
+            out.push(u8::from_str_radix(hex, 16).ok()?);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).ok()
 }
 /// Everything a mailbox page needs to know about where the reader is standing.
 #[derive(Clone, Debug, Default)]
@@ -189,6 +272,7 @@ impl MailState {
         if input.to.is_empty() || input.subject.trim().is_empty() {
             return Err("recipient and subject required".into());
         }
+        check_attachments(&input.attachments)?;
         // Resolve every recipient before touching the store, so a bad address changes nothing.
         let mut local = Vec::new();
         for recipient in input.to.iter().chain(&input.cc) {
@@ -232,6 +316,7 @@ impl MailState {
             body: input.body,
             time,
             thread_id,
+            attachments: input.attachments,
             mailboxes,
         };
         self.messages.insert(message.id.clone(), message.clone());
@@ -278,6 +363,7 @@ impl MailState {
                             || m.subject.to_lowercase().contains(q)
                             || m.body.to_lowercase().contains(q)
                             || m.sender.to_lowercase().contains(q)
+                            || m.attachments.keys().any(|n| n.to_lowercase().contains(q))
                     })
             })
             .collect();
@@ -402,11 +488,57 @@ fn view(s: &MailState, actor: &str, nav: &Nav) -> SimResult<HttpResponse> {
         _ => plain(s, actor),
     }
 }
-/// Redact other people's mailbox metadata from anything that leaves over the API.
-fn mine(m: &Message, actor: &str) -> Message {
-    let mut m = m.clone();
-    m.mailboxes.retain(|u, _| u == actor);
-    m
+/// A message as it leaves over the API: other people's mailbox metadata redacted, and each
+/// attachment described — name, size, type and where to fetch it — rather than inlined.
+fn mine(m: &Message, actor: &str) -> Value {
+    let mut out = m.clone();
+    out.mailboxes.retain(|u, _| u == actor);
+    let files: Vec<Value> = std::mem::take(&mut out.attachments)
+        .iter()
+        .map(|(name, data)| {
+            json!({
+                "name": name,
+                "size": attachment_size(data),
+                "type": media_type(name).split(';').next().unwrap_or_default(),
+                "url": format!("/attachments/{}/{}", m.id, url_name(name)),
+            })
+        })
+        .collect();
+    let mut value = serde_json::to_value(out).unwrap_or(Value::Null);
+    if !files.is_empty() {
+        value["attachments"] = Value::Array(files);
+    }
+    value
+}
+/// One attachment's bytes, to someone whose mailbox holds the message. Served as an
+/// attachment, so a browser saves it to Downloads rather than showing it.
+fn attachment(s: &MailState, actor: &str, rest: &str) -> SimResult<HttpResponse> {
+    let found = rest.split_once('/').and_then(|(id, name)| {
+        let m = s.messages.get(id)?;
+        m.mailboxes.get(actor)?;
+        let name = from_url_name(name)?;
+        let data = m.attachments.get(&name)?;
+        Some((name, data))
+    });
+    let Some((name, data)) = found else {
+        return web::error(404, "attachment unavailable");
+    };
+    let body = cw_protocol::decode_base64(data).map_err(cw_protocol::SimError::invalid)?;
+    let quoted: String = name
+        .chars()
+        .map(|c| if c == '"' || c.is_control() { '_' } else { c })
+        .collect();
+    Ok(HttpResponse {
+        status: 200,
+        headers: BTreeMap::from([
+            ("content-type".into(), media_type(&name).into()),
+            (
+                "content-disposition".into(),
+                format!("attachment; filename=\"{quoted}\""),
+            ),
+        ]),
+        body,
+    })
 }
 impl Service for MailService {
     fn kind(&self) -> &str {
@@ -437,6 +569,10 @@ impl Service for MailService {
     fn initialize(&self, initial: Value, _: &ServiceContext) -> SimResult<Value> {
         let s: MailState = web::load(&initial)?;
         s.skin.check(SKINS)?;
+        for m in s.messages.values() {
+            check_attachments(&m.attachments)
+                .map_err(|e| cw_protocol::SimError::invalid(format!("{}: {e}", m.id)))?;
+        }
         if let Some(theme) = &s.theme {
             cw_protocol::Page {
                 version: 1,
@@ -471,6 +607,9 @@ impl Service for MailService {
         if method == "GET" {
             return match p.as_str() {
                 "/" => view(&s, &c.actor, &nav(None)),
+                t if t.starts_with("/attachments/") => {
+                    attachment(&s, &c.actor, t.trim_start_matches("/attachments/"))
+                }
                 // Conversation permalinks exist only where a page links to them; `plain` keeps
                 // its original route table, and therefore its original bytes.
                 t if skinned && t.starts_with("/threads/") => {
@@ -522,11 +661,21 @@ impl Service for MailService {
                     cc: web::strings(&b, "cc"),
                     subject: web::text(&b, "subject"),
                     body: web::text(&b, "body"),
+                    attachments: b
+                        .get("attachments")
+                        .and_then(Value::as_object)
+                        .map(|files| {
+                            files
+                                .iter()
+                                .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_owned()))
+                                .collect()
+                        })
+                        .unwrap_or_default(),
                 },
             )
             .map(|m| {
                 land.thread = Some(m.thread().to_owned());
-                json!(mine(&m, &c.actor))
+                mine(&m, &c.actor)
             })
         } else if method == "POST" && skinned && (p == "/search" || p == "/api/search") {
             s.search(&c.actor, &web::text(&b, "q"))
@@ -1295,5 +1444,145 @@ mod tests {
         assert!(MailService
             .initialize(json!({"skin":"proton"}), &context("alice"))
             .is_err());
+    }
+    fn with_files(files: &[(&str, &[u8])]) -> BTreeMap<String, String> {
+        files
+            .iter()
+            .map(|(name, bytes)| ((*name).to_owned(), base64(bytes)))
+            .collect()
+    }
+    fn base64(bytes: &[u8]) -> String {
+        const A: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut out = String::new();
+        for chunk in bytes.chunks(3) {
+            let b = [
+                chunk[0],
+                *chunk.get(1).unwrap_or(&0),
+                *chunk.get(2).unwrap_or(&0),
+            ];
+            let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
+            for i in 0..4 {
+                out.push(if i <= chunk.len() {
+                    A[(n >> (18 - 6 * i)) as usize & 63] as char
+                } else {
+                    '='
+                });
+            }
+        }
+        out
+    }
+    #[test]
+    fn attachments_are_served_only_to_a_mailbox_that_holds_them() {
+        let mut s = hosted();
+        s.users.insert("eve".into());
+        s.send(
+            "alice",
+            1,
+            SendMail {
+                to: vec!["bob".into()],
+                subject: "Plan".into(),
+                attachments: with_files(&[
+                    ("rollback plan.md", b"# Roll back\n"),
+                    ("b.zip", &[0x50, 0x4b, 0, 0xff]),
+                ]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let mut v = serde_json::to_value(s).unwrap();
+        let zip = get(&mut v, "bob", "http://mail/attachments/mail-1/b.zip");
+        assert_eq!(zip.status, 200);
+        assert_eq!(zip.body, [0x50, 0x4b, 0, 0xff]);
+        assert_eq!(zip.header("content-type"), Some("application/zip"));
+        assert_eq!(
+            zip.header("content-disposition"),
+            Some("attachment; filename=\"b.zip\"")
+        );
+        let spaced = get(
+            &mut v,
+            "alice",
+            "http://mail/attachments/mail-1/rollback%20plan.md",
+        );
+        assert_eq!(spaced.body, b"# Roll back\n");
+        assert_eq!(
+            get(&mut v, "eve", "http://mail/attachments/mail-1/b.zip").status,
+            404
+        );
+        assert_eq!(
+            get(&mut v, "bob", "http://mail/attachments/mail-1/c.zip").status,
+            404
+        );
+    }
+    #[test]
+    fn the_api_describes_attachments_rather_than_inlining_them() {
+        let mut v = serde_json::to_value(hosted()).unwrap();
+        let sent = MailService
+            .handle(
+                &mut v,
+                &context("alice"),
+                &HttpRequest::json(
+                    "POST",
+                    "http://mail/api/messages",
+                    &json!({"to":["bob"],"subject":"Owners","attachments":{"owners.csv": base64(b"section,owner\nci,bob\n")}}),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(sent.status, 200);
+        let listed: Value =
+            serde_json::from_slice(&get(&mut v, "bob", "http://mail/api/messages").body).unwrap();
+        assert_eq!(
+            listed[0]["attachments"],
+            json!([{"name":"owners.csv","size":21,"type":"text/csv","url":"/attachments/mail-1/owners.csv"}])
+        );
+        let bad = MailService
+            .handle(
+                &mut v,
+                &context("alice"),
+                &HttpRequest::json(
+                    "POST",
+                    "http://mail/api/messages",
+                    &json!({"to":["bob"],"subject":"Sneaky","attachments":{"../x": "aGk="}}),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(bad.status, 400);
+    }
+    #[test]
+    fn a_message_without_attachments_serialises_as_before_and_bad_seeds_are_refused() {
+        let mut s = state();
+        s.send("alice", 1, input()).unwrap();
+        assert!(!serde_json::to_string(&s).unwrap().contains("attachments"));
+        let mut v = serde_json::to_value(&s).unwrap();
+        v["messages"]["mail-1"]["attachments"] = json!({"x.txt": "not base64!"});
+        assert!(MailService.initialize(v, &context("alice")).is_err());
+    }
+    #[test]
+    fn every_skin_shows_a_messages_files_as_links_that_download() {
+        for skin in ["gmail", "outlook", "mailcom"] {
+            let mut s = hosted();
+            s.skin = web::Skin(skin.into());
+            s.send(
+                "alice",
+                1,
+                SendMail {
+                    to: vec!["bob".into()],
+                    subject: "Plan".into(),
+                    attachments: with_files(&[("plan.md", &[b'x'; 2048])]),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let mut v = serde_json::to_value(s).unwrap();
+            let page = Dom::of(&get(&mut v, "bob", "http://mail/?thread=mail-1"));
+            assert!(page.has("read-mail-1-files"), "{skin}");
+            assert_eq!(
+                page.attr("read-mail-1-file-0", "href"),
+                "/attachments/mail-1/plan.md"
+            );
+            assert_eq!(page.attr("read-mail-1-file-0", "download"), "plan.md");
+            assert!(page.text("read-mail-1-file-0").contains("2 KB"), "{skin}");
+        }
     }
 }

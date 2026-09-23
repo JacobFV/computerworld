@@ -145,6 +145,9 @@ button { cursor: pointer; }
 .msg-body { padding: 14px 0 6px 54px; font-size: 14px; line-height: 21px; }
 .msg-body p { margin: 0 0 12px 0; }
 .msg-body a { color: #1a73e8; text-decoration: underline; }
+.msg-files { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 0 10px 54px; }
+.msg-files .file { display: inline-block; padding: 8px 12px; border: 1px solid #dadce0; border-radius: 8px; color: #1f1f1f; font-size: 13px; line-height: 18px; text-decoration: none; background: #f8fafd; }
+.msg-files .file-size { margin-left: 8px; color: #5e5e5e; font-size: 12px; }
 .msg-actions { display: flex; align-items: center; gap: 8px; margin: 0; padding-left: 54px; }
 .msg-actions button, .msg-label button {
   height: 32px; padding: 0 16px; border: 1px solid #747775; border-radius: 16px; background: transparent;

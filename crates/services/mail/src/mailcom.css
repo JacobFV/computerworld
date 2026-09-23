@@ -112,6 +112,9 @@ button { cursor: pointer; }
 .msg-body { padding: 14px 0 4px 48px; font-size: 14px; line-height: 21px; }
 .msg-body p { margin: 0 0 12px 0; }
 .msg-body a { color: var(--accent); text-decoration: underline; }
+.msg-files { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 0 10px 48px; }
+.msg-files .file { display: inline-block; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 3px; color: #0f172a; font-size: 13px; line-height: 18px; text-decoration: none; background: #f8fafc; }
+.msg-files .file-size { margin-left: 8px; color: #64748b; font-size: 12px; }
 .msg-actions { display: flex; align-items: center; gap: 6px; margin: 0; padding-left: 48px; }
 .msg-actions button, .msg-label button { height: 28px; padding: 0 12px; border: 1px solid #b6c2d2; border-radius: 3px; background: linear-gradient(#ffffff, #eef2f7); color: var(--navy); font-size: 12px; font-weight: 700; }
 .msg-actions button:hover, .msg-label button:hover { border-color: var(--accent); }
