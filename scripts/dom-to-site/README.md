@@ -2,7 +2,7 @@
 
 A prototype that turns a real page's DOM into a computerworld site seed: the JSON a
 `static-site` (or `press`) service is initialised with, in the shape of
-`worlds/internet/sites/<id>.json`. Node 18+, ESM, no dependencies beyond the
+`worlds/internet/services/<id>/service.json`. Node 18+, ESM, no dependencies beyond the
 Playwright module already on this machine for the capture step. The assessment behind it
 is in [`research/notes/dom-to-site.md`](../../research/notes/dom-to-site.md).
 
@@ -30,7 +30,7 @@ node compare.mjs fixtures/news.capture.json fixtures/news.render.scene.json fixt
 `convert.mjs --as press` emits a seed for the press service instead (headlines, deks,
 bylines and sections synthesised from the capture; bodies are not copied), which
 `render.mjs` also loads. The converted file can be dropped into
-`worlds/internet/sites/` as is: it carries `place`, so `cw-world`
+`worlds/internet/services/<id>/service.json` as is: it carries `place`, so `cw-world`
 gives it a host, and stub pages for every same-site link so the `internet_links` crawl
 finds nothing dead.
 

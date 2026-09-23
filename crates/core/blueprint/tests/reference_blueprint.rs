@@ -76,7 +76,10 @@ fn a_blueprint_says_which_files_it_was_built_from() {
     let files = Host::at("worlds/company-2026");
     let resolved = cw_blueprint::resolve("world.yml", &files, &BTreeMap::new()).unwrap();
     assert!(resolved.read.contains("world.yml"));
-    assert!(resolved.read.contains("sites/northstar-www.json"));
+    assert!(resolved
+        .read
+        .contains("services/northstar-www/service.json"));
+    assert!(resolved.read.contains("services/github/overlay.json"));
     assert!(resolved
         .read
         .contains("computers/carol-ubuntu/computer.json"));

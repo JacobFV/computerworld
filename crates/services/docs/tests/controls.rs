@@ -12,7 +12,7 @@
 //! can. So the page's own stylesheet is read back, and every rule that paints a hover state or
 //! a pointer cursor must land on something that really is a link, a button or a field.
 //!
-//! The pages come from `worlds/internet/sites/*.json`, with the reference company's overlays, — the shipped seeds — read by two
+//! The pages come from `worlds/internet/services/*/service.json`, with the reference company's overlays, — the shipped seeds — read by two
 //! actors with different grants, plus synthetic states for the page kinds no seed reaches: an
 //! empty workspace, an empty deck, and a sheet and a deck their reader may not write.
 use cw_protocol::{HttpRequest, HttpResponse};

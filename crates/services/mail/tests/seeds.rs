@@ -1,4 +1,4 @@
-//! The three seeded mailboxes in `worlds/internet/sites` with the reference company's overlays must survive `initialize` and render.
+//! The three seeded mailboxes in `worlds/internet/services` with the reference company's overlays must survive `initialize` and render.
 //! A malformed seed is otherwise only discovered when the whole world is built.
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};

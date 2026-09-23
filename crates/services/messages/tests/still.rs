@@ -57,7 +57,7 @@ fn render(html: &str, path: &str, viewport: Viewport) {
 #[test]
 #[ignore]
 fn messages_stills() {
-    let raw = std::fs::read_to_string("../../../worlds/company-2026/sites/messages.json").unwrap();
+    let raw = std::fs::read_to_string("../../../worlds/company-2026/services/messages/service.json").unwrap();
     let site: Value = serde_json::from_str(&raw).unwrap();
     let ctx = ServiceContext {
         actor: "alice".into(),

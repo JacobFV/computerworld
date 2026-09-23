@@ -23,7 +23,7 @@ fn ctx(actor: &str, tick: u64) -> ServiceContext {
 }
 fn seeded() -> Value {
     let raw =
-        std::fs::read_to_string("../../../worlds/company-2026/sites/messages.json").expect("site");
+        std::fs::read_to_string("../../../worlds/company-2026/services/messages/service.json").expect("site");
     let site: Value = serde_json::from_str(&raw).expect("site file parses");
     MessagesService
         .initialize(site["initial_state"].clone(), &ctx("alice", 0))

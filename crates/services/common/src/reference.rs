@@ -1,7 +1,7 @@
 //! A site as the reference world has it, for a service's tests.
 //!
 //! The internet's sites are neutral; the reference company's people and content on them are
-//! its overlay, in `worlds/company-2026/overlays/`. A test that pins that content reads the
+//! its overlay, in `worlds/company-2026/services/<id>/overlay.json`. A test that pins that content reads the
 //! site through here and gets both, merged exactly as the internet joins the world. One of
 //! the company's own sites (its intranet, its blogs) is read as it is.
 use serde_json::Value;
@@ -19,12 +19,12 @@ fn read(path: PathBuf) -> Option<Value> {
 /// The site file with this id, with the reference company's overlay applied if it has one.
 pub fn reference_site(id: &str) -> Value {
     let worlds = worlds();
-    if let Some(own) = read(worlds.join(format!("company-2026/sites/{id}.json"))) {
+    if let Some(own) = read(worlds.join(format!("company-2026/services/{id}/service.json"))) {
         return own;
     }
-    let base = read(worlds.join(format!("internet/sites/{id}.json")))
+    let base = read(worlds.join(format!("internet/services/{id}/service.json")))
         .unwrap_or_else(|| panic!("no site {id} in the internet or the reference company"));
-    let Some(overlay) = read(worlds.join(format!("company-2026/overlays/{id}.json"))) else {
+    let Some(overlay) = read(worlds.join(format!("company-2026/services/{id}/overlay.json"))) else {
         return base;
     };
     let site: cw_protocol::ServiceDefinition =

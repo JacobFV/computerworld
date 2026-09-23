@@ -40,10 +40,10 @@ encyclopedias, forums, shops, an AI assistant and so on. `app-server` uplinks to
 `edge-router`, and the company's own public sites — `northstar.example`,
 `status.northstar.example`, `eng.northstar.example`, `guide.example` and the two staff
 blogs — hang off its points of presence. Those, the `.internal` services and the home
-speakers are the only sites under `sites/` here. The company's people and content on the
+speakers are the only services it runs, each a `service.json` under `services/<id>/`. The company's people and content on the
 shared sites — Alice's inbox on `mail.google.com`, Northstar's repositories on `github.com`,
-the team's posts, orders and videos — are its overlays under `overlays/`, one file per
-site, named in `world.yml`'s `internet_overlays`.
+the team's posts, orders and videos — are its overlays, each an `overlay.json` in the
+directory named for the site: `services/google-mail/overlay.json`, `services/github/overlay.json`.
 
 ## The directories
 
@@ -53,8 +53,8 @@ four directories are what the blueprint and the site build read.
 | Directory | Read by | Becomes |
 |---|---|---|
 | `computers/` | `world.yml`'s `include:` list | One directory per machine: `computer.json` is its definition, and `root/` holds the files it starts with at the paths they have on it — `alice-mac/root/Users/alice`, `bob-windows/root/C/Users/bob` (the top directory is the drive), `carol-ubuntu/root/home/carol`. |
-| `sites/` | `world.yml`'s `include:` list | The company's own services, one per file, each placing its own node, link and DNS records — and the bedroom speaker, which is unplugged, so its file is only the node and link a running speaker would place. |
-| `overlays/` | `world.yml`'s `internet_overlays:` | The company's own content on the internet's shared sites, merged into each as the internet joins. |
+| `services/` | `world.yml`'s `include:` list | One directory per service. `service.json` is a service the company runs, placing its own node, link and DNS records; `overlay.json` is the company's content on the internet's service of that name, merged into it as the internet joins. |
+| `sites/` | `world.yml`'s `include:` list | The bedroom speaker's node and link: it is unplugged, so no service answers there. |
 | `samples/` | `scripts/content/build-live-world.mjs` | The documents and media the live site's machines start with. |
 
 `samples/` is the one that does not reach `world.json`. Its eight files are written by the

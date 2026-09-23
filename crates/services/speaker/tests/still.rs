@@ -100,7 +100,7 @@ fn render(state: &mut Value, host: &str, html: &str, file: &str, viewport: Viewp
 }
 fn site(name: &str) -> (String, Value) {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join(format!("../../../worlds/company-2026/sites/{name}.json"));
+        .join(format!("../../../worlds/company-2026/services/{name}/service.json"));
     let file: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     let host = file["domains"][0].as_str().unwrap().to_owned();
     let state = SpeakerService

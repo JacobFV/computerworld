@@ -85,15 +85,13 @@ filesystem: `root/home/carol/notes.txt` is `/home/carol/notes.txt` on it, and so
 `root/home/${AGENT_USER}`, and substitutes like any other string.
 
 ```yaml
-computers: []
 include:
   - computers/carol-ubuntu/computer.json
   - computers/app-server/computer.json
 ```
 
-Include them in the order they should appear, and give `computers:` its place
-in the blueprint so the world file keeps the order it was written in. A glob such
-as `computers/*/computer.json` works too, and orders them by name.
+Include them in the order they should appear. A glob such as
+`computers/*/computer.json` works too, and orders them by name.
 
 `root/` is a `copy:` entry with `to: /`, inserted ahead of any the computer
 states, so the rules below apply to it.
@@ -159,7 +157,7 @@ than replacing it in place would reorder every service after it.
 ```yaml
 extends: base/world.yml
 include:
-  - sites/*.json
+  - services/*/service.json
   - devices/*.yml
 ```
 
@@ -176,7 +174,23 @@ whatever was there.
 A fragment is a whole world document, **one service on its own**, recognised by
 its `kind`, or **one computer on its own**, recognised by its `profile` — keys no
 world document has. That is what lets a directory of service files be a directory
-of service files, and a machine be a directory of its own.
+of service files, and a machine be a directory of its own. A `service.json` or
+`computer.json` must declare the id its directory is named for.
+
+A file named `overlay.json` is **this world's content on an internet service**:
+`services/github/overlay.json` becomes `internet_overlays.github`, so a world's
+services — the ones it runs and the ones it only has accounts on — are one
+directory each under `services/`:
+
+```yaml
+include:
+  - services/intranet/service.json
+  - services/*/overlay.json
+```
+
+A key a fragment brings that the blueprint does not state takes the place the
+world schema gives it, so a blueprint whose computers all come from their own
+files needs no `computers: []` to hold that place open.
 
 ## `from_file:` — a value that lives in its own file
 
@@ -299,8 +313,8 @@ is one machine, one service and one input, and builds
 [`worlds/agent-desktop/world.json`](../worlds/agent-desktop/world.json).
 
 [`worlds/company-2026/world.yml`](../worlds/company-2026/world.yml) is the
-reference company: six hundred lines that resolve to the three-and-a-half-megabyte
-world file beside it. Five machines under `computers/`, each seeded from its own `root/`, eighty-seven services
-each in its own file under `sites/`, and forty-six of its hundred and two nodes,
-forty-six of its hundred and two links and a hundred and eighteen of its two
-hundred and thirty DNS records derived from a `place:` block rather than written.
+reference company, resolving to the two-megabyte world file beside it: five
+machines under `computers/`, each seeded from its own `root/`, the services the
+company runs each in a `services/<id>/service.json` that places itself, and its
+content on seventy-three of the internet's services in their
+`services/<id>/overlay.json`.

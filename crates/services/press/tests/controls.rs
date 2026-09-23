@@ -32,15 +32,15 @@ static SITES: std::sync::LazyLock<Vec<(&'static str, &'static str)>> =
             ),
             (
                 "alice-blog",
-                include_str!("../../../../worlds/company-2026/sites/alice-blog.json"),
+                include_str!("../../../../worlds/company-2026/services/alice-blog/service.json"),
             ),
             (
                 "bob-blog",
-                include_str!("../../../../worlds/company-2026/sites/bob-blog.json"),
+                include_str!("../../../../worlds/company-2026/services/bob-blog/service.json"),
             ),
             (
                 "northstar-eng",
-                include_str!("../../../../worlds/company-2026/sites/northstar-eng.json"),
+                include_str!("../../../../worlds/company-2026/services/northstar-eng/service.json"),
             ),
             (
                 "nytimes",

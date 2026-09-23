@@ -147,6 +147,7 @@ fn load_one(
                 false,
                 false,
             )?;
+            make_room(&mut document, &loaded);
             merge(&mut document, loaded, &mut String::new(), &fragment)?;
             // Placing now, rather than once at the end, is what keeps this
             // fragment's nodes and links next to the ones it generated.
@@ -164,21 +165,28 @@ fn load_one(
 /// its `profile`, neither of which a world document has — so a directory of
 /// service files needs no wrapper object repeated ninety-three times, and a
 /// computer lives in `computers/<id>/computer.json` beside the files it holds.
+///
+/// A file named `overlay.json` is none of these: it is this world's content for
+/// the internet's service named by its directory, so `services/github/overlay.json`
+/// is `internet_overlays.github`. A `computer.json` or `service.json` must declare
+/// the id its directory is named for, so a directory listing is a true index.
 fn as_world_fragment(node: Node, path: &str, files: &dyn Files) -> Result<Node, Error> {
     let Some(map) = node.as_map() else {
         return Err(Error::at(path, "a fragment is a mapping"));
     };
-    let key = if map.contains_key("kind") {
-        "services"
+    let mut segments = path.rsplit('/');
+    let file = segments.next().unwrap_or(path);
+    let stem = file.rsplit_once('.').map_or(file, |(stem, _)| stem);
+    let directory = segments.next();
+
+    let (key, what) = if stem == "overlay" {
+        ("internet_overlays", "an overlay")
+    } else if map.contains_key("kind") {
+        ("services", "a service")
     } else if map.contains_key("profile") {
-        "computers"
+        ("computers", "a computer")
     } else {
         return Ok(node);
-    };
-    let what = if key == "services" {
-        "a service"
-    } else {
-        "a computer"
     };
     for directive in ["include", "extends"] {
         if map.contains_key(directive) {
@@ -188,14 +196,85 @@ fn as_world_fragment(node: Node, path: &str, files: &dyn Files) -> Result<Node, 
             ));
         }
     }
-    let node = if key == "computers" {
-        with_root(node, path, files)?
-    } else {
-        node
-    };
+    if matches!(stem, "overlay" | "service" | "computer") && directory.is_none() {
+        return Err(Error::at(
+            path,
+            format!("{what} named {file} lives in a directory named for its id"),
+        ));
+    }
     let mut world = Map::new();
-    world.insert(key, Node::List(vec![node]));
+    match key {
+        "internet_overlays" => {
+            let mut overlays = Map::new();
+            overlays.insert(directory.unwrap_or_default(), node);
+            world.insert(key, Node::Map(overlays));
+        }
+        _ => {
+            if let (Some(directory), "service" | "computer") = (directory, stem) {
+                let id = map.get("id").and_then(Node::as_str);
+                if id != Some(directory) {
+                    return Err(Error::at(
+                        path,
+                        format!(
+                            "declares id {id:?} but its directory is named {directory:?}; \
+                             the two are the same name"
+                        ),
+                    ));
+                }
+            }
+            let node = if key == "computers" {
+                with_root(node, path, files)?
+            } else {
+                node
+            };
+            world.insert(key, Node::List(vec![node]));
+        }
+    }
     Ok(Node::Map(world))
+}
+
+/// The order the world schema lists its keys in, which is the order a world
+/// file writes them in.
+const KEY_ORDER: &[&str] = &[
+    "schema_version",
+    "id",
+    "internet",
+    "profiles",
+    "computers",
+    "network",
+    "services",
+    "internet_overlays",
+    "metadata",
+];
+
+/// Give each key a fragment brings that the document lacks an empty place where
+/// the schema orders it, before the key after it that the document has. A
+/// blueprint whose computers or overlays all come from their own files then
+/// writes them where a hand-written world would, with no `computers: []` held
+/// open for them.
+fn make_room(document: &mut Node, fragment: &Node) {
+    let (Some(into), Some(from)) = (document.as_map_mut(), fragment.as_map()) else {
+        return;
+    };
+    for (key, value) in from.iter() {
+        if into.contains_key(key) {
+            continue;
+        }
+        let Some(rank) = KEY_ORDER.iter().position(|k| *k == key) else {
+            continue;
+        };
+        let empty = match value {
+            Node::List(_) => Node::List(vec![]),
+            Node::Map(_) => Node::Map(Map::new()),
+            _ => continue,
+        };
+        let at = KEY_ORDER[rank + 1..]
+            .iter()
+            .filter_map(|later| into.position(later))
+            .min()
+            .unwrap_or(into.len());
+        into.insert_at(at, key, empty);
+    }
 }
 
 /// A computer fragment with a `root/` directory beside it starts with that

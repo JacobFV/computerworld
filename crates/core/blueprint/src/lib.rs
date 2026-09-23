@@ -252,6 +252,14 @@ pub fn resolve(
     let (mut document, compact_services) = (loaded.document, loaded.fragment_services);
 
     place::sort_dns(&mut document);
+    // Overlays come from `services/*/overlay.json`, whose paths sort `youtube-music`
+    // before `youtube`; the world file keeps them in the order of their ids.
+    if let Some(Node::Map(overlays)) = document
+        .as_map_mut()
+        .and_then(|m| m.get_mut("internet_overlays"))
+    {
+        overlays.sort_by_key_bytes();
+    }
     let limits = document.as_map_mut().and_then(|m| m.remove("limits"));
     // A `root/` directory's paths are written into the world too, so a secret
     // named in one is refused along with one anywhere else.

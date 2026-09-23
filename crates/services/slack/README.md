@@ -4,7 +4,7 @@ A Slack workspace with Slack's semantics: channels with a topic and a purpose, d
 messages between two people or a small group, threads under a message, reactions, pins,
 a member directory with display names, titles and statuses, an unread count per person
 per conversation, and @-mentions. Register `cw_service_slack::SlackService` or
-`register(&mut Registry)`. The reference world binds `worlds/internet/sites/slack.json`
+`register(&mut Registry)`. The reference world binds `worlds/internet/services/slack/service.json`
 to it (`slack.com`, `app.slack.com`, `northstar.slack.com`).
 
 Seed:

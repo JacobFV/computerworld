@@ -38,7 +38,7 @@ See [creating a world](custom-world.md) and the
 
 `worlds/company-2026/world.json` is **generated**, not hand-written: it is resolved from
 [`worlds/company-2026/world.yml`](../worlds/company-2026/world.yml) by `cw-world`, which
-merges in `computers/<id>/computer.json` and `sites/*.json`, seeds each machine from its
+merges in `computers/<id>/computer.json` and `services/<id>/{service,overlay}.json`, seeds each machine from its
 `computers/<id>/root/` and derives each service's node,
 link and DNS records; the search engines index the sites' `search_entries` themselves when
 the world boots, and `scripts/build-content.sh` runs the pipeline. Edit the blueprint, not the

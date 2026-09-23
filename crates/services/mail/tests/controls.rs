@@ -1,6 +1,6 @@
 //! Every control on every mail page leads somewhere.
 //!
-//! The service is crawled skin by skin from the seeded mailboxes in `worlds/internet/sites` with the reference company's overlays,
+//! The service is crawled skin by skin from the seeded mailboxes in `worlds/internet/services` with the reference company's overlays,
 //! plus the states a reader can put a mailbox into: searching, labelled, starred and empty. Each
 //! page is parsed and strictly validated, then every link, every form and every button that
 //! submits one is collected and answered by the router. A link whose target 404s, a form posting

@@ -1,4 +1,4 @@
-//! The seeded Google Calendar in `worlds/internet/sites` with the reference company's overlays must survive `initialize`, render,
+//! The seeded Google Calendar in `worlds/internet/services` with the reference company's overlays must survive `initialize`, render,
 //! and — the bug this file exists to catch — carry times in microseconds rather than milliseconds.
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};

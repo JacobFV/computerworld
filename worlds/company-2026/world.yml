@@ -5,7 +5,7 @@
 #     cargo run -p cw-blueprint --bin cw-world -- build worlds/company-2026/world.yml
 #
 # Each machine is a directory under `computers/`, every service but the six below
-# comes from its own file under `sites/`, and each of those places its own node,
+# comes from its own `services/<id>/service.json`, and each of those places its own node,
 # link and DNS records through the `place:` block and the defaults here. The
 # public web is not declared here: the world joins the built-in internet
 # (worlds/internet) at boot, uplinks to it from app-server through edge-router,
@@ -38,10 +38,6 @@ profiles:
     home: "/home/{user}"
     case_sensitive: true
     shell: "posix"
-# Each machine is `computers/<id>/computer.json`, with the files it starts with
-# under `computers/<id>/root/` at their own paths on it. They are listed in
-# `include:` in the order they appear, and land here.
-computers: []
 network:
   nodes:
     - {id: "alice-mac", address: "10.0.0.10", zone: "local"}
@@ -268,80 +264,6 @@ services:
 # The company's own people and content on the internet's shared sites: Alice's inbox,
 # Northstar's repositories, the team's posts. Each file is merged into that site as the
 # internet joins, as a JSON merge patch: objects key by key, anything else restated.
-internet_overlays:
-  airbnb: {from_file: "overlays/airbnb.json"}
-  amazon: {from_file: "overlays/amazon.json"}
-  anthropic: {from_file: "overlays/anthropic.json"}
-  archive: {from_file: "overlays/archive.json"}
-  arstechnica: {from_file: "overlays/arstechnica.json"}
-  aws: {from_file: "overlays/aws.json"}
-  bbc: {from_file: "overlays/bbc.json"}
-  bing-search: {from_file: "overlays/bing-search.json"}
-  booking: {from_file: "overlays/booking.json"}
-  bsky: {from_file: "overlays/bsky.json"}
-  cloudflare: {from_file: "overlays/cloudflare.json"}
-  cnn: {from_file: "overlays/cnn.json"}
-  craigslist: {from_file: "overlays/craigslist.json"}
-  crates: {from_file: "overlays/crates.json"}
-  ddg-search: {from_file: "overlays/ddg-search.json"}
-  discord: {from_file: "overlays/discord.json"}
-  docsrs: {from_file: "overlays/docsrs.json"}
-  doordash: {from_file: "overlays/doordash.json"}
-  dropbox: {from_file: "overlays/dropbox.json"}
-  ebay: {from_file: "overlays/ebay.json"}
-  etsy: {from_file: "overlays/etsy.json"}
-  facebook: {from_file: "overlays/facebook.json"}
-  figma: {from_file: "overlays/figma.json"}
-  github: {from_file: "overlays/github.json"}
-  gitlab: {from_file: "overlays/gitlab.json"}
-  google-calendar: {from_file: "overlays/google-calendar.json"}
-  google-docs: {from_file: "overlays/google-docs.json"}
-  google-drive: {from_file: "overlays/google-drive.json"}
-  google-mail: {from_file: "overlays/google-mail.json"}
-  google-maps: {from_file: "overlays/google-maps.json"}
-  google-news: {from_file: "overlays/google-news.json"}
-  google-search: {from_file: "overlays/google-search.json"}
-  hackernews: {from_file: "overlays/hackernews.json"}
-  imdb: {from_file: "overlays/imdb.json"}
-  instagram: {from_file: "overlays/instagram.json"}
-  linear: {from_file: "overlays/linear.json"}
-  linkedin: {from_file: "overlays/linkedin.json"}
-  mail-com: {from_file: "overlays/mail-com.json"}
-  mastodon: {from_file: "overlays/mastodon.json"}
-  medium: {from_file: "overlays/medium.json"}
-  netflix: {from_file: "overlays/netflix.json"}
-  northwind: {from_file: "overlays/northwind.json"}
-  notion: {from_file: "overlays/notion.json"}
-  npmjs: {from_file: "overlays/npmjs.json"}
-  nytimes: {from_file: "overlays/nytimes.json"}
-  openai: {from_file: "overlays/openai.json"}
-  osm: {from_file: "overlays/osm.json"}
-  outlook-mail: {from_file: "overlays/outlook-mail.json"}
-  paypal: {from_file: "overlays/paypal.json"}
-  pinterest: {from_file: "overlays/pinterest.json"}
-  pypi: {from_file: "overlays/pypi.json"}
-  quora: {from_file: "overlays/quora.json"}
-  reddit: {from_file: "overlays/reddit.json"}
-  reuters: {from_file: "overlays/reuters.json"}
-  slack: {from_file: "overlays/slack.json"}
-  soundcloud: {from_file: "overlays/soundcloud.json"}
-  spotify: {from_file: "overlays/spotify.json"}
-  stackoverflow: {from_file: "overlays/stackoverflow.json"}
-  stripe: {from_file: "overlays/stripe.json"}
-  substack: {from_file: "overlays/substack.json"}
-  theverge: {from_file: "overlays/theverge.json"}
-  ticketmaster: {from_file: "overlays/ticketmaster.json"}
-  tiktok: {from_file: "overlays/tiktok.json"}
-  twitch: {from_file: "overlays/twitch.json"}
-  uber: {from_file: "overlays/uber.json"}
-  vimeo: {from_file: "overlays/vimeo.json"}
-  weather: {from_file: "overlays/weather.json"}
-  wikipedia: {from_file: "overlays/wikipedia.json"}
-  x-social: {from_file: "overlays/x-social.json"}
-  yelp: {from_file: "overlays/yelp.json"}
-  youtube: {from_file: "overlays/youtube.json"}
-  youtube-music: {from_file: "overlays/youtube-music.json"}
-  zoom: {from_file: "overlays/zoom.json"}
 metadata:
   description: "Fictional small company ecosystem"
   users: ["alice", "bob", "carol", "admin"]
@@ -352,21 +274,27 @@ metadata:
     "carol-ubuntu": "laptop"
     "app-server": "server"
     "git-server": "server"
+# Each machine is `computers/<id>/`: `computer.json`, and under `root/` the files
+# it starts with at their own paths on it. Each service is `services/<id>/`:
+# `service.json` for one the company runs, `overlay.json` for the company's
+# content on the internet's service of that name. Machines and the company's own
+# services are listed in the order the world file keeps them in.
 include:
   - "computers/alice-mac/computer.json"
   - "computers/bob-windows/computer.json"
   - "computers/carol-ubuntu/computer.json"
   - "computers/app-server/computer.json"
   - "computers/git-server/computer.json"
-  - "sites/intranet.json"
-  - "sites/guide.json"
-  - "sites/alice-blog.json"
-  - "sites/bob-blog.json"
-  - "sites/northstar-eng.json"
-  - "sites/northstar-status.json"
-  - "sites/northstar-www.json"
-  - "sites/kitchen-speaker.json"
-  - "sites/livingroom-speaker.json"
-  - "sites/office-tv-speaker.json"
+  - "services/intranet/service.json"
+  - "services/guide/service.json"
+  - "services/alice-blog/service.json"
+  - "services/bob-blog/service.json"
+  - "services/northstar-eng/service.json"
+  - "services/northstar-status/service.json"
+  - "services/northstar-www/service.json"
+  - "services/kitchen-speaker/service.json"
+  - "services/livingroom-speaker/service.json"
+  - "services/office-tv-speaker/service.json"
   - "sites/bedroom-speaker.json"
-  - "sites/messages.json"
+  - "services/messages/service.json"
+  - "services/*/overlay.json"

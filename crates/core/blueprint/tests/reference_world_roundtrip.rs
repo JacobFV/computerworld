@@ -56,21 +56,18 @@ fn round_trips_with_its_sites(root: &str) {
     let text = fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let world = json::parse(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
 
-    // Every service that came from `sites/<id>.json` is written on one line.
-    let sites_dir = repo_path(&format!("{root}/sites"));
-    let sites: BTreeSet<String> = fs::read_dir(&sites_dir)
-        .unwrap_or_else(|e| panic!("{}: {e}", sites_dir.display()))
-        .map(|entry| entry.expect("a directory entry").file_name())
-        .filter_map(|name| {
-            name.to_str()
-                .and_then(|name| name.strip_suffix(".json"))
-                .map(str::to_string)
-        })
+    // Every service that came from its own `services/<id>/service.json` is written on one line.
+    let services_dir = repo_path(&format!("{root}/services"));
+    let sites: BTreeSet<String> = fs::read_dir(&services_dir)
+        .unwrap_or_else(|e| panic!("{}: {e}", services_dir.display()))
+        .map(|entry| entry.expect("a directory entry").path())
+        .filter(|dir| dir.join("service.json").is_file())
+        .filter_map(|dir| dir.file_name()?.to_str().map(str::to_string))
         .collect();
     assert!(
         !sites.is_empty(),
-        "no sites found in {}",
-        sites_dir.display()
+        "no services found in {}",
+        services_dir.display()
     );
 
     let services = world

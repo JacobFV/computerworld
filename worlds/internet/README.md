@@ -23,10 +23,12 @@ the whole of `world.json`, and boots only worlds that set `internet: false`.
 **The content is neutral.** Nobody from any particular world is on these sites: the public
 is fictional people with no story, and private per-person data — mailboxes, calendars,
 drives, orders — starts empty. A world adds its own people and content through
-`internet_overlays`, one overlay per site, merged in as the internet joins like a JSON merge
+`internet_overlays`, one overlay per site — in a blueprint, `services/<id>/overlay.json` —
+merged in as the internet joins like a JSON merge
 patch: objects key by key, any other value (a list included) restated whole, and
 `search_entries` and `domains` appended. The
-reference company's are in [`company-2026/overlays`](../company-2026/overlays), which is
+reference company's are the `overlay.json` files under
+[`company-2026/services`](../company-2026/services), which is
 where Alice's inbox and Northstar's repositories now live. `cargo test -p cw-internet`
 fails if a name from that story appears here, and `--test internet_alone` boots every site
 in a world with no company at all.
@@ -86,8 +88,8 @@ same seed.
 
 ## Adding or editing a site
 
-Seed data lives in one file per site under `worlds/internet/sites/<service-id>.json`,
-never directly in `world.json`. The basename must equal the `id`.
+Seed data lives in one file per site under `worlds/internet/services/<service-id>/service.json`,
+never directly in `world.json`. The directory name must equal the `id`.
 
 ```json
 {

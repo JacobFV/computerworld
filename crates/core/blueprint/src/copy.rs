@@ -502,6 +502,59 @@ mod tests {
         assert_eq!(seeded.keys().collect::<Vec<_>>(), ["notes.txt"]);
     }
 
+    fn world_with(extra: &[(&str, &[u8])]) -> Fake {
+        let mut files = vec![(
+            "world.yml",
+            &b"schema_version: 1\nid: w\ninternet: false\nprofiles:\n  - {id: u, name: U, family: linux, home: \"/home/{user}\", shell: posix}\nmetadata: {description: w}\ninclude: [computers/*/computer.json, services/*/overlay.json]\n"[..],
+        )];
+        files.extend_from_slice(extra);
+        Fake::with(&files)
+    }
+
+    #[test]
+    fn a_computer_whose_id_is_not_its_directory_is_refused() {
+        let files = world_with(&[(
+            "computers/lab/computer.json",
+            b"{\"id\": \"bench\", \"profile\": \"u\", \"address\": \"10.0.0.2\", \"user\": \"ada\"}",
+        )]);
+        let error = crate::resolve("world.yml", &files, &BTreeMap::new())
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("its directory is named \"lab\""), "{error}");
+    }
+
+    #[test]
+    fn an_overlay_is_named_by_its_directory_and_computers_take_their_schema_place() {
+        let files = world_with(&[
+            (
+                "computers/lab/computer.json",
+                b"{\"id\": \"lab\", \"profile\": \"u\", \"address\": \"10.0.0.2\", \"user\": \"ada\"}",
+            ),
+            ("services/github/overlay.json", b"{\"initial_state\": {}}"),
+        ]);
+        let world = crate::merge::load("world.yml", &files, &mut BTreeSet::new(), &mut no_inputs())
+            .unwrap()
+            .document;
+        let keys: Vec<_> = world.as_map().unwrap().keys().collect();
+        assert_eq!(
+            keys,
+            [
+                "schema_version",
+                "id",
+                "internet",
+                "profiles",
+                "computers",
+                "internet_overlays",
+                "metadata"
+            ]
+        );
+        assert!(world
+            .get("internet_overlays")
+            .unwrap()
+            .get("github")
+            .is_some());
+    }
+
     #[test]
     fn a_windows_root_starts_with_the_drive() {
         assert_eq!(mirror("C/Users/bob/a.txt", "C:/Users/bob", true), "a.txt");

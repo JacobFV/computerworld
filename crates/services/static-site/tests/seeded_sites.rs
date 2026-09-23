@@ -39,11 +39,11 @@ static SITES: std::sync::LazyLock<Vec<(&'static str, &'static str)>> =
             ),
             (
                 "guide",
-                include_str!("../../../../worlds/company-2026/sites/guide.json"),
+                include_str!("../../../../worlds/company-2026/services/guide/service.json"),
             ),
             (
                 "intranet",
-                include_str!("../../../../worlds/company-2026/sites/intranet.json"),
+                include_str!("../../../../worlds/company-2026/services/intranet/service.json"),
             ),
             (
                 "microsoft",
@@ -51,11 +51,11 @@ static SITES: std::sync::LazyLock<Vec<(&'static str, &'static str)>> =
             ),
             (
                 "northstar-status",
-                include_str!("../../../../worlds/company-2026/sites/northstar-status.json"),
+                include_str!("../../../../worlds/company-2026/services/northstar-status/service.json"),
             ),
             (
                 "northstar-www",
-                include_str!("../../../../worlds/company-2026/sites/northstar-www.json"),
+                include_str!("../../../../worlds/company-2026/services/northstar-www/service.json"),
             ),
             (
                 "npmjs",
