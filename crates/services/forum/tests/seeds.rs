@@ -25,7 +25,7 @@ fn ctx(actor: &str) -> ServiceContext {
 }
 fn site(name: &str) -> Value {
     let path = format!(
-        "{}/../../../worlds/company-2026/sites/{name}.json",
+        "{}/../../../worlds/internet/sites/{name}.json",
         env!("CARGO_MANIFEST_DIR")
     );
     serde_json::from_str(&std::fs::read_to_string(&path).expect(&path)).unwrap()

@@ -5,8 +5,8 @@ use cw_sdk::{Service, ServiceContext};
 use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_service_drive::{DriveService, DriveState, NodeKind};
 use serde_json::Value;
-const DRIVE: &str = include_str!("../../../../worlds/company-2026/sites/google-drive.json");
-const DROPBOX: &str = include_str!("../../../../worlds/company-2026/sites/dropbox.json");
+const DRIVE: &str = include_str!("../../../../worlds/internet/sites/google-drive.json");
+const DROPBOX: &str = include_str!("../../../../worlds/internet/sites/dropbox.json");
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
         actor: actor.into(),

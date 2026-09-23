@@ -11,8 +11,8 @@ use cw_web::{Strictness, Viewport};
 use serde_json::Value;
 use std::path::PathBuf;
 
-const NORTHWIND: &str = include_str!("../../../../worlds/company-2026/sites/northwind.json");
-const PAYPAL: &str = include_str!("../../../../worlds/company-2026/sites/paypal.json");
+const NORTHWIND: &str = include_str!("../../../../worlds/internet/sites/northwind.json");
+const PAYPAL: &str = include_str!("../../../../worlds/internet/sites/paypal.json");
 
 fn render(html: &str, file: &str, viewport: Viewport) {
     let doc = cw_web::html::parse(html);

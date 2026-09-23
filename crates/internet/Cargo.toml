@@ -1,0 +1,11 @@
+[package]
+name = "cw-internet"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The built-in internet every world joins unless it opts out: public sites, backbone and public DNS"
+
+[dependencies]
+cw-protocol = { path = "../core/protocol" }
+serde_json.workspace = true

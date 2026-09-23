@@ -7,7 +7,10 @@ license.workspace = true
 description = "Deterministic synthetic computer worlds with native, Wasm and Python interfaces"
 
 [features]
-default = ["render"]
+default = ["render", "internet"]
+# The built-in internet every world joins unless it sets `internet: false`. Off, the
+# package drops its public sites, and only worlds that opt out will boot.
+internet = ["dep:cw-internet"]
 render = ["dep:cw-render", "dep:png", "dep:jpeg-decoder"]
 
 [dependencies]
@@ -25,6 +28,7 @@ jpeg-decoder = { version = "0.3", optional = true, default-features = false, fea
     "platform_independent",
 ] }
 cw-services = { path = "../services" }
+cw-internet = { path = "../internet", optional = true }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

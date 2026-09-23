@@ -10,6 +10,7 @@ members = [
     "crates/engines/*",
     "crates/bindings/*",
     "crates/applications",
+    "crates/internet",
     "crates/services",
     "crates/services/assistant",
     "crates/services/bank",

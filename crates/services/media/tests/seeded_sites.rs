@@ -6,10 +6,9 @@ use cw_protocol::{HttpRequest, HttpResponse};
 use cw_sdk::{Service, ServiceContext};
 use cw_service_media::MediaService;
 use serde_json::Value;
-const YOUTUBE: &str = include_str!("../../../../worlds/company-2026/sites/youtube.json");
-const SPOTIFY: &str = include_str!("../../../../worlds/company-2026/sites/spotify.json");
-const YOUTUBE_MUSIC: &str =
-    include_str!("../../../../worlds/company-2026/sites/youtube-music.json");
+const YOUTUBE: &str = include_str!("../../../../worlds/internet/sites/youtube.json");
+const SPOTIFY: &str = include_str!("../../../../worlds/internet/sites/spotify.json");
+const YOUTUBE_MUSIC: &str = include_str!("../../../../worlds/internet/sites/youtube-music.json");
 fn ctx() -> ServiceContext {
     ServiceContext {
         actor: "alice".into(),

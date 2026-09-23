@@ -43,12 +43,21 @@ fn assert_same_bytes(expected: &str, actual: &str, what: &str) {
 
 #[test]
 fn the_reference_world_round_trips_byte_for_byte() {
-    let path = repo_path("worlds/company-2026/world.json");
+    round_trips_with_its_sites("worlds/company-2026");
+}
+
+#[test]
+fn the_internet_round_trips_byte_for_byte() {
+    round_trips_with_its_sites("worlds/internet");
+}
+
+fn round_trips_with_its_sites(root: &str) {
+    let path = repo_path(&format!("{root}/world.json"));
     let text = fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let world = json::parse(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
 
     // Every service that came from `sites/<id>.json` is written on one line.
-    let sites_dir = repo_path("worlds/company-2026/sites");
+    let sites_dir = repo_path(&format!("{root}/sites"));
     let sites: BTreeSet<String> = fs::read_dir(&sites_dir)
         .unwrap_or_else(|e| panic!("{}: {e}", sites_dir.display()))
         .map(|entry| entry.expect("a directory entry").file_name())

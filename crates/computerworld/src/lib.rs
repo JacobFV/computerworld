@@ -149,11 +149,14 @@ pub struct World {
     drawn: VecDeque<String>,
 }
 impl World {
-    /// Compose the optional standard services. The world definition supplies all instances.
-    pub fn new(definition: WorldDefinition, seed: u64) -> Result<Self> {
+    /// Compose the standard services and, unless the world sets `internet: false`, join the
+    /// built-in internet to it.
+    pub fn new(mut definition: WorldDefinition, seed: u64) -> Result<Self> {
+        join_internet(&mut definition)?;
         Self::with_registry(definition, seed, cw_services::registry()?)
     }
-    /// Construct an arbitrary world with owner-selected implementations.
+    /// Construct an arbitrary world with owner-selected implementations, exactly as given:
+    /// no internet is joined, since the registry may not carry the kinds its sites need.
     pub fn with_registry(
         definition: WorldDefinition,
         seed: u64,
@@ -391,16 +394,42 @@ fn validate_viewport(width: u32, height: u32) -> Result<()> {
     }
     Ok(())
 }
+/// The built-in internet: its definition, and the join [`World::new`] performs.
+#[cfg(feature = "internet")]
+pub use cw_internet as internet;
+#[cfg(feature = "internet")]
+fn join_internet(definition: &mut WorldDefinition) -> Result<()> {
+    cw_internet::join(definition)
+}
+#[cfg(not(feature = "internet"))]
+fn join_internet(definition: &mut WorldDefinition) -> Result<()> {
+    if definition.internet {
+        return Err(cw_protocol::SimError::invalid(format!(
+            "world {} joins the internet, and this build carries none: build computerworld \
+             with its `internet` feature, or set `internet: false`",
+            definition.id
+        )));
+    }
+    Ok(())
+}
 /// Explicit optional reference blueprint; never an implicit kernel default.
 ///
 /// Parsed once and cloned: the world now carries a whole simulated internet, and benchmarks and
 /// tests call this per iteration, so re-parsing the embedded JSON every time is pure waste.
+///
+/// It is returned with the internet already joined, as it boots, so a test can find the
+/// public sites in it; [`World::new`] joining it again changes nothing.
 pub fn reference_world() -> WorldDefinition {
     static PARSED: std::sync::OnceLock<WorldDefinition> = std::sync::OnceLock::new();
     PARSED
         .get_or_init(|| {
-            serde_json::from_str(include_str!("../../../worlds/company-2026/world.json"))
-                .expect("packaged reference world is valid JSON")
+            #[allow(unused_mut)]
+            let mut world: WorldDefinition =
+                serde_json::from_str(include_str!("../../../worlds/company-2026/world.json"))
+                    .expect("packaged reference world is valid JSON");
+            #[cfg(feature = "internet")]
+            cw_internet::join(&mut world).expect("the reference world joins the internet");
+            world
         })
         .clone()
 }

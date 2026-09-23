@@ -18,15 +18,15 @@ use serde_json::Value;
 const SITES: &[(&str, &str)] = &[
     (
         "wikipedia",
-        include_str!("../../../../worlds/company-2026/sites/wikipedia.json"),
+        include_str!("../../../../worlds/internet/sites/wikipedia.json"),
     ),
     (
         "archive",
-        include_str!("../../../../worlds/company-2026/sites/archive.json"),
+        include_str!("../../../../worlds/internet/sites/archive.json"),
     ),
     (
         "imdb",
-        include_str!("../../../../worlds/company-2026/sites/imdb.json"),
+        include_str!("../../../../worlds/internet/sites/imdb.json"),
     ),
 ];
 

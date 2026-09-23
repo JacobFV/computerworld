@@ -18,15 +18,15 @@ use serde_json::Value;
 const SITES: &[(&str, &str)] = &[
     (
         "reuters",
-        include_str!("../../../../worlds/company-2026/sites/reuters.json"),
+        include_str!("../../../../worlds/internet/sites/reuters.json"),
     ),
     (
         "theverge",
-        include_str!("../../../../worlds/company-2026/sites/theverge.json"),
+        include_str!("../../../../worlds/internet/sites/theverge.json"),
     ),
     (
         "arstechnica",
-        include_str!("../../../../worlds/company-2026/sites/arstechnica.json"),
+        include_str!("../../../../worlds/internet/sites/arstechnica.json"),
     ),
     (
         "alice-blog",
@@ -42,27 +42,27 @@ const SITES: &[(&str, &str)] = &[
     ),
     (
         "nytimes",
-        include_str!("../../../../worlds/company-2026/sites/nytimes.json"),
+        include_str!("../../../../worlds/internet/sites/nytimes.json"),
     ),
     (
         "bbc",
-        include_str!("../../../../worlds/company-2026/sites/bbc.json"),
+        include_str!("../../../../worlds/internet/sites/bbc.json"),
     ),
     (
         "cnn",
-        include_str!("../../../../worlds/company-2026/sites/cnn.json"),
+        include_str!("../../../../worlds/internet/sites/cnn.json"),
     ),
     (
         "google-news",
-        include_str!("../../../../worlds/company-2026/sites/google-news.json"),
+        include_str!("../../../../worlds/internet/sites/google-news.json"),
     ),
     (
         "medium",
-        include_str!("../../../../worlds/company-2026/sites/medium.json"),
+        include_str!("../../../../worlds/internet/sites/medium.json"),
     ),
     (
         "substack",
-        include_str!("../../../../worlds/company-2026/sites/substack.json"),
+        include_str!("../../../../worlds/internet/sites/substack.json"),
     ),
 ];
 

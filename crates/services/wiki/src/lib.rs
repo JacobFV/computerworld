@@ -549,7 +549,7 @@ impl Service for WikiService {
 mod tests {
     use super::*;
     use serde_json::json;
-    const SITE: &str = include_str!("../../../../worlds/company-2026/sites/wikipedia.json");
+    const SITE: &str = include_str!("../../../../worlds/internet/sites/wikipedia.json");
     const ARTICLE: &str = "Deterministic_simulation";
     fn ctx() -> ServiceContext {
         ServiceContext {
@@ -942,17 +942,17 @@ mod tests {
         (
             "vector",
             "wikipedia.org",
-            include_str!("../../../../worlds/company-2026/sites/wikipedia.json"),
+            include_str!("../../../../worlds/internet/sites/wikipedia.json"),
         ),
         (
             "imdb",
             "imdb.com",
-            include_str!("../../../../worlds/company-2026/sites/imdb.json"),
+            include_str!("../../../../worlds/internet/sites/imdb.json"),
         ),
         (
             "archive",
             "archive.org",
-            include_str!("../../../../worlds/company-2026/sites/archive.json"),
+            include_str!("../../../../worlds/internet/sites/archive.json"),
         ),
     ];
     /// Every page of every site: strict HTML and CSS, in the skin its seed names.

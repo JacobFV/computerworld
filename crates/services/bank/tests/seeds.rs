@@ -5,8 +5,8 @@ use cw_sdk::{Service, ServiceContext};
 use cw_service_bank::{BankService, BankState};
 use cw_service_common::html::validate_strict;
 use serde_json::Value;
-const CHASE: &str = include_str!("../../../../worlds/company-2026/sites/northwind.json");
-const PAYPAL: &str = include_str!("../../../../worlds/company-2026/sites/paypal.json");
+const CHASE: &str = include_str!("../../../../worlds/internet/sites/northwind.json");
+const PAYPAL: &str = include_str!("../../../../worlds/internet/sites/paypal.json");
 const ORDER_1001: &str = "http://amazon.com/orders/1001";
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {

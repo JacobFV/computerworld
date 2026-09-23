@@ -61,19 +61,19 @@ fn wikipedia_imdb_and_archive_stills() {
     let sites = [
         (
             "wikipedia",
-            include_str!("../../../../worlds/company-2026/sites/wikipedia.json"),
+            include_str!("../../../../worlds/internet/sites/wikipedia.json"),
             "wikipedia.org",
             "Deterministic_simulation",
         ),
         (
             "imdb",
-            include_str!("../../../../worlds/company-2026/sites/imdb.json"),
+            include_str!("../../../../worlds/internet/sites/imdb.json"),
             "imdb.com",
             "Northbound_Signal",
         ),
         (
             "archive",
-            include_str!("../../../../worlds/company-2026/sites/archive.json"),
+            include_str!("../../../../worlds/internet/sites/archive.json"),
             "archive.org",
             "Cavern_Runner_98",
         ),

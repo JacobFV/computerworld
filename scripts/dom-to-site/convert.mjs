@@ -5,7 +5,7 @@
 //       [--path /] [--no-stubs] [--as static|press] [--node <network node>]
 //       [--address 203.0.113.250] [--link pop-west]
 //
-// Emits a file in the shape of worlds/company-2026/sites/<site-id>.json: a static-site
+// Emits a file in the shape of worlds/internet/sites/<site-id>.json: a static-site
 // service whose "/" page is the converted capture, stub pages for every same-site link
 // (so the internet_links crawl finds no dead link), and `place` so the site brings
 // its own host. `--as press` instead emits a seed for the press service, synthesised from

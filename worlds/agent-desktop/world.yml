@@ -8,6 +8,8 @@
 # `--set AGENT_USER=noor` for the same world under a different name.
 schema_version: 1
 id: "agent-desktop"
+# Offline on purpose: its gateway is closed, and a determinism run over it stays seconds long.
+internet: false
 inputs:
   AGENT_USER: {default: "ada", description: "the workstation's user"}
 profiles:

@@ -6,7 +6,7 @@ class of page. Prototype: [`scripts/dom-to-site/`](../../scripts/dom-to-site/REA
 
 The short answer: yes for structure, layout, colour, links and forms; no for pixels,
 fonts, JavaScript behaviour and anything positioned outside normal flow. The
-hand-authored sites in `worlds/company-2026/sites/` are already "structure and synthetic
+hand-authored sites in `worlds/internet/sites/` are already "structure and synthetic
 content" rather than copies, so the honest target for a converter is the same thing: take
 the *layout and affordances* of a real page, put the text through a synthesiser, and let
 an existing service supply the behaviour.
@@ -119,7 +119,7 @@ press; currency and "add to cart" → shop; "reply"/"upvote"/"points" → forum;
 counts and "getting started" → docs; "inbox"/"compose" → mail; "follow"/"repost" →
 social). With a confident kind, emit a seed for the matching existing service (`press`,
 `shop`, `forum`, `wiki`, `mail`, `social`, `media`, `search`; shapes in
-`worlds/company-2026/sites/*.json` and `services/*/src/lib.rs`) instead of a static tree:
+`worlds/internet/sites/*.json` and `services/*/src/lib.rs`) instead of a static tree:
 the front page then comes from the service's own layout (`layout: wire|magazine|blog`
 for press) and every interaction (save, follow, comment, cart, reply) really mutates
 state and survives snapshots. The capture contributes the *records* (headlines, sections,

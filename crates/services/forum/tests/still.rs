@@ -83,7 +83,7 @@ fn forum_site_stills() {
         ("craigslist", "craigslist.org", "/item?id=t-7000"),
     ] {
         let path = format!(
-            "{}/../../../worlds/company-2026/sites/{site}.json",
+            "{}/../../../worlds/internet/sites/{site}.json",
             env!("CARGO_MANIFEST_DIR")
         );
         let file: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();

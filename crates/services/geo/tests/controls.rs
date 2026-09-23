@@ -14,9 +14,9 @@ use cw_service_common::audit;
 use cw_service_geo::GeoService;
 use serde_json::Value;
 
-const GOOGLE_MAPS: &str = include_str!("../../../../worlds/company-2026/sites/google-maps.json");
-const OSM: &str = include_str!("../../../../worlds/company-2026/sites/osm.json");
-const WEATHER: &str = include_str!("../../../../worlds/company-2026/sites/weather.json");
+const GOOGLE_MAPS: &str = include_str!("../../../../worlds/internet/sites/google-maps.json");
+const OSM: &str = include_str!("../../../../worlds/internet/sites/osm.json");
+const WEATHER: &str = include_str!("../../../../worlds/internet/sites/weather.json");
 
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {

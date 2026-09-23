@@ -8,6 +8,7 @@
 # and the live site world is derived from the finished world.json afterwards.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+cargo run --quiet -p cw-blueprint --bin cw-world -- build worlds/internet/world.yml
 cargo run --quiet -p cw-blueprint --bin cw-world -- build worlds/company-2026/world.yml
 cargo run --quiet -p cw-blueprint --bin cw-world -- build worlds/agent-desktop/world.yml
 node scripts/content/build-live-world.mjs

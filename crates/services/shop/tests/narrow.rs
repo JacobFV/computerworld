@@ -114,7 +114,7 @@ fn widest_box(html: &str, width: u32) -> (f64, String) {
 fn every_page_of_every_skin_fits_a_phone() {
     for site in SITES {
         let path = format!(
-            "{}/../../../worlds/company-2026/sites/{site}.json",
+            "{}/../../../worlds/internet/sites/{site}.json",
             env!("CARGO_MANIFEST_DIR")
         );
         let file: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();

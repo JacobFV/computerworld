@@ -1,0 +1,287 @@
+# The built-in internet, as a blueprint.
+#
+# `world.json` beside this file is generated from it and is not edited by hand:
+#
+#     cargo run -p cw-blueprint --bin cw-world -- build worlds/internet/world.yml
+#
+# It joins every world that does not set `internet: false` (see crates/internet): the
+# backbone below, the public DNS, and one service per file under `sites/`, each placing
+# its own node, link and DNS records through its `place:` block and the defaults here.
+# A world uplinks through `edge-router` and may hang its own public sites off the
+# points of presence; those five nodes are cw_protocol::INTERNET_ATTACHMENTS.
+schema_version: 1
+id: "internet"
+internet: false
+defaults:
+  place:
+    zone: "internet"
+    link: {latency_us: 1500}
+    dns:
+      internet: {ttl_us: 300000000, resolver: "dns-public"}
+network:
+  nodes:
+    - {id: "edge-router", address: "192.0.2.1", zone: "internet"}
+    - {id: "pop-west", address: "192.0.2.10", zone: "internet"}
+    - {id: "pop-east", address: "192.0.2.11", zone: "internet"}
+    - {id: "pop-eu", address: "192.0.2.12", zone: "internet"}
+    - {id: "dns-public", address: "192.0.2.53", zone: "internet"}
+    - {id: "google-search", address: "203.0.113.20", zone: "internet"}
+    - {id: "google-mail", address: "203.0.113.21", zone: "internet"}
+    - {id: "google-drive", address: "203.0.113.22", zone: "internet"}
+    - {id: "google-docs", address: "203.0.113.23", zone: "internet"}
+    - {id: "google-calendar", address: "203.0.113.24", zone: "internet"}
+    - {id: "google-maps", address: "203.0.113.25", zone: "internet"}
+    - {id: "youtube", address: "203.0.113.26", zone: "internet"}
+    - {id: "bing-search", address: "203.0.113.30", zone: "internet"}
+    - {id: "ddg-search", address: "203.0.113.31", zone: "internet"}
+    - {id: "outlook-mail", address: "203.0.113.40", zone: "internet"}
+    - {id: "github", address: "203.0.113.41", zone: "internet"}
+    - {id: "openai", address: "203.0.113.50", zone: "internet"}
+    - {id: "anthropic", address: "203.0.113.51", zone: "internet"}
+    - {id: "x-social", address: "203.0.113.60", zone: "internet"}
+    - {id: "mastodon", address: "203.0.113.61", zone: "internet"}
+    - {id: "linkedin", address: "203.0.113.62", zone: "internet"}
+    - {id: "wikipedia", address: "203.0.113.70", zone: "internet"}
+    - {id: "reddit", address: "203.0.113.80", zone: "internet"}
+    - {id: "stackoverflow", address: "203.0.113.81", zone: "internet"}
+    - {id: "hackernews", address: "203.0.113.82", zone: "internet"}
+    - {id: "slack", address: "203.0.113.90", zone: "internet"}
+    - {id: "discord", address: "203.0.113.91", zone: "internet"}
+    - {id: "linear", address: "203.0.113.92", zone: "internet"}
+    - {id: "reuters", address: "198.51.100.10", zone: "internet"}
+    - {id: "theverge", address: "198.51.100.11", zone: "internet"}
+    - {id: "arstechnica", address: "198.51.100.12", zone: "internet"}
+    - {id: "amazon", address: "198.51.100.20", zone: "internet"}
+    - {id: "etsy", address: "198.51.100.21", zone: "internet"}
+    - {id: "ticketmaster", address: "198.51.100.22", zone: "internet"}
+    - {id: "spotify", address: "198.51.100.30", zone: "internet"}
+    - {id: "osm", address: "198.51.100.40", zone: "internet"}
+    - {id: "weather", address: "198.51.100.41", zone: "internet"}
+    - {id: "dropbox", address: "198.51.100.50", zone: "internet"}
+    - {id: "northwind", address: "198.51.100.60", zone: "internet"}
+  links:
+    - {from: "edge-router", to: "dns-public", bidirectional: true, latency_us: 2000, loss_per_million: 0}
+    - {from: "edge-router", to: "pop-west", bidirectional: true, latency_us: 4000, loss_per_million: 0}
+    - {from: "edge-router", to: "pop-east", bidirectional: true, latency_us: 9000, loss_per_million: 0}
+    - {from: "edge-router", to: "pop-eu", bidirectional: true, latency_us: 22000, loss_per_million: 0}
+    - {from: "pop-west", to: "google-search", bidirectional: true, latency_us: 900, loss_per_million: 0}
+    - {from: "pop-west", to: "google-mail", bidirectional: true, latency_us: 900, loss_per_million: 0}
+    - {from: "pop-west", to: "google-drive", bidirectional: true, latency_us: 1100, loss_per_million: 0}
+    - {from: "pop-west", to: "google-docs", bidirectional: true, latency_us: 1100, loss_per_million: 0}
+    - from: "pop-west"
+      to: "google-calendar"
+      bidirectional: true
+      latency_us: 1000
+      loss_per_million: 0
+    - {from: "pop-west", to: "google-maps", bidirectional: true, latency_us: 1200, loss_per_million: 0}
+    - {from: "pop-west", to: "youtube", bidirectional: true, latency_us: 1500, loss_per_million: 0}
+    - {from: "pop-west", to: "bing-search", bidirectional: true, latency_us: 1400, loss_per_million: 0}
+    - {from: "pop-west", to: "ddg-search", bidirectional: true, latency_us: 2100, loss_per_million: 0}
+    - {from: "pop-west", to: "openai", bidirectional: true, latency_us: 1300, loss_per_million: 0}
+    - {from: "pop-west", to: "anthropic", bidirectional: true, latency_us: 1300, loss_per_million: 0}
+    - {from: "pop-west", to: "x-social", bidirectional: true, latency_us: 1600, loss_per_million: 0}
+    - {from: "pop-west", to: "reddit", bidirectional: true, latency_us: 1800, loss_per_million: 0}
+    - {from: "pop-west", to: "hackernews", bidirectional: true, latency_us: 2200, loss_per_million: 0}
+    - {from: "pop-west", to: "slack", bidirectional: true, latency_us: 1700, loss_per_million: 0}
+    - {from: "pop-west", to: "discord", bidirectional: true, latency_us: 1900, loss_per_million: 0}
+    - {from: "pop-west", to: "linear", bidirectional: true, latency_us: 2000, loss_per_million: 0}
+    - {from: "pop-west", to: "spotify", bidirectional: true, latency_us: 2400, loss_per_million: 0}
+    - {from: "pop-west", to: "dropbox", bidirectional: true, latency_us: 1500, loss_per_million: 0}
+    - {from: "pop-west", to: "amazon", bidirectional: true, latency_us: 1200, loss_per_million: 0}
+    - {from: "pop-east", to: "github", bidirectional: true, latency_us: 1600, loss_per_million: 0}
+    - {from: "pop-east", to: "outlook-mail", bidirectional: true, latency_us: 1800, loss_per_million: 0}
+    - {from: "pop-east", to: "linkedin", bidirectional: true, latency_us: 2100, loss_per_million: 0}
+    - {from: "pop-east", to: "stackoverflow", bidirectional: true, latency_us: 2300, loss_per_million: 0}
+    - {from: "pop-east", to: "reuters", bidirectional: true, latency_us: 2000, loss_per_million: 0}
+    - {from: "pop-east", to: "theverge", bidirectional: true, latency_us: 2200, loss_per_million: 0}
+    - {from: "pop-east", to: "arstechnica", bidirectional: true, latency_us: 2500, loss_per_million: 0}
+    - {from: "pop-east", to: "northwind", bidirectional: true, latency_us: 1900, loss_per_million: 0}
+    - {from: "pop-east", to: "ticketmaster", bidirectional: true, latency_us: 2700, loss_per_million: 0}
+    - {from: "pop-east", to: "etsy", bidirectional: true, latency_us: 2800, loss_per_million: 0}
+    - {from: "pop-east", to: "weather", bidirectional: true, latency_us: 2400, loss_per_million: 0}
+    - {from: "pop-eu", to: "wikipedia", bidirectional: true, latency_us: 2600, loss_per_million: 0}
+    - {from: "pop-eu", to: "mastodon", bidirectional: true, latency_us: 3400, loss_per_million: 0}
+    - {from: "pop-eu", to: "osm", bidirectional: true, latency_us: 3000, loss_per_million: 0}
+  dns:
+    - {name: "amazon.com", address: "198.51.100.20", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "anthropic.com", address: "claude.ai", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "app.slack.com", address: "slack.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "arstechnica.com", address: "198.51.100.12", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "bing.com", address: "203.0.113.30", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "calendar.google.com", address: "203.0.113.24", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "chat.openai.com", address: "chatgpt.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "chatgpt.com", address: "203.0.113.50", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "claude.ai", address: "203.0.113.51", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "claude.anthropic.com", address: "claude.ai", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "ddg.gg", address: "duckduckgo.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "discord.com", address: "203.0.113.91", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "discordapp.com", address: "discord.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "docs.google.com", address: "203.0.113.23", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "drive.google.com", address: "203.0.113.22", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "dropbox.com", address: "198.51.100.50", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "duckduckgo.com", address: "203.0.113.31", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "en.m.wikipedia.org", address: "203.0.113.70", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "en.wikipedia.org", address: "wikipedia.org", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "etsy.com", address: "198.51.100.21", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "gist.github.com", address: "github.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "github.com", address: "203.0.113.41", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "gmail.com", address: "mail.google.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "google.com", address: "203.0.113.20", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "hotmail.com", address: "outlook.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "linear.app", address: "203.0.113.92", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "linkedin.com", address: "203.0.113.62", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "m.amazon.com", address: "198.51.100.20", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "m.reddit.com", address: "203.0.113.80", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "m.wikipedia.org", address: "203.0.113.70", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "m.youtube.com", address: "youtube.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "mail.google.com", address: "203.0.113.21", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "maps.google.com", address: "203.0.113.25", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "mastodon.social", address: "203.0.113.61", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "mobile.twitter.com", address: "x.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "news.ycombinator.com", address: "203.0.113.82", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "northstar.slack.com", address: "slack.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "northwind.example", address: "198.51.100.60", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "old.reddit.com", address: "reddit.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "open.spotify.com", address: "spotify.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "openai.com", address: "chatgpt.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "openstreetmap.org", address: "198.51.100.40", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "osm.org", address: "openstreetmap.org", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "outlook.com", address: "203.0.113.40", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "outlook.office.com", address: "outlook.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "reddit.com", address: "203.0.113.80", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "reuters.com", address: "198.51.100.10", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "sheets.google.com", address: "docs.google.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "slack.com", address: "203.0.113.90", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "slides.google.com", address: "docs.google.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "smile.amazon.com", address: "amazon.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "spotify.com", address: "198.51.100.30", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "stackexchange.com", address: "stackoverflow.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "stackoverflow.com", address: "203.0.113.81", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "theverge.com", address: "198.51.100.11", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "ticketmaster.com", address: "198.51.100.22", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "twitter.com", address: "x.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "weather.com", address: "198.51.100.41", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "wikipedia.org", address: "203.0.113.70", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.amazon.com", address: "amazon.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.arstechnica.com", address: "arstechnica.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.bing.com", address: "bing.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.dropbox.com", address: "dropbox.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.etsy.com", address: "etsy.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.github.com", address: "github.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.gmail.com", address: "mail.google.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.google.com", address: "google.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.linear.app", address: "linear.app", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.linkedin.com", address: "linkedin.com", ttl_us: 300000000, resolver: "dns-public"}
+    - name: "www.northwind.example"
+      address: "northwind.example"
+      ttl_us: 300000000
+      resolver: "dns-public"
+    - {name: "www.openai.com", address: "chatgpt.com", ttl_us: 300000000, resolver: "dns-public"}
+    - name: "www.openstreetmap.org"
+      address: "openstreetmap.org"
+      ttl_us: 300000000
+      resolver: "dns-public"
+    - {name: "www.reddit.com", address: "reddit.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.reuters.com", address: "reuters.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.spotify.com", address: "spotify.com", ttl_us: 300000000, resolver: "dns-public"}
+    - name: "www.stackoverflow.com"
+      address: "stackoverflow.com"
+      ttl_us: 300000000
+      resolver: "dns-public"
+    - {name: "www.theverge.com", address: "theverge.com", ttl_us: 300000000, resolver: "dns-public"}
+    - name: "www.ticketmaster.com"
+      address: "ticketmaster.com"
+      ttl_us: 300000000
+      resolver: "dns-public"
+    - {name: "www.twitter.com", address: "x.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.weather.com", address: "weather.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.wikipedia.org", address: "wikipedia.org", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.x.com", address: "x.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "www.youtube.com", address: "youtube.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "x.com", address: "203.0.113.60", ttl_us: 300000000, resolver: "dns-public"}
+    - name: "ycombinator.com"
+      address: "news.ycombinator.com"
+      ttl_us: 300000000
+      resolver: "dns-public"
+    - {name: "youtu.be", address: "youtube.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "youtube.com", address: "203.0.113.26", ttl_us: 300000000, resolver: "dns-public"}
+  routes: []
+metadata:
+  description: "The public internet every world joins unless it opts out"
+include:
+  - "sites/anthropic.json"
+  - "sites/bing-search.json"
+  - "sites/ddg-search.json"
+  - "sites/google-search.json"
+  - "sites/openai.json"
+  - "sites/spotify.json"
+  - "sites/youtube.json"
+  - "sites/arstechnica.json"
+  - "sites/google-calendar.json"
+  - "sites/google-mail.json"
+  - "sites/outlook-mail.json"
+  - "sites/reuters.json"
+  - "sites/theverge.json"
+  - "sites/wikipedia.json"
+  - "sites/dropbox.json"
+  - "sites/google-docs.json"
+  - "sites/google-drive.json"
+  - "sites/x-social.json"
+  - "sites/mastodon.json"
+  - "sites/amazon.json"
+  - "sites/discord.json"
+  - "sites/etsy.json"
+  - "sites/github.json"
+  - "sites/google-maps.json"
+  - "sites/linear.json"
+  - "sites/osm.json"
+  - "sites/slack.json"
+  - "sites/ticketmaster.json"
+  - "sites/weather.json"
+  - "sites/linkedin.json"
+  - "sites/reddit.json"
+  - "sites/stackoverflow.json"
+  - "sites/hackernews.json"
+  - "sites/northwind.json"
+  - "sites/youtube-music.json"
+  - "sites/figma.json"
+  - "sites/google-news.json"
+  - "sites/nytimes.json"
+  - "sites/airbnb.json"
+  - "sites/apple.json"
+  - "sites/archive.json"
+  - "sites/aws.json"
+  - "sites/bbc.json"
+  - "sites/booking.json"
+  - "sites/bsky.json"
+  - "sites/cloudflare.json"
+  - "sites/cnn.json"
+  - "sites/craigslist.json"
+  - "sites/crates.json"
+  - "sites/docsrs.json"
+  - "sites/doordash.json"
+  - "sites/ebay.json"
+  - "sites/facebook.json"
+  - "sites/imdb.json"
+  - "sites/instagram.json"
+  - "sites/mail-com.json"
+  - "sites/medium.json"
+  - "sites/microsoft.json"
+  - "sites/netflix.json"
+  - "sites/npmjs.json"
+  - "sites/paypal.json"
+  - "sites/pinterest.json"
+  - "sites/pypi.json"
+  - "sites/quora.json"
+  - "sites/soundcloud.json"
+  - "sites/stripe.json"
+  - "sites/substack.json"
+  - "sites/tiktok.json"
+  - "sites/twitch.json"
+  - "sites/uber.json"
+  - "sites/vimeo.json"
+  - "sites/whatsapp.json"
+  - "sites/yelp.json"
+  - "sites/zoom.json"
+  - "sites/gitlab.json"
+  - "sites/notion.json"

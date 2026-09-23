@@ -151,7 +151,9 @@ Anywhere a value belongs, `{from_file: <path>}` becomes that file's contents:
 
 A service that has a default needs none of this: a wiki with no `articles` starts
 with its own Main Page, and a search engine with no `documents` indexes the sites
-beside it. Reach for `from_file` when the content really is the world's own.
+beside it. Nor does the public web belong in a blueprint: it is
+[`worlds/internet`](../worlds/internet), joined to every world that does not set
+`internet: false`. Reach for `from_file` when the content really is the world's own.
 
 Substitution does not reach inside a loaded file: data is data.
 

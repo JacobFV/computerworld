@@ -162,6 +162,7 @@ const WORLD_KEYS: &[&str] = &[
     "computers",
     "network",
     "services",
+    "internet",
     "metadata",
 ];
 

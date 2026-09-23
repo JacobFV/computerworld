@@ -467,19 +467,32 @@ mod tests {
     use cw_web::dom::Document as Dom;
     /// The real world and the three sites files this crate owns: a seeded result card is a claim
     /// that the link resolves, so the tests read the shipped index rather than a fixture of it.
-    const WORLD: &str = include_str!("../../../../worlds/company-2026/world.json");
+    /// The reference company and the internet it joins: an engine indexes both.
+    const WORLDS: [&str; 2] = [
+        include_str!("../../../../worlds/company-2026/world.json"),
+        include_str!("../../../../worlds/internet/world.json"),
+    ];
+    fn services() -> Vec<ServiceDefinition> {
+        WORLDS
+            .iter()
+            .flat_map(|w| {
+                let world: Value = serde_json::from_str(w).unwrap();
+                serde_json::from_value::<Vec<ServiceDefinition>>(world["services"].clone()).unwrap()
+            })
+            .collect()
+    }
     const SITES: [(&str, &str); 3] = [
         (
             "google-search",
-            include_str!("../../../../worlds/company-2026/sites/google-search.json"),
+            include_str!("../../../../worlds/internet/sites/google-search.json"),
         ),
         (
             "bing-search",
-            include_str!("../../../../worlds/company-2026/sites/bing-search.json"),
+            include_str!("../../../../worlds/internet/sites/bing-search.json"),
         ),
         (
             "ddg-search",
-            include_str!("../../../../worlds/company-2026/sites/ddg-search.json"),
+            include_str!("../../../../worlds/internet/sites/ddg-search.json"),
         ),
     ];
     fn ctx(actor: &str) -> ServiceContext {
@@ -496,13 +509,11 @@ mod tests {
     }
     /// The engine as the reference world boots it, indexing the sites beside it.
     fn engine(id: &str) -> Value {
-        let world: Value = serde_json::from_str(WORLD).unwrap();
-        let services: Vec<ServiceDefinition> =
-            serde_json::from_value(world["services"].clone()).unwrap();
+        let services = services();
         let service = services
             .iter()
             .find(|s| s.id == id)
-            .unwrap_or_else(|| panic!("{id} is not in world.json"));
+            .unwrap_or_else(|| panic!("{id} is not in the reference world"));
         SearchService
             .initialize_in(service.initial_state.clone(), &ctx("alice"), &services)
             .unwrap()

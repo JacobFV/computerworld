@@ -64,7 +64,7 @@ fn render(html: &str, file: &str, viewport: Viewport) {
 #[test]
 #[ignore]
 fn slack_stills() {
-    let raw = std::fs::read_to_string("../../../worlds/company-2026/sites/slack.json").unwrap();
+    let raw = std::fs::read_to_string("../../../worlds/internet/sites/slack.json").unwrap();
     let site: Value = serde_json::from_str(&raw).unwrap();
     let ctx = ServiceContext {
         actor: "alice".into(),

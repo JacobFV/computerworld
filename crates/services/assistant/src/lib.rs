@@ -399,8 +399,8 @@ mod tests {
     use cw_web::dom::Document as Dom;
     use serde_json::json;
     /// The two shipped seeds; the crate tests hold them to the same standard the plan sets.
-    const OPENAI: &str = include_str!("../../../../worlds/company-2026/sites/openai.json");
-    const ANTHROPIC: &str = include_str!("../../../../worlds/company-2026/sites/anthropic.json");
+    const OPENAI: &str = include_str!("../../../../worlds/internet/sites/openai.json");
+    const ANTHROPIC: &str = include_str!("../../../../worlds/internet/sites/anthropic.json");
     fn ctx() -> ServiceContext {
         ServiceContext {
             actor: "alice".into(),

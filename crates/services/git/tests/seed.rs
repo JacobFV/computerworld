@@ -16,8 +16,13 @@ fn ctx(actor: &str) -> ServiceContext {
         instance: "github".into(),
     }
 }
+/// A site file from the internet, or from the reference company's own sites.
 fn site(name: &str) -> Value {
-    let raw = std::fs::read_to_string(format!("../../../worlds/company-2026/sites/{name}.json"))
+    let raw = ["internet", "company-2026"]
+        .iter()
+        .find_map(|w| {
+            std::fs::read_to_string(format!("../../../worlds/{w}/sites/{name}.json")).ok()
+        })
         .expect("site file");
     serde_json::from_str(&raw).expect("site file parses")
 }

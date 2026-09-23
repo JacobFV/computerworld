@@ -170,6 +170,7 @@ dependencies = [
  "cw-cad",
  "cw-eda",
  "cw-environment",
+ "cw-internet",
  "cw-kernel",
  "cw-network",
  "cw-protocol",
@@ -364,6 +365,14 @@ dependencies = [
  "serde",
  "serde_json",
  "url",
+]
+
+[[package]]
+name = "cw-internet"
+version = "0.2.0"
+dependencies = [
+ "cw-protocol",
+ "serde_json",
 ]
 
 [[package]]

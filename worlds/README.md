@@ -2,11 +2,13 @@
 
 A world is data, not code: one JSON definition the loader consumes, with whatever
 directories of seed content its blueprint copies in. The kernel holds no defaults from
-any of them, which is why there is more than one here.
+any of them, which is why there is more than one here. The one thing a world gets
+without declaring it is the [internet](internet), and a world can decline that.
 
 | World | Size | What it is for |
 |---|---|---|
-| [`company-2026`](company-2026) | 5 machines, 3 OS families, ~100 sites | The reference ecosystem. Compiled into the library, and what the site, the examples and most tests run against. |
+| [`internet`](internet) | 76 public sites and the backbone | Not a world to run on its own: the internet every other world joins unless it sets `internet: false`. |
+| [`company-2026`](company-2026) | 5 machines, 3 OS families, 17 services of its own | The reference ecosystem, on the internet. Compiled into the library, and what the site, the examples and most tests run against. |
 | [`agent-desktop`](agent-desktop) | 1 machine, 1 intranet wiki | One desktop an agent can use. The blueprint worked example, and the fast half of the determinism corpus. |
 | [`unrelated-lab`](unrelated-lab) | 1 machine, no network | Proof that nothing reference-world is baked into the kernel, and the smallest world to copy. |
 

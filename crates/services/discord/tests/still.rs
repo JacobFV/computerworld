@@ -77,7 +77,7 @@ fn scratch_still() {
 #[test]
 #[ignore]
 fn discord_still() {
-    let raw = std::fs::read_to_string("../../../worlds/company-2026/sites/discord.json").unwrap();
+    let raw = std::fs::read_to_string("../../../worlds/internet/sites/discord.json").unwrap();
     let site: Value = serde_json::from_str(&raw).unwrap();
     let ctx = ServiceContext {
         actor: "alice".into(),

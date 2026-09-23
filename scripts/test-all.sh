@@ -9,6 +9,8 @@ python3 scripts/checks/check-boundaries.py
 # alongside this script, not inside it.
 cargo test --workspace
 cargo test -p cw-host-adapters --features native-http
+# The package without its internet: smaller, and it must still build and boot offline worlds.
+cargo test -p computerworld --no-default-features --test behaviors unrelated_world
 cargo clippy --workspace --all-targets -- -D warnings
 cargo build -p cw-wasm --target wasm32-unknown-unknown --release
 # Generated world content must match its sources: a hand-edited world.json would be
@@ -16,7 +18,8 @@ cargo build -p cw-wasm --target wasm32-unknown-unknown --release
 # against a fresh regeneration, not against git, so an uncommitted tree still checks out.
 generated=$(mktemp -d)
 trap 'rm -rf "$generated"' EXIT
-generated_files=(worlds/company-2026/world.json
+generated_files=(worlds/internet/world.json
+                 worlds/company-2026/world.json
                  worlds/agent-desktop/world.json
                  site/generated/world-definition.js)
 for file in "${generated_files[@]}"; do

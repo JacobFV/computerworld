@@ -5,8 +5,13 @@ edition.workspace = true
 license.workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
+[features]
+default = ["internet"]
+# The built-in internet. Without it the bundle is smaller and boots only worlds that set
+# `internet: false`; `CW_WASM_INTERNET=0 scripts/build-wasm.sh` builds that way.
+internet = ["computerworld/internet"]
 [dependencies]
-computerworld = { path = "../../computerworld" }
+computerworld = { path = "../../computerworld", default-features = false, features = ["render"] }
 cw-protocol = { path = "../../core/protocol" }
 serde.workspace = true
 serde_json.workspace = true

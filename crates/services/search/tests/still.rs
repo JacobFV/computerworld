@@ -10,7 +10,11 @@ use cw_web::{Strictness, Viewport};
 use serde_json::Value;
 use std::path::PathBuf;
 
-const WORLD: &str = include_str!("../../../../worlds/company-2026/world.json");
+/// The reference company and the internet it joins: the engine indexes both.
+const WORLDS: [&str; 2] = [
+    include_str!("../../../../worlds/company-2026/world.json"),
+    include_str!("../../../../worlds/internet/world.json"),
+];
 
 fn render(html: &str, path: &str, viewport: Viewport) {
     let doc = cw_web::html::parse(html);
@@ -59,9 +63,13 @@ fn render(html: &str, path: &str, viewport: Viewport) {
 #[test]
 #[ignore]
 fn google_home_and_results_stills() {
-    let world: Value = serde_json::from_str(WORLD).unwrap();
-    let services: Vec<ServiceDefinition> =
-        serde_json::from_value(world["services"].clone()).unwrap();
+    let services: Vec<ServiceDefinition> = WORLDS
+        .iter()
+        .flat_map(|w| {
+            let world: Value = serde_json::from_str(w).unwrap();
+            serde_json::from_value::<Vec<ServiceDefinition>>(world["services"].clone()).unwrap()
+        })
+        .collect();
     let service = services.iter().find(|s| s.id == "google-search").unwrap();
     let ctx = ServiceContext {
         actor: "alice".into(),

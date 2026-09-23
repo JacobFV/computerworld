@@ -18,8 +18,7 @@ fn ctx(actor: &str) -> ServiceContext {
     }
 }
 fn site() -> Value {
-    let raw =
-        std::fs::read_to_string("../../../worlds/company-2026/sites/slack.json").expect("site");
+    let raw = std::fs::read_to_string("../../../worlds/internet/sites/slack.json").expect("site");
     serde_json::from_str(&raw).expect("site file parses")
 }
 fn get(state: &mut Value, actor: &str, path: &str) -> (u16, String) {

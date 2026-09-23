@@ -19,8 +19,8 @@ use cw_service_common::audit;
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 
-const OPENAI: &str = include_str!("../../../../worlds/company-2026/sites/openai.json");
-const ANTHROPIC: &str = include_str!("../../../../worlds/company-2026/sites/anthropic.json");
+const OPENAI: &str = include_str!("../../../../worlds/internet/sites/openai.json");
+const ANTHROPIC: &str = include_str!("../../../../worlds/internet/sites/anthropic.json");
 
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {

@@ -14,6 +14,7 @@ The [runtime architecture](../docs/architecture.md) explains how they fit togeth
 | [engines/](engines/) | Application domain engines | `cw-cad`, `cw-eda`, `cw-sheet`, `cw-sql`, `cw-raster`, `cw-video` |
 | [applications/](applications/) | Native applications and desktop presentation | `cw-applications` |
 | [services/](services/) | Synthetic internet services and their shared runtime | `cw-services`, `cw-service-*` |
+| [internet/](internet/) | The built-in internet every world joins unless it opts out | `cw-internet` |
 | [bindings/](bindings/) | Thin Python and WebAssembly interfaces | `cw-python`, `cw-wasm` |
 | [computerworld/](computerworld/) | Public Rust facade and end-to-end tests | `computerworld` |
 

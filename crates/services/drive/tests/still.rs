@@ -10,7 +10,7 @@ use cw_web::{Strictness, Viewport};
 use serde_json::Value;
 use std::path::PathBuf;
 
-const WORLD: &str = include_str!("../../../../worlds/company-2026/world.json");
+const WORLD: &str = include_str!("../../../../worlds/internet/world.json");
 
 fn render(html: &str, file: &str, viewport: Viewport) {
     let doc = cw_web::html::parse(html);

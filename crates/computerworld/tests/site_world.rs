@@ -27,7 +27,11 @@ fn live_world() -> WorldDefinition {
         .1
         .trim()
         .trim_end_matches(';');
-    serde_json::from_str(json).expect("the generated world definition no longer parses")
+    let mut live: WorldDefinition =
+        serde_json::from_str(json).expect("the generated world definition no longer parses");
+    // As it boots: the page hands this to the engine, which joins the internet to it.
+    computerworld::internet::join(&mut live).expect("the live world joins the internet");
+    live
 }
 
 fn session(world: &mut World, machine: &str) -> String {

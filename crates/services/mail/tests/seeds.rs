@@ -1,4 +1,4 @@
-//! The three seeded mailboxes in `worlds/company-2026/sites` must survive `initialize` and render.
+//! The three seeded mailboxes in `worlds/internet/sites` must survive `initialize` and render.
 //! A malformed seed is otherwise only discovered when the whole world is built.
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
@@ -8,7 +8,7 @@ use serde_json::Value;
 
 fn site(name: &str) -> Value {
     let path = format!(
-        "{}/../../../worlds/company-2026/sites/{name}.json",
+        "{}/../../../worlds/internet/sites/{name}.json",
         env!("CARGO_MANIFEST_DIR")
     );
     serde_json::from_str(&std::fs::read_to_string(path).expect("site file")).expect("valid JSON")

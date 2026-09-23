@@ -173,8 +173,27 @@ pub struct WorldDefinition {
     pub network: NetworkDefinition,
     #[serde(default)]
     pub services: Vec<ServiceDefinition>,
+    /// Whether the built-in internet joins this world when it boots: the public sites, the
+    /// backbone they hang off and the public DNS. On unless a world says otherwise; a world
+    /// that sets it `false` is exactly what it declares, and may be run by a build that
+    /// carries no internet at all.
+    #[serde(default = "yes", skip_serializing_if = "is_true")]
+    pub internet: bool,
     #[serde(default)]
     pub metadata: Value,
+}
+/// The built-in internet's nodes a world may name before the internet has joined it: the
+/// router a world's own network uplinks through, the points of presence a world's public
+/// sites hang off, and the public resolver their names are served from.
+pub const INTERNET_ATTACHMENTS: &[&str] = &[
+    "edge-router",
+    "pop-west",
+    "pop-east",
+    "pop-eu",
+    "dns-public",
+];
+fn is_true(value: &bool) -> bool {
+    *value
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OsProfile {
@@ -1496,6 +1515,13 @@ impl WorldDefinition {
                 }
             }
         }
+        if self.internet {
+            // Named here, declared by the internet when it joins; the joined world is
+            // validated again, so a name the internet does not declare is still refused.
+            for attachment in INTERNET_ATTACHMENTS {
+                nodes.insert((*attachment).to_owned());
+            }
+        }
         let mut listeners = BTreeSet::new();
         let mut domains = BTreeMap::new();
         for s in &self.services {
@@ -1711,6 +1737,7 @@ mod tests {
             computers: vec![],
             network: NetworkDefinition::default(),
             services: vec![],
+            internet: false,
             metadata: Value::Null,
         };
         assert!(w.validate().is_err())

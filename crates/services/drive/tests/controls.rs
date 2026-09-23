@@ -18,8 +18,8 @@ use cw_web::dom::{Document, NodeId};
 use serde_json::{json, Value};
 use std::collections::{BTreeSet, VecDeque};
 
-const DRIVE: &str = include_str!("../../../../worlds/company-2026/sites/google-drive.json");
-const DROPBOX: &str = include_str!("../../../../worlds/company-2026/sites/dropbox.json");
+const DRIVE: &str = include_str!("../../../../worlds/internet/sites/google-drive.json");
+const DROPBOX: &str = include_str!("../../../../worlds/internet/sites/dropbox.json");
 /// A crawl that runs away is a bug in the links, not a reason to wait.
 const MAX_PAGES: usize = 600;
 /// The sidebar marks the entry for the screen you are on; the real products link it anyway.

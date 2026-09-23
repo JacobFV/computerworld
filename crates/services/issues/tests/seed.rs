@@ -28,7 +28,7 @@ fn fetch(state: &mut Value, path: &str) -> support::Page {
 }
 #[test]
 fn linear_seed_initialises_and_every_view_renders_in_both_skins() {
-    let raw = std::fs::read_to_string("../../../worlds/company-2026/sites/linear.json").unwrap();
+    let raw = std::fs::read_to_string("../../../worlds/internet/sites/linear.json").unwrap();
     let site: Value = serde_json::from_str(&raw).unwrap();
     for skin in ["linear", "plain"] {
         let mut initial = site["initial_state"].clone();

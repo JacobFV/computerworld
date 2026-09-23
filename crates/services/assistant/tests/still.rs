@@ -15,12 +15,12 @@ const SITES: [(&str, &str, &str); 2] = [
     (
         "openai",
         "http://chatgpt.com",
-        include_str!("../../../../worlds/company-2026/sites/openai.json"),
+        include_str!("../../../../worlds/internet/sites/openai.json"),
     ),
     (
         "anthropic",
         "http://claude.ai",
-        include_str!("../../../../worlds/company-2026/sites/anthropic.json"),
+        include_str!("../../../../worlds/internet/sites/anthropic.json"),
     ),
 ];
 

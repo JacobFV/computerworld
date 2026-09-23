@@ -13,27 +13,27 @@ use serde_json::Value;
 const SITES: &[(&str, &str)] = &[
     (
         "apple",
-        include_str!("../../../../worlds/company-2026/sites/apple.json"),
+        include_str!("../../../../worlds/internet/sites/apple.json"),
     ),
     (
         "aws",
-        include_str!("../../../../worlds/company-2026/sites/aws.json"),
+        include_str!("../../../../worlds/internet/sites/aws.json"),
     ),
     (
         "cloudflare",
-        include_str!("../../../../worlds/company-2026/sites/cloudflare.json"),
+        include_str!("../../../../worlds/internet/sites/cloudflare.json"),
     ),
     (
         "crates",
-        include_str!("../../../../worlds/company-2026/sites/crates.json"),
+        include_str!("../../../../worlds/internet/sites/crates.json"),
     ),
     (
         "docsrs",
-        include_str!("../../../../worlds/company-2026/sites/docsrs.json"),
+        include_str!("../../../../worlds/internet/sites/docsrs.json"),
     ),
     (
         "figma",
-        include_str!("../../../../worlds/company-2026/sites/figma.json"),
+        include_str!("../../../../worlds/internet/sites/figma.json"),
     ),
     (
         "guide",
@@ -45,7 +45,7 @@ const SITES: &[(&str, &str)] = &[
     ),
     (
         "microsoft",
-        include_str!("../../../../worlds/company-2026/sites/microsoft.json"),
+        include_str!("../../../../worlds/internet/sites/microsoft.json"),
     ),
     (
         "northstar-status",
@@ -57,23 +57,23 @@ const SITES: &[(&str, &str)] = &[
     ),
     (
         "npmjs",
-        include_str!("../../../../worlds/company-2026/sites/npmjs.json"),
+        include_str!("../../../../worlds/internet/sites/npmjs.json"),
     ),
     (
         "pypi",
-        include_str!("../../../../worlds/company-2026/sites/pypi.json"),
+        include_str!("../../../../worlds/internet/sites/pypi.json"),
     ),
     (
         "stripe",
-        include_str!("../../../../worlds/company-2026/sites/stripe.json"),
+        include_str!("../../../../worlds/internet/sites/stripe.json"),
     ),
     (
         "whatsapp",
-        include_str!("../../../../worlds/company-2026/sites/whatsapp.json"),
+        include_str!("../../../../worlds/internet/sites/whatsapp.json"),
     ),
     (
         "zoom",
-        include_str!("../../../../worlds/company-2026/sites/zoom.json"),
+        include_str!("../../../../worlds/internet/sites/zoom.json"),
     ),
 ];
 

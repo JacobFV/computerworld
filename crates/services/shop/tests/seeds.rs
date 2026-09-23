@@ -4,9 +4,9 @@ use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
 use cw_service_shop::{ShopService, ShopState};
 use serde_json::Value;
-const AMAZON: &str = include_str!("../../../../worlds/company-2026/sites/amazon.json");
-const ETSY: &str = include_str!("../../../../worlds/company-2026/sites/etsy.json");
-const TICKETMASTER: &str = include_str!("../../../../worlds/company-2026/sites/ticketmaster.json");
+const AMAZON: &str = include_str!("../../../../worlds/internet/sites/amazon.json");
+const ETSY: &str = include_str!("../../../../worlds/internet/sites/etsy.json");
+const TICKETMASTER: &str = include_str!("../../../../worlds/internet/sites/ticketmaster.json");
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
         actor: actor.into(),
@@ -253,7 +253,7 @@ fn every_shipped_storefront_serves_strict_html_with_the_agent_ids() {
         "ticketmaster",
     ] {
         let path = format!(
-            "{}/../../../worlds/company-2026/sites/{site}.json",
+            "{}/../../../worlds/internet/sites/{site}.json",
             env!("CARGO_MANIFEST_DIR")
         );
         let mut state = load(&std::fs::read_to_string(path).unwrap());
@@ -344,7 +344,7 @@ fn every_seeded_cart_is_one_the_catalogue_can_still_fill() {
         "ticketmaster",
     ] {
         let path = format!(
-            "{}/../../../worlds/company-2026/sites/{site}.json",
+            "{}/../../../worlds/internet/sites/{site}.json",
             env!("CARGO_MANIFEST_DIR")
         );
         let raw = std::fs::read_to_string(path).unwrap();

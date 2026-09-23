@@ -12,8 +12,8 @@ use cw_service_bank::{BankService, BankState};
 use cw_service_common::audit;
 use serde_json::Value;
 
-const NORTHWIND: &str = include_str!("../../../../worlds/company-2026/sites/northwind.json");
-const PAYPAL: &str = include_str!("../../../../worlds/company-2026/sites/paypal.json");
+const NORTHWIND: &str = include_str!("../../../../worlds/internet/sites/northwind.json");
+const PAYPAL: &str = include_str!("../../../../worlds/internet/sites/paypal.json");
 
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {

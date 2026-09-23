@@ -5,9 +5,9 @@ use cw_sdk::{Service, ServiceContext};
 use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_service_geo::{GeoService, GeoState};
 use serde_json::Value;
-const GOOGLE_MAPS: &str = include_str!("../../../../worlds/company-2026/sites/google-maps.json");
-const OSM: &str = include_str!("../../../../worlds/company-2026/sites/osm.json");
-const WEATHER: &str = include_str!("../../../../worlds/company-2026/sites/weather.json");
+const GOOGLE_MAPS: &str = include_str!("../../../../worlds/internet/sites/google-maps.json");
+const OSM: &str = include_str!("../../../../worlds/internet/sites/osm.json");
+const WEATHER: &str = include_str!("../../../../worlds/internet/sites/weather.json");
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
         actor: actor.into(),

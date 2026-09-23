@@ -29,6 +29,11 @@ fast=()
 for package in cw-render fontdue jpeg-decoder png miniz_oxide fdeflate; do
   fast+=(--config "profile.release.package.$package.opt-level=3")
 done
+# CW_WASM_INTERNET=0 leaves the built-in internet out: a smaller bundle that boots only
+# worlds setting `internet: false`.
+if [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
+  fast+=(--no-default-features)
+fi
 cargo build -p cw-wasm --release --target wasm32-unknown-unknown \
   --config 'profile.release.opt-level="z"' \
   --config 'profile.release.lto="fat"' \

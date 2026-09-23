@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "id": "unrelated-lab",
+  "internet": false,
   "profiles": [
     {
       "id": "lab-os",

@@ -50,7 +50,11 @@ is the world above, written that way.
 1. Define OS profiles and each machine's address, user and initial files.
 2. Define service nodes and explicit links from clients to those nodes.
 3. Place service instances with registered kinds and state. Give them domains.
-4. Declare DNS records and gateway restrictions as needed.
+4. Declare DNS records and gateway restrictions as needed. The public web is not
+   yours to declare: every world joins the [built-in internet](../worlds/internet)
+   unless it sets `internet: false`, and a machine reaches it when its gateway's
+   `allow_internet` says so. Name `edge-router` to choose the uplink yourself, or
+   leave it and each machine gets one.
 5. Parse using `WorldDefinition::from_json` (or resolve a blueprint with
    `cw-world build`), construct `World`, and create an
    environment granting only the intended machines and action families.

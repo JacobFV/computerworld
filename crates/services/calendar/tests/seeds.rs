@@ -1,4 +1,4 @@
-//! The seeded Google Calendar in `worlds/company-2026/sites` must survive `initialize`, render,
+//! The seeded Google Calendar in `worlds/internet/sites` must survive `initialize`, render,
 //! and — the bug this file exists to catch — carry times in microseconds rather than milliseconds.
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
@@ -8,7 +8,7 @@ use serde_json::Value;
 
 fn site() -> Value {
     let path = format!(
-        "{}/../../../worlds/company-2026/sites/google-calendar.json",
+        "{}/../../../worlds/internet/sites/google-calendar.json",
         env!("CARGO_MANIFEST_DIR")
     );
     serde_json::from_str(&std::fs::read_to_string(path).expect("site file")).expect("valid JSON")

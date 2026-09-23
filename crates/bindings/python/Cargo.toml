@@ -6,8 +6,13 @@ license.workspace = true
 [lib]
 name = "computerworld"
 crate-type = ["cdylib"]
+[features]
+default = ["internet"]
+# The built-in internet. Without it the wheel is smaller and boots only worlds that set
+# `internet: false`.
+internet = ["cw/internet"]
 [dependencies]
-cw = { package = "computerworld", path = "../../computerworld" }
+cw = { package = "computerworld", path = "../../computerworld", default-features = false, features = ["render"] }
 serde.workspace = true
 serde_json.workspace = true
 pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }

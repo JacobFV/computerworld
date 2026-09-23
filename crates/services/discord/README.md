@@ -4,7 +4,7 @@ A Discord server with Discord's semantics: roles with a colour and a rank, categ
 text and voice channels, members with a nickname and roles, replies that quote what they
 answer, reactions, and voice channels that have occupants rather than messages. Register
 `cw_service_discord::DiscordService` or `register(&mut Registry)`. The reference world
-binds `worlds/company-2026/sites/discord.json` (the Atlas Community server) to it.
+binds `worlds/internet/sites/discord.json` (the Atlas Community server) to it.
 
 Seed:
 ```json

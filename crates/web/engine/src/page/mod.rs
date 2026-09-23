@@ -1471,14 +1471,17 @@ mod tests {
     }
 
     fn fixture_pages() -> Vec<Page> {
-        let root =
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../worlds/company-2026");
-        let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(root.join("sites"))
-            .expect("worlds/company-2026/sites")
-            .filter_map(|e| e.ok().map(|e| e.path()))
-            .filter(|p| p.extension().is_some_and(|x| x == "json"))
-            .collect();
-        files.push(root.join("world.json"));
+        let worlds = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../worlds");
+        let mut files: Vec<std::path::PathBuf> = Vec::new();
+        for root in ["company-2026", "internet"].map(|w| worlds.join(w)) {
+            files.extend(
+                std::fs::read_dir(root.join("sites"))
+                    .expect("a world's sites directory")
+                    .filter_map(|e| e.ok().map(|e| e.path()))
+                    .filter(|p| p.extension().is_some_and(|x| x == "json")),
+            );
+            files.push(root.join("world.json"));
+        }
         files.sort();
         fn walk(v: &serde_json::Value, out: &mut Vec<Page>) {
             match v {

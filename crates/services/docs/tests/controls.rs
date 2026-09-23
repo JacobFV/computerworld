@@ -12,7 +12,7 @@
 //! can. So the page's own stylesheet is read back, and every rule that paints a hover state or
 //! a pointer cursor must land on something that really is a link, a button or a field.
 //!
-//! The pages come from `worlds/company-2026/sites/*.json` — the shipped seeds — read by two
+//! The pages come from `worlds/internet/sites/*.json` — the shipped seeds — read by two
 //! actors with different grants, plus synthetic states for the page kinds no seed reaches: an
 //! empty workspace, an empty deck, and a sheet and a deck their reader may not write.
 use cw_protocol::{HttpRequest, HttpResponse};
@@ -28,8 +28,8 @@ use cw_web::Strictness;
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 
-const GOOGLE_DOCS: &str = include_str!("../../../../worlds/company-2026/sites/google-docs.json");
-const NOTION: &str = include_str!("../../../../worlds/company-2026/sites/notion.json");
+const GOOGLE_DOCS: &str = include_str!("../../../../worlds/internet/sites/google-docs.json");
+const NOTION: &str = include_str!("../../../../worlds/internet/sites/notion.json");
 
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {

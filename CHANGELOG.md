@@ -95,6 +95,16 @@ determinism corpus passes without regeneration.
   rather than by locale. `site/generated/world-definition.js` shrinks from 7,750,810 to
   6,724,131 bytes. The company scenarios' state hashes in the determinism corpus are
   regenerated; their steps, events and projections are unchanged.
+- **Every world is on the internet unless it opts out.** The 76 public sites, the backbone
+  and the public DNS moved out of the reference company into `worlds/internet/`, embedded by
+  the new `cw-internet` crate. `World::new` joins it to any world whose new `internet` field
+  is left at its default of `true`; what the world declares itself wins. A world names the
+  internet's five `INTERNET_ATTACHMENTS` to uplink and to hang its own public sites off.
+  `computerworld`'s default `internet` feature carries it; without the feature the package
+  is smaller and boots only worlds that set `internet: false`, which `agent-desktop` and
+  `unrelated-lab` now do. `World::with_registry` joins nothing, since a custom registry need
+  not carry the sites' kinds. The sites' content is still the company's story; separating it
+  is next.
 - **A wiki placed with no content is a fresh install.** A `wiki` service seeded without
   `articles` starts with an editable Main Page; `articles: {}` is still an empty wiki. The
   agent desktop's intranet is now that service with only a `brand`, and
