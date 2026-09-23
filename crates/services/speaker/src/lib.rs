@@ -407,8 +407,9 @@ mod tests {
     #[test]
     fn every_shipped_speaker_serves_a_strict_page_idle_and_playing() {
         for name in ["livingroom-speaker", "kitchen-speaker", "office-tv-speaker"] {
-            let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join(format!("../../../worlds/company-2026/services/{name}/service.json"));
+            let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+                "../../../worlds/company-2026/services/{name}/service.json"
+            ));
             let file: Value =
                 serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
             let mut state = SpeakerService

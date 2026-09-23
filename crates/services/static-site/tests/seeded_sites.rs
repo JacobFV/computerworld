@@ -51,7 +51,9 @@ static SITES: std::sync::LazyLock<Vec<(&'static str, &'static str)>> =
             ),
             (
                 "northstar-status",
-                include_str!("../../../../worlds/company-2026/services/northstar-status/service.json"),
+                include_str!(
+                    "../../../../worlds/company-2026/services/northstar-status/service.json"
+                ),
             ),
             (
                 "northstar-www",

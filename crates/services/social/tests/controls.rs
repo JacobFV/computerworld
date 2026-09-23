@@ -101,8 +101,12 @@ fn no_page_of_any_seeded_site_draws_a_control_that_cannot_act() {
 /// Every host the world answers on, so a link off this site is checked to lead somewhere.
 fn world_domains() -> BTreeSet<String> {
     // The reference company's own sites, and the internet it joins.
-    let dirs = ["company-2026", "internet"]
-        .map(|w| format!("{}/../../../worlds/{w}/services", env!("CARGO_MANIFEST_DIR")));
+    let dirs = ["company-2026", "internet"].map(|w| {
+        format!(
+            "{}/../../../worlds/{w}/services",
+            env!("CARGO_MANIFEST_DIR")
+        )
+    });
     let mut out = BTreeSet::new();
     for entry in dirs
         .iter()

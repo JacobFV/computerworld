@@ -2481,7 +2481,11 @@ mod tests {
         b.navigate("http://mail.test/", &mut http).unwrap();
         b.click("f", &mut http).unwrap();
         assert_eq!(b.url(), Some("http://mail.test/"), "the page on show stays");
-        assert_eq!(b.tab().history.len(), 1, "a download is not a history entry");
+        assert_eq!(
+            b.tab().history.len(),
+            1,
+            "a download is not a history entry"
+        );
         assert_eq!(
             b.take_downloads(),
             [Download {
