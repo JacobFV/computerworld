@@ -1696,6 +1696,23 @@ impl Environment {
             }
             _ => return Err(SimError::invalid("unsupported browser operation")),
         };
+        // A file the page sent as an attachment lands in Downloads, written through
+        // the kernel like any other file the actor creates, so it is real and survives
+        // a snapshot; the browser itself has no disk.
+        for download in machine.browser.take_downloads() {
+            let home = machine.desktop.home_folder();
+            let folder = format!("{}/Downloads", home.trim_end_matches('/'));
+            runtime.create_directory(&a.machine, actor, &folder)?;
+            let name = download_file_name(&download.name, &download.url);
+            let path = format!("{folder}/{name}");
+            runtime.write_file(&a.machine, actor, &path, &download.body)?;
+            machine.desktop.record_download(
+                &name,
+                &path,
+                &download.url,
+                download.body.len() as u64,
+            );
+        }
         machine.focused_input = machine.browser.tab().focused.clone();
         if let Some(window) = machine
             .desktop

@@ -15,7 +15,16 @@ struct Desk {
 }
 impl Desk {
     fn new(actor: &str, machine: &'static str) -> Desk {
+        Desk::with(actor, machine, |_| {})
+    }
+    /// A desk on the reference world as `edit` leaves it.
+    fn with(
+        actor: &str,
+        machine: &'static str,
+        edit: impl FnOnce(&mut computerworld::WorldDefinition),
+    ) -> Desk {
         let mut definition = reference_world();
+        edit(&mut definition);
         // mail.com wears its own skin in `sites/mail-com.json`; a world file generated before
         // that still says `plain`, which is the Page rendering this test is not about.
         for service in &mut definition.services {
@@ -272,4 +281,28 @@ fn mail_com_wears_its_own_skin_and_sends_through_the_agent_api() {
         && e["text"]
             .as_str()
             .is_some_and(|t| t.contains("DevCon Seattle"))));
+}
+
+#[test]
+fn an_attachment_link_saves_the_file_to_downloads_and_leaves_the_page() {
+    let mut desk = Desk::with("alice", "alice-mac", |definition| {
+        // "# Roll back\n", attached to the launch checklist the way a seed states it.
+        let gmail = definition
+            .services
+            .iter_mut()
+            .find(|s| s.id == "google-mail")
+            .unwrap();
+        gmail.initial_state["messages"]["mail-1"]["attachments"] =
+            json!({"rollback plan.md": "IyBSb2xsIGJhY2sK"});
+    });
+    desk.go("http://mail.google.com/?folder=inbox&thread=mail-1");
+    let before = desk.url();
+    desk.click("read-mail-1-file-0");
+    assert_eq!(desk.url(), before, "the conversation is still on show");
+    let saved = desk
+        .world
+        .runtime()
+        .read_file("alice-mac", "/Users/alice/Downloads/rollback-plan.md")
+        .unwrap();
+    assert_eq!(saved, b"# Roll back\n");
 }

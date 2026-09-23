@@ -617,6 +617,35 @@ pub struct BrowserState {
     /// Navigations a document queued while it loaded, performed once it is committed.
     #[serde(skip)]
     load_navs: Vec<PendingNav>,
+    /// Files a navigation received as attachments, waiting for whoever owns the
+    /// machine's disk to save them ([`BrowserState::take_downloads`]). Drained within
+    /// the action that fetched them, so it is never part of a snapshot.
+    #[serde(skip)]
+    downloads: Vec<Download>,
+}
+/// A response the browser saves rather than shows: one sent with
+/// `content-disposition: attachment`, as a real browser treats it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Download {
+    /// Where it came from, after redirects.
+    pub url: String,
+    /// The file name the response suggested, unsanitised; empty when it named none.
+    pub name: String,
+    pub body: Vec<u8>,
+}
+/// The file name a response asks to be saved under, when it asks to be saved at all.
+fn attachment_name(response: &HttpResponse) -> Option<String> {
+    let header = response.header("content-disposition")?;
+    let mut parts = header.split(';').map(str::trim);
+    if !parts.next()?.eq_ignore_ascii_case("attachment") {
+        return None;
+    }
+    let name = parts
+        .filter_map(|p| p.split_once('='))
+        .find(|(k, _)| k.trim().eq_ignore_ascii_case("filename"))
+        .map(|(_, v)| v.trim().trim_matches('"').to_owned())
+        .unwrap_or_default();
+    Some(name)
 }
 fn default_search_engine() -> String {
     DEFAULT_SEARCH_ENGINE.to_owned()
@@ -647,6 +676,7 @@ impl Default for BrowserState {
             always_script: false,
             nav_depth: 0,
             load_navs: Vec::new(),
+            downloads: Vec::new(),
         }
     }
 }
@@ -838,6 +868,11 @@ impl BrowserState {
     ///
     /// A caller that already has a URL and wants to hear about a bad one should use
     /// [`BrowserState::navigate_url`].
+    /// The files navigations have received as attachments since the last call, oldest
+    /// first. The browser has no disk; the caller saves them.
+    pub fn take_downloads(&mut self) -> Vec<Download> {
+        std::mem::take(&mut self.downloads)
+    }
     pub fn navigate<F>(&mut self, text: &str, transport: &mut F) -> Result<()>
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
@@ -1105,6 +1140,18 @@ impl BrowserState {
                         request.headers.remove("content-type");
                     }
                     continue;
+                }
+            }
+            // A file sent as an attachment is saved, not shown: the page on show stays
+            // where it is, the way a download link leaves a real browser's tab alone.
+            if (200..300).contains(&response.status) {
+                if let Some(name) = attachment_name(&response) {
+                    self.downloads.push(Download {
+                        url: url.to_string(),
+                        name,
+                        body: response.body,
+                    });
+                    return Ok(());
                 }
             }
             let kind = media_type(&response);
@@ -2406,6 +2453,44 @@ mod tests {
         b.navigate("http://site.test/", &mut http).unwrap();
         b.click("avatar", &mut http).unwrap();
         assert_eq!(b.url(), Some("http://site.test/users/ada"));
+    }
+    #[test]
+    fn an_attachment_is_handed_over_to_be_saved_and_the_page_stays() {
+        let mut b = BrowserState::default();
+        let mut http = |r: HttpRequest| -> Result<HttpResponse> {
+            Ok(if r.url.ends_with("/files/plan.zip") {
+                HttpResponse {
+                    status: 200,
+                    headers: BTreeMap::from([
+                        ("content-type".into(), "application/zip".into()),
+                        (
+                            "content-disposition".into(),
+                            "attachment; filename=\"plan.zip\"".into(),
+                        ),
+                    ]),
+                    body: vec![0x50, 0x4b, 0xff],
+                }
+            } else {
+                HttpResponse {
+                    status: 200,
+                    headers: BTreeMap::from([("content-type".into(), "text/html".into())]),
+                    body: b"<a id=f href=/files/plan.zip download>plan.zip</a>".to_vec(),
+                }
+            })
+        };
+        b.navigate("http://mail.test/", &mut http).unwrap();
+        b.click("f", &mut http).unwrap();
+        assert_eq!(b.url(), Some("http://mail.test/"), "the page on show stays");
+        assert_eq!(b.tab().history.len(), 1, "a download is not a history entry");
+        assert_eq!(
+            b.take_downloads(),
+            [Download {
+                url: "http://mail.test/files/plan.zip".into(),
+                name: "plan.zip".into(),
+                body: vec![0x50, 0x4b, 0xff],
+            }]
+        );
+        assert!(b.take_downloads().is_empty(), "taken once");
     }
     #[test]
     fn links_forms_and_history_use_transport() {

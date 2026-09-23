@@ -764,6 +764,22 @@ fn list_tree(
     Ok(out)
 }
 
+/// The name a download is saved under: the one the response suggested, cut to the
+/// characters every filesystem here accepts, or else one made from the URL.
+fn download_file_name(suggested: &str, url: &str) -> String {
+    let safe: String = suggested
+        .chars()
+        .map(|c| if c == ' ' { '-' } else { c })
+        .filter(|c| c.is_alphanumeric() || matches!(c, '.' | '-' | '_'))
+        .take(96)
+        .collect();
+    if safe.is_empty() || safe.starts_with('.') {
+        download_name(url)
+    } else {
+        safe
+    }
+}
+
 fn download_name(url: &str) -> String {
     let trimmed = url.split(['?', '#']).next().unwrap_or(url);
     let last = trimmed

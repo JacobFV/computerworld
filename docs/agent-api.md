@@ -57,6 +57,10 @@ and refresh the scene after layout changes. Move outcomes may include a cursor h
 optionally `argument`, and returns a window ID. `focus`/`close` take `{"window":id}`.
 `keyboard.v1/type` takes `{"text":"..."}` and `key` takes `{"key":"Enter"}`.
 Browser launch and browser controls require `browser.v1` as well as app access.
+A navigation whose response is sent with `content-disposition: attachment` — a mail
+attachment, say — is saved rather than shown: the file is written to the machine's
+`~/Downloads` under the name the response suggests, it appears in the browser's
+downloads, and the page on show stays where it was.
 Installed apps are part of the capability surface: a GUI terminal can run commands
 through keyboard input even when direct terminal-tool access is not granted.
 
