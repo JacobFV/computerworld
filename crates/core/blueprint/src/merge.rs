@@ -9,7 +9,9 @@
 //! * `include: [<path>, ...]` merges each fragment after this document's own
 //!   declarations, so what a blueprint states itself comes first.
 //! * `{from_file: <path>}` anywhere in the tree becomes that file's contents,
-//!   which is how a generated index is data rather than a pipeline stage.
+//!   which is how a generated index is data rather than a pipeline stage, and
+//!   `{from_dir: <path>}` becomes a directory's, one entry per file. Both paths
+//!   are relative to the file that names them.
 use crate::inputs::Interpolator;
 use crate::node::{Map, Node};
 use crate::{json, place, yaml, Error, Files};
@@ -335,9 +337,10 @@ fn include_patterns(includes: Option<Node>, source: &str) -> Result<Vec<String>,
     }
 }
 
-/// Paths are relative to the blueprint's root directory, never to the file that
-/// names them and never to anywhere outside — a world that could reach up out of
-/// its own directory would build differently on a different machine.
+/// An `include`, `extends` or `copy` path is relative to the blueprint's root
+/// directory; a `from_file` or `from_dir` path goes through [`resolve_beside`]
+/// first. Neither may reach outside the root — a world that could reach up out
+/// of its own directory would build differently on a different machine.
 pub fn resolve_path(path: &str, source: &str) -> Result<String, Error> {
     if path.starts_with('/') || path.contains('\\') {
         return Err(Error::at(
@@ -350,10 +353,12 @@ pub fn resolve_path(path: &str, source: &str) -> Result<String, Error> {
         match part {
             "" | "." => continue,
             ".." => {
-                return Err(Error::at(
-                    source,
-                    format!("{path:?} climbs out of the blueprint's directory"),
-                ))
+                if parts.pop().is_none() {
+                    return Err(Error::at(
+                        source,
+                        format!("{path:?} climbs out of the blueprint's directory"),
+                    ));
+                }
             }
             other => parts.push(other),
         }
@@ -469,13 +474,37 @@ fn substitute_files(
             let Some(path) = map.get("from_file").and_then(Node::as_str) else {
                 return Err(Error::at(source, "from_file takes one path"));
             };
-            let path = resolve_path(path, source)?;
+            let path = resolve_beside(path, source)?;
             read.insert(path.clone());
             let bytes = files.read(&path).map_err(|e| Error::at(&path, e))?;
             *node = parse(&path, &bytes)?;
             // A loaded file may itself be a blueprint fragment full of the same
             // directive, so the replacement is walked too.
             substitute_files(node, files, read, &path)
+        }
+        Node::Map(map) if map.contains_key("from_dir") => {
+            crate::known_keys(map, &["from_dir", "as"], "from_dir", source)?;
+            let Some(path) = map.get("from_dir").and_then(Node::as_str) else {
+                return Err(Error::at(source, "from_dir takes one path"));
+            };
+            let encoding = match map.get("as").map(Node::as_str) {
+                None => Encoding::Data,
+                Some(Some("data")) => Encoding::Data,
+                Some(Some("text")) => Encoding::Text,
+                Some(Some("base64")) => Encoding::Base64,
+                Some(_) => {
+                    return Err(Error::at(
+                        source,
+                        "from_dir's `as` is one of data, text or base64",
+                    ))
+                }
+            };
+            let path = resolve_beside(path, source)?;
+            if !files.is_dir(&path) {
+                return Err(Error::at(source, format!("{path} is not a directory")));
+            }
+            *node = read_dir(&path, encoding, files, read)?;
+            Ok(())
         }
         Node::Map(map) => {
             for (_, value) in map.iter_mut() {
@@ -491,6 +520,89 @@ fn substitute_files(
         }
         _ => Ok(()),
     }
+}
+
+/// How `from_dir` reads the files it finds.
+#[derive(Clone, Copy)]
+enum Encoding {
+    /// Each file is a JSON or YAML document, keyed by its name without the
+    /// extension, and walked for the same directives as any other.
+    Data,
+    /// Each file is UTF-8 text, keyed by its whole name.
+    Text,
+    /// Each file is bytes, base64-encoded and keyed by its whole name — the shape
+    /// a service takes a binary file in, such as a mail attachment.
+    Base64,
+}
+
+/// A directory as a value: a mapping from each entry's name to its contents, a
+/// subdirectory being a mapping of its own. Entries come out sorted by name, so
+/// the same tree builds the same world.
+fn read_dir(
+    dir: &str,
+    encoding: Encoding,
+    files: &dyn Files,
+    read: &mut BTreeSet<String>,
+) -> Result<Node, Error> {
+    let mut out = Map::new();
+    for entry in files.list_dir(dir).map_err(|e| Error::at(dir, e))? {
+        if crate::copy::NEVER.contains(&entry.name.as_str()) {
+            continue;
+        }
+        let path = format!("{dir}/{}", entry.name);
+        let (key, value) = if entry.directory {
+            (entry.name.clone(), read_dir(&path, encoding, files, read)?)
+        } else {
+            read.insert(path.clone());
+            let bytes = files.read(&path).map_err(|e| Error::at(&path, e))?;
+            match encoding {
+                Encoding::Data => {
+                    let Some((stem, _)) = entry
+                        .name
+                        .rsplit_once('.')
+                        .filter(|(_, ext)| matches!(*ext, "json" | "yml" | "yaml"))
+                    else {
+                        return Err(Error::at(
+                            &path,
+                            "is not JSON or YAML; read a directory of other files with \
+                             `as: text` or `as: base64`",
+                        ));
+                    };
+                    let mut value = parse(&path, &bytes)?;
+                    substitute_files(&mut value, files, read, &path)?;
+                    (stem.to_string(), value)
+                }
+                Encoding::Text => {
+                    let text = String::from_utf8(bytes)
+                        .map_err(|_| Error::at(&path, "is not UTF-8 text; read it as base64"))?;
+                    (entry.name.clone(), Node::String(text))
+                }
+                Encoding::Base64 => (
+                    entry.name.clone(),
+                    Node::String(crate::copy::base64(&bytes)),
+                ),
+            }
+        };
+        if out.insert(key.clone(), value).is_some() {
+            return Err(Error::at(
+                dir,
+                format!("holds two entries named {key:?} once extensions are dropped"),
+            ));
+        }
+    }
+    out.sort_by_key_bytes();
+    Ok(Node::Map(out))
+}
+
+/// A `from_file` or `from_dir` path, which is relative to the file that names it:
+/// `services/google-mail/overlay.json` reads `attachments/` from beside itself.
+/// It may climb within the blueprint's directory but never out of it.
+fn resolve_beside(path: &str, source: &str) -> Result<String, Error> {
+    let joined = match source.rsplit_once('/') {
+        Some((dir, _)) if !path.starts_with('/') => format!("{dir}/{path}"),
+        _ => path.to_string(),
+    };
+    resolve_path(&joined, source)
 }
 
 /// What identifies an item of a keyed list, so an overlay lands on the right one.

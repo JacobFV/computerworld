@@ -6,7 +6,7 @@ snapshot refuses to load into a world whose definition differs. That is what mak
 a world reproducible — and it is also what makes one miserable to write by hand.
 The reference company is three and a half megabytes of JSON.
 
-A **blueprint** is the same document with four source-only conveniences, resolved
+A **blueprint** is the same document with a handful of source-only conveniences, resolved
 away before anything runs. `cw-world` reads the blueprint and writes the world:
 
     cargo run -p cw-blueprint --bin cw-world -- build worlds/company-2026/world.yml
@@ -207,6 +207,39 @@ beside it. Nor does the public web belong in a blueprint: it is
 `internet: false`. Reach for `from_file` when the content really is the world's own.
 
 Substitution does not reach inside a loaded file: data is data.
+
+## `from_dir:` — a value that is a directory
+
+A service with accounts holds more than a JSON file should: a mailbox's
+attachments are files, and writing them as base64 inside `overlay.json` is the
+undiffable string literal `copy:` exists to avoid. `{from_dir: <path>}` becomes a
+mapping with one entry per file, a subdirectory becoming a mapping of its own:
+
+```
+services/google-mail/
+  overlay.json
+  attachments/mail-1/rollback-plan.md
+  attachments/mail-1/launch-owners.csv
+```
+
+```json
+"mail-1": {
+  "subject": "Atlas launch checklist",
+  "attachments": {"from_dir": "attachments/mail-1", "as": "base64"}
+}
+```
+
+`as:` says how each file is read. `base64` keys each file by its whole name and
+encodes its bytes, which is how a service takes a binary file; `text` keys it by
+its whole name and requires UTF-8; `data`, the default, requires JSON or YAML
+and keys each document by its name without the extension, so a directory of
+`messages/mail-1.json` files can stand in for a `messages` mapping. Entries come
+out sorted, and `.DS_Store`, `.gitkeep` and `.git` are skipped.
+
+A `from_file` or `from_dir` path is relative to the file that names it, so a
+service's directory carries its own data; it may climb with `..` within the
+blueprint's directory but never out of it. `include:`, `extends:` and `copy:`
+paths stay relative to the blueprint's root.
 
 ## `place:` — a service's node, link and records
 

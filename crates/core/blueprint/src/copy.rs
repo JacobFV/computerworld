@@ -21,7 +21,7 @@ use std::collections::{BTreeMap, BTreeSet};
 const COPY_KEYS: &[&str] = &["from", "to", "exclude"];
 /// Names never seeded, whatever a blueprint says. These are artifacts of the
 /// tools that edit the directory, not content of the world.
-const NEVER: &[&str] = &[".DS_Store", ".gitkeep", ".git"];
+pub(crate) const NEVER: &[&str] = &[".DS_Store", ".gitkeep", ".git"];
 /// What one computer may be seeded with unless its blueprint says otherwise. The
 /// world file is embedded in every native and Wasm build, so this is a real cost.
 const DEFAULT_BYTES_PER_COMPUTER: u64 = 3 * 1024 * 1024;
@@ -260,7 +260,7 @@ fn mirror(relative: &str, home: &str, drives: bool) -> String {
 }
 
 /// Standard base64, the encoding `ComputerDefinition::binary_files` decodes.
-fn base64(bytes: &[u8]) -> String {
+pub(crate) fn base64(bytes: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
@@ -553,6 +553,113 @@ mod tests {
             .unwrap()
             .get("github")
             .is_some());
+    }
+
+    fn overlay_world(overlay: &[u8], extra: &[(&str, &[u8])]) -> Result<Node, Error> {
+        let mut entries: Vec<(&str, &[u8])> = vec![
+            ("services/mail/overlay.json", overlay),
+            (
+                "computers/lab/computer.json",
+                b"{\"id\": \"lab\", \"profile\": \"u\"}",
+            ),
+        ];
+        entries.extend_from_slice(extra);
+        let files = world_with(&entries);
+        crate::merge::load("world.yml", &files, &mut BTreeSet::new(), &mut no_inputs())
+            .map(|loaded| loaded.document)
+    }
+
+    #[test]
+    fn from_dir_reads_a_tree_beside_the_file_that_names_it() {
+        let world = overlay_world(
+            b"{\"initial_state\": {\"files\": {\"from_dir\": \"attachments\", \"as\": \"base64\"}}}",
+            &[
+                ("services/mail/attachments/mail-1/a.bin", &[0xff, 0x00, 0x41]),
+                ("services/mail/attachments/mail-1/notes.txt", b"hi"),
+                ("services/mail/attachments/mail-1/.DS_Store", b"junk"),
+            ],
+        )
+        .unwrap();
+        let files = world
+            .get("internet_overlays")
+            .and_then(|o| o.get("mail"))
+            .and_then(|m| m.get("initial_state"))
+            .and_then(|s| s.get("files"))
+            .unwrap();
+        let one = files.get("mail-1").unwrap().as_map().unwrap();
+        assert_eq!(one.keys().collect::<Vec<_>>(), ["a.bin", "notes.txt"]);
+        assert_eq!(one.get("a.bin").unwrap().as_str(), Some("/wBB"));
+        assert_eq!(one.get("notes.txt").unwrap().as_str(), Some("aGk="));
+    }
+
+    #[test]
+    fn from_dir_as_data_keys_documents_by_their_stem() {
+        let world = overlay_world(
+            b"{\"initial_state\": {\"messages\": {\"from_dir\": \"messages\"}}}",
+            &[
+                ("services/mail/messages/mail-2.yml", b"subject: two\n"),
+                (
+                    "services/mail/messages/mail-1.json",
+                    b"{\"subject\": \"one\"}",
+                ),
+            ],
+        )
+        .unwrap();
+        let messages = world
+            .get("internet_overlays")
+            .and_then(|o| o.get("mail"))
+            .and_then(|m| m.get("initial_state"))
+            .and_then(|s| s.get("messages"))
+            .unwrap()
+            .as_map()
+            .unwrap();
+        assert_eq!(messages.keys().collect::<Vec<_>>(), ["mail-1", "mail-2"]);
+        assert_eq!(
+            messages
+                .get("mail-2")
+                .unwrap()
+                .get("subject")
+                .unwrap()
+                .as_str(),
+            Some("two")
+        );
+    }
+
+    #[test]
+    fn from_dir_refuses_what_its_encoding_cannot_hold() {
+        let text = overlay_world(
+            b"{\"x\": {\"from_dir\": \"d\", \"as\": \"text\"}}",
+            &[("services/mail/d/a.bin", &[0xff])],
+        );
+        assert!(text.unwrap_err().to_string().contains("not UTF-8"));
+        let data = overlay_world(
+            b"{\"x\": {\"from_dir\": \"d\"}}",
+            &[("services/mail/d/a.txt", b"hi")],
+        );
+        assert!(data.unwrap_err().to_string().contains("not JSON or YAML"));
+        let unknown = overlay_world(
+            b"{\"x\": {\"from_dir\": \"d\", \"as\": \"hex\"}}",
+            &[("services/mail/d/a.txt", b"hi")],
+        );
+        assert!(unknown
+            .unwrap_err()
+            .to_string()
+            .contains("one of data, text or base64"));
+    }
+
+    #[test]
+    fn a_path_beside_a_file_may_climb_within_the_blueprint_but_not_out() {
+        let shared = overlay_world(
+            b"{\"x\": {\"from_file\": \"../shared/x.json\"}}",
+            &[("services/shared/x.json", b"7")],
+        )
+        .unwrap();
+        let x = shared
+            .get("internet_overlays")
+            .and_then(|o| o.get("mail"))
+            .and_then(|m| m.get("x"));
+        assert_eq!(x.and_then(Node::scalar_text).as_deref(), Some("7"));
+        assert!(overlay_world(b"{\"x\": {\"from_file\": \"../../../x.json\"}}", &[]).is_err());
     }
 
     #[test]
