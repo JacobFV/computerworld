@@ -99,8 +99,7 @@ fn render(state: &mut Value, host: &str, html: &str, file: &str, viewport: Viewp
     println!("wrote {}", target.display());
 }
 fn site(name: &str) -> (Value, String, Value) {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join(format!("../../../worlds/internet/sites/{name}.json"));
+    let path = PathBuf::from(cw_service_common::reference::reference_site_path(name));
     let file: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     let host = file["domains"][0].as_str().unwrap().to_owned();
     let state = MediaService

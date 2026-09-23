@@ -1,0 +1,161 @@
+{
+  "initial_state": {
+    "articles": {
+      "atlas-determinism": {
+        "id": "atlas-determinism",
+        "section": "tech",
+        "year": "2026",
+        "title": "Northstar's Atlas bets everything on determinism",
+        "dek": "The startup thinks reproducibility is a feature, not a research project.",
+        "byline": "Tom Weber",
+        "date": "Mar 5, 2026",
+        "tick": 8,
+        "read_minutes": 7,
+        "body": [
+          "Most simulation software will tell you it is reproducible. Run it twice with the same inputs and you will usually get the same answer, and when you do not, the vendor will explain that floating point is hard and the scheduler is unpredictable and you should average over more runs. Northstar's Atlas 1.0, which shipped this week, takes the opposite position: a run that cannot be replayed byte for byte is a bug report, not a rounding error.",
+          "Atlas simulates an entire machine - processes, filesystem, network stack and browser - from a single seed. Nothing inside it may read the wall clock, ask the host for randomness, or iterate a container whose order is not defined. Alice Chen, the staff engineer who owns the renderer, described the discipline to me as 'a list of things you are no longer allowed to do, and then two years of finding out how many of them you were doing.'",
+          "The interesting part is not the claim, it is the enforcement. Atlas ships a replay harness that takes a recorded run and reruns it from the seed, comparing every frame the renderer produces. Chen showed me a failure that survived eighteen months of code review: a test that passed on every machine at Northstar and failed on exactly one Windows CI runner, because a hash map was iterated in an order the standard library does not promise. The fix was nine lines. The search took three weeks.",
+          "Carol Nakamura, the engineering manager who owned the release, is careful about what determinism buys you. 'It does not make the software correct,' she said. 'It makes the incorrect parts stay still long enough to look at.' Northstar's own postmortem for a twelve-minute latency incident in February leans on exactly that: the incident was reproduced locally from a checkpoint before anyone had finished writing the timeline.",
+          "There are costs. Determinism rules out a lot of ordinary engineering convenience - thread pools that schedule themselves, caches keyed on timestamps, any library that calls home. Northstar has rewritten or vendored more dependencies than it would like to admit, and the repository at http://github.com/northstar/atlas contains a directory of patches with a README that opens 'we are sorry.'",
+          "Whether the trade is worth it depends on what you are simulating. For a game studio it is probably not. For anyone who has to explain to a regulator why a run produced the number it produced, it starts to look less like engineering taste and more like a requirement. Atlas 1.0 is out now; Chen's full walkthrough is at http://youtube.com/watch?v=atlas-walkthrough and the team's own launch notes are at http://eng.northstar.example/posts/shipping-atlas"
+        ],
+        "links": [
+          {
+            "label": "Atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          },
+          {
+            "label": "Alice Chen's walkthrough",
+            "url": "http://youtube.com/watch?v=atlas-walkthrough"
+          },
+          {
+            "label": "Northstar's launch post",
+            "url": "http://eng.northstar.example/posts/shipping-atlas"
+          },
+          {
+            "label": "Deterministic simulation - Wikipedia",
+            "url": "http://en.wikipedia.org/wiki/Deterministic_simulation"
+          }
+        ],
+        "tags": [
+          "northstar",
+          "determinism",
+          "atlas"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Finally. The hash-order story alone is worth the read - I answered that exact question three weeks ago.",
+            "tick": 8,
+            "likes": 37
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "Can confirm the Windows runner detail. I opened that issue and I am still not over it.",
+            "tick": 8,
+            "likes": 29
+          },
+          {
+            "id": "c3",
+            "author": "mkuznetsov",
+            "text": "\"Averaging over more runs\" is the most damning sentence I have read about my own industry this year.",
+            "tick": 9,
+            "likes": 22
+          },
+          {
+            "id": "c4",
+            "author": "carol",
+            "text": "For the record the quote is accurate and I stand by it.",
+            "tick": 9,
+            "likes": 18
+          },
+          {
+            "id": "c5",
+            "author": "dfarr",
+            "text": "What does this cost in wall-clock performance? The piece never says.",
+            "tick": 9,
+            "likes": 11
+          },
+          {
+            "id": "c6",
+            "author": "alice",
+            "text": "About 12% on our workload, and we got most of it back by deleting the caches we could no longer justify.",
+            "tick": 10,
+            "likes": 44
+          }
+        ]
+      },
+      "monitor-roundup": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Bought the pick. Confirm the stand advice, confirm the 90W asterisk.",
+            "tick": 7,
+            "likes": 15
+          },
+          {
+            "id": "c2",
+            "author": "dfarr",
+            "text": "Nine panels and not one word about matte versus glossy?",
+            "tick": 7,
+            "likes": 6
+          }
+        ]
+      },
+      "devcon-preview": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Booked the Tuesday. The live replay demo is either going to be great or a very memorable failure.",
+            "tick": 7,
+            "likes": 9
+          }
+        ]
+      },
+      "replay-debugging": {
+        "links": [
+          {
+            "label": "Northstar's Atlas",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          }
+        ]
+      }
+    },
+    "subscribers": [
+      "alice.chen@gmail.com"
+    ],
+    "saved": {
+      "alice": [
+        "atlas-determinism"
+      ]
+    },
+    "follows": {
+      "carol": [
+        "publication",
+        "northstar"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://theverge.com/2026/atlas-determinism",
+      "title": "Northstar's Atlas bets everything on determinism - The Verge",
+      "snippet": "The startup thinks reproducibility is a feature, not a research project. Inside Atlas 1.0, the replay harness and the nine-line fix that took three weeks.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "northstar",
+        "atlas",
+        "determinism",
+        "shipping atlas",
+        "alice chen",
+        "carol nakamura",
+        "tom weber"
+      ]
+    }
+  ]
+}

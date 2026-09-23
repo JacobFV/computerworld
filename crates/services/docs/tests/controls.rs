@@ -12,7 +12,7 @@
 //! can. So the page's own stylesheet is read back, and every rule that paints a hover state or
 //! a pointer cursor must land on something that really is a link, a button or a field.
 //!
-//! The pages come from `worlds/internet/sites/*.json` — the shipped seeds — read by two
+//! The pages come from `worlds/internet/sites/*.json`, with the reference company's overlays, — the shipped seeds — read by two
 //! actors with different grants, plus synthetic states for the page kinds no seed reaches: an
 //! empty workspace, an empty deck, and a sheet and a deck their reader may not write.
 use cw_protocol::{HttpRequest, HttpResponse};
@@ -28,8 +28,10 @@ use cw_web::Strictness;
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 
-const GOOGLE_DOCS: &str = include_str!("../../../../worlds/internet/sites/google-docs.json");
-const NOTION: &str = include_str!("../../../../worlds/internet/sites/notion.json");
+static GOOGLE_DOCS: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("google-docs"));
+static NOTION: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("notion"));
 
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
@@ -88,10 +90,10 @@ fn every_page() -> Vec<(String, Value, &'static str, Vec<String>)> {
     };
     let mut out = Vec::new();
     for (what, initial, actors) in [
-        ("google-docs", seeded(GOOGLE_DOCS), ["alice", "bob"]),
-        ("notion", seeded(NOTION), ["alice", "bob"]),
+        ("google-docs", seeded(*GOOGLE_DOCS), ["alice", "bob"]),
+        ("notion", seeded(*NOTION), ["alice", "bob"]),
         // docs.internal wears `plain`, whose pages are `Page` JSON; its controls count too.
-        ("plain", seeded(GOOGLE_DOCS), ["alice", "bob"]),
+        ("plain", seeded(*GOOGLE_DOCS), ["alice", "bob"]),
         ("gdocs empty", boot(empty("gdocs")), ["alice", "bob"]),
         ("notion empty", boot(empty("notion")), ["alice", "bob"]),
         ("plain empty", boot(empty("plain")), ["alice", "bob"]),

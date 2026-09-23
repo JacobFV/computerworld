@@ -103,8 +103,18 @@ determinism corpus passes without regeneration.
   `computerworld`'s default `internet` feature carries it; without the feature the package
   is smaller and boots only worlds that set `internet: false`, which `agent-desktop` and
   `unrelated-lab` now do. `World::with_registry` joins nothing, since a custom registry need
-  not carry the sites' kinds. The sites' content is still the company's story; separating it
-  is next.
+  not carry the sites' kinds.
+- **The internet is neutral, and a world's story is its overlay.** A world's
+  `internet_overlays` layer its own people and content onto the shared sites as a JSON merge
+  patch: objects key by key, any other value (a list included) restated whole, with
+  `search_entries` and `domains` appended. The reference company's inboxes, repositories,
+  posts, orders and videos moved out of the 76 sites into 73 overlays under
+  `worlds/company-2026/overlays/`, and the neutral sites gained public content of their own
+  in their place. The company world keeps everything it had, every list in its original
+  order. `cw-internet`'s neutrality test refuses any of the company's names in the
+  internet, `--test internet_alone` boots every site with no company in the world, and
+  `cw_service_common::reference` gives a service's tests the sites as the reference world
+  has them.
 - **A wiki placed with no content is a fresh install.** A `wiki` service seeded without
   `articles` starts with an editable Main Page; `articles: {}` is still an empty wiki. The
   agent desktop's intranet is now that service with only a `brand`, and

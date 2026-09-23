@@ -1,0 +1,149 @@
+{
+  "initial_state": {
+    "articles": {
+      "i-deleted-our-retry-logic": {
+        "body": [
+          "For three years our payment service retried every failed request up to five times with exponential backoff, because that is what the blog posts said to do. For three years we had an outage roughly every six weeks that nobody could explain. Last month I removed the retries and the outages stopped. This is the story of why it took me three years to try that.",
+          "The retries were hiding a real problem: about one request in four hundred was failing on the first attempt because of a race in our connection pool. The retry masked it. The failure only became visible when load rose enough that the retries themselves saturated the pool, at which point everything fell over at once and the retries made it worse.",
+          "What finally cracked it was a deterministic replay of one of the outages. We ran the service under a simulator that controls time and message order, and the race showed up on the first attempt, every time, because the simulator was not letting the retry paper over it. If you want the background on why that works, The Verge has a decent explainer at http://theverge.com/2026/atlas-determinism",
+          "The fix to the pool was nine lines. Removing the retries was one. I have left one retry in place, for genuinely transient network errors, and it is logged loudly every time it fires.",
+          "The lesson I am taking is not 'never retry'. It is that a retry is a decision to not find out what went wrong, and you should make that decision on purpose."
+        ],
+        "links": [
+          {
+            "label": "The Verge on deterministic replay",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          },
+          {
+            "label": "Read next: the bug that only happened on Tuesdays",
+            "url": "http://medium.com/posts/the-bug-that-only-happened-on-tuesdays"
+          }
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "A retry is a decision to not find out what went wrong. Framing that on the wall.",
+            "tick": 12,
+            "likes": 48
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "The loud logging on the one remaining retry is the important part. Silent retries are how you end up here again.",
+            "tick": 12,
+            "likes": 22
+          }
+        ]
+      },
+      "we-shipped-the-wrong-feature-for-a-year": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "If this number doubled and nothing else changed, would a customer notice. That is the whole discipline in one sentence.",
+            "tick": 11,
+            "likes": 63
+          }
+        ]
+      },
+      "the-case-against-onboarding": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The empty state with one real thing done already. Yes. We did this for our project list and support tickets about 'how do I start' went to zero.",
+            "tick": 10,
+            "likes": 31
+          }
+        ]
+      },
+      "we-raised-nothing-and-it-was-fine": {
+        "body": [
+          "Every few months someone writes the post about how they bootstrapped a company and it was wonderful, and every few months someone else writes the post about how bootstrapping is a trap. I have done it for four years and I would like to write the boring version: it was fine.",
+          "The things it cost us were real. We grew at maybe a third of the speed a funded competitor did. We turned down two customers because serving them would have needed a hire we could not yet afford. I paid myself less than my last salary for three of the four years.",
+          "The things it gave us were also real. We have never had a meeting about a metric that was not revenue. We shipped the product we wanted rather than the one that made a good slide. When the market for our category cooled last year, we did not notice, because we had never been in that market; we had just been selling software.",
+          "The funded competitor was acquired in October. I am glad for them. We are still here, eleven of us, and next year we will be twelve. I want to be clear that this is not advice. It is a data point, and the data point is: fine.",
+          "If you want the opposite data point, Priya's post on why she raised after two years of not raising is worth reading: http://medium.com/posts/why-i-finally-raised"
+        ],
+        "links": [
+          {
+            "label": "Priya Venkat: why I finally raised",
+            "url": "http://medium.com/posts/why-i-finally-raised"
+          }
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "The boring version is the useful version. Thank you for writing it.",
+            "tick": 9,
+            "likes": 54
+          }
+        ]
+      },
+      "why-i-finally-raised": {
+        "byline": "Priya Venkat"
+      },
+      "how-i-write-a-thousand-words-before-breakfast": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Lowering the bar until you trip over it. Trying this tomorrow.",
+            "tick": 13,
+            "likes": 27
+          }
+        ]
+      },
+      "the-essay-i-could-not-finish": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Slightly off-centre and used every week. This is the essay, for what it is worth.",
+            "tick": 7,
+            "likes": 88
+          }
+        ]
+      }
+    },
+    "subscribers": [
+      "alice.chen@gmail.com",
+      "bmartinez@outlook.com"
+    ],
+    "saved": {
+      "alice": [
+        "the-case-against-onboarding"
+      ],
+      "bob": [
+        "i-deleted-our-retry-logic",
+        "we-raised-nothing-and-it-was-fine"
+      ]
+    },
+    "follows": {
+      "alice": [
+        "programming"
+      ],
+      "carol": [
+        "publication",
+        "writing"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://medium.com/posts/why-i-finally-raised",
+      "title": "Why I finally raised after two years of saying I would not - Medium",
+      "snippet": "The company did not need money. It needed to stop being one person's schedule.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "fundraising",
+        "startups",
+        "priya venkat",
+        "raising a round"
+      ]
+    }
+  ]
+}

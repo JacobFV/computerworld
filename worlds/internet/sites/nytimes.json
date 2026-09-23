@@ -2,35 +2,77 @@
   "id": "nytimes",
   "kind": "press",
   "node": "nytimes",
-  "domains": ["nytimes.com", "www.nytimes.com"],
+  "domains": [
+    "nytimes.com",
+    "www.nytimes.com"
+  ],
   "port": 80,
   "place": {
     "address": "203.0.113.141",
     "zone": "internet",
-    "link": {"from": "pop-east", "latency_us": 1200}
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1200
+    }
   },
   "initial_state": {
     "layout": "magazine",
     "skin": "nyt",
     "brand": "The New York Times",
     "tagline": "All the news that fits the page.",
-    "theme": {"accent": "#326891", "background": "#ffffff", "surface": "#f7f7f5", "ink": "#121212", "muted": "#5a5a5a", "content_width": 900},
+    "theme": {
+      "accent": "#326891",
+      "background": "#ffffff",
+      "surface": "#f7f7f5",
+      "ink": "#121212",
+      "muted": "#5a5a5a",
+      "content_width": 900
+    },
     "sections": [
-      {"id": "world", "title": "World"},
-      {"id": "us", "title": "U.S."},
-      {"id": "business", "title": "Business"},
-      {"id": "technology", "title": "Technology"},
-      {"id": "opinion", "title": "Opinion"},
-      {"id": "arts", "title": "Arts"},
-      {"id": "science", "title": "Science"},
-      {"id": "cooking", "title": "Cooking"}
+      {
+        "id": "world",
+        "title": "World"
+      },
+      {
+        "id": "us",
+        "title": "U.S."
+      },
+      {
+        "id": "business",
+        "title": "Business"
+      },
+      {
+        "id": "technology",
+        "title": "Technology"
+      },
+      {
+        "id": "opinion",
+        "title": "Opinion"
+      },
+      {
+        "id": "arts",
+        "title": "Arts"
+      },
+      {
+        "id": "science",
+        "title": "Science"
+      },
+      {
+        "id": "cooking",
+        "title": "Cooking"
+      }
     ],
     "articles": {
       "council-waterfront-vote": {
-        "id": "council-waterfront-vote", "section": "us", "year": "2026",
+        "id": "council-waterfront-vote",
+        "section": "us",
+        "year": "2026",
         "title": "A Waterfront Vote Splits a City Council That Used to Agree on Everything",
         "dek": "In Port Ellery, a plan to replace a working pier with housing has turned a sleepy council into a nightly argument.",
-        "byline": "Dana Whitlock", "date": "Mar 6, 2026", "tick": 14, "read_minutes": 8,
+        "byline": "Dana Whitlock",
+        "date": "Mar 6, 2026",
+        "tick": 14,
+        "read_minutes": 8,
         "body": [
           "PORT ELLERY, Conn. - For eleven years the seven members of this city's council voted together so reliably that the local paper stopped printing the tallies. That ended in January, when a developer's proposal to replace Pier 4 with three hundred apartments came before them and the vote was 4 to 3.",
           "The pier is the last in the harbor still used by commercial fishing boats, and the boats are the reason a quarter of the city's restaurants exist. But the pier also needs eleven million dollars of repairs the city does not have, and the housing plan would pay for a new, smaller landing at the far end of the harbor.",
@@ -38,30 +80,65 @@
           "The council has met four times since the vote to consider amendments. The most recent session ran past midnight and ended with a motion to hire an independent engineer to price the repairs, which passed 7 to 0. It was, several members noted afterward, the first unanimous vote of the year.",
           "The developer, Ellery Landing Partners, has said it will withdraw the proposal if the council does not approve a final plan by June. A public meeting is scheduled for March 19."
         ],
-        "links": [{"label": "Opinion: the case for keeping Pier 4", "url": "http://nytimes.com/2026/opinion-keep-the-pier"}],
-        "tags": ["port-ellery", "housing", "local-government"], "comments": [
-          {"id": "c1", "author": "harborwatch", "text": "The engineer study is the only sensible thing that has happened in this whole process.", "tick": 14, "likes": 12}
+        "links": [
+          {
+            "label": "Opinion: the case for keeping Pier 4",
+            "url": "http://nytimes.com/2026/opinion-keep-the-pier"
+          }
+        ],
+        "tags": [
+          "port-ellery",
+          "housing",
+          "local-government"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "harborwatch",
+            "text": "The engineer study is the only sensible thing that has happened in this whole process.",
+            "tick": 14,
+            "likes": 12
+          }
         ]
       },
       "opinion-keep-the-pier": {
-        "id": "opinion-keep-the-pier", "section": "opinion", "year": "2026",
+        "id": "opinion-keep-the-pier",
+        "section": "opinion",
+        "year": "2026",
         "title": "Port Ellery Should Keep Its Pier, and Build the Apartments Anyway",
         "dek": "The council is being asked to choose between a harbor and a housing plan. It is a false choice.",
-        "byline": "Marcus Feld", "date": "Mar 7, 2026", "tick": 13, "read_minutes": 5,
+        "byline": "Marcus Feld",
+        "date": "Mar 7, 2026",
+        "tick": 13,
+        "read_minutes": 5,
         "body": [
           "I grew up three streets from Pier 4, and I have watched the same argument recur every decade of my life: the harbor is expensive, the land is valuable, and someone has a plan. What is new this time is that the plan is good. Three hundred apartments in a city that has built nine in five years is not a small thing.",
           "But the plan's authors have made a category error. They have treated the pier as a cost and the apartments as a revenue, when the pier is what makes the apartments worth building. Nobody is paying a premium to look at a parking structure.",
           "The engineer the council just hired will, I suspect, find that the pier's repairs can be phased, and that a smaller housing footprint on the upland lot could fund the first phase without touching the landing at all. That plan exists. It was drawn in 2017 and shelved because it was less profitable, not because it was worse.",
           "The council should ask for it back. The news story on the vote is at http://nytimes.com/2026/council-waterfront-vote"
         ],
-        "links": [{"label": "News: a waterfront vote splits the council", "url": "http://nytimes.com/2026/council-waterfront-vote"}],
-        "tags": ["port-ellery", "housing", "opinion"], "comments": []
+        "links": [
+          {
+            "label": "News: a waterfront vote splits the council",
+            "url": "http://nytimes.com/2026/council-waterfront-vote"
+          }
+        ],
+        "tags": [
+          "port-ellery",
+          "housing",
+          "opinion"
+        ],
+        "comments": []
       },
       "trade-pact-textiles": {
-        "id": "trade-pact-textiles", "section": "business", "year": "2026",
+        "id": "trade-pact-textiles",
+        "section": "business",
+        "year": "2026",
         "title": "A Textile Deal Between Two Small Countries Is Rattling a Very Large Industry",
         "dek": "Calderra and Sunwick have agreed to drop tariffs on finished garments. Buyers in three continents are redrawing their supply maps.",
-        "byline": "Priya Venkataraman", "date": "Mar 4, 2026", "tick": 12, "read_minutes": 7,
+        "date": "Mar 4, 2026",
+        "tick": 12,
+        "read_minutes": 7,
         "body": [
           "The agreement signed in Sunwick's capital last week runs to nineteen pages and covers a single category of goods. Its effect on the apparel trade has been out of all proportion to its length.",
           "Calderra grows cotton and spins it; Sunwick, an hour's flight away, has the sewing capacity and a port. For thirty years a tariff on finished garments crossing between them meant the cloth went by sea to a third country to be cut and stitched. From July, it will not have to.",
@@ -70,15 +147,32 @@
           "The pact takes effect on July 1. A companion agreement on yarn is under negotiation."
         ],
         "links": [],
-        "tags": ["trade", "textiles", "calderra", "sunwick"], "comments": [
-          {"id": "c1", "author": "sourcing_pat", "text": "The eleven days is the whole story. Everything else is downstream of that.", "tick": 12, "likes": 8}
+        "tags": [
+          "trade",
+          "textiles",
+          "calderra",
+          "sunwick"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "sourcing_pat",
+            "text": "The eleven days is the whole story. Everything else is downstream of that.",
+            "tick": 12,
+            "likes": 8
+          }
         ]
       },
       "gridline-antitrust-suit": {
-        "id": "gridline-antitrust-suit", "section": "technology", "year": "2026",
+        "id": "gridline-antitrust-suit",
+        "section": "technology",
+        "year": "2026",
         "title": "States Sue Gridline, Saying Its Calendar App Boxed Out Rivals",
         "dek": "Fourteen attorneys general say the software giant tied its scheduling tool to its email service in a way that made competing products unusable.",
-        "byline": "Theo Lindgren", "date": "Mar 3, 2026", "tick": 11, "read_minutes": 9,
+        "byline": "Theo Lindgren",
+        "date": "Mar 3, 2026",
+        "tick": 11,
+        "read_minutes": 9,
         "body": [
           "A coalition of fourteen states filed suit against Gridline Software on Monday, accusing the company of using its dominant email product to disadvantage rival calendar applications. The complaint, filed in federal court in Delaware, says Gridline degraded the way invitations from outside calendars appeared in its inbox while showing its own invitations in full.",
           "Gridline, which says its email service has four hundred million active accounts, called the suit 'a misreading of a security feature' and said the differences in display were designed to warn users about invitations from unverified senders.",
@@ -87,31 +181,66 @@
           "Legal scholars said the case would turn on whether Gridline's email service counts as a market of its own. Gridline's lawyers have argued in earlier matters that email is one feature of a broader productivity suite in which the company faces vigorous competition.",
           "A hearing on the states' request for a preliminary injunction is scheduled for April."
         ],
-        "links": [{"label": "Opinion: the Gridline suit is about defaults", "url": "http://nytimes.com/2026/opinion-defaults-are-the-product"}],
-        "tags": ["antitrust", "gridline", "software"], "comments": [
-          {"id": "c1", "author": "tessera_alum", "text": "I worked there. We spent the last eight months of the company trying to figure out why our invites rendered as plain text. Now I know.", "tick": 11, "likes": 44},
-          {"id": "c2", "author": "bob", "text": "The security-feature defense is going to be hard to square with that internal message.", "tick": 11, "likes": 17}
+        "links": [
+          {
+            "label": "Opinion: the Gridline suit is about defaults",
+            "url": "http://nytimes.com/2026/opinion-defaults-are-the-product"
+          }
+        ],
+        "tags": [
+          "antitrust",
+          "gridline",
+          "software"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "tessera_alum",
+            "text": "I worked there. We spent the last eight months of the company trying to figure out why our invites rendered as plain text. Now I know.",
+            "tick": 11,
+            "likes": 44
+          }
         ]
       },
       "opinion-defaults-are-the-product": {
-        "id": "opinion-defaults-are-the-product", "section": "opinion", "year": "2026",
+        "id": "opinion-defaults-are-the-product",
+        "section": "opinion",
+        "year": "2026",
         "title": "The Gridline Case Is Really About Who Owns the Default",
         "dek": "Antitrust law was written for railroads and oil. It is being asked to reason about a drop-down menu.",
-        "byline": "Helena Marsh", "date": "Mar 5, 2026", "tick": 10, "read_minutes": 6,
+        "byline": "Helena Marsh",
+        "date": "Mar 5, 2026",
+        "tick": 10,
+        "read_minutes": 6,
         "body": [
           "The fourteen states suing Gridline have a strong story and a weak precedent. The story is that Gridline made a rival's product look broken. The precedent problem is that no court has ever been asked to say what a company owes the products that live inside its own inbox.",
           "The honest answer is that the inbox is infrastructure now. Four hundred million people route their working lives through it, and a change to how it renders an invitation is closer to a change in a building code than to a change in a product. We regulate building codes. We hold hearings.",
           "Gridline will say that treating its inbox as infrastructure would freeze it in place, and there is something to that. But the alternative, in which a company may quietly break the products of anyone who competes with it, is not a market. It is a landlord.",
           "The news report is at http://nytimes.com/2026/gridline-antitrust-suit"
         ],
-        "links": [{"label": "News: states sue Gridline", "url": "http://nytimes.com/2026/gridline-antitrust-suit"}],
-        "tags": ["antitrust", "gridline", "opinion"], "comments": []
+        "links": [
+          {
+            "label": "News: states sue Gridline",
+            "url": "http://nytimes.com/2026/gridline-antitrust-suit"
+          }
+        ],
+        "tags": [
+          "antitrust",
+          "gridline",
+          "opinion"
+        ],
+        "comments": []
       },
       "deep-vent-microbes": {
-        "id": "deep-vent-microbes", "section": "science", "year": "2026",
+        "id": "deep-vent-microbes",
+        "section": "science",
+        "year": "2026",
         "title": "In a Vent Two Miles Down, Microbes That Eat Rust and Make Something Stranger",
         "dek": "A research cruise off the Kestrel Ridge has found a community of organisms that appear to run on iron alone.",
-        "byline": "Amara Okonkwo", "date": "Feb 26, 2026", "tick": 9, "read_minutes": 8,
+        "byline": "Amara Okonkwo",
+        "date": "Feb 26, 2026",
+        "tick": 9,
+        "read_minutes": 8,
         "body": [
           "The vent field is not large, perhaps the size of a tennis court, and it was found by accident when a survey vehicle strayed off its planned track. What it contained has kept a shipboard laboratory awake for most of a month.",
           "The microbes coating the vent chimneys draw their energy from oxidizing iron, which is not itself unusual. What is unusual is the by-product. Instead of the rust crusts that iron-eating microbes usually leave behind, these produce a fine, layered mineral that the team has not yet been able to match to any known species of the material.",
@@ -120,15 +249,23 @@
           "The ridge lies in international waters. A second cruise is planned for the autumn."
         ],
         "links": [],
-        "tags": ["science", "oceans", "microbiology"], "comments": [
-          {"id": "c1", "author": "carol", "text": "The five-times-checked vial is the most scientist sentence I have read this year.", "tick": 9, "likes": 21}
-        ]
+        "tags": [
+          "science",
+          "oceans",
+          "microbiology"
+        ],
+        "comments": []
       },
       "restaurant-review-larkspur": {
-        "id": "restaurant-review-larkspur", "section": "arts", "year": "2026",
+        "id": "restaurant-review-larkspur",
+        "section": "arts",
+        "year": "2026",
         "title": "Review: At Larkspur, a Chef Cooks the Meal She Wanted at Twenty-Two",
         "dek": "A twenty-eight-seat room in a former hardware store serves the most confident food in the city right now. Three stars.",
-        "byline": "Jonah Reyes", "date": "Feb 25, 2026", "tick": 8, "read_minutes": 7,
+        "byline": "Jonah Reyes",
+        "date": "Feb 25, 2026",
+        "tick": 8,
+        "read_minutes": 7,
         "body": [
           "The room at Larkspur still has the hardware store's shelving, and on the night I visited a shelf that once held paint held instead a row of jars of preserved lemons, each dated in marker. It is that kind of place: the details are real and none of them are for you.",
           "Chef Simone Achebe, who is thirty-four and opened Larkspur last September after eight years in other people's kitchens, has said the menu is the meal she wished someone had cooked for her at twenty-two, when she was broke and hungry and eating well was the only luxury she could imagine. It shows. The food is generous in a way that has gone out of fashion.",
@@ -136,14 +273,29 @@
           "Service is warm and slightly chaotic, and the wine list is short and fairly priced. Dessert is a single option each night, take it or leave it. Take it.",
           "Larkspur, 114 Fenwick Street. Dinner Wednesday through Sunday. Reservations released a month ahead and gone within the hour."
         ],
-        "links": [{"label": "Cooking: the brown-butter carrots, at home", "url": "http://nytimes.com/2026/cooking-brown-butter-carrots"}],
-        "tags": ["restaurants", "review", "larkspur"], "comments": []
+        "links": [
+          {
+            "label": "Cooking: the brown-butter carrots, at home",
+            "url": "http://nytimes.com/2026/cooking-brown-butter-carrots"
+          }
+        ],
+        "tags": [
+          "restaurants",
+          "review",
+          "larkspur"
+        ],
+        "comments": []
       },
       "cooking-brown-butter-carrots": {
-        "id": "cooking-brown-butter-carrots", "section": "cooking", "year": "2026",
+        "id": "cooking-brown-butter-carrots",
+        "section": "cooking",
+        "year": "2026",
         "title": "Roasted Carrots With Brown Butter and Buckwheat",
         "dek": "The dish everyone leaves Larkspur talking about is, it turns out, four ingredients and forty minutes.",
-        "byline": "Lena Castellano", "date": "Feb 27, 2026", "tick": 7, "read_minutes": 4,
+        "byline": "Lena Castellano",
+        "date": "Feb 27, 2026",
+        "tick": 7,
+        "read_minutes": 4,
         "body": [
           "Simone Achebe was reluctant to give up this recipe, not because it is secret but because, she said, 'people will see how simple it is and think I am cheating.' She is not cheating. The dish depends on carrots roasted hard enough to blister and butter browned further than most people dare.",
           "Heat the oven to 450 degrees. Scrub two pounds of medium carrots, halve them lengthwise, toss with two tablespoons of olive oil and a teaspoon of salt, and roast cut side down on a sheet pan for thirty to thirty-five minutes, until the undersides are dark and the tips have charred.",
@@ -151,16 +303,29 @@
           "Pile the carrots on a platter, pour the butter over, scatter the buckwheat, and finish with flaky salt and a squeeze of lemon. Serves four as a side, or two people who have decided this is dinner.",
           "The review of Larkspur is at http://nytimes.com/2026/restaurant-review-larkspur"
         ],
-        "links": [{"label": "Review: Larkspur", "url": "http://nytimes.com/2026/restaurant-review-larkspur"}],
-        "tags": ["recipes", "vegetables", "larkspur"], "comments": [
-          {"id": "c1", "author": "alice", "text": "Made this on Sunday. The butter really does need to go further than feels safe.", "tick": 8, "likes": 9}
-        ]
+        "links": [
+          {
+            "label": "Review: Larkspur",
+            "url": "http://nytimes.com/2026/restaurant-review-larkspur"
+          }
+        ],
+        "tags": [
+          "recipes",
+          "vegetables",
+          "larkspur"
+        ],
+        "comments": []
       },
       "valmora-strait-summit": {
-        "id": "valmora-strait-summit", "section": "world", "year": "2026",
+        "id": "valmora-strait-summit",
+        "section": "world",
+        "year": "2026",
         "title": "Three Nations, One Strait and a Fee Schedule Nobody Can Agree On",
         "dek": "The Meridian Strait talks in Valmora were supposed to take a day. They are in their fifth.",
-        "byline": "Sofia Marchetti", "date": "Feb 28, 2026", "tick": 6, "read_minutes": 6,
+        "byline": "Sofia Marchetti",
+        "date": "Feb 28, 2026",
+        "tick": 6,
+        "read_minutes": 6,
         "body": [
           "VALMORA - The delegations arrived on Monday with a draft they had agreed in principle in December, and by Tuesday evening the principle had come apart over a single column of a table on page twelve: who collects the pilotage fee, and how much of it they keep.",
           "The Meridian Strait is eleven miles wide at its narrowest and carries a tenth of the region's tanker traffic. All three coastal states supply pilots; none wants to be the one that supplies them for free.",
@@ -169,13 +334,23 @@
           "A joint statement is expected Friday."
         ],
         "links": [],
-        "tags": ["diplomacy", "shipping", "meridian"], "comments": []
+        "tags": [
+          "diplomacy",
+          "shipping",
+          "meridian"
+        ],
+        "comments": []
       },
       "harbourside-surge-aftermath": {
-        "id": "harbourside-surge-aftermath", "section": "world", "year": "2026",
+        "id": "harbourside-surge-aftermath",
+        "section": "world",
+        "year": "2026",
         "title": "After the Surge, Harbourside Asks Why a 2019 Report Went Unread",
         "dek": "A review that recommended raising the sea barrier by a meter was filed, acknowledged and never funded.",
-        "byline": "Sofia Marchetti", "date": "Feb 23, 2026", "tick": 5, "read_minutes": 6,
+        "byline": "Sofia Marchetti",
+        "date": "Feb 23, 2026",
+        "tick": 5,
+        "read_minutes": 6,
         "body": [
           "The report is forty pages long, and its central recommendation appears on page three: the Harbourside barrier, built in 1974, should be raised by one meter before 2025 to account for the sea level and storm patterns the authors expected by then. The council received it in November 2019 and voted to 'note' it.",
           "On Saturday the sea came over the barrier by roughly sixty centimeters. Two thousand people were evacuated, and most are still in school gyms and hotels while their ground floors dry.",
@@ -184,13 +359,23 @@
           "The damage estimate is expected in two weeks."
         ],
         "links": [],
-        "tags": ["flooding", "harbourside", "climate"], "comments": []
+        "tags": [
+          "flooding",
+          "harbourside",
+          "climate"
+        ],
+        "comments": []
       },
       "orchestra-strike-settlement": {
-        "id": "orchestra-strike-settlement", "section": "arts", "year": "2026",
+        "id": "orchestra-strike-settlement",
+        "section": "arts",
+        "year": "2026",
         "title": "The Meridian Philharmonic Settles a Nine-Week Strike, and Plays That Night",
         "dek": "Musicians accepted a contract that ties raises to ticket revenue. The first concert back sold out in an afternoon.",
-        "byline": "Jonah Reyes", "date": "Feb 20, 2026", "tick": 4, "read_minutes": 5,
+        "byline": "Jonah Reyes",
+        "date": "Feb 20, 2026",
+        "tick": 4,
+        "read_minutes": 5,
         "body": [
           "The musicians ratified the contract at four in the afternoon and were on stage by eight. The program, changed at the last minute, opened with a fanfare that the orchestra's principal trumpet said she had chosen 'because it is loud, and we have been quiet for nine weeks.'",
           "The strike, the orchestra's first in a generation, turned on a proposal to freeze base salaries for three years. The settlement instead links annual raises to the previous season's ticket revenue, with a floor of two percent and a ceiling of six.",
@@ -198,13 +383,22 @@
           "The remaining season has been reorganized to make up eleven of the fourteen cancelled concerts. Subscribers will be offered the three missing dates as credit."
         ],
         "links": [],
-        "tags": ["music", "labor", "orchestra"], "comments": []
+        "tags": [
+          "music",
+          "labor",
+          "orchestra"
+        ],
+        "comments": []
       },
       "bakery-chain-ipo": {
-        "id": "bakery-chain-ipo", "section": "business", "year": "2026",
+        "id": "bakery-chain-ipo",
+        "section": "business",
+        "year": "2026",
         "title": "A Bakery Chain That Refused to Franchise Is Going Public Instead",
         "dek": "Hearthline has two hundred company-owned stores and a founder who says the offering is 'the least bad way to open the next two hundred.'",
-        "byline": "Priya Venkataraman", "date": "Feb 17, 2026", "tick": 3, "read_minutes": 6,
+        "date": "Feb 17, 2026",
+        "tick": 3,
+        "read_minutes": 6,
         "body": [
           "Hearthline Bakeries filed for an initial public offering on Tuesday, seeking to raise about three hundred million dollars for a company that has, for nineteen years, grown only as fast as its own cash would allow.",
           "The founder, Mireille Dubois, has been public about her dislike of franchising, which she says produces 'two hundred versions of a store and none of them mine.' The filing preserves that stance: every store will remain company-owned, and the proceeds will fund a commissary network and two hundred new locations over five years.",
@@ -212,57 +406,243 @@
           "'She is betting that the thing that made the stores good survives being done twice as fast,' said one analyst. 'It might. It usually does not.'"
         ],
         "links": [],
-        "tags": ["ipo", "retail", "hearthline"], "comments": []
+        "tags": [
+          "ipo",
+          "retail",
+          "hearthline"
+        ],
+        "comments": []
       },
       "replay-tools-enterprise": {
-        "id": "replay-tools-enterprise", "section": "technology", "year": "2026",
+        "id": "replay-tools-enterprise",
+        "section": "technology",
+        "year": "2026",
         "title": "Why Big Companies Are Suddenly Paying for Software That Runs Slower",
         "dek": "Deterministic simulators trade speed for the ability to replay a failure exactly. Enterprise buyers have decided the trade is worth it.",
-        "byline": "Theo Lindgren", "date": "Feb 12, 2026", "tick": 2, "read_minutes": 7,
+        "byline": "Theo Lindgren",
+        "date": "Feb 12, 2026",
+        "tick": 2,
+        "read_minutes": 7,
         "body": [
           "For most of the history of computing, the pitch for a new tool has been that it is faster. A small category of software is now selling itself on the opposite claim: it is slower, on purpose, and in exchange it will show you exactly what went wrong.",
-          "The tools, known as deterministic simulators, run a program in an environment where time, randomness and the order of events are all controlled. A failure that happens once can be replayed as many times as an engineer wants, unchanged. Northstar, a Seattle firm, released a widely discussed one this month; Reuters covered the release at http://reuters.com/2026/northstar-atlas-determinism",
           "Enterprise buyers, particularly in finance and infrastructure, have been the earliest adopters. 'We spend more on finding bugs than on fixing them,' said the head of platform engineering at a large payments company. 'Anything that turns finding into a mechanical step pays for itself in a quarter.'",
           "The trade-off is real. Simulated runs are typically several times slower than native ones, and the tools do not help with failures that only appear at full speed. Vendors say that category is smaller than engineers assume."
         ],
-        "links": [
-          {"label": "Reuters: Northstar releases Atlas 1.0", "url": "http://reuters.com/2026/northstar-atlas-determinism"},
-          {"label": "The Verge: inside Atlas", "url": "http://theverge.com/2026/atlas-determinism"}
+        "links": [],
+        "tags": [
+          "software",
+          "determinism",
+          "enterprise"
         ],
-        "tags": ["software", "determinism", "enterprise"], "comments": []
+        "comments": []
       },
       "opinion-slow-cities": {
-        "id": "opinion-slow-cities", "section": "opinion", "year": "2026",
+        "id": "opinion-slow-cities",
+        "section": "opinion",
+        "year": "2026",
         "title": "The Cities That Are Winning Are the Ones That Stopped Hurrying",
         "dek": "Port Ellery took four meetings to hire an engineer. That is not dysfunction. That is government.",
-        "byline": "Marcus Feld", "date": "Feb 10, 2026", "tick": 1, "read_minutes": 4,
+        "byline": "Marcus Feld",
+        "date": "Feb 10, 2026",
+        "tick": 1,
+        "read_minutes": 4,
         "body": [
           "There is a fashionable idea that the problem with local government is speed, and that if councils only moved faster, more would get built. I have covered councils for twenty years and I have never seen a bad decision improved by making it sooner.",
           "The councils I have watched succeed share one trait: they are willing to spend a meeting doing nothing but establishing what is true. It is boring. It produces no headlines. It is also the only reliable way to keep from voting on a fiction.",
           "Speed is a virtue in a kitchen and a fire station. In a council chamber it is mostly a way of making sure the argument happens after the vote instead of before it."
         ],
-        "links": [{"label": "Port Ellery's waterfront vote", "url": "http://nytimes.com/2026/council-waterfront-vote"}],
-        "tags": ["opinion", "local-government"], "comments": []
+        "links": [
+          {
+            "label": "Port Ellery's waterfront vote",
+            "url": "http://nytimes.com/2026/council-waterfront-vote"
+          }
+        ],
+        "tags": [
+          "opinion",
+          "local-government"
+        ],
+        "comments": []
       }
     },
-    "subscribers": ["alice.chen@gmail.com"],
-    "saved": {"alice": ["gridline-antitrust-suit"], "carol": ["deep-vent-microbes"]},
-    "follows": {"alice": ["publication", "antitrust"], "bob": ["software"]}
+    "subscribers": [],
+    "saved": {},
+    "follows": {}
   },
   "search_entries": [
-    {"url": "http://nytimes.com/", "title": "The New York Times", "snippet": "World, U.S., business, technology, opinion, arts, science and cooking.", "vertical": "news", "authority": 9, "keywords": ["new york times", "nytimes", "nyt", "news", "newspaper"]},
-    {"url": "http://nytimes.com/2026/council-waterfront-vote", "title": "A Waterfront Vote Splits a City Council That Used to Agree on Everything - The New York Times", "snippet": "In Port Ellery, a plan to replace a working pier with housing has turned a sleepy council into a nightly argument.", "vertical": "news", "authority": 7, "keywords": ["port ellery", "pier 4", "city council", "housing", "waterfront"]},
-    {"url": "http://nytimes.com/2026/trade-pact-textiles", "title": "A Textile Deal Between Two Small Countries Is Rattling a Very Large Industry - The New York Times", "snippet": "Calderra and Sunwick have agreed to drop tariffs on finished garments.", "vertical": "news", "authority": 7, "keywords": ["calderra", "sunwick", "textiles", "trade deal", "tariffs"]},
-    {"url": "http://nytimes.com/2026/gridline-antitrust-suit", "title": "States Sue Gridline, Saying Its Calendar App Boxed Out Rivals - The New York Times", "snippet": "Fourteen attorneys general say the software giant tied its scheduling tool to its email service.", "vertical": "news", "authority": 8, "keywords": ["gridline", "antitrust", "tessera", "calendar", "lawsuit"]},
-    {"url": "http://nytimes.com/2026/opinion-defaults-are-the-product", "title": "The Gridline Case Is Really About Who Owns the Default - The New York Times", "snippet": "Antitrust law was written for railroads and oil. It is being asked to reason about a drop-down menu.", "vertical": "news", "authority": 6, "keywords": ["gridline", "opinion", "antitrust", "defaults"]},
-    {"url": "http://nytimes.com/2026/deep-vent-microbes", "title": "In a Vent Two Miles Down, Microbes That Eat Rust and Make Something Stranger - The New York Times", "snippet": "A research cruise off the Kestrel Ridge has found organisms that appear to run on iron alone.", "vertical": "news", "authority": 7, "keywords": ["kestrel ridge", "hydrothermal vent", "microbes", "iron", "ilse brandt"]},
-    {"url": "http://nytimes.com/2026/restaurant-review-larkspur", "title": "Review: At Larkspur, a Chef Cooks the Meal She Wanted at Twenty-Two - The New York Times", "snippet": "A twenty-eight-seat room in a former hardware store serves the most confident food in the city. Three stars.", "vertical": "news", "authority": 6, "keywords": ["larkspur", "restaurant review", "simone achebe", "fenwick street"]},
-    {"url": "http://nytimes.com/2026/cooking-brown-butter-carrots", "title": "Roasted Carrots With Brown Butter and Buckwheat - NYT Cooking", "snippet": "The dish everyone leaves Larkspur talking about is four ingredients and forty minutes.", "vertical": "news", "authority": 6, "keywords": ["carrots", "brown butter", "buckwheat", "recipe", "nyt cooking"]},
-    {"url": "http://nytimes.com/2026/valmora-strait-summit", "title": "Three Nations, One Strait and a Fee Schedule Nobody Can Agree On - The New York Times", "snippet": "The Meridian Strait talks in Valmora were supposed to take a day. They are in their fifth.", "vertical": "news", "authority": 7, "keywords": ["meridian strait", "valmora", "isle corvane", "pilotage", "shipping"]},
-    {"url": "http://nytimes.com/2026/harbourside-surge-aftermath", "title": "After the Surge, Harbourside Asks Why a 2019 Report Went Unread - The New York Times", "snippet": "A review that recommended raising the sea barrier by a meter was filed, acknowledged and never funded.", "vertical": "news", "authority": 7, "keywords": ["harbourside", "storm surge", "sea barrier", "flood"]},
-    {"url": "http://nytimes.com/2026/bakery-chain-ipo", "title": "A Bakery Chain That Refused to Franchise Is Going Public Instead - The New York Times", "snippet": "Hearthline has two hundred company-owned stores and a founder who dislikes franchising.", "vertical": "news", "authority": 6, "keywords": ["hearthline", "bakery", "ipo", "mireille dubois"]},
-    {"url": "http://nytimes.com/2026/replay-tools-enterprise", "title": "Why Big Companies Are Suddenly Paying for Software That Runs Slower - The New York Times", "snippet": "Deterministic simulators trade speed for the ability to replay a failure exactly.", "vertical": "news", "authority": 7, "keywords": ["deterministic simulator", "replay", "northstar", "enterprise software"]},
-    {"url": "http://nytimes.com/technology", "title": "Technology - The New York Times", "snippet": "Technology coverage from The New York Times.", "vertical": "news", "authority": 8, "keywords": ["nytimes technology", "tech news", "technology"]},
-    {"url": "http://nytimes.com/opinion", "title": "Opinion - The New York Times", "snippet": "Columns and editorials.", "vertical": "news", "authority": 7, "keywords": ["nytimes opinion", "opinion", "columns", "editorial"]}
+    {
+      "url": "http://nytimes.com/",
+      "title": "The New York Times",
+      "snippet": "World, U.S., business, technology, opinion, arts, science and cooking.",
+      "vertical": "news",
+      "authority": 9,
+      "keywords": [
+        "new york times",
+        "nytimes",
+        "nyt",
+        "news",
+        "newspaper"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/2026/council-waterfront-vote",
+      "title": "A Waterfront Vote Splits a City Council That Used to Agree on Everything - The New York Times",
+      "snippet": "In Port Ellery, a plan to replace a working pier with housing has turned a sleepy council into a nightly argument.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "port ellery",
+        "pier 4",
+        "city council",
+        "housing",
+        "waterfront"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/2026/trade-pact-textiles",
+      "title": "A Textile Deal Between Two Small Countries Is Rattling a Very Large Industry - The New York Times",
+      "snippet": "Calderra and Sunwick have agreed to drop tariffs on finished garments.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "calderra",
+        "sunwick",
+        "textiles",
+        "trade deal",
+        "tariffs"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/2026/gridline-antitrust-suit",
+      "title": "States Sue Gridline, Saying Its Calendar App Boxed Out Rivals - The New York Times",
+      "snippet": "Fourteen attorneys general say the software giant tied its scheduling tool to its email service.",
+      "vertical": "news",
+      "authority": 8,
+      "keywords": [
+        "gridline",
+        "antitrust",
+        "tessera",
+        "calendar",
+        "lawsuit"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/2026/opinion-defaults-are-the-product",
+      "title": "The Gridline Case Is Really About Who Owns the Default - The New York Times",
+      "snippet": "Antitrust law was written for railroads and oil. It is being asked to reason about a drop-down menu.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "gridline",
+        "opinion",
+        "antitrust",
+        "defaults"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/2026/deep-vent-microbes",
+      "title": "In a Vent Two Miles Down, Microbes That Eat Rust and Make Something Stranger - The New York Times",
+      "snippet": "A research cruise off the Kestrel Ridge has found organisms that appear to run on iron alone.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "kestrel ridge",
+        "hydrothermal vent",
+        "microbes",
+        "iron",
+        "ilse brandt"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/2026/restaurant-review-larkspur",
+      "title": "Review: At Larkspur, a Chef Cooks the Meal She Wanted at Twenty-Two - The New York Times",
+      "snippet": "A twenty-eight-seat room in a former hardware store serves the most confident food in the city. Three stars.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "larkspur",
+        "restaurant review",
+        "simone achebe",
+        "fenwick street"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/2026/cooking-brown-butter-carrots",
+      "title": "Roasted Carrots With Brown Butter and Buckwheat - NYT Cooking",
+      "snippet": "The dish everyone leaves Larkspur talking about is four ingredients and forty minutes.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "carrots",
+        "brown butter",
+        "buckwheat",
+        "recipe",
+        "nyt cooking"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/2026/valmora-strait-summit",
+      "title": "Three Nations, One Strait and a Fee Schedule Nobody Can Agree On - The New York Times",
+      "snippet": "The Meridian Strait talks in Valmora were supposed to take a day. They are in their fifth.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "meridian strait",
+        "valmora",
+        "isle corvane",
+        "pilotage",
+        "shipping"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/2026/harbourside-surge-aftermath",
+      "title": "After the Surge, Harbourside Asks Why a 2019 Report Went Unread - The New York Times",
+      "snippet": "A review that recommended raising the sea barrier by a meter was filed, acknowledged and never funded.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "harbourside",
+        "storm surge",
+        "sea barrier",
+        "flood"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/2026/bakery-chain-ipo",
+      "title": "A Bakery Chain That Refused to Franchise Is Going Public Instead - The New York Times",
+      "snippet": "Hearthline has two hundred company-owned stores and a founder who dislikes franchising.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "hearthline",
+        "bakery",
+        "ipo",
+        "mireille dubois"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/technology",
+      "title": "Technology - The New York Times",
+      "snippet": "Technology coverage from The New York Times.",
+      "vertical": "news",
+      "authority": 8,
+      "keywords": [
+        "nytimes technology",
+        "tech news",
+        "technology"
+      ]
+    },
+    {
+      "url": "http://nytimes.com/opinion",
+      "title": "Opinion - The New York Times",
+      "snippet": "Columns and editorials.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "nytimes opinion",
+        "opinion",
+        "columns",
+        "editorial"
+      ]
+    }
   ]
 }

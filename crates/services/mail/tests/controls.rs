@@ -1,6 +1,6 @@
 //! Every control on every mail page leads somewhere.
 //!
-//! The service is crawled skin by skin from the seeded mailboxes in `worlds/internet/sites`,
+//! The service is crawled skin by skin from the seeded mailboxes in `worlds/internet/sites` with the reference company's overlays,
 //! plus the states a reader can put a mailbox into: searching, labelled, starred and empty. Each
 //! page is parsed and strictly validated, then every link, every form and every button that
 //! submits one is collected and answered by the router. A link whose target 404s, a form posting
@@ -17,10 +17,7 @@ use std::collections::BTreeSet;
 const HOST: &str = "http://mail";
 
 fn site(name: &str) -> Value {
-    let path = format!(
-        "{}/../../../worlds/internet/sites/{name}.json",
-        env!("CARGO_MANIFEST_DIR")
-    );
+    let path = cw_service_common::reference::reference_site_path(name);
     serde_json::from_str(&std::fs::read_to_string(path).expect("site file")).expect("valid JSON")
 }
 fn context(actor: &str) -> ServiceContext {

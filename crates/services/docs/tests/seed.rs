@@ -5,8 +5,10 @@ use cw_sdk::{Service, ServiceContext};
 use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_service_docs::{DocType, DocsService, DocsState};
 use serde_json::Value;
-const SITE: &str = include_str!("../../../../worlds/internet/sites/google-docs.json");
-const NOTION: &str = include_str!("../../../../worlds/internet/sites/notion.json");
+static SITE: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("google-docs"));
+static NOTION: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("notion"));
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
         actor: actor.into(),
@@ -17,7 +19,7 @@ fn ctx(actor: &str) -> ServiceContext {
     }
 }
 fn boot(actor: &str) -> (Value, DocsState) {
-    let site: Value = serde_json::from_str(SITE).unwrap();
+    let site: Value = serde_json::from_str(*SITE).unwrap();
     assert_eq!(site["kind"], "docs");
     let state = DocsService
         .initialize(site["initial_state"].clone(), &ctx(actor))
@@ -43,7 +45,7 @@ fn the_seed_carries_one_of_each_kind_and_the_release_code() {
 }
 #[test]
 fn every_indexed_page_of_both_skins_is_strict_html() {
-    for (raw, kind) in [(SITE, "docs"), (NOTION, "notion")] {
+    for (raw, kind) in [(*SITE, "docs"), (*NOTION, "notion")] {
         let site: Value = serde_json::from_str(raw).unwrap();
         assert_eq!(site["kind"], "docs", "both sites are served by this crate");
         let mut state = DocsService

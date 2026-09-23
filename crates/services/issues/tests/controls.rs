@@ -228,7 +228,8 @@ fn submit_all(label: &str, host: &str, state: &Value, forms: &BTreeSet<Form>) {
 /// empty team, an unassigned issue with no labels and no body, a pull request with a review,
 /// and a team this actor may not read (whose pages must never be linked to).
 fn seeds() -> Vec<(String, Value)> {
-    let raw = std::fs::read_to_string("../../../worlds/internet/sites/linear.json").unwrap();
+    let raw = std::fs::read_to_string(cw_service_common::reference::reference_site_path("linear"))
+        .unwrap();
     let site: Value = serde_json::from_str(&raw).unwrap();
     let synthetic = json!({"workspace":"Northstar","projects":{
         "EMPTY":{"name":"Empty","issues":{}},
@@ -292,7 +293,8 @@ fn every_link_form_and_button_of_every_page_of_every_skin_leads_somewhere() {
 /// and "My issues" is that same page filtered to the reader.
 #[test]
 fn the_search_box_finds_issues_and_my_issues_is_the_reader_s_own() {
-    let raw = std::fs::read_to_string("../../../worlds/internet/sites/linear.json").unwrap();
+    let raw = std::fs::read_to_string(cw_service_common::reference::reference_site_path("linear"))
+        .unwrap();
     let site: Value = serde_json::from_str(&raw).unwrap();
     for skin in ["linear", "plain"] {
         let mut initial = site["initial_state"].clone();

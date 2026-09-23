@@ -1,0 +1,165 @@
+{
+  "initial_state": {
+    "products": {
+      "cabin-skykomish-aframe": {
+        "reviews": [
+          {
+            "id": "rv-1",
+            "author": "bob",
+            "stars": 5,
+            "title": "River noise all night",
+            "body": "In the good way. The stove was stacked and ready, the sauna was hot in twenty minutes, and Marta's directions covered the one tricky turn.",
+            "tick": 6
+          }
+        ]
+      },
+      "cabin-methow-lodge": {
+        "id": "cabin-methow-lodge",
+        "category": "cabins",
+        "title": "Log cabin with hot tub, sleeps 8 - Winthrop, WA",
+        "price_cents": 34000,
+        "rating_sum": 1010,
+        "rating_count": 206,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.9 stars from 206 reviews",
+          "8 guests, 4 bedrooms, 2.5 baths",
+          "Superhost",
+          "House rules: no smoking, no pets, quiet hours 22:00-08:00"
+        ],
+        "description": "Price per night. Hand-built log cabin on ten acres in the Methow with a hot tub on the deck, a games loft and a big farmhouse table. Cross-country ski trails start at the property line in winter. Cleaning fee $180; 2-night minimum.",
+        "reviews": [],
+        "seller": "Hosted by Dan and Priya (Superhost)"
+      },
+      "beach-cannon-beach-house": {
+        "reviews": [
+          {
+            "id": "rv-2",
+            "author": "alice",
+            "stars": 5,
+            "title": "The whole team fit",
+            "body": "Ten of us for the offsite and nobody was on a sofa. Sunset from the top deck every night, and the fire pit was the meeting room.",
+            "tick": 2
+          }
+        ]
+      },
+      "city-capitol-hill-loft": {
+        "reviews": [
+          {
+            "id": "rv-3",
+            "author": "carol",
+            "stars": 5,
+            "title": "Better than the hotel",
+            "body": "Stayed here for the DevCon week instead of the conference hotel. Quieter, cheaper, and the rooftop at sunset was the best part of the trip.",
+            "tick": 8
+          }
+        ]
+      },
+      "tiny-joshua-tree": {
+        "reviews": [
+          {
+            "id": "rv-4",
+            "author": "alice",
+            "stars": 4,
+            "title": "Stars, tub, silence",
+            "body": "Exactly the point of going. Dropped a star because the solar ran low on the second cloudy evening, which the hosts warn you about.",
+            "tick": 7
+          }
+        ]
+      }
+    },
+    "carts": {
+      "carol": {
+        "city-lisbon-alfama": 5
+      }
+    },
+    "orders": {
+      "HMA8K2Q4YN": {
+        "id": "HMA8K2Q4YN",
+        "buyer": "bob",
+        "tick": 5,
+        "date": "2026-03-08",
+        "items": [
+          {
+            "product": "cabin-skykomish-aframe",
+            "title": "Riverside A-frame with wood stove - Skykomish, WA (2 nights, 24-26 April 2026, 3 guests)",
+            "qty": 2,
+            "price_cents": 18500
+          }
+        ],
+        "total_cents": 46500,
+        "status": "Confirmed",
+        "confirmation": "RSV-K9D2FT",
+        "seats": [],
+        "venue": ""
+      },
+      "HMB3T7WX2P": {
+        "id": "HMB3T7WX2P",
+        "buyer": "alice",
+        "tick": 1,
+        "date": "2026-02-28",
+        "items": [
+          {
+            "product": "tiny-joshua-tree",
+            "title": "Off-grid tiny home with outdoor tub - Joshua Tree, CA (3 nights, 20-23 March 2026, 2 guests)",
+            "qty": 3,
+            "price_cents": 17000
+          }
+        ],
+        "total_cents": 57500,
+        "status": "Confirmed",
+        "confirmation": "RSV-QX4M8L",
+        "seats": [],
+        "venue": ""
+      }
+    },
+    "favorites": {
+      "bob": [
+        "cabin-methow-lodge",
+        "tree-olympic-canopy"
+      ],
+      "alice": [
+        "beach-cannon-beach-house",
+        "city-capitol-hill-loft",
+        "tiny-vashon-cabin"
+      ],
+      "carol": [
+        "city-mexico-roma",
+        "tree-blue-ridge"
+      ]
+    },
+    "messages": [
+      {
+        "id": "msg-1",
+        "from": "bob",
+        "to": "Hosted by Marta (Superhost)",
+        "product": "cabin-skykomish-aframe",
+        "text": "Is the road in plowed in late April? We are coming in a two-wheel-drive.",
+        "tick": 4
+      },
+      {
+        "id": "msg-2",
+        "from": "Hosted by Marta (Superhost)",
+        "to": "bob",
+        "product": "cabin-skykomish-aframe",
+        "text": "Yes, the county plows to the bridge and I do the last 200 metres. Late April is usually bare anyway. See you on the 24th.",
+        "tick": 4
+      }
+    ]
+  },
+  "search_entries": [
+    {
+      "url": "http://airbnb.com/orders/HMB3T7WX2P",
+      "title": "Reservation HMB3T7WX2P - Joshua Tree tiny home, 20-23 March 2026",
+      "snippet": "Three nights confirmed for $575.00 including the cleaning fee, confirmation RSV-QX4M8L.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "airbnb reservation",
+        "joshua tree reservation",
+        "reservation HMB3T7WX2P"
+      ]
+    }
+  ]
+}

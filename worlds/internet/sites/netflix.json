@@ -105,22 +105,7 @@
         "badges": [
           "Top 10"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "carol",
-            "text": "The tide table reveal in the last two minutes had me pausing to rewind.",
-            "tick": 2,
-            "likes": 4100
-          },
-          {
-            "id": "c2",
-            "author": "bob",
-            "text": "settled in for the whole season after this one",
-            "tick": 2,
-            "likes": 2200
-          }
-        ],
+        "comments": [],
         "related": [
           "quiet-harbor-s1e2",
           "quiet-harbor-s2e1"
@@ -142,15 +127,7 @@
           "TV-14",
           "series"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "alice",
-            "text": "Two ledgers, one truth. The show knows what it is doing.",
-            "tick": 2,
-            "likes": 1900
-          }
-        ],
+        "comments": [],
         "related": [
           "quiet-harbor-s1e1",
           "quiet-harbor-s1e3"
@@ -172,15 +149,7 @@
           "TV-14",
           "series"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "the wreck shot is the best thing on the service right now",
-            "tick": 2,
-            "likes": 1500
-          }
-        ],
+        "comments": [],
         "related": [
           "quiet-harbor-s1e2",
           "quiet-harbor-s2e1"
@@ -206,15 +175,7 @@
           "New",
           "Top 10"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "carol",
-            "text": "Season two in one sitting. No regrets, some sleep loss.",
-            "tick": 13,
-            "likes": 3300
-          }
-        ],
+        "comments": [],
         "related": [
           "quiet-harbor-s1e1",
           "quiet-harbor-s1e3"
@@ -224,7 +185,6 @@
         "id": "rollback-s1e1",
         "channel": "rollback",
         "title": "Rollback S1:E1 \"Canary\"",
-        "description": "Release engineer Dev Okafor notices that a canary deploy changed a colleague's memory of the standup. 47 min. TV-MA.",
         "duration_s": 2820,
         "published": "Feb 13, 2026",
         "published_tick": 3,
@@ -239,22 +199,7 @@
         "badges": [
           "Top 10"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "alice",
-            "text": "A deploy that rewrites the past. As a release engineer I feel seen and threatened.",
-            "tick": 4,
-            "likes": 6200
-          },
-          {
-            "id": "c2",
-            "author": "carol",
-            "text": "the standup scene is uncomfortably accurate",
-            "tick": 4,
-            "likes": 3800
-          }
-        ],
+        "comments": [],
         "related": [
           "rollback-s1e2",
           "rollback-s1e3"
@@ -276,15 +221,7 @@
           "TV-MA",
           "series"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "blue-green deployment as a horror premise. incredible.",
-            "tick": 4,
-            "likes": 2900
-          }
-        ],
+        "comments": [],
         "related": [
           "rollback-s1e1",
           "rollback-s1e3"
@@ -306,22 +243,7 @@
           "TV-MA",
           "series"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "carol",
-            "text": "twelve minutes. they did their research.",
-            "tick": 4,
-            "likes": 3100
-          },
-          {
-            "id": "c2",
-            "author": "alice",
-            "text": "The checklist is the hero of the episode.",
-            "tick": 4,
-            "likes": 1700
-          }
-        ],
+        "comments": [],
         "related": [
           "rollback-s1e1",
           "signal-lost-s1e2"
@@ -343,15 +265,7 @@
           "TV-PG",
           "series"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "the extension cord reveal is a perfect cold open",
-            "tick": 3,
-            "likes": 2100
-          }
-        ],
+        "comments": [],
         "related": [
           "second-kitchen-s1e2",
           "second-kitchen-s1e3"
@@ -373,15 +287,7 @@
           "TV-PG",
           "series"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "carol",
-            "text": "I laughed so hard at the clipboard bit I had to pause",
-            "tick": 3,
-            "likes": 1400
-          }
-        ],
+        "comments": [],
         "related": [
           "second-kitchen-s1e1",
           "second-kitchen-s1e3"
@@ -403,18 +309,9 @@
           "TV-PG",
           "series"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "alice",
-            "text": "The name argument is every naming meeting I have ever been in.",
-            "tick": 3,
-            "likes": 1200
-          }
-        ],
+        "comments": [],
         "related": [
-          "second-kitchen-s1e1",
-          "late-lines-priya"
+          "second-kitchen-s1e1"
         ]
       },
       "keepers-of-the-clock": {
@@ -433,15 +330,7 @@
           "TV-G",
           "film"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "carol",
-            "text": "Watched this after a release week and it fixed something in me.",
-            "tick": 4,
-            "likes": 980
-          }
-        ],
+        "comments": [],
         "related": [
           "ice-road-north",
           "the-ferry-year"
@@ -466,15 +355,7 @@
         "badges": [
           "Top 10"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "the ice cracking audio is unreal",
-            "tick": 7,
-            "likes": 1300
-          }
-        ],
+        "comments": [],
         "related": [
           "keepers-of-the-clock",
           "the-ferry-year"
@@ -496,15 +377,7 @@
           "TV-G",
           "film"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "alice",
-            "text": "The maintenance scenes are a masterclass in showing work.",
-            "tick": 9,
-            "likes": 640
-          }
-        ],
+        "comments": [],
         "related": [
           "keepers-of-the-clock",
           "ice-road-north"
@@ -525,15 +398,7 @@
           "film",
           "PG-13"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "the short was great, the feature is better",
-            "tick": 3,
-            "likes": 1800
-          }
-        ],
+        "comments": [],
         "related": [
           "harbour-lights-feature",
           "keepers-of-the-clock"
@@ -558,15 +423,7 @@
         "badges": [
           "New"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "carol",
-            "text": "quiet and devastating, in that order",
-            "tick": 8,
-            "likes": 1100
-          }
-        ],
+        "comments": [],
         "related": [
           "the-last-shift-feature",
           "the-corridor-feature"
@@ -591,15 +448,7 @@
         "badges": [
           "New"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "alice",
-            "text": "One take, ninety-one minutes. I checked for cuts. There are none.",
-            "tick": 11,
-            "likes": 2400
-          }
-        ],
+        "comments": [],
         "related": [
           "rollback-s1e3",
           "harbour-lights-feature"
@@ -624,22 +473,7 @@
         "badges": [
           "Top 10"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "took my niece, we both cried at the waterfall",
-            "tick": 5,
-            "likes": 3900
-          },
-          {
-            "id": "c2",
-            "author": "carol",
-            "text": "hand-drawn, every frame. you can tell.",
-            "tick": 5,
-            "likes": 2600
-          }
-        ],
+        "comments": [],
         "related": [
           "lantern-festival-feature",
           "second-kitchen-s1e1"
@@ -664,48 +498,10 @@
         "badges": [
           "New"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "alice",
-            "text": "The lantern-building montage is the best sequence of the year.",
-            "tick": 13,
-            "likes": 1500
-          }
-        ],
+        "comments": [],
         "related": [
           "paper-boat-feature",
           "keepers-of-the-clock"
-        ]
-      },
-      "late-lines-priya": {
-        "id": "late-lines-priya",
-        "channel": "late-lines",
-        "title": "Priya Raman: Night Shift",
-        "description": "Stand-up special. Three jobs, three stories, one pot of tea, recorded at 1am in a room that holds forty people. 58 min. TV-MA.",
-        "duration_s": 3480,
-        "published": "Feb 27, 2026",
-        "published_tick": 5,
-        "views": 3320000,
-        "likes": 241000,
-        "tags": [
-          "comedy",
-          "stand-up",
-          "TV-MA",
-          "special"
-        ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "carol",
-            "text": "the radio station bit is the hardest I have laughed this year",
-            "tick": 6,
-            "likes": 2800
-          }
-        ],
-        "related": [
-          "late-lines-marcus",
-          "second-kitchen-s1e1"
         ]
       },
       "late-lines-marcus": {
@@ -727,17 +523,8 @@
         "badges": [
           "New"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "\"a reset is just a rollback with feelings\" is going on a t-shirt",
-            "tick": 11,
-            "likes": 1400
-          }
-        ],
+        "comments": [],
         "related": [
-          "late-lines-priya",
           "rollback-s1e1"
         ]
       },
@@ -760,15 +547,7 @@
         "badges": [
           "Top 10"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "alice",
-            "text": "A ghost story about deterministic replay. I am obsessed.",
-            "tick": 7,
-            "likes": 3600
-          }
-        ],
+        "comments": [],
         "related": [
           "signal-lost-s1e2",
           "signal-lost-s1e3"
@@ -790,15 +569,7 @@
           "TV-14",
           "series"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "carol",
-            "text": "restore from checkpoint as a horror premise, yes please",
-            "tick": 7,
-            "likes": 2200
-          }
-        ],
+        "comments": [],
         "related": [
           "signal-lost-s1e1",
           "rollback-s1e3"
@@ -820,15 +591,7 @@
           "TV-14",
           "series"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "the \"twelve minutes early\" reveal is a perfect cut to black",
-            "tick": 7,
-            "likes": 1900
-          }
-        ],
+        "comments": [],
         "related": [
           "signal-lost-s1e1",
           "signal-lost-s1e2"
@@ -853,15 +616,7 @@
         "badges": [
           "New"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "alice",
-            "text": "The ice on the lens is a happy accident they were right to keep.",
-            "tick": 14,
-            "likes": 420
-          }
-        ],
+        "comments": [],
         "related": [
           "ice-road-north",
           "keepers-of-the-clock"
@@ -886,35 +641,6 @@
           "signal-lost-s1e1",
           "ice-road-north",
           "the-corridor-feature"
-        ]
-      },
-      "continue-watching": {
-        "id": "continue-watching",
-        "title": "Continue Watching",
-        "owner": "carol",
-        "items": [
-          "quiet-harbor-s1e3",
-          "rollback-s1e2",
-          "late-lines-priya"
-        ]
-      },
-      "continue-watching-bob": {
-        "id": "continue-watching-bob",
-        "title": "Continue Watching",
-        "owner": "bob",
-        "items": [
-          "paper-boat-feature",
-          "second-kitchen-s1e2",
-          "ice-road-north"
-        ]
-      },
-      "continue-watching-alice": {
-        "id": "continue-watching-alice",
-        "title": "Continue Watching",
-        "owner": "alice",
-        "items": [
-          "signal-lost-s1e2",
-          "the-ferry-year"
         ]
       },
       "new-releases": {
@@ -949,7 +675,6 @@
           "second-kitchen-s1e1",
           "second-kitchen-s1e2",
           "second-kitchen-s1e3",
-          "late-lines-priya",
           "late-lines-marcus"
         ]
       },
@@ -998,39 +723,8 @@
         ]
       }
     },
-    "subscriptions": {
-      "alice": [
-        "rollback",
-        "signal-lost",
-        "northlight-originals"
-      ],
-      "bob": [
-        "paper-lantern-studio",
-        "second-kitchen",
-        "the-quiet-harbor"
-      ],
-      "carol": [
-        "the-quiet-harbor",
-        "rollback",
-        "late-lines",
-        "halfmoon-pictures"
-      ]
-    },
-    "likes": {
-      "alice": [
-        "rollback-s1e1",
-        "signal-lost-s1e1"
-      ],
-      "bob": [
-        "paper-boat-feature",
-        "quiet-harbor-s1e3"
-      ],
-      "carol": [
-        "rollback-s1e3",
-        "late-lines-priya",
-        "keepers-of-the-clock"
-      ]
-    },
+    "subscriptions": {},
+    "likes": {},
     "now_playing": {}
   },
   "search_entries": [
@@ -1059,18 +753,6 @@
         "rollback netflix",
         "thriller",
         "canary deploy"
-      ]
-    },
-    {
-      "url": "http://netflix.com/channel/rollback",
-      "title": "Rollback | Netflix",
-      "snippet": "Thriller series. A release engineer discovers that every deploy is rewriting more than the servers.",
-      "vertical": "videos",
-      "authority": 6,
-      "keywords": [
-        "rollback",
-        "thriller series",
-        "dev okafor"
       ]
     },
     {
@@ -1145,18 +827,6 @@
         "ice road north",
         "docuseries",
         "ice road truckers documentary"
-      ]
-    },
-    {
-      "url": "http://netflix.com/watch?v=late-lines-priya",
-      "title": "Priya Raman: Night Shift | Netflix",
-      "snippet": "Stand-up special recorded at 1am: three jobs, three stories, one pot of tea.",
-      "vertical": "videos",
-      "authority": 4,
-      "keywords": [
-        "priya raman",
-        "night shift special",
-        "stand-up comedy"
       ]
     },
     {

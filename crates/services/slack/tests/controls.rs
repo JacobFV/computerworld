@@ -25,7 +25,8 @@ fn ctx() -> ServiceContext {
     }
 }
 fn seeded() -> Value {
-    let raw = std::fs::read_to_string("../../../worlds/internet/sites/slack.json").expect("site");
+    let raw = std::fs::read_to_string(cw_service_common::reference::reference_site_path("slack"))
+        .expect("site");
     let site: Value = serde_json::from_str(&raw).expect("site file parses");
     SlackService
         .initialize(site["initial_state"].clone(), &ctx())

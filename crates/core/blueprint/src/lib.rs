@@ -133,10 +133,12 @@ impl Resolved {
                     .is_some_and(|id| self.compact_services.contains(id))
             })
             .collect();
+        // An overlay is a site's worth of seed data too, and gets the same one-line form.
         let select = |path: &[json::Step<'_>]| match path {
             [json::Step::Key("services"), json::Step::Index(i)] => {
                 compacted.get(*i).copied().unwrap_or(false)
             }
+            [json::Step::Key("internet_overlays"), json::Step::Key(_)] => true,
             _ => false,
         };
         format!(
@@ -163,6 +165,7 @@ const WORLD_KEYS: &[&str] = &[
     "network",
     "services",
     "internet",
+    "internet_overlays",
     "metadata",
 ];
 

@@ -31,88 +31,12 @@
       }
     ],
     "articles": {
-      "atlas-deep-dive": {
-        "id": "atlas-deep-dive",
-        "section": "it",
-        "year": "2026",
-        "title": "Determinism at scale: a close read of Atlas 1.0",
-        "dek": "We spent a week inside Northstar's simulator. The interesting parts are the things it refuses to let you do.",
-        "byline": "Jonathan Hale",
-        "date": "Mar 9, 2026",
-        "tick": 9,
-        "read_minutes": 14,
-        "body": [
-          "Atlas 1.0 is a simulation runtime that will not let your code look at a clock. That sounds like a limitation and it is, but spend a week with it and the limitation starts to look like the entire product. Everything else - the process model, the virtual filesystem, the packet scheduler - exists to make that one rule survivable.",
-          "Start with time. Inside Atlas there is a tick counter, and every API that would ordinarily consult the host clock consults the tick instead. Sleeping does not suspend a thread; it schedules a wakeup at a future tick. This means a simulated day passes in whatever wall-clock time the host can manage, and more importantly it means two runs of the same program from the same seed will observe the same timeline.",
-          "Randomness is handled the same way: there is one seeded stream, the stream is threaded explicitly through the code that needs it, and reading from the host's entropy source is a compile-time error inside the sandbox. Northstar's patch directory - and it is a large directory - exists mostly to remove such calls from third-party crates.",
-          "The third rule is the one that cost the most. Iterating a hash map in a Rust program is not random, but its order depends on a per-process seed and, historically, on the standard library version and target. Atlas forbids iteration over unordered containers in any code path that can influence output. The compiler cannot check that for you, so Northstar checks it the expensive way: by replaying every recorded run in CI and diffing renderer frames.",
-          "That harness is the part we would most like to see other projects steal. A recorded run is a seed plus an ordered input log. Replay reruns it and compares output frame by frame; a mismatch prints the tick, the frame index and the first differing byte. In practice this turns a category of bug that is normally investigated statistically into one that is investigated by reading a number.",
-          "The best illustration in the repository is issue 14, a BFS path test that failed only on one Windows CI runner. The underlying bug was hash iteration order leaking into path selection; the fix was nine lines. What makes it a good story is that the test had been failing intermittently for months and had been retried, quarantined and blamed on the runner before anyone could reproduce it. Details are at http://github.com/northstar/atlas/issues/14 and the accepted explanation is at http://stackoverflow.com/questions/4411",
-          "Performance is the obvious objection. Northstar quotes roughly 12% overhead on its own workload, which is a number chosen by Northstar about a workload chosen by Northstar. Our own measurements on a synthetic pipeline were worse - closer to 20% - and we would expect anything heavily threaded to be worse still, because the deterministic scheduler serialises decisions that a real scheduler makes concurrently.",
-          "Whether that matters depends on what you are buying. If you need throughput, this is a tax. If you need to be able to answer the question 'why did this run produce this number' six months later, it is the cheapest version of that answer anyone currently sells."
-        ],
-        "links": [
-          {
-            "label": "Atlas issue 14",
-            "url": "http://github.com/northstar/atlas/issues/14"
-          },
-          {
-            "label": "The accepted Stack Overflow answer",
-            "url": "http://stackoverflow.com/questions/4411"
-          },
-          {
-            "label": "Northstar's launch post",
-            "url": "http://eng.northstar.example/posts/shipping-atlas"
-          },
-          {
-            "label": "The Verge's release story",
-            "url": "http://theverge.com/2026/atlas-determinism"
-          }
-        ],
-        "tags": [
-          "northstar",
-          "atlas",
-          "determinism",
-          "rust"
-        ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "praman",
-            "text": "The 20% figure matches what I saw on a threaded workload. Worth saying the overhead is almost all scheduler serialisation, not the sandbox.",
-            "tick": 9,
-            "likes": 52
-          },
-          {
-            "id": "c2",
-            "author": "bob",
-            "text": "Author of the quarantined test here. It was retried 41 times before anyone believed it.",
-            "tick": 10,
-            "likes": 38
-          },
-          {
-            "id": "c3",
-            "author": "dfarr",
-            "text": "Every article about determinism eventually admits the compiler cannot check the important rule. This one at least admits it early.",
-            "tick": 10,
-            "likes": 19
-          },
-          {
-            "id": "c4",
-            "author": "alice",
-            "text": "We would love for someone to steal the replay harness. That is not a figure of speech, the licence permits it.",
-            "tick": 11,
-            "likes": 61
-          }
-        ]
-      },
       "hash-order-nondeterminism": {
         "id": "hash-order-nondeterminism",
         "section": "it",
         "year": "2026",
         "title": "Your hash map is a nondeterminism generator",
         "dek": "Iteration order is not random, it is unspecified, and the difference is where the bugs live.",
-        "byline": "Priya Raman",
         "date": "Feb 11, 2026",
         "tick": 4,
         "read_minutes": 8,
@@ -126,10 +50,6 @@
           {
             "label": "The Stack Overflow answer this came from",
             "url": "http://stackoverflow.com/questions/4411"
-          },
-          {
-            "label": "Bob Martinez's write-up",
-            "url": "http://bmartinez.net/posts/hash-order-bit-me"
           }
         ],
         "tags": [
@@ -138,13 +58,6 @@
           "testing"
         ],
         "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "The hostile-hasher trick found two more of these in our tree the week I turned it on.",
-            "tick": 5,
-            "likes": 44
-          },
           {
             "id": "c2",
             "author": "mkuznetsov",
@@ -175,15 +88,7 @@
           "determinism",
           "performance"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "praman",
-            "text": "Worth adding: some runtimes let you opt out per-region and lose replay only inside it. That trade is underused.",
-            "tick": 3,
-            "likes": 26
-          }
-        ]
+        "comments": []
       },
       "datacenter-power-seattle": {
         "id": "datacenter-power-seattle",
@@ -234,30 +139,12 @@
           "reproducibility",
           "audit"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "carol",
-            "text": "\"How much of their nondeterminism was load-bearing\" is the line I will be quoting in planning.",
-            "tick": 9,
-            "likes": 17
-          }
-        ]
+        "comments": []
       }
     },
-    "subscribers": [
-      "bmartinez@outlook.com"
-    ],
-    "saved": {
-      "bob": [
-        "hash-order-nondeterminism"
-      ]
-    },
-    "follows": {
-      "alice": [
-        "determinism"
-      ]
-    }
+    "subscribers": [],
+    "saved": {},
+    "follows": {}
   },
   "search_entries": [
     {
@@ -271,21 +158,6 @@
         "ars",
         "technology news",
         "analysis"
-      ]
-    },
-    {
-      "url": "http://arstechnica.com/2026/atlas-deep-dive",
-      "title": "Determinism at scale: a close read of Atlas 1.0 - Ars Technica",
-      "snippet": "A week inside Northstar's simulator: the tick clock, the seeded stream, the replay harness, and what the 12% overhead figure really measures.",
-      "vertical": "news",
-      "authority": 6,
-      "keywords": [
-        "atlas",
-        "northstar",
-        "determinism",
-        "deep dive",
-        "replay",
-        "shipping atlas"
       ]
     },
     {

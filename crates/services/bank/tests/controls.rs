@@ -12,8 +12,10 @@ use cw_service_bank::{BankService, BankState};
 use cw_service_common::audit;
 use serde_json::Value;
 
-const NORTHWIND: &str = include_str!("../../../../worlds/internet/sites/northwind.json");
-const PAYPAL: &str = include_str!("../../../../worlds/internet/sites/paypal.json");
+static NORTHWIND: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("northwind"));
+static PAYPAL: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("paypal"));
 
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
@@ -82,9 +84,9 @@ fn report(site: &str, actor: &str, faults: &[String]) -> String {
 fn northwind_has_no_dead_control_on_any_page() {
     let mut out = String::new();
     for actor in ["alice", "dave"] {
-        let seeds = seeds_for(NORTHWIND, actor);
+        let seeds = seeds_for(*NORTHWIND, actor);
         let paths: Vec<&str> = seeds.iter().map(String::as_str).collect();
-        let faults = sweep(NORTHWIND, "northwind.example", actor, &paths);
+        let faults = sweep(*NORTHWIND, "northwind.example", actor, &paths);
         out.push_str(&report("northwind.example", actor, &faults));
     }
     assert!(out.is_empty(), "{out}");
@@ -94,9 +96,9 @@ fn northwind_has_no_dead_control_on_any_page() {
 fn paypal_has_no_dead_control_on_any_page() {
     let mut out = String::new();
     for actor in ["alice", "bob", "carol", "dave"] {
-        let seeds = seeds_for(PAYPAL, actor);
+        let seeds = seeds_for(*PAYPAL, actor);
         let paths: Vec<&str> = seeds.iter().map(String::as_str).collect();
-        let faults = sweep(PAYPAL, "paypal.com", actor, &paths);
+        let faults = sweep(*PAYPAL, "paypal.com", actor, &paths);
         out.push_str(&report("paypal.com", actor, &faults));
     }
     assert!(out.is_empty(), "{out}");
@@ -161,13 +163,13 @@ fn render(raw: &str, host: &str, actor: &str, path: &str) -> String {
 fn nothing_that_is_drawn_as_pressable_is_inert() {
     let pages = [
         (
-            NORTHWIND,
+            *NORTHWIND,
             "northwind.example",
             "alice",
             "chk-4417",
             "cc-3310",
         ),
-        (PAYPAL, "paypal.com", "alice", "pp-alice", "pp-alice"),
+        (*PAYPAL, "paypal.com", "alice", "pp-alice", "pp-alice"),
     ];
     let mut out = String::new();
     for (raw, host, actor, account, card) in pages {

@@ -33,7 +33,6 @@
         "hours": "Daily 5:00-00:30",
         "phone": "+1 206 555 0102",
         "website": "",
-        "summary": "Light rail and bus interchange two blocks south of the Northstar campus.",
         "tags": [
           "transit",
           "light rail",
@@ -42,7 +41,6 @@
       },
       "bridgetown-annex": {
         "id": "bridgetown-annex",
-        "name": "Northstar Bridgetown Annex",
         "kind": "office",
         "address": "55 Rivergate Way, Portland OR",
         "lat": 45515200,
@@ -51,11 +49,9 @@
         "reviews": 31,
         "hours": "Mon-Fri 9:00-17:00",
         "phone": "+1 503 555 0164",
-        "website": "http://northstar.example/",
         "summary": "The Portland satellite office: support, docs and two of the SRE rotations.",
         "tags": [
-          "office",
-          "northstar"
+          "office"
         ]
       },
       "cascade-arena": {
@@ -108,7 +104,6 @@
         "hours": "Mon-Fri 6:00-16:00, Sat-Sun 7:00-15:00",
         "phone": "+1 206 555 0119",
         "website": "",
-        "summary": "The Northstar standup runs on this. Cardamom bun, flat white, back upstairs.",
         "tags": [
           "cafe",
           "coffee",
@@ -190,25 +185,6 @@
           "food"
         ]
       },
-      "northstar-hq": {
-        "id": "northstar-hq",
-        "name": "Northstar HQ",
-        "kind": "office",
-        "address": "410 Bayfront Ave, Seattle WA",
-        "lat": 47572600,
-        "lon": -122348000,
-        "rating": 46,
-        "reviews": 128,
-        "hours": "Mon-Fri 8:00-18:00",
-        "phone": "+1 206 555 0148",
-        "website": "http://northstar.example/",
-        "summary": "Northstar's bayfront campus: engineering on four and five, the lab in the basement.",
-        "tags": [
-          "office",
-          "northstar",
-          "engineering"
-        ]
-      },
       "puget-field": {
         "id": "puget-field",
         "name": "Puget Sound Field",
@@ -249,7 +225,6 @@
       },
       "southbay-lab": {
         "id": "southbay-lab",
-        "name": "Northstar South Bay Lab",
         "kind": "office",
         "address": "2200 Orchard Row, San Jose CA",
         "lat": 37338200,
@@ -258,59 +233,15 @@
         "reviews": 19,
         "hours": "Mon-Fri 9:00-18:00",
         "phone": "+1 408 555 0192",
-        "website": "http://northstar.example/",
         "summary": "Hardware lab and the replay cluster that the determinism suite runs on.",
         "tags": [
           "office",
-          "northstar",
           "lab"
         ]
       }
     },
-    "routes": {
-      "northstar-hq|devcon-center|driving": {
-        "id": "northstar-hq|devcon-center|driving",
-        "from": "northstar-hq",
-        "to": "devcon-center",
-        "mode": "driving",
-        "metres": 5428,
-        "minutes": 14,
-        "steps": [
-          {
-            "text": "Start at Northstar HQ, 410 Bayfront Ave, Seattle WA",
-            "metres": 0
-          },
-          {
-            "text": "Head north on Bayfront Ave — 2.7 mi",
-            "metres": 4306
-          },
-          {
-            "text": "Turn east onto Pike St — 0.7 mi",
-            "metres": 1122
-          },
-          {
-            "text": "Arrive at Cascade Convention Center, 800 Pike St, Seattle WA",
-            "metres": 0
-          }
-        ]
-      }
-    },
-    "saved": {
-      "alice": [
-        "northstar-hq",
-        "harborline-coffee",
-        "quill-and-kettle"
-      ],
-      "carol": [
-        "northstar-hq",
-        "devcon-center",
-        "hotel-cascade"
-      ],
-      "bob": [
-        "northstar-hq",
-        "marrow-point-park"
-      ]
-    },
+    "routes": {},
+    "saved": {},
     "unit_prefs": {},
     "forecasts": {},
     "alerts": [],
@@ -332,19 +263,6 @@
       ]
     },
     {
-      "url": "http://maps.google.com/maps/place/northstar-hq",
-      "title": "Northstar HQ - Google Maps",
-      "snippet": "410 Bayfront Ave, Seattle WA. Mon-Fri 8:00-18:00. Northstar's bayfront campus, rated 4.6.",
-      "vertical": "all",
-      "authority": 6,
-      "keywords": [
-        "northstar",
-        "northstar hq",
-        "bayfront ave",
-        "seattle office"
-      ]
-    },
-    {
       "url": "http://maps.google.com/maps/place/devcon-center",
       "title": "Cascade Convention Center - Google Maps",
       "snippet": "800 Pike St, Seattle WA. Four halls over Pike St and the home of DevCon Seattle 2026.",
@@ -355,32 +273,6 @@
         "devcon",
         "convention center",
         "pike st"
-      ]
-    },
-    {
-      "url": "http://maps.google.com/maps/dir?from=northstar-hq&to=devcon-center&mode=driving",
-      "title": "Northstar HQ to Cascade Convention Center - 14 min driving",
-      "snippet": "3.4 mi, about 14 minutes by car: north on Bayfront Ave, then east onto Pike St.",
-      "vertical": "all",
-      "authority": 5,
-      "keywords": [
-        "directions",
-        "northstar to devcon",
-        "drive to convention center",
-        "14 min"
-      ]
-    },
-    {
-      "url": "http://maps.google.com/maps/place/harborline-coffee",
-      "title": "Harborline Coffee - Google Maps",
-      "snippet": "128 Bayfront Ave, Seattle WA. Rated 4.7. Two blocks from the Northstar campus.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "coffee",
-        "harborline coffee",
-        "cafe seattle",
-        "bayfront"
       ]
     },
     {

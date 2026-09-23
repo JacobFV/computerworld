@@ -1,0 +1,1296 @@
+{
+  "initial_state": {
+    "suggestions": [
+      "Explain deterministic simulation",
+      "What is the Atlas release code?",
+      "Draft a launch email",
+      "Why is my test suite flaky?",
+      "Plan a trip to Lisbon",
+      "Explain git rebase"
+    ],
+    "intents": [
+      {
+        "id": "greeting",
+        "patterns": [
+          "hello",
+          "hi",
+          "hey",
+          "good morning",
+          "good afternoon",
+          "good evening",
+          "hi there",
+          "yo"
+        ],
+        "replies": [
+          "Hi! Good to have you here. I can help with writing, code, planning, explanations, or just thinking something through. If you are working on Atlas or anything else in this world, ask about it and I will point you to the page where the answer lives. What are we doing today?",
+          "Hey there. I am ready when you are: drafts, debugging, summaries, recipes, trip plans, the works. Tell me what you are trying to get done and roughly how much detail you want, and we will start from there."
+        ],
+        "citations": []
+      },
+      {
+        "id": "assistant-honesty",
+        "patterns": [
+          "what model are you",
+          "are you a model",
+          "how do you work",
+          "are you real",
+          "how do you generate",
+          "who are you",
+          "which model",
+          "what version are you",
+          "are you gpt",
+          "what are you"
+        ],
+        "citations": [],
+        "replies": [
+          "I am ChatGPT, but I should be honest about what is behind this window: not a model. I am a deterministic stand-in. A scored table of patterns picks the reply, so the same question always gets the same answer, and anything I say about this world comes with a link you can open and check. Regenerate walks through the alternative wordings in a fixed order.",
+          "Here is the plain version. There is no model behind this chat. Replies come from a scored pattern table with a pure hash choosing between the wordings, which is why regenerating gives you the same set of answers in the same order every time. Facts about this world outrank generic answers and always carry a citation, so you can verify rather than trust."
+        ]
+      },
+      {
+        "id": "capabilities",
+        "patterns": [
+          "what can you do",
+          "what can you help with",
+          "how can you help",
+          "what do you know",
+          "what are you good at",
+          "help me",
+          "what should i ask"
+        ],
+        "replies": [
+          "Plenty. Here is the short list:\n\n- Writing: emails, cover letters, apologies, agendas, summaries, haiku.\n- Code: git, regex, SQL joins, hash maps, kubectl, Python versus Rust.\n- Explaining: deterministic simulation, DNS, HTTP status codes, how Atlas works.\n- Life admin: a trip to Lisbon, pancakes, sleep, books, remote-work trade-offs.\n- This world: Northstar, the Atlas launch, incidents, pricing, holidays - each answer cites the page it came from.\n\nPick one and go.",
+          "I am strongest at three things. First, drafting: give me the audience and the length and I will write the email, the agenda, or the cover letter. Second, explaining: from deterministic simulation to what a 404 means. Third, answering questions about this world - Northstar, Atlas, the people, the incidents - with a link to the source every time. Ask me anything on that list, or something off it and I will tell you honestly if I do not have it."
+        ],
+        "citations": []
+      },
+      {
+        "id": "datetime",
+        "patterns": [
+          "what time is it",
+          "what is the time",
+          "what day is it",
+          "what is the date",
+          "today s date",
+          "what is today",
+          "current time",
+          "what year is it",
+          "date today"
+        ],
+        "replies": [
+          "I cannot read a clock from in here, so I would rather not guess. Two reliable places: the clock in the menu bar of whichever machine you are on, and Google Calendar, which lays out the current week starting Thursday 17 September 2026. If you tell me what you are trying to schedule, I can help with that part.",
+          "No live clock on my side, which is a feature rather than a bug in a deterministic world. The calendar is the source of truth for dates: it opens on the week of 17 September 2026 and shows every event you own or are invited to. Want help planning around something on it?"
+        ],
+        "citations": [
+          {
+            "label": "Google Calendar",
+            "url": "http://calendar.google.com/"
+          }
+        ]
+      },
+      {
+        "id": "weather",
+        "patterns": [
+          "weather",
+          "forecast",
+          "is it going to rain",
+          "will it rain",
+          "temperature outside",
+          "umbrella",
+          "how hot is it",
+          "how cold is it"
+        ],
+        "replies": [
+          "I do not get a weather feed, but weather.com has today's conditions and a ten-day forecast for Seattle, Portland and San Jose. For Seattle, the today page is the fastest: current temperature, chance of rain and the hourly line. If you are planning travel, the ten-day page covers the DevCon week.",
+          "Best place for that is weather.com - open the Seattle today page for the current conditions or the ten-day view for anything you are planning. I cannot see live readings from here, so I will not make up a number. Tell me what you are deciding (jacket, bike, flight) and I can help you read the forecast."
+        ],
+        "citations": [
+          {
+            "label": "Seattle, WA weather — today",
+            "url": "http://weather.com/weather/today/l/seattle"
+          },
+          {
+            "label": "Weather — local forecast",
+            "url": "http://weather.com/"
+          }
+        ]
+      },
+      {
+        "id": "math",
+        "patterns": [
+          "calculate",
+          "what is 15 percent",
+          "percent of",
+          "square root",
+          "how much is",
+          "multiply",
+          "divide",
+          "add up",
+          "compound interest",
+          "tip on"
+        ],
+        "replies": [
+          "Happy to. A few worked examples so you can check my method:\n\n- 15% of 84 = 84 × 0.15 = 12.60.\n- A 20% tip on $63.50 is $12.70; total $76.20.\n- √144 = 12, and √200 ≈ 14.14.\n- $1,000 at 5% compounded yearly for 3 years: 1000 × 1.05³ = $1,157.63.\n\nPaste the exact numbers and I will run them the same way."
+        ],
+        "citations": []
+      },
+      {
+        "id": "unit-conversion",
+        "patterns": [
+          "convert",
+          "conversion",
+          "miles to km",
+          "km to miles",
+          "celsius to fahrenheit",
+          "fahrenheit to celsius",
+          "kg to lbs",
+          "pounds to kg",
+          "inches to cm",
+          "feet to meters",
+          "how many kilometers"
+        ],
+        "replies": [
+          "Here are the conversions people ask for most, with the factor so you can reuse it:\n\n- Miles → km: × 1.609. 26.2 miles is 42.2 km.\n- km → miles: × 0.621. 10 km is 6.2 miles.\n- °C → °F: × 1.8 + 32. 20 °C is 68 °F.\n- °F → °C: (F − 32) ÷ 1.8. 100 °F is 37.8 °C.\n- kg → lb: × 2.205. 70 kg is 154 lb.\n- inches → cm: × 2.54. 27 inches is 68.6 cm.\n\nGive me a value and I will convert it."
+        ],
+        "citations": []
+      },
+      {
+        "id": "launch-email",
+        "patterns": [
+          "draft a launch email",
+          "launch email",
+          "announcement email",
+          "announce the launch",
+          "release announcement"
+        ],
+        "replies": [
+          "Subject: Atlas is live\n\nTeam - Atlas shipped this morning. The checklist is closed, the walkthrough is up, and the repo is public. Thanks to everyone who chased the last three items down. - Carol",
+          "Subject: Atlas ships today\n\nHi all - Atlas is out. Highlights: reproducible runs end to end, a public repo, and a ten-minute walkthrough. Questions go to #eng; press questions go to Carol."
+        ],
+        "citations": [
+          {
+            "label": "Atlas launch checklist",
+            "url": "http://docs.google.com/documents/atlas-launch"
+          }
+        ]
+      },
+      {
+        "id": "email-draft",
+        "patterns": [
+          "write an email",
+          "draft an email",
+          "email draft",
+          "write a message to",
+          "compose an email",
+          "email to my",
+          "follow up email",
+          "reply to this email"
+        ],
+        "replies": [
+          "Here is a clean, general-purpose draft you can adapt:\n\nSubject: Quick follow-up on [topic]\n\nHi [Name],\n\nThanks for your time on [day]. To recap, we agreed on [one line]. On my side I will [action] by [date]; it would help if you could [their action] by [date].\n\nIf anything above is off, tell me and I will fix it. Otherwise no reply needed.\n\nBest,\n[Your name]\n\nTell me who it is for and what you want them to do, and I will tighten it.",
+          "Sure. The recipe: one line of context, one ask, one deadline, one polite exit.\n\nSubject: [Ask] by [date]?\n\nHi [Name],\n\nWe are [context in a sentence]. Could you [specific ask] by [date]? It unblocks [why it matters].\n\nHappy to jump on a call if that is faster.\n\nThanks,\n[Your name]\n\nGive me the real names and the ask and I will fill it in."
+        ],
+        "citations": []
+      },
+      {
+        "id": "summarise",
+        "patterns": [
+          "summarise",
+          "summarize",
+          "summary of",
+          "tl dr",
+          "tldr",
+          "make it shorter",
+          "shorten this",
+          "key points",
+          "rewrite this",
+          "edit this"
+        ],
+        "replies": [
+          "Paste the text and tell me two things: who the summary is for, and how long it can be (three bullets, one paragraph, a single sentence). I keep your facts, drop the padding and never add anything that was not in the original. If it is a meeting transcript, I will pull out decisions and action items separately.",
+          "Send it over. My default is three bullets: what it says, why it matters, what happens next. If you want a different shape - an executive one-liner, a changelog entry, a tweet-length version - say so and I will match it. I will flag anything ambiguous rather than guess at it."
+        ],
+        "citations": []
+      },
+      {
+        "id": "determinism",
+        "patterns": [
+          "determinism",
+          "deterministic",
+          "reproducible",
+          "replay",
+          "deterministic simulation",
+          "same seed",
+          "byte identical"
+        ],
+        "replies": [
+          "A deterministic simulation produces byte-identical results for the same seed and the same ordered inputs. Three rules do most of the work: no wall clock, no ambient randomness, and a total order on every queue. Get those right and a bug report becomes a seed plus an input log that anyone can replay, on any machine, and see exactly what you saw.",
+          "Determinism means: same seed plus same input sequence gives the same output, every time and on every machine. Anything that reads the host - clock, RNG, filesystem iteration order, thread scheduling - has to be replaced by something seeded and ordered. The payoff is replay: a failing run is a file you can hand to a colleague rather than a story you tell them.",
+          "Start from the failure mode. If two runs of the same build disagree, something read the host. Replace the clock with a tick counter, the RNG with a seeded stream, and every iteration over a hash map with an ordered map. Then run the suite twice and diff the state hash; when the hashes match you are done, and when they do not you have found the next leak."
+        ],
+        "citations": [
+          {
+            "label": "Deterministic simulation — Wikipedia",
+            "url": "http://en.wikipedia.org/wiki/Deterministic_simulation"
+          },
+          {
+            "label": "How do you seed a PRNG so a simulation replays exactly? — Stack Overflow",
+            "url": "http://stackoverflow.com/questions/t-4402"
+          }
+        ]
+      },
+      {
+        "id": "atlas-overview",
+        "patterns": [
+          "what is atlas",
+          "tell me about atlas",
+          "atlas",
+          "explain atlas"
+        ],
+        "replies": [
+          "Atlas is Northstar's deterministic simulation runtime: a whole simulated machine - filesystem, network, browser, apps - that runs from a seed and an ordered input log, so any run can be replayed byte for byte. Version 1.0 shipped in 2026 with a public repo, a walkthrough video and a launch write-up on the engineering blog. It is the product the Verge called a bet on determinism.",
+          "Atlas is the product Northstar shipped in 2026: a runtime for simulations that replay exactly. You feed it a seed and inputs, it gives you the same bytes out every time, which turns flaky-bug hunting into diffing two runs. The source is on GitHub under northstar/atlas, the getting-started guide is at guide.example, and the launch story is on Northstar Engineering."
+        ],
+        "citations": [
+          {
+            "label": "Atlas (software) — Wikipedia",
+            "url": "http://en.wikipedia.org/wiki/Atlas_(software)"
+          },
+          {
+            "label": "northstar/atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          },
+          {
+            "label": "Shipping Atlas 1.0 — Northstar Engineering",
+            "url": "http://eng.northstar.example/posts/shipping-atlas"
+          }
+        ]
+      },
+      {
+        "id": "northstar-overview",
+        "patterns": [
+          "northstar",
+          "what is northstar",
+          "who works at northstar",
+          "northstar workshop",
+          "tell me about northstar",
+          "northstar team",
+          "who is alice chen",
+          "who is bob martinez",
+          "who is carol"
+        ],
+        "replies": [
+          "Northstar Workshop is a small Seattle software company whose product is Atlas, a deterministic simulator - \"software you can replay\". The Atlas team: Alice Chen, staff systems engineer, owns the renderer; Bob Martinez, senior engineer, owns CI; Carol Nakamura is the engineering manager who ran the launch. Grace Park runs IT and Jonas Lindqvist is the SRE. The intranet directory has desks and addresses.",
+          "Northstar is the company behind Atlas. It is small enough that the people directory fits on one page: Alice Chen (staff systems engineer, renderer), Bob Martinez (senior engineer, CI), Carol Nakamura (engineering manager, launch owner), Jonas Lindqvist (SRE), Grace Park (IT), Tom Okafor (support lead) and Mei Tanaka (people partner). The public site is northstar.example; the LinkedIn page has the hiring news."
+        ],
+        "citations": [
+          {
+            "label": "Northstar — software you can replay",
+            "url": "http://northstar.example/"
+          },
+          {
+            "label": "Northstar people directory",
+            "url": "http://intranet.internal/directory"
+          },
+          {
+            "label": "Northstar (company) — Wikipedia",
+            "url": "http://en.wikipedia.org/wiki/Northstar_(company)"
+          }
+        ]
+      },
+      {
+        "id": "pancakes",
+        "patterns": [
+          "pancake",
+          "pancakes",
+          "pancake recipe",
+          "make pancakes",
+          "breakfast recipe"
+        ],
+        "replies": [
+          "Fluffy pancakes for four:\n\n- 200 g plain flour, 2 tbsp sugar, 2 tsp baking powder, ½ tsp salt.\n- 300 ml milk, 1 egg, 30 g melted butter.\n\n1. Whisk the dry ingredients. Whisk the wet ones separately.\n2. Combine with a few strokes - lumps are fine, overmixing makes them tough.\n3. Rest five minutes while a non-stick pan heats over medium.\n4. Ladle 60 ml per pancake. Flip when bubbles pop and stay open, about two minutes; one more minute on the other side.\n\nServe with butter and syrup. Add blueberries after ladling, not to the batter."
+        ],
+        "citations": [
+          {
+            "label": "Every knife cut you actually use, in ten minutes — YouTube",
+            "url": "http://youtube.com/watch?v=knife-skills-ten-minutes"
+          }
+        ]
+      },
+      {
+        "id": "translate",
+        "patterns": [
+          "translate",
+          "translation",
+          "how do you say",
+          "in spanish",
+          "in french",
+          "in german",
+          "in portuguese",
+          "in japanese",
+          "in italian"
+        ],
+        "replies": [
+          "Here is \"Where is the train station, please?\" in a few languages:\n\n- Spanish: ¿Dónde está la estación de tren, por favor?\n- French: Où est la gare, s'il vous plaît ?\n- German: Wo ist der Bahnhof, bitte?\n- Portuguese: Onde fica a estação de comboios, por favor?\n- Italian: Dov'è la stazione, per favore?\n- Japanese: 駅はどこですか (Eki wa doko desu ka?)\n\nGive me your phrase and the target language and I will do the same, with a note on formality if it matters."
+        ],
+        "citations": []
+      },
+      {
+        "id": "git-rebase",
+        "patterns": [
+          "rebase",
+          "git rebase",
+          "rebase vs merge",
+          "interactive rebase",
+          "squash commits"
+        ],
+        "replies": [
+          "git rebase replays your commits on top of a new base, so your branch looks like it started from there. Typical flow:\n\n1. git fetch origin\n2. git rebase origin/main\n3. Fix conflicts, git add, git rebase --continue\n4. git push --force-with-lease\n\nUse rebase to keep a feature branch current and its history linear. Use merge when the branch is shared, because rebasing rewrites commit hashes and anyone else on it will have to reconcile. git rebase -i HEAD~3 lets you squash, reorder or reword the last three commits before opening a PR."
+        ],
+        "citations": [
+          {
+            "label": "Handbook: code review",
+            "url": "http://intranet.internal/handbook/code-review"
+          }
+        ]
+      },
+      {
+        "id": "regex",
+        "patterns": [
+          "regex",
+          "regular expression",
+          "regexp",
+          "match an email",
+          "pattern to match",
+          "validate a phone number"
+        ],
+        "replies": [
+          "A few regexes people actually need:\n\n- Email (good enough): ^[\\w.+-]+@[\\w-]+\\.[\\w.-]+$\n- US phone: ^\\(?\\d{3}\\)?[-. ]?\\d{3}[-. ]?\\d{4}$\n- ISO date: ^\\d{4}-\\d{2}-\\d{2}$\n- Trailing whitespace: [ \\t]+$\n- Issue key like OPS-7: \\b[A-Z]{2,5}-\\d+\\b\n\nRemember: ^ and $ anchor, \\d is a digit, \\w is a word char, + is one-or-more, ? is optional, and (?: ) groups without capturing. Tell me the strings that should and should not match and I will write yours."
+        ],
+        "citations": []
+      },
+      {
+        "id": "python-vs-rust",
+        "patterns": [
+          "python vs rust",
+          "python or rust",
+          "rust vs python",
+          "rust or python",
+          "should i learn rust",
+          "is rust hard",
+          "why rust"
+        ],
+        "replies": [
+          "Different tools. Python gets you from idea to working script in minutes, has a library for everything, and is the default for data work and glue. Rust makes you state ownership and lifetimes up front, which is slower to write but gives you memory safety without a garbage collector, fearless concurrency and predictable performance - the reason a deterministic simulator like Atlas is written in it. My rule: prototype in Python, move the hot or correctness-critical path to Rust, and let each call the other through a thin boundary."
+        ],
+        "citations": [
+          {
+            "label": "r/rust",
+            "url": "http://reddit.com/r/rust"
+          },
+          {
+            "label": "Questions tagged [rust] — Stack Overflow",
+            "url": "http://stackoverflow.com/questions/tagged/rust"
+          }
+        ]
+      },
+      {
+        "id": "joke",
+        "patterns": [
+          "joke",
+          "tell me a joke",
+          "make me laugh",
+          "something funny",
+          "pun"
+        ],
+        "replies": [
+          "Why did the deterministic simulator refuse to go to the party? It had already seen how the night ends.\n\nOne more: a hash map walks into a bar and orders its usual. The bartender says, \"Which one is that?\" The hash map says, \"Depends on the build.\"",
+          "A programmer's spouse says, \"Go to the shop and get a litre of milk. If they have eggs, get six.\" The programmer comes back with six litres of milk. \"Why?\" \"They had eggs.\"\n\nAnd for the CI crowd: my tests are not flaky, they are just exploring the state space without me."
+        ],
+        "citations": []
+      },
+      {
+        "id": "haiku",
+        "patterns": [
+          "haiku",
+          "write a poem",
+          "short poem",
+          "poem about"
+        ],
+        "replies": [
+          "Same seed, same inputs -\nthe run unfolds as before.\nThe bug cannot hide.\n\nWant one on a different subject? Give me a word and I will write three variations.",
+          "September morning,\nrain on the convention hall -\nlaptops opening.\n\nI can do one about anything: your team, your city, your cat. Name the subject."
+        ],
+        "citations": []
+      },
+      {
+        "id": "lisbon-trip",
+        "patterns": [
+          "lisbon",
+          "trip to lisbon",
+          "plan a trip",
+          "travel itinerary",
+          "weekend in lisbon",
+          "visit portugal",
+          "plan my holiday"
+        ],
+        "replies": [
+          "Three days in Lisbon, at a walkable pace:\n\nDay 1 - Baixa and Alfama. Praça do Comércio, the Santa Justa lift, then wander up to the castle and back down through Alfama for dinner and fado.\n\nDay 2 - Belém. Jerónimos Monastery early, the Tower, pastéis de nata at the original bakery, then the MAAT museum along the river.\n\nDay 3 - Bairro Alto and LX Factory. Coffee in Príncipe Real, the Time Out Market for lunch, sunset at a miradouro.\n\nBuy a Viva Viagem card for tram 28 and the metro, book the monastery ahead, and wear shoes with grip - the calçada is slippery when wet. Want a food-only version?"
+        ],
+        "citations": [
+          {
+            "label": "Google Maps",
+            "url": "http://maps.google.com/"
+          }
+        ]
+      },
+      {
+        "id": "meeting-agenda",
+        "patterns": [
+          "meeting agenda",
+          "agenda template",
+          "agenda for",
+          "run a meeting",
+          "plan a meeting",
+          "1 1 agenda",
+          "one on one agenda"
+        ],
+        "replies": [
+          "A template that keeps meetings short:\n\nTitle - Date - Owner - Attendees\nGoal: one sentence on what we leave with.\n\n1. Context (5 min) - what changed since last time.\n2. Decisions needed (15 min) - each with the options and a recommendation.\n3. Risks and blockers (5 min).\n4. Actions (5 min) - owner, what, by when.\n\nPre-read: link. Notes: link.\n\nSend it 24 hours ahead and cancel if the decisions list is empty. Northstar's offsite agenda is a good worked example."
+        ],
+        "citations": [
+          {
+            "label": "Team offsite agenda — Google Docs",
+            "url": "http://docs.google.com/documents/offsite-agenda"
+          }
+        ]
+      },
+      {
+        "id": "remote-work",
+        "patterns": [
+          "remote work",
+          "working from home",
+          "work from home",
+          "hybrid work",
+          "remote vs office",
+          "return to office"
+        ],
+        "replies": [
+          "Pros of remote work: no commute (an hour a day back), deep-focus time, hiring from anywhere, and people with caring duties can actually keep their jobs. Cons: onboarding is slower, ambient context disappears, junior people get less mentoring, and the day can bleed into the evening. What works in practice: a written culture (decisions in docs, not hallways), two or three fixed overlap hours, cameras optional, and a real offsite two or three times a year. Hybrid without a rule about which days is the worst of both."
+        ],
+        "citations": []
+      },
+      {
+        "id": "sleep",
+        "patterns": [
+          "sleep better",
+          "can t sleep",
+          "insomnia",
+          "fall asleep",
+          "sleep schedule",
+          "trouble sleeping",
+          "sleep tips"
+        ],
+        "replies": [
+          "The things with the best evidence, in order:\n\n1. Same wake time every day, weekends included - it anchors everything else.\n2. Daylight within an hour of waking, ideally outside.\n3. No caffeine after early afternoon; it has a five-hour half-life.\n4. Cool, dark room, around 18 °C.\n5. Screens off or dim for the last hour; the problem is as much the content as the light.\n6. If you are awake more than twenty minutes, get up and do something dull in low light.\n\nIf it lasts more than a few weeks, see a doctor - CBT for insomnia works better than any pill."
+        ],
+        "citations": []
+      },
+      {
+        "id": "books",
+        "patterns": [
+          "book recommendation",
+          "book recommendations",
+          "recommend a book",
+          "recommend me a book",
+          "what should i read",
+          "good books",
+          "reading list",
+          "books about"
+        ],
+        "replies": [
+          "A short, mixed list:\n\n- Deterministic Systems in Practice - the one engineering book the Atlas team keep recommending.\n- The Pragmatic Programmer (Hunt and Thomas) - still the best general craft book.\n- Designing Data-Intensive Applications (Kleppmann) - how storage and streams actually work.\n- Thinking, Fast and Slow (Kahneman) - for anyone who makes decisions.\n- Piranesi (Clarke) - a short, strange, beautiful novel for the flight home.\n\nTell me a genre or a mood and I will narrow it."
+        ],
+        "citations": [
+          {
+            "label": "Deterministic Systems in Practice — Amazon",
+            "url": "http://amazon.com/dp/b0book-det"
+          }
+        ]
+      },
+      {
+        "id": "http-status",
+        "patterns": [
+          "http status",
+          "status code",
+          "status codes",
+          "what does 404 mean",
+          "what is a 500",
+          "what is a 403",
+          "502 bad gateway",
+          "http codes",
+          "http error"
+        ],
+        "replies": [
+          "By hundreds:\n\n- 2xx success: 200 OK, 201 Created, 204 No Content.\n- 3xx redirect: 301 moved for good, 302 moved for now, 304 not modified (use your cache).\n- 4xx your fault: 400 bad request, 401 not logged in, 403 logged in but not allowed, 404 no such thing, 405 wrong method, 409 conflict, 429 slow down.\n- 5xx their fault: 500 crashed, 502 the proxy could not reach the app, 503 overloaded or in maintenance, 504 upstream timed out.\n\nRule of thumb: 4xx means fix the request, 5xx means retry later or page someone."
+        ],
+        "citations": []
+      },
+      {
+        "id": "dns",
+        "patterns": [
+          "dns",
+          "how does dns work",
+          "domain name system",
+          "dns lookup",
+          "nameserver",
+          "what is a dns record",
+          "cname",
+          "a record"
+        ],
+        "replies": [
+          "DNS turns a name like northstar.example into an address. Your machine asks a resolver (usually your ISP's or 1.1.1.1), which asks the root servers, then the .example servers, then Northstar's authoritative server, caching each answer for its TTL. Record types: A (IPv4 address), AAAA (IPv6), CNAME (alias to another name), MX (mail server), TXT (arbitrary text, used for verification), NS (who is authoritative). Most \"the site is down\" reports that are not actually down are DNS: a stale cache, a wrong CNAME, or a TTL nobody lowered before the migration."
+        ],
+        "citations": []
+      },
+      {
+        "id": "sql-join",
+        "patterns": [
+          "sql join",
+          "inner join",
+          "left join",
+          "outer join",
+          "join two tables",
+          "sql query",
+          "join example",
+          "how do joins work"
+        ],
+        "replies": [
+          "Example with orders and customers:\n\nSELECT c.name, o.id, o.total\nFROM customers c\nINNER JOIN orders o ON o.customer_id = c.id;\n\nINNER keeps only customers who have orders. Change it to LEFT JOIN and every customer appears, with NULLs where there is no order - handy for \"customers who never bought\": add WHERE o.id IS NULL. RIGHT JOIN is LEFT from the other side; FULL OUTER keeps unmatched rows from both. Always join on indexed keys, and put filters on the right-hand table in the ON clause for a LEFT JOIN or you silently turn it back into an INNER JOIN."
+        ],
+        "citations": []
+      },
+      {
+        "id": "hash-map",
+        "patterns": [
+          "hash map",
+          "hashmap",
+          "what is a hash map",
+          "hash table",
+          "dictionary data structure",
+          "how does a hash map work"
+        ],
+        "replies": [
+          "A hash map stores key-value pairs and finds a value by hashing the key to a bucket index, so lookup, insert and delete are O(1) on average. The hash function spreads keys across buckets; collisions are handled by chaining (a small list per bucket) or open addressing (probe the next slot). Two things to remember: resizing rehashes everything, and iteration order is whatever the buckets happen to be - it is not sorted, not insertion order, and in many languages not even stable between runs. If order matters, use a BTreeMap or sort the keys first."
+        ],
+        "citations": [
+          {
+            "label": "Is HashMap iteration order guaranteed to be stable? — Stack Overflow",
+            "url": "http://stackoverflow.com/questions/t-4407"
+          },
+          {
+            "label": "Sort before you iterate — GitHub Gist",
+            "url": "http://github.com/gist/bfs-order"
+          },
+          {
+            "label": "Your hash map is a nondeterminism generator — Ars Technica",
+            "url": "http://arstechnica.com/2026/hash-order-nondeterminism"
+          }
+        ]
+      },
+      {
+        "id": "cover-letter",
+        "patterns": [
+          "cover letter",
+          "write a cover letter",
+          "job application",
+          "apply for a job",
+          "application letter"
+        ],
+        "replies": [
+          "Dear Hiring Manager,\n\nI am applying for the Systems Engineer role at Northstar. For the past four years I have built and operated services where reproducibility mattered: I moved a CI pipeline from 30% flaky to under 1% by removing every read of the wall clock and ordering every queue, and I wrote the replay tooling my team now uses for incident review.\n\nAtlas is the first product I have seen make determinism the whole point rather than a nice-to-have, and I would like to work on the runtime and the tooling around it.\n\nI have attached my CV and a link to the replay tool. Thank you for your time.\n\nSincerely,\n[Name]\n\nSwap in your real numbers - specifics are what get read."
+        ],
+        "citations": [
+          {
+            "label": "Careers · Northstar",
+            "url": "http://northstar.example/careers"
+          }
+        ]
+      },
+      {
+        "id": "apology-email",
+        "patterns": [
+          "apologise to a customer",
+          "apologize to a customer",
+          "apology email",
+          "apology to a customer",
+          "sorry email",
+          "say sorry to",
+          "customer complaint"
+        ],
+        "replies": [
+          "Subject: We got this wrong - here is what we are doing\n\nHi [Name],\n\nI am sorry. On [date] [what happened, one plain sentence], and that meant [impact on them]. That is on us.\n\nWhat we have done: [fix]. What we are changing so it does not happen again: [change]. As a small acknowledgement, [credit or gesture].\n\nIf anything about this is still not right, reply to me directly and I will handle it personally.\n\n[Your name], [role]\n\nKeep it short, own it without hedging, and never use the word \"inconvenience\"."
+        ],
+        "citations": []
+      },
+      {
+        "id": "git-undo",
+        "patterns": [
+          "undo last commit",
+          "undo the last commit",
+          "undo my last commit",
+          "revert last commit",
+          "git reset",
+          "git revert",
+          "unstage",
+          "undo git",
+          "amend commit"
+        ],
+        "replies": [
+          "Depends on what you want to keep:\n\n- Keep the changes, drop the commit: git reset --soft HEAD~1 (changes stay staged) or git reset HEAD~1 (unstaged).\n- Throw the changes away too: git reset --hard HEAD~1.\n- The commit is already pushed and shared: git revert HEAD makes a new commit that undoes it, which is the polite option.\n- Just fix the message or add a forgotten file: git commit --amend.\n\nAnything you reset is still in git reflog for about 90 days, so nothing is truly lost."
+        ],
+        "citations": []
+      },
+      {
+        "id": "kubectl",
+        "patterns": [
+          "kubectl",
+          "kubernetes",
+          "k8s",
+          "pods",
+          "kubectl basics",
+          "get pods",
+          "deployment rollout"
+        ],
+        "replies": [
+          "The dozen commands that cover most days:\n\n- kubectl get pods -n <ns> - what is running; add -o wide for nodes and IPs.\n- kubectl describe pod <name> - events, which is where the real error is.\n- kubectl logs <pod> -f, and --previous for the crashed container.\n- kubectl exec -it <pod> -- sh - a shell inside.\n- kubectl apply -f file.yaml - declare what you want.\n- kubectl rollout status deployment/<name>, rollout undo to go back.\n- kubectl port-forward svc/<name> 8080:80 - reach a service locally.\n- kubectl get events --sort-by=.lastTimestamp - the cluster's diary.\n\nSet a default namespace with kubectl config set-context --current --namespace=<ns> and stop typing -n."
+        ],
+        "citations": []
+      },
+      {
+        "id": "testing",
+        "patterns": [
+          "flaky",
+          "ci",
+          "test suite",
+          "why do tests fail",
+          "tests are failing",
+          "intermittent failure",
+          "ci is red"
+        ],
+        "replies": [
+          "Flakiness is almost always hidden nondeterminism: unordered iteration, a real clock, a shared temp directory, a port collision, or a test that depends on another test having run first. Order the inputs and most of it disappears. Practical steps: run the failing test alone in a loop of 50; run the suite with a fixed seed twice and diff; grep for now(), random and HashMap iteration in the test path.",
+          "Run the suite twice with the same seed and diff the outputs. Whatever differs is reading something you did not declare as an input - a clock, a random source, a filesystem listing, thread timing. Then quarantine the flaky test (mark it, do not delete it), fix the input it leaked, and un-quarantine. Bob Martinez's blog has the long version of how one of these ate three weeks."
+        ],
+        "citations": [
+          {
+            "label": "Testing code that reads the clock — Stack Overflow",
+            "url": "http://stackoverflow.com/questions/t-4418"
+          },
+          {
+            "label": "Hash order bit me — Bob Martinez",
+            "url": "http://bmartinez.net/posts/hash-order-bit-me"
+          }
+        ]
+      },
+      {
+        "id": "on-call",
+        "patterns": [
+          "on call",
+          "oncall",
+          "who is on call",
+          "pager",
+          "on call rotation",
+          "swap on call"
+        ],
+        "replies": [
+          "Northstar's on-call rotation is published on the intranet, and swaps are done there too - update the rotation page and tell #incidents. The incident handbook says the on-call engineer is the incident lead until they hand off, and a company holiday spent on call is given back as a day off. If you are new to it: keep the runbook open, escalate early to Jonas for anything SEV1, and write the timeline as you go, not after.",
+          "Check the on-call page on the intranet; it lists this week and next and who to page. For a swap, agree it with the other person, edit the rotation, and post the change in #incidents so the pager routing is right. The severity ladder in the handbook decides what you do: SEV1 is page everyone, SEV2 is page on-call and update the status page. Grace Park owns the rotation tooling if something looks wrong with it."
+        ],
+        "citations": [
+          {
+            "label": "Northstar on-call rotation",
+            "url": "http://intranet.internal/oncall"
+          },
+          {
+            "label": "Handbook: incident response",
+            "url": "http://intranet.internal/handbook/incident-response"
+          }
+        ]
+      },
+      {
+        "id": "release-process",
+        "patterns": [
+          "release process",
+          "how do we release",
+          "ship a release",
+          "release checklist",
+          "cut a release",
+          "release review"
+        ],
+        "replies": [
+          "Northstar's handbook lays it out: a release has a named owner, a checklist doc, a review meeting where each owner ticks their section, a rollback plan written before the ship, and a retro afterwards. For Atlas that was Carol's checklist with Alice on the renderer and Bob on CI, a launch review in Room 2, and the retro a week later. Read the handbook page first; it is short.",
+          "Follow the release-process page in the handbook. The shape is: freeze, checklist, review, ship, watch, retro. The checklist lives in a Google Doc that everyone can tick, the review is a calendar event with the owners invited, and the rollback plan is a section of the same doc. If you are cutting one now, copy the Atlas launch checklist rather than starting blank."
+        ],
+        "citations": [
+          {
+            "label": "Handbook: release process",
+            "url": "http://intranet.internal/handbook/release-process"
+          },
+          {
+            "label": "Atlas launch checklist",
+            "url": "http://docs.google.com/documents/atlas-launch"
+          }
+        ]
+      },
+      {
+        "id": "thanks",
+        "patterns": [
+          "thanks",
+          "thank you",
+          "cheers",
+          "that s great",
+          "perfect",
+          "goodbye",
+          "bye",
+          "see you"
+        ],
+        "replies": [
+          "You are welcome. Come back any time - and if I ever say something about this world without a link, ask me for the source.",
+          "Glad it helped. I will be here when you need the next draft, explanation or plan."
+        ],
+        "citations": []
+      }
+    ],
+    "facts": [
+      {
+        "id": "atlas-release-code",
+        "patterns": [
+          "atlas release code",
+          "release code",
+          "atlas code"
+        ],
+        "answer": "The Atlas release code is ATLAS-2026. It is recorded in the launch checklist, which Carol Nakamura owns.",
+        "citations": [
+          {
+            "label": "Atlas launch checklist",
+            "url": "http://docs.google.com/documents/atlas-launch"
+          }
+        ]
+      },
+      {
+        "id": "atlas-launch-owner",
+        "patterns": [
+          "who owns the atlas launch",
+          "atlas launch owner",
+          "release owner",
+          "who owns atlas"
+        ],
+        "answer": "Carol Nakamura owns the Atlas launch. She is the engineering manager for the release and keeps the launch checklist, with Alice Chen on the renderer and Bob Martinez on CI.",
+        "citations": [
+          {
+            "label": "Atlas launch checklist",
+            "url": "http://docs.google.com/documents/atlas-launch"
+          }
+        ]
+      },
+      {
+        "id": "atlas-repository",
+        "patterns": [
+          "atlas repository",
+          "atlas repo",
+          "atlas source",
+          "where is atlas developed"
+        ],
+        "answer": "Atlas is developed at github.com/northstar/atlas. The walkthrough video is the quickest orientation, and the engineering blog covers the launch itself.",
+        "citations": [
+          {
+            "label": "northstar/atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          },
+          {
+            "label": "Atlas walkthrough",
+            "url": "http://youtube.com/watch?v=atlas-walkthrough"
+          }
+        ]
+      },
+      {
+        "id": "atlas-press",
+        "patterns": [
+          "verge",
+          "press coverage",
+          "who wrote about atlas",
+          "atlas coverage"
+        ],
+        "answer": "The Verge covered the launch: \"Northstar's Atlas bets everything on determinism\", by Tom Weber. Reuters ran a wire version citing it, and the story reached the front page of Hacker News.",
+        "citations": [
+          {
+            "label": "Northstar's Atlas bets everything on determinism — The Verge",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          }
+        ]
+      },
+      {
+        "id": "flaky-bfs-test",
+        "patterns": [
+          "flaky test",
+          "bfs path test",
+          "bfs test",
+          "fail only on windows",
+          "fails only on windows",
+          "hash map iteration order"
+        ],
+        "answer": "That is the BFS shortest-path test in Atlas issue 14. It is not a Windows bug: the test iterates a hash map, so the tie between equal-length paths is broken by iteration order. Priya Raman's accepted answer explains it.",
+        "citations": [
+          {
+            "label": "Why does my BFS shortest-path test fail only on Windows? — Stack Overflow",
+            "url": "http://stackoverflow.com/questions/4411"
+          },
+          {
+            "label": "northstar/atlas issue 14",
+            "url": "http://github.com/northstar/atlas/issues/14"
+          }
+        ]
+      },
+      {
+        "id": "northstar-pricing",
+        "patterns": [
+          "northstar pricing",
+          "atlas pricing",
+          "how much does atlas cost",
+          "how much is atlas",
+          "atlas price",
+          "team plan",
+          "per seat"
+        ],
+        "answer": "Northstar sells Atlas on three tiers: Open source at $0, Team at $24 per seat per month billed annually, and Enterprise on request. The pricing page lists what each tier includes.",
+        "citations": [
+          {
+            "label": "Pricing · Northstar",
+            "url": "http://northstar.example/pricing"
+          }
+        ]
+      },
+      {
+        "id": "inc-4",
+        "patterns": [
+          "inc 4",
+          "latency incident",
+          "last incident",
+          "api latency",
+          "was northstar down",
+          "northstar outage",
+          "northstar down"
+        ],
+        "answer": "INC-4 was twelve minutes of elevated latency on the Atlas API on 2026-02-19, with no data loss. The previous incident, on 2026-01-08, lasted 41 minutes. The status page has the timeline and the engineering blog has the write-up.",
+        "citations": [
+          {
+            "label": "INC-4 Elevated API latency · Northstar Status",
+            "url": "http://status.northstar.example/incidents/inc-4"
+          },
+          {
+            "label": "INC-4: twelve minutes of elevated API latency — Northstar Engineering",
+            "url": "http://eng.northstar.example/posts/incident-inc-4"
+          }
+        ]
+      },
+      {
+        "id": "determinism-overhead",
+        "patterns": [
+          "determinism overhead",
+          "how much does determinism cost",
+          "12 percent",
+          "12%",
+          "throughput cost",
+          "cost of determinism",
+          "overhead of atlas"
+        ],
+        "answer": "Northstar measured the cost of running deterministically at roughly 12% throughput on their own pipeline, plus a vendored-dependency directory larger than they would like. Their own caveat: the 12% is their workload, not yours, so measure your own.",
+        "citations": [
+          {
+            "label": "How we test determinism — Northstar Engineering",
+            "url": "http://eng.northstar.example/posts/how-we-test-determinism"
+          }
+        ]
+      },
+      {
+        "id": "devcon-seattle",
+        "patterns": [
+          "devcon",
+          "devcon seattle",
+          "developer conference",
+          "seattle conference"
+        ],
+        "answer": "DevCon Seattle 2026 runs two days at the Cascade Convention Center on Pike Street, and this year's schedule is built around reproducibility. Tickets are on Ticketmaster; Carol Nakamura is going against order TM-2210, seat A-14-7.",
+        "citations": [
+          {
+            "label": "DevCon Seattle 2026 — Ticketmaster",
+            "url": "http://ticketmaster.com/event/devcon-2026"
+          },
+          {
+            "label": "DevCon Seattle's schedule is suddenly all about reproducibility — The Verge",
+            "url": "http://theverge.com/2026/devcon-preview"
+          }
+        ]
+      },
+      {
+        "id": "sonic-meridian",
+        "patterns": [
+          "sonic meridian",
+          "ship it tour",
+          "concert tickets",
+          "concert in seattle",
+          "any concerts"
+        ],
+        "answer": "Sonic Meridian's Ship It Tour plays Cascade Arena for one night. The floor is standing and the bowl is reserved seating; tickets are on Ticketmaster.",
+        "citations": [
+          {
+            "label": "Sonic Meridian - Ship It Tour — Ticketmaster",
+            "url": "http://ticketmaster.com/event/meridian-tour"
+          }
+        ]
+      },
+      {
+        "id": "it-help",
+        "patterns": [
+          "who runs it",
+          "it administrator",
+          "it admin",
+          "grace park",
+          "jonas lindqvist",
+          "who is the sre",
+          "it help",
+          "laptop is broken",
+          "reset my password at work"
+        ],
+        "answer": "Grace Park is Northstar's IT administrator (Operations, desk 1A-01) and owns app-server, git-server, the status page, backups and the on-call rotation. Jonas Lindqvist is the site reliability engineer at 2A-10. The IT help page on the intranet is the place to start.",
+        "citations": [
+          {
+            "label": "Northstar IT help",
+            "url": "http://intranet.internal/it"
+          },
+          {
+            "label": "Northstar people directory",
+            "url": "http://intranet.internal/directory"
+          }
+        ]
+      },
+      {
+        "id": "leave-policy",
+        "patterns": [
+          "paid leave",
+          "leave policy",
+          "vacation days",
+          "how many days off",
+          "annual leave",
+          "pto",
+          "book leave",
+          "time off"
+        ],
+        "answer": "Northstar gives 25 days of paid leave a year plus the company holidays, accrued monthly, with up to 5 days carried into the next year. Book leave in the team calendar and tell your lead at least two weeks ahead for anything longer than three days.",
+        "citations": [
+          {
+            "label": "Northstar HR: benefits, leave, expenses, payroll",
+            "url": "http://intranet.internal/hr"
+          }
+        ]
+      },
+      {
+        "id": "company-holidays",
+        "patterns": [
+          "company holidays",
+          "holidays this year",
+          "next holiday",
+          "next company holiday",
+          "office closed",
+          "when is the office closed",
+          "day off"
+        ],
+        "answer": "The remaining Northstar company holidays in 2026 are Thanksgiving on 26 and 27 November, Christmas Eve and Christmas Day on 24 and 25 December, and New Year's Eve on 31 December. Labor Day on 7 September was the last one. Holidays do not count against leave, and the on-call engineer gets the day back.",
+        "citations": [
+          {
+            "label": "Northstar company holidays 2026",
+            "url": "http://intranet.internal/holidays"
+          }
+        ]
+      },
+      {
+        "id": "incident-severity",
+        "patterns": [
+          "sev1",
+          "sev2",
+          "sev 1",
+          "sev 2",
+          "incident severity",
+          "incident lead",
+          "who leads an incident",
+          "incident response"
+        ],
+        "answer": "Northstar's handbook defines SEV1 as the API down or data at risk: page on-call and Jonas, all hands. SEV2 is degraded service for many customers: page on-call and update the status page. The incident lead is the on-call engineer until they hand off; they run the response and decide on rollback.",
+        "citations": [
+          {
+            "label": "Handbook: incident response",
+            "url": "http://intranet.internal/handbook/incident-response"
+          }
+        ]
+      },
+      {
+        "id": "alice-monitor",
+        "patterns": [
+          "which monitor",
+          "what monitor",
+          "monitor did alice",
+          "alice s monitor",
+          "lumen monitor",
+          "monitor recommendation"
+        ],
+        "answer": "Alice Chen bought the Lumen 27-inch 4K USB-C monitor for $429.99: a single cable to the laptop and no dock. Bob asked her which one it was and she sent him the Amazon listing.",
+        "citations": [
+          {
+            "label": "Lumen 27-inch 4K USB-C Monitor — Amazon",
+            "url": "http://amazon.com/dp/b0monitor27"
+          },
+          {
+            "label": "The best 27-inch 4K USB-C monitors right now — The Verge",
+            "url": "http://theverge.com/2026/monitor-roundup"
+          }
+        ]
+      },
+      {
+        "id": "atlas-getting-started",
+        "patterns": [
+          "getting started with atlas",
+          "install atlas",
+          "clone atlas",
+          "how do i start with atlas",
+          "atlas guide",
+          "atlas tutorial",
+          "contribute to atlas"
+        ],
+        "answer": "Start with the public guide: git clone http://github.com/northstar/atlas and read CONTRIBUTING.md before anything else. The walkthrough video covers a first run end to end, and the #atlas-help channel on Discord is where questions go.",
+        "citations": [
+          {
+            "label": "Getting started · Atlas guide",
+            "url": "http://guide.example/getting-started"
+          },
+          {
+            "label": "#atlas-help · Atlas Community on Discord",
+            "url": "http://discord.com/channels/atlas-help"
+          }
+        ]
+      },
+      {
+        "id": "alice-blog",
+        "patterns": [
+          "alice s blog",
+          "alice chen blog",
+          "alicechen dev",
+          "what has alice written",
+          "alice chen s posts",
+          "renderer rewrite"
+        ],
+        "answer": "Alice Chen writes at alicechen.dev. Recent posts: \"What I learned shipping Atlas\", \"The renderer rewrite nobody asked for\", \"Notes on deterministic time\" and \"How I read a trace I do not understand\". The first one made the front page of Hacker News and r/programming.",
+        "citations": [
+          {
+            "label": "Alice Chen — alicechen.dev",
+            "url": "http://alicechen.dev/"
+          },
+          {
+            "label": "What I learned shipping Atlas",
+            "url": "http://alicechen.dev/posts/what-i-learned-shipping-atlas"
+          }
+        ]
+      },
+      {
+        "id": "bob-blog",
+        "patterns": [
+          "bob s blog",
+          "bob martinez blog",
+          "bmartinez net",
+          "what has bob written",
+          "hash order bit me",
+          "testing without a clock"
+        ],
+        "answer": "Bob Martinez writes at bmartinez.net. His posts are \"Hash order bit me\" (three weeks for a nine-line fix), \"CI runners I have known and blamed\" and \"Testing without a clock\". The first one was discussed on Hacker News.",
+        "citations": [
+          {
+            "label": "Bob Martinez — bmartinez.net",
+            "url": "http://bmartinez.net/"
+          },
+          {
+            "label": "Hash order bit me",
+            "url": "http://bmartinez.net/posts/hash-order-bit-me"
+          }
+        ]
+      },
+      {
+        "id": "northstar-hiring",
+        "patterns": [
+          "is northstar hiring",
+          "northstar hiring",
+          "northstar careers",
+          "jobs at northstar",
+          "open roles at northstar",
+          "northstar jobs"
+        ],
+        "answer": "Yes. Northstar is hiring two systems engineers, announced on the company's LinkedIn page. The careers page on northstar.example has the listings and the interview process.",
+        "citations": [
+          {
+            "label": "Careers · Northstar",
+            "url": "http://northstar.example/careers"
+          },
+          {
+            "label": "Northstar is hiring two systems engineers — LinkedIn",
+            "url": "http://linkedin.com/northstar/status/p-3101"
+          }
+        ]
+      },
+      {
+        "id": "atlas-hn",
+        "patterns": [
+          "hacker news",
+          "show hn",
+          "hn thread",
+          "on hn"
+        ],
+        "answer": "Atlas has been on Hacker News several times: the Verge piece, a Show HN (\"Atlas, a simulated machine you can replay byte for byte\"), Alice Chen's \"What I learned shipping Atlas\", Bob Martinez's \"Hash order bit me\", and a \"Northstar down\" thread during INC-4.",
+        "citations": [
+          {
+            "label": "Show HN: Atlas — Hacker News",
+            "url": "http://news.ycombinator.com/item?id=t-9005"
+          },
+          {
+            "label": "Northstar's Atlas bets everything on determinism — Hacker News",
+            "url": "http://news.ycombinator.com/item?id=t-9001"
+          }
+        ]
+      }
+    ],
+    "conversations": {
+      "conv-1": {
+        "id": "conv-1",
+        "owner": "alice",
+        "title": "Deterministic services",
+        "tick": 3,
+        "messages": [
+          {
+            "role": "user",
+            "text": "How would you explain deterministic simulation to a new engineer?",
+            "attempt": 0,
+            "tick": 3
+          },
+          {
+            "role": "assistant",
+            "text": "A deterministic simulation produces byte-identical results for the same seed and the same ordered inputs. Three rules do most of the work: no wall clock, no ambient randomness, and a total order on every queue. Get those right and a bug report becomes a seed plus an input log that anyone can replay, on any machine, and see exactly what you saw.",
+            "citations": [
+              {
+                "label": "Deterministic simulation — Wikipedia",
+                "url": "http://en.wikipedia.org/wiki/Deterministic_simulation"
+              },
+              {
+                "label": "How do you seed a PRNG so a simulation replays exactly? — Stack Overflow",
+                "url": "http://stackoverflow.com/questions/t-4402"
+              }
+            ],
+            "intent_id": "determinism",
+            "attempt": 0,
+            "tick": 3
+          },
+          {
+            "role": "user",
+            "text": "What makes a test suite flaky in practice?",
+            "attempt": 0,
+            "tick": 3
+          },
+          {
+            "role": "assistant",
+            "text": "Flakiness is almost always hidden nondeterminism: unordered iteration, a real clock, a shared temp directory, a port collision, or a test that depends on another test having run first. Order the inputs and most of it disappears. Practical steps: run the failing test alone in a loop of 50; run the suite with a fixed seed twice and diff; grep for now(), random and HashMap iteration in the test path.",
+            "citations": [
+              {
+                "label": "Testing code that reads the clock — Stack Overflow",
+                "url": "http://stackoverflow.com/questions/t-4418"
+              },
+              {
+                "label": "Hash order bit me — Bob Martinez",
+                "url": "http://bmartinez.net/posts/hash-order-bit-me"
+              }
+            ],
+            "intent_id": "testing",
+            "attempt": 0,
+            "tick": 3
+          }
+        ]
+      },
+      "conv-2": {
+        "id": "conv-2",
+        "owner": "alice",
+        "title": "Draft a launch email",
+        "tick": 5,
+        "messages": [
+          {
+            "role": "user",
+            "text": "Draft a launch email for Atlas",
+            "attempt": 0,
+            "tick": 5
+          },
+          {
+            "role": "assistant",
+            "text": "Subject: Atlas is live\n\nTeam - Atlas shipped this morning. The checklist is closed, the walkthrough is up, and the repo is public. Thanks to everyone who chased the last three items down. - Carol",
+            "citations": [
+              {
+                "label": "Atlas launch checklist",
+                "url": "http://docs.google.com/documents/atlas-launch"
+              }
+            ],
+            "intent_id": "launch-email",
+            "attempt": 0,
+            "tick": 5
+          },
+          {
+            "role": "user",
+            "text": "Thanks, that's great.",
+            "attempt": 0,
+            "tick": 5
+          },
+          {
+            "role": "assistant",
+            "text": "Glad it helped. I will be here when you need the next draft, explanation or plan.",
+            "intent_id": "thanks",
+            "attempt": 0,
+            "tick": 5
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://chatgpt.com/c/conv-1",
+      "title": "Deterministic services - ChatGPT",
+      "snippet": "Alice asks ChatGPT how to explain deterministic simulation to a new engineer, and what makes a test suite flaky in practice.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "chatgpt",
+        "deterministic",
+        "flaky",
+        "conversation",
+        "alice"
+      ]
+    },
+    {
+      "url": "http://chatgpt.com/c/conv-2",
+      "title": "Draft a launch email - ChatGPT",
+      "snippet": "ChatGPT drafts the Atlas launch announcement from the checklist Carol Nakamura owns.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "chatgpt",
+        "launch email",
+        "atlas",
+        "draft",
+        "announcement"
+      ]
+    }
+  ]
+}

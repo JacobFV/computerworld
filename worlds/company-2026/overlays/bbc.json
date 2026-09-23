@@ -1,0 +1,104 @@
+{
+  "initial_state": {
+    "articles": {
+      "meridian-strait-deal": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Forty per cent for the smallest state is a bigger concession than anyone expected on Monday.",
+            "tick": 12,
+            "likes": 6
+          }
+        ]
+      },
+      "northstar-atlas-launch": {
+        "id": "northstar-atlas-launch",
+        "section": "technology",
+        "year": "2026",
+        "title": "Software that promises to replay any crash exactly goes on general release",
+        "dek": "Seattle firm Northstar has released Atlas, a simulator that removes chance from the programs it runs.",
+        "byline": "Ravi Chandran, BBC Technology",
+        "date": "Mar 5, 2026",
+        "tick": 10,
+        "read_minutes": 3,
+        "body": [
+          "A US developer-tools company has released software it says can reproduce any recorded failure of a program exactly, as many times as an engineer needs to look at it.",
+          "Atlas, made by Seattle-based Northstar, runs a program inside a simulated computer in which the clock, random numbers and the order of network messages are all under the simulator's control. The company says this means a bug seen once can be replayed byte for byte rather than hunted for by running the program repeatedly.",
+          "The approach is not new in research but has rarely been packaged as a product. The trade-off is speed: programs run several times more slowly under simulation. Northstar has published the source code, and the release was reported at http://reuters.com/2026/northstar-atlas-determinism",
+          "The company has not disclosed its revenue or how many people it employs."
+        ],
+        "links": [
+          {
+            "label": "Reuters: Northstar releases Atlas 1.0",
+            "url": "http://reuters.com/2026/northstar-atlas-determinism"
+          },
+          {
+            "label": "Ars Technica's technical deep dive",
+            "url": "http://arstechnica.com/2026/atlas-deep-dive"
+          }
+        ],
+        "tags": [
+          "northstar",
+          "atlas",
+          "software"
+        ],
+        "comments": []
+      },
+      "harrowgate-derby": {
+        "body": [
+          "Ines Duarte rose to meet a corner in the fourth minute of added time to give Harrowgate Athletic a 2-1 win over Westfield Rovers in a derby that had looked destined for a draw.",
+          "Athletic had led from the twelfth minute through a low finish from Priya Sandhu, but Rovers equalised on the hour from the penalty spot after a handball that referee Mark Coyle awarded on review. Rovers manager Dai Evans said afterwards the penalty was 'the only thing that went right for us all afternoon'.",
+          "The winner came from Athletic's ninth corner of the match. Duarte, unmarked at the far post, headed in from six yards in front of a sold-out Mill Lane.",
+          "The result leaves Athletic second in the table, four points behind the leaders with nine games remaining. Rovers stay eleventh."
+        ]
+      },
+      "silver-lantern-review": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The storm sequence is worth the ticket on its own.",
+            "tick": 6,
+            "likes": 4
+          }
+        ]
+      }
+    },
+    "subscribers": [
+      "carol.nakamura@gmail.com"
+    ],
+    "saved": {
+      "carol": [
+        "meridian-strait-deal"
+      ],
+      "bob": [
+        "harrowgate-derby"
+      ]
+    },
+    "follows": {
+      "carol": [
+        "publication"
+      ],
+      "alice": [
+        "film"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://bbc.com/2026/northstar-atlas-launch",
+      "title": "Software that promises to replay any crash exactly goes on general release - BBC News",
+      "snippet": "Seattle firm Northstar has released Atlas, a simulator that removes chance from the programs it runs.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "northstar",
+        "atlas",
+        "simulator",
+        "replay",
+        "software"
+      ]
+    }
+  ]
+}

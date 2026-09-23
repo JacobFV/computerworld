@@ -67,14 +67,6 @@
         "owner": null,
         "subscribers": 27500,
         "about": "Hand-drawn animation from a studio of four in Kyoto. Every frame on paper first."
-      },
-      "northstar-studio": {
-        "id": "northstar-studio",
-        "name": "Northstar Studio",
-        "handle": "@northstarstudio",
-        "owner": "admin",
-        "subscribers": 3100,
-        "about": "Northstar brand films and the Atlas launch film."
       }
     },
     "items": {
@@ -103,13 +95,6 @@
             "text": "The ovens are a character. Beautifully restrained.",
             "tick": 2,
             "likes": 210
-          },
-          {
-            "id": "c2",
-            "author": "bob",
-            "text": "watched twice, cried once",
-            "tick": 2,
-            "likes": 96
           }
         ],
         "related": [
@@ -204,13 +189,6 @@
             "text": "The winter sequence is extraordinary. We are jealous of the light.",
             "tick": 3,
             "likes": 330
-          },
-          {
-            "id": "c2",
-            "author": "carol",
-            "text": "The maintenance log scene is every runbook I have ever written.",
-            "tick": 3,
-            "likes": 120
           }
         ],
         "related": [
@@ -279,46 +257,6 @@
           "night-crew"
         ]
       },
-      "atlas-title-sequence": {
-        "id": "atlas-title-sequence",
-        "channel": "gridline-motion",
-        "title": "Atlas: title sequence",
-        "description": "Title sequence for the Northstar Atlas launch film. Every element is a real trace from the simulator, replayed and rendered.",
-        "duration_s": 74,
-        "published": "Mar 4, 2026",
-        "published_tick": 7,
-        "views": 212400,
-        "likes": 14800,
-        "tags": [
-          "motion design",
-          "title sequence",
-          "atlas",
-          "northstar"
-        ],
-        "badges": [
-          "Staff Pick"
-        ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "alice",
-            "text": "The traces are real. I checked every frame against the replay.",
-            "tick": 8,
-            "likes": 410
-          },
-          {
-            "id": "c2",
-            "author": "paper-lantern",
-            "text": "the timing on the tick counter is perfect",
-            "tick": 8,
-            "likes": 260
-          }
-        ],
-        "related": [
-          "atlas-launch-film",
-          "loop-study-3"
-        ]
-      },
       "loop-study-3": {
         "id": "loop-study-3",
         "channel": "gridline-motion",
@@ -344,7 +282,6 @@
           }
         ],
         "related": [
-          "atlas-title-sequence",
           "how-clocks-drift"
         ]
       },
@@ -366,17 +303,8 @@
         "badges": [
           "New"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "sending this to the whole backend team",
-            "tick": 12,
-            "likes": 110
-          }
-        ],
+        "comments": [],
         "related": [
-          "atlas-title-sequence",
           "loop-study-3"
         ]
       },
@@ -406,13 +334,6 @@
             "text": "Every frame is patient. I want to know your shooting ratio.",
             "tick": 4,
             "likes": 190
-          },
-          {
-            "id": "c2",
-            "author": "carol",
-            "text": "watched this instead of going swimming. felt cold anyway.",
-            "tick": 4,
-            "likes": 60
           }
         ],
         "related": [
@@ -533,13 +454,6 @@
             "text": "7 months for 6 minutes. this is what patience looks like.",
             "tick": 5,
             "likes": 520
-          },
-          {
-            "id": "c2",
-            "author": "bob",
-            "text": "the unfolding at 3:10 got me",
-            "tick": 5,
-            "likes": 180
           }
         ],
         "related": [
@@ -575,44 +489,7 @@
           }
         ],
         "related": [
-          "paper-boat",
-          "atlas-title-sequence"
-        ]
-      },
-      "atlas-launch-film": {
-        "id": "atlas-launch-film",
-        "channel": "northstar-studio",
-        "title": "Atlas: the launch film",
-        "description": "Three minutes on what Northstar shipped: a computer you can replay. Titles by Gridline Motion.",
-        "duration_s": 186,
-        "published": "Mar 4, 2026",
-        "published_tick": 7,
-        "views": 24600,
-        "likes": 1900,
-        "tags": [
-          "northstar",
-          "atlas",
-          "brand film"
-        ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "alice",
-            "text": "Proud of this one. The title sequence deserves its own credit.",
-            "tick": 8,
-            "likes": 130
-          },
-          {
-            "id": "c2",
-            "author": "carol",
-            "text": "release day, captured",
-            "tick": 8,
-            "likes": 70
-          }
-        ],
-        "related": [
-          "atlas-title-sequence",
-          "keepers"
+          "paper-boat"
         ]
       }
     },
@@ -630,7 +507,6 @@
         "items": [
           "paper-boat",
           "keepers",
-          "atlas-title-sequence",
           "the-last-shift",
           "cold-water",
           "the-corridor"
@@ -653,7 +529,6 @@
         "title": "Showcase: Motion & Animation",
         "owner": null,
         "items": [
-          "atlas-title-sequence",
           "loop-study-3",
           "how-clocks-drift",
           "paper-boat",
@@ -679,45 +554,10 @@
           "lighting-breakdown-kitchen",
           "lantern-festival"
         ]
-      },
-      "atlas-launch": {
-        "id": "atlas-launch",
-        "title": "Atlas launch",
-        "owner": "alice",
-        "items": [
-          "atlas-launch-film",
-          "atlas-title-sequence"
-        ]
       }
     },
-    "subscriptions": {
-      "alice": [
-        "gridline-motion",
-        "northstar-studio"
-      ],
-      "bob": [
-        "paper-lantern",
-        "halfmoon-films"
-      ],
-      "carol": [
-        "elena-vasquez",
-        "northlight-docs",
-        "northstar-studio"
-      ]
-    },
-    "likes": {
-      "alice": [
-        "atlas-title-sequence"
-      ],
-      "bob": [
-        "paper-boat",
-        "the-last-shift"
-      ],
-      "carol": [
-        "keepers",
-        "cold-water"
-      ]
-    },
+    "subscriptions": {},
+    "likes": {},
     "now_playing": {}
   },
   "search_entries": [
@@ -758,31 +598,6 @@
         "clock tower",
         "elena vasquez",
         "documentary"
-      ]
-    },
-    {
-      "url": "http://vimeo.com/watch?v=atlas-title-sequence",
-      "title": "Atlas: title sequence on Vimeo",
-      "snippet": "Gridline Motion builds the Atlas launch titles from real simulator traces.",
-      "vertical": "videos",
-      "authority": 5,
-      "keywords": [
-        "atlas title sequence",
-        "gridline motion",
-        "motion design",
-        "northstar"
-      ]
-    },
-    {
-      "url": "http://vimeo.com/watch?v=atlas-launch-film",
-      "title": "Atlas: the launch film on Vimeo",
-      "snippet": "Three minutes on what Northstar shipped: a computer you can replay.",
-      "vertical": "videos",
-      "authority": 4,
-      "keywords": [
-        "atlas launch film",
-        "northstar",
-        "brand film"
       ]
     },
     {

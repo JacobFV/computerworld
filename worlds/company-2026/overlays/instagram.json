@@ -1,0 +1,364 @@
+{
+  "initial_state": {
+    "accounts": {
+      "alicechen": {
+        "handle": "alicechen",
+        "name": "Alice Chen",
+        "actor": "alice",
+        "bio": "Seattle. Bikes, mountains, the occasional render. Photos are mine, bugs are also mine.",
+        "location": "Seattle, WA",
+        "followers": 1180,
+        "following": 402,
+        "site": "http://alicechen.dev/",
+        "domain": "",
+        "headline": "",
+        "verified": false
+      },
+      "bmartinez": {
+        "handle": "bmartinez",
+        "name": "Bob Martinez",
+        "actor": "bob",
+        "bio": "Bread, goalkeeping, and a cat that is not mine but visits. Northstar by day.",
+        "location": "Seattle, WA",
+        "followers": 640,
+        "following": 511,
+        "site": "http://bmartinez.net/",
+        "domain": "",
+        "headline": "",
+        "verified": false
+      },
+      "carolnk": {
+        "name": "Carol Nakamura",
+        "actor": "carol",
+        "handle": "carolnk",
+        "bio": "Engineering manager. Dog photos, mostly. The dog is Miso.",
+        "location": "Seattle, WA",
+        "followers": 2210,
+        "following": 233,
+        "verified": true,
+        "domain": "",
+        "headline": "",
+        "site": ""
+      },
+      "okafor.shoots": {
+        "handle": "okafor.shoots",
+        "name": "Tunde Okafor",
+        "bio": "Landscape and night sky. Long exposures, cold hands. Workshops in the Cascades every autumn.",
+        "location": "Pacific Northwest",
+        "followers": 91400,
+        "following": 310,
+        "verified": true,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "site": ""
+      },
+      "miso.the.shiba": {
+        "bio": "Shiba inu. Carol's dog. Professional loaf. Not food motivated, but I will consider your offer."
+      },
+      "northstarhq": {
+        "handle": "northstarhq",
+        "name": "Northstar",
+        "actor": "admin",
+        "bio": "Deterministic simulation, Seattle. Office dogs, launch cakes and the whiteboard wall. Careers at http://northstar.example/",
+        "location": "Seattle, WA",
+        "followers": 5120,
+        "following": 40,
+        "verified": true,
+        "site": "http://northstar.example/",
+        "domain": "",
+        "headline": ""
+      }
+    },
+    "posts": {
+      "p-4101": {
+        "author": "okafor.shoots",
+        "image": "Milky Way over Mount Rainier, Sunrise visitor centre, 2am",
+        "text": "Three hours of waiting for the cloud to clear and then this for four minutes. Mount Rainier from the Sunrise side, 2am, 25 seconds at f/2.8. Worth every frozen finger. #milkyway #mountrainier #nightsky #longexposure #pnw",
+        "tick": 2,
+        "likes": 18400,
+        "reposts": 0,
+        "id": "p-4101"
+      },
+      "p-4107": {
+        "author": "alicechen",
+        "image": "Gravel bike leaning against a moss-covered log on a forest road, fog between the trees",
+        "text": "Iron Horse trail, 6am, fog in the trees and nobody else for two hours. 62 miles and the only bug I found was in my head. #gravel #cycling #snoqualmie #pnw #foginthetrees",
+        "tick": 5,
+        "likes": 522,
+        "reposts": 0,
+        "id": "p-4107"
+      },
+      "p-4108": {
+        "author": "bmartinez",
+        "image": "A loaf of sourdough with a deep ear, scored in a wheat pattern, on a cooling rack",
+        "text": "Kevin (the starter) did his best work today. 78% hydration, 20 hour cold proof, scored with the wheat pattern I have been failing for a year. The ear! Look at the ear. #sourdough #homebaking #breadstagram",
+        "tick": 5,
+        "likes": 388,
+        "reposts": 0,
+        "id": "p-4108"
+      },
+      "p-4111": {
+        "author": "northstarhq",
+        "image": "A rectangular sheet cake decorated to look like a rendered frame, with a tiny cursor made of icing",
+        "text": "We shipped Atlas 1.0 this week and the cake is, by request, a rectangle. Two years of work. Enormously proud of this team. #atlas #launchday #northstar #seattletech",
+        "tick": 7,
+        "likes": 1340,
+        "reposts": 0,
+        "id": "p-4111"
+      },
+      "p-4112": {
+        "author": "alicechen",
+        "image": "Team crowded around a whiteboard covered in boxes and arrows, someone holding cake",
+        "text": "The whiteboard survived the launch. We did not erase it. Nobody is allowed to erase it. #atlas #northstar #shipped",
+        "tick": 7,
+        "likes": 610,
+        "reposts": 0,
+        "reply_to": "p-4111",
+        "id": "p-4112"
+      },
+      "p-4113": {
+        "image": "Two engineers asleep in office beanbags with laptops closed, a dog between them",
+        "tick": 7,
+        "likes": 2210,
+        "reposts": 0,
+        "id": "p-4113",
+        "text": "Post-launch. Miso is providing emotional support. I am providing Friday off. #atlas #northstar #teamnap",
+        "author": "carolnk"
+      },
+      "p-4116": {
+        "author": "okafor.shoots",
+        "image": "Aurora borealis, green and violet curtains over a dark lake with pine silhouettes",
+        "text": "The aurora came south again last night and this time I was ready. Lake Wenatchee, 11pm to 1am, 8 seconds at ISO 3200. If you missed it, the forecast says one more night. Workshop dates for October in bio. #aurora #northernlights #lakewenatchee #nightphotography #washington",
+        "tick": 9,
+        "likes": 27600,
+        "reposts": 0,
+        "id": "p-4116"
+      },
+      "p-4117": {
+        "author": "bmartinez",
+        "image": "Goalkeeper gloves on wet grass next to a football, floodlights blurred in the background",
+        "text": "Lost 4-1. Saved a penalty. Only one of those facts is going in the caption and you are reading it. #sundayleague #goalkeeper #seattle #smallvictories",
+        "tick": 9,
+        "likes": 214,
+        "reposts": 0,
+        "id": "p-4117"
+      },
+      "p-4123": {
+        "author": "alicechen",
+        "image": "Sunrise over the Olympics from Golden Gardens beach, a single kayak on flat water",
+        "text": "Golden Gardens, 6:20am. Flat water, one kayak, the Olympics doing the thing. Took the morning off. Recommend it. #goldengardens #seattle #sunrise #olympics #kayak",
+        "tick": 12,
+        "likes": 740,
+        "reposts": 0,
+        "id": "p-4123"
+      },
+      "p-4125": {
+        "text": "Autumn menu is up. The cardamom latte is back by popular demand and by one very persistent regular named Bob. #autumnmenu #fremont #cardamom #seattlecoffee"
+      },
+      "p-4126": {
+        "author": "bmartinez",
+        "image": "A cardamom latte with a bread roll on the side, a laptop open to a green test dashboard",
+        "text": "Persistent regular reporting in. It is very good. Tests are green. Good day. #cardamomlatte #driftwood #fremont #greenbuild",
+        "tick": 13,
+        "likes": 190,
+        "reposts": 0,
+        "reply_to": "p-4125",
+        "id": "p-4126"
+      },
+      "p-4127": {
+        "author": "okafor.shoots",
+        "image": "Group of students with tripods on a ridge at blue hour, headlamps on",
+        "text": "October night sky workshop is FULL. Waitlist open. We will do one more before the snow. Thank you all, cold hands together. #workshop #nightphotography #cascades #astrophotography",
+        "tick": 14,
+        "likes": 5140,
+        "reposts": 0,
+        "id": "p-4127"
+      },
+      "p-4103": {
+        "image": "Shiba inu asleep upside down on a grey couch, paws in the air",
+        "text": "Miso has chosen violence against the concept of dignity. Sunday. #shibainu #dogsofinstagram #ballard",
+        "tick": 3,
+        "likes": 1980,
+        "reposts": 0,
+        "id": "p-4103",
+        "author": "carolnk"
+      },
+      "p-4121": {
+        "image": "The same shiba inu, twenty minutes later, still standing in the rain",
+        "text": "Update. We have not moved. #shiba #standoff",
+        "tick": 11,
+        "likes": 3100,
+        "reposts": 0,
+        "reply_to": "p-4120",
+        "id": "p-4121",
+        "author": "carolnk"
+      }
+    },
+    "follows": {
+      "alice": [
+        "bmartinez",
+        "carolnk",
+        "lena.frames",
+        "okafor.shoots",
+        "pnw.trailheads",
+        "driftwood.cafe",
+        "northstarhq"
+      ],
+      "bob": [
+        "alicechen",
+        "carolnk",
+        "driftwood.cafe",
+        "vertical.world",
+        "miso.the.shiba",
+        "northstarhq"
+      ],
+      "carol": [
+        "alicechen",
+        "bmartinez",
+        "miso.the.shiba",
+        "roam.with.rin",
+        "lena.frames",
+        "northstarhq"
+      ],
+      "admin": [
+        "alicechen",
+        "bmartinez",
+        "carolnk"
+      ]
+    },
+    "likes": {
+      "p-4111": [
+        "alice",
+        "bob",
+        "carol"
+      ],
+      "p-4101": [
+        "alice",
+        "carol"
+      ],
+      "p-4108": [
+        "alice"
+      ],
+      "p-4104": [
+        "bob"
+      ]
+    },
+    "messages": {
+      "c-prints": {
+        "members": [
+          "lena.frames",
+          "alicechen"
+        ],
+        "messages": [
+          {
+            "id": "dm-1",
+            "from": "alicechen",
+            "text": "Hi Lena, is the Pike Place rain frame still available as an 8x10? It would be a birthday present for a friend who waits in the rain a lot.",
+            "tick": 8
+          },
+          {
+            "id": "dm-2",
+            "from": "lena.frames",
+            "text": "It is! Fibre paper, hand printed, $120 unframed. I can have it ready Friday. Pickup in Fremont or I can post it.",
+            "tick": 8
+          },
+          {
+            "id": "dm-3",
+            "from": "alicechen",
+            "text": "Pickup Friday is perfect. Thank you.",
+            "tick": 9
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://instagram.com/alicechen",
+      "title": "Alice Chen (@alicechen) on Instagram",
+      "snippet": "Seattle. Bikes, mountains, the occasional render. Gravel rides, sunrises and a whiteboard that must not be erased.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "alice chen",
+        "alicechen",
+        "instagram",
+        "cycling",
+        "seattle",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://instagram.com/bmartinez",
+      "title": "Bob Martinez (@bmartinez) on Instagram",
+      "snippet": "Bread, goalkeeping, and a cat that is not mine but visits. Sourdough photos, mostly.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "bob martinez",
+        "bmartinez",
+        "instagram",
+        "sourdough",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://instagram.com/carolnk",
+      "title": "Carol Nakamura (@carolnk) on Instagram",
+      "snippet": "Engineering manager. Dog photos, mostly. The dog is Miso.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "carol nakamura",
+        "carolnk",
+        "instagram",
+        "shiba",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://instagram.com/okafor.shoots",
+      "title": "Tunde Okafor (@okafor.shoots) on Instagram",
+      "snippet": "Landscape and night sky photographer. Milky Way over Rainier, aurora over Lake Wenatchee, autumn workshops.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "tunde okafor",
+        "night sky",
+        "astrophotography",
+        "aurora",
+        "landscape photographer",
+        "workshop"
+      ]
+    },
+    {
+      "url": "http://instagram.com/okafor.shoots/status/p-4116",
+      "title": "Aurora over Lake Wenatchee",
+      "snippet": "Tunde Okafor's most liked photo: green and violet curtains over the lake, 8 seconds at ISO 3200.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "aurora",
+        "northern lights",
+        "lake wenatchee",
+        "washington",
+        "photo"
+      ]
+    },
+    {
+      "url": "http://instagram.com/northstarhq/status/p-4111",
+      "title": "Northstar: Atlas 1.0 launch cake",
+      "snippet": "The rectangle cake, by request, and the team that shipped Atlas.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "northstar",
+        "atlas",
+        "launch",
+        "cake",
+        "seattle tech"
+      ]
+    }
+  ]
+}

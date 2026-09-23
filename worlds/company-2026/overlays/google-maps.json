@@ -1,0 +1,133 @@
+{
+  "initial_state": {
+    "places": {
+      "bayfront-depot": {
+        "summary": "Light rail and bus interchange two blocks south of the Northstar campus."
+      },
+      "bridgetown-annex": {
+        "name": "Northstar Bridgetown Annex",
+        "website": "http://northstar.example/",
+        "tags": [
+          "office",
+          "northstar"
+        ]
+      },
+      "harborline-coffee": {
+        "summary": "The Northstar standup runs on this. Cardamom bun, flat white, back upstairs."
+      },
+      "northstar-hq": {
+        "id": "northstar-hq",
+        "name": "Northstar HQ",
+        "kind": "office",
+        "address": "410 Bayfront Ave, Seattle WA",
+        "lat": 47572600,
+        "lon": -122348000,
+        "rating": 46,
+        "reviews": 128,
+        "hours": "Mon-Fri 8:00-18:00",
+        "phone": "+1 206 555 0148",
+        "website": "http://northstar.example/",
+        "summary": "Northstar's bayfront campus: engineering on four and five, the lab in the basement.",
+        "tags": [
+          "office",
+          "northstar",
+          "engineering"
+        ]
+      },
+      "southbay-lab": {
+        "name": "Northstar South Bay Lab",
+        "website": "http://northstar.example/",
+        "tags": [
+          "office",
+          "northstar",
+          "lab"
+        ]
+      }
+    },
+    "routes": {
+      "northstar-hq|devcon-center|driving": {
+        "id": "northstar-hq|devcon-center|driving",
+        "from": "northstar-hq",
+        "to": "devcon-center",
+        "mode": "driving",
+        "metres": 5428,
+        "minutes": 14,
+        "steps": [
+          {
+            "text": "Start at Northstar HQ, 410 Bayfront Ave, Seattle WA",
+            "metres": 0
+          },
+          {
+            "text": "Head north on Bayfront Ave — 2.7 mi",
+            "metres": 4306
+          },
+          {
+            "text": "Turn east onto Pike St — 0.7 mi",
+            "metres": 1122
+          },
+          {
+            "text": "Arrive at Cascade Convention Center, 800 Pike St, Seattle WA",
+            "metres": 0
+          }
+        ]
+      }
+    },
+    "saved": {
+      "alice": [
+        "northstar-hq",
+        "harborline-coffee",
+        "quill-and-kettle"
+      ],
+      "carol": [
+        "northstar-hq",
+        "devcon-center",
+        "hotel-cascade"
+      ],
+      "bob": [
+        "northstar-hq",
+        "marrow-point-park"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://maps.google.com/maps/place/northstar-hq",
+      "title": "Northstar HQ - Google Maps",
+      "snippet": "410 Bayfront Ave, Seattle WA. Mon-Fri 8:00-18:00. Northstar's bayfront campus, rated 4.6.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "northstar",
+        "northstar hq",
+        "bayfront ave",
+        "seattle office"
+      ]
+    },
+    {
+      "url": "http://maps.google.com/maps/dir?from=northstar-hq&to=devcon-center&mode=driving",
+      "title": "Northstar HQ to Cascade Convention Center - 14 min driving",
+      "snippet": "3.4 mi, about 14 minutes by car: north on Bayfront Ave, then east onto Pike St.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "directions",
+        "northstar to devcon",
+        "drive to convention center",
+        "14 min"
+      ]
+    },
+    {
+      "url": "http://maps.google.com/maps/place/harborline-coffee",
+      "title": "Harborline Coffee - Google Maps",
+      "snippet": "128 Bayfront Ave, Seattle WA. Rated 4.7. Two blocks from the Northstar campus.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "coffee",
+        "harborline coffee",
+        "cafe seattle",
+        "bayfront"
+      ]
+    }
+  ]
+}

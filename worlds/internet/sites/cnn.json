@@ -2,36 +2,82 @@
   "id": "cnn",
   "kind": "press",
   "node": "cnn",
-  "domains": ["cnn.com", "www.cnn.com", "edition.cnn.com"],
+  "domains": [
+    "cnn.com",
+    "www.cnn.com",
+    "edition.cnn.com"
+  ],
   "port": 80,
   "place": {
     "address": "203.0.113.143",
     "zone": "internet",
-    "link": {"from": "pop-east", "latency_us": 1200}
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1200
+    }
   },
   "initial_state": {
     "layout": "magazine",
     "skin": "cnn",
     "brand": "CNN",
     "tagline": "Breaking news, latest news and video.",
-    "theme": {"accent": "#cc0000", "background": "#ffffff", "surface": "#f4f4f4", "ink": "#0c0c0c", "muted": "#555555", "content_width": 900},
+    "theme": {
+      "accent": "#cc0000",
+      "background": "#ffffff",
+      "surface": "#f4f4f4",
+      "ink": "#0c0c0c",
+      "muted": "#555555",
+      "content_width": 900
+    },
     "sections": [
-      {"id": "us", "title": "US"},
-      {"id": "world", "title": "World"},
-      {"id": "politics", "title": "Politics"},
-      {"id": "business", "title": "Business"},
-      {"id": "health", "title": "Health"},
-      {"id": "entertainment", "title": "Entertainment"},
-      {"id": "style", "title": "Style"},
-      {"id": "travel", "title": "Travel"},
-      {"id": "sports", "title": "Sports"}
+      {
+        "id": "us",
+        "title": "US"
+      },
+      {
+        "id": "world",
+        "title": "World"
+      },
+      {
+        "id": "politics",
+        "title": "Politics"
+      },
+      {
+        "id": "business",
+        "title": "Business"
+      },
+      {
+        "id": "health",
+        "title": "Health"
+      },
+      {
+        "id": "entertainment",
+        "title": "Entertainment"
+      },
+      {
+        "id": "style",
+        "title": "Style"
+      },
+      {
+        "id": "travel",
+        "title": "Travel"
+      },
+      {
+        "id": "sports",
+        "title": "Sports"
+      }
     ],
     "articles": {
       "gridline-injunction-hearing": {
-        "id": "gridline-injunction-hearing", "section": "business", "year": "2026",
+        "id": "gridline-injunction-hearing",
+        "section": "business",
+        "year": "2026",
         "title": "Gridline faces April hearing as states push to force calendar changes before trial",
         "dek": "The fourteen attorneys general want the software giant to restore full display of outside invitations while the antitrust case proceeds.",
-        "byline": "Marcus Hale, CNN", "date": "Mar 6, 2026", "tick": 14, "read_minutes": 5,
+        "byline": "Marcus Hale, CNN",
+        "date": "Mar 6, 2026",
+        "tick": 14,
+        "read_minutes": 5,
         "body": [
           "The coalition of states suing Gridline Software has asked a federal judge to order the company to change how its email service displays calendar invitations from rivals before the case goes to trial, a request that could reshape the product for hundreds of millions of users within weeks.",
           "The motion, filed Thursday in Delaware, argues that every day the current display remains in place does 'irreparable harm' to the handful of calendar startups still competing with Gridline. The company has said the display differences are a security feature that warns users about unverified senders.",
@@ -39,30 +85,58 @@
           "'This is about as concrete as an antitrust complaint gets,' said one former enforcement official. 'It is not a theory about markets. It is a screenshot.'",
           "Gridline shares fell two percent Friday. The states' original complaint was reported by The New York Times."
         ],
-        "links": [{"label": "Analysis: what the Gridline case means for your inbox", "url": "http://cnn.com/2026/gridline-what-it-means"}],
-        "tags": ["gridline", "antitrust", "tech"], "comments": [
-          {"id": "c1", "author": "bob", "text": "A screenshot. That is exactly what it is.", "tick": 14, "likes": 11}
-        ]
+        "links": [
+          {
+            "label": "Analysis: what the Gridline case means for your inbox",
+            "url": "http://cnn.com/2026/gridline-what-it-means"
+          }
+        ],
+        "tags": [
+          "gridline",
+          "antitrust",
+          "tech"
+        ],
+        "comments": []
       },
       "gridline-what-it-means": {
-        "id": "gridline-what-it-means", "section": "business", "year": "2026",
+        "id": "gridline-what-it-means",
+        "section": "business",
+        "year": "2026",
         "title": "Analysis: what the Gridline case means for your inbox",
         "dek": "If the states win, invitations from any calendar app would have to look the same in Gridline's email. Here is what that would change.",
-        "byline": "Marcus Hale, CNN", "date": "Mar 4, 2026", "tick": 13, "read_minutes": 4,
+        "byline": "Marcus Hale, CNN",
+        "date": "Mar 4, 2026",
+        "tick": 13,
+        "read_minutes": 4,
         "body": [
           "For most people the Gridline lawsuit will come down to one question: will invitations from friends and coworkers who use other calendar apps stop showing up as plain text?",
           "Today, an invitation from Gridline's own calendar appears in its email as a card with a map, a one-click accept button and a list of who else is coming. The same invitation from a rival app appears as a paragraph with a link. The states say that difference was deliberate and drove at least one competitor out of business.",
           "If a court agrees, Gridline would likely have to render outside invitations with the same card. Users would notice within a day. Whether they would then switch calendar apps is the question the whole case, and Gridline's business, turns on.",
           "The news story on the injunction request is at http://cnn.com/2026/gridline-injunction-hearing"
         ],
-        "links": [{"label": "Gridline faces April hearing", "url": "http://cnn.com/2026/gridline-injunction-hearing"}],
-        "tags": ["gridline", "antitrust", "analysis"], "comments": []
+        "links": [
+          {
+            "label": "Gridline faces April hearing",
+            "url": "http://cnn.com/2026/gridline-injunction-hearing"
+          }
+        ],
+        "tags": [
+          "gridline",
+          "antitrust",
+          "analysis"
+        ],
+        "comments": []
       },
       "senate-infrastructure-vote": {
-        "id": "senate-infrastructure-vote", "section": "politics", "year": "2026",
+        "id": "senate-infrastructure-vote",
+        "section": "politics",
+        "year": "2026",
         "title": "Senate advances coastal defense bill after Harbourside floods shift the debate",
         "dek": "A measure that had stalled for two years cleared a procedural vote 68-31 with images of the flooded town fresh in senators' minds.",
-        "byline": "Dana Ruiz, CNN, Washington", "date": "Mar 3, 2026", "tick": 12, "read_minutes": 5,
+        "byline": "Dana Ruiz, CNN, Washington",
+        "date": "Mar 3, 2026",
+        "tick": 12,
+        "read_minutes": 5,
         "body": [
           "The Senate voted 68-31 on Tuesday to advance a bill that would fund sea-barrier upgrades in more than forty coastal communities, ending a two-year stalemate that several senators said had been broken by last month's flooding in Harbourside.",
           "The bill provides twelve billion dollars over six years, with priority for towns whose defenses were built before 1980 and have been the subject of an engineering review recommending upgrades. Harbourside, where a 2019 review went unfunded before a record surge in February, is widely seen as the model case.",
@@ -70,14 +144,29 @@
           "Opponents objected to the cost and to a provision that would let the federal government withhold flood-insurance subsidies from towns that decline recommended upgrades. That provision survived an amendment vote by a narrow margin.",
           "A final vote is expected next week. The House passed a similar measure last year."
         ],
-        "links": [{"label": "Harbourside: a town waits for its estimate", "url": "http://cnn.com/2026/harbourside-recovery"}],
-        "tags": ["congress", "flooding", "infrastructure"], "comments": []
+        "links": [
+          {
+            "label": "Harbourside: a town waits for its estimate",
+            "url": "http://cnn.com/2026/harbourside-recovery"
+          }
+        ],
+        "tags": [
+          "congress",
+          "flooding",
+          "infrastructure"
+        ],
+        "comments": []
       },
       "harbourside-recovery": {
-        "id": "harbourside-recovery", "section": "world", "year": "2026",
+        "id": "harbourside-recovery",
+        "section": "world",
+        "year": "2026",
         "title": "In Harbourside, a town dries out and waits for a number",
         "dek": "Ten days after the surge, most residents are back in their homes. The damage estimate is still two weeks away.",
-        "byline": "Elena Petrova, CNN, Harbourside", "date": "Mar 1, 2026", "tick": 11, "read_minutes": 6,
+        "byline": "Elena Petrova, CNN, Harbourside",
+        "date": "Mar 1, 2026",
+        "tick": 11,
+        "read_minutes": 6,
         "body": [
           "The high-water line is still visible on the front of Amos Ferreira's chandlery, a brown stripe about chest height that he has decided not to paint over. 'People should see it,' he said. 'The council should see it every time they walk past.'",
           "Ten days after the highest storm surge in the town's records, the water is gone, the streets are mostly clear and around four hundred of the two thousand people evacuated remain in temporary housing. Insurers have begun visiting. The town's own damage estimate is not expected until mid-March.",
@@ -85,16 +174,29 @@
           "The council leader has promised the raise will now happen. Residents interviewed by CNN said they believed her and did not believe it would be enough.",
           "The Senate advanced a coastal defense bill on Tuesday that would make Harbourside eligible for federal funding."
         ],
-        "links": [{"label": "Senate advances coastal defense bill", "url": "http://cnn.com/2026/senate-infrastructure-vote"}],
-        "tags": ["harbourside", "flooding", "recovery"], "comments": [
-          {"id": "c1", "author": "carol", "text": "The NOTED sign is going to be in every civics textbook in ten years.", "tick": 11, "likes": 19}
-        ]
+        "links": [
+          {
+            "label": "Senate advances coastal defense bill",
+            "url": "http://cnn.com/2026/senate-infrastructure-vote"
+          }
+        ],
+        "tags": [
+          "harbourside",
+          "flooding",
+          "recovery"
+        ],
+        "comments": []
       },
       "meridian-strait-agreement": {
-        "id": "meridian-strait-agreement", "section": "world", "year": "2026",
+        "id": "meridian-strait-agreement",
+        "section": "world",
+        "year": "2026",
         "title": "Three nations reach deal on Meridian Strait after marathon talks",
         "dek": "The agreement gives the smallest coastal state the largest share of pilotage fees and could cut tanker transit times by nine hours.",
-        "byline": "Elena Petrova, CNN", "date": "Feb 28, 2026", "tick": 10, "read_minutes": 4,
+        "byline": "Elena Petrova, CNN",
+        "date": "Feb 28, 2026",
+        "tick": 10,
+        "read_minutes": 4,
         "body": [
           "Negotiators from the three states bordering the Meridian Strait signed an agreement on a shared shipping scheme Friday after five days of talks in Valmora that had been scheduled to last one.",
           "The deal awards Isle Corvane, the smallest of the three, forty percent of the pilotage fees collected in the strait in recognition of the rescue work performed by its coast guard. The two larger states will split the rest according to the length of their coastlines.",
@@ -102,26 +204,45 @@
           "The scheme takes effect in January 2027."
         ],
         "links": [],
-        "tags": ["meridian", "shipping", "diplomacy"], "comments": []
+        "tags": [
+          "meridian",
+          "shipping",
+          "diplomacy"
+        ],
+        "comments": []
       },
       "flu-season-peak-us": {
-        "id": "flu-season-peak-us", "section": "health", "year": "2026",
+        "id": "flu-season-peak-us",
+        "section": "health",
+        "year": "2026",
         "title": "Flu hospitalizations fall for second straight week as season passes its peak",
         "dek": "Health officials say the vaccine was a strong match for this year's dominant strain and urge those who have not had it to get it anyway.",
-        "byline": "Dr. Simon Achterberg, CNN Health", "date": "Feb 13, 2026", "tick": 9, "read_minutes": 3,
+        "byline": "Dr. Simon Achterberg, CNN Health",
+        "date": "Feb 13, 2026",
+        "tick": 9,
+        "read_minutes": 3,
         "body": [
           "Flu hospitalizations fell nationally for a second consecutive week, federal health officials said Thursday, the clearest sign yet that this winter's season has passed its peak.",
           "Admissions remain about twenty percent above the five-year average for mid-February, and officials cautioned that hospitals would stay busy through March. The dominant strain this year was well matched by the vaccine, and uptake among adults over 65 was the highest on record.",
           "'It is not too late,' said one official. 'The season has a long tail, and the vaccine still works on the tail.'"
         ],
         "links": [],
-        "tags": ["flu", "health", "vaccines"], "comments": []
+        "tags": [
+          "flu",
+          "health",
+          "vaccines"
+        ],
+        "comments": []
       },
       "silver-lantern-oscar-buzz": {
-        "id": "silver-lantern-oscar-buzz", "section": "entertainment", "year": "2026",
+        "id": "silver-lantern-oscar-buzz",
+        "section": "entertainment",
+        "year": "2026",
         "title": "'The Silver Lantern' was supposed to be a small film. It is now an awards contender",
         "dek": "Nell Farrow's nearly wordless performance has turned a lighthouse drama into the season's surprise.",
-        "byline": "Jasmine Okafor, CNN Entertainment", "date": "Mar 2, 2026", "tick": 8, "read_minutes": 4,
+        "date": "Mar 2, 2026",
+        "tick": 8,
+        "read_minutes": 4,
         "body": [
           "When Halcyon Pictures picked up 'The Silver Lantern' at a festival last fall, the plan was a limited release and a modest awards push for its lead. Two weekends at the top of the box office later, the plan has changed.",
           "The film, in which Nell Farrow plays a widowed lighthouse keeper in the 1890s and speaks perhaps two hundred words, held its audience with a second-weekend drop of just twenty-two percent. Halcyon is adding four hundred screens and, sources say, a full campaign for best picture.",
@@ -129,26 +250,45 @@
           "Farrow, who spent three weeks living at a working lighthouse before filming, has declined most interviews. Director Alun Prys said she had told him she 'said everything she had to say in the film.'"
         ],
         "links": [],
-        "tags": ["film", "awards", "silver-lantern"], "comments": []
+        "tags": [
+          "film",
+          "awards",
+          "silver-lantern"
+        ],
+        "comments": []
       },
       "orchestra-back-on-stage": {
-        "id": "orchestra-back-on-stage", "section": "entertainment", "year": "2026",
+        "id": "orchestra-back-on-stage",
+        "section": "entertainment",
+        "year": "2026",
         "title": "Meridian Philharmonic returns after nine-week strike with a very loud fanfare",
         "dek": "Musicians ratified a contract at 4 p.m. and were on stage by 8. The concert sold out in an afternoon.",
-        "byline": "Jasmine Okafor, CNN Entertainment", "date": "Feb 20, 2026", "tick": 7, "read_minutes": 3,
+        "date": "Feb 20, 2026",
+        "tick": 7,
+        "read_minutes": 3,
         "body": [
           "The Meridian Philharmonic played its first concert in nine weeks Friday night, hours after its musicians ratified a contract that ties their annual raises to ticket revenue.",
           "The program was changed at the last minute to open with a fanfare. The principal trumpet said she chose it 'because it is loud and we have been quiet for nine weeks.'",
           "The new contract sets raises at a floor of two percent and a ceiling of six, depending on the previous season's ticket sales. Management called it a shared bet on the audience. The orchestra will make up eleven of the fourteen cancelled concerts."
         ],
         "links": [],
-        "tags": ["music", "labor", "orchestra"], "comments": []
+        "tags": [
+          "music",
+          "labor",
+          "orchestra"
+        ],
+        "comments": []
       },
       "workwear-revival": {
-        "id": "workwear-revival", "section": "style", "year": "2026",
+        "id": "workwear-revival",
+        "section": "style",
+        "year": "2026",
         "title": "Why everyone at the runway shows was dressed like a lighthouse keeper",
         "dek": "Oilcloth, wool and a great deal of navy: the 1890s coast has come ashore in this season's collections.",
-        "byline": "Camille Duret, CNN Style", "date": "Feb 26, 2026", "tick": 6, "read_minutes": 4,
+        "byline": "Camille Duret, CNN Style",
+        "date": "Feb 26, 2026",
+        "tick": 6,
+        "read_minutes": 4,
         "body": [
           "It would be too easy to credit a single film, but the timing is hard to ignore. Two weeks after 'The Silver Lantern' opened, the autumn collections were full of oilcloth coats, cable-knit sweaters in undyed wool and trousers cut wide enough to tuck into boots.",
           "Designers insist the mood was set months ago, and they are probably right; runway collections are planned a year out. But the film has given the look a story, and a story is what sells a coat.",
@@ -156,13 +296,23 @@
           "Expect the high street to follow by September, at a fraction of the price and, one suspects, a fraction of the waterproofing."
         ],
         "links": [],
-        "tags": ["fashion", "runway", "style"], "comments": []
+        "tags": [
+          "fashion",
+          "runway",
+          "style"
+        ],
+        "comments": []
       },
       "marlow-vale-by-train": {
-        "id": "marlow-vale-by-train", "section": "travel", "year": "2026",
+        "id": "marlow-vale-by-train",
+        "section": "travel",
+        "year": "2026",
         "title": "A valley that had no trains for sixty years is suddenly the easiest weekend in the country",
         "dek": "The rebuilt Marlow Vale line puts three villages, a river and a very good pub an hour from the city.",
-        "byline": "Owen Blackwood, CNN Travel", "date": "Feb 22, 2026", "tick": 5, "read_minutes": 5,
+        "byline": "Owen Blackwood, CNN Travel",
+        "date": "Feb 22, 2026",
+        "tick": 5,
+        "read_minutes": 5,
         "body": [
           "For sixty years the only way into Marlow Vale without a car was a bus that ran twice a day and, according to locals, occasionally not at all. Since Valentine's Day there has been an hourly train, and the vale is discovering what it is like to have visitors.",
           "The line runs eleven miles up the valley through three stations. Get off at the first for the river walk, the second for the village of Marlow Green and its Saturday market, and the third, Marlow Bridge, for the pub that everyone will tell you about before you ask.",
@@ -170,13 +320,23 @@
           "Book a room if you plan to stay; the vale has about forty beds and, on the first weekend, roughly nine hundred people who wanted one."
         ],
         "links": [],
-        "tags": ["travel", "marlow-vale", "rail"], "comments": []
+        "tags": [
+          "travel",
+          "marlow-vale",
+          "rail"
+        ],
+        "comments": []
       },
       "harrowgate-title-race": {
-        "id": "harrowgate-title-race", "section": "sports", "year": "2026",
+        "id": "harrowgate-title-race",
+        "section": "sports",
+        "year": "2026",
         "title": "Harrowgate Athletic's derby winner turns a good season into a title race",
         "dek": "Ines Duarte's stoppage-time header leaves Athletic four points off the top with nine games left.",
-        "byline": "Tariq Mensah, CNN Sports", "date": "Mar 1, 2026", "tick": 4, "read_minutes": 4,
+        "byline": "Tariq Mensah, CNN Sports",
+        "date": "Mar 1, 2026",
+        "tick": 4,
+        "read_minutes": 4,
         "body": [
           "A week ago Harrowgate Athletic were having a good season. After Saturday's 2-1 derby win over Westfield Rovers, settled by an Ines Duarte header in the fourth minute of stoppage time, they are in a title race.",
           "Athletic sit second, four points behind the leaders with nine games to play, and the two sides meet at Mill Lane in April. Duarte, whose fourteen goals this season are the most by an Athletic player in a decade, has scored in six of the last seven.",
@@ -184,13 +344,22 @@
           "Rovers, eleventh and drifting, have lost four of their last five."
         ],
         "links": [],
-        "tags": ["football", "harrowgate"], "comments": []
+        "tags": [
+          "football",
+          "harrowgate"
+        ],
+        "comments": []
       },
       "hearthline-ipo-roadshow": {
-        "id": "hearthline-ipo-roadshow", "section": "business", "year": "2026",
+        "id": "hearthline-ipo-roadshow",
+        "section": "business",
+        "year": "2026",
         "title": "Hearthline's founder takes her no-franchise pitch to Wall Street",
         "dek": "Mireille Dubois is asking investors for two billion dollars and promising to keep doing the thing that made her company slow.",
-        "byline": "Marcus Hale, CNN", "date": "Feb 19, 2026", "tick": 3, "read_minutes": 4,
+        "byline": "Marcus Hale, CNN",
+        "date": "Feb 19, 2026",
+        "tick": 3,
+        "read_minutes": 4,
         "body": [
           "Mireille Dubois has spent nineteen years telling people she would never franchise Hearthline Bakeries. This week she is telling it to fund managers, and asking them for three hundred million dollars.",
           "The company's listing documents commit it to keeping all of its two hundred stores, and the two hundred it plans to open, under company ownership. Dubois has said franchising produces 'two hundred versions of a store and none of them mine.'",
@@ -198,30 +367,41 @@
           "'She is betting the thing that makes the stores good survives being done twice as fast,' one analyst said. 'Everyone wants her to be right.'"
         ],
         "links": [],
-        "tags": ["hearthline", "ipo", "retail"], "comments": []
+        "tags": [
+          "hearthline",
+          "ipo",
+          "retail"
+        ],
+        "comments": []
       },
       "replay-software-mainstream": {
-        "id": "replay-software-mainstream", "section": "business", "year": "2026",
+        "id": "replay-software-mainstream",
+        "section": "business",
+        "year": "2026",
         "title": "The software that runs slower on purpose is finding buyers",
-        "dek": "Northstar's Atlas release has put deterministic simulation in front of enterprise buyers who had never heard the term.",
-        "byline": "Priya Nair, CNN Business", "date": "Mar 5, 2026", "tick": 2, "read_minutes": 4,
+        "date": "Mar 5, 2026",
+        "tick": 2,
+        "read_minutes": 4,
         "body": [
-          "Northstar's release of Atlas 1.0 this week has done something unusual for a developer tool: it has made a technical idea, deterministic simulation, into a line item that corporate buyers are asking about.",
-          "The tools run software inside a simulated computer in which time, randomness and message order are all controlled, so a failure can be replayed exactly. The price is speed; simulated runs are several times slower than native ones.",
-          "Enterprise interest has been strongest in finance and infrastructure, where the cost of finding a bug often exceeds the cost of fixing it. Reuters reported the release at http://reuters.com/2026/northstar-atlas-determinism and The Verge has a longer feature at http://theverge.com/2026/atlas-determinism",
-          "Northstar has not disclosed its revenue."
+          "The tools run software inside a simulated computer in which time, randomness and message order are all controlled, so a failure can be replayed exactly. The price is speed; simulated runs are several times slower than native ones."
         ],
-        "links": [
-          {"label": "Reuters: Northstar releases Atlas 1.0", "url": "http://reuters.com/2026/northstar-atlas-determinism"},
-          {"label": "The Verge: Atlas bets everything on determinism", "url": "http://theverge.com/2026/atlas-determinism"}
+        "links": [],
+        "tags": [
+          "software",
+          "enterprise"
         ],
-        "tags": ["northstar", "software", "enterprise"], "comments": []
+        "comments": []
       },
       "port-ellery-pier": {
-        "id": "port-ellery-pier", "section": "us", "year": "2026",
+        "id": "port-ellery-pier",
+        "section": "us",
+        "year": "2026",
         "title": "A Connecticut town's fight over one pier has become a national argument about housing",
         "dek": "Port Ellery's council split 4-3 on replacing a fishing pier with apartments. Both sides say they are right, and both might be.",
-        "byline": "Dana Ruiz, CNN", "date": "Feb 16, 2026", "tick": 1, "read_minutes": 5,
+        "byline": "Dana Ruiz, CNN",
+        "date": "Feb 16, 2026",
+        "tick": 1,
+        "read_minutes": 5,
         "body": [
           "The fishing boats tie up at Pier 4 before dawn, and by seven the restaurants along the harbor have bought most of what they landed. That arrangement has held for a century. A developer's plan to replace the pier with three hundred apartments has put it, and Port Ellery's city council, under more strain than either has seen.",
           "The council, which had not recorded a split vote in eleven years, divided 4-3 in January to advance the plan. Since then it has met four times to consider amendments and has hired an independent engineer to price the pier's repairs, estimated at eleven million dollars the city does not have.",
@@ -229,27 +409,191 @@
           "The developer has set a June deadline. The engineer's report is due in May."
         ],
         "links": [],
-        "tags": ["port-ellery", "housing", "local-government"], "comments": []
+        "tags": [
+          "port-ellery",
+          "housing",
+          "local-government"
+        ],
+        "comments": []
       }
     },
-    "subscribers": ["bmartinez@outlook.com"],
-    "saved": {"bob": ["gridline-injunction-hearing"]},
-    "follows": {"bob": ["publication", "gridline"], "carol": ["harbourside"]}
+    "subscribers": [],
+    "saved": {},
+    "follows": {}
   },
   "search_entries": [
-    {"url": "http://cnn.com/", "title": "CNN", "snippet": "Breaking news, latest news and video: US, world, politics, business, health, entertainment, style, travel and sports.", "vertical": "news", "authority": 9, "keywords": ["cnn", "news", "breaking news", "cable news"]},
-    {"url": "http://cnn.com/2026/gridline-injunction-hearing", "title": "Gridline faces April hearing as states push to force calendar changes before trial - CNN", "snippet": "The fourteen attorneys general want the software giant to restore full display of outside invitations while the antitrust case proceeds.", "vertical": "news", "authority": 8, "keywords": ["gridline", "antitrust", "injunction", "calendar", "hearing"]},
-    {"url": "http://cnn.com/2026/gridline-what-it-means", "title": "Analysis: what the Gridline case means for your inbox - CNN", "snippet": "If the states win, invitations from any calendar app would have to look the same in Gridline's email.", "vertical": "news", "authority": 6, "keywords": ["gridline", "inbox", "calendar invitations", "analysis"]},
-    {"url": "http://cnn.com/2026/senate-infrastructure-vote", "title": "Senate advances coastal defense bill after Harbourside floods shift the debate - CNN", "snippet": "A measure that had stalled for two years cleared a procedural vote 68-31.", "vertical": "news", "authority": 8, "keywords": ["senate", "coastal defense", "harbourside", "flood", "infrastructure bill"]},
-    {"url": "http://cnn.com/2026/harbourside-recovery", "title": "In Harbourside, a town dries out and waits for a number - CNN", "snippet": "Ten days after the surge, most residents are back in their homes. The damage estimate is still two weeks away.", "vertical": "news", "authority": 7, "keywords": ["harbourside", "recovery", "flood", "noted"]},
-    {"url": "http://cnn.com/2026/meridian-strait-agreement", "title": "Three nations reach deal on Meridian Strait after marathon talks - CNN", "snippet": "The agreement gives the smallest coastal state the largest share of pilotage fees.", "vertical": "news", "authority": 7, "keywords": ["meridian strait", "isle corvane", "shipping", "deal"]},
-    {"url": "http://cnn.com/2026/flu-season-peak-us", "title": "Flu hospitalizations fall for second straight week as season passes its peak - CNN", "snippet": "Health officials say the vaccine was a strong match for this year's dominant strain.", "vertical": "news", "authority": 7, "keywords": ["flu", "hospitalizations", "flu season", "vaccine"]},
-    {"url": "http://cnn.com/2026/silver-lantern-oscar-buzz", "title": "'The Silver Lantern' was supposed to be a small film. It is now an awards contender - CNN", "snippet": "Nell Farrow's nearly wordless performance has turned a lighthouse drama into the season's surprise.", "vertical": "news", "authority": 6, "keywords": ["silver lantern", "nell farrow", "awards", "halcyon pictures"]},
-    {"url": "http://cnn.com/2026/workwear-revival", "title": "Why everyone at the runway shows was dressed like a lighthouse keeper - CNN Style", "snippet": "Oilcloth, wool and a great deal of navy: the 1890s coast has come ashore in this season's collections.", "vertical": "news", "authority": 6, "keywords": ["fashion", "runway", "workwear", "oilcloth", "cnn style"]},
-    {"url": "http://cnn.com/2026/marlow-vale-by-train", "title": "A valley that had no trains for sixty years is suddenly the easiest weekend in the country - CNN Travel", "snippet": "The rebuilt Marlow Vale line puts three villages, a river and a very good pub an hour from the city.", "vertical": "news", "authority": 6, "keywords": ["marlow vale", "travel", "train", "ferryman", "weekend"]},
-    {"url": "http://cnn.com/2026/harrowgate-title-race", "title": "Harrowgate Athletic's derby winner turns a good season into a title race - CNN Sports", "snippet": "Ines Duarte's stoppage-time header leaves Athletic four points off the top with nine games left.", "vertical": "news", "authority": 6, "keywords": ["harrowgate athletic", "title race", "ines duarte", "ruth calloway"]},
-    {"url": "http://cnn.com/2026/replay-software-mainstream", "title": "The software that runs slower on purpose is finding buyers - CNN Business", "snippet": "Northstar's Atlas release has put deterministic simulation in front of enterprise buyers.", "vertical": "news", "authority": 7, "keywords": ["northstar", "atlas", "deterministic simulation", "enterprise"]},
-    {"url": "http://cnn.com/2026/port-ellery-pier", "title": "A Connecticut town's fight over one pier has become a national argument about housing - CNN", "snippet": "Port Ellery's council split 4-3 on replacing a fishing pier with apartments.", "vertical": "news", "authority": 7, "keywords": ["port ellery", "pier 4", "housing", "connecticut"]},
-    {"url": "http://cnn.com/politics", "title": "Politics - CNN", "snippet": "Congress, the White House and the campaigns.", "vertical": "news", "authority": 8, "keywords": ["cnn politics", "politics", "congress", "senate"]}
+    {
+      "url": "http://cnn.com/",
+      "title": "CNN",
+      "snippet": "Breaking news, latest news and video: US, world, politics, business, health, entertainment, style, travel and sports.",
+      "vertical": "news",
+      "authority": 9,
+      "keywords": [
+        "cnn",
+        "news",
+        "breaking news",
+        "cable news"
+      ]
+    },
+    {
+      "url": "http://cnn.com/2026/gridline-injunction-hearing",
+      "title": "Gridline faces April hearing as states push to force calendar changes before trial - CNN",
+      "snippet": "The fourteen attorneys general want the software giant to restore full display of outside invitations while the antitrust case proceeds.",
+      "vertical": "news",
+      "authority": 8,
+      "keywords": [
+        "gridline",
+        "antitrust",
+        "injunction",
+        "calendar",
+        "hearing"
+      ]
+    },
+    {
+      "url": "http://cnn.com/2026/gridline-what-it-means",
+      "title": "Analysis: what the Gridline case means for your inbox - CNN",
+      "snippet": "If the states win, invitations from any calendar app would have to look the same in Gridline's email.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "gridline",
+        "inbox",
+        "calendar invitations",
+        "analysis"
+      ]
+    },
+    {
+      "url": "http://cnn.com/2026/senate-infrastructure-vote",
+      "title": "Senate advances coastal defense bill after Harbourside floods shift the debate - CNN",
+      "snippet": "A measure that had stalled for two years cleared a procedural vote 68-31.",
+      "vertical": "news",
+      "authority": 8,
+      "keywords": [
+        "senate",
+        "coastal defense",
+        "harbourside",
+        "flood",
+        "infrastructure bill"
+      ]
+    },
+    {
+      "url": "http://cnn.com/2026/harbourside-recovery",
+      "title": "In Harbourside, a town dries out and waits for a number - CNN",
+      "snippet": "Ten days after the surge, most residents are back in their homes. The damage estimate is still two weeks away.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "harbourside",
+        "recovery",
+        "flood",
+        "noted"
+      ]
+    },
+    {
+      "url": "http://cnn.com/2026/meridian-strait-agreement",
+      "title": "Three nations reach deal on Meridian Strait after marathon talks - CNN",
+      "snippet": "The agreement gives the smallest coastal state the largest share of pilotage fees.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "meridian strait",
+        "isle corvane",
+        "shipping",
+        "deal"
+      ]
+    },
+    {
+      "url": "http://cnn.com/2026/flu-season-peak-us",
+      "title": "Flu hospitalizations fall for second straight week as season passes its peak - CNN",
+      "snippet": "Health officials say the vaccine was a strong match for this year's dominant strain.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "flu",
+        "hospitalizations",
+        "flu season",
+        "vaccine"
+      ]
+    },
+    {
+      "url": "http://cnn.com/2026/silver-lantern-oscar-buzz",
+      "title": "'The Silver Lantern' was supposed to be a small film. It is now an awards contender - CNN",
+      "snippet": "Nell Farrow's nearly wordless performance has turned a lighthouse drama into the season's surprise.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "silver lantern",
+        "nell farrow",
+        "awards",
+        "halcyon pictures"
+      ]
+    },
+    {
+      "url": "http://cnn.com/2026/workwear-revival",
+      "title": "Why everyone at the runway shows was dressed like a lighthouse keeper - CNN Style",
+      "snippet": "Oilcloth, wool and a great deal of navy: the 1890s coast has come ashore in this season's collections.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "fashion",
+        "runway",
+        "workwear",
+        "oilcloth",
+        "cnn style"
+      ]
+    },
+    {
+      "url": "http://cnn.com/2026/marlow-vale-by-train",
+      "title": "A valley that had no trains for sixty years is suddenly the easiest weekend in the country - CNN Travel",
+      "snippet": "The rebuilt Marlow Vale line puts three villages, a river and a very good pub an hour from the city.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "marlow vale",
+        "travel",
+        "train",
+        "ferryman",
+        "weekend"
+      ]
+    },
+    {
+      "url": "http://cnn.com/2026/harrowgate-title-race",
+      "title": "Harrowgate Athletic's derby winner turns a good season into a title race - CNN Sports",
+      "snippet": "Ines Duarte's stoppage-time header leaves Athletic four points off the top with nine games left.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "harrowgate athletic",
+        "title race",
+        "ines duarte",
+        "ruth calloway"
+      ]
+    },
+    {
+      "url": "http://cnn.com/2026/port-ellery-pier",
+      "title": "A Connecticut town's fight over one pier has become a national argument about housing - CNN",
+      "snippet": "Port Ellery's council split 4-3 on replacing a fishing pier with apartments.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "port ellery",
+        "pier 4",
+        "housing",
+        "connecticut"
+      ]
+    },
+    {
+      "url": "http://cnn.com/politics",
+      "title": "Politics - CNN",
+      "snippet": "Congress, the White House and the campaigns.",
+      "vertical": "news",
+      "authority": 8,
+      "keywords": [
+        "cnn politics",
+        "politics",
+        "congress",
+        "senate"
+      ]
+    }
   ]
 }

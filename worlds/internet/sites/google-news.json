@@ -2,224 +2,526 @@
   "id": "google-news",
   "kind": "press",
   "node": "google-news",
-  "domains": ["news.google.com"],
+  "domains": [
+    "news.google.com"
+  ],
   "port": 80,
   "place": {
     "address": "203.0.113.140",
     "zone": "internet",
-    "link": {"from": "pop-west", "latency_us": 900}
+    "link": {
+      "from": "pop-west",
+      "latency_us": 900
+    }
   },
   "initial_state": {
     "layout": "wire",
     "skin": "gnews",
     "brand": "Google News",
     "tagline": "Your briefing, from sources across the web.",
-    "theme": {"accent": "#1a73e8", "background": "#ffffff", "surface": "#f1f3f4", "ink": "#202124", "muted": "#5f6368", "content_width": 960},
+    "theme": {
+      "accent": "#1a73e8",
+      "background": "#ffffff",
+      "surface": "#f1f3f4",
+      "ink": "#202124",
+      "muted": "#5f6368",
+      "content_width": 960
+    },
     "sections": [
-      {"id": "top", "title": "Top stories"},
-      {"id": "world", "title": "World"},
-      {"id": "business", "title": "Business"},
-      {"id": "technology", "title": "Technology"},
-      {"id": "science", "title": "Science"},
-      {"id": "sports", "title": "Sports"},
-      {"id": "entertainment", "title": "Entertainment"}
+      {
+        "id": "top",
+        "title": "Top stories"
+      },
+      {
+        "id": "world",
+        "title": "World"
+      },
+      {
+        "id": "business",
+        "title": "Business"
+      },
+      {
+        "id": "technology",
+        "title": "Technology"
+      },
+      {
+        "id": "science",
+        "title": "Science"
+      },
+      {
+        "id": "sports",
+        "title": "Sports"
+      },
+      {
+        "id": "entertainment",
+        "title": "Entertainment"
+      }
     ],
     "articles": {
-      "northstar-atlas-release": {
-        "id": "northstar-atlas-release", "section": "top", "year": "2026",
-        "title": "Northstar ships Atlas 1.0 with a promise of byte-for-byte replay",
-        "dek": "Full coverage: the Seattle developer-tools firm says any recorded run of its simulator can be reproduced exactly from its seed.",
-        "byline": "Google News", "date": "Mar 5, 2026", "tick": 14, "read_minutes": 1,
-        "body": [
-          "Northstar released version 1.0 of Atlas on Wednesday, a simulation runtime that removes the wall clock, host randomness and unordered iteration from the code it runs so that a failure can be replayed rather than reproduced by repetition. The company published the source alongside the release and has not disclosed revenue or headcount. Reuters filed the release as a two-minute wire story, while The Verge ran a longer feature built around an interview with engineering manager Carol Nakamura.",
-          "Source: Reuters, The Verge. Read the wire story at http://reuters.com/2026/northstar-atlas-determinism and the feature at http://theverge.com/2026/atlas-determinism"
-        ],
-        "links": [
-          {"label": "Reuters: Northstar releases Atlas 1.0", "url": "http://reuters.com/2026/northstar-atlas-determinism"},
-          {"label": "The Verge: Atlas bets everything on determinism", "url": "http://theverge.com/2026/atlas-determinism"}
-        ],
-        "tags": ["northstar", "atlas", "software"], "comments": []
-      },
       "markets-software-close": {
-        "id": "markets-software-close", "section": "business", "year": "2026",
+        "id": "markets-software-close",
+        "section": "business",
+        "year": "2026",
         "title": "Software shares lead a quiet close as traders wait on the standards draft",
         "dek": "Markets: developer-tools names edged higher on light volume Wednesday.",
-        "byline": "Google News", "date": "Mar 5, 2026", "tick": 13, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Mar 5, 2026",
+        "tick": 13,
+        "read_minutes": 1,
         "body": [
           "Developer-tools stocks finished modestly higher in a session that saw little movement elsewhere, with traders citing the pending reproducible-build standards draft and a steady run of product releases from private firms as the only news of note. Volume was below the thirty-day average across the major exchanges.",
           "Source: Reuters. Read the close at http://reuters.com/2026/markets-close"
         ],
-        "links": [{"label": "Reuters: markets close", "url": "http://reuters.com/2026/markets-close"}],
-        "tags": ["markets", "software"], "comments": []
+        "links": [
+          {
+            "label": "Reuters: markets close",
+            "url": "http://reuters.com/2026/markets-close"
+          }
+        ],
+        "tags": [
+          "markets",
+          "software"
+        ],
+        "comments": []
       },
       "replay-regulated-industries": {
-        "id": "replay-regulated-industries", "section": "technology", "year": "2026",
+        "id": "replay-regulated-industries",
+        "section": "technology",
+        "year": "2026",
         "title": "Regulators start asking whether replayable software should be a requirement",
         "dek": "Analysis: auditors in finance and medical devices are reading the reproducible-build draft closely.",
-        "byline": "Google News", "date": "Mar 3, 2026", "tick": 12, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Mar 3, 2026",
+        "tick": 12,
+        "read_minutes": 1,
         "body": [
           "A policy piece at Ars Technica argues that the standards body draft on reproducible builds is the first step towards a world where regulated industries must show a replay of a failure, not just a log of it. The article draws on interviews with two audit firms and one medical-device manufacturer, none of whom expect a mandate before 2028 but all of whom are budgeting as though one is coming.",
           "Source: Ars Technica, Reuters. The analysis is at http://arstechnica.com/2026/replay-in-regulated-industries and the underlying draft was reported at http://reuters.com/2026/standards-body-reproducible-builds"
         ],
         "links": [
-          {"label": "Ars Technica: replay in regulated industries", "url": "http://arstechnica.com/2026/replay-in-regulated-industries"},
-          {"label": "Reuters: standards body drafts reproducible-build rules", "url": "http://reuters.com/2026/standards-body-reproducible-builds"}
+          {
+            "label": "Ars Technica: replay in regulated industries",
+            "url": "http://arstechnica.com/2026/replay-in-regulated-industries"
+          },
+          {
+            "label": "Reuters: standards body drafts reproducible-build rules",
+            "url": "http://reuters.com/2026/standards-body-reproducible-builds"
+          }
         ],
-        "tags": ["policy", "reproducibility", "regulation"], "comments": []
+        "tags": [
+          "policy",
+          "reproducibility",
+          "regulation"
+        ],
+        "comments": []
       },
       "devcon-seattle-preview": {
-        "id": "devcon-seattle-preview", "section": "technology", "year": "2026",
+        "id": "devcon-seattle-preview",
+        "section": "technology",
+        "year": "2026",
         "title": "DevCon Seattle opens next week with a keynote built around replay tooling",
         "dek": "What to expect from the conference, and why hotel rooms downtown sold out in February.",
-        "byline": "Google News", "date": "Mar 2, 2026", "tick": 11, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Mar 2, 2026",
+        "tick": 11,
+        "read_minutes": 1,
         "body": [
           "The Verge previews DevCon Seattle, where the opening keynote is expected to feature live replay of a production failure and where at least three tooling vendors plan announcements. Reuters separately reports that the conference season has become a measurable line in the city's hospitality numbers, with downtown occupancy for the week already above ninety percent.",
           "Source: The Verge, Reuters. Preview at http://theverge.com/2026/devcon-preview and the economics at http://reuters.com/2026/seattle-conference-economy"
         ],
         "links": [
-          {"label": "The Verge: DevCon preview", "url": "http://theverge.com/2026/devcon-preview"},
-          {"label": "Reuters: Seattle conference economy", "url": "http://reuters.com/2026/seattle-conference-economy"}
+          {
+            "label": "The Verge: DevCon preview",
+            "url": "http://theverge.com/2026/devcon-preview"
+          },
+          {
+            "label": "Reuters: Seattle conference economy",
+            "url": "http://reuters.com/2026/seattle-conference-economy"
+          }
         ],
-        "tags": ["devcon", "seattle", "conferences"], "comments": []
+        "tags": [
+          "devcon",
+          "seattle",
+          "conferences"
+        ],
+        "comments": []
       },
       "dev-tools-spending-survey": {
-        "id": "dev-tools-spending-survey", "section": "business", "year": "2026",
+        "id": "dev-tools-spending-survey",
+        "section": "business",
+        "year": "2026",
         "title": "Survey finds engineering teams consolidating onto fewer developer tools",
         "dek": "Buyers are paying more per seat and holding fewer contracts, according to a quarterly spending survey.",
-        "byline": "Google News", "date": "Feb 24, 2026", "tick": 10, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Feb 24, 2026",
+        "tick": 10,
+        "read_minutes": 1,
         "body": [
           "A quarterly survey of engineering leaders reported by Reuters shows the median team now holds four developer-tool contracts, down from six two years ago, while spending per engineer rose eleven percent. Respondents cited procurement fatigue and a preference for tools that share a single audit trail. The survey covered four hundred companies with more than fifty engineers.",
           "Source: Reuters. Read the report at http://reuters.com/2026/dev-tools-consolidation"
         ],
-        "links": [{"label": "Reuters: dev-tools consolidation", "url": "http://reuters.com/2026/dev-tools-consolidation"}],
-        "tags": ["software", "spending", "survey"], "comments": []
+        "links": [
+          {
+            "label": "Reuters: dev-tools consolidation",
+            "url": "http://reuters.com/2026/dev-tools-consolidation"
+          }
+        ],
+        "tags": [
+          "software",
+          "spending",
+          "survey"
+        ],
+        "comments": []
       },
       "meridian-strait-talks": {
-        "id": "meridian-strait-talks", "section": "world", "year": "2026",
+        "id": "meridian-strait-talks",
+        "section": "world",
+        "year": "2026",
         "title": "Talks over Meridian Strait shipping lanes enter a fourth day without agreement",
         "dek": "Delegations from three coastal states remain divided on pilotage fees and an escort protocol for tankers.",
-        "byline": "Google News", "date": "Feb 27, 2026", "tick": 9, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Feb 27, 2026",
+        "tick": 9,
+        "read_minutes": 1,
         "body": [
           "Negotiators meeting in Valmora extended talks on a shared traffic scheme for the Meridian Strait into a fourth day after failing to agree on how pilotage fees would be split. Shipping groups say a deal would cut transit times by up to nine hours; the smallest of the three states wants a larger share of fees to fund its coast guard. A joint statement is expected Friday whether or not the text is finished.",
           "Source: BBC News, CNN."
         ],
         "links": [],
-        "tags": ["shipping", "diplomacy", "meridian"], "comments": []
+        "tags": [
+          "shipping",
+          "diplomacy",
+          "meridian"
+        ],
+        "comments": []
       },
       "harbourside-flooding-response": {
-        "id": "harbourside-flooding-response", "section": "world", "year": "2026",
+        "id": "harbourside-flooding-response",
+        "section": "world",
+        "year": "2026",
         "title": "Harbourside floods recede as authorities count the cost of a record tide",
         "dek": "Two thousand residents remain in temporary shelter after the highest storm surge in sixty years.",
-        "byline": "Google News", "date": "Feb 22, 2026", "tick": 8, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Feb 22, 2026",
+        "tick": 8,
+        "read_minutes": 1,
         "body": [
           "Water has withdrawn from most of the Harbourside district after a combination of spring tide and an onshore gale pushed the sea over defences built in the 1970s. The city council said the damage estimate would not be ready for a fortnight and that a review of the barrier's height, ordered in 2019 and never funded, would now proceed. No deaths were reported.",
           "Source: BBC News, The New York Times."
         ],
         "links": [],
-        "tags": ["flooding", "weather", "harbourside"], "comments": []
-      },
-      "northstar-latency-outage": {
-        "id": "northstar-latency-outage", "section": "technology", "year": "2026",
-        "title": "Northstar restores service after a four-hour latency incident",
-        "dek": "The company blamed a scheduler regression and published a postmortem the same week.",
-        "byline": "Google News", "date": "Feb 19, 2026", "tick": 7, "read_minutes": 1,
-        "body": [
-          "Northstar's hosted service returned to normal latency on Thursday after roughly four hours of degraded response times that the company traced to a scheduler regression. Reuters carried the confirmation from the company; the status page and the engineering blog both published timelines within the week.",
-          "Source: Reuters. Read the confirmation at http://reuters.com/2026/northstar-latency-incident"
+        "tags": [
+          "flooding",
+          "weather",
+          "harbourside"
         ],
-        "links": [{"label": "Reuters: Northstar latency incident", "url": "http://reuters.com/2026/northstar-latency-incident"}],
-        "tags": ["northstar", "outage"], "comments": []
+        "comments": []
       },
       "hash-order-bug-explainer": {
-        "id": "hash-order-bug-explainer", "section": "technology", "year": "2026",
+        "id": "hash-order-bug-explainer",
+        "section": "technology",
+        "year": "2026",
         "title": "Why the same program can give a different answer on Windows: a hash-order explainer",
         "dek": "Ars Technica walks through a class of bug that only shows up when iteration order is left to chance.",
-        "byline": "Google News", "date": "Feb 11, 2026", "tick": 6, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Feb 11, 2026",
+        "tick": 6,
+        "read_minutes": 1,
         "body": [
           "Ars Technica's explainer on hash-order nondeterminism traces a real bug from a Stack Overflow question to a fix, showing why a collection whose iteration order depends on a random seed can pass tests on one machine and fail on another. The piece has become a widely shared reference in the week since it ran.",
           "Source: Ars Technica. Read it at http://arstechnica.com/2026/hash-order-nondeterminism"
         ],
-        "links": [{"label": "Ars Technica: hash-order nondeterminism", "url": "http://arstechnica.com/2026/hash-order-nondeterminism"}],
-        "tags": ["rust", "determinism", "testing"], "comments": []
+        "links": [
+          {
+            "label": "Ars Technica: hash-order nondeterminism",
+            "url": "http://arstechnica.com/2026/hash-order-nondeterminism"
+          }
+        ],
+        "tags": [
+          "rust",
+          "determinism",
+          "testing"
+        ],
+        "comments": []
       },
       "datacenter-power-vote": {
-        "id": "datacenter-power-vote", "section": "business", "year": "2026",
+        "id": "datacenter-power-vote",
+        "section": "business",
+        "year": "2026",
         "title": "Seattle weighs new power-connection rules for data centres",
         "dek": "A proposed ordinance would make large computing sites pay for grid upgrades up front.",
-        "byline": "Google News", "date": "Feb 5, 2026", "tick": 5, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Feb 5, 2026",
+        "tick": 5,
+        "read_minutes": 1,
         "body": [
           "A proposal before the Seattle City Council would require any new facility drawing more than twenty megawatts to fund the substation work it needs before construction begins, rather than spreading the cost across ratepayers. Ars Technica reports that two planned sites south of the city would be affected and that the utility supports the measure.",
           "Source: Ars Technica. The policy story is at http://arstechnica.com/2026/datacenter-power-seattle"
         ],
-        "links": [{"label": "Ars Technica: data centre power in Seattle", "url": "http://arstechnica.com/2026/datacenter-power-seattle"}],
-        "tags": ["policy", "datacenters", "seattle"], "comments": []
+        "links": [
+          {
+            "label": "Ars Technica: data centre power in Seattle",
+            "url": "http://arstechnica.com/2026/datacenter-power-seattle"
+          }
+        ],
+        "tags": [
+          "policy",
+          "datacenters",
+          "seattle"
+        ],
+        "comments": []
       },
       "tidal-lagoon-survey": {
-        "id": "tidal-lagoon-survey", "section": "science", "year": "2026",
+        "id": "tidal-lagoon-survey",
+        "section": "science",
+        "year": "2026",
         "title": "Survey of the Ashcombe tidal lagoon finds a seagrass meadow no one had mapped",
         "dek": "Marine biologists say the eleven-hectare bed may explain why the lagoon's fish stocks recovered so quickly.",
-        "byline": "Google News", "date": "Feb 3, 2026", "tick": 4, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Feb 3, 2026",
+        "tick": 4,
+        "read_minutes": 1,
         "body": [
           "A sonar survey commissioned before dredging work found a dense seagrass meadow across the southern third of the Ashcombe lagoon. The team leading the survey said the bed had likely been growing since a sewage outfall was closed in 2011 and that the dredging plan would now be redrawn to avoid it. The finding is being written up for peer review.",
           "Source: BBC News, The New York Times."
         ],
         "links": [],
-        "tags": ["marine", "ecology", "ashcombe"], "comments": []
+        "tags": [
+          "marine",
+          "ecology",
+          "ashcombe"
+        ],
+        "comments": []
       },
       "replay-debugging-research": {
-        "id": "replay-debugging-research", "section": "science", "year": "2026",
+        "id": "replay-debugging-research",
+        "section": "science",
+        "year": "2026",
         "title": "Researchers show replay debugging cuts time-to-fix for concurrency bugs",
         "dek": "A controlled study found engineers with a deterministic replay fixed race conditions in roughly a third of the time.",
-        "byline": "Google News", "date": "Jan 30, 2026", "tick": 3, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Jan 30, 2026",
+        "tick": 3,
+        "read_minutes": 1,
         "body": [
           "The Verge reports on a university study in which forty engineers were given the same set of concurrency bugs, half with an ordinary debugger and half with a deterministic replay of the failure. The replay group fixed the bugs in a median of nineteen minutes against fifty-four. The authors caution that the bugs were chosen to be reproducible in the first place.",
           "Source: The Verge. Read the report at http://theverge.com/2026/replay-debugging"
         ],
-        "links": [{"label": "The Verge: replay debugging study", "url": "http://theverge.com/2026/replay-debugging"}],
-        "tags": ["research", "debugging", "determinism"], "comments": []
+        "links": [
+          {
+            "label": "The Verge: replay debugging study",
+            "url": "http://theverge.com/2026/replay-debugging"
+          }
+        ],
+        "tags": [
+          "research",
+          "debugging",
+          "determinism"
+        ],
+        "comments": []
       },
       "harrowgate-derby-result": {
-        "id": "harrowgate-derby-result", "section": "sports", "year": "2026",
+        "id": "harrowgate-derby-result",
+        "section": "sports",
+        "year": "2026",
         "title": "Harrowgate Athletic take the derby 2-1 with a stoppage-time header",
         "dek": "Ines Duarte scored her fourteenth of the season to settle a game that had looked drawn.",
-        "byline": "Google News", "date": "Feb 28, 2026", "tick": 2, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Feb 28, 2026",
+        "tick": 2,
+        "read_minutes": 1,
         "body": [
           "Harrowgate Athletic beat Westfield Rovers 2-1 in front of a sold-out Mill Lane after Ines Duarte rose to meet a corner in the fourth minute of added time. Rovers had equalised on the hour through a penalty that their manager described afterwards as 'the only thing that went right'. The result moves Athletic to second in the table with nine games left.",
           "Source: BBC Sport, CNN."
         ],
         "links": [],
-        "tags": ["football", "harrowgate", "derby"], "comments": []
+        "tags": [
+          "football",
+          "harrowgate",
+          "derby"
+        ],
+        "comments": []
       },
       "silver-lantern-box-office": {
-        "id": "silver-lantern-box-office", "section": "entertainment", "year": "2026",
+        "id": "silver-lantern-box-office",
+        "section": "entertainment",
+        "year": "2026",
         "title": "'The Silver Lantern' tops the box office in its second weekend",
         "dek": "The period drama held on against two new releases and is now on course to pass its budget by Friday.",
-        "byline": "Google News", "date": "Mar 1, 2026", "tick": 1, "read_minutes": 1,
+        "byline": "Google News",
+        "date": "Mar 1, 2026",
+        "tick": 1,
+        "read_minutes": 1,
         "body": [
           "'The Silver Lantern', a lighthouse-keeper drama set in the 1890s, held the top spot on its second weekend with a drop of only twenty-two percent, an unusually strong hold for a film with no franchise behind it. Its two new competitors opened third and fifth. Distributor Halcyon Pictures said it would widen the release to another four hundred screens.",
           "Source: CNN, The New York Times."
         ],
         "links": [],
-        "tags": ["film", "box-office"], "comments": []
+        "tags": [
+          "film",
+          "box-office"
+        ],
+        "comments": []
       }
     },
     "subscribers": [],
-    "saved": {"alice": ["northstar-atlas-release"]},
-    "follows": {"bob": ["technology"]}
+    "saved": {},
+    "follows": {}
   },
   "search_entries": [
-    {"url": "http://news.google.com/", "title": "Google News", "snippet": "Your briefing, from sources across the web. Top stories, world, business, technology, science, sports and entertainment.", "vertical": "news", "authority": 8, "keywords": ["google news", "news", "headlines", "top stories", "briefing"]},
-    {"url": "http://news.google.com/2026/northstar-atlas-release", "title": "Northstar ships Atlas 1.0 with a promise of byte-for-byte replay - Google News", "snippet": "Full coverage of the Atlas 1.0 release from Reuters and The Verge.", "vertical": "news", "authority": 7, "keywords": ["northstar", "atlas", "atlas 1.0", "full coverage"]},
-    {"url": "http://news.google.com/2026/replay-regulated-industries", "title": "Regulators start asking whether replayable software should be a requirement - Google News", "snippet": "Auditors in finance and medical devices are reading the reproducible-build draft closely.", "vertical": "news", "authority": 6, "keywords": ["reproducible builds", "regulation", "replay", "audit"]},
-    {"url": "http://news.google.com/2026/devcon-seattle-preview", "title": "DevCon Seattle opens next week with a keynote built around replay tooling - Google News", "snippet": "What to expect from the conference, and why downtown hotel rooms sold out in February.", "vertical": "news", "authority": 6, "keywords": ["devcon", "devcon seattle", "conference", "keynote"]},
-    {"url": "http://news.google.com/2026/meridian-strait-talks", "title": "Talks over Meridian Strait shipping lanes enter a fourth day - Google News", "snippet": "Delegations from three coastal states remain divided on pilotage fees and a tanker escort protocol.", "vertical": "news", "authority": 6, "keywords": ["meridian strait", "shipping", "talks", "valmora"]},
-    {"url": "http://news.google.com/2026/harbourside-flooding-response", "title": "Harbourside floods recede as authorities count the cost of a record tide - Google News", "snippet": "Two thousand residents remain in temporary shelter after the highest storm surge in sixty years.", "vertical": "news", "authority": 6, "keywords": ["harbourside", "flood", "storm surge", "tide"]},
-    {"url": "http://news.google.com/2026/hash-order-bug-explainer", "title": "Why the same program can give a different answer on Windows - Google News", "snippet": "Ars Technica walks through a class of bug that only shows up when iteration order is left to chance.", "vertical": "news", "authority": 6, "keywords": ["hash order", "nondeterminism", "windows", "bug"]},
-    {"url": "http://news.google.com/2026/tidal-lagoon-survey", "title": "Survey of the Ashcombe tidal lagoon finds a seagrass meadow no one had mapped - Google News", "snippet": "Marine biologists say the eleven-hectare bed may explain why fish stocks recovered so quickly.", "vertical": "news", "authority": 6, "keywords": ["ashcombe", "seagrass", "lagoon", "marine biology"]},
-    {"url": "http://news.google.com/2026/harrowgate-derby-result", "title": "Harrowgate Athletic take the derby 2-1 with a stoppage-time header - Google News", "snippet": "Ines Duarte scored her fourteenth of the season to settle a game that had looked drawn.", "vertical": "news", "authority": 6, "keywords": ["harrowgate", "derby", "football", "westfield rovers"]},
-    {"url": "http://news.google.com/2026/silver-lantern-box-office", "title": "'The Silver Lantern' tops the box office in its second weekend - Google News", "snippet": "The period drama held on against two new releases.", "vertical": "news", "authority": 6, "keywords": ["silver lantern", "box office", "film", "halcyon pictures"]},
-    {"url": "http://news.google.com/technology", "title": "Technology - Google News", "snippet": "Technology headlines aggregated from Reuters, The Verge, Ars Technica and more.", "vertical": "news", "authority": 7, "keywords": ["technology news", "tech headlines", "google news technology"]},
-    {"url": "http://news.google.com/world", "title": "World - Google News", "snippet": "World headlines from wire services and broadcasters.", "vertical": "news", "authority": 7, "keywords": ["world news", "international news", "google news world"]},
-    {"url": "http://news.google.com/business", "title": "Business - Google News", "snippet": "Markets, companies and the economy, aggregated.", "vertical": "news", "authority": 7, "keywords": ["business news", "markets", "google news business"]}
+    {
+      "url": "http://news.google.com/",
+      "title": "Google News",
+      "snippet": "Your briefing, from sources across the web. Top stories, world, business, technology, science, sports and entertainment.",
+      "vertical": "news",
+      "authority": 8,
+      "keywords": [
+        "google news",
+        "news",
+        "headlines",
+        "top stories",
+        "briefing"
+      ]
+    },
+    {
+      "url": "http://news.google.com/2026/replay-regulated-industries",
+      "title": "Regulators start asking whether replayable software should be a requirement - Google News",
+      "snippet": "Auditors in finance and medical devices are reading the reproducible-build draft closely.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "reproducible builds",
+        "regulation",
+        "replay",
+        "audit"
+      ]
+    },
+    {
+      "url": "http://news.google.com/2026/devcon-seattle-preview",
+      "title": "DevCon Seattle opens next week with a keynote built around replay tooling - Google News",
+      "snippet": "What to expect from the conference, and why downtown hotel rooms sold out in February.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "devcon",
+        "devcon seattle",
+        "conference",
+        "keynote"
+      ]
+    },
+    {
+      "url": "http://news.google.com/2026/meridian-strait-talks",
+      "title": "Talks over Meridian Strait shipping lanes enter a fourth day - Google News",
+      "snippet": "Delegations from three coastal states remain divided on pilotage fees and a tanker escort protocol.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "meridian strait",
+        "shipping",
+        "talks",
+        "valmora"
+      ]
+    },
+    {
+      "url": "http://news.google.com/2026/harbourside-flooding-response",
+      "title": "Harbourside floods recede as authorities count the cost of a record tide - Google News",
+      "snippet": "Two thousand residents remain in temporary shelter after the highest storm surge in sixty years.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "harbourside",
+        "flood",
+        "storm surge",
+        "tide"
+      ]
+    },
+    {
+      "url": "http://news.google.com/2026/hash-order-bug-explainer",
+      "title": "Why the same program can give a different answer on Windows - Google News",
+      "snippet": "Ars Technica walks through a class of bug that only shows up when iteration order is left to chance.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "hash order",
+        "nondeterminism",
+        "windows",
+        "bug"
+      ]
+    },
+    {
+      "url": "http://news.google.com/2026/tidal-lagoon-survey",
+      "title": "Survey of the Ashcombe tidal lagoon finds a seagrass meadow no one had mapped - Google News",
+      "snippet": "Marine biologists say the eleven-hectare bed may explain why fish stocks recovered so quickly.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "ashcombe",
+        "seagrass",
+        "lagoon",
+        "marine biology"
+      ]
+    },
+    {
+      "url": "http://news.google.com/2026/harrowgate-derby-result",
+      "title": "Harrowgate Athletic take the derby 2-1 with a stoppage-time header - Google News",
+      "snippet": "Ines Duarte scored her fourteenth of the season to settle a game that had looked drawn.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "harrowgate",
+        "derby",
+        "football",
+        "westfield rovers"
+      ]
+    },
+    {
+      "url": "http://news.google.com/2026/silver-lantern-box-office",
+      "title": "'The Silver Lantern' tops the box office in its second weekend - Google News",
+      "snippet": "The period drama held on against two new releases.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "silver lantern",
+        "box office",
+        "film",
+        "halcyon pictures"
+      ]
+    },
+    {
+      "url": "http://news.google.com/technology",
+      "title": "Technology - Google News",
+      "snippet": "Technology headlines aggregated from Reuters, The Verge, Ars Technica and more.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "technology news",
+        "tech headlines",
+        "google news technology"
+      ]
+    },
+    {
+      "url": "http://news.google.com/world",
+      "title": "World - Google News",
+      "snippet": "World headlines from wire services and broadcasters.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "world news",
+        "international news",
+        "google news world"
+      ]
+    },
+    {
+      "url": "http://news.google.com/business",
+      "title": "Business - Google News",
+      "snippet": "Markets, companies and the economy, aggregated.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "business news",
+        "markets",
+        "google news business"
+      ]
+    }
   ]
 }

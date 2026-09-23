@@ -1,0 +1,377 @@
+{
+  "initial_state": {
+    "members": {
+      "achen": {
+        "handle": "achen",
+        "name": "achen",
+        "actor": "alice",
+        "reputation": 9140,
+        "bio": "Renderer and simulation work. I only comment when it is my bug."
+      },
+      "bmartinez": {
+        "handle": "bmartinez",
+        "name": "bmartinez",
+        "actor": "bob",
+        "reputation": 4102,
+        "bio": "Testing, CI, and the one runner that fails."
+      },
+      "cnakamura": {
+        "handle": "cnakamura",
+        "name": "cnakamura",
+        "actor": "carol",
+        "reputation": 2204,
+        "bio": "Engineering manager. Here for the postmortems."
+      },
+      "praman": {
+        "handle": "praman",
+        "name": "praman",
+        "reputation": 31200,
+        "bio": "Rust internals."
+      },
+      "dokoro": {
+        "handle": "dokoro",
+        "name": "dokoro",
+        "reputation": 1840,
+        "bio": "SRE. I run the status page you are complaining about.",
+        "actor": "admin"
+      }
+    },
+    "threads": {
+      "t-9006": {
+        "id": "t-9006",
+        "board": "",
+        "author": "kbrandt",
+        "title": "Ask HN: how do you interview for systems work without a whiteboard?",
+        "body": "We have replaced the algorithms round with a debugging session on a recorded failure: candidate gets a repository, a failing test and two hours. It reads better than the whiteboard and takes four times as long to prepare. For those who have run something similar for more than a year - did it survive contact with a hiring spike, and what did you cut first?",
+        "tick": 3,
+        "score": 74,
+        "views": 9204,
+        "replies": [
+          {
+            "id": "r-7050",
+            "author": "bmartinez",
+            "body": "We run something close to this. What we cut first was the two hours - it became forty five minutes on a failure we had already narrowed to one file. Still better than a whiteboard, and it stopped being the reason nobody wanted to be on the loop.",
+            "tick": 3,
+            "score": 96
+          },
+          {
+            "id": "r-7051",
+            "author": "throwaway_sim",
+            "parent": "r-7050",
+            "body": "Forty five minutes on a pre-narrowed failure is a code reading exercise with extra steps. Which is fine, but call it that.",
+            "tick": 3,
+            "score": 41
+          },
+          {
+            "id": "r-7052",
+            "author": "bmartinez",
+            "parent": "r-7051",
+            "body": "Fair. Calling it a code reading exercise is honest and I would rather hire on code reading than on whether someone has seen this dynamic programming trick before.",
+            "tick": 4,
+            "score": 128
+          }
+        ]
+      },
+      "t-9002": {
+        "id": "t-9002",
+        "board": "",
+        "author": "throwaway_sim",
+        "title": "Northstar down",
+        "url": "http://status.northstar.example/",
+        "body": "",
+        "tick": 5,
+        "score": 61,
+        "views": 14200,
+        "replies": [
+          {
+            "id": "r-7010",
+            "author": "kbrandt",
+            "body": "Twelve minutes of elevated latency is not 'down', and a title that says otherwise is why nobody trusts the front page for incidents.",
+            "tick": 5,
+            "score": 204
+          },
+          {
+            "id": "r-7011",
+            "author": "dokoro",
+            "body": "SRE at Northstar. It was 12 minutes of elevated API latency, not an outage, and the timeline on the status page is the real one - we replayed the checkpoint rather than reconstructing it, which is why the minute marks are exact.",
+            "tick": 5,
+            "score": 341
+          },
+          {
+            "id": "r-7012",
+            "author": "throwaway_sim",
+            "parent": "r-7011",
+            "body": "Appreciate the response and I will take the correction on the title.",
+            "tick": 5,
+            "score": 88
+          },
+          {
+            "id": "r-7013",
+            "author": "cnakamura",
+            "parent": "r-7011",
+            "body": "The postmortem will be up on the engineering blog today. It is short because the reproduction did most of the work.",
+            "tick": 6,
+            "score": 112
+          }
+        ]
+      },
+      "t-9004": {
+        "id": "t-9004",
+        "board": "",
+        "author": "bmartinez",
+        "title": "Hash order bit me: three weeks for a nine line fix",
+        "url": "http://bmartinez.net/posts/hash-order-bit-me",
+        "body": "",
+        "tick": 6,
+        "score": 96,
+        "views": 18400,
+        "replies": [
+          {
+            "id": "r-7020",
+            "author": "praman",
+            "body": "This is the best written version of a bug I answer about once a quarter. The important sentence is that it passed on every machine the author owned - that is what makes it three weeks instead of an afternoon.",
+            "tick": 6,
+            "score": 188
+          },
+          {
+            "id": "r-7021",
+            "author": "kbrandt",
+            "body": "Every language has a version of this. Go randomised map iteration deliberately so you would find out on day one instead of in year three, and people still write code that depends on it.",
+            "tick": 6,
+            "score": 141
+          }
+        ]
+      },
+      "t-9005": {
+        "id": "t-9005",
+        "board": "",
+        "author": "achen",
+        "title": "Show HN: Atlas, a simulated machine you can replay byte for byte",
+        "url": "http://github.com/northstar/atlas",
+        "body": "Atlas simulates a whole machine - processes, filesystem, network and browser - from one u64 seed, and ships a harness that reruns a recorded session and compares every frame. Walkthrough: http://youtube.com/watch?v=atlas-walkthrough",
+        "tick": 7,
+        "score": 288,
+        "views": 41200,
+        "replies": [
+          {
+            "id": "r-7030",
+            "author": "kbrandt",
+            "body": "What happens when a dependency you do not control calls the clock? That is where every project like this has quietly given up.",
+            "tick": 7,
+            "score": 204
+          },
+          {
+            "id": "r-7031",
+            "author": "achen",
+            "parent": "r-7030",
+            "body": "We vendor it, patch it, or drop it, and the patches directory has a README that opens with an apology. There is no fourth option and pretending otherwise is how you end up with a replay harness that passes because it is not actually checking anything.",
+            "tick": 7,
+            "score": 512
+          },
+          {
+            "id": "r-7032",
+            "author": "praman",
+            "parent": "r-7031",
+            "body": "The apology README is the strongest signal in this whole thread that the project is real.",
+            "tick": 7,
+            "score": 296
+          },
+          {
+            "id": "r-7033",
+            "author": "throwaway_sim",
+            "body": "Having tried to sell reproducibility to a team that did not want it: the hard part is not the engineering, it is that determinism removes the excuse. Some organisations are load bearing on that excuse.",
+            "tick": 8,
+            "score": 174
+          }
+        ]
+      },
+      "t-9001": {
+        "id": "t-9001",
+        "board": "",
+        "author": "tomw",
+        "title": "Northstar's Atlas bets everything on determinism",
+        "url": "http://theverge.com/2026/atlas-determinism",
+        "body": "",
+        "tick": 8,
+        "score": 147,
+        "views": 52800,
+        "replies": [
+          {
+            "id": "r-7001",
+            "author": "kbrandt",
+            "body": "The enforcement section is the only part of this that matters, and to the author's credit it is most of the article. A replay harness that fails the build is a claim you can check; everything else is a press release.",
+            "tick": 8,
+            "score": 241
+          },
+          {
+            "id": "r-7002",
+            "author": "achen",
+            "parent": "r-7001",
+            "body": "Author of the renderer. The three week bug in the middle of the piece is accurate, including the part where I inspected the hash map early and decided it was not the problem.",
+            "tick": 8,
+            "score": 388
+          },
+          {
+            "id": "r-7003",
+            "author": "praman",
+            "parent": "r-7002",
+            "body": "For anyone who wants the technical version rather than the profile, it is the accepted answer here: http://stackoverflow.com/questions/t-4411",
+            "tick": 8,
+            "score": 204
+          },
+          {
+            "id": "r-7004",
+            "author": "throwaway_sim",
+            "body": "Determinism is table stakes in a few regulated industries and nobody writes profiles about those teams, because the software is beige and the people are not quotable.",
+            "tick": 8,
+            "score": 96
+          },
+          {
+            "id": "r-7005",
+            "author": "tomw",
+            "parent": "r-7004",
+            "body": "I would genuinely like to write that story. If you work on one of those systems and can talk on the record, my contact details are on The Verge.",
+            "tick": 8,
+            "score": 128
+          },
+          {
+            "id": "r-7006",
+            "author": "cnakamura",
+            "body": "The quote about incorrect parts staying still is mine and I have already been told it is going on a mug.",
+            "tick": 8,
+            "score": 162
+          }
+        ]
+      },
+      "t-9003": {
+        "id": "t-9003",
+        "board": "",
+        "author": "achen",
+        "title": "What I learned shipping Atlas",
+        "url": "http://alicechen.dev/posts/what-i-learned-shipping-atlas",
+        "body": "",
+        "tick": 9,
+        "score": 203,
+        "views": 28400,
+        "replies": [
+          {
+            "id": "r-7040",
+            "author": "kbrandt",
+            "body": "Keeping a known bug because fixing it correctly would break replay for everyone is the most interesting decision in this post, and it is one paragraph. I would read four thousand words on just that.",
+            "tick": 9,
+            "score": 271
+          },
+          {
+            "id": "r-7041",
+            "author": "achen",
+            "parent": "r-7040",
+            "body": "It is a five millisecond delay on the first frame after a resize. The correct fix makes the frame clock depend on the host, which breaks every recorded session anyone has. The issue is open and the release notes say so.",
+            "tick": 9,
+            "score": 341
+          },
+          {
+            "id": "r-7042",
+            "author": "praman",
+            "body": "The eighteen-months-later deletion of your own abstraction is the other half of this post and nobody will quote it, because it is not flattering to anyone including the author.",
+            "tick": 9,
+            "score": 188
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://news.ycombinator.com/item?id=t-9001",
+      "title": "Northstar's Atlas bets everything on determinism | Hacker News",
+      "snippet": "147 points. The Verge story on the front page, with the renderer author and the reporter both in the thread.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "atlas",
+        "determinism",
+        "the verge",
+        "hacker news",
+        "northstar",
+        "discussion"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/item?id=t-9002",
+      "title": "Northstar down | Hacker News",
+      "snippet": "61 points. The outage thread, corrected in the comments by Northstar's SRE: 12 minutes of elevated latency, not an outage.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "northstar",
+        "down",
+        "outage",
+        "incident",
+        "hacker news",
+        "status",
+        "latency"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/item?id=t-9005",
+      "title": "Show HN: Atlas, a simulated machine you can replay byte for byte | Hacker News",
+      "snippet": "288 points. What happens when a dependency calls the clock, answered by the person who wrote the patches directory.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "show hn",
+        "atlas",
+        "replay",
+        "simulation",
+        "github",
+        "hacker news",
+        "determinism"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/item?id=t-9004",
+      "title": "Hash order bit me: three weeks for a nine line fix | Hacker News",
+      "snippet": "96 points. Bob Martinez's debugging write-up, discussed alongside Go's deliberate map randomisation.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "hash order",
+        "flaky test",
+        "hacker news",
+        "debugging",
+        "nine line fix",
+        "bob martinez"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/item?id=t-9003",
+      "title": "What I learned shipping Atlas | Hacker News",
+      "snippet": "203 points. The thread that pulls out the bug the team kept on purpose and why fixing it would break replay.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "shipping atlas",
+        "alice chen",
+        "hacker news",
+        "atlas",
+        "blog",
+        "discussion"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/item?id=t-9006",
+      "title": "Ask HN: how do you interview for systems work without a whiteboard? | Hacker News",
+      "snippet": "74 points. Replacing the algorithms round with a recorded debugging session, and what got cut first.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "ask hn",
+        "interview",
+        "hiring",
+        "systems",
+        "whiteboard",
+        "hacker news"
+      ]
+    }
+  ]
+}

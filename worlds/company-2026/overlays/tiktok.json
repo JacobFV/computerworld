@@ -1,0 +1,387 @@
+{
+  "initial_state": {
+    "channels": {
+      "alice-builds": {
+        "id": "alice-builds",
+        "name": "Alice Builds",
+        "handle": "@alicebuilds",
+        "owner": "alice",
+        "subscribers": 48200,
+        "about": "Deterministic systems, but short. The long versions are on my YouTube."
+      },
+      "carol-ships": {
+        "id": "carol-ships",
+        "name": "Carol Ships It",
+        "handle": "@carolships",
+        "owner": "carol",
+        "subscribers": 15300,
+        "about": "Release-day energy in vertical video."
+      }
+    },
+    "items": {
+      "garlic-noodles": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Made this at 11pm and regret nothing.",
+            "tick": 5,
+            "likes": 4210
+          },
+          {
+            "id": "c2",
+            "author": "plantparent",
+            "text": "the butter to garlic ratio is correct and I will not be taking questions",
+            "tick": 5,
+            "likes": 9800
+          }
+        ]
+      },
+      "egg-fried-rice": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "the pan sound at 0:12 is ASMR",
+            "tick": 3,
+            "likes": 2300
+          }
+        ]
+      },
+      "pixel-vs-keyboard": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "This is why we have code review.",
+            "tick": 2,
+            "likes": 15200
+          },
+          {
+            "id": "c2",
+            "author": "codewithjun",
+            "text": "14 chars is a valid Rust program if you squint",
+            "tick": 2,
+            "likes": 7700
+          },
+          {
+            "id": "c3",
+            "author": "bob",
+            "text": "pixel for release manager",
+            "tick": 2,
+            "likes": 4100
+          }
+        ]
+      },
+      "pixel-standup": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "yesterday: nap. today: nap. blockers: the door.",
+            "tick": 4,
+            "likes": 6200
+          }
+        ]
+      },
+      "rust-borrow-60s": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Cleanest explanation of aliasing XOR mutability I have seen at this length.",
+            "tick": 3,
+            "likes": 5100
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "60 seconds. it took me 60 days.",
+            "tick": 3,
+            "likes": 3300
+          }
+        ]
+      },
+      "hashmap-order": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "This bug has personally cost me a weekend. Share widely.",
+            "tick": 11,
+            "likes": 2800
+          }
+        ],
+        "related": [
+          "rust-borrow-60s",
+          "alice-replay-loop"
+        ]
+      },
+      "thrift-blazer-flip": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "mira-dances",
+            "text": "wearing this to rehearsal immediately",
+            "tick": 2,
+            "likes": 4400
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "tutorial energy: unmatched",
+            "tick": 2,
+            "likes": 900
+          }
+        ]
+      },
+      "seattle-rain-walk": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "I can see our office in this. we should have gone for a walk.",
+            "tick": 10,
+            "likes": 800
+          }
+        ]
+      },
+      "monstera-rescue": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "stitchlab",
+            "text": "the way you said \"it will be fine\" with zero confidence",
+            "tick": 2,
+            "likes": 3900
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "four weeks later?? we need the update",
+            "tick": 2,
+            "likes": 2100
+          }
+        ]
+      },
+      "monstera-update": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "I have never been this invested in a plant",
+            "tick": 4,
+            "likes": 3000
+          }
+        ]
+      },
+      "watering-spreadsheet": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "A deterministic watering schedule. Respect.",
+            "tick": 8,
+            "likes": 1500
+          }
+        ]
+      },
+      "stairs-catch": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "\"witness\" is doing a lot of work here",
+            "tick": 11,
+            "likes": 6100
+          }
+        ]
+      },
+      "ship-day-dance": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Doing this in the release channel every Thursday now.",
+            "tick": 3,
+            "likes": 9400
+          },
+          {
+            "id": "c2",
+            "author": "trickshotmax",
+            "text": "the button press on beat 8 is elite",
+            "tick": 3,
+            "likes": 5200
+          }
+        ]
+      },
+      "ship-day-tutorial": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Learned it. Deployed it. No regressions.",
+            "tick": 4,
+            "likes": 3700
+          }
+        ]
+      },
+      "why-seven-days": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "and yet the sprint is two of them",
+            "tick": 7,
+            "likes": 4900
+          },
+          {
+            "id": "c2",
+            "author": "tinyhistory",
+            "text": "@bob the sprint is a 20th century invention and a separate video",
+            "tick": 7,
+            "likes": 3100
+          }
+        ]
+      },
+      "alice-replay-loop": {
+        "id": "alice-replay-loop",
+        "channel": "alice-builds",
+        "title": "Replaying a bug 40 times in 8 seconds",
+        "description": "Same seed, same crash, every time. This is what deterministic replay buys you. #coding #determinism #rustlang",
+        "duration_s": 8,
+        "published": "Mar 27, 2026",
+        "published_tick": 7,
+        "views": 512000,
+        "likes": 61000,
+        "tags": [
+          "#coding",
+          "#determinism",
+          "#rustlang",
+          "#learnontiktok"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "codewithjun",
+            "text": "okay this is the one that finally sold me on the idea",
+            "tick": 8,
+            "likes": 2400
+          }
+        ],
+        "related": [
+          "hashmap-order",
+          "rust-borrow-60s"
+        ]
+      },
+      "carol-release-face": {
+        "id": "carol-release-face",
+        "channel": "carol-ships",
+        "title": "My face when the release checklist has 41 items",
+        "description": "Item 42: breathe. #shipday #releasemanager #wfh",
+        "duration_s": 11,
+        "published": "Apr 7, 2026",
+        "published_tick": 9,
+        "views": 288000,
+        "likes": 34000,
+        "tags": [
+          "#shipday",
+          "#wfh",
+          "#releasemanager"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "mira-dances",
+            "text": "you need the Ship Day dance, I am sending it",
+            "tick": 10,
+            "likes": 900
+          }
+        ],
+        "related": [
+          "ship-day-dance",
+          "alice-replay-loop"
+        ]
+      }
+    },
+    "playlists": {
+      "learn-on-tiktok": {
+        "items": [
+          "rust-borrow-60s",
+          "regex-in-45",
+          "hashmap-order",
+          "why-lighthouses",
+          "why-seven-days",
+          "why-qwerty",
+          "alice-replay-loop"
+        ]
+      },
+      "dance-tutorials": {
+        "id": "dance-tutorials",
+        "title": "Dance tutorials",
+        "items": [
+          "ship-day-dance",
+          "ship-day-tutorial",
+          "rainy-window-dance"
+        ],
+        "owner": "carol"
+      },
+      "pixel-supercut": {
+        "id": "pixel-supercut",
+        "title": "Pixel supercut",
+        "items": [
+          "pixel-vs-keyboard",
+          "pixel-standup",
+          "pixel-box"
+        ],
+        "owner": "bob"
+      }
+    },
+    "subscriptions": {
+      "alice": [
+        "codewithjun",
+        "deskcat",
+        "tinyhistory"
+      ],
+      "bob": [
+        "deskcat",
+        "trickshotmax",
+        "plantparent"
+      ],
+      "carol": [
+        "mira-dances",
+        "minutemeals",
+        "alice-builds",
+        "stitchlab"
+      ]
+    },
+    "likes": {
+      "alice": [
+        "rust-borrow-60s",
+        "hashmap-order"
+      ],
+      "bob": [
+        "pixel-vs-keyboard",
+        "monstera-update"
+      ],
+      "carol": [
+        "ship-day-dance",
+        "garlic-noodles"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://tiktok.com/watch?v=alice-replay-loop",
+      "title": "Replaying a bug 40 times in 8 seconds | TikTok",
+      "snippet": "Alice Builds shows deterministic replay hitting the same crash every run.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "deterministic replay",
+        "alice builds",
+        "bug replay"
+      ]
+    }
+  ]
+}

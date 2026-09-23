@@ -565,6 +565,7 @@ dependencies = [
 name = "cw-service-common"
 version = "0.2.0"
 dependencies = [
+ "cw-internet",
  "cw-protocol",
  "cw-web",
  "serde",

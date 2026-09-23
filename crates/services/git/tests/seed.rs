@@ -16,15 +16,9 @@ fn ctx(actor: &str) -> ServiceContext {
         instance: "github".into(),
     }
 }
-/// A site file from the internet, or from the reference company's own sites.
+/// A site file as the reference world has it.
 fn site(name: &str) -> Value {
-    let raw = ["internet", "company-2026"]
-        .iter()
-        .find_map(|w| {
-            std::fs::read_to_string(format!("../../../worlds/{w}/sites/{name}.json")).ok()
-        })
-        .expect("site file");
-    serde_json::from_str(&raw).expect("site file parses")
+    cw_service_common::reference::reference_site(name)
 }
 fn open(state: &mut Value, url: &str) -> (u16, Vec<u8>) {
     let r = GitService

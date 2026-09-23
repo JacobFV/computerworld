@@ -32,33 +32,6 @@
       "content_width": 960
     },
     "members": {
-      "alice-pdx": {
-        "handle": "alice-pdx",
-        "name": "alice-pdx",
-        "actor": "alice",
-        "reputation": 14,
-        "flair": "",
-        "bio": "Clearing out a spare room.",
-        "site": ""
-      },
-      "bob_m": {
-        "handle": "bob_m",
-        "name": "bob_m",
-        "actor": "bob",
-        "reputation": 9,
-        "flair": "",
-        "bio": "Buying and selling bikes since forever.",
-        "site": ""
-      },
-      "carol_nk": {
-        "handle": "carol_nk",
-        "name": "carol_nk",
-        "actor": "carol",
-        "reputation": 6,
-        "flair": "",
-        "bio": "",
-        "site": ""
-      },
       "sellr_7731": {
         "handle": "sellr_7731",
         "name": "sellr_7731",
@@ -152,42 +125,6 @@
     },
     "boards": {},
     "threads": {
-      "t-7000": {
-        "id": "t-7000",
-        "board": "",
-        "author": "alice-pdx",
-        "title": "Solid oak dining table + 4 chairs - $220 (Alder District)",
-        "body": "Oak table 60x36, seats six with the leaf, four matching chairs. One chair has a wobble, easy fix. Pickup only, second floor walk-up, bring a friend. Cash. No holds.",
-        "url": null,
-        "tags": [
-          "for sale",
-          "furniture"
-        ],
-        "tick": 40,
-        "score": 3,
-        "views": 412,
-        "accepted": null,
-        "replies": [
-          {
-            "id": "r-100",
-            "author": "sellr_7731",
-            "parent": null,
-            "body": "Still available? Can pick up Saturday.",
-            "tick": 41,
-            "score": 1,
-            "comments": []
-          },
-          {
-            "id": "r-101",
-            "author": "alice-pdx",
-            "parent": null,
-            "body": "Yes, Saturday works. Reply with a time.",
-            "tick": 41,
-            "score": 1,
-            "comments": []
-          }
-        ]
-      },
       "t-7001": {
         "id": "t-7001",
         "board": "",
@@ -222,42 +159,6 @@
         "views": 530,
         "accepted": null,
         "replies": []
-      },
-      "t-7003": {
-        "id": "t-7003",
-        "board": "",
-        "author": "bob_m",
-        "title": "Surly Cross-Check 56cm, steel, 1x10 - $650 (Hawthorne)",
-        "body": "Cross-Check frame, built up as a commuter: 1x10, 38mm tyres, fenders, rear rack. New chain and cassette this spring. Test ride with ID. Priced to sell, not to haggle.",
-        "url": null,
-        "tags": [
-          "for sale",
-          "bikes"
-        ],
-        "tick": 37,
-        "score": 6,
-        "views": 745,
-        "accepted": null,
-        "replies": [
-          {
-            "id": "r-102",
-            "author": "tuneup_tony",
-            "parent": null,
-            "body": "Which crank? If it is the original I know someone looking.",
-            "tick": 37,
-            "score": 1,
-            "comments": []
-          },
-          {
-            "id": "r-103",
-            "author": "bob_m",
-            "parent": null,
-            "body": "Original Surly crank, 40t ring. Send them over.",
-            "tick": 38,
-            "score": 1,
-            "comments": []
-          }
-        ]
       },
       "t-7004": {
         "id": "t-7004",
@@ -331,43 +232,6 @@
         "accepted": null,
         "replies": []
       },
-      "t-7007": {
-        "id": "t-7007",
-        "board": "",
-        "author": "alice-pdx",
-        "title": "ThinkPad T14 gen 3, 32GB, 1TB, Linux - $520 (Alder District)",
-        "body": "Ryzen 7, fresh install of whatever you want or blank. Battery at 88 percent health. Charger included. Local pickup, will demo.",
-        "url": null,
-        "tags": [
-          "for sale",
-          "electronics",
-          "computers"
-        ],
-        "tick": 33,
-        "score": 4,
-        "views": 690,
-        "accepted": null,
-        "replies": [
-          {
-            "id": "r-106",
-            "author": "k_hiring",
-            "parent": null,
-            "body": "Does the keyboard have the backlight?",
-            "tick": 34,
-            "score": 1,
-            "comments": []
-          },
-          {
-            "id": "r-107",
-            "author": "alice-pdx",
-            "parent": null,
-            "body": "Yes, backlit, US layout.",
-            "tick": 34,
-            "score": 1,
-            "comments": []
-          }
-        ]
-      },
       "t-7008": {
         "id": "t-7008",
         "board": "",
@@ -420,15 +284,6 @@
         "views": 2140,
         "accepted": null,
         "replies": [
-          {
-            "id": "r-108",
-            "author": "carol_nk",
-            "parent": null,
-            "body": "Is there bike parking in the building?",
-            "tick": 30,
-            "score": 1,
-            "comments": []
-          },
           {
             "id": "r-109",
             "author": "nw_landlord",
@@ -564,25 +419,6 @@
         "tick": 25,
         "score": 4,
         "views": 1420,
-        "accepted": null,
-        "replies": []
-      },
-      "t-7016": {
-        "id": "t-7016",
-        "board": "",
-        "author": "carol_nk",
-        "title": "Part-time bookkeeper for a small engineering shop, remote OK - $35/hr (Alder District)",
-        "body": "Ten hours a week, monthly close, payroll through a provider, one bank account. Must know accrual basis. Send a short note about what you have done, not a resume.",
-        "url": null,
-        "tags": [
-          "jobs",
-          "office",
-          "part-time",
-          "remote"
-        ],
-        "tick": 24,
-        "score": 5,
-        "views": 980,
         "accepted": null,
         "replies": []
       },
@@ -759,24 +595,6 @@
           }
         ]
       },
-      "t-7023": {
-        "id": "t-7023",
-        "board": "",
-        "author": "alice-pdx",
-        "title": "Neighbourhood cleanup Saturday 9am, coffee provided (Alder District)",
-        "body": "Meet at the corner of Kearney and 11th. Bags and grabbers supplied, bring gloves. Two hours, then coffee at Northlight. Kids welcome.",
-        "url": null,
-        "tags": [
-          "community",
-          "volunteers",
-          "events"
-        ],
-        "tick": 17,
-        "score": 6,
-        "views": 560,
-        "accepted": null,
-        "replies": []
-      },
       "t-7024": {
         "id": "t-7024",
         "board": "",
@@ -793,17 +611,7 @@
         "score": 8,
         "views": 1290,
         "accepted": null,
-        "replies": [
-          {
-            "id": "r-121",
-            "author": "bob_m",
-            "parent": null,
-            "body": "Booked him for two bikes last month. Showed up on time, both shift like new.",
-            "tick": 17,
-            "score": 1,
-            "comments": []
-          }
-        ]
+        "replies": []
       },
       "t-7025": {
         "id": "t-7025",
@@ -820,24 +628,6 @@
         "tick": 15,
         "score": 5,
         "views": 870,
-        "accepted": null,
-        "replies": []
-      },
-      "t-7026": {
-        "id": "t-7026",
-        "board": "",
-        "author": "carol_nk",
-        "title": "Math tutoring, algebra through calculus, in person or online - $45/hr (Belmont)",
-        "body": "Engineering degree, six years tutoring high school and first-year college students. First half hour free to see if we get along. Evenings and weekends.",
-        "url": null,
-        "tags": [
-          "services",
-          "tutoring",
-          "education"
-        ],
-        "tick": 14,
-        "score": 3,
-        "views": 450,
         "accepted": null,
         "replies": []
       }
@@ -874,48 +664,6 @@
         "newest",
         "listings",
         "portland"
-      ]
-    },
-    {
-      "url": "http://craigslist.org/item?id=t-7003",
-      "title": "Surly Cross-Check 56cm, steel, 1x10 - $650 (Hawthorne) - craigslist",
-      "snippet": "Commuter build with fenders and rack, new chain and cassette. Test ride with ID.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "surly cross-check",
-        "bike for sale",
-        "commuter bike",
-        "steel bike",
-        "craigslist",
-        "hawthorne"
-      ]
-    },
-    {
-      "url": "http://craigslist.org/item?id=t-7000",
-      "title": "Solid oak dining table + 4 chairs - $220 (Alder District) - craigslist",
-      "snippet": "Seats six with the leaf; one wobbly chair. Pickup only, second-floor walk-up.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": [
-        "dining table",
-        "oak table",
-        "furniture for sale",
-        "craigslist"
-      ]
-    },
-    {
-      "url": "http://craigslist.org/item?id=t-7007",
-      "title": "ThinkPad T14 gen 3, 32GB, 1TB, Linux - $520 - craigslist",
-      "snippet": "Ryzen 7, backlit keyboard, battery at 88 percent. Local pickup with a demo.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "thinkpad",
-        "laptop for sale",
-        "used laptop",
-        "linux laptop",
-        "craigslist"
       ]
     },
     {

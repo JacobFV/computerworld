@@ -1456,66 +1456,10 @@
         ]
       }
     },
-    "playlists": {
-      "ship-it": {
-        "id": "ship-it",
-        "title": "Ship It",
-        "owner": "carol",
-        "items": [
-          "cold-start",
-          "green-build",
-          "rollback",
-          "fan-out",
-          "mutex",
-          "backpressure",
-          "tail-latency",
-          "p99",
-          "puget",
-          "ferry-terminal",
-          "tiling"
-        ]
-      },
-      "deep-focus": {
-        "id": "deep-focus",
-        "title": "Deep Focus",
-        "owner": "alice",
-        "items": [
-          "cold-start",
-          "p99",
-          "tiling",
-          "seedless"
-        ]
-      }
-    },
-    "subscriptions": {
-      "carol": [
-        "low-latency",
-        "parallel-lines"
-      ],
-      "alice": [
-        "tessellate",
-        "midnight-compiler"
-      ]
-    },
-    "likes": {
-      "carol": [
-        "backpressure",
-        "fan-out"
-      ],
-      "alice": [
-        "tiling"
-      ],
-      "bob": [
-        "mutex"
-      ]
-    },
-    "now_playing": {
-      "carol": {
-        "item": "cold-start",
-        "tick": 9,
-        "list": "ship-it"
-      }
-    },
+    "playlists": {},
+    "subscriptions": {},
+    "likes": {},
+    "now_playing": {},
     "albums": {
       "cold-start": {
         "genre": "Ambient"
@@ -1542,57 +1486,12 @@
         "genre": "Lo-Fi"
       }
     },
-    "library": {
-      "alice": [
-        "tiling",
-        "seedless",
-        "cold-start",
-        "green-build",
-        "rollback",
-        "mark-and-sweep",
-        "puget",
-        "cold-reads",
-        "warm-cache"
-      ],
-      "carol": [
-        "backpressure",
-        "tail-latency",
-        "p99",
-        "fan-out",
-        "mutex",
-        "cold-start"
-      ],
-      "bob": [
-        "fan-out",
-        "mutex",
-        "little-endian"
-      ]
-    },
-    "history": {
-      "alice": [
-        "tiling",
-        "cold-reads",
-        "cold-start",
-        "p99",
-        "puget",
-        "mark-and-sweep"
-      ],
-      "carol": [
-        "cold-start",
-        "backpressure",
-        "fan-out",
-        "little-endian"
-      ],
-      "bob": [
-        "mutex",
-        "big-endian"
-      ]
-    },
+    "library": {},
+    "history": {},
     "devices": {
       "livingroom": {
         "name": "Living Room",
         "kind": "speaker",
-        "url": "http://livingroom.speaker.internal/",
         "protocols": [
           "airplay",
           "cast"
@@ -1601,7 +1500,6 @@
       "kitchen": {
         "name": "Kitchen",
         "kind": "speaker",
-        "url": "http://kitchen.speaker.internal/",
         "protocols": [
           "cast",
           "dlna"
@@ -1610,7 +1508,6 @@
       "office-tv": {
         "name": "Office TV",
         "kind": "tv",
-        "url": "http://office-tv.speaker.internal/",
         "protocols": [
           "airplay",
           "cast",
@@ -1620,7 +1517,6 @@
       "bedroom": {
         "name": "Bedroom",
         "kind": "speaker",
-        "url": "http://bedroom.speaker.internal/",
         "protocols": [
           "airplay",
           "cast"
@@ -1640,33 +1536,6 @@
         "music",
         "streaming",
         "playlist"
-      ]
-    },
-    {
-      "url": "http://spotify.com/playlist/ship-it",
-      "title": "Ship It - playlist by Carol Nakamura | Spotify",
-      "snippet": "Eleven tracks Carol plays on release day, from Cold Start to Tiling.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "ship it",
-        "playlist",
-        "carol nakamura",
-        "release day",
-        "shipping atlas"
-      ]
-    },
-    {
-      "url": "http://spotify.com/playlist/deep-focus",
-      "title": "Deep Focus - playlist by Alice Chen | Spotify",
-      "snippet": "Four instrumental tracks for reading a trace you do not understand yet.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": [
-        "deep focus",
-        "playlist",
-        "instrumental",
-        "alice chen"
       ]
     },
     {

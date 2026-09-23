@@ -61,30 +61,6 @@
         "subscribers": 97000,
         "about": "Building a game engine in Rust live on stream. Compiler errors included."
       },
-      "chat-with-priya": {
-        "id": "chat-with-priya",
-        "name": "Chat With Priya",
-        "handle": "@chatwithpriya",
-        "owner": null,
-        "subscribers": 402000,
-        "about": "Just Chatting, with tea. Stories, listener calls and the occasional cooking segment."
-      },
-      "northstar-live": {
-        "id": "northstar-live",
-        "name": "Northstar Live",
-        "handle": "@northstarlive",
-        "owner": "admin",
-        "subscribers": 21400,
-        "about": "Northstar engineering streams: open standups, incident reviews and demo days."
-      },
-      "alice-builds": {
-        "id": "alice-builds",
-        "name": "Alice Builds",
-        "handle": "@alicebuilds",
-        "owner": "alice",
-        "subscribers": 18700,
-        "about": "Deterministic simulation, live. Ask about replay in chat."
-      },
       "tabletop-tuesday": {
         "id": "tabletop-tuesday",
         "name": "Tabletop Tuesday",
@@ -115,13 +91,6 @@
           "LIVE"
         ],
         "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "seed 7 please, trust me",
-            "tick": 13,
-            "likes": 210
-          },
           {
             "id": "c2",
             "author": "speedrun-sam",
@@ -235,13 +204,6 @@
             "text": "the map glitch is a float precision bug, I would know",
             "tick": 5,
             "likes": 1500
-          },
-          {
-            "id": "c3",
-            "author": "carol",
-            "text": "watched with the release channel, everyone clapped",
-            "tick": 5,
-            "likes": 600
           }
         ],
         "related": [
@@ -268,15 +230,7 @@
         "badges": [
           "LIVE"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "reset count is 41 and it is 3pm",
-            "tick": 14,
-            "likes": 95
-          }
-        ],
+        "comments": [],
         "related": [
           "speedrun-sam-wr",
           "speedrun-sam-tutorial"
@@ -298,15 +252,7 @@
           "hollow cartographer",
           "glitch"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "alice",
-            "text": "A deterministic glitch is a good glitch.",
-            "tick": 6,
-            "likes": 700
-          }
-        ],
+        "comments": [],
         "related": [
           "speedrun-sam-wr",
           "deploy-dan-vod-physics"
@@ -364,22 +310,7 @@
         "badges": [
           "VOD"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "chat-with-priya",
-            "text": "the tea segment on my stream was scored with this",
-            "tick": 6,
-            "likes": 520
-          },
-          {
-            "id": "c2",
-            "author": "carol",
-            "text": "my entire release week soundtrack",
-            "tick": 6,
-            "likes": 300
-          }
-        ],
+        "comments": [],
         "related": [
           "lofi-lena-live-evening",
           "lofi-lena-vod-rain"
@@ -539,13 +470,6 @@
         ],
         "comments": [
           {
-            "id": "c1",
-            "author": "alice",
-            "text": "A triangle is the hello world of joy.",
-            "tick": 14,
-            "likes": 150
-          },
-          {
             "id": "c2",
             "author": "speedrun-sam",
             "text": "make it deterministic and I will speedrun it",
@@ -554,8 +478,7 @@
           }
         ],
         "related": [
-          "deploy-dan-vod-physics",
-          "alice-builds-vod-replay"
+          "deploy-dan-vod-physics"
         ]
       },
       "deploy-dan-vod-physics": {
@@ -590,217 +513,6 @@
         "related": [
           "deploy-dan-live-engine",
           "speedrun-sam-tutorial"
-        ]
-      },
-      "priya-live-tea": {
-        "id": "priya-live-tea",
-        "channel": "chat-with-priya",
-        "title": "LIVE: Saturday tea and listener calls",
-        "description": "Tea is brewing, calls open at the top of the hour. Tell me about the strangest job you ever had.",
-        "duration_s": 10800,
-        "published": "Apr 18, 2026",
-        "published_tick": 13,
-        "views": 17400,
-        "likes": 2100,
-        "tags": [
-          "just chatting",
-          "talk",
-          "tea",
-          "live"
-        ],
-        "badges": [
-          "LIVE"
-        ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "carol",
-            "text": "calling in about the time I released on a Friday",
-            "tick": 14,
-            "likes": 260
-          }
-        ],
-        "related": [
-          "priya-vod-stories",
-          "priya-vod-cooking"
-        ]
-      },
-      "priya-vod-stories": {
-        "id": "priya-vod-stories",
-        "channel": "chat-with-priya",
-        "title": "VOD: three stories from the night shift",
-        "description": "Warehouse, hospital, radio station. Three jobs, three stories, one pot of tea.",
-        "duration_s": 6300,
-        "published": "Mar 28, 2026",
-        "published_tick": 7,
-        "views": 203000,
-        "likes": 12000,
-        "tags": [
-          "just chatting",
-          "stories",
-          "vod"
-        ],
-        "badges": [
-          "VOD"
-        ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "inkwell-art",
-            "text": "the radio station story made me put the brush down",
-            "tick": 8,
-            "likes": 540
-          }
-        ],
-        "related": [
-          "priya-live-tea",
-          "priya-vod-cooking"
-        ]
-      },
-      "priya-vod-cooking": {
-        "id": "priya-vod-cooking",
-        "channel": "chat-with-priya",
-        "title": "VOD: cooking segment goes wrong, tea saves the day",
-        "description": "The rice was fine. The smoke alarm was not. Chat handled it with grace.",
-        "duration_s": 5400,
-        "published": "Feb 14, 2026",
-        "published_tick": 2,
-        "views": 158000,
-        "likes": 9900,
-        "tags": [
-          "just chatting",
-          "cooking",
-          "vod"
-        ],
-        "badges": [
-          "VOD"
-        ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "lofi-lena",
-            "text": "the alarm is in key with the set I was playing, somehow",
-            "tick": 3,
-            "likes": 380
-          }
-        ],
-        "related": [
-          "priya-vod-stories",
-          "pixelforge-vod-chat-votes"
-        ]
-      },
-      "northstar-live-demo-day": {
-        "id": "northstar-live-demo-day",
-        "channel": "northstar-live",
-        "title": "LIVE: Northstar demo day, Atlas replay on stage",
-        "description": "Engineers demo what shipped this quarter. Alice shows replay from a checkpoint at the top of the hour.",
-        "duration_s": 7200,
-        "published": "Apr 17, 2026",
-        "published_tick": 12,
-        "views": 2800,
-        "likes": 410,
-        "tags": [
-          "software development",
-          "northstar",
-          "atlas",
-          "live",
-          "demo"
-        ],
-        "badges": [
-          "LIVE"
-        ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "bob",
-            "text": "the checkpoint demo is at 1:04:00 for anyone joining late",
-            "tick": 13,
-            "likes": 60
-          }
-        ],
-        "related": [
-          "northstar-vod-incident",
-          "alice-builds-vod-replay"
-        ]
-      },
-      "northstar-vod-incident": {
-        "id": "northstar-vod-incident",
-        "channel": "northstar-live",
-        "title": "VOD: INC-4 incident review, streamed",
-        "description": "Twelve minutes of elevated latency, reviewed in public. What the alerts said and what the runbook did not.",
-        "duration_s": 3900,
-        "published": "Feb 25, 2026",
-        "published_tick": 3,
-        "views": 12100,
-        "likes": 780,
-        "tags": [
-          "software development",
-          "northstar",
-          "incident",
-          "vod"
-        ],
-        "badges": [
-          "VOD"
-        ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "carol",
-            "text": "the rollback section starts at 22:10, it was boring on purpose",
-            "tick": 4,
-            "likes": 90
-          },
-          {
-            "id": "c2",
-            "author": "deploy-dan",
-            "text": "runbooks are just save states for humans",
-            "tick": 4,
-            "likes": 150
-          }
-        ],
-        "related": [
-          "northstar-live-demo-day",
-          "alice-builds-vod-replay"
-        ]
-      },
-      "alice-builds-vod-replay": {
-        "id": "alice-builds-vod-replay",
-        "channel": "alice-builds",
-        "title": "VOD: replaying a production crash 200 times, live",
-        "description": "Same seed, same crash, every time, until we find it. Found it at 1:41:00. It was HashMap order.",
-        "duration_s": 6900,
-        "published": "Mar 18, 2026",
-        "published_tick": 6,
-        "views": 27600,
-        "likes": 2300,
-        "tags": [
-          "software development",
-          "rust",
-          "determinism",
-          "vod"
-        ],
-        "badges": [
-          "VOD"
-        ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "deploy-dan",
-            "text": "watched this and immediately checked my own iteration order",
-            "tick": 7,
-            "likes": 330
-          },
-          {
-            "id": "c2",
-            "author": "pixelforge",
-            "text": "I do not understand any of it and I watched the whole thing",
-            "tick": 7,
-            "likes": 210
-          }
-        ],
-        "related": [
-          "deploy-dan-vod-physics",
-          "northstar-vod-incident"
         ]
       },
       "tabletop-live-session": {
@@ -854,18 +566,9 @@
         "badges": [
           "VOD"
         ],
-        "comments": [
-          {
-            "id": "c1",
-            "author": "chat-with-priya",
-            "text": "the GM break is the best just chatting content of the month",
-            "tick": 10,
-            "likes": 610
-          }
-        ],
+        "comments": [],
         "related": [
-          "tabletop-live-session",
-          "priya-vod-stories"
+          "tabletop-live-session"
         ]
       }
     },
@@ -881,9 +584,6 @@
         "title": "Just Chatting",
         "owner": null,
         "items": [
-          "priya-live-tea",
-          "priya-vod-stories",
-          "priya-vod-cooking",
           "tabletop-vod-session-30"
         ]
       },
@@ -893,10 +593,7 @@
         "owner": null,
         "items": [
           "deploy-dan-live-engine",
-          "deploy-dan-vod-physics",
-          "northstar-live-demo-day",
-          "northstar-vod-incident",
-          "alice-builds-vod-replay"
+          "deploy-dan-vod-physics"
         ]
       },
       "speedruns": {
@@ -950,43 +647,12 @@
           "lofi-lena-live-evening",
           "inkwell-live-commission",
           "deploy-dan-live-engine",
-          "priya-live-tea",
-          "northstar-live-demo-day",
           "tabletop-live-session"
         ]
       }
     },
-    "subscriptions": {
-      "alice": [
-        "deploy-dan",
-        "speedrun-sam",
-        "northstar-live"
-      ],
-      "bob": [
-        "pixelforge",
-        "speedrun-sam",
-        "tabletop-tuesday"
-      ],
-      "carol": [
-        "lofi-lena",
-        "chat-with-priya",
-        "alice-builds",
-        "northstar-live"
-      ]
-    },
-    "likes": {
-      "alice": [
-        "deploy-dan-vod-physics"
-      ],
-      "bob": [
-        "speedrun-sam-wr",
-        "pixelforge-vod-glass"
-      ],
-      "carol": [
-        "lofi-lena-vod-sunday",
-        "northstar-vod-incident"
-      ]
-    },
+    "subscriptions": {},
+    "likes": {},
     "now_playing": {}
   },
   "search_entries": [
@@ -1055,44 +721,6 @@
       ]
     },
     {
-      "url": "http://twitch.tv/watch?v=alice-builds-vod-replay",
-      "title": "Replaying a production crash 200 times, live - Twitch",
-      "snippet": "Alice Builds replays the same seed until the bug shows itself. It was HashMap order.",
-      "vertical": "videos",
-      "authority": 5,
-      "keywords": [
-        "deterministic replay",
-        "alice builds",
-        "production crash",
-        "hashmap order"
-      ]
-    },
-    {
-      "url": "http://twitch.tv/watch?v=northstar-vod-incident",
-      "title": "INC-4 incident review, streamed - Twitch",
-      "snippet": "Northstar reviews twelve minutes of elevated latency in public.",
-      "vertical": "videos",
-      "authority": 4,
-      "keywords": [
-        "northstar",
-        "incident review",
-        "inc-4",
-        "postmortem"
-      ]
-    },
-    {
-      "url": "http://twitch.tv/watch?v=northstar-live-demo-day",
-      "title": "LIVE: Northstar demo day - Twitch",
-      "snippet": "Engineers demo what shipped this quarter, including Atlas replay from a checkpoint.",
-      "vertical": "videos",
-      "authority": 4,
-      "keywords": [
-        "northstar demo day",
-        "atlas",
-        "live demo"
-      ]
-    },
-    {
       "url": "http://twitch.tv/watch?v=lofi-lena-vod-sunday",
       "title": "Sunday morning set (3 hours, no talking) - Twitch",
       "snippet": "Lofi Lena plays a slow ambient set for slow mornings.",
@@ -1103,18 +731,6 @@
         "ambient set",
         "study music",
         "lofi lena"
-      ]
-    },
-    {
-      "url": "http://twitch.tv/watch?v=priya-vod-stories",
-      "title": "Three stories from the night shift - Twitch",
-      "snippet": "Chat With Priya: warehouse, hospital, radio station, one pot of tea.",
-      "vertical": "videos",
-      "authority": 4,
-      "keywords": [
-        "just chatting",
-        "night shift stories",
-        "priya"
       ]
     },
     {
@@ -1163,18 +779,6 @@
         "deploy dan",
         "rust streamer",
         "game engine"
-      ]
-    },
-    {
-      "url": "http://twitch.tv/channel/northstar-live",
-      "title": "Northstar Live - Twitch",
-      "snippet": "Northstar engineering streams: open standups, incident reviews and demo days.",
-      "vertical": "videos",
-      "authority": 4,
-      "keywords": [
-        "northstar live",
-        "northstar twitch",
-        "engineering streams"
       ]
     },
     {

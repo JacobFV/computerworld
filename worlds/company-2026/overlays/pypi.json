@@ -1,0 +1,1123 @@
+{
+  "initial_state": {
+    "pages": {
+      "/": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Browse",
+                "url": "/search"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Help",
+                "url": "/help"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Sponsors",
+                "url": "/sponsors"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "hero",
+            "text": "Find, install and publish Python packages",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "hero-sub",
+            "text": "The Python Package Index is the official repository of software for the Python programming language. 12 projects, 36 releases. Every project has a page with its description, release history, classifiers and a pip install line."
+          },
+          {
+            "kind": "heading",
+            "id": "tr-title",
+            "text": "Trending projects",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "tr-0",
+            "text": "atlas-sdk",
+            "url": "/project/atlas-sdk"
+          },
+          {
+            "kind": "text",
+            "id": "tr-0-d",
+            "text": "1.8.0 · Apache-2.0. Official Python client for the Atlas deterministic simulation runtime."
+          },
+          {
+            "kind": "link",
+            "id": "tr-1",
+            "text": "seedrng",
+            "url": "/project/seedrng"
+          },
+          {
+            "kind": "text",
+            "id": "tr-1-d",
+            "text": "2.0.0 · MIT. Seeded, splittable random streams that give the same numbers on every platform and Python version."
+          },
+          {
+            "kind": "link",
+            "id": "tr-2",
+            "text": "tinyhttp",
+            "url": "/project/tinyhttp"
+          },
+          {
+            "kind": "text",
+            "id": "tr-2-d",
+            "text": "2.3.0 · MIT. A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed."
+          },
+          {
+            "kind": "link",
+            "id": "tr-3",
+            "text": "requests-cache-lite",
+            "url": "/project/requests-cache-lite"
+          },
+          {
+            "kind": "text",
+            "id": "tr-3-d",
+            "text": "1.0.2 · MIT. A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode."
+          },
+          {
+            "kind": "link",
+            "id": "tr-4",
+            "text": "pyjsonlite",
+            "url": "/project/pyjsonlite"
+          },
+          {
+            "kind": "text",
+            "id": "tr-4-d",
+            "text": "1.1.4 · BSD-3-Clause. Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes."
+          },
+          {
+            "kind": "link",
+            "id": "tr-5",
+            "text": "clockwork-det",
+            "url": "/project/clockwork-det"
+          },
+          {
+            "kind": "text",
+            "id": "tr-5-d",
+            "text": "0.6.2 · MIT. A deterministic clock and scheduler for tests: time moves only when you advance it."
+          },
+          {
+            "kind": "link",
+            "id": "all",
+            "text": "Browse all projects",
+            "url": "/search"
+          },
+          {
+            "kind": "divider",
+            "id": "foot-rule"
+          },
+          {
+            "kind": "link",
+            "id": "foot-help",
+            "text": "Help",
+            "url": "/help"
+          },
+          {
+            "kind": "link",
+            "id": "foot-gh",
+            "text": "Packaging tools on GitHub",
+            "url": "http://github.com/"
+          }
+        ]
+      },
+      "/search": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Browse",
+                "url": "/search"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Help",
+                "url": "/help"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Sponsors",
+                "url": "/sponsors"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "title",
+            "text": "12 projects",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "sub",
+            "text": "Alphabetical. Each project page has the install line, release history and classifiers."
+          },
+          {
+            "kind": "link",
+            "id": "pr-0",
+            "text": "atlas-sdk",
+            "url": "/project/atlas-sdk"
+          },
+          {
+            "kind": "text",
+            "id": "pr-0-d",
+            "text": "1.8.0 · Apache-2.0 · Northstar. Official Python client for the Atlas deterministic simulation runtime."
+          },
+          {
+            "kind": "link",
+            "id": "pr-1",
+            "text": "clockwork-det",
+            "url": "/project/clockwork-det"
+          },
+          {
+            "kind": "text",
+            "id": "pr-1-d",
+            "text": "0.6.2 · MIT · Northstar. A deterministic clock and scheduler for tests: time moves only when you advance it."
+          },
+          {
+            "kind": "link",
+            "id": "pr-2",
+            "text": "envparse-lite",
+            "url": "/project/envparse-lite"
+          },
+          {
+            "kind": "text",
+            "id": "pr-2-d",
+            "text": "0.8.0 · MIT · Priya Raman. Read configuration from environment variables with types, defaults and a single place they are all declared."
+          },
+          {
+            "kind": "link",
+            "id": "pr-3",
+            "text": "pyjsonlite",
+            "url": "/project/pyjsonlite"
+          },
+          {
+            "kind": "text",
+            "id": "pr-3-d",
+            "text": "1.1.4 · BSD-3-Clause · Priya Raman. Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes."
+          },
+          {
+            "kind": "link",
+            "id": "pr-4",
+            "text": "ratelimit-token",
+            "url": "/project/ratelimit-token"
+          },
+          {
+            "kind": "text",
+            "id": "pr-4-d",
+            "text": "0.5.0 · MIT · Priya Raman. A token-bucket rate limiter with a pluggable clock, for clients that must not exceed a quota."
+          },
+          {
+            "kind": "link",
+            "id": "pr-5",
+            "text": "requests-cache-lite",
+            "url": "/project/requests-cache-lite"
+          },
+          {
+            "kind": "text",
+            "id": "pr-5-d",
+            "text": "1.0.2 · MIT · Hanna Brandt. A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode."
+          },
+          {
+            "kind": "link",
+            "id": "pr-6",
+            "text": "retrying-simple",
+            "url": "/project/retrying-simple"
+          },
+          {
+            "kind": "text",
+            "id": "pr-6-d",
+            "text": "1.1.0 · MIT · Hanna Brandt. Retry a function with exponential backoff. The clock is injectable, so tests do not sleep."
+          },
+          {
+            "kind": "link",
+            "id": "pr-7",
+            "text": "seedrng",
+            "url": "/project/seedrng"
+          },
+          {
+            "kind": "text",
+            "id": "pr-7-d",
+            "text": "2.0.0 · MIT · Northstar. Seeded, splittable random streams that give the same numbers on every platform and Python version."
+          },
+          {
+            "kind": "link",
+            "id": "pr-8",
+            "text": "tabulate-mini",
+            "url": "/project/tabulate-mini"
+          },
+          {
+            "kind": "text",
+            "id": "pr-8-d",
+            "text": "0.4.1 · MIT · Ines Carvalho. Print a list of rows as an aligned text table. Headers, alignment, column limits, and nothing else."
+          },
+          {
+            "kind": "link",
+            "id": "pr-9",
+            "text": "tinyhttp",
+            "url": "/project/tinyhttp"
+          },
+          {
+            "kind": "text",
+            "id": "pr-9-d",
+            "text": "2.3.0 · MIT · Ines Carvalho. A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed."
+          },
+          {
+            "kind": "link",
+            "id": "pr-10",
+            "text": "tomlkit-mini",
+            "url": "/project/tomlkit-mini"
+          },
+          {
+            "kind": "text",
+            "id": "pr-10-d",
+            "text": "0.3.3 · MIT · Ines Carvalho. Parse and write TOML while keeping comments and key order, in a tenth of the code."
+          },
+          {
+            "kind": "link",
+            "id": "pr-11",
+            "text": "walkdir-py",
+            "url": "/project/walkdir-py"
+          },
+          {
+            "kind": "text",
+            "id": "pr-11-d",
+            "text": "1.2.0 · MIT · Hanna Brandt. Walk a directory tree and get paths back in sorted order, so a build that lists files is reproducible."
+          }
+        ]
+      },
+      "/help": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Browse",
+                "url": "/search"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Help",
+                "url": "/help"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Sponsors",
+                "url": "/sponsors"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "title",
+            "text": "Help",
+            "level": 1
+          },
+          {
+            "kind": "heading",
+            "id": "h1",
+            "text": "Installing a package",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p1",
+            "text": "Run pip install followed by the project name. pip resolves the latest release compatible with your Python version, downloads the wheel or source distribution, verifies its hash and installs it into the active environment. Use a virtual environment so projects do not share dependencies."
+          },
+          {
+            "kind": "styled",
+            "id": "c1",
+            "text": "python -m venv .venv\n. .venv/bin/activate\npip install atlas-sdk",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "heading",
+            "id": "h2",
+            "text": "Publishing a package",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p2",
+            "text": "Build a wheel and a source distribution with a PEP 517 build backend, then upload with twine or a trusted publisher from CI. Releases are immutable once uploaded; a mistaken release can be yanked, which hides it from resolvers that have not pinned it, but not deleted."
+          },
+          {
+            "kind": "heading",
+            "id": "h3",
+            "text": "Project names",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p3",
+            "text": "Names are normalised: case, hyphens, underscores and dots are treated as equivalent, so atlas-sdk and Atlas_SDK are the same project. A name too similar to an existing project may be refused."
+          },
+          {
+            "kind": "heading",
+            "id": "h4",
+            "text": "Classifiers",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p4",
+            "text": "Trove classifiers describe a project's status, supported Python versions and topic. They come from a fixed list; an unknown classifier is rejected at upload."
+          },
+          {
+            "kind": "heading",
+            "id": "h5",
+            "text": "Getting help",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p5",
+            "text": "Packaging questions belong on the Python discussion forum or on Stack Overflow under the pip and python-packaging tags. Problems with a specific project go to that project's issue tracker, linked from its page."
+          },
+          {
+            "kind": "link",
+            "id": "so",
+            "text": "Packaging questions on Stack Overflow",
+            "url": "http://stackoverflow.com/"
+          }
+        ]
+      },
+      "/sponsors": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Browse",
+                "url": "/search"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Help",
+                "url": "/help"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Sponsors",
+                "url": "/sponsors"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "title",
+            "text": "Sponsors",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "p1",
+            "text": "PyPI serves several petabytes a month at no charge to the people who use it. The infrastructure, the content delivery network and the staff who maintain the index are paid for by the Python Software Foundation and by the organisations below."
+          },
+          {
+            "kind": "heading",
+            "id": "sp-0",
+            "text": "Northstar",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "sp-0-d",
+            "text": "Infrastructure sponsor since 2024. Northstar runs its own package mirror and contributes the deterministic build tooling PyPI uses to verify reproducible wheels."
+          },
+          {
+            "kind": "heading",
+            "id": "sp-1",
+            "text": "Meridian Cloud",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "sp-1-d",
+            "text": "Hosts the primary index and the build farm."
+          },
+          {
+            "kind": "heading",
+            "id": "sp-2",
+            "text": "Harbor CDN",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "sp-2-d",
+            "text": "Delivers every wheel and source distribution worldwide."
+          },
+          {
+            "kind": "heading",
+            "id": "sp-3",
+            "text": "Lodestone Security",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "sp-3-d",
+            "text": "Funds the malware scanning of new uploads."
+          },
+          {
+            "kind": "text",
+            "id": "p2",
+            "text": "Organisations that would like to sponsor PyPI can read the sponsorship prospectus on the Foundation's site. Individuals can support the Foundation directly."
+          }
+        ]
+      },
+      "/project/atlas-sdk": {
+        "version": 1,
+        "title": "atlas-sdk · PyPI",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "atlas-sdk 1.8.0",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install atlas-sdk",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "Official Python client for the Atlas deterministic simulation runtime."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: Apache-2.0 · Author: Northstar · Requires: Python >=3.9 · Latest release: 1.8.0 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "atlas-sdk wraps the Atlas HTTP protocol in a small typed client. Create a world from a seed, step it by ticks, read any machine's screen or file system, and diff two runs. Calls are serialised so a run is reproducible from the seed and the call order. The package ships an in-process stub server for tests."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 1.8.0 (latest), 1.7.2, 1.7.0, 1.6.1"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (3)",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dep-0",
+            "text": "clockwork-det",
+            "url": "/project/clockwork-det"
+          },
+          {
+            "kind": "link",
+            "id": "dep-1",
+            "text": "tinyhttp",
+            "url": "/project/tinyhttp"
+          },
+          {
+            "kind": "link",
+            "id": "dep-2",
+            "text": "pyjsonlite",
+            "url": "/project/pyjsonlite"
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.12"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
+        ]
+      },
+      "/project/clockwork-det": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "clockwork-det 0.6.2",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install clockwork-det",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "A deterministic clock and scheduler for tests: time moves only when you advance it."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: MIT · Author: Northstar · Requires: Python >=3.9 · Latest release: 0.6.2 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "clockwork-det replaces time.time, time.monotonic and asyncio's loop time with a logical clock. advance(seconds) moves it and runs any callbacks due, in due-time then registration order. A context manager installs it for a block. The asyncio integration makes sleep() instantaneous and ordered."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 0.6.2 (latest), 0.6.0, 0.5.3"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.11"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
+        ]
+      },
+      "/project/pyjsonlite": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "pyjsonlite 1.1.4",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install pyjsonlite",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: BSD-3-Clause · Author: Priya Raman · Requires: Python >=3.9 · Latest release: 1.1.4 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "pyjsonlite dumps a value with keys sorted, floats in shortest round-trip form, and no insignificant whitespace, so that two processes on two platforms produce the same bytes and a hash of the output is meaningful. loads() is the standard library's. There is a diff() that returns RFC 6902 operations."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 1.1.4 (latest), 1.1.3, 1.0.0"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.9"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
+        ]
+      },
+      "/project/seedrng": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "seedrng 2.0.0",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install seedrng",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "Seeded, splittable random streams that give the same numbers on every platform and Python version."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: MIT · Author: Northstar · Requires: Python >=3.9 · Latest release: 2.0.0 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "seedrng implements a PCG generator with a fixed algorithm, so a seed produces the same stream on every platform and every Python version, which random.Random does not promise across releases. Streams can be split by name so that two components each get an independent, reproducible stream from one root seed."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 2.0.0 (latest), 1.4.0, 1.3.1"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.9"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
+        ]
+      },
+      "/project/envparse-lite": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "envparse-lite 0.8.0",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install envparse-lite",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "Read configuration from environment variables with types, defaults and a single place they are all declared."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: MIT · Author: Priya Raman · Requires: Python >=3.9 · Latest release: 0.8.0 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "envparse-lite lets a module declare the environment variables it reads, each with a type and default, and fails at import time with a list of every missing or malformed one rather than at first use. It supports str, int, float, bool, lists and paths. Nothing is read twice."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 0.8.0 (latest), 0.7.1"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.10"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
+        ]
+      },
+      "/project/ratelimit-token": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "ratelimit-token 0.5.0",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install ratelimit-token",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "A token-bucket rate limiter with a pluggable clock, for clients that must not exceed a quota."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: MIT · Author: Priya Raman · Requires: Python >=3.9 · Latest release: 0.5.0 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "ratelimit-token implements a bucket of capacity N refilling at R per second. take(k) returns whether k tokens were available; wait(k) blocks (or awaits) until they are. The clock is injectable; the default in tests is clockwork-det, so limiter behaviour is reproducible."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 0.5.0 (latest), 0.4.2"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (1)",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dep-0",
+            "text": "clockwork-det",
+            "url": "/project/clockwork-det"
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.10"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://pypi.org/project/atlas-sdk",
+      "title": "atlas-sdk · PyPI",
+      "snippet": "Official Python client for the Atlas deterministic simulation runtime. Version 1.8.0, Apache-2.0.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "atlas-sdk",
+        "pypi",
+        "python",
+        "pip",
+        "official",
+        "python",
+        "client"
+      ]
+    }
+  ]
+}

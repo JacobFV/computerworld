@@ -2,7 +2,11 @@
   "id": "pypi",
   "kind": "static-site",
   "node": "pypi",
-  "domains": ["pypi.org","www.pypi.org","test.pypi.org"],
+  "domains": [
+    "pypi.org",
+    "www.pypi.org",
+    "test.pypi.org"
+  ],
   "port": 80,
   "initial_state": {
     "pages": {
@@ -10,334 +14,1648 @@
         "version": 1,
         "title": "PyPI · The Python Package Index",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"PyPI","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Browse","url":"/search"},{"kind":"link","id":"nav-1","text":"Help","url":"/help"},{"kind":"link","id":"nav-2","text":"Sponsors","url":"/sponsors"}]},
-          {"kind":"heading","id":"hero","text":"Find, install and publish Python packages","level":1},
-          {"kind":"text","id":"hero-sub","text":"The Python Package Index is the official repository of software for the Python programming language. 12 projects, 36 releases. Every project has a page with its description, release history, classifiers and a pip install line."},
-          {"kind":"heading","id":"tr-title","text":"Trending projects","level":2},
-          {"kind":"link","id":"tr-0","text":"atlas-sdk","url":"/project/atlas-sdk"},
-          {"kind":"text","id":"tr-0-d","text":"1.8.0 · Apache-2.0. Official Python client for the Atlas deterministic simulation runtime."},
-          {"kind":"link","id":"tr-1","text":"seedrng","url":"/project/seedrng"},
-          {"kind":"text","id":"tr-1-d","text":"2.0.0 · MIT. Seeded, splittable random streams that give the same numbers on every platform and Python version."},
-          {"kind":"link","id":"tr-2","text":"tinyhttp","url":"/project/tinyhttp"},
-          {"kind":"text","id":"tr-2-d","text":"2.3.0 · MIT. A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed."},
-          {"kind":"link","id":"tr-3","text":"requests-cache-lite","url":"/project/requests-cache-lite"},
-          {"kind":"text","id":"tr-3-d","text":"1.0.2 · MIT. A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode."},
-          {"kind":"link","id":"tr-4","text":"pyjsonlite","url":"/project/pyjsonlite"},
-          {"kind":"text","id":"tr-4-d","text":"1.1.4 · BSD-3-Clause. Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes."},
-          {"kind":"link","id":"tr-5","text":"clockwork-det","url":"/project/clockwork-det"},
-          {"kind":"text","id":"tr-5-d","text":"0.6.2 · MIT. A deterministic clock and scheduler for tests: time moves only when you advance it."},
-          {"kind":"link","id":"all","text":"Browse all projects","url":"/search"},
-          {"kind":"divider","id":"foot-rule"},
-          {"kind":"link","id":"foot-help","text":"Help","url":"/help"},
-          {"kind":"link","id":"foot-gh","text":"Packaging tools on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Browse",
+                "url": "/search"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Help",
+                "url": "/help"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Sponsors",
+                "url": "/sponsors"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "hero",
+            "text": "Find, install and publish Python packages",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "hero-sub",
+            "text": "The Python Package Index is the official repository of software for the Python programming language. 12 projects, 36 releases. Every project has a page with its description, release history, classifiers and a pip install line."
+          },
+          {
+            "kind": "heading",
+            "id": "tr-title",
+            "text": "Trending projects",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "tr-1",
+            "text": "seedrng",
+            "url": "/project/seedrng"
+          },
+          {
+            "kind": "text",
+            "id": "tr-1-d",
+            "text": "2.0.0 · MIT. Seeded, splittable random streams that give the same numbers on every platform and Python version."
+          },
+          {
+            "kind": "link",
+            "id": "tr-2",
+            "text": "tinyhttp",
+            "url": "/project/tinyhttp"
+          },
+          {
+            "kind": "text",
+            "id": "tr-2-d",
+            "text": "2.3.0 · MIT. A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed."
+          },
+          {
+            "kind": "link",
+            "id": "tr-3",
+            "text": "requests-cache-lite",
+            "url": "/project/requests-cache-lite"
+          },
+          {
+            "kind": "text",
+            "id": "tr-3-d",
+            "text": "1.0.2 · MIT. A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode."
+          },
+          {
+            "kind": "link",
+            "id": "tr-4",
+            "text": "pyjsonlite",
+            "url": "/project/pyjsonlite"
+          },
+          {
+            "kind": "text",
+            "id": "tr-4-d",
+            "text": "1.1.4 · BSD-3-Clause. Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes."
+          },
+          {
+            "kind": "link",
+            "id": "tr-5",
+            "text": "clockwork-det",
+            "url": "/project/clockwork-det"
+          },
+          {
+            "kind": "text",
+            "id": "tr-5-d",
+            "text": "0.6.2 · MIT. A deterministic clock and scheduler for tests: time moves only when you advance it."
+          },
+          {
+            "kind": "link",
+            "id": "all",
+            "text": "Browse all projects",
+            "url": "/search"
+          },
+          {
+            "kind": "divider",
+            "id": "foot-rule"
+          },
+          {
+            "kind": "link",
+            "id": "foot-help",
+            "text": "Help",
+            "url": "/help"
+          },
+          {
+            "kind": "link",
+            "id": "foot-gh",
+            "text": "Packaging tools on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/search": {
         "version": 1,
         "title": "Browse projects · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"PyPI","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Browse","url":"/search"},{"kind":"link","id":"nav-1","text":"Help","url":"/help"},{"kind":"link","id":"nav-2","text":"Sponsors","url":"/sponsors"}]},
-          {"kind":"heading","id":"title","text":"12 projects","level":1},
-          {"kind":"text","id":"sub","text":"Alphabetical. Each project page has the install line, release history and classifiers."},
-          {"kind":"link","id":"pr-0","text":"atlas-sdk","url":"/project/atlas-sdk"},
-          {"kind":"text","id":"pr-0-d","text":"1.8.0 · Apache-2.0 · Northstar. Official Python client for the Atlas deterministic simulation runtime."},
-          {"kind":"link","id":"pr-1","text":"clockwork-det","url":"/project/clockwork-det"},
-          {"kind":"text","id":"pr-1-d","text":"0.6.2 · MIT · Northstar. A deterministic clock and scheduler for tests: time moves only when you advance it."},
-          {"kind":"link","id":"pr-2","text":"envparse-lite","url":"/project/envparse-lite"},
-          {"kind":"text","id":"pr-2-d","text":"0.8.0 · MIT · Priya Raman. Read configuration from environment variables with types, defaults and a single place they are all declared."},
-          {"kind":"link","id":"pr-3","text":"pyjsonlite","url":"/project/pyjsonlite"},
-          {"kind":"text","id":"pr-3-d","text":"1.1.4 · BSD-3-Clause · Priya Raman. Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes."},
-          {"kind":"link","id":"pr-4","text":"ratelimit-token","url":"/project/ratelimit-token"},
-          {"kind":"text","id":"pr-4-d","text":"0.5.0 · MIT · Priya Raman. A token-bucket rate limiter with a pluggable clock, for clients that must not exceed a quota."},
-          {"kind":"link","id":"pr-5","text":"requests-cache-lite","url":"/project/requests-cache-lite"},
-          {"kind":"text","id":"pr-5-d","text":"1.0.2 · MIT · Hanna Brandt. A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode."},
-          {"kind":"link","id":"pr-6","text":"retrying-simple","url":"/project/retrying-simple"},
-          {"kind":"text","id":"pr-6-d","text":"1.1.0 · MIT · Hanna Brandt. Retry a function with exponential backoff. The clock is injectable, so tests do not sleep."},
-          {"kind":"link","id":"pr-7","text":"seedrng","url":"/project/seedrng"},
-          {"kind":"text","id":"pr-7-d","text":"2.0.0 · MIT · Northstar. Seeded, splittable random streams that give the same numbers on every platform and Python version."},
-          {"kind":"link","id":"pr-8","text":"tabulate-mini","url":"/project/tabulate-mini"},
-          {"kind":"text","id":"pr-8-d","text":"0.4.1 · MIT · Ines Carvalho. Print a list of rows as an aligned text table. Headers, alignment, column limits, and nothing else."},
-          {"kind":"link","id":"pr-9","text":"tinyhttp","url":"/project/tinyhttp"},
-          {"kind":"text","id":"pr-9-d","text":"2.3.0 · MIT · Ines Carvalho. A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed."},
-          {"kind":"link","id":"pr-10","text":"tomlkit-mini","url":"/project/tomlkit-mini"},
-          {"kind":"text","id":"pr-10-d","text":"0.3.3 · MIT · Ines Carvalho. Parse and write TOML while keeping comments and key order, in a tenth of the code."},
-          {"kind":"link","id":"pr-11","text":"walkdir-py","url":"/project/walkdir-py"},
-          {"kind":"text","id":"pr-11-d","text":"1.2.0 · MIT · Hanna Brandt. Walk a directory tree and get paths back in sorted order, so a build that lists files is reproducible."}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Browse",
+                "url": "/search"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Help",
+                "url": "/help"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Sponsors",
+                "url": "/sponsors"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "title",
+            "text": "12 projects",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "sub",
+            "text": "Alphabetical. Each project page has the install line, release history and classifiers."
+          },
+          {
+            "kind": "link",
+            "id": "pr-1",
+            "text": "clockwork-det",
+            "url": "/project/clockwork-det"
+          },
+          {
+            "kind": "link",
+            "id": "pr-2",
+            "text": "envparse-lite",
+            "url": "/project/envparse-lite"
+          },
+          {
+            "kind": "link",
+            "id": "pr-3",
+            "text": "pyjsonlite",
+            "url": "/project/pyjsonlite"
+          },
+          {
+            "kind": "link",
+            "id": "pr-4",
+            "text": "ratelimit-token",
+            "url": "/project/ratelimit-token"
+          },
+          {
+            "kind": "link",
+            "id": "pr-5",
+            "text": "requests-cache-lite",
+            "url": "/project/requests-cache-lite"
+          },
+          {
+            "kind": "text",
+            "id": "pr-5-d",
+            "text": "1.0.2 · MIT · Hanna Brandt. A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode."
+          },
+          {
+            "kind": "link",
+            "id": "pr-6",
+            "text": "retrying-simple",
+            "url": "/project/retrying-simple"
+          },
+          {
+            "kind": "text",
+            "id": "pr-6-d",
+            "text": "1.1.0 · MIT · Hanna Brandt. Retry a function with exponential backoff. The clock is injectable, so tests do not sleep."
+          },
+          {
+            "kind": "link",
+            "id": "pr-7",
+            "text": "seedrng",
+            "url": "/project/seedrng"
+          },
+          {
+            "kind": "link",
+            "id": "pr-8",
+            "text": "tabulate-mini",
+            "url": "/project/tabulate-mini"
+          },
+          {
+            "kind": "text",
+            "id": "pr-8-d",
+            "text": "0.4.1 · MIT · Ines Carvalho. Print a list of rows as an aligned text table. Headers, alignment, column limits, and nothing else."
+          },
+          {
+            "kind": "link",
+            "id": "pr-9",
+            "text": "tinyhttp",
+            "url": "/project/tinyhttp"
+          },
+          {
+            "kind": "text",
+            "id": "pr-9-d",
+            "text": "2.3.0 · MIT · Ines Carvalho. A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed."
+          },
+          {
+            "kind": "link",
+            "id": "pr-10",
+            "text": "tomlkit-mini",
+            "url": "/project/tomlkit-mini"
+          },
+          {
+            "kind": "text",
+            "id": "pr-10-d",
+            "text": "0.3.3 · MIT · Ines Carvalho. Parse and write TOML while keeping comments and key order, in a tenth of the code."
+          },
+          {
+            "kind": "link",
+            "id": "pr-11",
+            "text": "walkdir-py",
+            "url": "/project/walkdir-py"
+          },
+          {
+            "kind": "text",
+            "id": "pr-11-d",
+            "text": "1.2.0 · MIT · Hanna Brandt. Walk a directory tree and get paths back in sorted order, so a build that lists files is reproducible."
+          }
         ]
       },
       "/help": {
         "version": 1,
         "title": "Help · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"PyPI","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Browse","url":"/search"},{"kind":"link","id":"nav-1","text":"Help","url":"/help"},{"kind":"link","id":"nav-2","text":"Sponsors","url":"/sponsors"}]},
-          {"kind":"heading","id":"title","text":"Help","level":1},
-          {"kind":"heading","id":"h1","text":"Installing a package","level":2},
-          {"kind":"text","id":"p1","text":"Run pip install followed by the project name. pip resolves the latest release compatible with your Python version, downloads the wheel or source distribution, verifies its hash and installs it into the active environment. Use a virtual environment so projects do not share dependencies."},
-          {"kind":"styled","id":"c1","text":"python -m venv .venv\n. .venv/bin/activate\npip install atlas-sdk","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"heading","id":"h2","text":"Publishing a package","level":2},
-          {"kind":"text","id":"p2","text":"Build a wheel and a source distribution with a PEP 517 build backend, then upload with twine or a trusted publisher from CI. Releases are immutable once uploaded; a mistaken release can be yanked, which hides it from resolvers that have not pinned it, but not deleted."},
-          {"kind":"heading","id":"h3","text":"Project names","level":2},
-          {"kind":"text","id":"p3","text":"Names are normalised: case, hyphens, underscores and dots are treated as equivalent, so atlas-sdk and Atlas_SDK are the same project. A name too similar to an existing project may be refused."},
-          {"kind":"heading","id":"h4","text":"Classifiers","level":2},
-          {"kind":"text","id":"p4","text":"Trove classifiers describe a project's status, supported Python versions and topic. They come from a fixed list; an unknown classifier is rejected at upload."},
-          {"kind":"heading","id":"h5","text":"Getting help","level":2},
-          {"kind":"text","id":"p5","text":"Packaging questions belong on the Python discussion forum or on Stack Overflow under the pip and python-packaging tags. Problems with a specific project go to that project's issue tracker, linked from its page."},
-          {"kind":"link","id":"so","text":"Packaging questions on Stack Overflow","url":"http://stackoverflow.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Browse",
+                "url": "/search"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Help",
+                "url": "/help"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Sponsors",
+                "url": "/sponsors"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "title",
+            "text": "Help",
+            "level": 1
+          },
+          {
+            "kind": "heading",
+            "id": "h1",
+            "text": "Installing a package",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p1",
+            "text": "Run pip install followed by the project name. pip resolves the latest release compatible with your Python version, downloads the wheel or source distribution, verifies its hash and installs it into the active environment. Use a virtual environment so projects do not share dependencies."
+          },
+          {
+            "kind": "heading",
+            "id": "h2",
+            "text": "Publishing a package",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p2",
+            "text": "Build a wheel and a source distribution with a PEP 517 build backend, then upload with twine or a trusted publisher from CI. Releases are immutable once uploaded; a mistaken release can be yanked, which hides it from resolvers that have not pinned it, but not deleted."
+          },
+          {
+            "kind": "heading",
+            "id": "h3",
+            "text": "Project names",
+            "level": 2
+          },
+          {
+            "kind": "heading",
+            "id": "h4",
+            "text": "Classifiers",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p4",
+            "text": "Trove classifiers describe a project's status, supported Python versions and topic. They come from a fixed list; an unknown classifier is rejected at upload."
+          },
+          {
+            "kind": "heading",
+            "id": "h5",
+            "text": "Getting help",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p5",
+            "text": "Packaging questions belong on the Python discussion forum or on Stack Overflow under the pip and python-packaging tags. Problems with a specific project go to that project's issue tracker, linked from its page."
+          },
+          {
+            "kind": "link",
+            "id": "so",
+            "text": "Packaging questions on Stack Overflow",
+            "url": "http://stackoverflow.com/"
+          }
         ]
       },
       "/sponsors": {
         "version": 1,
         "title": "Sponsors · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"PyPI","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Browse","url":"/search"},{"kind":"link","id":"nav-1","text":"Help","url":"/help"},{"kind":"link","id":"nav-2","text":"Sponsors","url":"/sponsors"}]},
-          {"kind":"heading","id":"title","text":"Sponsors","level":1},
-          {"kind":"text","id":"p1","text":"PyPI serves several petabytes a month at no charge to the people who use it. The infrastructure, the content delivery network and the staff who maintain the index are paid for by the Python Software Foundation and by the organisations below."},
-          {"kind":"heading","id":"sp-0","text":"Northstar","level":3},
-          {"kind":"text","id":"sp-0-d","text":"Infrastructure sponsor since 2024. Northstar runs its own package mirror and contributes the deterministic build tooling PyPI uses to verify reproducible wheels."},
-          {"kind":"heading","id":"sp-1","text":"Meridian Cloud","level":3},
-          {"kind":"text","id":"sp-1-d","text":"Hosts the primary index and the build farm."},
-          {"kind":"heading","id":"sp-2","text":"Harbor CDN","level":3},
-          {"kind":"text","id":"sp-2-d","text":"Delivers every wheel and source distribution worldwide."},
-          {"kind":"heading","id":"sp-3","text":"Lodestone Security","level":3},
-          {"kind":"text","id":"sp-3-d","text":"Funds the malware scanning of new uploads."},
-          {"kind":"text","id":"p2","text":"Organisations that would like to sponsor PyPI can read the sponsorship prospectus on the Foundation's site. Individuals can support the Foundation directly."}
-        ]
-      },
-      "/project/atlas-sdk": {
-        "version": 1,
-        "title": "atlas-sdk · PyPI",
-        "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"atlas-sdk 1.8.0","level":1},
-          {"kind":"styled","id":"install","text":"pip install atlas-sdk","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"Official Python client for the Atlas deterministic simulation runtime."},
-          {"kind":"text","id":"meta","text":"License: Apache-2.0 · Author: Northstar · Requires: Python >=3.9 · Latest release: 1.8.0 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"atlas-sdk wraps the Atlas HTTP protocol in a small typed client. Create a world from a seed, step it by ticks, read any machine's screen or file system, and diff two runs. Calls are serialised so a run is reproducible from the seed and the call order. The package ships an in-process stub server for tests."},
-          {"kind":"text","id":"rh","text":"Release history: 1.8.0 (latest), 1.7.2, 1.7.0, 1.6.1"},
-          {"kind":"heading","id":"deps-h","text":"Requires (3)","level":2},
-          {"kind":"link","id":"dep-0","text":"clockwork-det","url":"/project/clockwork-det"},
-          {"kind":"link","id":"dep-1","text":"tinyhttp","url":"/project/tinyhttp"},
-          {"kind":"link","id":"dep-2","text":"pyjsonlite","url":"/project/pyjsonlite"},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.12"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Browse",
+                "url": "/search"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Help",
+                "url": "/help"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Sponsors",
+                "url": "/sponsors"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "title",
+            "text": "Sponsors",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "p1",
+            "text": "PyPI serves several petabytes a month at no charge to the people who use it. The infrastructure, the content delivery network and the staff who maintain the index are paid for by the Python Software Foundation and by the organisations below."
+          },
+          {
+            "kind": "heading",
+            "id": "sp-1",
+            "text": "Meridian Cloud",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "sp-1-d",
+            "text": "Hosts the primary index and the build farm."
+          },
+          {
+            "kind": "heading",
+            "id": "sp-2",
+            "text": "Harbor CDN",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "sp-2-d",
+            "text": "Delivers every wheel and source distribution worldwide."
+          },
+          {
+            "kind": "heading",
+            "id": "sp-3",
+            "text": "Lodestone Security",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "sp-3-d",
+            "text": "Funds the malware scanning of new uploads."
+          },
+          {
+            "kind": "text",
+            "id": "p2",
+            "text": "Organisations that would like to sponsor PyPI can read the sponsorship prospectus on the Foundation's site. Individuals can support the Foundation directly."
+          }
         ]
       },
       "/project/clockwork-det": {
         "version": 1,
         "title": "clockwork-det · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"clockwork-det 0.6.2","level":1},
-          {"kind":"styled","id":"install","text":"pip install clockwork-det","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"A deterministic clock and scheduler for tests: time moves only when you advance it."},
-          {"kind":"text","id":"meta","text":"License: MIT · Author: Northstar · Requires: Python >=3.9 · Latest release: 0.6.2 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"clockwork-det replaces time.time, time.monotonic and asyncio's loop time with a logical clock. advance(seconds) moves it and runs any callbacks due, in due-time then registration order. A context manager installs it for a block. The asyncio integration makes sleep() instantaneous and ordered."},
-          {"kind":"text","id":"rh","text":"Release history: 0.6.2 (latest), 0.6.0, 0.5.3"},
-          {"kind":"heading","id":"deps-h","text":"Requires (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"No dependencies."},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.11"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "clockwork-det 0.6.2",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install clockwork-det",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "A deterministic clock and scheduler for tests: time moves only when you advance it."
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "clockwork-det replaces time.time, time.monotonic and asyncio's loop time with a logical clock. advance(seconds) moves it and runs any callbacks due, in due-time then registration order. A context manager installs it for a block. The asyncio integration makes sleep() instantaneous and ordered."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 0.6.2 (latest), 0.6.0, 0.5.3"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.11"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/project/tinyhttp": {
         "version": 1,
         "title": "tinyhttp · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"tinyhttp 2.3.0","level":1},
-          {"kind":"styled","id":"install","text":"pip install tinyhttp","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed."},
-          {"kind":"text","id":"meta","text":"License: MIT · Author: Ines Carvalho · Requires: Python >=3.9 · Latest release: 2.3.0 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"tinyhttp is a client with get, post and a request() escape hatch, and a server that maps paths to handlers, in under a thousand lines. It exists for the cases where the standard library is too low-level and a full framework is too much: scripts, test fixtures, tiny services. Responses are plain dataclasses."},
-          {"kind":"text","id":"rh","text":"Release history: 2.3.0 (latest), 2.2.1, 2.1.0, 2.0.0"},
-          {"kind":"heading","id":"deps-h","text":"Requires (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"No dependencies."},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.10"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "tinyhttp 2.3.0",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install tinyhttp",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: MIT · Author: Ines Carvalho · Requires: Python >=3.9 · Latest release: 2.3.0 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "tinyhttp is a client with get, post and a request() escape hatch, and a server that maps paths to handlers, in under a thousand lines. It exists for the cases where the standard library is too low-level and a full framework is too much: scripts, test fixtures, tiny services. Responses are plain dataclasses."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 2.3.0 (latest), 2.2.1, 2.1.0, 2.0.0"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.10"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/project/pyjsonlite": {
         "version": 1,
         "title": "pyjsonlite · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"pyjsonlite 1.1.4","level":1},
-          {"kind":"styled","id":"install","text":"pip install pyjsonlite","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes."},
-          {"kind":"text","id":"meta","text":"License: BSD-3-Clause · Author: Priya Raman · Requires: Python >=3.9 · Latest release: 1.1.4 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"pyjsonlite dumps a value with keys sorted, floats in shortest round-trip form, and no insignificant whitespace, so that two processes on two platforms produce the same bytes and a hash of the output is meaningful. loads() is the standard library's. There is a diff() that returns RFC 6902 operations."},
-          {"kind":"text","id":"rh","text":"Release history: 1.1.4 (latest), 1.1.3, 1.0.0"},
-          {"kind":"heading","id":"deps-h","text":"Requires (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"No dependencies."},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.9"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "pyjsonlite 1.1.4",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install pyjsonlite",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes."
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "pyjsonlite dumps a value with keys sorted, floats in shortest round-trip form, and no insignificant whitespace, so that two processes on two platforms produce the same bytes and a hash of the output is meaningful. loads() is the standard library's. There is a diff() that returns RFC 6902 operations."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 1.1.4 (latest), 1.1.3, 1.0.0"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.9"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/project/tabulate-mini": {
         "version": 1,
         "title": "tabulate-mini · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"tabulate-mini 0.4.1","level":1},
-          {"kind":"styled","id":"install","text":"pip install tabulate-mini","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"Print a list of rows as an aligned text table. Headers, alignment, column limits, and nothing else."},
-          {"kind":"text","id":"meta","text":"License: MIT · Author: Ines Carvalho · Requires: Python >=3.9 · Latest release: 0.4.1 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"tabulate-mini takes a list of rows and optional headers and returns a string with aligned columns. Numbers align right, everything else left. Wide cells can be truncated to a column limit with an ellipsis. It has no formats, no colours and no dependencies; it is the function everyone writes and gets slightly wrong."},
-          {"kind":"text","id":"rh","text":"Release history: 0.4.1 (latest), 0.4.0, 0.3.2"},
-          {"kind":"heading","id":"deps-h","text":"Requires (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"No dependencies."},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.9"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "tabulate-mini 0.4.1",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install tabulate-mini",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "Print a list of rows as an aligned text table. Headers, alignment, column limits, and nothing else."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: MIT · Author: Ines Carvalho · Requires: Python >=3.9 · Latest release: 0.4.1 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "tabulate-mini takes a list of rows and optional headers and returns a string with aligned columns. Numbers align right, everything else left. Wide cells can be truncated to a column limit with an ellipsis. It has no formats, no colours and no dependencies; it is the function everyone writes and gets slightly wrong."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 0.4.1 (latest), 0.4.0, 0.3.2"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.9"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/project/requests-cache-lite": {
         "version": 1,
         "title": "requests-cache-lite · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"requests-cache-lite 1.0.2","level":1},
-          {"kind":"styled","id":"install","text":"pip install requests-cache-lite","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode."},
-          {"kind":"text","id":"meta","text":"License: MIT · Author: Hanna Brandt · Requires: Python >=3.9 · Latest release: 1.0.2 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"requests-cache-lite records every GET response to a directory and serves it back on the next call. In replay mode a request that was not recorded raises instead of going to the network, which makes a test suite hermetic. Cache keys are canonical JSON of the method, URL and selected headers, via pyjsonlite. Works with tinyhttp and with the standard library."},
-          {"kind":"text","id":"rh","text":"Release history: 1.0.2 (latest), 1.0.1, 1.0.0, 0.9.0"},
-          {"kind":"heading","id":"deps-h","text":"Requires (2)","level":2},
-          {"kind":"link","id":"dep-0","text":"tinyhttp","url":"/project/tinyhttp"},
-          {"kind":"link","id":"dep-1","text":"pyjsonlite","url":"/project/pyjsonlite"},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.10"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "requests-cache-lite 1.0.2",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install requests-cache-lite",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: MIT · Author: Hanna Brandt · Requires: Python >=3.9 · Latest release: 1.0.2 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "requests-cache-lite records every GET response to a directory and serves it back on the next call. In replay mode a request that was not recorded raises instead of going to the network, which makes a test suite hermetic. Cache keys are canonical JSON of the method, URL and selected headers, via pyjsonlite. Works with tinyhttp and with the standard library."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 1.0.2 (latest), 1.0.1, 1.0.0, 0.9.0"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (2)",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dep-0",
+            "text": "tinyhttp",
+            "url": "/project/tinyhttp"
+          },
+          {
+            "kind": "link",
+            "id": "dep-1",
+            "text": "pyjsonlite",
+            "url": "/project/pyjsonlite"
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.10"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/project/seedrng": {
         "version": 1,
         "title": "seedrng · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"seedrng 2.0.0","level":1},
-          {"kind":"styled","id":"install","text":"pip install seedrng","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"Seeded, splittable random streams that give the same numbers on every platform and Python version."},
-          {"kind":"text","id":"meta","text":"License: MIT · Author: Northstar · Requires: Python >=3.9 · Latest release: 2.0.0 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"seedrng implements a PCG generator with a fixed algorithm, so a seed produces the same stream on every platform and every Python version, which random.Random does not promise across releases. Streams can be split by name so that two components each get an independent, reproducible stream from one root seed."},
-          {"kind":"text","id":"rh","text":"Release history: 2.0.0 (latest), 1.4.0, 1.3.1"},
-          {"kind":"heading","id":"deps-h","text":"Requires (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"No dependencies."},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.9"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "seedrng 2.0.0",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install seedrng",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "Seeded, splittable random streams that give the same numbers on every platform and Python version."
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "seedrng implements a PCG generator with a fixed algorithm, so a seed produces the same stream on every platform and every Python version, which random.Random does not promise across releases. Streams can be split by name so that two components each get an independent, reproducible stream from one root seed."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 2.0.0 (latest), 1.4.0, 1.3.1"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.9"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/project/walkdir-py": {
         "version": 1,
         "title": "walkdir-py · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"walkdir-py 1.2.0","level":1},
-          {"kind":"styled","id":"install","text":"pip install walkdir-py","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"Walk a directory tree and get paths back in sorted order, so a build that lists files is reproducible."},
-          {"kind":"text","id":"meta","text":"License: MIT · Author: Hanna Brandt · Requires: Python >=3.9 · Latest release: 1.2.0 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"walkdir-py yields every file under a directory as a relative path in bytewise-sorted order, with filters for suffix and depth. os.walk order depends on the file system; this does not. Symlinks are not followed unless asked."},
-          {"kind":"text","id":"rh","text":"Release history: 1.2.0 (latest), 1.1.0, 1.0.0"},
-          {"kind":"heading","id":"deps-h","text":"Requires (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"No dependencies."},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.9"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "walkdir-py 1.2.0",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install walkdir-py",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "Walk a directory tree and get paths back in sorted order, so a build that lists files is reproducible."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: MIT · Author: Hanna Brandt · Requires: Python >=3.9 · Latest release: 1.2.0 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "walkdir-py yields every file under a directory as a relative path in bytewise-sorted order, with filters for suffix and depth. os.walk order depends on the file system; this does not. Symlinks are not followed unless asked."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 1.2.0 (latest), 1.1.0, 1.0.0"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.9"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/project/envparse-lite": {
         "version": 1,
         "title": "envparse-lite · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"envparse-lite 0.8.0","level":1},
-          {"kind":"styled","id":"install","text":"pip install envparse-lite","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"Read configuration from environment variables with types, defaults and a single place they are all declared."},
-          {"kind":"text","id":"meta","text":"License: MIT · Author: Priya Raman · Requires: Python >=3.9 · Latest release: 0.8.0 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"envparse-lite lets a module declare the environment variables it reads, each with a type and default, and fails at import time with a list of every missing or malformed one rather than at first use. It supports str, int, float, bool, lists and paths. Nothing is read twice."},
-          {"kind":"text","id":"rh","text":"Release history: 0.8.0 (latest), 0.7.1"},
-          {"kind":"heading","id":"deps-h","text":"Requires (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"No dependencies."},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.10"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "envparse-lite 0.8.0",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install envparse-lite",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "Read configuration from environment variables with types, defaults and a single place they are all declared."
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "envparse-lite lets a module declare the environment variables it reads, each with a type and default, and fails at import time with a list of every missing or malformed one rather than at first use. It supports str, int, float, bool, lists and paths. Nothing is read twice."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 0.8.0 (latest), 0.7.1"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.10"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/project/tomlkit-mini": {
         "version": 1,
         "title": "tomlkit-mini · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"tomlkit-mini 0.3.3","level":1},
-          {"kind":"styled","id":"install","text":"pip install tomlkit-mini","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"Parse and write TOML while keeping comments and key order, in a tenth of the code."},
-          {"kind":"text","id":"meta","text":"License: MIT · Author: Ines Carvalho · Requires: Python >=3.9 · Latest release: 0.3.3 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"tomlkit-mini reads a TOML document into ordinary dicts and lists that remember comments, key order and formatting, and writes them back unchanged apart from the edits made. It handles the subset of TOML that configuration files use in practice and rejects the rest with a clear error."},
-          {"kind":"text","id":"rh","text":"Release history: 0.3.3 (latest), 0.3.2, 0.2.0"},
-          {"kind":"heading","id":"deps-h","text":"Requires (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"No dependencies."},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.11"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "tomlkit-mini 0.3.3",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install tomlkit-mini",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "Parse and write TOML while keeping comments and key order, in a tenth of the code."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: MIT · Author: Ines Carvalho · Requires: Python >=3.9 · Latest release: 0.3.3 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "tomlkit-mini reads a TOML document into ordinary dicts and lists that remember comments, key order and formatting, and writes them back unchanged apart from the edits made. It handles the subset of TOML that configuration files use in practice and rejects the rest with a clear error."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 0.3.3 (latest), 0.3.2, 0.2.0"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "No dependencies."
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.11"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/project/retrying-simple": {
         "version": 1,
         "title": "retrying-simple · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"retrying-simple 1.1.0","level":1},
-          {"kind":"styled","id":"install","text":"pip install retrying-simple","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"Retry a function with exponential backoff. The clock is injectable, so tests do not sleep."},
-          {"kind":"text","id":"meta","text":"License: MIT · Author: Hanna Brandt · Requires: Python >=3.9 · Latest release: 1.1.0 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"retrying-simple is a decorator and a function that call something until it succeeds or the attempt budget runs out, waiting between tries by an exponential schedule with optional jitter. The sleep function is a parameter; with clockwork-det, twenty retries take no wall time and happen in a fixed order."},
-          {"kind":"text","id":"rh","text":"Release history: 1.1.0 (latest), 1.0.0"},
-          {"kind":"heading","id":"deps-h","text":"Requires (1)","level":2},
-          {"kind":"link","id":"dep-0","text":"clockwork-det","url":"/project/clockwork-det"},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.9"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "retrying-simple 1.1.0",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install retrying-simple",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "Retry a function with exponential backoff. The clock is injectable, so tests do not sleep."
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "License: MIT · Author: Hanna Brandt · Requires: Python >=3.9 · Latest release: 1.1.0 (2026)"
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "retrying-simple is a decorator and a function that call something until it succeeds or the attempt budget runs out, waiting between tries by an exponential schedule with optional jitter. The sleep function is a parameter; with clockwork-det, twenty retries take no wall time and happen in a fixed order."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 1.1.0 (latest), 1.0.0"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (1)",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dep-0",
+            "text": "clockwork-det",
+            "url": "/project/clockwork-det"
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 5 - Production/Stable · Programming Language :: Python :: 3.9"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/project/ratelimit-token": {
         "version": 1,
         "title": "ratelimit-token · PyPI",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"PyPI","url":"/"},{"kind":"link","id":"nav-list","text":"Browse projects","url":"/search"}]},
-          {"kind":"heading","id":"name","text":"ratelimit-token 0.5.0","level":1},
-          {"kind":"styled","id":"install","text":"pip install ratelimit-token","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"summary","text":"A token-bucket rate limiter with a pluggable clock, for clients that must not exceed a quota."},
-          {"kind":"text","id":"meta","text":"License: MIT · Author: Priya Raman · Requires: Python >=3.9 · Latest release: 0.5.0 (2026)"},
-          {"kind":"heading","id":"desc-h","text":"Project description","level":2},
-          {"kind":"text","id":"desc","text":"ratelimit-token implements a bucket of capacity N refilling at R per second. take(k) returns whether k tokens were available; wait(k) blocks (or awaits) until they are. The clock is injectable; the default in tests is clockwork-det, so limiter behaviour is reproducible."},
-          {"kind":"text","id":"rh","text":"Release history: 0.5.0 (latest), 0.4.2"},
-          {"kind":"heading","id":"deps-h","text":"Requires (1)","level":2},
-          {"kind":"link","id":"dep-0","text":"clockwork-det","url":"/project/clockwork-det"},
-          {"kind":"text","id":"cls","text":"Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.10"},
-          {"kind":"link","id":"home","text":"Homepage and issue tracker on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "PyPI",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "Browse projects",
+                "url": "/search"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "ratelimit-token 0.5.0",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "pip install ratelimit-token",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "summary",
+            "text": "A token-bucket rate limiter with a pluggable clock, for clients that must not exceed a quota."
+          },
+          {
+            "kind": "heading",
+            "id": "desc-h",
+            "text": "Project description",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "ratelimit-token implements a bucket of capacity N refilling at R per second. take(k) returns whether k tokens were available; wait(k) blocks (or awaits) until they are. The clock is injectable; the default in tests is clockwork-det, so limiter behaviour is reproducible."
+          },
+          {
+            "kind": "text",
+            "id": "rh",
+            "text": "Release history: 0.5.0 (latest), 0.4.2"
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Requires (1)",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dep-0",
+            "text": "clockwork-det",
+            "url": "/project/clockwork-det"
+          },
+          {
+            "kind": "text",
+            "id": "cls",
+            "text": "Classifiers: Development Status :: 4 - Beta · Programming Language :: Python :: 3.10"
+          },
+          {
+            "kind": "link",
+            "id": "home",
+            "text": "Homepage and issue tracker on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       }
     },
     "records": {}
   },
   "search_entries": [
-    {"url":"http://pypi.org/","title":"PyPI · The Python Package Index","snippet":"Find, install and publish Python packages with the Python Package Index.","vertical": "all","authority":8,"keywords":["pypi","python","packages","pip","index"]},
-    {"url":"http://pypi.org/search","title":"Browse projects · PyPI","snippet":"All 12 projects on the index, alphabetically.","vertical": "all","authority":7,"keywords":["pypi projects","python library","browse","search"]},
-    {"url":"http://pypi.org/help","title":"Help · PyPI","snippet":"Installing, publishing, project names and classifiers.","vertical": "all","authority":6,"keywords":["pip install","pypi help","publish package","twine"]},
-    {"url":"http://pypi.org/sponsors","title":"Sponsors · PyPI","snippet":"The organisations that pay for PyPI's infrastructure.","vertical": "all","authority":5,"keywords":["pypi sponsors","python software foundation"]},
-    {"url":"http://pypi.org/project/atlas-sdk","title":"atlas-sdk · PyPI","snippet":"Official Python client for the Atlas deterministic simulation runtime. Version 1.8.0, Apache-2.0.","vertical": "all","authority":7,"keywords":["atlas-sdk","pypi","python","pip","official","python","client"]},
-    {"url":"http://pypi.org/project/clockwork-det","title":"clockwork-det · PyPI","snippet":"A deterministic clock and scheduler for tests: time moves only when you advance it. Version 0.6.2, MIT.","vertical": "all","authority":7,"keywords":["clockwork-det","pypi","python","pip","deterministic","scheduler","advance"]},
-    {"url":"http://pypi.org/project/tinyhttp","title":"tinyhttp · PyPI","snippet":"A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed. Version 2.3.0, MIT.","vertical": "all","authority":7,"keywords":["tinyhttp","pypi","python","pip","minimal","client","server"]},
-    {"url":"http://pypi.org/project/pyjsonlite","title":"pyjsonlite · PyPI","snippet":"Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes. Version 1.1.4, BSD-3-Clause.","vertical": "all","authority":7,"keywords":["pyjsonlite","pypi","python","pip","canonical","sorted","formatting"]},
-    {"url":"http://pypi.org/project/tabulate-mini","title":"tabulate-mini · PyPI","snippet":"Print a list of rows as an aligned text table. Headers, alignment, column limits, and nothing else. Version 0.4.1, MIT.","vertical": "all","authority":7,"keywords":["tabulate-mini","pypi","python","pip","aligned","headers","alignment"]},
-    {"url":"http://pypi.org/project/requests-cache-lite","title":"requests-cache-lite · PyPI","snippet":"A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode. Version 1.0.2, MIT.","vertical": "all","authority":7,"keywords":["requests-cache-lite","pypi","python","pip","transparent","requests","headers"]},
-    {"url":"http://pypi.org/project/seedrng","title":"seedrng · PyPI","snippet":"Seeded, splittable random streams that give the same numbers on every platform and Python version. Version 2.0.0, MIT.","vertical": "all","authority":7,"keywords":["seedrng","pypi","python","pip","seeded","splittable","random"]},
-    {"url":"http://pypi.org/project/walkdir-py","title":"walkdir-py · PyPI","snippet":"Walk a directory tree and get paths back in sorted order, so a build that lists files is reproducible. Version 1.2.0, MIT.","vertical": "all","authority":7,"keywords":["walkdir-py","pypi","python","pip","directory","sorted","reproducible"]}
+    {
+      "url": "http://pypi.org/",
+      "title": "PyPI · The Python Package Index",
+      "snippet": "Find, install and publish Python packages with the Python Package Index.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": [
+        "pypi",
+        "python",
+        "packages",
+        "pip",
+        "index"
+      ]
+    },
+    {
+      "url": "http://pypi.org/search",
+      "title": "Browse projects · PyPI",
+      "snippet": "All 12 projects on the index, alphabetically.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "pypi projects",
+        "python library",
+        "browse",
+        "search"
+      ]
+    },
+    {
+      "url": "http://pypi.org/help",
+      "title": "Help · PyPI",
+      "snippet": "Installing, publishing, project names and classifiers.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "pip install",
+        "pypi help",
+        "publish package",
+        "twine"
+      ]
+    },
+    {
+      "url": "http://pypi.org/sponsors",
+      "title": "Sponsors · PyPI",
+      "snippet": "The organisations that pay for PyPI's infrastructure.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "pypi sponsors",
+        "python software foundation"
+      ]
+    },
+    {
+      "url": "http://pypi.org/project/clockwork-det",
+      "title": "clockwork-det · PyPI",
+      "snippet": "A deterministic clock and scheduler for tests: time moves only when you advance it. Version 0.6.2, MIT.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "clockwork-det",
+        "pypi",
+        "python",
+        "pip",
+        "deterministic",
+        "scheduler",
+        "advance"
+      ]
+    },
+    {
+      "url": "http://pypi.org/project/tinyhttp",
+      "title": "tinyhttp · PyPI",
+      "snippet": "A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed. Version 2.3.0, MIT.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "tinyhttp",
+        "pypi",
+        "python",
+        "pip",
+        "minimal",
+        "client",
+        "server"
+      ]
+    },
+    {
+      "url": "http://pypi.org/project/pyjsonlite",
+      "title": "pyjsonlite · PyPI",
+      "snippet": "Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes. Version 1.1.4, BSD-3-Clause.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "pyjsonlite",
+        "pypi",
+        "python",
+        "pip",
+        "canonical",
+        "sorted",
+        "formatting"
+      ]
+    },
+    {
+      "url": "http://pypi.org/project/tabulate-mini",
+      "title": "tabulate-mini · PyPI",
+      "snippet": "Print a list of rows as an aligned text table. Headers, alignment, column limits, and nothing else. Version 0.4.1, MIT.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "tabulate-mini",
+        "pypi",
+        "python",
+        "pip",
+        "aligned",
+        "headers",
+        "alignment"
+      ]
+    },
+    {
+      "url": "http://pypi.org/project/requests-cache-lite",
+      "title": "requests-cache-lite · PyPI",
+      "snippet": "A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode. Version 1.0.2, MIT.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "requests-cache-lite",
+        "pypi",
+        "python",
+        "pip",
+        "transparent",
+        "requests",
+        "headers"
+      ]
+    },
+    {
+      "url": "http://pypi.org/project/seedrng",
+      "title": "seedrng · PyPI",
+      "snippet": "Seeded, splittable random streams that give the same numbers on every platform and Python version. Version 2.0.0, MIT.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "seedrng",
+        "pypi",
+        "python",
+        "pip",
+        "seeded",
+        "splittable",
+        "random"
+      ]
+    },
+    {
+      "url": "http://pypi.org/project/walkdir-py",
+      "title": "walkdir-py · PyPI",
+      "snippet": "Walk a directory tree and get paths back in sorted order, so a build that lists files is reproducible. Version 1.2.0, MIT.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "walkdir-py",
+        "pypi",
+        "python",
+        "pip",
+        "directory",
+        "sorted",
+        "reproducible"
+      ]
+    }
   ],
-  "place": {"address":"203.0.113.133","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
+  "place": {
+    "address": "203.0.113.133",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  }
 }

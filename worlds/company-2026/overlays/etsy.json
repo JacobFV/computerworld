@@ -1,0 +1,103 @@
+{
+  "initial_state": {
+    "products": {
+      "et-mug-slab": {
+        "reviews": [
+          {
+            "id": "rv-e1",
+            "author": "carol",
+            "stars": 5,
+            "title": "Second one",
+            "body": "Bought one, used it every day for a month, came back for a second so I am not washing it at lunchtime.",
+            "tick": 4
+          }
+        ]
+      },
+      "et-print-map": {
+        "reviews": [
+          {
+            "id": "rv-e2",
+            "author": "alice",
+            "stars": 5,
+            "title": "Framed it the day it arrived",
+            "body": "The impression is deep enough to feel. Packaging was a tube inside a tube.",
+            "tick": 7
+          }
+        ]
+      }
+    },
+    "carts": {
+      "alice": {
+        "et-notebook": 2
+      }
+    },
+    "orders": {
+      "5001": {
+        "id": "5001",
+        "buyer": "alice",
+        "tick": 7,
+        "date": "2026-03-11",
+        "items": [
+          {
+            "product": "et-print-map",
+            "title": "Letterpress Map Print, Puget Sound",
+            "qty": 1,
+            "price_cents": 4200
+          },
+          {
+            "product": "et-mug-slab",
+            "title": "Slab-built Stoneware Mug, Harbour Glaze",
+            "qty": 1,
+            "price_cents": 3800
+          }
+        ],
+        "total_cents": 8000,
+        "status": "Shipped",
+        "confirmation": "ORD-G3XGME",
+        "seats": [],
+        "venue": ""
+      }
+    },
+    "favorites": {
+      "alice": [
+        "et-scarf-loom",
+        "et-ring-band"
+      ],
+      "carol": [
+        "et-mug-slab"
+      ]
+    },
+    "messages": [
+      {
+        "id": "msg-1",
+        "from": "alice",
+        "to": "Quill & Kettle Press",
+        "product": "et-print-map",
+        "text": "Is the numbering on the edition visible under a 40cm frame mat?",
+        "tick": 6
+      },
+      {
+        "id": "msg-2",
+        "from": "carol",
+        "to": "Marrow Point Clay",
+        "product": "et-mug-slab",
+        "text": "Could you glaze one in the darker harbour blue if I order two?",
+        "tick": 8
+      }
+    ]
+  },
+  "search_entries": [
+    {
+      "url": "http://etsy.com/orders/5001",
+      "title": "Order 5001 - Etsy",
+      "snippet": "A letterpress print and a stoneware mug, $80.00, shipped.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "order 5001",
+        "etsy order",
+        "receipt"
+      ]
+    }
+  ]
+}

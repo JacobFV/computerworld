@@ -1,0 +1,151 @@
+{
+  "initial_state": {
+    "articles": {
+      "the-ledger-atlas-and-the-end-of-flaky": {
+        "id": "the-ledger-atlas-and-the-end-of-flaky",
+        "section": "the-ledger",
+        "title": "Atlas, and the end of 'flaky'",
+        "dek": "The Ledger, issue 141. A tech industry newsletter by Oren Sallis. This week: why one release made a whole vocabulary obsolete.",
+        "byline": "Oren Sallis",
+        "date": "Mar 8, 2026",
+        "tick": 12,
+        "read_minutes": 7,
+        "body": [
+          "Every engineering team has a word for the tests that fail sometimes. The word is 'flaky', and it does a lot of work: it lets you re-run the build, get a green, and go home. I want to argue that Northstar's Atlas release last week is the beginning of the end for that word, and that most teams do not want it to end.",
+          "The pitch of Atlas is simple. Run your program in a simulated computer in which time, randomness and message order are controlled, and the test that fails sometimes will fail every time, in the same place, until you fix it. Reuters has the two-paragraph version at http://reuters.com/2026/northstar-atlas-determinism and Ars Technica has the fourteen-minute one at http://arstechnica.com/2026/atlas-deep-dive",
+          "Here is the uncomfortable part. A flaky test is usually a real bug that the team has agreed not to look at. The re-run is a ritual of not looking. A tool that removes the option of not looking is, for a lot of teams, going to feel like a tool that creates bugs, and I expect the first year of adoption to be full of people saying it 'found problems that were not there before'.",
+          "They were there. The word was hiding them. I would give it about two years before 'flaky' starts to sound the way 'works on my machine' does now: less like an explanation and more like a confession.",
+          "Next week: the reproducible-builds draft and why the medical-device people are the ones reading it most closely."
+        ],
+        "links": [
+          {
+            "label": "Reuters: Northstar releases Atlas 1.0",
+            "url": "http://reuters.com/2026/northstar-atlas-determinism"
+          },
+          {
+            "label": "Ars Technica: Atlas deep dive",
+            "url": "http://arstechnica.com/2026/atlas-deep-dive"
+          },
+          {
+            "label": "Previous issue: the consolidation nobody planned",
+            "url": "http://substack.com/posts/the-ledger-consolidation-nobody-planned"
+          }
+        ],
+        "tags": [
+          "tech",
+          "the-ledger",
+          "determinism"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Less like an explanation and more like a confession. I am going to be quoting this in a retro.",
+            "tick": 12,
+            "likes": 34
+          }
+        ]
+      },
+      "second-breakfast-the-only-bread-recipe": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Made this Saturday. It sang. I was not prepared.",
+            "tick": 11,
+            "likes": 41
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "Darker than you think it should be is the whole secret of baking and nobody says it.",
+            "tick": 11,
+            "likes": 18
+          }
+        ]
+      },
+      "margin-of-safety-hearthline-numbers": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "The commissary-ahead-of-the-store-base line is the whole thesis. Either she is right and it is cheap or she is wrong and it is a fixed cost with no revenue against it.",
+            "tick": 10,
+            "likes": 22
+          }
+        ]
+      },
+      "the-lantern-room-chapter-one": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The tree that has not grown since she arrived. I am in.",
+            "tick": 5,
+            "likes": 57
+          }
+        ]
+      },
+      "the-lantern-room-chapter-two": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "She went down. Of course she went down. See you next Friday.",
+            "tick": 7,
+            "likes": 39
+          }
+        ]
+      },
+      "ward-seven-the-pier-vote-explained": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "The real count is 2-5. This is the single most useful sentence anyone has written about this vote.",
+            "tick": 13,
+            "likes": 29
+          }
+        ]
+      }
+    },
+    "subscribers": [
+      "carol.nakamura@gmail.com",
+      "bmartinez@outlook.com"
+    ],
+    "saved": {
+      "alice": [
+        "the-lantern-room-chapter-one"
+      ],
+      "carol": [
+        "second-breakfast-the-only-bread-recipe"
+      ]
+    },
+    "follows": {
+      "alice": [
+        "publication",
+        "fiction"
+      ],
+      "bob": [
+        "the-ledger",
+        "margin-of-safety"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://substack.com/posts/the-ledger-atlas-and-the-end-of-flaky",
+      "title": "Atlas, and the end of 'flaky' - The Ledger on Substack",
+      "snippet": "Why one release made a whole vocabulary obsolete. A tech industry newsletter by Oren Sallis.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "the ledger",
+        "atlas",
+        "flaky tests",
+        "oren sallis",
+        "northstar"
+      ]
+    }
+  ]
+}

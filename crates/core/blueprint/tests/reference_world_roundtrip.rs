@@ -83,6 +83,7 @@ fn round_trips_with_its_sites(root: &str) {
             .and_then(|service| service.get("id"))
             .and_then(|id| id.as_str())
             .is_some_and(|id| sites.contains(id)),
+        [Step::Key("internet_overlays"), Step::Key(_)] => true,
         _ => false,
     };
 

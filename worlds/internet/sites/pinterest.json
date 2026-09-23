@@ -112,45 +112,6 @@
         "domain": "",
         "headline": "",
         "site": ""
-      },
-      "alicechen": {
-        "handle": "alicechen",
-        "name": "Alice Chen",
-        "actor": "alice",
-        "bio": "Boards: bike shed ideas, cabin someday, things to cook after a ride.",
-        "location": "Seattle, WA",
-        "followers": 210,
-        "following": 74,
-        "domain": "",
-        "headline": "",
-        "verified": false,
-        "site": ""
-      },
-      "bmartinez": {
-        "handle": "bmartinez",
-        "name": "Bob Martinez",
-        "actor": "bob",
-        "bio": "Bread. Only bread. Occasionally a shelf to put the bread on.",
-        "location": "Seattle, WA",
-        "followers": 96,
-        "following": 58,
-        "domain": "",
-        "headline": "",
-        "verified": false,
-        "site": ""
-      },
-      "carolnk": {
-        "handle": "carolnk",
-        "name": "Carol Nakamura",
-        "actor": "carol",
-        "bio": "Deck refresh, dog-proof garden, kid-proof everything else.",
-        "location": "Seattle, WA",
-        "followers": 340,
-        "following": 121,
-        "domain": "",
-        "headline": "",
-        "verified": false,
-        "site": ""
       }
     },
     "posts": {
@@ -253,15 +214,6 @@
         "reposts": 2900,
         "id": "p-5111"
       },
-      "p-5112": {
-        "author": "alicechen",
-        "image": "A small timber bike shed with a green roof and a sliding barn door",
-        "text": "Bike shed goals. Green roof, sliding door, room for three bikes and the one I have not bought yet. Saving this for the spring.",
-        "tick": 7,
-        "likes": 120,
-        "reposts": 14,
-        "id": "p-5112"
-      },
       "p-5113": {
         "author": "everafterplans",
         "image": "A seating chart spreadsheet with colour-coded tables projected on a kitchen wall",
@@ -289,15 +241,6 @@
         "reposts": 2600,
         "id": "p-5115"
       },
-      "p-5116": {
-        "author": "bmartinez",
-        "image": "A sourdough loaf with a wheat-pattern score, deep golden crust, on a rack",
-        "text": "Scoring pattern I am finally getting right after a year. Wheat ear, shallow angle, one confident stroke. Saving so I remember which blade.",
-        "tick": 9,
-        "likes": 86,
-        "reposts": 9,
-        "id": "p-5116"
-      },
       "p-5117": {
         "author": "butterandthyme",
         "image": "A bowl of miso butter noodles with a soft egg and scallions",
@@ -315,15 +258,6 @@
         "likes": 16100,
         "reposts": 6900,
         "id": "p-5118"
-      },
-      "p-5119": {
-        "author": "carolnk",
-        "image": "A cedar deck with built-in bench seating and a low fence gate",
-        "text": "Deck refresh idea: built-in bench along one side, low gate so the dog stays in and the kids stay out of the garden. Pinning before Jonah gives me a quote.",
-        "tick": 11,
-        "likes": 210,
-        "reposts": 31,
-        "id": "p-5119"
       },
       "p-5120": {
         "author": "thegoodgarden",
@@ -370,15 +304,6 @@
         "reposts": 1700,
         "id": "p-5124"
       },
-      "p-5125": {
-        "author": "alicechen",
-        "image": "A one-pan gnocchi dish in a cast iron skillet on a camp stove",
-        "text": "The Butter & Thyme gnocchi thing works on a camp stove. Made it after the Iron Horse ride. Saving for the next one.",
-        "tick": 14,
-        "likes": 64,
-        "reposts": 5,
-        "id": "p-5125"
-      },
       "p-5126": {
         "author": "nestandnook",
         "image": "A living room before-and-after split: beige and bare, then layered rugs, plants and a gallery wall",
@@ -389,46 +314,15 @@
         "id": "p-5126"
       }
     },
-    "follows": {
-      "alice": [
-        "butterandthyme",
-        "sawdustsundays",
-        "thegoodgarden",
-        "smallspacebig"
-      ],
-      "bob": [
-        "butterandthyme",
-        "sawdustsundays",
-        "alicechen"
-      ],
-      "carol": [
-        "nestandnook",
-        "thegoodgarden",
-        "everafterplans",
-        "purlandpine",
-        "alicechen"
-      ]
-    },
+    "follows": {},
     "likes": {
-      "p-5102": [
-        "alice",
-        "bob"
-      ],
-      "p-5104": [
-        "carol"
-      ],
-      "p-5117": [
-        "alice",
-        "carol"
-      ]
+      "p-5102": [],
+      "p-5104": [],
+      "p-5117": []
     },
     "reposts": {
-      "p-5102": [
-        "alice"
-      ],
-      "p-5121": [
-        "bob"
-      ]
+      "p-5102": [],
+      "p-5121": []
     },
     "connections": {},
     "messages": {},

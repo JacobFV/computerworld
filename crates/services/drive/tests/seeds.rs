@@ -5,8 +5,10 @@ use cw_sdk::{Service, ServiceContext};
 use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_service_drive::{DriveService, DriveState, NodeKind};
 use serde_json::Value;
-const DRIVE: &str = include_str!("../../../../worlds/internet/sites/google-drive.json");
-const DROPBOX: &str = include_str!("../../../../worlds/internet/sites/dropbox.json");
+static DRIVE: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("google-drive"));
+static DROPBOX: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("dropbox"));
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
         actor: actor.into(),
@@ -35,8 +37,8 @@ fn names(s: &DriveState, actor: &str, folder: &str) -> Vec<String> {
 /// Storyline 11 is a joke with a punchline only if the two file lists are equal.
 #[test]
 fn the_dropbox_and_drive_atlas_folders_hold_the_same_filenames() {
-    let (_, drive) = boot(DRIVE, "alice");
-    let (_, dropbox) = boot(DROPBOX, "alice");
+    let (_, drive) = boot(*DRIVE, "alice");
+    let (_, dropbox) = boot(*DROPBOX, "alice");
     let here = names(&drive, "alice", "f-atlas");
     let there = names(&dropbox, "alice", "atlas-assets");
     assert_eq!(here.len(), 7, "seven files on each side");
@@ -54,7 +56,7 @@ fn the_dropbox_and_drive_atlas_folders_hold_the_same_filenames() {
 /// Every URL these two sites offer the search index must answer, and answer with a page the engine renders strictly.
 #[test]
 fn every_indexed_page_of_both_drives_renders() {
-    for (site, actor) in [(DRIVE, "alice"), (DROPBOX, "carol")] {
+    for (site, actor) in [(*DRIVE, "alice"), (*DROPBOX, "carol")] {
         let (mut state, _) = boot(site, actor);
         let definition: Value = serde_json::from_str(site).unwrap();
         let entries = definition["search_entries"].as_array().unwrap();
@@ -89,7 +91,7 @@ fn every_indexed_page_of_both_drives_renders() {
 /// Alice holds a grant on the Dropbox folder, so the migration story is hers to follow.
 #[test]
 fn the_dropbox_share_reaches_alice_and_the_public_link_works() {
-    let (mut state, dropbox) = boot(DROPBOX, "alice");
+    let (mut state, dropbox) = boot(*DROPBOX, "alice");
     assert_eq!(dropbox.shared_with_me("alice").len(), 10);
     let link = &dropbox.read("alice", "atlas-assets").unwrap().link;
     assert!(!link.is_empty(), "the folder ships with a share link");

@@ -18,374 +18,95 @@
   "initial_state": {
     "skin": "gitlab",
     "repositories": {
-      "atlas-mirror": {
-        "owner": "northstar",
-        "description": "Read-only mirror of northstar/atlas on gitlab.com, refreshed nightly. Issues are disabled here; file them upstream.",
+      "api-tools": {
+        "owner": "david-ross",
+        "description": "REST API development utilities and middleware",
         "topics": [
-          "rust",
-          "determinism",
-          "simulation",
-          "mirror"
+          "api",
+          "rest",
+          "tools"
         ],
         "stars": [
-          "alicechen",
-          "praman",
-          "dmorel"
+          "hannah-liu",
+          "elena-morales"
         ],
-        "forks": 4,
-        "readers": [],
-        "writers": [
-          "northstar-ops"
-        ],
-        "objects": {
-          "5db36c83a7d724391832f79527851c8584e78e930b92e59670c668d9cf28d242": {
-            "parents": [],
-            "files": {
-              "README.md": "# Atlas (mirror)\n\nThis is a nightly mirror of http://github.com/northstar/atlas for people whose\nnetwork prefers gitlab.com. It is read-only; pull requests and issues go upstream.\n\nSame seed, same inputs, same bytes out.\n",
-              "src/bfs.rs": "use std::collections::HashMap;\n\npub fn shortest(links: &HashMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "CONTRIBUTING.md": "# Contributing\n\nUpstream only. This mirror accepts no changes.\n"
-            },
-            "message": "Initial commit",
-            "author": "alicechen",
-            "tick": 12
-          },
-          "e4442f0c89e0e63f7f2443e907b3c68287ed37191e520a41a67ad6a2f1af4320": {
-            "parents": [
-              "5db36c83a7d724391832f79527851c8584e78e930b92e59670c668d9cf28d242"
-            ],
-            "files": {
-              "README.md": "# Atlas (mirror)\n\nThis is a nightly mirror of http://github.com/northstar/atlas for people whose\nnetwork prefers gitlab.com. It is read-only; pull requests and issues go upstream.\n\nSame seed, same inputs, same bytes out.\n",
-              "src/bfs.rs": "use std::collections::BTreeMap;\n\n/// Ties are broken by neighbour order, which is only stable if the map iterates\n/// in a stable order. BTreeMap does.\npub fn shortest(links: &BTreeMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "CONTRIBUTING.md": "# Contributing\n\nUpstream only. This mirror accepts no changes.\n"
-            },
-            "message": "Sort refs before iterating in BFS",
-            "author": "praman",
-            "tick": 34
-          },
-          "07ce7474ddf84dae724f12923bf3f9953aeef7a4ab8b6088af1ef36b6c007181": {
-            "parents": [
-              "e4442f0c89e0e63f7f2443e907b3c68287ed37191e520a41a67ad6a2f1af4320"
-            ],
-            "files": {
-              "README.md": "# Atlas (mirror)\n\nThis is a nightly mirror of http://github.com/northstar/atlas for people whose\nnetwork prefers gitlab.com. It is read-only; pull requests and issues go upstream.\n\nSame seed, same inputs, same bytes out.\n",
-              "src/bfs.rs": "use std::collections::BTreeMap;\n\n/// Ties are broken by neighbour order, which is only stable if the map iterates\n/// in a stable order. BTreeMap does.\npub fn shortest(links: &BTreeMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "CONTRIBUTING.md": "# Contributing\n\nUpstream only. This mirror accepts no changes.\n",
-              ".gitlab-ci.yml": "stages: [test]\n\ntest:\n  stage: test\n  parallel:\n    matrix:\n      - OS: [linux, macos, windows]\n  script:\n    - cargo test --workspace\n  retry: 0   # a retry hides exactly the failures this matrix exists to find\n"
-            },
-            "message": "Add the Windows matrix to CI (2026-08-21)",
-            "author": "bmartinez",
-            "tick": 41
-          },
-          "59dc39aaccf3ff2536cb45ee37a36f47db7adae658ae79272a947ea77aa3d15c": {
-            "parents": [
-              "07ce7474ddf84dae724f12923bf3f9953aeef7a4ab8b6088af1ef36b6c007181"
-            ],
-            "files": {
-              "README.md": "# Atlas (mirror)\n\nThis is a nightly mirror of http://github.com/northstar/atlas for people whose\nnetwork prefers gitlab.com. It is read-only; pull requests and issues go upstream.\n\nSame seed, same inputs, same bytes out.\n",
-              "src/bfs.rs": "use std::collections::BTreeMap;\n\n/// Ties are broken by neighbour order, which is only stable if the map iterates\n/// in a stable order. BTreeMap does.\npub fn shortest(links: &BTreeMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "CONTRIBUTING.md": "# Contributing\n\nUpstream only. This mirror accepts no changes.\n",
-              ".gitlab-ci.yml": "stages: [test]\n\ntest:\n  stage: test\n  parallel:\n    matrix:\n      - OS: [linux, macos, windows]\n  script:\n    - cargo test --workspace\n  retry: 0   # a retry hides exactly the failures this matrix exists to find\n",
-              "CHANGELOG.md": "# Changelog\n\n## 0.4.2 - 2026-09-11\n- BFS neighbour order is part of the contract (BTreeMap).\n- Windows joins the default CI matrix.\n- Snapshot round trip preserves browser history.\n"
-            },
-            "message": "Mirror sync 2026-09-13: release 0.4.2 notes",
-            "author": "northstar-ops",
-            "tick": 58
-          }
-        },
-        "refs": {
-          "refs/heads/main": "59dc39aaccf3ff2536cb45ee37a36f47db7adae658ae79272a947ea77aa3d15c"
+        "forks": 3,
+        "files": {
+          "README.md": "# api-tools\n\nUtilities for building and testing REST APIs.\n\n- Request validator\n- Response formatter\n- Schema generator\n",
+          "Makefile": "build:\n\tgo build -o api-tools .\n\ntest:\n\tgo test ./...\n"
         }
       },
-      "dotfiles": {
-        "owner": "carol",
-        "description": "Carol's shell, git and editor configuration. Nothing clever; everything documented.",
+      "text-processor": {
+        "owner": "elena-morales",
+        "description": "Text processing utilities for data cleaning",
         "topics": [
-          "dotfiles",
-          "zsh",
-          "git"
+          "text",
+          "data-processing",
+          "nlp"
         ],
         "stars": [
-          "alicechen"
+          "james-kim",
+          "tvu",
+          "felix-brandt"
         ],
-        "forks": 1,
-        "readers": [],
-        "writers": [
-          "carol"
-        ],
-        "objects": {
-          "800b5c2a8f6af8bc173c0e8842b5047de829bb62e829a89b3297252f12bc87a2": {
-            "parents": [],
-            "files": {
-              "README.md": "# dotfiles\n\nSymlink each file into $HOME with `./install.sh`. Tested on Ubuntu 24.04 and macOS.\n",
-              "install.sh": "#!/usr/bin/env bash\nset -euo pipefail\nfor f in zshrc gitconfig; do\n  ln -sf \"$PWD/$f\" \"$HOME/.$f\"\ndone\n",
-              "zshrc": "export EDITOR=vim\nalias gs='git status --short'\nalias gl='git log --oneline -20'\nsetopt HIST_IGNORE_DUPS\n",
-              "gitconfig": "[user]\n\tname = Carol Nakamura\n[pull]\n\trebase = true\n[init]\n\tdefaultBranch = main\n"
-            },
-            "message": "Initial commit: zsh and git config",
-            "author": "carol",
-            "tick": 5
-          },
-          "cd0a9556454e9de319961f5fd5bf53a008465f1499e71521b7e7ab45c9e0d530": {
-            "parents": [
-              "800b5c2a8f6af8bc173c0e8842b5047de829bb62e829a89b3297252f12bc87a2"
-            ],
-            "files": {
-              "README.md": "# dotfiles\n\nSymlink each file into $HOME with `./install.sh`. Tested on Ubuntu 24.04 and macOS.\n",
-              "install.sh": "#!/usr/bin/env bash\nset -euo pipefail\nfor f in zshrc gitconfig tmux.conf; do\n  ln -sf \"$PWD/$f\" \"$HOME/.$f\"\ndone\n",
-              "zshrc": "export EDITOR=vim\nalias gs='git status --short'\nalias gl='git log --oneline -20'\nsetopt HIST_IGNORE_DUPS\n",
-              "gitconfig": "[user]\n\tname = Carol Nakamura\n[pull]\n\trebase = true\n[init]\n\tdefaultBranch = main\n",
-              "tmux.conf": "set -g prefix C-a\nunbind C-b\nset -g mouse on\nset -g history-limit 50000\n"
-            },
-            "message": "Add tmux config (2026-03-02)",
-            "author": "carol",
-            "tick": 18
-          },
-          "957a1ba637407c4dd550779ce8fa1d6197e1d0195ad13354c0fb678d8a4305ca": {
-            "parents": [
-              "cd0a9556454e9de319961f5fd5bf53a008465f1499e71521b7e7ab45c9e0d530"
-            ],
-            "files": {
-              "README.md": "# dotfiles\n\nSymlink each file into $HOME with `./install.sh`. Tested on Ubuntu 24.04 and macOS.\n",
-              "install.sh": "#!/usr/bin/env bash\nset -euo pipefail\nfor f in zshrc gitconfig tmux.conf; do\n  ln -sf \"$PWD/$f\" \"$HOME/.$f\"\ndone\n",
-              "zshrc": "export EDITOR=vim\nalias gs='git status --short'\nalias gl='git log --oneline -20'\nsetopt HIST_IGNORE_DUPS\n",
-              "gitconfig": "[user]\n\tname = Carol Nakamura\n[pull]\n\trebase = true\n[init]\n\tdefaultBranch = main\n[alias]\n\tlg = log --graph --oneline --decorate -30\n[commit]\n\tverbose = true\n",
-              "tmux.conf": "set -g prefix C-a\nunbind C-b\nset -g mouse on\nset -g history-limit 50000\n"
-            },
-            "message": "git: sign-off by default, better log alias",
-            "author": "carol",
-            "tick": 27
-          },
-          "7baa8a83d00ccccbc17c7b8b7aeb4cc9165327974ed81a35351e0da6281c2f15": {
-            "parents": [
-              "957a1ba637407c4dd550779ce8fa1d6197e1d0195ad13354c0fb678d8a4305ca"
-            ],
-            "files": {
-              "README.md": "# dotfiles\n\nSymlink each file into $HOME with `./install.sh`. Tested on Ubuntu 24.04 and macOS.\n",
-              "install.sh": "#!/usr/bin/env bash\nset -euo pipefail\nfor f in zshrc gitconfig tmux.conf; do\n  ln -sf \"$PWD/$f\" \"$HOME/.$f\"\ndone\n",
-              "zshrc": "export EDITOR=vim\nalias gs='git status --short'\nalias gl='git lg'\nsetopt HIST_IGNORE_DUPS\n# Next meeting in the prompt, so I stop being late to my own 1:1s.\nnext_meeting() { cat ~/.cache/next-meeting 2>/dev/null; }\nPROMPT='%~ $(next_meeting) %# '\n",
-              "gitconfig": "[user]\n\tname = Carol Nakamura\n[pull]\n\trebase = true\n[init]\n\tdefaultBranch = main\n[alias]\n\tlg = log --graph --oneline --decorate -30\n[commit]\n\tverbose = true\n",
-              "tmux.conf": "set -g prefix C-a\nunbind C-b\nset -g mouse on\nset -g history-limit 50000\n"
-            },
-            "message": "zsh: manager mode - a prompt that shows the calendar (2026-07-19)",
-            "author": "carol",
-            "tick": 44
-          }
-        },
-        "refs": {
-          "refs/heads/main": "7baa8a83d00ccccbc17c7b8b7aeb4cc9165327974ed81a35351e0da6281c2f15"
+        "forks": 5,
+        "files": {
+          "README.md": "# text-processor\n\nNLP and text processing tools.\n\n    processor clean --input data.txt --output clean.txt\n    processor tokenize document.txt\n",
+          "processor.py": "import re\ndef clean(text):\n    return re.sub(r'\\s+', ' ', text).strip()\n"
         }
       },
-      "replay-tools": {
-        "owner": "opensim",
-        "description": "Command-line tools for recording, shrinking and replaying deterministic simulation runs.",
+      "web-utils": {
+        "owner": "james-kim",
+        "description": "Common web utilities and middleware",
         "topics": [
-          "rust",
-          "determinism",
-          "replay",
-          "cli",
-          "testing"
+          "web",
+          "utilities",
+          "middleware"
         ],
         "stars": [
-          "alicechen",
-          "bmartinez",
-          "praman",
-          "dmorel",
-          "s-kovac"
-        ],
-        "forks": 12,
-        "readers": [],
-        "writers": [
-          "alicechen",
-          "bmartinez",
-          "praman"
-        ],
-        "objects": {
-          "4320cb38afab3a7d30eafb4a8ea434929bc6a76e5769ebb722f1eea79f14c21b": {
-            "parents": [],
-            "files": {
-              "README.md": "# replay-tools\n\nRecord a run as (seed, inputs). Replay it byte for byte. Shrink the inputs until the\nfailure is as small as it gets.\n\n    replay record --seed 42 -- ./my-sim > run.log\n    replay play run.log\n    replay shrink run.log --until 'exit != 0'\n\nWorks with anything that reads its clock and randomness from the harness and nothing else.\n",
-              "Cargo.toml": "[package]\nname = \"replay-tools\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
-              "src/main.rs": "mod record;\nmod play;\n\nfn main() {\n    let args: Vec<String> = std::env::args().collect();\n    match args.get(1).map(String::as_str) {\n        Some(\"record\") => record::run(&args[2..]),\n        Some(\"play\") => play::run(&args[2..]),\n        _ => eprintln!(\"usage: replay <record|play> ...\"),\n    }\n}\n",
-              "src/record.rs": "use std::io::Write;\n\n/// Every input the program consumed, in the order it consumed it. That plus the seed is the run.\npub fn run(args: &[String]) {\n    let seed: u64 = args.iter().position(|a| a == \"--seed\").and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(0);\n    let mut out = std::io::stdout().lock();\n    writeln!(out, \"{{\\\"seed\\\":{seed},\\\"inputs\\\":[]}}\").expect(\"stdout\");\n}\n",
-              "src/play.rs": "pub fn run(args: &[String]) {\n    let path = args.first().expect(\"a run log to replay\");\n    let log = std::fs::read_to_string(path).expect(\"readable log\");\n    let run: serde_json::Value = serde_json::from_str(&log).expect(\"valid run log\");\n    println!(\"replaying seed {}\", run[\"seed\"]);\n}\n"
-            },
-            "message": "Initial commit: replay from a seed and an input log",
-            "author": "praman",
-            "tick": 8
-          },
-          "92297d93e70b08ffcdc2052d115679e295c002e356bc723dab7c1135a16a192f": {
-            "parents": [
-              "4320cb38afab3a7d30eafb4a8ea434929bc6a76e5769ebb722f1eea79f14c21b"
-            ],
-            "files": {
-              "README.md": "# replay-tools\n\nRecord a run as (seed, inputs). Replay it byte for byte. Shrink the inputs until the\nfailure is as small as it gets.\n\n    replay record --seed 42 -- ./my-sim > run.log\n    replay play run.log\n    replay shrink run.log --until 'exit != 0'\n\nWorks with anything that reads its clock and randomness from the harness and nothing else.\n",
-              "Cargo.toml": "[package]\nname = \"replay-tools\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
-              "src/main.rs": "mod record;\nmod play;\n\nfn main() {\n    let args: Vec<String> = std::env::args().collect();\n    match args.get(1).map(String::as_str) {\n        Some(\"record\") => record::run(&args[2..]),\n        Some(\"play\") => play::run(&args[2..]),\n        _ => eprintln!(\"usage: replay <record|play> ...\"),\n    }\n}\n",
-              "src/record.rs": "use std::io::Write;\n\n/// Every input the program consumed, in the order it consumed it. That plus the seed is the run.\n/// If the child reads the wall clock the log is a lie, so the recorder refuses rather than guesses.\npub fn run(args: &[String]) {\n    if args.iter().any(|a| a == \"--allow-clock\") {\n        eprintln!(\"warning: clock reads will not replay\");\n    }\n    let seed: u64 = args.iter().position(|a| a == \"--seed\").and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(0);\n    let mut out = std::io::stdout().lock();\n    writeln!(out, \"{{\\\"seed\\\":{seed},\\\"inputs\\\":[]}}\").expect(\"stdout\");\n}\n",
-              "src/play.rs": "pub fn run(args: &[String]) {\n    let path = args.first().expect(\"a run log to replay\");\n    let log = std::fs::read_to_string(path).expect(\"readable log\");\n    let run: serde_json::Value = serde_json::from_str(&log).expect(\"valid run log\");\n    println!(\"replaying seed {}\", run[\"seed\"]);\n}\n"
-            },
-            "message": "Refuse to record a program that touches the wall clock",
-            "author": "bmartinez",
-            "tick": 29
-          },
-          "0b8d4055c394df03a82b7acd50d3548dff7a0d940f4292b1a09186737d36efa2": {
-            "parents": [
-              "92297d93e70b08ffcdc2052d115679e295c002e356bc723dab7c1135a16a192f"
-            ],
-            "files": {
-              "README.md": "# replay-tools\n\nRecord a run as (seed, inputs). Replay it byte for byte. Shrink the inputs until the\nfailure is as small as it gets.\n\n    replay record --seed 42 -- ./my-sim > run.log\n    replay play run.log\n    replay shrink run.log --until 'exit != 0'\n\nWorks with anything that reads its clock and randomness from the harness and nothing else.\n",
-              "Cargo.toml": "[package]\nname = \"replay-tools\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
-              "src/main.rs": "mod record;\nmod play;\n\nfn main() {\n    let args: Vec<String> = std::env::args().collect();\n    match args.get(1).map(String::as_str) {\n        Some(\"record\") => record::run(&args[2..]),\n        Some(\"play\") => play::run(&args[2..]),\n        _ => eprintln!(\"usage: replay <record|play> ...\"),\n    }\n}\n",
-              "src/record.rs": "use std::io::Write;\n\n/// Every input the program consumed, in the order it consumed it. That plus the seed is the run.\n/// If the child reads the wall clock the log is a lie, so the recorder refuses rather than guesses.\npub fn run(args: &[String]) {\n    if args.iter().any(|a| a == \"--allow-clock\") {\n        eprintln!(\"warning: clock reads will not replay\");\n    }\n    let seed: u64 = args.iter().position(|a| a == \"--seed\").and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(0);\n    let mut out = std::io::stdout().lock();\n    writeln!(out, \"{{\\\"seed\\\":{seed},\\\"inputs\\\":[]}}\").expect(\"stdout\");\n}\n",
-              "src/play.rs": "pub fn run(args: &[String]) {\n    let path = args.first().expect(\"a run log to replay\");\n    let log = std::fs::read_to_string(path).expect(\"readable log\");\n    let run: serde_json::Value = serde_json::from_str(&log).expect(\"valid run log\");\n    println!(\"replaying seed {}\", run[\"seed\"]);\n}\n",
-              "docs/shrinking.md": "# Shrinking a failing run\n\n1. Record with a seed. 2. Confirm `replay play` reproduces the failure. 3. `replay shrink`.\n\nIf step 2 fails on another machine, look for fused multiply-add before you look at anything else:\nARM contracts `a * b + c` by default and x86 usually does not.\n"
-            },
-            "message": "Docs: shrinking walkthrough and a note on FMA (2026-06-30)",
-            "author": "praman",
-            "tick": 39
-          },
-          "6217c569f8334a4ab36f6cfa5c5c82d0bba995a22965cad0bc26ebb2ad7ba81e": {
-            "parents": [
-              "0b8d4055c394df03a82b7acd50d3548dff7a0d940f4292b1a09186737d36efa2"
-            ],
-            "files": {
-              "README.md": "# replay-tools\n\nRecord a run as (seed, inputs). Replay it byte for byte. Shrink the inputs until the\nfailure is as small as it gets.\n\n    replay record --seed 42 -- ./my-sim > run.log\n    replay play run.log\n    replay shrink run.log --until 'exit != 0'\n\nWorks with anything that reads its clock and randomness from the harness and nothing else.\n",
-              "Cargo.toml": "[package]\nname = \"replay-tools\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
-              "src/main.rs": "mod record;\nmod play;\nmod shrink;\n\nfn main() {\n    let args: Vec<String> = std::env::args().collect();\n    match args.get(1).map(String::as_str) {\n        Some(\"record\") => record::run(&args[2..]),\n        Some(\"play\") => play::run(&args[2..]),\n        Some(\"shrink\") => println!(\"shrink: see src/shrink.rs\"),\n        _ => eprintln!(\"usage: replay <record|play|shrink> ...\"),\n    }\n}\n",
-              "src/record.rs": "use std::io::Write;\n\n/// Every input the program consumed, in the order it consumed it. That plus the seed is the run.\n/// If the child reads the wall clock the log is a lie, so the recorder refuses rather than guesses.\npub fn run(args: &[String]) {\n    if args.iter().any(|a| a == \"--allow-clock\") {\n        eprintln!(\"warning: clock reads will not replay\");\n    }\n    let seed: u64 = args.iter().position(|a| a == \"--seed\").and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(0);\n    let mut out = std::io::stdout().lock();\n    writeln!(out, \"{{\\\"seed\\\":{seed},\\\"inputs\\\":[]}}\").expect(\"stdout\");\n}\n",
-              "src/play.rs": "pub fn run(args: &[String]) {\n    let path = args.first().expect(\"a run log to replay\");\n    let log = std::fs::read_to_string(path).expect(\"readable log\");\n    let run: serde_json::Value = serde_json::from_str(&log).expect(\"valid run log\");\n    println!(\"replaying seed {}\", run[\"seed\"]);\n}\n",
-              "docs/shrinking.md": "# Shrinking a failing run\n\n1. Record with a seed. 2. Confirm `replay play` reproduces the failure. 3. `replay shrink`.\n\nIf step 2 fails on another machine, look for fused multiply-add before you look at anything else:\nARM contracts `a * b + c` by default and x86 usually does not.\n",
-              "src/shrink.rs": "/// Classic ddmin over the input list: halve, test, keep the half that still fails.\n/// The predicate must be deterministic, which is the whole point of the rest of this repo.\npub fn ddmin<T: Clone>(inputs: Vec<T>, fails: impl Fn(&[T]) -> bool) -> Vec<T> {\n    let mut current = inputs;\n    let mut n = 2;\n    while current.len() >= 2 {\n        let chunk = current.len().div_ceil(n);\n        let mut reduced = false;\n        for i in 0..n {\n            let start = i * chunk;\n            if start >= current.len() { break; }\n            let end = (start + chunk).min(current.len());\n            let mut candidate = current[..start].to_vec();\n            candidate.extend_from_slice(&current[end..]);\n            if fails(&candidate) {\n                current = candidate;\n                n = (n - 1).max(2);\n                reduced = true;\n                break;\n            }\n        }\n        if !reduced {\n            if n >= current.len() { break; }\n            n = (n * 2).min(current.len());\n        }\n    }\n    current\n}\n"
-            },
-            "message": "shrink: delta-debug the input log (2026-07-22)",
-            "author": "alicechen",
-            "tick": 47
-          },
-          "1fce745fdc294a45be6f01f68a7ec16d8b9604b44824a111f454fc229c67e8da": {
-            "parents": [
-              "6217c569f8334a4ab36f6cfa5c5c82d0bba995a22965cad0bc26ebb2ad7ba81e"
-            ],
-            "files": {
-              "README.md": "# replay-tools\n\nRecord a run as (seed, inputs). Replay it byte for byte. Shrink the inputs until the\nfailure is as small as it gets.\n\n    replay record --seed 42 -- ./my-sim > run.log\n    replay play run.log\n    replay shrink run.log --until 'exit != 0'\n\nWorks with anything that reads its clock and randomness from the harness and nothing else.\n",
-              "Cargo.toml": "[package]\nname = \"replay-tools\"\nversion = \"0.2.0\"\nedition = \"2024\"\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
-              "src/main.rs": "mod record;\nmod play;\nmod shrink;\n\nfn main() {\n    let args: Vec<String> = std::env::args().collect();\n    match args.get(1).map(String::as_str) {\n        Some(\"record\") => record::run(&args[2..]),\n        Some(\"play\") => play::run(&args[2..]),\n        Some(\"shrink\") => println!(\"shrink: see src/shrink.rs\"),\n        _ => eprintln!(\"usage: replay <record|play|shrink> ...\"),\n    }\n}\n",
-              "src/record.rs": "use std::io::Write;\n\n/// Every input the program consumed, in the order it consumed it. That plus the seed is the run.\n/// If the child reads the wall clock the log is a lie, so the recorder refuses rather than guesses.\npub fn run(args: &[String]) {\n    if args.iter().any(|a| a == \"--allow-clock\") {\n        eprintln!(\"warning: clock reads will not replay\");\n    }\n    let seed: u64 = args.iter().position(|a| a == \"--seed\").and_then(|i| args.get(i + 1)).and_then(|s| s.parse().ok()).unwrap_or(0);\n    let mut out = std::io::stdout().lock();\n    writeln!(out, \"{{\\\"seed\\\":{seed},\\\"inputs\\\":[]}}\").expect(\"stdout\");\n}\n",
-              "src/play.rs": "pub fn run(args: &[String]) {\n    let path = args.first().expect(\"a run log to replay\");\n    let log = std::fs::read_to_string(path).expect(\"readable log\");\n    let run: serde_json::Value = serde_json::from_str(&log).expect(\"valid run log\");\n    println!(\"replaying seed {}\", run[\"seed\"]);\n}\n",
-              "docs/shrinking.md": "# Shrinking a failing run\n\n1. Record with a seed. 2. Confirm `replay play` reproduces the failure. 3. `replay shrink`.\n\nIf step 2 fails on another machine, look for fused multiply-add before you look at anything else:\nARM contracts `a * b + c` by default and x86 usually does not.\n",
-              "src/shrink.rs": "/// Classic ddmin over the input list: halve, test, keep the half that still fails.\n/// The predicate must be deterministic, which is the whole point of the rest of this repo.\npub fn ddmin<T: Clone>(inputs: Vec<T>, fails: impl Fn(&[T]) -> bool) -> Vec<T> {\n    let mut current = inputs;\n    let mut n = 2;\n    while current.len() >= 2 {\n        let chunk = current.len().div_ceil(n);\n        let mut reduced = false;\n        for i in 0..n {\n            let start = i * chunk;\n            if start >= current.len() { break; }\n            let end = (start + chunk).min(current.len());\n            let mut candidate = current[..start].to_vec();\n            candidate.extend_from_slice(&current[end..]);\n            if fails(&candidate) {\n                current = candidate;\n                n = (n - 1).max(2);\n                reduced = true;\n                break;\n            }\n        }\n        if !reduced {\n            if n >= current.len() { break; }\n            n = (n * 2).min(current.len());\n        }\n    }\n    current\n}\n",
-              "tests/shrink.rs": "use replay_tools::shrink::ddmin;\n\n#[test]\nfn finds_the_one_bad_input() {\n    let inputs: Vec<u32> = (0..64).collect();\n    let out = ddmin(inputs, |xs| xs.contains(&37));\n    assert_eq!(out, vec![37]);\n}\n"
-            },
-            "message": "0.2.0: tests for ddmin, version bump",
-            "author": "alicechen",
-            "tick": 52
-          }
-        },
-        "refs": {
-          "refs/heads/main": "1fce745fdc294a45be6f01f68a7ec16d8b9604b44824a111f454fc229c67e8da"
-        },
-        "issues": {
-          "1": {
-            "number": 1,
-            "title": "shrink should accept a predicate script, not just an exit code",
-            "body": "`--until 'exit != 0'` is fine for crashes. For a wrong-answer bug I need to run a checker. Proposal: `--until-script ./check.sh`.",
-            "state": "open",
-            "author": "s-kovac",
-            "assignee": "alicechen",
-            "labels": [
-              "enhancement"
-            ],
-            "comments": [
-              {
-                "author": "alicechen",
-                "body": "Agreed. It composes with ddmin as-is; only the CLI needs a flag.",
-                "tick": 45
-              }
-            ],
-            "tick": 44
-          },
-          "2": {
-            "number": 2,
-            "title": "Recorder warns instead of refusing on --allow-clock",
-            "body": "README says the recorder refuses a program that reads the clock. It warns. One of them is wrong.",
-            "state": "closed",
-            "author": "dmorel",
-            "assignee": "bmartinez",
-            "labels": [
-              "docs",
-              "bug"
-            ],
-            "comments": [
-              {
-                "author": "bmartinez",
-                "body": "README was wrong; it warns on purpose so you can record a run you know will not replay. Fixed the wording.",
-                "tick": 50
-              }
-            ],
-            "tick": 47
-          }
-        },
-        "next_number": 3
-      },
-      "notes-cli": {
-        "owner": "bob",
-        "description": "A tiny notes tool: one Markdown file per day, searchable, no sync, no accounts.",
-        "topics": [
-          "cli",
-          "notes",
-          "markdown",
-          "rust"
-        ],
-        "stars": [
-          "carol"
+          "samir-patel",
+          "natasha-weber"
         ],
         "forks": 2,
-        "readers": [],
-        "writers": [
-          "bob"
+        "files": {
+          "README.md": "# web-utils\n\nCommon patterns and utilities for web development.\n\n- CORS handler\n- Request logger\n- Error handler\n",
+          "package.json": "{\"name\": \"web-utils\", \"version\": \"1.0.0\", \"type\": \"module\"}\n"
+        }
+      },
+      "db-migration": {
+        "owner": "samir-patel",
+        "description": "Database migration tool supporting multiple databases",
+        "topics": [
+          "database",
+          "migration",
+          "devops"
         ],
-        "objects": {
-          "b31cecba67fc2c2839e803eac084f1884c96ecf634637a90018d6fdf9c5b5996": {
-            "parents": [],
-            "files": {
-              "README.md": "# notes\n\n    notes            # open today's file in $EDITOR\n    notes grep TERM  # search every day\n    notes yesterday  # what did I do\n\nFiles live in ~/notes/YYYY-MM-DD.md. That is the whole design.\n",
-              "src/main.rs": "use std::process::Command;\n\nfn main() {\n    let dir = dirs_next::home_dir().expect(\"home\").join(\"notes\");\n    std::fs::create_dir_all(&dir).expect(\"notes dir\");\n    let today = dir.join(format!(\"{}.md\", chrono::Local::now().format(\"%Y-%m-%d\")));\n    let editor = std::env::var(\"EDITOR\").unwrap_or_else(|_| \"vi\".into());\n    Command::new(editor).arg(today).status().expect(\"editor\");\n}\n",
-              "Cargo.toml": "[package]\nname = \"notes\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nchrono = \"0.4\"\ndirs-next = \"2\"\n"
-            },
-            "message": "Initial commit",
-            "author": "bob",
-            "tick": 9
-          },
-          "d03fd2456e024d866e5c78e53ef1907ea4db2f31964e5841f3fb10509fcb5255": {
-            "parents": [
-              "b31cecba67fc2c2839e803eac084f1884c96ecf634637a90018d6fdf9c5b5996"
-            ],
-            "files": {
-              "README.md": "# notes\n\n    notes            # open today's file in $EDITOR\n    notes grep TERM  # search every day\n    notes yesterday  # what did I do\n\nFiles live in ~/notes/YYYY-MM-DD.md. That is the whole design.\n",
-              "src/main.rs": "use std::process::Command;\n\nfn main() {\n    let dir = dirs_next::home_dir().expect(\"home\").join(\"notes\");\n    std::fs::create_dir_all(&dir).expect(\"notes dir\");\n    let today = dir.join(format!(\"{}.md\", chrono::Local::now().format(\"%Y-%m-%d\")));\n    let editor = std::env::var(\"EDITOR\").unwrap_or_else(|_| \"vi\".into());\n    Command::new(editor).arg(today).status().expect(\"editor\");\n}\n",
-              "Cargo.toml": "[package]\nname = \"notes\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nchrono = \"0.4\"\ndirs-next = \"2\"\n",
-              "docs/usage.md": "# Usage\n\nOne file per day. If you want folders, tags or sync, this is not the tool.\n\n    notes            # today\n    notes yesterday  # yesterday\n    notes grep TERM  # every day, sorted by date\n"
-            },
-            "message": "Docs: usage and the one design rule (2026-04-08)",
-            "author": "bob",
-            "tick": 24
-          },
-          "0b2bb5c128a35f60bac714add41ef14e96d0a3cf54aac9b199192123f66f891d": {
-            "parents": [
-              "d03fd2456e024d866e5c78e53ef1907ea4db2f31964e5841f3fb10509fcb5255"
-            ],
-            "files": {
-              "README.md": "# notes\n\n    notes            # open today's file in $EDITOR\n    notes grep TERM  # search every day\n    notes yesterday  # what did I do\n\nFiles live in ~/notes/YYYY-MM-DD.md. That is the whole design.\n",
-              "src/main.rs": "use std::process::Command;\n\nfn main() {\n    let dir = dirs_next::home_dir().expect(\"home\").join(\"notes\");\n    std::fs::create_dir_all(&dir).expect(\"notes dir\");\n    let args: Vec<String> = std::env::args().skip(1).collect();\n    match args.first().map(String::as_str) {\n        Some(\"grep\") => {\n            let term = args.get(1).expect(\"a term\");\n            // read_dir order is whatever the filesystem feels like; a diff-able tool sorts.\n            let mut paths: Vec<_> = std::fs::read_dir(&dir).expect(\"dir\").map(|e| e.expect(\"entry\").path()).collect();\n            paths.sort();\n            for path in paths {\n                let text = std::fs::read_to_string(&path).unwrap_or_default();\n                for line in text.lines().filter(|l| l.contains(term.as_str())) {\n                    println!(\"{}: {line}\", path.file_name().unwrap().to_string_lossy());\n                }\n            }\n        }\n        Some(\"yesterday\") => open(&dir, chrono::Local::now() - chrono::Duration::days(1)),\n        _ => open(&dir, chrono::Local::now()),\n    }\n}\n\nfn open(dir: &std::path::Path, day: chrono::DateTime<chrono::Local>) {\n    let file = dir.join(format!(\"{}.md\", day.format(\"%Y-%m-%d\")));\n    let editor = std::env::var(\"EDITOR\").unwrap_or_else(|_| \"vi\".into());\n    Command::new(editor).arg(file).status().expect(\"editor\");\n}\n",
-              "Cargo.toml": "[package]\nname = \"notes\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nchrono = \"0.4\"\ndirs-next = \"2\"\n",
-              "docs/usage.md": "# Usage\n\nOne file per day. If you want folders, tags or sync, this is not the tool.\n\n    notes            # today\n    notes yesterday  # yesterday\n    notes grep TERM  # every day, sorted by date\n"
-            },
-            "message": "grep and yesterday subcommands, with a sorted listing so output is stable",
-            "author": "bob",
-            "tick": 36
-          }
-        },
-        "refs": {
-          "refs/heads/main": "0b2bb5c128a35f60bac714add41ef14e96d0a3cf54aac9b199192123f66f891d"
+        "stars": [
+          "hannah-liu",
+          "marcus-johnson"
+        ],
+        "forks": 6,
+        "files": {
+          "README.md": "# db-migration\n\nManage database schema changes with versioned migrations.\n\n    migrate up\n    migrate down --version 001\n",
+          "cli.rs": "use std::env;\n\nfn main() {\n    let args: Vec<String> = env::args().collect();\n    match args.get(1).map(|s| s.as_str()) {\n        Some(\"up\") => up(),\n        Some(\"down\") => down(),\n        _ => eprintln!(\"usage: migrate <up|down>\"),\n    }\n}\n"
+        }
+      },
+      "form-builder": {
+        "owner": "natasha-weber",
+        "description": "Build and validate forms with JSON schema",
+        "topics": [
+          "forms",
+          "validation",
+          "json-schema"
+        ],
+        "stars": [
+          "jlindqvist",
+          "david-ross"
+        ],
+        "forks": 4,
+        "files": {
+          "README.md": "# form-builder\n\nCreate forms from JSON schema definitions.\n\n```json\n{\"type\": \"form\", \"fields\": [{\"name\": \"email\", \"type\": \"email\"}]}\n```\n",
+          "builder.js": "export function build(schema) {\n  const form = document.createElement(\"form\");\n  for (const field of schema.fields) {\n    const input = document.createElement(\"input\");\n    input.type = field.type;\n    form.appendChild(input);\n  }\n  return form;\n}\n"
         }
       }
     }
@@ -394,70 +115,68 @@
     {
       "url": "http://gitlab.com/",
       "title": "GitLab",
-      "snippet": "Repositories hosted on gitlab.com: the Atlas mirror, replay-tools, Carol's dotfiles and Bob's notes CLI.",
-      "authority": 6,
+      "snippet": "The DevOps platform built for collaboration",
+      "authority": 8,
       "keywords": [
         "gitlab",
         "git",
-        "repositories",
-        "code hosting",
-        "open source"
+        "devops",
+        "ci/cd"
       ]
     },
     {
-      "url": "http://gitlab.com/repos/atlas-mirror",
-      "title": "atlas-mirror - GitLab",
-      "snippet": "Nightly read-only mirror of northstar/atlas for networks that prefer gitlab.com. Issues go upstream.",
-      "authority": 5,
+      "url": "http://gitlab.com/david-ross/api-tools",
+      "title": "david-ross / api-tools · GitLab",
+      "snippet": "REST API development utilities and middleware",
+      "authority": 4,
       "keywords": [
-        "atlas",
-        "mirror",
-        "northstar",
-        "gitlab",
-        "determinism",
-        "rust"
+        "api",
+        "rest",
+        "tools"
       ]
     },
     {
-      "url": "http://gitlab.com/repos/replay-tools",
-      "title": "opensim/replay-tools - GitLab",
-      "snippet": "Record a run as a seed and an input log, replay it byte for byte, shrink it with ddmin.",
-      "authority": 6,
+      "url": "http://gitlab.com/elena-morales/text-processor",
+      "title": "elena-morales / text-processor · GitLab",
+      "snippet": "Text processing utilities for data cleaning",
+      "authority": 4,
       "keywords": [
-        "replay-tools",
-        "replay",
-        "record",
-        "shrink",
-        "ddmin",
-        "deterministic",
-        "opensim",
-        "cli"
+        "text",
+        "processing",
+        "nlp"
       ]
     },
     {
-      "url": "http://gitlab.com/repos/dotfiles",
-      "title": "carol/dotfiles - GitLab",
-      "snippet": "Carol Nakamura's zsh, git and tmux configuration, with a prompt that shows the next meeting.",
+      "url": "http://gitlab.com/james-kim/web-utils",
+      "title": "james-kim / web-utils · GitLab",
+      "snippet": "Common web utilities and middleware",
       "authority": 3,
       "keywords": [
-        "dotfiles",
-        "carol",
-        "zsh",
-        "tmux",
-        "gitconfig"
+        "web",
+        "utilities",
+        "middleware"
       ]
     },
     {
-      "url": "http://gitlab.com/repos/notes-cli",
-      "title": "bob/notes-cli - GitLab",
-      "snippet": "One Markdown file per day, grep across all of them, no sync and no accounts.",
+      "url": "http://gitlab.com/samir-patel/db-migration",
+      "title": "samir-patel / db-migration · GitLab",
+      "snippet": "Database migration tool supporting multiple databases",
+      "authority": 4,
+      "keywords": [
+        "database",
+        "migration",
+        "devops"
+      ]
+    },
+    {
+      "url": "http://gitlab.com/natasha-weber/form-builder",
+      "title": "natasha-weber / form-builder · GitLab",
+      "snippet": "Build and validate forms with JSON schema",
       "authority": 3,
       "keywords": [
-        "notes",
-        "cli",
-        "markdown",
-        "bob",
-        "daily notes"
+        "forms",
+        "validation",
+        "json-schema"
       ]
     }
   ]

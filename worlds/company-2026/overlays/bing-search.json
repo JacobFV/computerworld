@@ -1,0 +1,23 @@
+{
+  "initial_state": {
+    "trending": [
+      "atlas determinism",
+      "northstar status incident",
+      "devcon 2026 seattle",
+      "hash order rust"
+    ],
+    "history": {
+      "bob": [
+        "flaky test windows",
+        "meridian labs"
+      ]
+    },
+    "authority_overrides": {
+      "alicechen.dev": 2,
+      "bmartinez.net": 2,
+      "eng.northstar.example": 5,
+      "northstar.example": 6,
+      "status.northstar.example": 5
+    }
+  }
+}

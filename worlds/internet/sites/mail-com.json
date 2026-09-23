@@ -2,194 +2,54 @@
   "id": "mail-com",
   "kind": "mail",
   "node": "mail-com",
-  "domains": ["mail.com", "www.mail.com"],
+  "domains": [
+    "mail.com",
+    "www.mail.com"
+  ],
   "port": 80,
   "initial_state": {
     "skin": "mailcom",
     "brand": "mail.com",
     "domain": "mail.com",
-    "users": ["alice", "bob", "carol", "admin"],
-    "accounts": {"carol": "carol.nakamura@mail.com"},
+    "users": [],
+    "accounts": {},
     "names": {
-      "alice": "Alice Chen",
-      "bob": "Bob Martinez",
-      "carol": "Carol Nakamura",
-      "admin": "Dana Okoro",
-      "carol@northstar.example": "Carol Nakamura",
-      "carol.nakamura@gmail.com": "Carol Nakamura",
       "tickets@ticketmaster.com": "Ticketmaster",
       "orders@amazon.com": "Amazon.com",
-      "ken.nakamura@gmail.com": "Ken Nakamura",
       "registrar@cascadeconvention.example": "Cascade Convention Center",
       "newsletter@harborlinecoffee.example": "Harborline Coffee",
       "no-reply@dropbox.com": "Dropbox"
     },
-    "external_contacts": ["carol.nakamura@gmail.com", "carol@northstar.example", "ken.nakamura@gmail.com", "newsletter@harborlinecoffee.example", "no-reply@dropbox.com", "orders@amazon.com", "registrar@cascadeconvention.example", "tickets@ticketmaster.com"],
-    "messages": {
-      "mail-1": {
-        "id": "mail-1",
-        "sender": "tickets@ticketmaster.com",
-        "to": ["carol.nakamura@mail.com"],
-        "cc": [],
-        "subject": "Your DevCon Seattle 2026 tickets — order TM-2210",
-        "body": "Order TM-2210 · 1 × Two-day pass · Seat A-14-7 · $640.00\n\nDevCon Seattle 2026 · Cascade Convention Center · Main hall\n\nYour pass is at http://ticketmaster.com/my-tickets. Event page: http://ticketmaster.com/event/devcon-2026",
-        "time": 1800000000,
-        "mailboxes": {
-          "carol": {
-            "folders": ["inbox"],
-            "labels": ["Travel"],
-            "read": true,
-            "starred": true
-          }
-        }
-      },
-      "mail-2": {
-        "id": "mail-2",
-        "sender": "registrar@cascadeconvention.example",
-        "to": ["carol.nakamura@mail.com"],
-        "cc": [],
-        "subject": "DevCon Seattle: speaker check-in and AV details",
-        "body": "Hi Carol,\n\nThanks for confirming your talk, \"Twelve minutes: what INC-4 taught us about replay\". Speaker check-in is at the Pike St entrance from 08:00 on day one. Please bring your laptop with HDMI or USB-C; we have clickers but not adapters.\n\nSlides are due 48 hours ahead so we can load them on the backup machine. The room seats 320 and is usually full for the reproducibility track.\n\nHelena Marsh\nProgramme, DevCon Seattle",
-        "time": 7200000000,
-        "mailboxes": {
-          "carol": {
-            "folders": ["inbox"],
-            "labels": ["DevCon"],
-            "read": false
-          }
-        }
-      },
-      "mail-3": {
-        "id": "mail-3",
-        "sender": "carol",
-        "to": ["registrar@cascadeconvention.example"],
-        "cc": [],
-        "subject": "Re: DevCon Seattle: speaker check-in and AV details",
-        "body": "Hi Helena — confirmed, I will bring USB-C. Slides will be with you tomorrow; the talk is the INC-4 postmortem with the timeline redrawn as a replay, so nothing that needs sound.\n\nCarol",
-        "time": 8700000000,
-        "thread_id": "mail-2",
-        "mailboxes": {
-          "carol": {
-            "folders": ["sent"],
-            "labels": ["DevCon"],
-            "read": true
-          }
-        }
-      },
-      "mail-4": {
-        "id": "mail-4",
-        "sender": "ken.nakamura@gmail.com",
-        "to": ["carol.nakamura@mail.com"],
-        "cc": [],
-        "subject": "Dad's knee — surgery date",
-        "body": "Carol,\n\nThe consultant has Dad down for the knee replacement on Wednesday 14 October, first thing. I will take him in; can you cover the Friday and the weekend after? He is pretending it is nothing, obviously.\n\nMum says do not bring flowers, bring the crossword.\n\nKen",
-        "time": 87000000000,
-        "mailboxes": {
-          "carol": {
-            "folders": ["inbox"],
-            "labels": ["Family"],
-            "read": false,
-            "starred": true
-          }
-        }
-      },
-      "mail-5": {
-        "id": "mail-5",
-        "sender": "carol",
-        "to": ["ken.nakamura@gmail.com"],
-        "cc": [],
-        "subject": "Re: Dad's knee — surgery date",
-        "body": "Friday 16th and the weekend, yes — I will book the Friday off now. Tell him I am bringing the hard crossword, not the easy one.\n\nC",
-        "time": 88800000000,
-        "thread_id": "mail-4",
-        "mailboxes": {
-          "carol": {
-            "folders": ["sent"],
-            "labels": ["Family"],
-            "read": true
-          }
-        }
-      },
-      "mail-6": {
-        "id": "mail-6",
-        "sender": "orders@amazon.com",
-        "to": ["carol.nakamura@mail.com"],
-        "cc": [],
-        "subject": "Your Amazon.com order 1003 has shipped",
-        "body": "Hello Carol,\n\nYour order 1003 (Deterministic Systems in Practice, $34.99) has shipped. Estimated delivery: Saturday 19 September.\n\nTrack your package: http://amazon.com/orders\n\nAmazon.com",
-        "time": 97200000000,
-        "mailboxes": {
-          "carol": {
-            "folders": ["inbox"],
-            "labels": ["Receipts"],
-            "read": true
-          }
-        }
-      },
-      "mail-7": {
-        "id": "mail-7",
-        "sender": "newsletter@harborlinecoffee.example",
-        "to": ["carol.nakamura@mail.com"],
-        "cc": [],
-        "subject": "Harborline Coffee: the back room is open for bookings again",
-        "body": "The back room reopens this month after the floor was redone. It seats twelve, has its own door, and is free to book with a $60 minimum spend. Reply to this email or ask at the counter.\n\nAlso new: the oat-milk cortado you all kept asking for, and Saturday hours to 18:00.",
-        "time": 172800000000,
-        "mailboxes": {
-          "carol": {
-            "folders": ["archive"],
-            "labels": ["Newsletters"],
-            "read": true
-          }
-        }
-      },
-      "mail-8": {
-        "id": "mail-8",
-        "sender": "no-reply@dropbox.com",
-        "to": ["carol.nakamura@mail.com"],
-        "cc": [],
-        "subject": "Alice Chen shared \"DevCon slides\" with you",
-        "body": "Alice Chen shared a folder with you on Dropbox: DevCon slides (4 files).\n\nOpen it at http://dropbox.com/",
-        "time": 178200000000,
-        "mailboxes": {
-          "carol": {
-            "folders": ["inbox"],
-            "labels": ["DevCon"],
-            "read": false
-          }
-        }
-      }
-    },
+    "external_contacts": [
+      "newsletter@harborlinecoffee.example",
+      "no-reply@dropbox.com",
+      "orders@amazon.com",
+      "registrar@cascadeconvention.example",
+      "tickets@ticketmaster.com"
+    ],
+    "messages": {},
     "next_id": 8
   },
   "search_entries": [
-    {
-      "url": "http://mail.com/",
-      "title": "mail.com",
-      "snippet": "Carol Nakamura's personal mailbox: DevCon speaker details, her father's surgery date, receipts and a coffee-shop newsletter.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": ["mail.com", "mail", "email", "webmail", "carol nakamura", "personal mail"]
-    },
-    {
-      "url": "http://mail.com/?folder=sent",
-      "title": "Sent - mail.com",
-      "snippet": "Carol confirms USB-C for her DevCon talk and books the Friday after her father's knee surgery.",
-      "vertical": "all",
-      "authority": 1,
-      "keywords": ["sent", "mail.com", "devcon", "carol"]
-    },
     {
       "url": "http://www.mail.com/",
       "title": "mail.com — sign in",
       "snippet": "The www address opens the same mailbox.",
       "vertical": "all",
       "authority": 1,
-      "keywords": ["mail.com", "www.mail.com", "email"]
+      "keywords": [
+        "mail.com",
+        "www.mail.com",
+        "email"
+      ]
     }
   ],
   "place": {
     "address": "198.51.100.130",
     "zone": "internet",
-    "link": {"from": "pop-eu", "latency_us": 2200}
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 2200
+    }
   }
 }

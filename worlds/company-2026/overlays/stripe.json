@@ -1,0 +1,1296 @@
+{
+  "initial_state": {
+    "pages": {
+      "/": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "h10",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "h1",
+                "text": "stripe",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "h2",
+                "text": "Payments",
+                "url": "http://stripe.com/payments"
+              },
+              {
+                "kind": "link",
+                "id": "h3",
+                "text": "Billing",
+                "url": "http://stripe.com/billing"
+              },
+              {
+                "kind": "link",
+                "id": "h4",
+                "text": "Connect",
+                "url": "http://stripe.com/connect"
+              },
+              {
+                "kind": "link",
+                "id": "h5",
+                "text": "Customers",
+                "url": "http://stripe.com/customers"
+              },
+              {
+                "kind": "link",
+                "id": "h6",
+                "text": "Pricing",
+                "url": "http://stripe.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "h7",
+                "text": "Docs",
+                "url": "http://stripe.com/docs"
+              },
+              {
+                "kind": "link",
+                "id": "h8",
+                "text": "Blog",
+                "url": "http://stripe.com/blog"
+              },
+              {
+                "kind": "link",
+                "id": "h9",
+                "text": "Sign in",
+                "url": "http://stripe.com/dashboard"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#0a2540",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "h15",
+            "height": 12
+          },
+          {
+            "kind": "styled",
+            "id": "h16",
+            "text": "Financial infrastructure to grow your revenue",
+            "style": {
+              "size": 34,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "h17",
+            "text": "Join the millions of companies that use Stripe to accept payments online and in person, embed financial services, power custom revenue models, and build a more profitable business.",
+            "style": {
+              "size": 16,
+              "color": "#425466"
+            }
+          },
+          {
+            "kind": "row",
+            "id": "h22",
+            "children": [
+              {
+                "kind": "card",
+                "id": "h18",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "h19",
+                    "text": "Start now",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#635bff",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://stripe.com/dashboard"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "h20",
+                "text": "Contact sales",
+                "url": "http://stripe.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "h21",
+                "text": "Read the docs",
+                "url": "http://stripe.com/docs"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "grid",
+            "id": "h32",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "h25",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h23",
+                    "text": "Payments",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h24",
+                    "text": "Accept cards, wallets, bank debits, and 100+ local payment methods with one integration."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://stripe.com/payments"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "h28",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h26",
+                    "text": "Billing",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h27",
+                    "text": "Subscriptions, usage-based pricing, invoices, and revenue recovery."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://stripe.com/billing"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "h31",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h29",
+                    "text": "Connect",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h30",
+                    "text": "Payments for platforms and marketplaces, with onboarding and payouts built in."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://stripe.com/connect"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "h33",
+            "text": "Built for developers",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "h34",
+            "text": "Every product is an API first. Test mode mirrors live mode exactly, webhooks tell your server what happened, and the CLI forwards events to localhost. Most teams take a first payment in an afternoon."
+          },
+          {
+            "kind": "card",
+            "id": "h36",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "h35",
+                "text": "$ curl https://api.stripe.com/v1/payment_intents \\\n  -u sk_test_51NorthstarExample: \\\n  -d amount=2000 -d currency=usd \\\n  -d \"automatic_payment_methods[enabled]\"=true",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "row",
+            "id": "h39",
+            "children": [
+              {
+                "kind": "link",
+                "id": "h37",
+                "text": "Customer stories",
+                "url": "http://stripe.com/customers"
+              },
+              {
+                "kind": "link",
+                "id": "h38",
+                "text": "Latest from the blog",
+                "url": "http://stripe.com/blog"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "h14",
+            "children": [
+              {
+                "kind": "link",
+                "id": "h11",
+                "text": "Stripe on GitHub",
+                "url": "http://github.com/"
+              },
+              {
+                "kind": "link",
+                "id": "h12",
+                "text": "Stripe on X",
+                "url": "http://x.com/"
+              },
+              {
+                "kind": "text",
+                "id": "h13",
+                "text": "Stripe, Inc. San Francisco and Dublin."
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/customers": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "cu5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "cu1",
+                "text": "stripe",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "cu2",
+                "text": "Home",
+                "url": "http://stripe.com/"
+              },
+              {
+                "kind": "link",
+                "id": "cu3",
+                "text": "Payments",
+                "url": "http://stripe.com/payments"
+              },
+              {
+                "kind": "link",
+                "id": "cu4",
+                "text": "Pricing",
+                "url": "http://stripe.com/pricing"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#0a2540",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "cu10",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "cu11",
+            "text": "Customer stories",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "cu12",
+            "text": "From two-person startups to companies in the Fortune 500, businesses run on Stripe."
+          },
+          {
+            "kind": "grid",
+            "id": "cu22",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "cu15",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "cu13",
+                    "text": "Northstar",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "cu14",
+                    "text": "Moved seat-based billing to Stripe Billing and cut invoicing errors to zero. Usage-based add-ons launched in a week."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "cu18",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "cu16",
+                    "text": "Meridian Health",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "cu17",
+                    "text": "Uses Connect to pay 4,000 clinics on a weekly schedule with automated KYC onboarding."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "cu21",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "cu19",
+                    "text": "Orbit Labs",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "cu20",
+                    "text": "Went from a first API call to accepting cards in 12 countries in one sprint using Checkout and adaptive pricing."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "text",
+            "id": "cu23",
+            "text": "Every story is told with the customer's permission and reviewed by their team. Want to talk to someone who has done what you are about to do? Sales can arrange a reference call."
+          },
+          {
+            "kind": "row",
+            "id": "cu26",
+            "children": [
+              {
+                "kind": "link",
+                "id": "cu24",
+                "text": "Talk to sales about pricing",
+                "url": "http://stripe.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "cu25",
+                "text": "Read stories on LinkedIn",
+                "url": "http://linkedin.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "cu9",
+            "children": [
+              {
+                "kind": "link",
+                "id": "cu6",
+                "text": "Pricing",
+                "url": "http://stripe.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "cu7",
+                "text": "Docs",
+                "url": "http://stripe.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/docs/api": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "da4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "da1",
+                "text": "stripe docs",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "da2",
+                "text": "Docs home",
+                "url": "http://stripe.com/docs"
+              },
+              {
+                "kind": "link",
+                "id": "da3",
+                "text": "Payments",
+                "url": "http://stripe.com/docs/payments"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#0a2540",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "da9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "da10",
+            "text": "API reference",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "da11",
+            "text": "The Stripe API is organized around REST. It accepts form-encoded request bodies, returns JSON, and uses standard HTTP response codes and authentication. Authenticate by passing your secret key as the basic-auth user name; the current API version is 2026-08-27."
+          },
+          {
+            "kind": "card",
+            "id": "da13",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "da12",
+                "text": "$ curl https://api.stripe.com/v1/customers \\\n  -u sk_test_51NorthstarExample: \\\n  -d email=alice@northstar.example",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "grid",
+            "id": "da23",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "da16",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "da14",
+                    "text": "Charges",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "da15",
+                    "text": "A Charge represents a single attempt to move money into your Stripe account."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://stripe.com/docs/api/charges"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "da19",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "da17",
+                    "text": "Customers",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "da18",
+                    "text": "A Customer object stores a payer's details, saved payment methods, and balance so you can charge them again, run subscriptions, and track history."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://stripe.com/docs/api/customers"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "da22",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "da20",
+                    "text": "PaymentIntents",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "da21",
+                    "text": "A PaymentIntent tracks the lifecycle of one payment from creation to completion, including authentication steps and retries."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://stripe.com/docs/api/payment-intents"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "da24",
+            "text": "Errors",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "da25",
+            "text": "400 invalid request, 401 bad key, 402 card declined, 404 no such object, 409 idempotency conflict, 429 rate limited, 5xx Stripe problem. Every error carries a type, a code, and a message meant for the developer, plus decline_code on card errors."
+          },
+          {
+            "kind": "row",
+            "id": "da29",
+            "children": [
+              {
+                "kind": "link",
+                "id": "da26",
+                "text": "Webhooks",
+                "url": "http://stripe.com/docs/webhooks"
+              },
+              {
+                "kind": "link",
+                "id": "da27",
+                "text": "API keys",
+                "url": "http://stripe.com/docs/keys"
+              },
+              {
+                "kind": "link",
+                "id": "da28",
+                "text": "Testing",
+                "url": "http://stripe.com/docs/testing"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "da8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "da5",
+                "text": "API reference",
+                "url": "http://stripe.com/docs/api"
+              },
+              {
+                "kind": "link",
+                "id": "da6",
+                "text": "Testing",
+                "url": "http://stripe.com/docs/testing"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/docs/api/charges": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "ach4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "ach1",
+                "text": "stripe docs",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "ach2",
+                "text": "Docs home",
+                "url": "http://stripe.com/docs"
+              },
+              {
+                "kind": "link",
+                "id": "ach3",
+                "text": "API reference",
+                "url": "http://stripe.com/docs/api"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#0a2540",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "ach9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "ach10",
+            "text": "Charges",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "ach11",
+            "text": "A Charge represents a single attempt to move money into your Stripe account. Newer integrations use PaymentIntents, which create Charges for you; the Charge object remains the record of what was captured, refunded, and disputed."
+          },
+          {
+            "kind": "heading",
+            "id": "ach12",
+            "text": "Endpoints",
+            "level": 3
+          },
+          {
+            "kind": "card",
+            "id": "ach14",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "ach13",
+                "text": "POST /v1/charges\nGET  /v1/charges/:id\nPOST /v1/charges/:id/capture\nGET  /v1/charges",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "heading",
+            "id": "ach15",
+            "text": "The object",
+            "level": 3
+          },
+          {
+            "kind": "card",
+            "id": "ach17",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "ach16",
+                "text": "{\n  \"id\": \"ch_3NorthstarA1b2C3d4\",\n  \"object\": \"charge\",\n  \"amount\": 2000,\n  \"currency\": \"usd\",\n  \"captured\": true,\n  \"paid\": true,\n  \"payment_intent\": \"pi_3NorthstarA1b2C3d4\",\n  \"payment_method_details\": { \"card\": { \"brand\": \"visa\", \"last4\": \"4242\" } },\n  \"status\": \"succeeded\"\n}",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "heading",
+            "id": "ach18",
+            "text": "Parameters",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "ach19",
+            "text": "amount (integer, in the smallest currency unit) · currency (ISO code) · customer (optional) · description · metadata (up to 50 keys) · capture (default true)"
+          },
+          {
+            "kind": "row",
+            "id": "ach22",
+            "children": [
+              {
+                "kind": "link",
+                "id": "ach20",
+                "text": "Accept a payment guide",
+                "url": "http://stripe.com/docs/payments"
+              },
+              {
+                "kind": "link",
+                "id": "ach21",
+                "text": "Test cards",
+                "url": "http://stripe.com/docs/testing"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "ach8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "ach5",
+                "text": "API reference",
+                "url": "http://stripe.com/docs/api"
+              },
+              {
+                "kind": "link",
+                "id": "ach6",
+                "text": "Testing",
+                "url": "http://stripe.com/docs/testing"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/docs/api/customers": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "acu4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "acu1",
+                "text": "stripe docs",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "acu2",
+                "text": "Docs home",
+                "url": "http://stripe.com/docs"
+              },
+              {
+                "kind": "link",
+                "id": "acu3",
+                "text": "API reference",
+                "url": "http://stripe.com/docs/api"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#0a2540",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "acu9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "acu10",
+            "text": "Customers",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "acu11",
+            "text": "A Customer object stores a payer's details, saved payment methods, and balance so you can charge them again, run subscriptions, and track history. Create one before a payment and pass its id to reuse the card."
+          },
+          {
+            "kind": "heading",
+            "id": "acu12",
+            "text": "Endpoints",
+            "level": 3
+          },
+          {
+            "kind": "card",
+            "id": "acu14",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "acu13",
+                "text": "POST /v1/customers\nGET  /v1/customers/:id\nPOST /v1/customers/:id\nDELETE /v1/customers/:id\nGET  /v1/customers?email=...",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "heading",
+            "id": "acu15",
+            "text": "The object",
+            "level": 3
+          },
+          {
+            "kind": "card",
+            "id": "acu17",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "acu16",
+                "text": "{\n  \"id\": \"cus_NorthstarQ7r8S9\",\n  \"object\": \"customer\",\n  \"email\": \"alice@northstar.example\",\n  \"name\": \"Alice Chen\",\n  \"invoice_prefix\": \"A1B2C3\",\n  \"default_source\": null,\n  \"balance\": 0,\n  \"metadata\": { \"team\": \"runtime\" }\n}",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "heading",
+            "id": "acu18",
+            "text": "Parameters",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "acu19",
+            "text": "email · name · phone · address · payment_method (attached on create) · invoice_settings.default_payment_method · metadata"
+          },
+          {
+            "kind": "row",
+            "id": "acu22",
+            "children": [
+              {
+                "kind": "link",
+                "id": "acu20",
+                "text": "Accept a payment guide",
+                "url": "http://stripe.com/docs/payments"
+              },
+              {
+                "kind": "link",
+                "id": "acu21",
+                "text": "Test cards",
+                "url": "http://stripe.com/docs/testing"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "acu8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "acu5",
+                "text": "API reference",
+                "url": "http://stripe.com/docs/api"
+              },
+              {
+                "kind": "link",
+                "id": "acu6",
+                "text": "Testing",
+                "url": "http://stripe.com/docs/testing"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/docs/api/payment-intents": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "apa4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "apa1",
+                "text": "stripe docs",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "apa2",
+                "text": "Docs home",
+                "url": "http://stripe.com/docs"
+              },
+              {
+                "kind": "link",
+                "id": "apa3",
+                "text": "API reference",
+                "url": "http://stripe.com/docs/api"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#0a2540",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "apa9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "apa10",
+            "text": "PaymentIntents",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "apa11",
+            "text": "A PaymentIntent tracks the lifecycle of one payment from creation to completion, including authentication steps and retries. Create it on your server, confirm it on the client, and read its status from webhooks."
+          },
+          {
+            "kind": "heading",
+            "id": "apa12",
+            "text": "Endpoints",
+            "level": 3
+          },
+          {
+            "kind": "card",
+            "id": "apa14",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "apa13",
+                "text": "POST /v1/payment_intents\nGET  /v1/payment_intents/:id\nPOST /v1/payment_intents/:id/confirm\nPOST /v1/payment_intents/:id/capture\nPOST /v1/payment_intents/:id/cancel",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "heading",
+            "id": "apa15",
+            "text": "The object",
+            "level": 3
+          },
+          {
+            "kind": "card",
+            "id": "apa17",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "apa16",
+                "text": "{\n  \"id\": \"pi_3NorthstarA1b2C3d4\",\n  \"object\": \"payment_intent\",\n  \"amount\": 2000,\n  \"currency\": \"usd\",\n  \"client_secret\": \"pi_3Northstar_secret_X9y8\",\n  \"status\": \"requires_payment_method\",\n  \"latest_charge\": null,\n  \"automatic_payment_methods\": { \"enabled\": true }\n}",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "heading",
+            "id": "apa18",
+            "text": "Parameters",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "apa19",
+            "text": "Statuses: requires_payment_method → requires_confirmation → requires_action → processing → succeeded, or canceled. requires_capture appears when capture_method is manual."
+          },
+          {
+            "kind": "row",
+            "id": "apa22",
+            "children": [
+              {
+                "kind": "link",
+                "id": "apa20",
+                "text": "Accept a payment guide",
+                "url": "http://stripe.com/docs/payments"
+              },
+              {
+                "kind": "link",
+                "id": "apa21",
+                "text": "Test cards",
+                "url": "http://stripe.com/docs/testing"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "apa8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "apa5",
+                "text": "API reference",
+                "url": "http://stripe.com/docs/api"
+              },
+              {
+                "kind": "link",
+                "id": "apa6",
+                "text": "Testing",
+                "url": "http://stripe.com/docs/testing"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/docs/keys": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "dk4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "dk1",
+                "text": "stripe docs",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "dk2",
+                "text": "Docs home",
+                "url": "http://stripe.com/docs"
+              },
+              {
+                "kind": "link",
+                "id": "dk3",
+                "text": "API reference",
+                "url": "http://stripe.com/docs/api"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#0a2540",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "dk9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "dk10",
+            "text": "API keys",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "dk11",
+            "text": "Keys authenticate every request. Keep secret keys on the server, and rotate them when in doubt.",
+            "style": {
+              "size": 16,
+              "color": "#425466"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "dk12",
+            "text": "Publishable keys (pk_live_ and pk_test_) are safe to embed in a browser or mobile app; they can only create tokens and confirm payments the server set up. Secret keys (sk_live_ and sk_test_) can do anything the account can do and must never leave your server or be committed to a repository."
+          },
+          {
+            "kind": "text",
+            "id": "dk13",
+            "text": "Restricted keys (rk_) grant a chosen subset of permissions, for example read-only access to Charges for a reporting job. Create them in the Dashboard under Developers, then API keys. Rolling a key gives you a grace period of up to 24 hours before the old key stops working."
+          },
+          {
+            "kind": "card",
+            "id": "dk15",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "dk14",
+                "text": "$ export STRIPE_SECRET_KEY=sk_test_51NorthstarExample\n$ stripe login --api-key $STRIPE_SECRET_KEY\n$ stripe customers list --limit 3",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "row",
+            "id": "dk18",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dk16",
+                "text": "Open the Dashboard",
+                "url": "http://stripe.com/dashboard"
+              },
+              {
+                "kind": "link",
+                "id": "dk17",
+                "text": "API reference",
+                "url": "http://stripe.com/docs/api"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "dk8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dk5",
+                "text": "API reference",
+                "url": "http://stripe.com/docs/api"
+              },
+              {
+                "kind": "link",
+                "id": "dk6",
+                "text": "Testing",
+                "url": "http://stripe.com/docs/testing"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      }
+    }
+  }
+}

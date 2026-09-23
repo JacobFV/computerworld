@@ -1,0 +1,11 @@
+{
+  "initial_state": {
+    "authority_overrides": {
+      "alicechen.dev": 5,
+      "bmartinez.net": 5,
+      "eng.northstar.example": 4,
+      "northstar.example": 3,
+      "status.northstar.example": 3
+    }
+  }
+}

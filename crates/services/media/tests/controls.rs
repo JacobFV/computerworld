@@ -44,10 +44,7 @@ fn ctx(actor: &str) -> ServiceContext {
     }
 }
 fn site(name: &str) -> Value {
-    let path = format!(
-        "{}/../../../worlds/internet/sites/{name}.json",
-        env!("CARGO_MANIFEST_DIR")
-    );
+    let path = cw_service_common::reference::reference_site_path(name);
     serde_json::from_str(&std::fs::read_to_string(&path).expect(&path)).unwrap()
 }
 fn load(name: &str) -> (String, String, Value) {

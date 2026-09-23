@@ -9,21 +9,2671 @@
   "port": 80,
   "initial_state": {
     "pages": {
-      "/": {"version":1,"title":"Figma: The Collaborative Interface Design Tool","elements":[{"kind":"row","id":"h9","children":[{"kind":"styled","id":"h1","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"h2","text":"Design","url":"http://figma.com/design"},{"kind":"link","id":"h3","text":"FigJam","url":"http://figma.com/figjam"},{"kind":"link","id":"h4","text":"Dev Mode","url":"http://figma.com/dev-mode"},{"kind":"link","id":"h5","text":"Community","url":"http://figma.com/community"},{"kind":"link","id":"h6","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"h7","text":"Blog","url":"http://figma.com/blog"},{"kind":"link","id":"h8","text":"Help","url":"http://figma.com/help"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"h14","height":12},{"kind":"styled","id":"h15","text":"Think bigger. Build faster.","style":{"size":36,"weight":"bold"}},{"kind":"styled","id":"h16","text":"Figma is the collaborative platform where teams design, prototype, and ship products together, from the first whiteboard sketch to the last handoff comment.","style":{"size":16,"color":"#6b6b6b"}},{"kind":"row","id":"h20","children":[{"kind":"card","id":"h17","children":[{"kind":"styled","id":"h18","text":"Get started for free","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#a259ff","radius":8,"padding":12},"action":{"method":"GET","url":"http://figma.com/pricing"}},{"kind":"link","id":"h19","text":"Watch the Config 2026 keynote","url":"http://youtube.com/"}],"gap":12,"align":"center"},{"kind":"grid","id":"h30","columns":3,"children":[{"kind":"card","id":"h23","children":[{"kind":"heading","id":"h21","text":"Figma Design","level":3},{"kind":"text","id":"h22","text":"Multiplayer editing, auto layout, variables with modes, and prototyping that runs in the browser."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://figma.com/design"}},{"kind":"card","id":"h26","children":[{"kind":"heading","id":"h24","text":"FigJam","level":3},{"kind":"text","id":"h25","text":"An online whiteboard for brainstorms, retros, and diagrams. Sticky notes, stamps, and timers included."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://figma.com/figjam"}},{"kind":"card","id":"h29","children":[{"kind":"heading","id":"h27","text":"Dev Mode","level":3},{"kind":"text","id":"h28","text":"A workspace for developers with measured specs, generated code snippets, and Ready-for-dev status."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://figma.com/dev-mode"}}],"gap":12},{"kind":"heading","id":"h31","text":"Trusted by product teams everywhere","level":2},{"kind":"text","id":"h32","text":"Northstar, Meridian Health, Lumen Bank, and Orbit Labs design in Figma. Thousands of free files, plugins, and widgets published by their designers live in the Community, one click from your drafts."},{"kind":"row","id":"h35","children":[{"kind":"link","id":"h33","text":"Latest from the blog: Variables and modes, one year on","url":"http://figma.com/blog/variables-and-modes-one-year-on"},{"kind":"link","id":"h34","text":"Help: Share a file","url":"http://figma.com/help/share-a-file"}],"gap":12,"align":"center"},{"kind":"row","id":"h13","children":[{"kind":"link","id":"h10","text":"Figma on X","url":"http://x.com/"},{"kind":"link","id":"h11","text":"Figma on YouTube","url":"http://youtube.com/"},{"kind":"text","id":"h12","text":"Figma, Inc. San Francisco."}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/pricing": {"version":1,"title":"Pricing · Figma","elements":[{"kind":"row","id":"p5","children":[{"kind":"styled","id":"p1","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"p2","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"p3","text":"Design","url":"http://figma.com/design"},{"kind":"link","id":"p4","text":"Help","url":"http://figma.com/help"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"p9","height":12},{"kind":"heading","id":"p10","text":"Pricing","level":1},{"kind":"text","id":"p11","text":"Every seat type on every plan. Full seats design, Dev seats inspect and build, Collab seats comment and whiteboard. Prices are per seat per month, billed annually."},{"kind":"grid","id":"p32","columns":4,"children":[{"kind":"card","id":"p16","children":[{"kind":"heading","id":"p12","text":"Starter","level":3},{"kind":"styled","id":"p13","text":"$0","style":{"size":28,"weight":"bold"}},{"kind":"styled","id":"p14","text":"Free forever","style":{"size":12,"color":"#6b6b6b"}},{"kind":"text","id":"p15","text":"3 Figma Design files · 3 FigJam files · Unlimited personal drafts · Unlimited collaborators"}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"p21","children":[{"kind":"heading","id":"p17","text":"Professional","level":3},{"kind":"styled","id":"p18","text":"$16","style":{"size":28,"weight":"bold"}},{"kind":"styled","id":"p19","text":"per Full seat, per month","style":{"size":12,"color":"#6b6b6b"}},{"kind":"text","id":"p20","text":"Unlimited files and projects · Unlimited version history · Team libraries · Dev seats at $12"}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"p26","children":[{"kind":"heading","id":"p22","text":"Organization","level":3},{"kind":"styled","id":"p23","text":"$55","style":{"size":28,"weight":"bold"}},{"kind":"styled","id":"p24","text":"per Full seat, per month","style":{"size":12,"color":"#6b6b6b"}},{"kind":"text","id":"p25","text":"Organization-wide libraries · Design system analytics · Branching and merging · SSO"}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"p31","children":[{"kind":"heading","id":"p27","text":"Enterprise","level":3},{"kind":"styled","id":"p28","text":"$90","style":{"size":28,"weight":"bold"}},{"kind":"styled","id":"p29","text":"per Full seat, per month","style":{"size":12,"color":"#6b6b6b"}},{"kind":"text","id":"p30","text":"Workspaces and guest controls · REST API and SCIM · Dedicated support · Audit logs"}],"style":{"radius":10,"padding":16}}],"gap":12},{"kind":"heading","id":"p33","text":"Frequently asked","level":2},{"kind":"text","id":"p34","text":"Can I mix seat types on one plan? Yes. A team can have any combination of Full, Dev, and Collab seats. Collab seats are free on every plan and can comment, view, and edit in FigJam."},{"kind":"text","id":"p35","text":"Is there a discount for education? Students and educators at accredited institutions get the Professional plan free. Verification takes about two business days."},{"kind":"text","id":"p36","text":"How does billing work when I add a seat mid-cycle? New seats are prorated to the end of the current billing period and then renew with the rest of the team."},{"kind":"row","id":"p39","children":[{"kind":"link","id":"p37","text":"Manage team billing","url":"http://figma.com/help/manage-team-billing"},{"kind":"link","id":"p38","text":"Compare Design and FigJam","url":"http://figma.com/design"}],"gap":12,"align":"center"},{"kind":"row","id":"p8","children":[{"kind":"link","id":"p6","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"p7","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/design": {"version":1,"title":"Figma Design · Figma","elements":[{"kind":"row","id":"d6","children":[{"kind":"styled","id":"d1","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"d2","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"d3","text":"FigJam","url":"http://figma.com/figjam"},{"kind":"link","id":"d4","text":"Dev Mode","url":"http://figma.com/dev-mode"},{"kind":"link","id":"d5","text":"Pricing","url":"http://figma.com/pricing"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"d10","height":12},{"kind":"heading","id":"d11","text":"Figma Design","level":1},{"kind":"text","id":"d12","text":"Design, prototype, and iterate in one multiplayer file. No installs, no sync conflicts, no exports to review a change."},{"kind":"grid","id":"d31","columns":3,"children":[{"kind":"card","id":"d15","children":[{"kind":"heading","id":"d13","text":"Auto layout","level":3},{"kind":"text","id":"d14","text":"Frames that resize with their content. Set padding, gap, and wrapping once and let the layout do the rest."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"d18","children":[{"kind":"heading","id":"d16","text":"Variables and modes","level":3},{"kind":"text","id":"d17","text":"Bind colors, numbers, strings, and booleans to variables, then switch light, dark, compact, and comfortable modes with one click."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"d21","children":[{"kind":"heading","id":"d19","text":"Components and properties","level":3},{"kind":"text","id":"d20","text":"Build one component with variants and boolean, instance-swap, and text properties instead of a hundred near-duplicates."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"d24","children":[{"kind":"heading","id":"d22","text":"Prototyping","level":3},{"kind":"text","id":"d23","text":"Interactive components, smart animate, conditional logic, and expressions turn a static frame into a clickable flow."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"d27","children":[{"kind":"heading","id":"d25","text":"Branching","level":3},{"kind":"text","id":"d26","text":"Explore an idea on a branch, review the diff, and merge back into the main file when the team agrees."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"d30","children":[{"kind":"heading","id":"d28","text":"Multiplayer","level":3},{"kind":"text","id":"d29","text":"Every cursor in the file is a teammate. Observe someone, follow along, or hop into an audio conversation."}],"style":{"radius":10,"padding":16}}],"gap":12},{"kind":"heading","id":"d32","text":"What changed in 2026","level":2},{"kind":"text","id":"d33","text":"Grid auto layout lets a frame lay children on a two-dimensional grid with named tracks. Variables gained typed collections that can be exported as design tokens JSON. Prototype expressions can now read and write variables inside a flow, which makes a working calculator a design file rather than a demo."},{"kind":"row","id":"d38","children":[{"kind":"card","id":"d34","children":[{"kind":"styled","id":"d35","text":"Start a free file","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#a259ff","radius":8,"padding":12},"action":{"method":"GET","url":"http://figma.com/pricing"}},{"kind":"link","id":"d36","text":"Hand off with Dev Mode","url":"http://figma.com/dev-mode"},{"kind":"link","id":"d37","text":"Read: Variables and modes, one year on","url":"http://figma.com/blog/variables-and-modes-one-year-on"}],"gap":12,"align":"center"},{"kind":"row","id":"d9","children":[{"kind":"link","id":"d7","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"d8","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/figjam": {"version":1,"title":"FigJam · Figma","elements":[{"kind":"row","id":"j5","children":[{"kind":"styled","id":"j1","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"j2","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"j3","text":"Design","url":"http://figma.com/design"},{"kind":"link","id":"j4","text":"Pricing","url":"http://figma.com/pricing"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"j9","height":12},{"kind":"heading","id":"j10","text":"FigJam","level":1},{"kind":"text","id":"j11","text":"An online whiteboard where the whole team can think out loud. Sticky notes, shapes, connectors, stamps, and a timer that keeps the meeting honest."},{"kind":"grid","id":"j21","columns":3,"children":[{"kind":"card","id":"j14","children":[{"kind":"heading","id":"j12","text":"Templates","level":3},{"kind":"text","id":"j13","text":"Retrospectives, user journey maps, brainstorms, and sprint planning boards you can start from in seconds."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"j17","children":[{"kind":"heading","id":"j15","text":"Diagramming","level":3},{"kind":"text","id":"j16","text":"Flowcharts and system diagrams with connectors that stay attached when shapes move."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"j20","children":[{"kind":"heading","id":"j18","text":"Jambot","level":3},{"kind":"text","id":"j19","text":"Ask for a summary of the sticky notes on a board, sort them into themes, or turn a rough outline into a draft flow."}],"style":{"radius":10,"padding":16}}],"gap":12},{"kind":"heading","id":"j22","text":"Runs the meeting with you","level":2},{"kind":"text","id":"j23","text":"Start a timer, open a vote, and let everyone drop stamps on the ideas they want to keep. When the session ends, the board is already the record: no one has to type up the whiteboard afterward. Every FigJam board lives next to your design files, so a flow sketched on Monday becomes the frame you design on Tuesday without copying anything between tools."},{"kind":"row","id":"j27","children":[{"kind":"card","id":"j24","children":[{"kind":"styled","id":"j25","text":"Open a FigJam board","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#a259ff","radius":8,"padding":12},"action":{"method":"GET","url":"http://figma.com/pricing"}},{"kind":"link","id":"j26","text":"Wireframe kit from the community","url":"http://figma.com/community/wireframe-kit-2026"}],"gap":12,"align":"center"},{"kind":"row","id":"j8","children":[{"kind":"link","id":"j6","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"j7","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/dev-mode": {"version":1,"title":"Dev Mode · Figma","elements":[{"kind":"row","id":"v5","children":[{"kind":"styled","id":"v1","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"v2","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"v3","text":"Design","url":"http://figma.com/design"},{"kind":"link","id":"v4","text":"Pricing","url":"http://figma.com/pricing"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"v9","height":12},{"kind":"heading","id":"v10","text":"Dev Mode","level":1},{"kind":"text","id":"v11","text":"A workspace inside every file built for the people who write the code. Measure, inspect, and copy without accidentally moving a layer."},{"kind":"grid","id":"v21","columns":3,"children":[{"kind":"card","id":"v14","children":[{"kind":"heading","id":"v12","text":"Ready for dev","level":3},{"kind":"text","id":"v13","text":"Designers mark sections ready and Dev Mode shows what changed since the last time you looked."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"v17","children":[{"kind":"heading","id":"v15","text":"Code snippets","level":3},{"kind":"text","id":"v16","text":"CSS, SwiftUI, and Compose snippets generated from auto layout and variables, with your token names."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"v20","children":[{"kind":"heading","id":"v18","text":"Code Connect","level":3},{"kind":"text","id":"v19","text":"Map a Figma component to the real component in your repository so the snippet shows your code, not a guess."}],"style":{"radius":10,"padding":16}}],"gap":12},{"kind":"heading","id":"v22","text":"A snippet, as Dev Mode shows it","level":2},{"kind":"card","id":"v24","children":[{"kind":"styled","id":"v23","text":"/* Button / Primary  (variables: color/bg/brand, space/200) */\n.button-primary {\n  display: flex;\n  padding: var(--space-200) var(--space-300);\n  gap: var(--space-100);\n  border-radius: 8px;\n  background: var(--color-bg-brand);\n}","style":{"size":13,"color":"#e2e8f0"}}],"style":{"background":"#0f172a","radius":8,"padding":14}},{"kind":"text","id":"v25","text":"Dev Mode is available to Dev seats on Professional plans and above, and to every Full seat. Connect a repository on GitHub to keep Code Connect mappings in version control."},{"kind":"row","id":"v28","children":[{"kind":"link","id":"v26","text":"Code Connect on GitHub","url":"http://github.com/"},{"kind":"link","id":"v27","text":"Read: From design to code with Dev Mode","url":"http://figma.com/blog/from-design-to-code-with-dev-mode"}],"gap":12,"align":"center"},{"kind":"row","id":"v8","children":[{"kind":"link","id":"v6","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"v7","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/community": {"version":1,"title":"Community · Figma","elements":[{"kind":"row","id":"c5","children":[{"kind":"styled","id":"c1","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"c2","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"c3","text":"Design","url":"http://figma.com/design"},{"kind":"link","id":"c4","text":"Help","url":"http://figma.com/help"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"c9","height":12},{"kind":"heading","id":"c25","text":"Community","level":1},{"kind":"text","id":"c26","text":"Files, plugins, and widgets published by designers and developers. Everything here is free to duplicate."},{"kind":"grid","id":"c27","columns":3,"children":[{"kind":"card","id":"c14","children":[{"kind":"thumbnail","id":"c10","label":"Atlas Design System","style":{"size":16,"color":"#ffffff","background":"#a259ff","radius":10,"align":"center","width":200,"height":80}},{"kind":"heading","id":"c11","text":"Atlas Design System","level":3},{"kind":"styled","id":"c12","text":"by Northstar Design · 12.4k duplicates","style":{"size":12,"color":"#6b6b6b"}},{"kind":"text","id":"c13","text":"Foundations, 84 components, and light and dark modes wired to variables. The system behind northstar.example."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://figma.com/community/atlas-design-system"}},{"kind":"card","id":"c19","children":[{"kind":"thumbnail","id":"c15","label":"Wireframe Kit 2026","style":{"size":16,"color":"#ffffff","background":"#a259ff","radius":10,"align":"center","width":200,"height":80}},{"kind":"heading","id":"c16","text":"Wireframe Kit 2026","level":3},{"kind":"styled","id":"c17","text":"by Priya Raman · 8.9k duplicates","style":{"size":12,"color":"#6b6b6b"}},{"kind":"text","id":"c18","text":"Low-fidelity blocks for web and mobile: navigation, forms, tables, and empty states. Made for FigJam and Design."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://figma.com/community/wireframe-kit-2026"}},{"kind":"card","id":"c24","children":[{"kind":"thumbnail","id":"c20","label":"Linear Icons 240","style":{"size":16,"color":"#ffffff","background":"#a259ff","radius":10,"align":"center","width":200,"height":80}},{"kind":"heading","id":"c21","text":"Linear Icons 240","level":3},{"kind":"styled","id":"c22","text":"by Tomas Vieira · 21.1k duplicates","style":{"size":12,"color":"#6b6b6b"}},{"kind":"text","id":"c23","text":"240 line icons on a 24px grid with 1.5px strokes, exported as components with a color variable on every path."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://figma.com/community/iconset-linear-240"}}],"gap":12},{"kind":"text","id":"c28","text":"Want to publish? Open any file, choose Share, then Publish to Community. Files are reviewed within a day and can be updated at any time."},{"kind":"link","id":"c29","text":"How to share a file","url":"http://figma.com/help/share-a-file"},{"kind":"row","id":"c8","children":[{"kind":"link","id":"c6","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"c7","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/community/atlas-design-system": {"version":1,"title":"Atlas Design System · Figma Community","elements":[{"kind":"row","id":"c04","children":[{"kind":"styled","id":"c01","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"c02","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"c03","text":"Community","url":"http://figma.com/community"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"c08","height":12},{"kind":"thumbnail","id":"c09","label":"Atlas Design System","style":{"size":16,"color":"#ffffff","background":"#a259ff","radius":10,"align":"center","width":720,"height":200}},{"kind":"row","id":"c012","children":[{"kind":"styled","id":"c010","text":"Atlas Design System","style":{"size":26,"weight":"bold"}},{"kind":"badge","id":"c011","text":"Design system","style":{"size":11,"color":"#ffffff","background":"#a259ff","radius":10,"padding":5}}],"gap":12,"align":"center"},{"kind":"styled","id":"c013","text":"Published by Northstar Design · 12.4k duplicates · Updated 2026-08-14 · Free, CC BY 4.0","style":{"size":13,"color":"#6b6b6b"}},{"kind":"row","id":"c017","children":[{"kind":"card","id":"c014","children":[{"kind":"styled","id":"c015","text":"Open in Figma","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#a259ff","radius":8,"padding":12},"action":{"method":"GET","url":"http://figma.com/design"}},{"kind":"link","id":"c016","text":"Report a problem","url":"http://figma.com/help"}],"gap":12,"align":"center"},{"kind":"text","id":"c018","text":"Foundations, 84 components, and light and dark modes wired to variables. The system behind northstar.example."},{"kind":"text","id":"c019","text":"Atlas is the design system used by Northstar's product team. Colors, spacing, radii, and type ramps are variables in four collections, and every component reads from them, so switching a whole screen to dark mode is one mode change. Includes buttons, inputs, tables, toasts, navigation, and data cards, each with a documentation page in the file."},{"kind":"heading","id":"c020","text":"Comments","level":3},{"kind":"text","id":"c021","text":"Daniela Ferreira: Duplicated this for a hackathon and it saved us the whole first day. Kwame Mensah: The variables collections are named cleanly, thank you for the docs page inside the file."},{"kind":"link","id":"c022","text":"Author on LinkedIn","url":"http://linkedin.com/"},{"kind":"row","id":"c07","children":[{"kind":"link","id":"c05","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"c06","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/community/wireframe-kit-2026": {"version":1,"title":"Wireframe Kit 2026 · Figma Community","elements":[{"kind":"row","id":"c14","children":[{"kind":"styled","id":"c11","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"c12","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"c13","text":"Community","url":"http://figma.com/community"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"c18","height":12},{"kind":"thumbnail","id":"c19","label":"Wireframe Kit 2026","style":{"size":16,"color":"#ffffff","background":"#a259ff","radius":10,"align":"center","width":720,"height":200}},{"kind":"row","id":"c112","children":[{"kind":"styled","id":"c110","text":"Wireframe Kit 2026","style":{"size":26,"weight":"bold"}},{"kind":"badge","id":"c111","text":"Wireframes","style":{"size":11,"color":"#ffffff","background":"#a259ff","radius":10,"padding":5}}],"gap":12,"align":"center"},{"kind":"styled","id":"c113","text":"Published by Priya Raman · 8.9k duplicates · Updated 2026-08-14 · Free, CC BY 4.0","style":{"size":13,"color":"#6b6b6b"}},{"kind":"row","id":"c117","children":[{"kind":"card","id":"c114","children":[{"kind":"styled","id":"c115","text":"Open in Figma","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#a259ff","radius":8,"padding":12},"action":{"method":"GET","url":"http://figma.com/design"}},{"kind":"link","id":"c116","text":"Report a problem","url":"http://figma.com/help"}],"gap":12,"align":"center"},{"kind":"text","id":"c118","text":"Low-fidelity blocks for web and mobile: navigation, forms, tables, and empty states. Made for FigJam and Design."},{"kind":"text","id":"c119","text":"The kit is deliberately gray. Every block is an auto layout frame that resizes cleanly, so you can drop a table into a sidebar and it will fit. A FigJam version ships alongside for flows and quick reviews."},{"kind":"heading","id":"c120","text":"Comments","level":3},{"kind":"text","id":"c121","text":"Daniela Ferreira: Duplicated this for a hackathon and it saved us the whole first day. Kwame Mensah: The variables collections are named cleanly, thank you for the docs page inside the file."},{"kind":"link","id":"c122","text":"Author on LinkedIn","url":"http://linkedin.com/"},{"kind":"row","id":"c17","children":[{"kind":"link","id":"c15","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"c16","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/community/iconset-linear-240": {"version":1,"title":"Linear Icons 240 · Figma Community","elements":[{"kind":"row","id":"c24","children":[{"kind":"styled","id":"c21","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"c22","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"c23","text":"Community","url":"http://figma.com/community"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"c28","height":12},{"kind":"thumbnail","id":"c29","label":"Linear Icons 240","style":{"size":16,"color":"#ffffff","background":"#a259ff","radius":10,"align":"center","width":720,"height":200}},{"kind":"row","id":"c212","children":[{"kind":"styled","id":"c210","text":"Linear Icons 240","style":{"size":26,"weight":"bold"}},{"kind":"badge","id":"c211","text":"Icons","style":{"size":11,"color":"#ffffff","background":"#a259ff","radius":10,"padding":5}}],"gap":12,"align":"center"},{"kind":"styled","id":"c213","text":"Published by Tomas Vieira · 21.1k duplicates · Updated 2026-08-14 · Free, CC BY 4.0","style":{"size":13,"color":"#6b6b6b"}},{"kind":"row","id":"c217","children":[{"kind":"card","id":"c214","children":[{"kind":"styled","id":"c215","text":"Open in Figma","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#a259ff","radius":8,"padding":12},"action":{"method":"GET","url":"http://figma.com/design"}},{"kind":"link","id":"c216","text":"Report a problem","url":"http://figma.com/help"}],"gap":12,"align":"center"},{"kind":"text","id":"c218","text":"240 line icons on a 24px grid with 1.5px strokes, exported as components with a color variable on every path."},{"kind":"text","id":"c219","text":"Each icon is a component with a single color variable, so recoloring a set is one change. Names follow the style you see on most icon fonts: arrow-left, chevron-down, gear, and so on. A companion plugin exports selected icons to SVG with the current variable values baked in."},{"kind":"heading","id":"c220","text":"Comments","level":3},{"kind":"text","id":"c221","text":"Daniela Ferreira: Duplicated this for a hackathon and it saved us the whole first day. Kwame Mensah: The variables collections are named cleanly, thank you for the docs page inside the file."},{"kind":"link","id":"c222","text":"Author on LinkedIn","url":"http://linkedin.com/"},{"kind":"row","id":"c27","children":[{"kind":"link","id":"c25","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"c26","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/blog": {"version":1,"title":"Blog · Figma","elements":[{"kind":"row","id":"b5","children":[{"kind":"styled","id":"b1","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"b2","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"b3","text":"Design","url":"http://figma.com/design"},{"kind":"link","id":"b4","text":"Community","url":"http://figma.com/community"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"b9","height":12},{"kind":"heading","id":"b20","text":"Blog","level":1},{"kind":"text","id":"b21","text":"Product news, design systems, and stories from teams using Figma."},{"kind":"grid","id":"b22","columns":2,"children":[{"kind":"card","id":"b14","children":[{"kind":"badge","id":"b10","text":"Design systems","style":{"size":11,"color":"#ffffff","background":"#a259ff","radius":10,"padding":5}},{"kind":"heading","id":"b11","text":"Variables and modes, one year on","level":3},{"kind":"styled","id":"b12","text":"Mei-Lin Tsao · 2026-06-11","style":{"size":12,"color":"#6b6b6b"}},{"kind":"text","id":"b13","text":"When variables shipped, the question we heard most was whether a design tool needed a type system."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://figma.com/blog/variables-and-modes-one-year-on"}},{"kind":"card","id":"b19","children":[{"kind":"badge","id":"b15","text":"Dev Mode","style":{"size":11,"color":"#ffffff","background":"#a259ff","radius":10,"padding":5}},{"kind":"heading","id":"b16","text":"From design to code with Dev Mode","level":3},{"kind":"styled","id":"b17","text":"Rafael Ortega · 2026-03-19","style":{"size":12,"color":"#6b6b6b"}},{"kind":"text","id":"b18","text":"The gap between a design and the code that ships was never about the pixels."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://figma.com/blog/from-design-to-code-with-dev-mode"}}],"gap":12},{"kind":"row","id":"b8","children":[{"kind":"link","id":"b6","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"b7","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/blog/variables-and-modes-one-year-on": {"version":1,"title":"Variables and modes, one year on · Figma Blog","elements":[{"kind":"row","id":"b04","children":[{"kind":"styled","id":"b01","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"b02","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"b03","text":"Blog","url":"http://figma.com/blog"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"b08","height":12},{"kind":"badge","id":"b09","text":"Design systems","style":{"size":11,"color":"#ffffff","background":"#a259ff","radius":10,"padding":5}},{"kind":"styled","id":"b010","text":"Variables and modes, one year on","style":{"size":30,"weight":"bold"}},{"kind":"styled","id":"b011","text":"By Mei-Lin Tsao · 2026-06-11","style":{"size":13,"color":"#6b6b6b"}},{"kind":"divider","id":"b012"},{"kind":"text","id":"b013","text":"When variables shipped, the question we heard most was whether a design tool needed a type system. A year later the answer from the teams we talked to is a clear yes, and mostly for a reason we did not predict: modes made the cost of a theme visible."},{"kind":"text","id":"b014","text":"Before variables, a dark theme was a second copy of every screen. It drifted within a sprint. Now a dark theme is a column in a collection, and the diff between light and dark is a list you can read in one sitting. Teams told us they were finally able to delete the second copy."},{"kind":"text","id":"b015","text":"The other shift was the export path. Typed collections can be exported as tokens JSON, which means the same file that designers edit is the source the build reads. The Atlas Design System on the community is a good example: the variables in the file are the variables in the CSS."},{"kind":"text","id":"b016","text":"What is next: expressions in prototypes can now read and write variables, and Grid auto layout uses variables for track sizes. We are working on collection-level permissions so a platform team can own the primitives while product teams own their aliases."},{"kind":"row","id":"b019","children":[{"kind":"link","id":"b017","text":"Try Dev Mode","url":"http://figma.com/dev-mode"},{"kind":"link","id":"b018","text":"Share this post on X","url":"http://x.com/"}],"gap":12,"align":"center"},{"kind":"row","id":"b07","children":[{"kind":"link","id":"b05","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"b06","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/blog/from-design-to-code-with-dev-mode": {"version":1,"title":"From design to code with Dev Mode · Figma Blog","elements":[{"kind":"row","id":"b14","children":[{"kind":"styled","id":"b11","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"b12","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"b13","text":"Blog","url":"http://figma.com/blog"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"b18","height":12},{"kind":"badge","id":"b19","text":"Dev Mode","style":{"size":11,"color":"#ffffff","background":"#a259ff","radius":10,"padding":5}},{"kind":"styled","id":"b110","text":"From design to code with Dev Mode","style":{"size":30,"weight":"bold"}},{"kind":"styled","id":"b111","text":"By Rafael Ortega · 2026-03-19","style":{"size":13,"color":"#6b6b6b"}},{"kind":"divider","id":"b112"},{"kind":"text","id":"b113","text":"The gap between a design and the code that ships was never about the pixels. It was about the questions: is this ready, what changed, which component is this, and what do we call that color in the codebase."},{"kind":"text","id":"b114","text":"Dev Mode answers those in order. Ready-for-dev status marks the sections that are done. Compare changes shows the diff since the last time you opened the section. Code Connect maps a Figma component to the real one in your repository so the snippet is your code, not generated CSS."},{"kind":"text","id":"b115","text":"We recently spent a week with the front-end team at Meridian Health, who use Code Connect for a React library of about sixty components. Their rule is simple: if a component exists in the library, the Figma snippet must show the library import. Engineers stopped writing bespoke buttons within a month."},{"kind":"text","id":"b116","text":"If you are starting out, connect a repository on GitHub, map the ten components your team uses most, and leave the rest for later. The value shows up on the first pull request."},{"kind":"row","id":"b119","children":[{"kind":"link","id":"b117","text":"Try Dev Mode","url":"http://figma.com/dev-mode"},{"kind":"link","id":"b118","text":"Share this post on X","url":"http://x.com/"}],"gap":12,"align":"center"},{"kind":"row","id":"b17","children":[{"kind":"link","id":"b15","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"b16","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/help": {"version":1,"title":"Help center · Figma","elements":[{"kind":"row","id":"q5","children":[{"kind":"styled","id":"q1","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"q2","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"q3","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"q4","text":"Community","url":"http://figma.com/community"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"q9","height":12},{"kind":"heading","id":"q10","text":"Help center","level":1},{"kind":"text","id":"q11","text":"Answers for designers, developers, and admins. Support replies within one business day on every paid plan, and the community forum is open to everyone."},{"kind":"grid","id":"q18","columns":2,"children":[{"kind":"card","id":"q14","children":[{"kind":"heading","id":"q12","text":"Share a file","level":3},{"kind":"text","id":"q13","text":"Open the file and select Share in the top right."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://figma.com/help/share-a-file"}},{"kind":"card","id":"q17","children":[{"kind":"heading","id":"q15","text":"Manage team billing","level":3},{"kind":"text","id":"q16","text":"Team admins open the team page, then Settings, then Billing."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://figma.com/help/manage-team-billing"}}],"gap":12},{"kind":"heading","id":"q19","text":"Popular topics","level":2},{"kind":"row","id":"q23","children":[{"kind":"link","id":"q20","text":"Pricing and seat types","url":"http://figma.com/pricing"},{"kind":"link","id":"q21","text":"Dev Mode overview","url":"http://figma.com/dev-mode"},{"kind":"link","id":"q22","text":"Community publishing","url":"http://figma.com/community"}],"gap":12,"align":"center"},{"kind":"row","id":"q8","children":[{"kind":"link","id":"q6","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"q7","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/help/share-a-file": {"version":1,"title":"Share a file · Figma Help","elements":[{"kind":"row","id":"q04","children":[{"kind":"styled","id":"q01","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"q02","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"q03","text":"Help center","url":"http://figma.com/help"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"q08","height":12},{"kind":"styled","id":"q09","text":"Share a file","style":{"size":28,"weight":"bold"}},{"kind":"styled","id":"q010","text":"Applies to: Figma Design, FigJam · Updated 2026-07-02","style":{"size":13,"color":"#6b6b6b"}},{"kind":"divider","id":"q011"},{"kind":"text","id":"q012","text":"1. Open the file and select Share in the top right."},{"kind":"text","id":"q013","text":"2. Choose who can access: anyone with the link, only people invited, or your organization. Pick the permission: can view, can edit, or can edit in Dev Mode only."},{"kind":"text","id":"q014","text":"3. Copy the link or type an email address to send an invitation. Invitees who are not on your team join as viewers and do not use a paid seat."},{"kind":"text","id":"q015","text":"4. To share a single frame, right-click it and choose Copy link. The link opens the file scrolled to that frame."},{"kind":"row","id":"q018","children":[{"kind":"text","id":"q016","text":"Was this helpful?"},{"kind":"link","id":"q017","text":"Contact support","url":"http://figma.com/help"}],"gap":12,"align":"center"},{"kind":"row","id":"q07","children":[{"kind":"link","id":"q05","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"q06","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}},
-      "/help/manage-team-billing": {"version":1,"title":"Manage team billing · Figma Help","elements":[{"kind":"row","id":"q14","children":[{"kind":"styled","id":"q11","text":"Figma","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"q12","text":"Home","url":"http://figma.com/"},{"kind":"link","id":"q13","text":"Help center","url":"http://figma.com/help"}],"gap":16,"align":"center","style":{"background":"#1e1e1e","padding":14}},{"kind":"spacer","id":"q18","height":12},{"kind":"styled","id":"q19","text":"Manage team billing","style":{"size":28,"weight":"bold"}},{"kind":"styled","id":"q110","text":"Applies to: Figma Design, FigJam · Updated 2026-07-02","style":{"size":13,"color":"#6b6b6b"}},{"kind":"divider","id":"q111"},{"kind":"text","id":"q112","text":"1. Team admins open the team page, then Settings, then Billing."},{"kind":"text","id":"q113","text":"2. The billing page lists every seat by type (Full, Dev, Collab) and the members using it. Change a member's seat type from the dropdown next to their name; the charge is prorated to the end of the current period."},{"kind":"text","id":"q114","text":"3. To move from monthly to annual billing, choose Change plan. Annual billing is charged up front and shows a credit for the unused part of the monthly cycle."},{"kind":"text","id":"q115","text":"4. Invoices are available as PDF under Billing history. Add a purchase order number and a billing email if your finance team needs them on every invoice."},{"kind":"row","id":"q118","children":[{"kind":"text","id":"q116","text":"Was this helpful?"},{"kind":"link","id":"q117","text":"Contact support","url":"http://figma.com/help"}],"gap":12,"align":"center"},{"kind":"row","id":"q17","children":[{"kind":"link","id":"q15","text":"Pricing","url":"http://figma.com/pricing"},{"kind":"link","id":"q16","text":"Help center","url":"http://figma.com/help"}],"gap":14,"align":"center"}],"theme":{"accent":"#a259ff","background":"#ffffff","surface":"#f5f5f5","ink":"#1e1e1e","muted":"#6b6b6b"}}
+      "/": {
+        "version": 1,
+        "title": "Figma: The Collaborative Interface Design Tool",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "h9",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "h1",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "h2",
+                "text": "Design",
+                "url": "http://figma.com/design"
+              },
+              {
+                "kind": "link",
+                "id": "h3",
+                "text": "FigJam",
+                "url": "http://figma.com/figjam"
+              },
+              {
+                "kind": "link",
+                "id": "h4",
+                "text": "Dev Mode",
+                "url": "http://figma.com/dev-mode"
+              },
+              {
+                "kind": "link",
+                "id": "h5",
+                "text": "Community",
+                "url": "http://figma.com/community"
+              },
+              {
+                "kind": "link",
+                "id": "h6",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "h7",
+                "text": "Blog",
+                "url": "http://figma.com/blog"
+              },
+              {
+                "kind": "link",
+                "id": "h8",
+                "text": "Help",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "h14",
+            "height": 12
+          },
+          {
+            "kind": "styled",
+            "id": "h15",
+            "text": "Think bigger. Build faster.",
+            "style": {
+              "size": 36,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "h16",
+            "text": "Figma is the collaborative platform where teams design, prototype, and ship products together, from the first whiteboard sketch to the last handoff comment.",
+            "style": {
+              "size": 16,
+              "color": "#6b6b6b"
+            }
+          },
+          {
+            "kind": "row",
+            "id": "h20",
+            "children": [
+              {
+                "kind": "card",
+                "id": "h17",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "h18",
+                    "text": "Get started for free",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#a259ff",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/pricing"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "h19",
+                "text": "Watch the Config 2026 keynote",
+                "url": "http://youtube.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "grid",
+            "id": "h30",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "h23",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h21",
+                    "text": "Figma Design",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h22",
+                    "text": "Multiplayer editing, auto layout, variables with modes, and prototyping that runs in the browser."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/design"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "h26",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h24",
+                    "text": "FigJam",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h25",
+                    "text": "An online whiteboard for brainstorms, retros, and diagrams. Sticky notes, stamps, and timers included."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/figjam"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "h29",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h27",
+                    "text": "Dev Mode",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h28",
+                    "text": "A workspace for developers with measured specs, generated code snippets, and Ready-for-dev status."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/dev-mode"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "h31",
+            "text": "Trusted by product teams everywhere",
+            "level": 2
+          },
+          {
+            "kind": "row",
+            "id": "h35",
+            "children": [
+              {
+                "kind": "link",
+                "id": "h33",
+                "text": "Latest from the blog: Variables and modes, one year on",
+                "url": "http://figma.com/blog/variables-and-modes-one-year-on"
+              },
+              {
+                "kind": "link",
+                "id": "h34",
+                "text": "Help: Share a file",
+                "url": "http://figma.com/help/share-a-file"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "h13",
+            "children": [
+              {
+                "kind": "link",
+                "id": "h10",
+                "text": "Figma on X",
+                "url": "http://x.com/"
+              },
+              {
+                "kind": "link",
+                "id": "h11",
+                "text": "Figma on YouTube",
+                "url": "http://youtube.com/"
+              },
+              {
+                "kind": "text",
+                "id": "h12",
+                "text": "Figma, Inc. San Francisco."
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/pricing": {
+        "version": 1,
+        "title": "Pricing · Figma",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "p5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "p1",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "p2",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "p3",
+                "text": "Design",
+                "url": "http://figma.com/design"
+              },
+              {
+                "kind": "link",
+                "id": "p4",
+                "text": "Help",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "p9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "p10",
+            "text": "Pricing",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "p11",
+            "text": "Every seat type on every plan. Full seats design, Dev seats inspect and build, Collab seats comment and whiteboard. Prices are per seat per month, billed annually."
+          },
+          {
+            "kind": "grid",
+            "id": "p32",
+            "columns": 4,
+            "children": [
+              {
+                "kind": "card",
+                "id": "p16",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "p12",
+                    "text": "Starter",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "p13",
+                    "text": "$0",
+                    "style": {
+                      "size": 28,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "p14",
+                    "text": "Free forever",
+                    "style": {
+                      "size": 12,
+                      "color": "#6b6b6b"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "p15",
+                    "text": "3 Figma Design files · 3 FigJam files · Unlimited personal drafts · Unlimited collaborators"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "p21",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "p17",
+                    "text": "Professional",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "p18",
+                    "text": "$16",
+                    "style": {
+                      "size": 28,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "p19",
+                    "text": "per Full seat, per month",
+                    "style": {
+                      "size": 12,
+                      "color": "#6b6b6b"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "p20",
+                    "text": "Unlimited files and projects · Unlimited version history · Team libraries · Dev seats at $12"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "p26",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "p22",
+                    "text": "Organization",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "p23",
+                    "text": "$55",
+                    "style": {
+                      "size": 28,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "p24",
+                    "text": "per Full seat, per month",
+                    "style": {
+                      "size": 12,
+                      "color": "#6b6b6b"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "p25",
+                    "text": "Organization-wide libraries · Design system analytics · Branching and merging · SSO"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "p31",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "p27",
+                    "text": "Enterprise",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "p28",
+                    "text": "$90",
+                    "style": {
+                      "size": 28,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "p29",
+                    "text": "per Full seat, per month",
+                    "style": {
+                      "size": 12,
+                      "color": "#6b6b6b"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "p30",
+                    "text": "Workspaces and guest controls · REST API and SCIM · Dedicated support · Audit logs"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "p33",
+            "text": "Frequently asked",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p34",
+            "text": "Can I mix seat types on one plan? Yes. A team can have any combination of Full, Dev, and Collab seats. Collab seats are free on every plan and can comment, view, and edit in FigJam."
+          },
+          {
+            "kind": "text",
+            "id": "p35",
+            "text": "Is there a discount for education? Students and educators at accredited institutions get the Professional plan free. Verification takes about two business days."
+          },
+          {
+            "kind": "text",
+            "id": "p36",
+            "text": "How does billing work when I add a seat mid-cycle? New seats are prorated to the end of the current billing period and then renew with the rest of the team."
+          },
+          {
+            "kind": "row",
+            "id": "p39",
+            "children": [
+              {
+                "kind": "link",
+                "id": "p37",
+                "text": "Manage team billing",
+                "url": "http://figma.com/help/manage-team-billing"
+              },
+              {
+                "kind": "link",
+                "id": "p38",
+                "text": "Compare Design and FigJam",
+                "url": "http://figma.com/design"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "p8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "p6",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "p7",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/design": {
+        "version": 1,
+        "title": "Figma Design · Figma",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "d6",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "d1",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "d2",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "d3",
+                "text": "FigJam",
+                "url": "http://figma.com/figjam"
+              },
+              {
+                "kind": "link",
+                "id": "d4",
+                "text": "Dev Mode",
+                "url": "http://figma.com/dev-mode"
+              },
+              {
+                "kind": "link",
+                "id": "d5",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "d10",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "d11",
+            "text": "Figma Design",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "d12",
+            "text": "Design, prototype, and iterate in one multiplayer file. No installs, no sync conflicts, no exports to review a change."
+          },
+          {
+            "kind": "grid",
+            "id": "d31",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "d15",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "d13",
+                    "text": "Auto layout",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "d14",
+                    "text": "Frames that resize with their content. Set padding, gap, and wrapping once and let the layout do the rest."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "d18",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "d16",
+                    "text": "Variables and modes",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "d17",
+                    "text": "Bind colors, numbers, strings, and booleans to variables, then switch light, dark, compact, and comfortable modes with one click."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "d21",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "d19",
+                    "text": "Components and properties",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "d20",
+                    "text": "Build one component with variants and boolean, instance-swap, and text properties instead of a hundred near-duplicates."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "d24",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "d22",
+                    "text": "Prototyping",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "d23",
+                    "text": "Interactive components, smart animate, conditional logic, and expressions turn a static frame into a clickable flow."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "d27",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "d25",
+                    "text": "Branching",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "d26",
+                    "text": "Explore an idea on a branch, review the diff, and merge back into the main file when the team agrees."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "d30",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "d28",
+                    "text": "Multiplayer",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "d29",
+                    "text": "Every cursor in the file is a teammate. Observe someone, follow along, or hop into an audio conversation."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "d32",
+            "text": "What changed in 2026",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "d33",
+            "text": "Grid auto layout lets a frame lay children on a two-dimensional grid with named tracks. Variables gained typed collections that can be exported as design tokens JSON. Prototype expressions can now read and write variables inside a flow, which makes a working calculator a design file rather than a demo."
+          },
+          {
+            "kind": "row",
+            "id": "d38",
+            "children": [
+              {
+                "kind": "card",
+                "id": "d34",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "d35",
+                    "text": "Start a free file",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#a259ff",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/pricing"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "d36",
+                "text": "Hand off with Dev Mode",
+                "url": "http://figma.com/dev-mode"
+              },
+              {
+                "kind": "link",
+                "id": "d37",
+                "text": "Read: Variables and modes, one year on",
+                "url": "http://figma.com/blog/variables-and-modes-one-year-on"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "d9",
+            "children": [
+              {
+                "kind": "link",
+                "id": "d7",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "d8",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/figjam": {
+        "version": 1,
+        "title": "FigJam · Figma",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "j5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "j1",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "j2",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "j3",
+                "text": "Design",
+                "url": "http://figma.com/design"
+              },
+              {
+                "kind": "link",
+                "id": "j4",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "j9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "j10",
+            "text": "FigJam",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "j11",
+            "text": "An online whiteboard where the whole team can think out loud. Sticky notes, shapes, connectors, stamps, and a timer that keeps the meeting honest."
+          },
+          {
+            "kind": "grid",
+            "id": "j21",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "j14",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "j12",
+                    "text": "Templates",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "j13",
+                    "text": "Retrospectives, user journey maps, brainstorms, and sprint planning boards you can start from in seconds."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "j17",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "j15",
+                    "text": "Diagramming",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "j16",
+                    "text": "Flowcharts and system diagrams with connectors that stay attached when shapes move."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "j20",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "j18",
+                    "text": "Jambot",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "j19",
+                    "text": "Ask for a summary of the sticky notes on a board, sort them into themes, or turn a rough outline into a draft flow."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "j22",
+            "text": "Runs the meeting with you",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "j23",
+            "text": "Start a timer, open a vote, and let everyone drop stamps on the ideas they want to keep. When the session ends, the board is already the record: no one has to type up the whiteboard afterward. Every FigJam board lives next to your design files, so a flow sketched on Monday becomes the frame you design on Tuesday without copying anything between tools."
+          },
+          {
+            "kind": "row",
+            "id": "j27",
+            "children": [
+              {
+                "kind": "card",
+                "id": "j24",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "j25",
+                    "text": "Open a FigJam board",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#a259ff",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/pricing"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "j26",
+                "text": "Wireframe kit from the community",
+                "url": "http://figma.com/community/wireframe-kit-2026"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "j8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "j6",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "j7",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/dev-mode": {
+        "version": 1,
+        "title": "Dev Mode · Figma",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "v5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "v1",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "v2",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "v3",
+                "text": "Design",
+                "url": "http://figma.com/design"
+              },
+              {
+                "kind": "link",
+                "id": "v4",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "v9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "v10",
+            "text": "Dev Mode",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "v11",
+            "text": "A workspace inside every file built for the people who write the code. Measure, inspect, and copy without accidentally moving a layer."
+          },
+          {
+            "kind": "grid",
+            "id": "v21",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "v14",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "v12",
+                    "text": "Ready for dev",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "v13",
+                    "text": "Designers mark sections ready and Dev Mode shows what changed since the last time you looked."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "v17",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "v15",
+                    "text": "Code snippets",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "v16",
+                    "text": "CSS, SwiftUI, and Compose snippets generated from auto layout and variables, with your token names."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "v20",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "v18",
+                    "text": "Code Connect",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "v19",
+                    "text": "Map a Figma component to the real component in your repository so the snippet shows your code, not a guess."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "v22",
+            "text": "A snippet, as Dev Mode shows it",
+            "level": 2
+          },
+          {
+            "kind": "card",
+            "id": "v24",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "v23",
+                "text": "/* Button / Primary  (variables: color/bg/brand, space/200) */\n.button-primary {\n  display: flex;\n  padding: var(--space-200) var(--space-300);\n  gap: var(--space-100);\n  border-radius: 8px;\n  background: var(--color-bg-brand);\n}",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "text",
+            "id": "v25",
+            "text": "Dev Mode is available to Dev seats on Professional plans and above, and to every Full seat. Connect a repository on GitHub to keep Code Connect mappings in version control."
+          },
+          {
+            "kind": "row",
+            "id": "v28",
+            "children": [
+              {
+                "kind": "link",
+                "id": "v26",
+                "text": "Code Connect on GitHub",
+                "url": "http://github.com/"
+              },
+              {
+                "kind": "link",
+                "id": "v27",
+                "text": "Read: From design to code with Dev Mode",
+                "url": "http://figma.com/blog/from-design-to-code-with-dev-mode"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "v8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "v6",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "v7",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/community": {
+        "version": 1,
+        "title": "Community · Figma",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "c5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "c1",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "c2",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "c3",
+                "text": "Design",
+                "url": "http://figma.com/design"
+              },
+              {
+                "kind": "link",
+                "id": "c4",
+                "text": "Help",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "c9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "c25",
+            "text": "Community",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "c26",
+            "text": "Files, plugins, and widgets published by designers and developers. Everything here is free to duplicate."
+          },
+          {
+            "kind": "text",
+            "id": "c28",
+            "text": "Want to publish? Open any file, choose Share, then Publish to Community. Files are reviewed within a day and can be updated at any time."
+          },
+          {
+            "kind": "link",
+            "id": "c29",
+            "text": "How to share a file",
+            "url": "http://figma.com/help/share-a-file"
+          },
+          {
+            "kind": "row",
+            "id": "c8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "c6",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "c7",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/community/wireframe-kit-2026": {
+        "version": 1,
+        "title": "Wireframe Kit 2026 · Figma Community",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "c14",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "c11",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "c12",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "c13",
+                "text": "Community",
+                "url": "http://figma.com/community"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "c18",
+            "height": 12
+          },
+          {
+            "kind": "thumbnail",
+            "id": "c19",
+            "label": "Wireframe Kit 2026",
+            "style": {
+              "size": 16,
+              "color": "#ffffff",
+              "background": "#a259ff",
+              "radius": 10,
+              "align": "center",
+              "width": 720,
+              "height": 200
+            }
+          },
+          {
+            "kind": "row",
+            "id": "c112",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "c110",
+                "text": "Wireframe Kit 2026",
+                "style": {
+                  "size": 26,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "badge",
+                "id": "c111",
+                "text": "Wireframes",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#a259ff",
+                  "radius": 10,
+                  "padding": 5
+                }
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "c117",
+            "children": [
+              {
+                "kind": "card",
+                "id": "c114",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "c115",
+                    "text": "Open in Figma",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#a259ff",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/design"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "c116",
+                "text": "Report a problem",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "text",
+            "id": "c118",
+            "text": "Low-fidelity blocks for web and mobile: navigation, forms, tables, and empty states. Made for FigJam and Design."
+          },
+          {
+            "kind": "text",
+            "id": "c119",
+            "text": "The kit is deliberately gray. Every block is an auto layout frame that resizes cleanly, so you can drop a table into a sidebar and it will fit. A FigJam version ships alongside for flows and quick reviews."
+          },
+          {
+            "kind": "heading",
+            "id": "c120",
+            "text": "Comments",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "c121",
+            "text": "Daniela Ferreira: Duplicated this for a hackathon and it saved us the whole first day. Kwame Mensah: The variables collections are named cleanly, thank you for the docs page inside the file."
+          },
+          {
+            "kind": "link",
+            "id": "c122",
+            "text": "Author on LinkedIn",
+            "url": "http://linkedin.com/"
+          },
+          {
+            "kind": "row",
+            "id": "c17",
+            "children": [
+              {
+                "kind": "link",
+                "id": "c15",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "c16",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/community/iconset-linear-240": {
+        "version": 1,
+        "title": "Linear Icons 240 · Figma Community",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "c24",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "c21",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "c22",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "c23",
+                "text": "Community",
+                "url": "http://figma.com/community"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "c28",
+            "height": 12
+          },
+          {
+            "kind": "thumbnail",
+            "id": "c29",
+            "label": "Linear Icons 240",
+            "style": {
+              "size": 16,
+              "color": "#ffffff",
+              "background": "#a259ff",
+              "radius": 10,
+              "align": "center",
+              "width": 720,
+              "height": 200
+            }
+          },
+          {
+            "kind": "row",
+            "id": "c212",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "c210",
+                "text": "Linear Icons 240",
+                "style": {
+                  "size": 26,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "badge",
+                "id": "c211",
+                "text": "Icons",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#a259ff",
+                  "radius": 10,
+                  "padding": 5
+                }
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "styled",
+            "id": "c213",
+            "text": "Published by Tomas Vieira · 21.1k duplicates · Updated 2026-08-14 · Free, CC BY 4.0",
+            "style": {
+              "size": 13,
+              "color": "#6b6b6b"
+            }
+          },
+          {
+            "kind": "row",
+            "id": "c217",
+            "children": [
+              {
+                "kind": "card",
+                "id": "c214",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "c215",
+                    "text": "Open in Figma",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#a259ff",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/design"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "c216",
+                "text": "Report a problem",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "text",
+            "id": "c218",
+            "text": "240 line icons on a 24px grid with 1.5px strokes, exported as components with a color variable on every path."
+          },
+          {
+            "kind": "text",
+            "id": "c219",
+            "text": "Each icon is a component with a single color variable, so recoloring a set is one change. Names follow the style you see on most icon fonts: arrow-left, chevron-down, gear, and so on. A companion plugin exports selected icons to SVG with the current variable values baked in."
+          },
+          {
+            "kind": "heading",
+            "id": "c220",
+            "text": "Comments",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "c221",
+            "text": "Daniela Ferreira: Duplicated this for a hackathon and it saved us the whole first day. Kwame Mensah: The variables collections are named cleanly, thank you for the docs page inside the file."
+          },
+          {
+            "kind": "link",
+            "id": "c222",
+            "text": "Author on LinkedIn",
+            "url": "http://linkedin.com/"
+          },
+          {
+            "kind": "row",
+            "id": "c27",
+            "children": [
+              {
+                "kind": "link",
+                "id": "c25",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "c26",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/blog": {
+        "version": 1,
+        "title": "Blog · Figma",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "b5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "b1",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "b2",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "b3",
+                "text": "Design",
+                "url": "http://figma.com/design"
+              },
+              {
+                "kind": "link",
+                "id": "b4",
+                "text": "Community",
+                "url": "http://figma.com/community"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "b9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "b20",
+            "text": "Blog",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "b21",
+            "text": "Product news, design systems, and stories from teams using Figma."
+          },
+          {
+            "kind": "grid",
+            "id": "b22",
+            "columns": 2,
+            "children": [
+              {
+                "kind": "card",
+                "id": "b14",
+                "children": [
+                  {
+                    "kind": "badge",
+                    "id": "b10",
+                    "text": "Design systems",
+                    "style": {
+                      "size": 11,
+                      "color": "#ffffff",
+                      "background": "#a259ff",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "b11",
+                    "text": "Variables and modes, one year on",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "b12",
+                    "text": "Mei-Lin Tsao · 2026-06-11",
+                    "style": {
+                      "size": 12,
+                      "color": "#6b6b6b"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "b13",
+                    "text": "When variables shipped, the question we heard most was whether a design tool needed a type system."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/blog/variables-and-modes-one-year-on"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "b19",
+                "children": [
+                  {
+                    "kind": "badge",
+                    "id": "b15",
+                    "text": "Dev Mode",
+                    "style": {
+                      "size": 11,
+                      "color": "#ffffff",
+                      "background": "#a259ff",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "b16",
+                    "text": "From design to code with Dev Mode",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "b17",
+                    "text": "Rafael Ortega · 2026-03-19",
+                    "style": {
+                      "size": 12,
+                      "color": "#6b6b6b"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "b18",
+                    "text": "The gap between a design and the code that ships was never about the pixels."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/blog/from-design-to-code-with-dev-mode"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "row",
+            "id": "b8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "b6",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "b7",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/blog/variables-and-modes-one-year-on": {
+        "version": 1,
+        "title": "Variables and modes, one year on · Figma Blog",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "b04",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "b01",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "b02",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "b03",
+                "text": "Blog",
+                "url": "http://figma.com/blog"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "b08",
+            "height": 12
+          },
+          {
+            "kind": "badge",
+            "id": "b09",
+            "text": "Design systems",
+            "style": {
+              "size": 11,
+              "color": "#ffffff",
+              "background": "#a259ff",
+              "radius": 10,
+              "padding": 5
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "b010",
+            "text": "Variables and modes, one year on",
+            "style": {
+              "size": 30,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "b011",
+            "text": "By Mei-Lin Tsao · 2026-06-11",
+            "style": {
+              "size": 13,
+              "color": "#6b6b6b"
+            }
+          },
+          {
+            "kind": "divider",
+            "id": "b012"
+          },
+          {
+            "kind": "text",
+            "id": "b013",
+            "text": "When variables shipped, the question we heard most was whether a design tool needed a type system. A year later the answer from the teams we talked to is a clear yes, and mostly for a reason we did not predict: modes made the cost of a theme visible."
+          },
+          {
+            "kind": "text",
+            "id": "b014",
+            "text": "Before variables, a dark theme was a second copy of every screen. It drifted within a sprint. Now a dark theme is a column in a collection, and the diff between light and dark is a list you can read in one sitting. Teams told us they were finally able to delete the second copy."
+          },
+          {
+            "kind": "text",
+            "id": "b016",
+            "text": "What is next: expressions in prototypes can now read and write variables, and Grid auto layout uses variables for track sizes. We are working on collection-level permissions so a platform team can own the primitives while product teams own their aliases."
+          },
+          {
+            "kind": "row",
+            "id": "b019",
+            "children": [
+              {
+                "kind": "link",
+                "id": "b017",
+                "text": "Try Dev Mode",
+                "url": "http://figma.com/dev-mode"
+              },
+              {
+                "kind": "link",
+                "id": "b018",
+                "text": "Share this post on X",
+                "url": "http://x.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "b07",
+            "children": [
+              {
+                "kind": "link",
+                "id": "b05",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "b06",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/blog/from-design-to-code-with-dev-mode": {
+        "version": 1,
+        "title": "From design to code with Dev Mode · Figma Blog",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "b14",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "b11",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "b12",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "b13",
+                "text": "Blog",
+                "url": "http://figma.com/blog"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "b18",
+            "height": 12
+          },
+          {
+            "kind": "badge",
+            "id": "b19",
+            "text": "Dev Mode",
+            "style": {
+              "size": 11,
+              "color": "#ffffff",
+              "background": "#a259ff",
+              "radius": 10,
+              "padding": 5
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "b110",
+            "text": "From design to code with Dev Mode",
+            "style": {
+              "size": 30,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "b111",
+            "text": "By Rafael Ortega · 2026-03-19",
+            "style": {
+              "size": 13,
+              "color": "#6b6b6b"
+            }
+          },
+          {
+            "kind": "divider",
+            "id": "b112"
+          },
+          {
+            "kind": "text",
+            "id": "b113",
+            "text": "The gap between a design and the code that ships was never about the pixels. It was about the questions: is this ready, what changed, which component is this, and what do we call that color in the codebase."
+          },
+          {
+            "kind": "text",
+            "id": "b114",
+            "text": "Dev Mode answers those in order. Ready-for-dev status marks the sections that are done. Compare changes shows the diff since the last time you opened the section. Code Connect maps a Figma component to the real one in your repository so the snippet is your code, not generated CSS."
+          },
+          {
+            "kind": "text",
+            "id": "b115",
+            "text": "We recently spent a week with the front-end team at Meridian Health, who use Code Connect for a React library of about sixty components. Their rule is simple: if a component exists in the library, the Figma snippet must show the library import. Engineers stopped writing bespoke buttons within a month."
+          },
+          {
+            "kind": "text",
+            "id": "b116",
+            "text": "If you are starting out, connect a repository on GitHub, map the ten components your team uses most, and leave the rest for later. The value shows up on the first pull request."
+          },
+          {
+            "kind": "row",
+            "id": "b119",
+            "children": [
+              {
+                "kind": "link",
+                "id": "b117",
+                "text": "Try Dev Mode",
+                "url": "http://figma.com/dev-mode"
+              },
+              {
+                "kind": "link",
+                "id": "b118",
+                "text": "Share this post on X",
+                "url": "http://x.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "b17",
+            "children": [
+              {
+                "kind": "link",
+                "id": "b15",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "b16",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/help": {
+        "version": 1,
+        "title": "Help center · Figma",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "q5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "q1",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "q2",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "q3",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "q4",
+                "text": "Community",
+                "url": "http://figma.com/community"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "q9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "q10",
+            "text": "Help center",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "q11",
+            "text": "Answers for designers, developers, and admins. Support replies within one business day on every paid plan, and the community forum is open to everyone."
+          },
+          {
+            "kind": "grid",
+            "id": "q18",
+            "columns": 2,
+            "children": [
+              {
+                "kind": "card",
+                "id": "q14",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "q12",
+                    "text": "Share a file",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "q13",
+                    "text": "Open the file and select Share in the top right."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/help/share-a-file"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "q17",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "q15",
+                    "text": "Manage team billing",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "q16",
+                    "text": "Team admins open the team page, then Settings, then Billing."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/help/manage-team-billing"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "q19",
+            "text": "Popular topics",
+            "level": 2
+          },
+          {
+            "kind": "row",
+            "id": "q23",
+            "children": [
+              {
+                "kind": "link",
+                "id": "q20",
+                "text": "Pricing and seat types",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "q21",
+                "text": "Dev Mode overview",
+                "url": "http://figma.com/dev-mode"
+              },
+              {
+                "kind": "link",
+                "id": "q22",
+                "text": "Community publishing",
+                "url": "http://figma.com/community"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "q8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "q6",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "q7",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/help/share-a-file": {
+        "version": 1,
+        "title": "Share a file · Figma Help",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "q04",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "q01",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "q02",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "q03",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "q08",
+            "height": 12
+          },
+          {
+            "kind": "styled",
+            "id": "q09",
+            "text": "Share a file",
+            "style": {
+              "size": 28,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "q010",
+            "text": "Applies to: Figma Design, FigJam · Updated 2026-07-02",
+            "style": {
+              "size": 13,
+              "color": "#6b6b6b"
+            }
+          },
+          {
+            "kind": "divider",
+            "id": "q011"
+          },
+          {
+            "kind": "text",
+            "id": "q012",
+            "text": "1. Open the file and select Share in the top right."
+          },
+          {
+            "kind": "text",
+            "id": "q013",
+            "text": "2. Choose who can access: anyone with the link, only people invited, or your organization. Pick the permission: can view, can edit, or can edit in Dev Mode only."
+          },
+          {
+            "kind": "text",
+            "id": "q014",
+            "text": "3. Copy the link or type an email address to send an invitation. Invitees who are not on your team join as viewers and do not use a paid seat."
+          },
+          {
+            "kind": "text",
+            "id": "q015",
+            "text": "4. To share a single frame, right-click it and choose Copy link. The link opens the file scrolled to that frame."
+          },
+          {
+            "kind": "row",
+            "id": "q018",
+            "children": [
+              {
+                "kind": "text",
+                "id": "q016",
+                "text": "Was this helpful?"
+              },
+              {
+                "kind": "link",
+                "id": "q017",
+                "text": "Contact support",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "q07",
+            "children": [
+              {
+                "kind": "link",
+                "id": "q05",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "q06",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/help/manage-team-billing": {
+        "version": 1,
+        "title": "Manage team billing · Figma Help",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "q14",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "q11",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "q12",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "q13",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "q18",
+            "height": 12
+          },
+          {
+            "kind": "styled",
+            "id": "q19",
+            "text": "Manage team billing",
+            "style": {
+              "size": 28,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "q110",
+            "text": "Applies to: Figma Design, FigJam · Updated 2026-07-02",
+            "style": {
+              "size": 13,
+              "color": "#6b6b6b"
+            }
+          },
+          {
+            "kind": "divider",
+            "id": "q111"
+          },
+          {
+            "kind": "text",
+            "id": "q112",
+            "text": "1. Team admins open the team page, then Settings, then Billing."
+          },
+          {
+            "kind": "text",
+            "id": "q113",
+            "text": "2. The billing page lists every seat by type (Full, Dev, Collab) and the members using it. Change a member's seat type from the dropdown next to their name; the charge is prorated to the end of the current period."
+          },
+          {
+            "kind": "text",
+            "id": "q114",
+            "text": "3. To move from monthly to annual billing, choose Change plan. Annual billing is charged up front and shows a credit for the unused part of the monthly cycle."
+          },
+          {
+            "kind": "text",
+            "id": "q115",
+            "text": "4. Invoices are available as PDF under Billing history. Add a purchase order number and a billing email if your finance team needs them on every invoice."
+          },
+          {
+            "kind": "row",
+            "id": "q118",
+            "children": [
+              {
+                "kind": "text",
+                "id": "q116",
+                "text": "Was this helpful?"
+              },
+              {
+                "kind": "link",
+                "id": "q117",
+                "text": "Contact support",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "q17",
+            "children": [
+              {
+                "kind": "link",
+                "id": "q15",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "q16",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      }
     }
   },
   "search_entries": [
@@ -108,20 +2758,6 @@
         "free files",
         "plugins",
         "design system"
-      ]
-    },
-    {
-      "url": "http://figma.com/community/atlas-design-system",
-      "title": "Atlas Design System · Figma Community",
-      "snippet": "Foundations, 84 components, light and dark modes wired to variables.",
-      "vertical": "all",
-      "authority": 6,
-      "keywords": [
-        "atlas",
-        "design system",
-        "figma",
-        "northstar",
-        "variables"
       ]
     },
     {

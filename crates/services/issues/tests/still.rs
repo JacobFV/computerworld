@@ -17,7 +17,8 @@ fn linear_stills() {
         seed: 1,
         instance: "linear".into(),
     };
-    let raw = std::fs::read_to_string("../../../worlds/internet/sites/linear.json").unwrap();
+    let raw = std::fs::read_to_string(cw_service_common::reference::reference_site_path("linear"))
+        .unwrap();
     let site: Value = serde_json::from_str(&raw).unwrap();
     let mut state = IssuesService
         .initialize(site["initial_state"].clone(), &ctx)

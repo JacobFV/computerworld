@@ -1,0 +1,273 @@
+{
+  "initial_state": {
+    "accounts": {
+      "alice": {
+        "handle": "alice",
+        "name": "Alice Chen",
+        "actor": "alice",
+        "domain": "mastodon.social",
+        "bio": "Renderer and simulation work at Northstar. Cross-posting the long ones from http://alicechen.dev/",
+        "location": "Seattle, WA",
+        "followers": 1470,
+        "following": 264,
+        "site": "http://alicechen.dev/"
+      },
+      "bmartinez": {
+        "handle": "bmartinez",
+        "name": "Bob Martinez",
+        "actor": "bob",
+        "domain": "hachyderm.io",
+        "bio": "CI, test flakes, and the seventeen reasons your suite is green on the wrong machine.",
+        "followers": 612,
+        "following": 340,
+        "site": "http://bmartinez.net/"
+      },
+      "carol": {
+        "handle": "carol",
+        "name": "Carol Nakamura",
+        "actor": "carol",
+        "domain": "mastodon.social",
+        "bio": "Engineering manager. Release owner for Atlas. Boosts are not endorsements, they are a to-read list.",
+        "followers": 903,
+        "following": 188
+      },
+      "northstar": {
+        "handle": "northstar",
+        "name": "Northstar",
+        "actor": "admin",
+        "domain": "mastodon.social",
+        "bio": "Deterministic simulation. Status: http://status.northstar.example/",
+        "followers": 2204,
+        "following": 31,
+        "site": "http://eng.northstar.example/"
+      },
+      "praman": {
+        "handle": "praman",
+        "name": "Priya Raman",
+        "domain": "fosstodon.org",
+        "bio": "Rust internals. I read the standard library so you do not have to, and then I make you read it anyway.",
+        "followers": 9840,
+        "following": 402
+      }
+    },
+    "posts": {
+      "p-2101": {
+        "id": "p-2101",
+        "author": "praman",
+        "text": "Reminder for the new year: if your program's output depends on the iteration order of a hash map, your program has a bug and the hash map is fine.",
+        "tick": 2,
+        "likes": 640,
+        "reposts": 288
+      },
+      "p-2102": {
+        "id": "p-2102",
+        "author": "alice",
+        "text": "Notes on deterministic time, for anyone who has ever written sleep(100) in a test: http://alicechen.dev/posts/deterministic-time",
+        "tick": 3,
+        "likes": 118,
+        "reposts": 44
+      },
+      "p-2104": {
+        "id": "p-2104",
+        "author": "alice",
+        "text": "We can prove you wrong in about four minutes, but you have to let us record the run first.",
+        "tick": 4,
+        "likes": 96,
+        "reposts": 12,
+        "reply_to": "p-2103"
+      },
+      "p-2105": {
+        "id": "p-2105",
+        "author": "northstar",
+        "text": "Twelve minutes of elevated API latency this morning, now resolved. Timeline: http://status.northstar.example/",
+        "tick": 5,
+        "likes": 22,
+        "reposts": 9
+      },
+      "p-2106": {
+        "id": "p-2106",
+        "author": "bmartinez",
+        "text": "A test that passes on every machine you own and fails on exactly one CI runner is not flaky. It is correct, and you are the flaky one. Write-up: http://bmartinez.net/posts/hash-order-bit-me",
+        "tick": 6,
+        "likes": 402,
+        "reposts": 151
+      },
+      "p-2107": {
+        "id": "p-2107",
+        "author": "praman",
+        "text": "This is the Stack Overflow question I answered in February, and the answer is still the same: sort the frontier. http://stackoverflow.com/questions/t-4411",
+        "tick": 6,
+        "likes": 188,
+        "reposts": 64,
+        "reply_to": "p-2106"
+      },
+      "p-2108": {
+        "id": "p-2108",
+        "author": "alice",
+        "text": "Atlas 1.0 is out. The walkthrough is on YouTube because that is where the video is, not because I have opinions about it: http://youtube.com/watch?v=atlas-walkthrough",
+        "tick": 7,
+        "likes": 331,
+        "reposts": 122
+      },
+      "p-2109": {
+        "id": "p-2109",
+        "author": "carol",
+        "text": "Launch notes for Atlas 1.0, written by the people who did the work: http://eng.northstar.example/posts/shipping-atlas",
+        "tick": 7,
+        "likes": 140,
+        "reposts": 51
+      },
+      "p-2110": {
+        "text": "The Verge piece on Atlas is unusually good on the enforcement part, which is the only part that matters: http://theverge.com/2026/atlas-determinism"
+      },
+      "p-2111": {
+        "id": "p-2111",
+        "author": "alice",
+        "text": "Cross-posting from the blog: what I learned shipping Atlas, including the bug we decided to keep. http://alicechen.dev/posts/what-i-learned-shipping-atlas",
+        "tick": 9,
+        "likes": 388,
+        "reposts": 174
+      },
+      "p-2112": {
+        "id": "p-2112",
+        "author": "praman",
+        "text": "The paragraph about deleting your own abstraction eighteen months later is worth the whole post.",
+        "tick": 9,
+        "likes": 91,
+        "reposts": 8,
+        "reply_to": "p-2111"
+      }
+    },
+    "follows": {
+      "alice": [
+        "bmartinez",
+        "carol",
+        "northstar",
+        "praman",
+        "quarks"
+      ],
+      "bob": [
+        "alice",
+        "northstar",
+        "praman"
+      ],
+      "carol": [
+        "alice",
+        "bmartinez",
+        "northstar"
+      ],
+      "admin": [
+        "alice",
+        "carol"
+      ]
+    },
+    "messages": {
+      "c-fedi": {
+        "members": [
+          "alice",
+          "praman"
+        ],
+        "messages": [
+          {
+            "id": "dm-1",
+            "from": "praman",
+            "text": "Did you ever move off mastodon.social? I still have you here and on the old instance.",
+            "tick": 4
+          },
+          {
+            "id": "dm-2",
+            "from": "alice",
+            "text": "Still here. Bob is the one who moved to hachyderm and then told nobody for a month.",
+            "tick": 4
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://mastodon.social/alice",
+      "title": "Alice Chen (@alice@mastodon.social)",
+      "snippet": "Renderer and simulation work at Northstar. Cross-posts the long ones from alicechen.dev.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "alice chen",
+        "mastodon",
+        "fediverse",
+        "northstar",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://mastodon.social/praman",
+      "title": "Priya Raman (@praman@fosstodon.org)",
+      "snippet": "Rust internals, read through a federated handle on mastodon.social.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "priya raman",
+        "rust",
+        "mastodon",
+        "fosstodon",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://mastodon.social/alice/status/p-2111",
+      "title": "Alice Chen: cross-posting what I learned shipping Atlas",
+      "snippet": "The mastodon.social copy of Alice's write-up, including the bug the team decided to keep.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "shipping atlas",
+        "alice chen",
+        "mastodon",
+        "cross-post",
+        "atlas"
+      ]
+    },
+    {
+      "url": "http://mastodon.social/alice/status/p-2108",
+      "title": "Alice Chen: Atlas 1.0 is out",
+      "snippet": "The launch post on mastodon.social, linking the walkthrough video.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "atlas",
+        "atlas 1.0",
+        "launch",
+        "mastodon",
+        "walkthrough"
+      ]
+    },
+    {
+      "url": "http://mastodon.social/bmartinez/status/p-2106",
+      "title": "Bob Martinez: it is not flaky, you are",
+      "snippet": "The federated copy of Bob's hash-order write-up, with Priya's link to the Stack Overflow answer.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "flaky test",
+        "hash order",
+        "bob martinez",
+        "mastodon",
+        "ci"
+      ]
+    },
+    {
+      "url": "http://mastodon.social/quarks/status/p-2110",
+      "title": "The Verge piece on Atlas, discussed on mastodon.social",
+      "snippet": "Dana Quarks on the enforcement part of the Verge story, boosted across the instance.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "the verge",
+        "atlas",
+        "determinism",
+        "mastodon",
+        "discussion"
+      ]
+    }
+  ]
+}

@@ -82,10 +82,7 @@ fn forum_site_stills() {
         ("yelp", "yelp.com", "/r/restaurants/comments/t-1000"),
         ("craigslist", "craigslist.org", "/item?id=t-7000"),
     ] {
-        let path = format!(
-            "{}/../../../worlds/internet/sites/{site}.json",
-            env!("CARGO_MANIFEST_DIR")
-        );
+        let path = cw_service_common::reference::reference_site_path(site);
         let file: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         let mut state = ForumService
             .initialize(file["initial_state"].clone(), &ctx)

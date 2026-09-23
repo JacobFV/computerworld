@@ -2,67 +2,119 @@
   "id": "medium",
   "kind": "press",
   "node": "medium",
-  "domains": ["medium.com", "www.medium.com"],
+  "domains": [
+    "medium.com",
+    "www.medium.com"
+  ],
   "port": 80,
   "place": {
     "address": "203.0.113.144",
     "zone": "internet",
-    "link": {"from": "pop-west", "latency_us": 1500}
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
   },
   "initial_state": {
     "layout": "blog",
     "skin": "medium",
     "brand": "Medium",
     "tagline": "Where good ideas find you. Stories from programmers, designers, founders and people who write.",
-    "theme": {"accent": "#1a8917", "background": "#ffffff", "surface": "#f7f7f5", "ink": "#242424", "muted": "#6b6b6b", "content_width": 720},
+    "theme": {
+      "accent": "#1a8917",
+      "background": "#ffffff",
+      "surface": "#f7f7f5",
+      "ink": "#242424",
+      "muted": "#6b6b6b",
+      "content_width": 720
+    },
     "sections": [
-      {"id": "programming", "title": "Programming"},
-      {"id": "design", "title": "Design"},
-      {"id": "startups", "title": "Startups"},
-      {"id": "product", "title": "Product"},
-      {"id": "writing", "title": "Writing"}
+      {
+        "id": "programming",
+        "title": "Programming"
+      },
+      {
+        "id": "design",
+        "title": "Design"
+      },
+      {
+        "id": "startups",
+        "title": "Startups"
+      },
+      {
+        "id": "product",
+        "title": "Product"
+      },
+      {
+        "id": "writing",
+        "title": "Writing"
+      }
     ],
     "articles": {
       "i-deleted-our-retry-logic": {
-        "id": "i-deleted-our-retry-logic", "section": "programming",
+        "id": "i-deleted-our-retry-logic",
+        "section": "programming",
         "title": "I deleted our retry logic and the outages stopped",
         "dek": "Member-only story. Every retry was a small lie we told ourselves about why the request failed the first time. 1.2K claps.",
-        "byline": "Wren Castillo", "date": "Mar 7, 2026", "tick": 12, "read_minutes": 7,
+        "byline": "Wren Castillo",
+        "date": "Mar 7, 2026",
+        "tick": 12,
+        "read_minutes": 7,
         "body": [
           "For three years our payment service retried every failed request up to five times with exponential backoff, because that is what the blog posts said to do. For three years we had an outage roughly every six weeks that nobody could explain. Last month I removed the retries and the outages stopped. This is the story of why it took me three years to try that.",
           "The retries were hiding a real problem: about one request in four hundred was failing on the first attempt because of a race in our connection pool. The retry masked it. The failure only became visible when load rose enough that the retries themselves saturated the pool, at which point everything fell over at once and the retries made it worse.",
-          "What finally cracked it was a deterministic replay of one of the outages. We ran the service under a simulator that controls time and message order, and the race showed up on the first attempt, every time, because the simulator was not letting the retry paper over it. If you want the background on why that works, The Verge has a decent explainer at http://theverge.com/2026/atlas-determinism",
           "The fix to the pool was nine lines. Removing the retries was one. I have left one retry in place, for genuinely transient network errors, and it is logged loudly every time it fires.",
           "The lesson I am taking is not 'never retry'. It is that a retry is a decision to not find out what went wrong, and you should make that decision on purpose."
         ],
         "links": [
-          {"label": "The Verge on deterministic replay", "url": "http://theverge.com/2026/atlas-determinism"},
-          {"label": "Read next: the bug that only happened on Tuesdays", "url": "http://medium.com/posts/the-bug-that-only-happened-on-tuesdays"}
+          {
+            "label": "Read next: the bug that only happened on Tuesdays",
+            "url": "http://medium.com/posts/the-bug-that-only-happened-on-tuesdays"
+          }
         ],
-        "tags": ["programming", "reliability", "debugging"], "comments": [
-          {"id": "c1", "author": "bob", "text": "A retry is a decision to not find out what went wrong. Framing that on the wall.", "tick": 12, "likes": 48},
-          {"id": "c2", "author": "praman", "text": "The loud logging on the one remaining retry is the important part. Silent retries are how you end up here again.", "tick": 12, "likes": 22}
-        ]
+        "tags": [
+          "programming",
+          "reliability",
+          "debugging"
+        ],
+        "comments": []
       },
       "the-bug-that-only-happened-on-tuesdays": {
-        "id": "the-bug-that-only-happened-on-tuesdays", "section": "programming",
+        "id": "the-bug-that-only-happened-on-tuesdays",
+        "section": "programming",
         "title": "The bug that only happened on Tuesdays",
         "dek": "A short detective story about a date formatter, a locale and a very patient customer in Wellington. 640 claps.",
-        "byline": "Wren Castillo", "date": "Jan 22, 2026", "tick": 5, "read_minutes": 5,
+        "byline": "Wren Castillo",
+        "date": "Jan 22, 2026",
+        "tick": 5,
+        "read_minutes": 5,
         "body": [
           "The ticket said: 'Export is empty on Tuesdays.' It was filed by a customer in Wellington who had noticed the pattern over six weeks and, bless them, kept a spreadsheet.",
           "The export worked by writing a file named after the current date and then reading it back. On Tuesdays, in that customer's locale, the abbreviated day name contained a character that our filename sanitiser silently dropped, so we wrote one file and read a different one. Every other day the sanitiser happened to be a no-op.",
           "The fix was to stop putting the day name in the filename at all. The lesson was that 'only on Tuesdays' is not a joke; it is the most useful sentence a bug report can contain, because it means the failure is deterministic and someone has already done half your work.",
           "Ars Technica has a good piece on the wider family of bugs where the environment, not the code, decides the outcome: http://arstechnica.com/2026/hash-order-nondeterminism"
         ],
-        "links": [{"label": "Ars Technica: hash-order nondeterminism", "url": "http://arstechnica.com/2026/hash-order-nondeterminism"}],
-        "tags": ["programming", "debugging"], "comments": []
+        "links": [
+          {
+            "label": "Ars Technica: hash-order nondeterminism",
+            "url": "http://arstechnica.com/2026/hash-order-nondeterminism"
+          }
+        ],
+        "tags": [
+          "programming",
+          "debugging"
+        ],
+        "comments": []
       },
       "we-shipped-the-wrong-feature-for-a-year": {
-        "id": "we-shipped-the-wrong-feature-for-a-year", "section": "product",
+        "id": "we-shipped-the-wrong-feature-for-a-year",
+        "section": "product",
         "title": "We shipped the wrong feature for a year because our metrics were right",
         "dek": "Member-only story. The dashboard went up and to the right. The customers were leaving anyway. 2.1K claps.",
-        "byline": "Ade Balogun", "date": "Mar 3, 2026", "tick": 11, "read_minutes": 8,
+        "byline": "Ade Balogun",
+        "date": "Mar 3, 2026",
+        "tick": 11,
+        "read_minutes": 8,
         "body": [
           "In early 2025 we picked a north-star metric, weekly active projects, and built a roadmap to move it. It moved. Every quarter it went up, the board was pleased, and every quarter our renewal rate went down by a point or two, which we explained away each time.",
           "The two facts were not in tension. Weekly active projects went up because we made it easier to create projects. Renewals went down because the people creating projects were not the people paying for them, and the people paying had stopped getting what they came for, which was a small number of projects that worked.",
@@ -70,46 +122,83 @@
           "We replaced the metric in January. The new one is harder to move and much easier to explain to a customer, which I have come to believe is the same property.",
           "For the counterargument, that any metric becomes a target and the real fix is to look at the customers directly, Sunny's essay is at http://medium.com/posts/talk-to-eleven-customers"
         ],
-        "links": [{"label": "Read next: talk to eleven customers", "url": "http://medium.com/posts/talk-to-eleven-customers"}],
-        "tags": ["product", "metrics", "startups"], "comments": [
-          {"id": "c1", "author": "carol", "text": "If this number doubled and nothing else changed, would a customer notice. That is the whole discipline in one sentence.", "tick": 11, "likes": 63}
-        ]
+        "links": [
+          {
+            "label": "Read next: talk to eleven customers",
+            "url": "http://medium.com/posts/talk-to-eleven-customers"
+          }
+        ],
+        "tags": [
+          "product",
+          "metrics",
+          "startups"
+        ],
+        "comments": []
       },
       "talk-to-eleven-customers": {
-        "id": "talk-to-eleven-customers", "section": "product",
+        "id": "talk-to-eleven-customers",
+        "section": "product",
         "title": "Talk to eleven customers",
         "dek": "Not ten, not fifty. Eleven is the number at which you stop hearing things you already believed. 890 claps.",
-        "byline": "Sunny Park", "date": "Feb 10, 2026", "tick": 8, "read_minutes": 4,
+        "byline": "Sunny Park",
+        "date": "Feb 10, 2026",
+        "tick": 8,
+        "read_minutes": 4,
         "body": [
           "Every product person has a number of customer conversations they consider enough. Mine is eleven, and I want to explain why it is not ten.",
           "The first five conversations confirm what you already thought. The next three surprise you in ways you dismiss. Around the ninth or tenth you hear the same surprise for the third time and are forced to take it seriously. Eleven is one more than that, so you cannot tell yourself it was a coincidence.",
           "The rule works because it is uncomfortable. Ten feels round and finished. Eleven feels like you had to be talked into it, which is the correct feeling for the moment you change your mind.",
           "Do it every quarter. Write the surprises down before you write the confirmations. Then go read Ade's post about what happens when you skip this step: http://medium.com/posts/we-shipped-the-wrong-feature-for-a-year"
         ],
-        "links": [{"label": "Ade Balogun: the wrong feature for a year", "url": "http://medium.com/posts/we-shipped-the-wrong-feature-for-a-year"}],
-        "tags": ["product", "research"], "comments": []
+        "links": [
+          {
+            "label": "Ade Balogun: the wrong feature for a year",
+            "url": "http://medium.com/posts/we-shipped-the-wrong-feature-for-a-year"
+          }
+        ],
+        "tags": [
+          "product",
+          "research"
+        ],
+        "comments": []
       },
       "the-case-against-onboarding": {
-        "id": "the-case-against-onboarding", "section": "design",
+        "id": "the-case-against-onboarding",
+        "section": "design",
         "title": "The case against onboarding",
         "dek": "Member-only story. If your product needs a tour, the tour is the bug. 1.5K claps.",
-        "byline": "Mireille Tanaka", "date": "Feb 25, 2026", "tick": 10, "read_minutes": 6,
+        "byline": "Mireille Tanaka",
+        "date": "Feb 25, 2026",
+        "tick": 10,
+        "read_minutes": 6,
         "body": [
           "I have designed onboarding flows for nine products, and I would like to apologise for eight of them. They were coats of paint over a door nobody could find.",
           "Onboarding exists because the first screen does not explain itself. The honest response is to fix the first screen. The usual response is to add a five-step tour with a progress bar, which the user dismisses on step two and never sees again, at which point they are exactly where they were, minus a little goodwill.",
           "The one onboarding I am not sorry about was not a tour at all. It was an empty state that contained one real, useful thing already done, so the user's first action was to edit rather than to create. Nobody has ever needed a tooltip to explain how to change something that is already there.",
           "My rule now: no onboarding until the first screen has been redesigned three times. Usually by the third time the onboarding is not needed, and if it still is, you at least know precisely what it has to say."
         ],
-        "links": [{"label": "Read next: a design system is a treaty", "url": "http://medium.com/posts/a-design-system-is-a-treaty"}],
-        "tags": ["design", "ux", "onboarding"], "comments": [
-          {"id": "c1", "author": "alice", "text": "The empty state with one real thing done already. Yes. We did this for our project list and support tickets about 'how do I start' went to zero.", "tick": 10, "likes": 31}
-        ]
+        "links": [
+          {
+            "label": "Read next: a design system is a treaty",
+            "url": "http://medium.com/posts/a-design-system-is-a-treaty"
+          }
+        ],
+        "tags": [
+          "design",
+          "ux",
+          "onboarding"
+        ],
+        "comments": []
       },
       "a-design-system-is-a-treaty": {
-        "id": "a-design-system-is-a-treaty", "section": "design",
+        "id": "a-design-system-is-a-treaty",
+        "section": "design",
         "title": "A design system is a treaty, not a library",
         "dek": "The components are the easy part. The hard part is agreeing who is allowed to change them. 720 claps.",
-        "byline": "Mireille Tanaka", "date": "Jan 14, 2026", "tick": 3, "read_minutes": 5,
+        "byline": "Mireille Tanaka",
+        "date": "Jan 14, 2026",
+        "tick": 3,
+        "read_minutes": 5,
         "body": [
           "The third design system I worked on had beautiful components, complete documentation and, after eighteen months, no users. Every team had forked it. Not out of malice; they just each needed one thing changed, and there was no way to ask.",
           "What we had built was a library. What we needed was a treaty: a written agreement about who proposes a change, who reviews it, how long it takes and what happens to the teams that cannot wait. Once we wrote that down, the forks came back within a quarter.",
@@ -117,60 +206,96 @@
           "If you are starting a design system, write the treaty first. The button can wait."
         ],
         "links": [],
-        "tags": ["design", "design-systems"], "comments": []
+        "tags": [
+          "design",
+          "design-systems"
+        ],
+        "comments": []
       },
       "we-raised-nothing-and-it-was-fine": {
-        "id": "we-raised-nothing-and-it-was-fine", "section": "startups",
+        "id": "we-raised-nothing-and-it-was-fine",
+        "section": "startups",
         "title": "We raised nothing and it was fine",
         "dek": "Member-only story. Four years, eleven people, no investors and a company that pays for itself. Here is what that cost us. 3.4K claps.",
-        "byline": "Tobias Renn", "date": "Feb 18, 2026", "tick": 9, "read_minutes": 9,
+        "byline": "Tobias Renn",
+        "date": "Feb 18, 2026",
+        "tick": 9,
+        "read_minutes": 9,
         "body": [
           "Every few months someone writes the post about how they bootstrapped a company and it was wonderful, and every few months someone else writes the post about how bootstrapping is a trap. I have done it for four years and I would like to write the boring version: it was fine.",
           "The things it cost us were real. We grew at maybe a third of the speed a funded competitor did. We turned down two customers because serving them would have needed a hire we could not yet afford. I paid myself less than my last salary for three of the four years.",
           "The things it gave us were also real. We have never had a meeting about a metric that was not revenue. We shipped the product we wanted rather than the one that made a good slide. When the market for our category cooled last year, we did not notice, because we had never been in that market; we had just been selling software.",
-          "The funded competitor was acquired in October. I am glad for them. We are still here, eleven of us, and next year we will be twelve. I want to be clear that this is not advice. It is a data point, and the data point is: fine.",
-          "If you want the opposite data point, Priya's post on why she raised after two years of not raising is worth reading: http://medium.com/posts/why-i-finally-raised"
+          "The funded competitor was acquired in October. I am glad for them. We are still here, eleven of us, and next year we will be twelve. I want to be clear that this is not advice. It is a data point, and the data point is: fine."
         ],
-        "links": [{"label": "Priya Venkat: why I finally raised", "url": "http://medium.com/posts/why-i-finally-raised"}],
-        "tags": ["startups", "bootstrapping"], "comments": [
-          {"id": "c1", "author": "bob", "text": "The boring version is the useful version. Thank you for writing it.", "tick": 9, "likes": 54}
-        ]
+        "links": [],
+        "tags": [
+          "startups",
+          "bootstrapping"
+        ],
+        "comments": []
       },
       "why-i-finally-raised": {
-        "id": "why-i-finally-raised", "section": "startups",
+        "id": "why-i-finally-raised",
+        "section": "startups",
         "title": "Why I finally raised after two years of saying I would not",
         "dek": "The company did not need money. It needed to stop being one person's schedule. 1.1K claps.",
-        "byline": "Priya Venkat", "date": "Jan 30, 2026", "tick": 6, "read_minutes": 6,
+        "date": "Jan 30, 2026",
+        "tick": 6,
+        "read_minutes": 6,
         "body": [
           "For two years I told anyone who asked that we would not raise. We were profitable, we were small, and I had read all the same posts you have. Then in November I took a round, and I owe the people I told an explanation.",
           "It was not the money. It was that every important thing in the company went through me, and the company had grown to the point where that was the bottleneck. Hiring three senior people at once would have taken two years of profit. The round let us do it in a quarter.",
           "What I gave up is what you expect: a board, a growth plan, a number I now have to hit. What I did not expect was how much lighter the company felt within a month, once the bottleneck was gone. I do not think raising is right for most companies. I think it was right for the version of ours that existed in November.",
           "Tobias wrote the other side of this, and I agree with almost all of it: http://medium.com/posts/we-raised-nothing-and-it-was-fine"
         ],
-        "links": [{"label": "Tobias Renn: we raised nothing and it was fine", "url": "http://medium.com/posts/we-raised-nothing-and-it-was-fine"}],
-        "tags": ["startups", "fundraising"], "comments": []
+        "links": [
+          {
+            "label": "Tobias Renn: we raised nothing and it was fine",
+            "url": "http://medium.com/posts/we-raised-nothing-and-it-was-fine"
+          }
+        ],
+        "tags": [
+          "startups",
+          "fundraising"
+        ],
+        "comments": []
       },
       "how-i-write-a-thousand-words-before-breakfast": {
-        "id": "how-i-write-a-thousand-words-before-breakfast", "section": "writing",
+        "id": "how-i-write-a-thousand-words-before-breakfast",
+        "section": "writing",
         "title": "How I write a thousand words before breakfast, and why most of them are bad",
         "dek": "Member-only story. The trick is not discipline. The trick is lowering the bar until you trip over it. 2.7K claps.",
-        "byline": "Sunny Park", "date": "Mar 5, 2026", "tick": 13, "read_minutes": 5,
+        "byline": "Sunny Park",
+        "date": "Mar 5, 2026",
+        "tick": 13,
+        "read_minutes": 5,
         "body": [
           "People ask how I write every morning, and I think they expect a system. The system is: I am not allowed to make coffee until there are a thousand words in the file, and the words are not allowed to be good.",
           "The second rule is the one that matters. The moment I try to write well before breakfast, I write nothing. When I let the words be bad, they come, and about a hundred of them turn out to be fine, and those hundred are the day's real output. The other nine hundred were the price of finding them.",
           "This is not a productivity hack. It is a way of separating the part of writing that is thinking from the part that is craft, and doing the thinking at the hour when I am least able to be precious about it.",
           "I have done this for six years. The file has about two million words in it. Perhaps two hundred thousand have been published. I regret none of the rest."
         ],
-        "links": [{"label": "Read next: the essay I could not finish", "url": "http://medium.com/posts/the-essay-i-could-not-finish"}],
-        "tags": ["writing", "habits"], "comments": [
-          {"id": "c1", "author": "carol", "text": "Lowering the bar until you trip over it. Trying this tomorrow.", "tick": 13, "likes": 27}
-        ]
+        "links": [
+          {
+            "label": "Read next: the essay I could not finish",
+            "url": "http://medium.com/posts/the-essay-i-could-not-finish"
+          }
+        ],
+        "tags": [
+          "writing",
+          "habits"
+        ],
+        "comments": []
       },
       "the-essay-i-could-not-finish": {
-        "id": "the-essay-i-could-not-finish", "section": "writing",
+        "id": "the-essay-i-could-not-finish",
+        "section": "writing",
         "title": "The essay I could not finish",
         "dek": "A personal essay about my father's workshop, the lathe I inherited and the first thing I made on it. 1.8K claps.",
-        "byline": "Ade Balogun", "date": "Feb 4, 2026", "tick": 7, "read_minutes": 8,
+        "byline": "Ade Balogun",
+        "date": "Feb 4, 2026",
+        "tick": 7,
+        "read_minutes": 8,
         "body": [
           "My father's workshop was a single garage with a lathe in it, and for most of my childhood I was not allowed past the door. When he died last spring the lathe came to me, along with a shed to put it in and no idea what to do with either.",
           "I started this essay in June. I have started it, by my count, fourteen times, and each time it turned into something else: a piece about grief, a piece about tools, a piece about the specific smell of cutting oil. None of them were the essay. I am publishing this one because I have decided the essay does not exist, and the fourteen attempts are what I have instead.",
@@ -179,15 +304,22 @@
           "The shed is mine now. I go in most evenings. I am still not very good at it."
         ],
         "links": [],
-        "tags": ["writing", "essay", "family"], "comments": [
-          {"id": "c1", "author": "alice", "text": "Slightly off-centre and used every week. This is the essay, for what it is worth.", "tick": 7, "likes": 88}
-        ]
+        "tags": [
+          "writing",
+          "essay",
+          "family"
+        ],
+        "comments": []
       },
       "reading-a-flame-graph-for-the-first-time": {
-        "id": "reading-a-flame-graph-for-the-first-time", "section": "programming",
+        "id": "reading-a-flame-graph-for-the-first-time",
+        "section": "programming",
         "title": "Reading a flame graph for the first time",
         "dek": "A patient walkthrough for people who have been nodding along in performance reviews for years. 980 claps.",
-        "byline": "Lior Adler", "date": "Feb 14, 2026", "tick": 4, "read_minutes": 6,
+        "byline": "Lior Adler",
+        "date": "Feb 14, 2026",
+        "tick": 4,
+        "read_minutes": 6,
         "body": [
           "A flame graph is a picture of where a program spent its time. That is the whole thing, and yet I nodded through three years of meetings before someone sat me down and explained the rest, so here is the rest.",
           "Each box is a function. Its width is the share of total time spent inside it, including everything it called. The boxes stacked on top of it are the things it called. Colour means nothing unless someone tells you otherwise; it is usually just there to tell the boxes apart.",
@@ -195,41 +327,214 @@
           "The one trap: a flame graph shows you where the time went in this run. If the run is not representative, neither is the graph. Profile the slow case, not the demo."
         ],
         "links": [],
-        "tags": ["programming", "performance"], "comments": []
+        "tags": [
+          "programming",
+          "performance"
+        ],
+        "comments": []
       },
       "what-i-learned-designing-for-one-user": {
-        "id": "what-i-learned-designing-for-one-user", "section": "design",
+        "id": "what-i-learned-designing-for-one-user",
+        "section": "design",
         "title": "What I learned designing for one user",
         "dek": "Member-only story. For a year my only customer was my sister's bakery. It was the best design education I have had. 1.3K claps.",
-        "byline": "Lior Adler", "date": "Jan 8, 2026", "tick": 2, "read_minutes": 6,
+        "byline": "Lior Adler",
+        "date": "Jan 8, 2026",
+        "tick": 2,
+        "read_minutes": 6,
         "body": [
           "In 2024 I built an ordering system for my sister's bakery. One user, one screen, one job: get the morning's orders onto a sheet of paper by five a.m. without anyone touching a keyboard with flour on their hands.",
           "I have worked on products with millions of users, and I learned more from that one. When your user is standing next to you, you cannot hide behind an average. Every rough edge is a specific person's bad morning, and she will tell you about it at lunch.",
           "The thing that surprised me most was how little she wanted. Every feature I proposed she declined. What she asked for, repeatedly, was for the things that already existed to be one tap fewer. I shipped seventeen releases that year and I believe fourteen of them removed something.",
           "The bakery still uses it. It has not needed a change since August. That, I have decided, is what finished looks like."
         ],
-        "links": [{"label": "Mireille Tanaka: the case against onboarding", "url": "http://medium.com/posts/the-case-against-onboarding"}],
-        "tags": ["design", "small-business"], "comments": []
+        "links": [
+          {
+            "label": "Mireille Tanaka: the case against onboarding",
+            "url": "http://medium.com/posts/the-case-against-onboarding"
+          }
+        ],
+        "tags": [
+          "design",
+          "small-business"
+        ],
+        "comments": []
       }
     },
-    "subscribers": ["alice.chen@gmail.com", "bmartinez@outlook.com"],
-    "saved": {"alice": ["the-case-against-onboarding"], "bob": ["i-deleted-our-retry-logic", "we-raised-nothing-and-it-was-fine"]},
-    "follows": {"alice": ["programming"], "carol": ["publication", "writing"]}
+    "subscribers": [],
+    "saved": {},
+    "follows": {}
   },
   "search_entries": [
-    {"url": "http://medium.com/", "title": "Medium", "snippet": "Where good ideas find you. Stories from programmers, designers, founders and people who write.", "vertical": "news", "authority": 7, "keywords": ["medium", "blog", "stories", "essays", "member-only"]},
-    {"url": "http://medium.com/posts/i-deleted-our-retry-logic", "title": "I deleted our retry logic and the outages stopped - Medium", "snippet": "Every retry was a small lie we told ourselves about why the request failed the first time.", "vertical": "news", "authority": 7, "keywords": ["retry logic", "outages", "reliability", "wren castillo", "connection pool"]},
-    {"url": "http://medium.com/posts/the-bug-that-only-happened-on-tuesdays", "title": "The bug that only happened on Tuesdays - Medium", "snippet": "A short detective story about a date formatter, a locale and a very patient customer in Wellington.", "vertical": "news", "authority": 6, "keywords": ["bug", "tuesdays", "locale", "debugging"]},
-    {"url": "http://medium.com/posts/we-shipped-the-wrong-feature-for-a-year", "title": "We shipped the wrong feature for a year because our metrics were right - Medium", "snippet": "The dashboard went up and to the right. The customers were leaving anyway.", "vertical": "news", "authority": 7, "keywords": ["metrics", "north star metric", "product management", "ade balogun"]},
-    {"url": "http://medium.com/posts/talk-to-eleven-customers", "title": "Talk to eleven customers - Medium", "snippet": "Not ten, not fifty. Eleven is the number at which you stop hearing things you already believed.", "vertical": "news", "authority": 6, "keywords": ["customer research", "eleven customers", "product", "sunny park"]},
-    {"url": "http://medium.com/posts/the-case-against-onboarding", "title": "The case against onboarding - Medium", "snippet": "If your product needs a tour, the tour is the bug.", "vertical": "news", "authority": 7, "keywords": ["onboarding", "ux", "design", "empty state", "mireille tanaka"]},
-    {"url": "http://medium.com/posts/a-design-system-is-a-treaty", "title": "A design system is a treaty, not a library - Medium", "snippet": "The components are the easy part. The hard part is agreeing who is allowed to change them.", "vertical": "news", "authority": 6, "keywords": ["design system", "treaty", "components", "design"]},
-    {"url": "http://medium.com/posts/we-raised-nothing-and-it-was-fine", "title": "We raised nothing and it was fine - Medium", "snippet": "Four years, eleven people, no investors and a company that pays for itself. Here is what that cost us.", "vertical": "news", "authority": 7, "keywords": ["bootstrapping", "startups", "no investors", "tobias renn"]},
-    {"url": "http://medium.com/posts/why-i-finally-raised", "title": "Why I finally raised after two years of saying I would not - Medium", "snippet": "The company did not need money. It needed to stop being one person's schedule.", "vertical": "news", "authority": 6, "keywords": ["fundraising", "startups", "priya venkat", "raising a round"]},
-    {"url": "http://medium.com/posts/how-i-write-a-thousand-words-before-breakfast", "title": "How I write a thousand words before breakfast, and why most of them are bad - Medium", "snippet": "The trick is not discipline. The trick is lowering the bar until you trip over it.", "vertical": "news", "authority": 6, "keywords": ["writing habit", "morning pages", "thousand words", "writing"]},
-    {"url": "http://medium.com/posts/the-essay-i-could-not-finish", "title": "The essay I could not finish - Medium", "snippet": "A personal essay about my father's workshop, the lathe I inherited and the first thing I made on it.", "vertical": "news", "authority": 6, "keywords": ["personal essay", "lathe", "workshop", "grief"]},
-    {"url": "http://medium.com/posts/reading-a-flame-graph-for-the-first-time", "title": "Reading a flame graph for the first time - Medium", "snippet": "A patient walkthrough for people who have been nodding along in performance reviews for years.", "vertical": "news", "authority": 6, "keywords": ["flame graph", "profiling", "performance", "lior adler"]},
-    {"url": "http://medium.com/programming", "title": "Programming - Medium", "snippet": "Stories about code, debugging and the people who write both.", "vertical": "news", "authority": 6, "keywords": ["medium programming", "programming stories", "coding"]},
-    {"url": "http://medium.com/tag/startups", "title": "#startups - Medium", "snippet": "Stories tagged startups: bootstrapping, fundraising and what it actually cost.", "vertical": "news", "authority": 6, "keywords": ["startups", "medium startups", "founders"]}
+    {
+      "url": "http://medium.com/",
+      "title": "Medium",
+      "snippet": "Where good ideas find you. Stories from programmers, designers, founders and people who write.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "medium",
+        "blog",
+        "stories",
+        "essays",
+        "member-only"
+      ]
+    },
+    {
+      "url": "http://medium.com/posts/i-deleted-our-retry-logic",
+      "title": "I deleted our retry logic and the outages stopped - Medium",
+      "snippet": "Every retry was a small lie we told ourselves about why the request failed the first time.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "retry logic",
+        "outages",
+        "reliability",
+        "wren castillo",
+        "connection pool"
+      ]
+    },
+    {
+      "url": "http://medium.com/posts/the-bug-that-only-happened-on-tuesdays",
+      "title": "The bug that only happened on Tuesdays - Medium",
+      "snippet": "A short detective story about a date formatter, a locale and a very patient customer in Wellington.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "bug",
+        "tuesdays",
+        "locale",
+        "debugging"
+      ]
+    },
+    {
+      "url": "http://medium.com/posts/we-shipped-the-wrong-feature-for-a-year",
+      "title": "We shipped the wrong feature for a year because our metrics were right - Medium",
+      "snippet": "The dashboard went up and to the right. The customers were leaving anyway.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "metrics",
+        "north star metric",
+        "product management",
+        "ade balogun"
+      ]
+    },
+    {
+      "url": "http://medium.com/posts/talk-to-eleven-customers",
+      "title": "Talk to eleven customers - Medium",
+      "snippet": "Not ten, not fifty. Eleven is the number at which you stop hearing things you already believed.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "customer research",
+        "eleven customers",
+        "product",
+        "sunny park"
+      ]
+    },
+    {
+      "url": "http://medium.com/posts/the-case-against-onboarding",
+      "title": "The case against onboarding - Medium",
+      "snippet": "If your product needs a tour, the tour is the bug.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "onboarding",
+        "ux",
+        "design",
+        "empty state",
+        "mireille tanaka"
+      ]
+    },
+    {
+      "url": "http://medium.com/posts/a-design-system-is-a-treaty",
+      "title": "A design system is a treaty, not a library - Medium",
+      "snippet": "The components are the easy part. The hard part is agreeing who is allowed to change them.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "design system",
+        "treaty",
+        "components",
+        "design"
+      ]
+    },
+    {
+      "url": "http://medium.com/posts/we-raised-nothing-and-it-was-fine",
+      "title": "We raised nothing and it was fine - Medium",
+      "snippet": "Four years, eleven people, no investors and a company that pays for itself. Here is what that cost us.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "bootstrapping",
+        "startups",
+        "no investors",
+        "tobias renn"
+      ]
+    },
+    {
+      "url": "http://medium.com/posts/how-i-write-a-thousand-words-before-breakfast",
+      "title": "How I write a thousand words before breakfast, and why most of them are bad - Medium",
+      "snippet": "The trick is not discipline. The trick is lowering the bar until you trip over it.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "writing habit",
+        "morning pages",
+        "thousand words",
+        "writing"
+      ]
+    },
+    {
+      "url": "http://medium.com/posts/the-essay-i-could-not-finish",
+      "title": "The essay I could not finish - Medium",
+      "snippet": "A personal essay about my father's workshop, the lathe I inherited and the first thing I made on it.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "personal essay",
+        "lathe",
+        "workshop",
+        "grief"
+      ]
+    },
+    {
+      "url": "http://medium.com/posts/reading-a-flame-graph-for-the-first-time",
+      "title": "Reading a flame graph for the first time - Medium",
+      "snippet": "A patient walkthrough for people who have been nodding along in performance reviews for years.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "flame graph",
+        "profiling",
+        "performance",
+        "lior adler"
+      ]
+    },
+    {
+      "url": "http://medium.com/programming",
+      "title": "Programming - Medium",
+      "snippet": "Stories about code, debugging and the people who write both.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "medium programming",
+        "programming stories",
+        "coding"
+      ]
+    },
+    {
+      "url": "http://medium.com/tag/startups",
+      "title": "#startups - Medium",
+      "snippet": "Stories tagged startups: bootstrapping, fundraising and what it actually cost.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "startups",
+        "medium startups",
+        "founders"
+      ]
+    }
   ]
 }

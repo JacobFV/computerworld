@@ -23,58 +23,6 @@
       "content_width": 900
     },
     "accounts": {
-      "alice.chen": {
-        "handle": "alice.chen",
-        "name": "Alice Chen",
-        "actor": "alice",
-        "bio": "Works at Northstar. Lives in Seattle, Washington. Will fix your bike, will not fix your printer.",
-        "location": "Seattle, WA",
-        "followers": 412,
-        "following": 388,
-        "site": "http://alicechen.dev/",
-        "domain": "",
-        "headline": "",
-        "verified": false
-      },
-      "bob.martinez": {
-        "handle": "bob.martinez",
-        "name": "Bob Martinez",
-        "actor": "bob",
-        "bio": "Northstar. Sunday league goalkeeper, Tuesday trivia, Thursday regrets. Ask me about my sourdough starter (his name is Kevin).",
-        "location": "Seattle, WA",
-        "followers": 296,
-        "following": 301,
-        "site": "http://bmartinez.net/",
-        "domain": "",
-        "headline": "",
-        "verified": false
-      },
-      "carol.nakamura": {
-        "handle": "carol.nakamura",
-        "name": "Carol Nakamura",
-        "actor": "carol",
-        "bio": "Engineering manager at Northstar. Mom of two, one of them a dog. Ballard.",
-        "location": "Seattle, WA",
-        "followers": 538,
-        "following": 402,
-        "domain": "",
-        "headline": "",
-        "verified": false,
-        "site": ""
-      },
-      "maya.okafor": {
-        "handle": "maya.okafor",
-        "name": "Maya Okafor",
-        "bio": "Nurse at Swedish. Marathon in training, forever. Alice's college roommate and still her emergency contact.",
-        "location": "Seattle, WA",
-        "followers": 611,
-        "following": 540,
-        "actor": null,
-        "domain": "",
-        "headline": "",
-        "verified": false,
-        "site": ""
-      },
       "dev.patel": {
         "handle": "dev.patel",
         "name": "Dev Patel",
@@ -104,7 +52,6 @@
       "jonah.reyes": {
         "handle": "jonah.reyes",
         "name": "Jonah Reyes",
-        "bio": "Bob's brother-in-law. Contractor. If you are reading this, your deck is probably fine.",
         "location": "Tacoma, WA",
         "followers": 203,
         "following": 180,
@@ -112,12 +59,12 @@
         "domain": "",
         "headline": "",
         "verified": false,
-        "site": ""
+        "site": "",
+        "bio": "Welcome to my profile"
       },
       "hana.sato": {
         "handle": "hana.sato",
         "name": "Hana Sato",
-        "bio": "Carol's neighbour, retired librarian, current pickleball menace.",
         "location": "Ballard, Seattle",
         "followers": 172,
         "following": 220,
@@ -125,7 +72,8 @@
         "domain": "",
         "headline": "",
         "verified": false,
-        "site": ""
+        "site": "",
+        "bio": "Welcome to my profile"
       },
       "sunrise.bakery": {
         "handle": "sunrise.bakery",
@@ -184,32 +132,6 @@
         "reposts": 6,
         "id": "p-3102"
       },
-      "p-3103": {
-        "author": "carol.nakamura",
-        "text": "We shipped the big thing at work this week. Two years. I have taken Friday off to sit on the deck and not look at a laptop. Rosa, I will be over for tomatoes.",
-        "tick": 3,
-        "likes": 142,
-        "reposts": 2,
-        "id": "p-3103"
-      },
-      "p-3104": {
-        "author": "rosa.lindqvist",
-        "text": "Congrats Carol!! Bag is on the porch. Bring the dog.",
-        "tick": 3,
-        "likes": 21,
-        "reposts": 0,
-        "reply_to": "p-3103",
-        "id": "p-3104"
-      },
-      "p-3105": {
-        "author": "alice.chen",
-        "text": "Yes we did. Proudest I have been of a piece of software. Also I am never doing that again until next time.",
-        "tick": 3,
-        "likes": 64,
-        "reposts": 0,
-        "reply_to": "p-3103",
-        "id": "p-3105"
-      },
       "p-3106": {
         "author": "fremont.neighbors",
         "text": "LOST CAT: Nimbus, grey tabby, very loud, white socks on both front paws, answers to his name and to the sound of a treat bag. Last seen near N 36th and Fremont Ave Thursday night. He is friendly but fast. Please check garages and sheds. Message Dev Patel or this page.",
@@ -226,32 +148,6 @@
         "reposts": 4,
         "reply_to": "p-3106",
         "id": "p-3107"
-      },
-      "p-3108": {
-        "author": "maya.okafor",
-        "text": "Shared to my whole floor at work. Half of them live in Fremont. He will turn up, they always do.",
-        "tick": 4,
-        "likes": 30,
-        "reposts": 0,
-        "reply_to": "p-3106",
-        "id": "p-3108"
-      },
-      "p-3109": {
-        "author": "bob.martinez",
-        "text": "Kevin the sourdough starter turns 3 today. He has outlived two phones and one relationship. Cake is being made from him, which feels dark, but that is the deal we have.",
-        "tick": 5,
-        "likes": 120,
-        "reposts": 9,
-        "id": "p-3109"
-      },
-      "p-3110": {
-        "author": "jonah.reyes",
-        "text": "Happy birthday Kevin. Bring a loaf Sunday and I will look at your gutter for free.",
-        "tick": 5,
-        "likes": 18,
-        "reposts": 0,
-        "reply_to": "p-3109",
-        "id": "p-3110"
       },
       "p-3111": {
         "author": "ballard.playhouse",
@@ -296,15 +192,6 @@
         "reply_to": "p-3114",
         "id": "p-3115"
       },
-      "p-3116": {
-        "author": "alice.chen",
-        "text": "Best outcome. Nimbus you absolute menace.",
-        "tick": 7,
-        "likes": 22,
-        "reposts": 0,
-        "reply_to": "p-3114",
-        "id": "p-3116"
-      },
       "p-3117": {
         "author": "sunrise.bakery",
         "text": "BAKE SALE for Ballard Playhouse this Sunday Sept 27, 9am to noon, on our patio. All proceeds to the Our Town set budget. We are donating buns, Hana Sato is bringing lemon bars, Rosa has threatened a tomato tart. Cash or tap.",
@@ -322,41 +209,6 @@
         "reply_to": "p-3117",
         "id": "p-3118"
       },
-      "p-3119": {
-        "author": "maya.okafor",
-        "text": "Happy birthday to Alice Chen, who once drove me to the airport at 4am and did not complain even a little (she complained a medium amount). Love you. Dinner is on me this year, no arguments.",
-        "tick": 9,
-        "likes": 178,
-        "reposts": 0,
-        "id": "p-3119"
-      },
-      "p-3120": {
-        "author": "carol.nakamura",
-        "text": "Happy birthday Alice! The team got you a cake shaped like a render frame. It is a rectangle. We tried.",
-        "tick": 9,
-        "likes": 93,
-        "reposts": 0,
-        "reply_to": "p-3119",
-        "id": "p-3120"
-      },
-      "p-3121": {
-        "author": "bob.martinez",
-        "text": "Happy birthday. Kevin says hi. There is a loaf with your name on it, literally, I scored it in.",
-        "tick": 9,
-        "likes": 55,
-        "reposts": 0,
-        "reply_to": "p-3119",
-        "id": "p-3121"
-      },
-      "p-3122": {
-        "author": "alice.chen",
-        "text": "Thank you all. 4am airport runs are the true measure of friendship and Maya I would do it again. Bob the loaf is beautiful. Carol the rectangle made me cry a little.",
-        "tick": 9,
-        "likes": 141,
-        "reposts": 0,
-        "reply_to": "p-3119",
-        "id": "p-3122"
-      },
       "p-3123": {
         "author": "jonah.reyes",
         "text": "Anyone in Ballard need a hand hauling stuff to the Playhouse bake sale Sunday? I have the truck and nothing to do before noon. Comment or message me.",
@@ -367,20 +219,10 @@
       },
       "p-3124": {
         "author": "hana.sato",
-        "text": "Pickleball, Gilman Park, Wednesday 6pm. Beginners welcome. Carol Nakamura I know you said you would come and I have it in writing.",
         "tick": 10,
         "likes": 36,
         "reposts": 2,
         "id": "p-3124"
-      },
-      "p-3125": {
-        "author": "carol.nakamura",
-        "text": "I did say that. I will be there. I will lose. Bringing the dog as moral support.",
-        "tick": 10,
-        "likes": 28,
-        "reposts": 0,
-        "reply_to": "p-3124",
-        "id": "p-3125"
       },
       "p-3126": {
         "author": "fremont.neighbors",
@@ -406,123 +248,31 @@
         "likes": 402,
         "reposts": 120,
         "id": "p-3128"
-      },
-      "p-3129": {
-        "author": "bob.martinez",
-        "text": "Sunday league result: we lost 4-1, I saved a penalty, and I am choosing to remember only the second part.",
-        "tick": 12,
-        "likes": 83,
-        "reposts": 1,
-        "id": "p-3129"
       }
     },
-    "follows": {
-      "alice": [
-        "bob.martinez",
-        "carol.nakamura",
-        "maya.okafor",
-        "dev.patel",
-        "rosa.lindqvist",
-        "sunrise.bakery",
-        "fremont.neighbors",
-        "ballard.playhouse"
-      ],
-      "bob": [
-        "alice.chen",
-        "carol.nakamura",
-        "jonah.reyes",
-        "dev.patel",
-        "sunrise.bakery",
-        "fremont.neighbors"
-      ],
-      "carol": [
-        "alice.chen",
-        "bob.martinez",
-        "rosa.lindqvist",
-        "hana.sato",
-        "sunrise.bakery",
-        "ballard.playhouse",
-        "fremont.neighbors"
-      ]
-    },
+    "follows": {},
     "likes": {
-      "p-3114": [
-        "alice",
-        "bob",
-        "carol"
-      ],
-      "p-3119": [
-        "bob",
-        "carol"
-      ],
-      "p-3117": [
-        "alice"
-      ]
+      "p-3114": [],
+      "p-3119": [],
+      "p-3117": []
     },
     "reposts": {
-      "p-3106": [
-        "alice",
-        "carol"
-      ]
+      "p-3106": []
     },
     "connections": {},
     "messages": {
       "c-birthday": {
         "id": "c-birthday",
-        "title": "Alice's birthday dinner",
-        "members": [
-          "maya.okafor",
-          "alice.chen",
-          "bob.martinez",
-          "carol.nakamura"
-        ],
-        "messages": [
-          {
-            "id": "dm-1",
-            "from": "maya.okafor",
-            "text": "Ok group chat without Alice (jk she is in here, hi Alice). Dinner Saturday 7pm, the Thai place on Market. I booked for four.",
-            "tick": 8
-          },
-          {
-            "id": "dm-2",
-            "from": "carol.nakamura",
-            "text": "In. Can we make it 7:30? Pickleball is Wednesday not Saturday but I am pre-emptively tired.",
-            "tick": 8
-          },
-          {
-            "id": "dm-3",
-            "from": "bob.martinez",
-            "text": "7:30 works. I am bringing bread whether or not the restaurant allows it.",
-            "tick": 8
-          },
-          {
-            "id": "dm-4",
-            "from": "alice.chen",
-            "text": "You are all ridiculous and I love you. 7:30. Bob, ask first.",
-            "tick": 9
-          }
-        ]
+        "members": [],
+        "messages": []
       },
       "c-bakesale": {
         "id": "c-bakesale",
         "title": "Bake sale logistics",
         "members": [
-          "sunrise.bakery",
-          "carol.nakamura"
+          "sunrise.bakery"
         ],
         "messages": [
-          {
-            "id": "dm-5",
-            "from": "sunrise.bakery",
-            "text": "Hi Carol, Hana said you might be able to bring folding tables Sunday? We have two and need four.",
-            "tick": 8
-          },
-          {
-            "id": "dm-6",
-            "from": "carol.nakamura",
-            "text": "Yes, I have two in the garage. Jonah Reyes has a truck and offered to haul, I will loop him in. What time do you want them?",
-            "tick": 8
-          },
           {
             "id": "dm-7",
             "from": "sunrise.bakery",
@@ -560,45 +310,6 @@
         "groups",
         "community",
         "popular"
-      ]
-    },
-    {
-      "url": "http://facebook.com/alice.chen",
-      "title": "Alice Chen | Facebook",
-      "snippet": "Works at Northstar. Lives in Seattle, Washington. Will fix your bike, will not fix your printer.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "alice chen",
-        "facebook",
-        "profile",
-        "seattle"
-      ]
-    },
-    {
-      "url": "http://facebook.com/bob.martinez",
-      "title": "Bob Martinez | Facebook",
-      "snippet": "Northstar. Sunday league goalkeeper, Tuesday trivia. Ask me about my sourdough starter Kevin.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": [
-        "bob martinez",
-        "facebook",
-        "profile",
-        "sourdough"
-      ]
-    },
-    {
-      "url": "http://facebook.com/carol.nakamura",
-      "title": "Carol Nakamura | Facebook",
-      "snippet": "Engineering manager at Northstar. Mom of two, one of them a dog. Ballard.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": [
-        "carol nakamura",
-        "facebook",
-        "profile",
-        "ballard"
       ]
     },
     {
@@ -699,18 +410,6 @@
         "ballard playhouse",
         "community theatre",
         "september 26"
-      ]
-    },
-    {
-      "url": "http://facebook.com/maya.okafor/status/p-3119",
-      "title": "Maya Okafor: happy birthday Alice Chen",
-      "snippet": "Birthday wishes for Alice from her college roommate, with replies from Carol and Bob.",
-      "vertical": "all",
-      "authority": 2,
-      "keywords": [
-        "alice chen",
-        "birthday",
-        "maya okafor"
       ]
     },
     {

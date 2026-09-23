@@ -2,16 +2,28 @@
   "id": "google-search",
   "kind": "search",
   "node": "google-search",
-  "domains": ["google.com", "www.google.com"],
+  "domains": [
+    "google.com",
+    "www.google.com"
+  ],
   "port": 80,
   "initial_state": {
     "brand": "Google",
     "skin": "google",
     "header": [
-      {"text": "Gmail", "url": "http://gmail.com/"},
-      {"text": "Images", "url": "/search?v=images"}
+      {
+        "text": "Gmail",
+        "url": "http://gmail.com/"
+      },
+      {
+        "text": "Images",
+        "url": "/search?v=images"
+      }
     ],
-    "cta": {"text": "Sign in", "url": "http://mail.google.com/"},
+    "cta": {
+      "text": "Sign in",
+      "url": "http://mail.google.com/"
+    },
     "theme": {
       "accent": "#1a73e8",
       "background": "#ffffff",
@@ -21,18 +33,30 @@
       "content_width": 760
     },
     "retain_history": true,
-    "rank_weights": {"title": 8, "keywords": 4, "snippet": 1, "authority": 2},
-    "verticals": ["all", "images", "news", "videos"],
+    "rank_weights": {
+      "title": 8,
+      "keywords": 4,
+      "snippet": 1,
+      "authority": 2
+    },
+    "verticals": [
+      "all",
+      "images",
+      "news",
+      "videos"
+    ],
     "about": "Google ranks a fixed index of pages by where the query matches — title first, then keywords, then the description — and adds a per-site authority bonus to anything that already matched. Ties break on the URL, so the same search always comes back in the same order.",
     "footer": [
-      {"text": "Wikipedia", "url": "http://wikipedia.org/"},
-      {"text": "YouTube", "url": "http://youtube.com/"},
-      {"text": "Northstar", "url": "http://northstar.example/"}
+      {
+        "text": "Wikipedia",
+        "url": "http://wikipedia.org/"
+      },
+      {
+        "text": "YouTube",
+        "url": "http://youtube.com/"
+      }
     ],
-    "history": {
-      "alice": ["27 inch 4k usb-c monitor", "shipping atlas", "deterministic simulation"],
-      "carol": ["devcon seattle tickets", "atlas launch checklist"]
-    },
+    "history": {},
     "authority_overrides": {
       "google.com": 5,
       "bing.com": 1,
@@ -67,12 +91,7 @@
       "northwind.example": 5,
       "slack.com": 4,
       "discord.com": 4,
-      "linear.app": 4,
-      "alicechen.dev": 4,
-      "bmartinez.net": 3,
-      "eng.northstar.example": 4,
-      "northstar.example": 5,
-      "status.northstar.example": 3
+      "linear.app": 4
     }
   },
   "search_entries": [
@@ -82,7 +101,12 @@
       "snippet": "Search the web. Type a query to get ranked results, or switch to Images, News and Videos.",
       "vertical": "all",
       "authority": 5,
-      "keywords": ["google", "search", "search engine", "web search"]
+      "keywords": [
+        "google",
+        "search",
+        "search engine",
+        "web search"
+      ]
     },
     {
       "url": "http://google.com/about",
@@ -90,7 +114,13 @@
       "snippet": "How Google scores a page: title, keywords, description and site authority, with the URL breaking ties.",
       "vertical": "all",
       "authority": 3,
-      "keywords": ["google", "about", "how search works", "ranking", "search engine"]
+      "keywords": [
+        "google",
+        "about",
+        "how search works",
+        "ranking",
+        "search engine"
+      ]
     }
   ]
 }

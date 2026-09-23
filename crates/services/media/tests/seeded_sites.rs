@@ -6,9 +6,12 @@ use cw_protocol::{HttpRequest, HttpResponse};
 use cw_sdk::{Service, ServiceContext};
 use cw_service_media::MediaService;
 use serde_json::Value;
-const YOUTUBE: &str = include_str!("../../../../worlds/internet/sites/youtube.json");
-const SPOTIFY: &str = include_str!("../../../../worlds/internet/sites/spotify.json");
-const YOUTUBE_MUSIC: &str = include_str!("../../../../worlds/internet/sites/youtube-music.json");
+static YOUTUBE: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("youtube"));
+static SPOTIFY: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("spotify"));
+static YOUTUBE_MUSIC: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("youtube-music"));
 fn ctx() -> ServiceContext {
     ServiceContext {
         actor: "alice".into(),
@@ -47,7 +50,7 @@ fn keys(state: &Value, map: &str) -> Vec<String> {
 }
 #[test]
 fn every_youtube_page_a_seed_names_resolves() {
-    let (_, mut state, entries) = site(YOUTUBE);
+    let (_, mut state, entries) = site(*YOUTUBE);
     assert_eq!(get(&mut state, "http://youtube.com/").status, 200);
     for id in keys(&state, "items") {
         assert_eq!(
@@ -87,7 +90,7 @@ fn every_youtube_page_a_seed_names_resolves() {
 }
 #[test]
 fn every_spotify_page_a_seed_names_resolves() {
-    let (_, mut state, entries) = site(SPOTIFY);
+    let (_, mut state, entries) = site(*SPOTIFY);
     assert_eq!(get(&mut state, "http://spotify.com/").status, 200);
     for id in keys(&state, "items") {
         assert_eq!(
@@ -117,11 +120,11 @@ fn every_spotify_page_a_seed_names_resolves() {
 }
 #[test]
 fn the_seeded_controls_are_not_decoration() {
-    let (_, youtube, _) = site(YOUTUBE);
+    let (_, youtube, _) = site(*YOUTUBE);
     // The watch page's Save posts here and the track page's Add to playlist posts there; both
     // lists have to exist, unowned, or those buttons are lies.
     assert_eq!(youtube["playlists"]["watch-later"]["owner"], Value::Null);
-    let (_, spotify, _) = site(SPOTIFY);
+    let (_, spotify, _) = site(*SPOTIFY);
     assert_eq!(spotify["playlists"]["liked"]["owner"], Value::Null);
     // Every item names a channel that exists, or its card renders a raw id.
     for (state, catalogue) in [(&youtube, "youtube"), (&spotify, "spotify")] {
@@ -145,7 +148,7 @@ fn the_seeded_controls_are_not_decoration() {
 }
 #[test]
 fn the_storylines_the_content_bible_pins_are_present() {
-    let (_, youtube, _) = site(YOUTUBE);
+    let (_, youtube, _) = site(*YOUTUBE);
     // Storyline 7: the walkthrough's top comment is bob's.
     let comments = youtube["items"]["atlas-walkthrough"]["comments"]
         .as_array()
@@ -159,7 +162,7 @@ fn the_storylines_the_content_bible_pins_are_present() {
         youtube["channels"]["alice-builds"]["handle"],
         "@alicebuilds"
     );
-    let (_, spotify, _) = site(SPOTIFY);
+    let (_, spotify, _) = site(*SPOTIFY);
     // Storyline 7: Carol's "Ship It" is eleven tracks long.
     assert_eq!(spotify["playlists"]["ship-it"]["owner"], "carol");
     assert_eq!(
@@ -175,7 +178,7 @@ fn the_storylines_the_content_bible_pins_are_present() {
 }
 #[test]
 fn watching_the_seeded_walkthrough_changes_the_world() {
-    let (_, mut state, _) = site(YOUTUBE);
+    let (_, mut state, _) = site(*YOUTUBE);
     let before = state["items"]["atlas-walkthrough"]["views"]
         .as_u64()
         .unwrap();
@@ -190,7 +193,7 @@ fn watching_the_seeded_walkthrough_changes_the_world() {
 }
 #[test]
 fn every_youtube_music_page_a_seed_names_resolves_and_plays() {
-    let (file, mut state, entries) = site(YOUTUBE_MUSIC);
+    let (file, mut state, entries) = site(*YOUTUBE_MUSIC);
     assert_eq!(file["domains"][0], "music.youtube.com");
     assert_eq!(state["mode"], "music");
     for id in keys(&state, "channels") {
@@ -225,6 +228,6 @@ fn every_youtube_music_page_a_seed_names_resolves_and_plays() {
     assert_eq!(player["playing"], true);
     assert!(player["queue"].as_array().is_some_and(|q| !q.is_empty()));
     // The shared catalogue: the same songs spotify.com serves.
-    let (_, spotify, _) = site(SPOTIFY);
+    let (_, spotify, _) = site(*SPOTIFY);
     assert_eq!(keys(&state, "items"), keys(&spotify, "items"));
 }

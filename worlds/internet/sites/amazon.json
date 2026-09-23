@@ -58,32 +58,7 @@
           "Height, tilt and pivot stand"
         ],
         "description": "A 27-inch 4K panel that drives a laptop and charges it down the same cable. The stand pivots, so two of these sit side by side without a gap.",
-        "reviews": [
-          {
-            "id": "rv-1",
-            "author": "alice",
-            "stars": 4,
-            "title": "Two of these side by side is the whole point",
-            "body": "One cable to the laptop, 90W back the other way, and the bezels are thin enough that two of them read as one desktop. Docked a star because the stand needs a hex key you do not get in the box.",
-            "tick": 6
-          },
-          {
-            "id": "rv-2",
-            "author": "carol",
-            "stars": 5,
-            "title": "Replaced two older panels with one",
-            "body": "Colour out of the box was close enough that I never opened the calibrator. Menu joystick is better than any button row.",
-            "tick": 4
-          },
-          {
-            "id": "rv-3",
-            "author": "bob",
-            "stars": 3,
-            "title": "Fine, but read the refresh rate again",
-            "body": "It is 60Hz. If you came from a 144Hz gaming panel you will notice, and no firmware update is going to change it.",
-            "tick": 5
-          }
-        ]
+        "reviews": []
       },
       "b0dock11": {
         "id": "b0dock11",
@@ -102,16 +77,7 @@
           "SD and microSD readers"
         ],
         "description": "Eleven ports and a metal shell that stays cool. Pairs with the Lumen 27-inch panel on a single upstream cable.",
-        "reviews": [
-          {
-            "id": "rv-4",
-            "author": "alice",
-            "stars": 4,
-            "title": "Ethernet finally keeps up",
-            "body": "2.5Gb to the switch and the dock does not warm up. The SD reader is slower than the spec sheet suggests.",
-            "tick": 7
-          }
-        ]
+        "reviews": []
       },
       "b0kbd87": {
         "id": "b0kbd87",
@@ -130,16 +96,7 @@
           "Aluminium case"
         ],
         "description": "Eighty-seven keys, a case you can actually open, and sockets so you can change your mind about the switches later.",
-        "reviews": [
-          {
-            "id": "rv-5",
-            "author": "bob",
-            "stars": 5,
-            "title": "Third one I have bought",
-            "body": "Hot-swap means it outlives whatever switch fashion is current. Back in stock and I buy another.",
-            "tick": 3
-          }
-        ]
+        "reviews": []
       },
       "b0chair": {
         "id": "b0chair",
@@ -192,16 +149,7 @@
           "Covers replay, snapshotting and ordered inputs"
         ],
         "description": "A working engineer's book about removing the clock, the random number generator and unordered iteration from a system you still have to ship.",
-        "reviews": [
-          {
-            "id": "rv-6",
-            "author": "carol",
-            "stars": 5,
-            "title": "Chapter 7 is the one",
-            "body": "The chapter on ordered inputs is worth the cover price on its own. We handed it round the team before the Atlas review.",
-            "tick": 5
-          }
-        ]
+        "reviews": []
       },
       "b0bottle": {
         "id": "b0bottle",
@@ -240,42 +188,9 @@
         "reviews": []
       }
     },
-    "carts": {
-      "carol": {
-        "b0lamp": 1,
-        "b0cable": 2
-      }
-    },
-    "orders": {
-      "1001": {
-        "id": "1001",
-        "buyer": "alice",
-        "tick": 3,
-        "date": "2026-03-02",
-        "items": [
-          {
-            "product": "b0monitor27",
-            "title": "Lumen 27-inch 4K USB-C Monitor",
-            "qty": 1,
-            "price_cents": 42999
-          }
-        ],
-        "total_cents": 42999,
-        "status": "Delivered",
-        "confirmation": "ORD-LNUVJ6",
-        "seats": [],
-        "venue": ""
-      }
-    },
-    "favorites": {
-      "alice": [
-        "b0dock11",
-        "b0book-det"
-      ],
-      "bob": [
-        "b0kbd87"
-      ]
-    },
+    "carts": {},
+    "orders": {},
+    "favorites": {},
     "messages": [],
     "next_order": 1002
   },
@@ -383,19 +298,6 @@
         "order history",
         "my orders",
         "past orders"
-      ]
-    },
-    {
-      "url": "http://amazon.com/orders/1001",
-      "title": "Order 1001 - Lumen 27-inch 4K USB-C Monitor",
-      "snippet": "Placed for $429.99 and delivered. This is the order the card charge on northwind.example points back at.",
-      "vertical": "all",
-      "authority": 5,
-      "keywords": [
-        "order 1001",
-        "monitor order",
-        "receipt",
-        "order confirmation"
       ]
     },
     {

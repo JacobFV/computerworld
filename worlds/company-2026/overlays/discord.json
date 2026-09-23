@@ -1,0 +1,465 @@
+{
+  "initial_state": {
+    "server": {
+      "id": "atlas",
+      "name": "Atlas Community",
+      "categories": [
+        {
+          "name": "Information",
+          "channels": [
+            "welcome",
+            "announcements",
+            "rules"
+          ]
+        },
+        {
+          "name": "Support",
+          "channels": [
+            "atlas-help",
+            "determinism",
+            "mod-log"
+          ]
+        },
+        {
+          "name": "Community",
+          "channels": [
+            "general",
+            "showcase",
+            "off-topic",
+            "Lounge",
+            "Office Hours"
+          ]
+        }
+      ],
+      "channels": {
+        "welcome": {
+          "topic": "Start here: what Atlas is and where everything lives",
+          "messages": [
+            {
+              "id": "chat-31",
+              "author": "admin",
+              "text": "Welcome to the Atlas community server. Source is at http://github.com/northstar/atlas and the guide is at http://guide.example/",
+              "time": 3600000000,
+              "reactions": {}
+            },
+            {
+              "id": "chat-32",
+              "author": "mkowalski",
+              "text": "Came from the walkthrough video. This is the first simulator I have seen that replays byte for byte.",
+              "time": 207600000000,
+              "reactions": {
+                "tada": [
+                  "alice",
+                  "praman"
+                ]
+              }
+            },
+            {
+              "id": "chat-40",
+              "author": "praman",
+              "text": "Read #rules, then ask anything in #atlas-help. Nine times in ten the answer is an unordered map.",
+              "time": 208320000000,
+              "reactions": {},
+              "reply_to": "chat-32"
+            }
+          ]
+        },
+        "announcements": {
+          "topic": "Releases and outages, from the team only",
+          "roles": [
+            "Admin",
+            "Mod",
+            "Member"
+          ],
+          "messages": [
+            {
+              "id": "chat-41",
+              "author": "admin",
+              "text": "Atlas 2026.1 ships next week. The Windows CI flake is fixed in http://github.com/northstar/atlas/pull/15",
+              "time": 347400000000,
+              "reactions": {
+                "tada": [
+                  "bob",
+                  "carol",
+                  "mkowalski",
+                  "praman"
+                ]
+              }
+            },
+            {
+              "id": "chat-42",
+              "author": "admin",
+              "text": "INC-4 is resolved: elevated API latency for twelve minutes, cause a cold cache on the new pop. Status: http://status.northstar.example/",
+              "time": 601500000000,
+              "reactions": {
+                "+1": [
+                  "praman"
+                ]
+              }
+            }
+          ]
+        },
+        "rules": {
+          "topic": "Be kind, stay on topic, no replay logs over 1 MB in chat",
+          "messages": [
+            {
+              "id": "chat-43",
+              "author": "admin",
+              "text": "1. Be kind. 2. Search #atlas-help before asking. 3. Post replay logs as a gist, not inline. 4. Mods (green) can move threads.",
+              "time": 3900000000,
+              "reactions": {}
+            }
+          ]
+        },
+        "atlas-help": {
+          "topic": "Replay diverging? Start with your own HashMaps.",
+          "messages": [
+            {
+              "id": "chat-33",
+              "author": "mkowalski",
+              "text": "My replay diverges after about 200 ticks. Anything obvious?",
+              "time": 454320000000,
+              "reactions": {
+                "eyes": [
+                  "praman"
+                ]
+              }
+            },
+            {
+              "id": "chat-34",
+              "author": "praman",
+              "text": "Nine times in ten it is an unordered map somewhere in your own code. Same bug we hit: http://github.com/northstar/atlas/issues/14",
+              "time": 454800000000,
+              "reactions": {
+                "+1": [
+                  "alice",
+                  "bob"
+                ]
+              },
+              "reply_to": "chat-33"
+            },
+            {
+              "id": "chat-44",
+              "author": "jlee",
+              "text": "Is there a way to diff two checkpoints? Mine hash differently and I cannot see where.",
+              "time": 602760000000,
+              "reactions": {}
+            },
+            {
+              "id": "chat-45",
+              "author": "bob",
+              "text": "Fork both from one checkpoint and compare state_hash() every tick; the first tick that differs names the service :pushpin:",
+              "time": 603060000000,
+              "reactions": {
+                "+1": [
+                  "jlee",
+                  "praman"
+                ]
+              },
+              "reply_to": "chat-44"
+            }
+          ]
+        },
+        "determinism": {
+          "topic": "Seeds, ticks, hashes and why your clock is lying to you",
+          "messages": [
+            {
+              "id": "chat-46",
+              "author": "praman",
+              "text": "Sort before you iterate: http://github.com/gist/bfs-order",
+              "time": 364200000000,
+              "reactions": {
+                "+1": [
+                  "alice"
+                ]
+              }
+            },
+            {
+              "id": "chat-47",
+              "author": "carol",
+              "text": "And never read the wall clock. Every timestamp in Atlas is a tick for a reason.",
+              "time": 364440000000,
+              "reactions": {
+                "eyes": [
+                  "mkowalski"
+                ]
+              }
+            },
+            {
+              "id": "chat-36",
+              "author": "alice",
+              "text": "Worth reading Priya on the general case: http://stackoverflow.com/questions/t-4411",
+              "time": 457620000000,
+              "reactions": {}
+            }
+          ]
+        },
+        "mod-log": {
+          "topic": "Moderator notes",
+          "roles": [
+            "Admin",
+            "Mod"
+          ],
+          "messages": [
+            {
+              "id": "chat-48",
+              "author": "admin",
+              "text": "Moved three replay-log pastes out of #atlas-help to gists. Reminder posted in #rules.",
+              "time": 520800000000,
+              "reactions": {}
+            },
+            {
+              "id": "chat-49",
+              "author": "praman",
+              "text": "Gave jlee the Member role after the intro in #general.",
+              "time": 522120000000,
+              "reactions": {},
+              "reply_to": "chat-48"
+            }
+          ]
+        },
+        "general": {
+          "topic": "Say hi",
+          "messages": [
+            {
+              "id": "chat-50",
+              "author": "jlee",
+              "text": "Hi all, Jamie here. Building a traffic simulator on Atlas for a thesis.",
+              "time": 526800000000,
+              "reactions": {
+                "tada": [
+                  "alice",
+                  "praman",
+                  "mkowalski"
+                ]
+              }
+            },
+            {
+              "id": "chat-51",
+              "author": "alice",
+              "text": "Welcome! #determinism will save you a week. Ask in #atlas-help when it does not.",
+              "time": 527460000000,
+              "reactions": {},
+              "reply_to": "chat-50"
+            },
+            {
+              "id": "chat-58",
+              "author": "praman",
+              "text": "Office hours at 10 today in Office Hours, all welcome.",
+              "time": 600600000000,
+              "reactions": {
+                "+1": [
+                  "jlee",
+                  "admin"
+                ]
+              }
+            },
+            {
+              "id": "chat-57",
+              "author": "praman",
+              "text": "Bring replay logs as gists, not pastes :pray:",
+              "time": 600720000000,
+              "reactions": {}
+            }
+          ]
+        },
+        "showcase": {
+          "topic": "What you built, and what you wrote about it",
+          "messages": [
+            {
+              "id": "chat-37",
+              "author": "alice",
+              "text": "What I learned shipping Atlas: http://alicechen.dev/posts/what-i-learned-shipping-atlas",
+              "time": 288900000000,
+              "reactions": {
+                "tada": [
+                  "bob",
+                  "mkowalski",
+                  "praman"
+                ]
+              }
+            },
+            {
+              "id": "chat-38",
+              "author": "bob",
+              "text": "And the hash-order postmortem: http://bmartinez.net/posts/hash-order-bit-me",
+              "time": 289080000000,
+              "reactions": {}
+            },
+            {
+              "id": "chat-39",
+              "author": "praman",
+              "text": "Sort before you iterate: http://github.com/gist/bfs-order",
+              "time": 364320000000,
+              "reactions": {
+                "+1": [
+                  "alice"
+                ]
+              }
+            },
+            {
+              "id": "chat-52",
+              "author": "mkowalski",
+              "text": "My scheduler demo, now replaying cleanly: http://youtube.com/watch?v=atlas-walkthrough",
+              "time": 560700000000,
+              "reactions": {
+                "eyes": [
+                  "alice",
+                  "jlee"
+                ]
+              }
+            }
+          ]
+        },
+        "off-topic": {
+          "topic": "Everything that is not Atlas",
+          "messages": [
+            {
+              "id": "chat-53",
+              "author": "carol",
+              "text": "Launch week soundtrack: http://open.spotify.com/playlist/ship-it",
+              "time": 111600000000,
+              "reactions": {
+                "tada": [
+                  "alice",
+                  "bob"
+                ]
+              }
+            },
+            {
+              "id": "chat-54",
+              "author": "mkowalski",
+              "text": "Which monitor do people use for long replay sessions?",
+              "time": 180300000000,
+              "reactions": {}
+            },
+            {
+              "id": "chat-55",
+              "author": "bob",
+              "text": "this one: http://amazon.com/dp/b0monitor27 - 27 inch, 4K, one cable.",
+              "time": 180720000000,
+              "reactions": {
+                "+1": [
+                  "mkowalski"
+                ]
+              },
+              "reply_to": "chat-54"
+            }
+          ]
+        }
+      },
+      "voice": {
+        "Lounge": {
+          "occupants": [
+            "praman",
+            "jlee"
+          ]
+        },
+        "Office Hours": {
+          "occupants": []
+        }
+      },
+      "members": {
+        "admin": {
+          "nick": "northstar-admin",
+          "roles": [
+            "Admin"
+          ]
+        },
+        "alice": {
+          "nick": "alice.chen",
+          "roles": [
+            "Mod",
+            "Member"
+          ]
+        },
+        "bob": {
+          "nick": "bmartinez",
+          "roles": [
+            "Member"
+          ]
+        },
+        "carol": {
+          "nick": "carol",
+          "roles": [
+            "Mod",
+            "Member"
+          ]
+        },
+        "praman": {
+          "nick": "priya",
+          "roles": [
+            "Mod",
+            "Member"
+          ]
+        },
+        "mkowalski": {
+          "nick": "mkowalski",
+          "roles": [
+            "Member"
+          ]
+        },
+        "jlee": {
+          "nick": "jamie",
+          "roles": [
+            "Member"
+          ]
+        }
+      },
+      "roles": {
+        "Admin": {
+          "color": "#f23f43",
+          "position": 3
+        },
+        "Mod": {
+          "color": "#3ba55d",
+          "position": 2
+        },
+        "Member": {
+          "color": "#f2f3f5",
+          "position": 1
+        }
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://discord.com/",
+      "title": "Discord",
+      "snippet": "The Atlas community server: welcome, atlas-help and showcase.",
+      "authority": 6,
+      "keywords": [
+        "discord",
+        "community",
+        "chat",
+        "atlas",
+        "server"
+      ]
+    },
+    {
+      "url": "http://discord.com/channels/atlas/atlas-help",
+      "title": "#atlas-help · Atlas Community",
+      "snippet": "Replay diverging after 200 ticks? Nine times in ten it is an unordered map.",
+      "authority": 5,
+      "keywords": [
+        "help",
+        "atlas",
+        "replay",
+        "determinism",
+        "discord"
+      ]
+    },
+    {
+      "url": "http://discord.com/channels/atlas/showcase",
+      "title": "#showcase · Atlas Community",
+      "snippet": "What people built with Atlas, and what they wrote about it afterwards.",
+      "authority": 4,
+      "keywords": [
+        "showcase",
+        "atlas",
+        "discord",
+        "blog"
+      ]
+    }
+  ]
+}

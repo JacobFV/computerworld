@@ -1,0 +1,399 @@
+{
+  "initial_state": {
+    "members": {
+      "alice_c": {
+        "handle": "alice_c",
+        "name": "Alice Chen",
+        "actor": "alice",
+        "reputation": 24810,
+        "flair": "Northstar / renderer",
+        "bio": "I work on the thing this sub keeps arguing about.",
+        "site": "http://alicechen.dev/"
+      },
+      "bobm": {
+        "handle": "bobm",
+        "name": "Bob Martinez",
+        "actor": "bob",
+        "reputation": 9140,
+        "flair": "CI goblin",
+        "bio": "Testing and release engineering. Ask me about your one failing runner.",
+        "site": "http://bmartinez.net/"
+      },
+      "carol_nk": {
+        "handle": "carol_nk",
+        "name": "Carol Nakamura",
+        "actor": "carol",
+        "reputation": 3102,
+        "flair": "EM",
+        "bio": "Engineering manager. Lurker, occasional poster."
+      },
+      "praman": {
+        "handle": "praman",
+        "name": "Priya Raman",
+        "reputation": 88204,
+        "flair": "rustc contributor",
+        "bio": "Rust internals. I will read the standard library at you."
+      }
+    },
+    "threads": {
+      "t-5115": {
+        "id": "t-5115",
+        "board": "rust",
+        "author": "praman",
+        "title": "A HashMap is not a promise: iteration order and reproducible builds",
+        "body": "Writing this down so I can link it instead of typing it. std's HashMap uses a randomly seeded hasher per process. The iteration order is not stable across runs, across platforms, or across releases, and none of that is a bug. If your output depends on it, sort the keys or use a BTreeMap. The long version, with the test that finally convinced someone: http://stackoverflow.com/questions/t-4411",
+        "tags": [
+          "rust",
+          "determinism"
+        ],
+        "tick": 5,
+        "score": 1402,
+        "views": 84120,
+        "replies": [
+          {
+            "id": "r-6001",
+            "author": "alice_c",
+            "body": "We hit exactly this in a graph traversal. The fix was to sort the frontier before expanding it, which cost about four percent and bought a test suite that means something.",
+            "tick": 5,
+            "score": 411
+          },
+          {
+            "id": "r-6002",
+            "author": "yaml_hater",
+            "parent": "r-6001",
+            "body": "Four percent seems like a lot to pay for a test suite.",
+            "tick": 5,
+            "score": -18
+          },
+          {
+            "id": "r-6003",
+            "author": "alice_c",
+            "parent": "r-6002",
+            "body": "It is four percent of one traversal, not four percent of the program, and the alternative was three weeks of someone's life. We priced it.",
+            "tick": 5,
+            "score": 622
+          },
+          {
+            "id": "r-6004",
+            "author": "bobm",
+            "body": "The part nobody says out loud: it will pass on every machine you own. You will not find this on your laptop. You will find it on the one CI runner with a different allocator and you will not believe it for two days.",
+            "tick": 6,
+            "score": 288
+          }
+        ]
+      },
+      "t-5116": {
+        "id": "t-5116",
+        "board": "sysadmin",
+        "author": "pipeline_pete",
+        "title": "Northstar had a 12 minute API outage this morning and actually published a timeline",
+        "body": "Status page has the minute-by-minute: http://status.northstar.example/ - unusually candid for a vendor, and the postmortem says they reproduced the incident locally from a checkpoint before they finished writing it up.",
+        "url": "http://status.northstar.example/",
+        "tags": [
+          "incident",
+          "postmortem"
+        ],
+        "tick": 5,
+        "score": 214,
+        "views": 18400,
+        "replies": [
+          {
+            "id": "r-6010",
+            "author": "yaml_hater",
+            "body": "Twelve minutes and a public timeline. Meanwhile my provider's status page has been a green tick through two full outages this year.",
+            "tick": 5,
+            "score": 190
+          },
+          {
+            "id": "r-6011",
+            "author": "carol_nk",
+            "body": "I own that postmortem. The reproduction is the only reason the timeline is that precise - we replayed the checkpoint rather than reconstructing it from memory and logs.",
+            "tick": 6,
+            "score": 341
+          },
+          {
+            "id": "r-6012",
+            "author": "pipeline_pete",
+            "parent": "r-6011",
+            "body": "Genuinely the first vendor postmortem I have read this year that told me something I could use. Thank you.",
+            "tick": 6,
+            "score": 88
+          }
+        ]
+      },
+      "t-5120": {
+        "id": "t-5120",
+        "board": "programming",
+        "author": "mono_nomad",
+        "title": "Northstar's Atlas bets everything on determinism (theverge.com)",
+        "body": "Long profile of the Atlas 1.0 release. The interesting part is the enforcement: a replay harness that reruns a recorded run from the seed and compares every frame. http://theverge.com/2026/atlas-determinism",
+        "url": "http://theverge.com/2026/atlas-determinism",
+        "tags": [
+          "determinism",
+          "simulation"
+        ],
+        "tick": 8,
+        "score": 812,
+        "views": 64200,
+        "replies": [
+          {
+            "id": "r-6020",
+            "author": "alice_c",
+            "body": "Renderer author here. The three week bug in the middle of that article is real and I would like the record to show that I checked the hash map on day two and decided it was fine.",
+            "tick": 8,
+            "score": 1204
+          },
+          {
+            "id": "r-6021",
+            "author": "praman",
+            "parent": "r-6020",
+            "body": "Everyone checks the hash map on day two and decides it is fine. That is why I wrote the answer down: http://stackoverflow.com/questions/t-4411",
+            "tick": 8,
+            "score": 640
+          },
+          {
+            "id": "r-6022",
+            "author": "yaml_hater",
+            "body": "Every simulation vendor claims reproducibility. What makes this one different is a marketing department.",
+            "tick": 8,
+            "score": -42
+          },
+          {
+            "id": "r-6023",
+            "author": "bobm",
+            "parent": "r-6022",
+            "body": "The difference is that the claim is a test. If a rerun from the seed does not match frame for frame, the build fails. You can disagree with the cost, but it is not a claim, it is a gate.",
+            "tick": 8,
+            "score": 511
+          },
+          {
+            "id": "r-6024",
+            "author": "mono_nomad",
+            "parent": "r-6023",
+            "body": "This is the comment that should have been the headline.",
+            "tick": 8,
+            "score": 96
+          },
+          {
+            "id": "r-6025",
+            "author": "carol_nk",
+            "body": "For anyone who wants the version written by the people who did the work rather than about them: http://eng.northstar.example/posts/shipping-atlas",
+            "tick": 8,
+            "score": 204
+          }
+        ]
+      },
+      "t-5121": {
+        "id": "t-5121",
+        "board": "ExperiencedDevs",
+        "author": "bobm",
+        "title": "A recruiter reached out the week we shipped. How do you handle that without spooking your manager?",
+        "body": "Not looking, or at least not looking yet. But the message was specific, she had actually read my writing, and the band is above mine. I told her to ask again after the conference. Do you tell your manager about these, and if so when - at the message, at the call, or at the offer?",
+        "tags": [
+          "career"
+        ],
+        "tick": 6,
+        "score": 428,
+        "views": 31200,
+        "replies": [
+          {
+            "id": "r-6030",
+            "author": "mono_nomad",
+            "body": "At the offer, and only if you would actually take it. Telling your manager at the message stage turns a normal Tuesday into a retention conversation you did not ask for.",
+            "tick": 6,
+            "score": 512
+          },
+          {
+            "id": "r-6031",
+            "author": "carol_nk",
+            "body": "Manager here, not yours. I would rather hear it at the call than find out at the resignation, but I have no right to that and you owe me nothing until you have a decision.",
+            "tick": 6,
+            "score": 388
+          },
+          {
+            "id": "r-6032",
+            "author": "bobm",
+            "parent": "r-6031",
+            "body": "This is a weirdly reassuring answer to get from a stranger with the flair EM.",
+            "tick": 6,
+            "score": 204
+          },
+          {
+            "id": "r-6033",
+            "author": "pipeline_pete",
+            "body": "Take the call regardless. Not to leave - to find out what the market thinks you are worth, which is information your employer already has and you do not.",
+            "tick": 7,
+            "score": 296
+          }
+        ]
+      },
+      "t-5123": {
+        "id": "t-5123",
+        "board": "programming",
+        "author": "alice_c",
+        "title": "What I learned shipping Atlas (alicechen.dev)",
+        "body": "Wrote up the parts that do not fit in a launch post: the abstraction I deleted eighteen months after building it, the bug we decided to keep on purpose, and what the three week debugging session actually looked like from inside. http://alicechen.dev/posts/what-i-learned-shipping-atlas",
+        "url": "http://alicechen.dev/posts/what-i-learned-shipping-atlas",
+        "tags": [
+          "determinism",
+          "postmortem"
+        ],
+        "tick": 9,
+        "score": 356,
+        "views": 22800,
+        "replies": [
+          {
+            "id": "r-6040",
+            "author": "praman",
+            "body": "The section on keeping a known bug because fixing it would make the failure non-reproducible is the most honest thing I have read from a vendor engineer.",
+            "tick": 9,
+            "score": 271
+          },
+          {
+            "id": "r-6041",
+            "author": "yaml_hater",
+            "body": "Ship a bug on purpose, write a blog post about it, get upvoted. Incredible industry.",
+            "tick": 9,
+            "score": -9
+          },
+          {
+            "id": "r-6042",
+            "author": "alice_c",
+            "parent": "r-6041",
+            "body": "The bug is a five millisecond delay on the first frame after a resize. Fixing it correctly meant making the frame clock depend on the host, which would have broken replay for everyone. It is in the release notes and the issue is open.",
+            "tick": 9,
+            "score": 604
+          }
+        ]
+      }
+    },
+    "subscriptions": {
+      "alice": [
+        "programming",
+        "rust"
+      ],
+      "bob": [
+        "ExperiencedDevs",
+        "programming",
+        "rust"
+      ],
+      "carol": [
+        "ExperiencedDevs",
+        "programming"
+      ],
+      "admin": [
+        "sysadmin"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://reddit.com/r/programming/comments/t-5120",
+      "title": "Northstar's Atlas bets everything on determinism (theverge.com) : r/programming",
+      "snippet": "812 points. The renderer author turns up in the comments to admit she checked the hash map on day two and decided it was fine.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "atlas",
+        "determinism",
+        "the verge",
+        "reddit",
+        "northstar",
+        "discussion",
+        "r/programming"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/rust/comments/t-5115",
+      "title": "A HashMap is not a promise: iteration order and reproducible builds : r/rust",
+      "snippet": "Priya Raman on why std's HashMap iteration order is not stable, and what to use instead. 1,402 points.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "hashmap",
+        "iteration order",
+        "rust",
+        "determinism",
+        "reproducible builds",
+        "reddit",
+        "btreemap"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/sysadmin/comments/t-5116",
+      "title": "Northstar had a 12 minute API outage this morning : r/sysadmin",
+      "snippet": "Discussion of the INC-4 status timeline, with the engineering manager who owns the postmortem in the thread.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "northstar",
+        "outage",
+        "incident",
+        "postmortem",
+        "status page",
+        "reddit",
+        "sysadmin"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/programming/comments/t-5123",
+      "title": "What I learned shipping Atlas (alicechen.dev) : r/programming",
+      "snippet": "Alice Chen's write-up on Reddit, including the bug the team kept on purpose and why.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "shipping atlas",
+        "alice chen",
+        "reddit",
+        "atlas",
+        "determinism",
+        "blog"
+      ]
+    },
+    {
+      "url": "http://reddit.com/u/alice_c",
+      "title": "u/alice_c on reddit",
+      "snippet": "Alice Chen's reddit account: renderer work at Northstar, flaired Northstar / renderer.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "alice_c",
+        "alice chen",
+        "reddit",
+        "profile",
+        "northstar"
+      ]
+    },
+    {
+      "url": "http://reddit.com/u/bobm",
+      "title": "u/bobm on reddit",
+      "snippet": "Bob Martinez's reddit account: testing and release engineering, flaired CI goblin.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "bobm",
+        "bob martinez",
+        "reddit",
+        "profile",
+        "ci",
+        "testing"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/ExperiencedDevs/comments/t-5121",
+      "title": "A recruiter reached out the week we shipped : r/ExperiencedDevs",
+      "snippet": "When do you tell your manager about a recruiter message - at the message, at the call, or at the offer?",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "recruiter",
+        "career",
+        "manager",
+        "offer",
+        "reddit",
+        "experienceddevs",
+        "advice"
+      ]
+    }
+  ]
+}

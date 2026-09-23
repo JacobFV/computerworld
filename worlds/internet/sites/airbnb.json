@@ -2,9 +2,19 @@
   "id": "airbnb",
   "kind": "shop",
   "node": "airbnb",
-  "domains": ["airbnb.com", "www.airbnb.com"],
+  "domains": [
+    "airbnb.com",
+    "www.airbnb.com"
+  ],
   "port": 80,
-  "place": {"address": "198.51.100.112", "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}},
+  "place": {
+    "address": "198.51.100.112",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  },
   "initial_state": {
     "mode": "retail",
     "brand": "Airbnb",
@@ -19,205 +29,476 @@
       "content_width": 1120
     },
     "categories": [
-      {"id": "cabins", "title": "Cabins"},
-      {"id": "beachfront", "title": "Beachfront"},
-      {"id": "city", "title": "City apartments"},
-      {"id": "treehouses", "title": "Treehouses"},
-      {"id": "tiny", "title": "Tiny homes"}
+      {
+        "id": "cabins",
+        "title": "Cabins"
+      },
+      {
+        "id": "beachfront",
+        "title": "Beachfront"
+      },
+      {
+        "id": "city",
+        "title": "City apartments"
+      },
+      {
+        "id": "treehouses",
+        "title": "Treehouses"
+      },
+      {
+        "id": "tiny",
+        "title": "Tiny homes"
+      }
     ],
     "products": {
       "cabin-skykomish-aframe": {
-        "id": "cabin-skykomish-aframe", "category": "cabins",
+        "id": "cabin-skykomish-aframe",
+        "category": "cabins",
         "title": "Riverside A-frame with wood stove - Skykomish, WA",
         "seller": "Hosted by Marta (Superhost)",
-        "price_cents": 18500, "rating_sum": 1352, "rating_count": 276, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.9 stars from 276 reviews", "4 guests, 2 bedrooms, 1 bath", "Superhost, responds within an hour", "House rules: no parties, no smoking, 2 dogs welcome"],
+        "price_cents": 18500,
+        "rating_sum": 1352,
+        "rating_count": 276,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.9 stars from 276 reviews",
+          "4 guests, 2 bedrooms, 1 bath",
+          "Superhost, responds within an hour",
+          "House rules: no parties, no smoking, 2 dogs welcome"
+        ],
         "description": "Price per night. A 1972 A-frame on the Skykomish river with a wood stove, a sauna and a deck over the water. Cell signal is weak; the wifi is Starlink and fine for calls. Check-in 16:00, check-out 11:00, quiet hours from 22:00. Cleaning fee $95.",
-        "reviews": [
-          {"id": "rv-1", "author": "bob", "stars": 5, "title": "River noise all night", "body": "In the good way. The stove was stacked and ready, the sauna was hot in twenty minutes, and Marta's directions covered the one tricky turn.", "tick": 6}
-        ]
-      },
-      "cabin-methow-lodge": {
-        "id": "cabin-methow-lodge", "category": "cabins",
-        "title": "Log cabin with hot tub, sleeps 8 - Winthrop, WA",
-        "seller": "Hosted by Dan and Priya (Superhost)",
-        "price_cents": 34000, "rating_sum": 1010, "rating_count": 206, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.9 stars from 206 reviews", "8 guests, 4 bedrooms, 2.5 baths", "Superhost", "House rules: no smoking, no pets, quiet hours 22:00-08:00"],
-        "description": "Price per night. Hand-built log cabin on ten acres in the Methow with a hot tub on the deck, a games loft and a big farmhouse table. Cross-country ski trails start at the property line in winter. Cleaning fee $180; 2-night minimum.",
         "reviews": []
       },
       "cabin-hood-canal": {
-        "id": "cabin-hood-canal", "category": "cabins",
+        "id": "cabin-hood-canal",
+        "category": "cabins",
         "title": "Cedar cabin on Hood Canal with oyster beach",
         "seller": "Hosted by Lena",
-        "price_cents": 14000, "rating_sum": 464, "rating_count": 97, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.8 stars from 97 reviews", "3 guests, 1 bedroom, 1 bath", "House rules: no parties, one small dog by arrangement", "Self check-in with keypad"],
+        "price_cents": 14000,
+        "rating_sum": 464,
+        "rating_count": 97,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.8 stars from 97 reviews",
+          "3 guests, 1 bedroom, 1 bath",
+          "House rules: no parties, one small dog by arrangement",
+          "Self check-in with keypad"
+        ],
         "description": "Price per night. Small cedar cabin above a beach where you can pick oysters at low tide (bring a licence and a knife; the host leaves a guide). Wood stove, outdoor shower, no TV. Cleaning fee $70.",
         "reviews": []
       },
       "beach-cannon-beach-house": {
-        "id": "beach-cannon-beach-house", "category": "beachfront",
+        "id": "beach-cannon-beach-house",
+        "category": "beachfront",
         "title": "Oceanfront house with Haystack Rock view - Cannon Beach, OR",
         "seller": "Hosted by The Ferris Family (Superhost)",
-        "price_cents": 42500, "rating_sum": 1568, "rating_count": 320, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.9 stars from 320 reviews", "10 guests, 5 bedrooms, 3 baths", "Superhost", "House rules: no parties, no smoking, dogs welcome, 3-night minimum"],
+        "price_cents": 42500,
+        "rating_sum": 1568,
+        "rating_count": 320,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.9 stars from 320 reviews",
+          "10 guests, 5 bedrooms, 3 baths",
+          "Superhost",
+          "House rules: no parties, no smoking, dogs welcome, 3-night minimum"
+        ],
         "description": "Price per night. Three-storey cedar-shingle house directly on the sand, with the rock in the middle window. Big kitchen, two decks, a fire pit and a garage full of beach chairs. Cleaning fee $250.",
-        "reviews": [
-          {"id": "rv-2", "author": "alice", "stars": 5, "title": "The whole team fit", "body": "Ten of us for the offsite and nobody was on a sofa. Sunset from the top deck every night, and the fire pit was the meeting room.", "tick": 2}
-        ]
+        "reviews": []
       },
       "beach-kauai-studio": {
-        "id": "beach-kauai-studio", "category": "beachfront",
+        "id": "beach-kauai-studio",
+        "category": "beachfront",
         "title": "Beachfront studio with lanai - Kapaa, Kauai",
         "seller": "Hosted by Keoni",
-        "price_cents": 21000, "rating_sum": 921, "rating_count": 190, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.8 stars from 190 reviews", "2 guests, studio, 1 bath", "House rules: no smoking, no pets, quiet hours 21:00", "Snorkel gear and beach cruisers included"],
+        "price_cents": 21000,
+        "rating_sum": 921,
+        "rating_count": 190,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.8 stars from 190 reviews",
+          "2 guests, studio, 1 bath",
+          "House rules: no smoking, no pets, quiet hours 21:00",
+          "Snorkel gear and beach cruisers included"
+        ],
         "description": "Price per night. Ground-floor studio opening straight onto the lanai and the sand. Kitchenette, outdoor shower, two bikes and a box of snorkel gear. The coastal bike path passes the gate. Cleaning fee $110.",
         "reviews": []
       },
       "beach-outer-banks-cottage": {
-        "id": "beach-outer-banks-cottage", "category": "beachfront",
+        "id": "beach-outer-banks-cottage",
+        "category": "beachfront",
         "title": "Oceanside cottage with hot tub - Nags Head, NC",
         "seller": "Hosted by Coastal Keys (Superhost)",
-        "price_cents": 27500, "rating_sum": 1140, "rating_count": 240, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.8 stars from 240 reviews", "6 guests, 3 bedrooms, 2 baths", "Superhost", "House rules: no parties, one dog under 40 lb, 7-night minimum in July and August"],
+        "price_cents": 27500,
+        "rating_sum": 1140,
+        "rating_count": 240,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.8 stars from 240 reviews",
+          "6 guests, 3 bedrooms, 2 baths",
+          "Superhost",
+          "House rules: no parties, one dog under 40 lb, 7-night minimum in July and August"
+        ],
         "description": "Price per night. Raised cottage on the oceanfront row with a screened porch, hot tub under the house and a private walkway over the dune. Linens provided; beach permits for driving on the sand are on the fridge. Cleaning fee $200.",
         "reviews": []
       },
       "city-capitol-hill-loft": {
-        "id": "city-capitol-hill-loft", "category": "city",
+        "id": "city-capitol-hill-loft",
+        "category": "city",
         "title": "Bright loft with rooftop deck - Capitol Hill, Seattle",
         "seller": "Hosted by Jun (Superhost)",
-        "price_cents": 16500, "rating_sum": 1830, "rating_count": 372, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.9 stars from 372 reviews", "2 guests, 1 bedroom, 1 bath", "Superhost", "House rules: no parties, no smoking, no pets, quiet hours from 22:00"],
+        "price_cents": 16500,
+        "rating_sum": 1830,
+        "rating_count": 372,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.9 stars from 372 reviews",
+          "2 guests, 1 bedroom, 1 bath",
+          "Superhost",
+          "House rules: no parties, no smoking, no pets, quiet hours from 22:00"
+        ],
         "description": "Price per night. Top-floor loft in a converted 1920s warehouse with a shared rooftop deck and a view of the Space Needle. Desk, fast wifi, and the light rail two blocks away. Cleaning fee $60.",
-        "reviews": [
-          {"id": "rv-3", "author": "carol", "stars": 5, "title": "Better than the hotel", "body": "Stayed here for the DevCon week instead of the conference hotel. Quieter, cheaper, and the rooftop at sunset was the best part of the trip.", "tick": 8}
-        ]
+        "reviews": []
       },
       "city-lisbon-alfama": {
-        "id": "city-lisbon-alfama", "category": "city",
+        "id": "city-lisbon-alfama",
+        "category": "city",
         "title": "Tiled apartment with river view - Alfama, Lisbon",
         "seller": "Hosted by Ines",
-        "price_cents": 11800, "rating_sum": 1034, "rating_count": 215, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.8 stars from 215 reviews", "3 guests, 1 bedroom, 1 bath", "House rules: no parties, no smoking, quiet hours 23:00-08:00", "Fourth floor, no lift"],
+        "price_cents": 11800,
+        "rating_sum": 1034,
+        "rating_count": 215,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.8 stars from 215 reviews",
+          "3 guests, 1 bedroom, 1 bath",
+          "House rules: no parties, no smoking, quiet hours 23:00-08:00",
+          "Fourth floor, no lift"
+        ],
         "description": "Price per night. Azulejo-tiled one-bedroom with a small balcony over the river and the fado bars three streets down. Ines leaves a bottle of vinho verde and a list of the places locals eat. Cleaning fee $45.",
         "reviews": []
       },
       "city-brooklyn-garden": {
-        "id": "city-brooklyn-garden", "category": "city",
+        "id": "city-brooklyn-garden",
+        "category": "city",
         "title": "Garden apartment in a brownstone - Bed-Stuy, Brooklyn",
         "seller": "Hosted by Marcus and Elena (Superhost)",
-        "price_cents": 19500, "rating_sum": 1400, "rating_count": 290, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.8 stars from 290 reviews", "4 guests, 2 bedrooms, 1 bath", "Superhost", "House rules: no parties, no smoking, one cat lives upstairs"],
+        "price_cents": 19500,
+        "rating_sum": 1400,
+        "rating_count": 290,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.8 stars from 290 reviews",
+          "4 guests, 2 bedrooms, 1 bath",
+          "Superhost",
+          "House rules: no parties, no smoking, one cat lives upstairs"
+        ],
         "description": "Price per night. Garden level of an owner-occupied brownstone with its own entrance, a full kitchen and the backyard. A train four minutes away. Manhattan in 25 minutes. Cleaning fee $90.",
         "reviews": []
       },
       "city-mexico-roma": {
-        "id": "city-mexico-roma", "category": "city",
+        "id": "city-mexico-roma",
+        "category": "city",
         "title": "Art deco apartment with terrace - Roma Norte, Mexico City",
         "seller": "Hosted by Valeria (Superhost)",
-        "price_cents": 8900, "rating_sum": 1650, "rating_count": 335, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.9 stars from 335 reviews", "2 guests, 1 bedroom, 1 bath", "Superhost", "House rules: no parties, no smoking indoors, quiet hours 22:00"],
+        "price_cents": 8900,
+        "rating_sum": 1650,
+        "rating_count": 335,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.9 stars from 335 reviews",
+          "2 guests, 1 bedroom, 1 bath",
+          "Superhost",
+          "House rules: no parties, no smoking indoors, quiet hours 22:00"
+        ],
         "description": "Price per night. Second-floor 1930s apartment with original parquet, a plant-filled terrace and a desk that faces it. Filtered water, good coffee, and the market on Sundays at the end of the street. Cleaning fee $35.",
         "reviews": []
       },
       "tree-olympic-canopy": {
-        "id": "tree-olympic-canopy", "category": "treehouses",
+        "id": "tree-olympic-canopy",
+        "category": "treehouses",
         "title": "Treehouse in the canopy with a rope bridge - Olympic Peninsula, WA",
         "seller": "Hosted by Owen (Superhost)",
-        "price_cents": 24000, "rating_sum": 1029, "rating_count": 210, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.9 stars from 210 reviews", "2 guests, 1 bedroom, 1 bath", "Superhost", "House rules: adults only, no pets, no smoking, no drones"],
+        "price_cents": 24000,
+        "rating_sum": 1029,
+        "rating_count": 210,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.9 stars from 210 reviews",
+          "2 guests, 1 bedroom, 1 bath",
+          "Superhost",
+          "House rules: adults only, no pets, no smoking, no drones"
+        ],
         "description": "Price per night. Cedar treehouse eleven metres up in a second-growth forest, reached by a rope bridge from the hillside. Composting toilet, hot outdoor shower on the ground, a bed under a skylight. Cleaning fee $80.",
         "reviews": []
       },
       "tree-blue-ridge": {
-        "id": "tree-blue-ridge", "category": "treehouses",
+        "id": "tree-blue-ridge",
+        "category": "treehouses",
         "title": "Treehouse with a claw-foot tub - Asheville, NC",
         "seller": "Hosted by Joanna",
-        "price_cents": 19800, "rating_sum": 720, "rating_count": 150, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.8 stars from 150 reviews", "2 guests, 1 bedroom, 1 bath", "House rules: no children under 12, no pets, no parties", "Wood-fired hot tub on the deck"],
+        "price_cents": 19800,
+        "rating_sum": 720,
+        "rating_count": 150,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.8 stars from 150 reviews",
+          "2 guests, 1 bedroom, 1 bath",
+          "House rules: no children under 12, no pets, no parties",
+          "Wood-fired hot tub on the deck"
+        ],
         "description": "Price per night. Treehouse in the oaks above a creek with a claw-foot tub inside and a wood-fired hot tub on the deck. Breakfast basket delivered to the foot of the stairs at 8:30. Cleaning fee $75.",
         "reviews": []
       },
       "tree-costa-rica-jungle": {
-        "id": "tree-costa-rica-jungle", "category": "treehouses",
+        "id": "tree-costa-rica-jungle",
+        "category": "treehouses",
         "title": "Open-air jungle treehouse - Nosara, Costa Rica",
         "seller": "Hosted by Casa Mono Lodge",
-        "price_cents": 15500, "rating_sum": 800, "rating_count": 170, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.7 stars from 170 reviews", "2 guests, 1 bedroom, 1 bath", "House rules: no smoking, no parties, keep food sealed (monkeys)", "Breakfast included"],
+        "price_cents": 15500,
+        "rating_sum": 800,
+        "rating_count": 170,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.7 stars from 170 reviews",
+          "2 guests, 1 bedroom, 1 bath",
+          "House rules: no smoking, no parties, keep food sealed (monkeys)",
+          "Breakfast included"
+        ],
         "description": "Price per night. Screened, open-sided treehouse with a mosquito-netted bed, a hammock and howler monkeys at dawn whether you want them or not. Surf beach is a fifteen-minute walk. Cleaning fee $40.",
         "reviews": []
       },
       "tiny-vashon-cabin": {
-        "id": "tiny-vashon-cabin", "category": "tiny",
+        "id": "tiny-vashon-cabin",
+        "category": "tiny",
         "title": "Tiny house in an orchard - Vashon Island, WA",
         "seller": "Hosted by Ruth (Superhost)",
-        "price_cents": 12500, "rating_sum": 1274, "rating_count": 260, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.9 stars from 260 reviews", "2 guests, 1 loft bedroom, 1 bath", "Superhost", "House rules: no parties, no pets, ferry schedule on the fridge"],
+        "price_cents": 12500,
+        "rating_sum": 1274,
+        "rating_count": 260,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.9 stars from 260 reviews",
+          "2 guests, 1 loft bedroom, 1 bath",
+          "Superhost",
+          "House rules: no parties, no pets, ferry schedule on the fridge"
+        ],
         "description": "Price per night. 24-foot tiny house on wheels in a working apple orchard, with a sleeping loft, a compact kitchen and a deck facing the trees. Fresh eggs from the coop by the gate. Cleaning fee $50.",
         "reviews": []
       },
       "tiny-joshua-tree": {
-        "id": "tiny-joshua-tree", "category": "tiny",
+        "id": "tiny-joshua-tree",
+        "category": "tiny",
         "title": "Off-grid tiny home with outdoor tub - Joshua Tree, CA",
         "seller": "Hosted by Sam and Alex",
-        "price_cents": 17000, "rating_sum": 905, "rating_count": 190, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.8 stars from 190 reviews", "2 guests, 1 bedroom, 1 bath", "House rules: no parties, no smoking, no pets, 2-night minimum", "Solar power, rainwater, no light pollution"],
+        "price_cents": 17000,
+        "rating_sum": 905,
+        "rating_count": 190,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.8 stars from 190 reviews",
+          "2 guests, 1 bedroom, 1 bath",
+          "House rules: no parties, no smoking, no pets, 2-night minimum",
+          "Solar power, rainwater, no light pollution"
+        ],
         "description": "Price per night. Solar-powered tiny home on five acres of high desert with a soaking tub under the stars and a telescope on the deck. Nearest shop is twenty minutes; bring groceries. Cleaning fee $65.",
-        "reviews": [
-          {"id": "rv-4", "author": "alice", "stars": 4, "title": "Stars, tub, silence", "body": "Exactly the point of going. Dropped a star because the solar ran low on the second cloudy evening, which the hosts warn you about.", "tick": 7}
-        ]
+        "reviews": []
       },
       "tiny-vermont-hut": {
-        "id": "tiny-vermont-hut", "category": "tiny",
+        "id": "tiny-vermont-hut",
+        "category": "tiny",
         "title": "Modern tiny cabin on a hillside - Stowe, VT",
         "seller": "Hosted by Green Mountain Huts (Superhost)",
-        "price_cents": 15900, "rating_sum": 1100, "rating_count": 228, "stock": 20, "fast_shipping": false,
-        "bullets": ["4.8 stars from 228 reviews", "2 guests, 1 bedroom, 1 bath", "Superhost", "House rules: no smoking, dogs welcome, quiet hours from 21:00"],
+        "price_cents": 15900,
+        "rating_sum": 1100,
+        "rating_count": 228,
+        "stock": 20,
+        "fast_shipping": false,
+        "bullets": [
+          "4.8 stars from 228 reviews",
+          "2 guests, 1 bedroom, 1 bath",
+          "Superhost",
+          "House rules: no smoking, dogs welcome, quiet hours from 21:00"
+        ],
         "description": "Price per night. Black-clad tiny cabin with a wall of glass facing the valley, a wood stove and a queen bed. Five minutes to the ski lifts, forty minutes to Burlington. Cleaning fee $55.",
         "reviews": []
       }
     },
-    "carts": {
-      "carol": {"city-lisbon-alfama": 5}
-    },
-    "orders": {
-      "HMA8K2Q4YN": {
-        "id": "HMA8K2Q4YN", "buyer": "bob", "tick": 5, "date": "2026-03-08",
-        "items": [{"product": "cabin-skykomish-aframe", "title": "Riverside A-frame with wood stove - Skykomish, WA (2 nights, 24-26 April 2026, 3 guests)", "qty": 2, "price_cents": 18500}],
-        "total_cents": 46500, "status": "Confirmed", "confirmation": "RSV-K9D2FT", "seats": [], "venue": ""
-      },
-      "HMB3T7WX2P": {
-        "id": "HMB3T7WX2P", "buyer": "alice", "tick": 1, "date": "2026-02-28",
-        "items": [{"product": "tiny-joshua-tree", "title": "Off-grid tiny home with outdoor tub - Joshua Tree, CA (3 nights, 20-23 March 2026, 2 guests)", "qty": 3, "price_cents": 17000}],
-        "total_cents": 57500, "status": "Confirmed", "confirmation": "RSV-QX4M8L", "seats": [], "venue": ""
-      }
-    },
-    "favorites": {
-      "bob": ["cabin-methow-lodge", "tree-olympic-canopy"],
-      "alice": ["beach-cannon-beach-house", "city-capitol-hill-loft", "tiny-vashon-cabin"],
-      "carol": ["city-mexico-roma", "tree-blue-ridge"]
-    },
-    "messages": [
-      {"id": "msg-1", "from": "bob", "to": "Hosted by Marta (Superhost)", "product": "cabin-skykomish-aframe", "text": "Is the road in plowed in late April? We are coming in a two-wheel-drive.", "tick": 4},
-      {"id": "msg-2", "from": "Hosted by Marta (Superhost)", "to": "bob", "product": "cabin-skykomish-aframe", "text": "Yes, the county plows to the bridge and I do the last 200 metres. Late April is usually bare anyway. See you on the 24th.", "tick": 4}
-    ],
+    "carts": {},
+    "orders": {},
+    "favorites": {},
+    "messages": [],
     "next_order": 1003
   },
   "search_entries": [
-    {"url": "http://airbnb.com/", "title": "Airbnb - simulated cabins, beach houses, city apartments, treehouses and tiny homes", "snippet": "Sixteen invented listings with hosts, nightly prices, ratings and house rules. Reserve one and the reservation really exists afterwards.", "vertical": "all", "authority": 6, "keywords": ["airbnb", "vacation rental", "holiday rental", "places to stay", "book a cabin", "short term rental"]},
-    {"url": "http://airbnb.com/s?c=cabins", "title": "Cabins - Airbnb", "snippet": "A riverside A-frame, a log lodge with a hot tub and a cedar cabin with its own oyster beach, from $140 a night.", "vertical": "all", "authority": 5, "keywords": ["cabin rental", "cabins washington", "cabin with hot tub", "weekend cabin"]},
-    {"url": "http://airbnb.com/s?c=treehouses", "title": "Treehouses - Airbnb", "snippet": "Three treehouses: Olympic Peninsula canopy, Asheville with a claw-foot tub, and open-air jungle in Nosara.", "vertical": "all", "authority": 5, "keywords": ["treehouse rental", "treehouse airbnb", "stay in a treehouse", "unique stays"]},
-    {"url": "http://airbnb.com/s?c=beachfront", "title": "Beachfront - Airbnb", "snippet": "Cannon Beach, Kauai and the Outer Banks, directly on the sand.", "vertical": "all", "authority": 4, "keywords": ["beach house rental", "beachfront airbnb", "oceanfront rental", "beach vacation"]},
-    {"url": "http://airbnb.com/dp/cabin-skykomish-aframe", "title": "Riverside A-frame with wood stove, Skykomish - $185 per night", "snippet": "4.9 stars from 276 reviews. Sleeps 4, sauna, deck over the river, dogs welcome. Superhost Marta.", "vertical": "all", "authority": 5, "keywords": ["a-frame cabin", "skykomish cabin", "cabin with sauna", "dog friendly cabin"]},
-    {"url": "http://airbnb.com/dp/beach-cannon-beach-house", "title": "Oceanfront house with Haystack Rock view, Cannon Beach - $425 per night", "snippet": "Sleeps 10 in 5 bedrooms, 4.9 stars from 320 reviews. Directly on the sand, fire pit, 3-night minimum.", "vertical": "all", "authority": 5, "keywords": ["cannon beach house", "haystack rock rental", "oregon coast house", "team offsite house"]},
-    {"url": "http://airbnb.com/dp/city-capitol-hill-loft", "title": "Bright loft with rooftop deck, Capitol Hill Seattle - $165 per night", "snippet": "4.9 stars from 372 reviews. Top-floor loft in a converted warehouse, Space Needle view, two blocks from the light rail.", "vertical": "all", "authority": 5, "keywords": ["seattle airbnb", "capitol hill loft", "seattle apartment rental", "devcon accommodation"]},
-    {"url": "http://airbnb.com/dp/tree-olympic-canopy", "title": "Treehouse in the canopy with a rope bridge, Olympic Peninsula - $240 per night", "snippet": "4.9 stars from 210 reviews. Eleven metres up, reached by a rope bridge. Adults only, no drones.", "vertical": "all", "authority": 4, "keywords": ["olympic peninsula treehouse", "rope bridge treehouse", "washington treehouse"]},
-    {"url": "http://airbnb.com/dp/tiny-joshua-tree", "title": "Off-grid tiny home with outdoor tub, Joshua Tree - $170 per night", "snippet": "4.8 stars from 190 reviews. Solar-powered, soaking tub under the stars, telescope on the deck, 2-night minimum.", "vertical": "all", "authority": 4, "keywords": ["joshua tree tiny home", "off grid airbnb", "desert stay", "stargazing cabin"]},
-    {"url": "http://airbnb.com/dp/tiny-vashon-cabin", "title": "Tiny house in an orchard, Vashon Island - $125 per night", "snippet": "4.9 stars from 260 reviews. 24-foot tiny house in a working apple orchard, fresh eggs, ferry schedule on the fridge.", "vertical": "all", "authority": 4, "keywords": ["vashon island airbnb", "tiny house rental", "orchard stay", "tiny home washington"]},
-    {"url": "http://airbnb.com/dp/city-mexico-roma", "title": "Art deco apartment with terrace, Roma Norte - $89 per night", "snippet": "4.9 stars from 335 reviews. 1930s apartment with parquet floors and a plant-filled terrace. Superhost Valeria.", "vertical": "all", "authority": 4, "keywords": ["mexico city airbnb", "roma norte apartment", "cdmx apartment", "art deco apartment"]},
-    {"url": "http://airbnb.com/orders/HMB3T7WX2P", "title": "Reservation HMB3T7WX2P - Joshua Tree tiny home, 20-23 March 2026", "snippet": "Three nights confirmed for $575.00 including the cleaning fee, confirmation RSV-QX4M8L.", "vertical": "all", "authority": 3, "keywords": ["airbnb reservation", "joshua tree reservation", "reservation HMB3T7WX2P"]},
-    {"url": "http://airbnb.com/orders", "title": "Trips - Airbnb", "snippet": "Reservations made by the signed-in account, upcoming and past.", "vertical": "all", "authority": 3, "keywords": ["my trips", "airbnb trips", "upcoming reservations"]}
+    {
+      "url": "http://airbnb.com/",
+      "title": "Airbnb - simulated cabins, beach houses, city apartments, treehouses and tiny homes",
+      "snippet": "Sixteen invented listings with hosts, nightly prices, ratings and house rules. Reserve one and the reservation really exists afterwards.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "airbnb",
+        "vacation rental",
+        "holiday rental",
+        "places to stay",
+        "book a cabin",
+        "short term rental"
+      ]
+    },
+    {
+      "url": "http://airbnb.com/s?c=cabins",
+      "title": "Cabins - Airbnb",
+      "snippet": "A riverside A-frame, a log lodge with a hot tub and a cedar cabin with its own oyster beach, from $140 a night.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "cabin rental",
+        "cabins washington",
+        "cabin with hot tub",
+        "weekend cabin"
+      ]
+    },
+    {
+      "url": "http://airbnb.com/s?c=treehouses",
+      "title": "Treehouses - Airbnb",
+      "snippet": "Three treehouses: Olympic Peninsula canopy, Asheville with a claw-foot tub, and open-air jungle in Nosara.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "treehouse rental",
+        "treehouse airbnb",
+        "stay in a treehouse",
+        "unique stays"
+      ]
+    },
+    {
+      "url": "http://airbnb.com/s?c=beachfront",
+      "title": "Beachfront - Airbnb",
+      "snippet": "Cannon Beach, Kauai and the Outer Banks, directly on the sand.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "beach house rental",
+        "beachfront airbnb",
+        "oceanfront rental",
+        "beach vacation"
+      ]
+    },
+    {
+      "url": "http://airbnb.com/dp/cabin-skykomish-aframe",
+      "title": "Riverside A-frame with wood stove, Skykomish - $185 per night",
+      "snippet": "4.9 stars from 276 reviews. Sleeps 4, sauna, deck over the river, dogs welcome. Superhost Marta.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "a-frame cabin",
+        "skykomish cabin",
+        "cabin with sauna",
+        "dog friendly cabin"
+      ]
+    },
+    {
+      "url": "http://airbnb.com/dp/beach-cannon-beach-house",
+      "title": "Oceanfront house with Haystack Rock view, Cannon Beach - $425 per night",
+      "snippet": "Sleeps 10 in 5 bedrooms, 4.9 stars from 320 reviews. Directly on the sand, fire pit, 3-night minimum.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "cannon beach house",
+        "haystack rock rental",
+        "oregon coast house",
+        "team offsite house"
+      ]
+    },
+    {
+      "url": "http://airbnb.com/dp/city-capitol-hill-loft",
+      "title": "Bright loft with rooftop deck, Capitol Hill Seattle - $165 per night",
+      "snippet": "4.9 stars from 372 reviews. Top-floor loft in a converted warehouse, Space Needle view, two blocks from the light rail.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "seattle airbnb",
+        "capitol hill loft",
+        "seattle apartment rental",
+        "devcon accommodation"
+      ]
+    },
+    {
+      "url": "http://airbnb.com/dp/tree-olympic-canopy",
+      "title": "Treehouse in the canopy with a rope bridge, Olympic Peninsula - $240 per night",
+      "snippet": "4.9 stars from 210 reviews. Eleven metres up, reached by a rope bridge. Adults only, no drones.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "olympic peninsula treehouse",
+        "rope bridge treehouse",
+        "washington treehouse"
+      ]
+    },
+    {
+      "url": "http://airbnb.com/dp/tiny-joshua-tree",
+      "title": "Off-grid tiny home with outdoor tub, Joshua Tree - $170 per night",
+      "snippet": "4.8 stars from 190 reviews. Solar-powered, soaking tub under the stars, telescope on the deck, 2-night minimum.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "joshua tree tiny home",
+        "off grid airbnb",
+        "desert stay",
+        "stargazing cabin"
+      ]
+    },
+    {
+      "url": "http://airbnb.com/dp/tiny-vashon-cabin",
+      "title": "Tiny house in an orchard, Vashon Island - $125 per night",
+      "snippet": "4.9 stars from 260 reviews. 24-foot tiny house in a working apple orchard, fresh eggs, ferry schedule on the fridge.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "vashon island airbnb",
+        "tiny house rental",
+        "orchard stay",
+        "tiny home washington"
+      ]
+    },
+    {
+      "url": "http://airbnb.com/dp/city-mexico-roma",
+      "title": "Art deco apartment with terrace, Roma Norte - $89 per night",
+      "snippet": "4.9 stars from 335 reviews. 1930s apartment with parquet floors and a plant-filled terrace. Superhost Valeria.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "mexico city airbnb",
+        "roma norte apartment",
+        "cdmx apartment",
+        "art deco apartment"
+      ]
+    },
+    {
+      "url": "http://airbnb.com/orders",
+      "title": "Trips - Airbnb",
+      "snippet": "Reservations made by the signed-in account, upcoming and past.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "my trips",
+        "airbnb trips",
+        "upcoming reservations"
+      ]
+    }
   ]
 }

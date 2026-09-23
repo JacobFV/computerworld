@@ -1,0 +1,250 @@
+{
+  "initial_state": {
+    "products": {
+      "bayfront-pizza-margherita": {
+        "bullets": [
+          "Delivery fee $2.99, 30-40 min, 1.2 mi from Northstar HQ",
+          "4.8 stars from 410 ratings",
+          "San Marzano tomatoes, fior di latte, basil",
+          "Wood-fired, blistered crust"
+        ],
+        "reviews": [
+          {
+            "id": "rv-1",
+            "author": "alice",
+            "stars": 5,
+            "title": "Office lunch standard",
+            "body": "Two of these feed the fourth floor pod. Arrives in thirty minutes almost every time.",
+            "tick": 4
+          }
+        ]
+      },
+      "siam-corner-pad-thai": {
+        "bullets": [
+          "Delivery fee $1.99, 25-35 min, 0.8 mi from Northstar HQ",
+          "4.8 stars from 360 ratings",
+          "Rice noodles, prawns, egg, bean sprouts, peanuts",
+          "Lime and chilli flakes on the side"
+        ]
+      },
+      "siam-corner-massaman": {
+        "reviews": [
+          {
+            "id": "rv-2",
+            "author": "carol",
+            "stars": 5,
+            "title": "Rice packed separately, thank you",
+            "body": "Curry was still hot and the rice was not mush. Portion is big enough for lunch the next day.",
+            "tick": 5
+          }
+        ]
+      },
+      "la-esquina-burrito": {
+        "bullets": [
+          "Delivery fee $2.49, 20-30 min, 1.5 mi from Northstar HQ",
+          "4.8 stars from 390 ratings",
+          "Carnitas, rice, black beans, pico, crema, cheese",
+          "Salsa verde and roja on the side"
+        ]
+      },
+      "puget-burger-classic": {
+        "bullets": [
+          "Delivery fee $2.99, 25-35 min, 2.0 mi from Northstar HQ",
+          "4.7 stars from 370 ratings",
+          "Quarter-pound patty, cheddar, lettuce, tomato, house sauce",
+          "Skin-on fries"
+        ],
+        "reviews": [
+          {
+            "id": "rv-3",
+            "author": "bob",
+            "stars": 4,
+            "title": "Solid, ask for the sauce on the side",
+            "body": "Good burger, arrives in under thirty. The house sauce soaks the bun if the dasher takes the long way.",
+            "tick": 7
+          }
+        ]
+      },
+      "umi-sushi-platter": {
+        "bullets": [
+          "Delivery fee $3.99, 35-45 min, 2.4 mi from Northstar HQ",
+          "4.8 stars from 320 ratings",
+          "8 nigiri (salmon, tuna, yellowtail, prawn), 12 roll pieces",
+          "Chilled bag, ginger and wasabi"
+        ]
+      },
+      "marrow-creamery-pints": {
+        "bullets": [
+          "Delivery fee $1.99, 20-30 min, 0.6 mi from Northstar HQ",
+          "4.8 stars from 350 ratings",
+          "Flavours in the notes: honey lavender, brown butter, sea salt chocolate, blackberry",
+          "Packed with dry ice"
+        ],
+        "reviews": [
+          {
+            "id": "rv-4",
+            "author": "alice",
+            "stars": 5,
+            "title": "Brown butter is the one",
+            "body": "Arrived frozen solid in twenty minutes. The dry ice trick works.",
+            "tick": 9
+          }
+        ]
+      },
+      "quill-cafe-cookies": {
+        "bullets": [
+          "Delivery fee $1.99, 20-30 min, 1.1 mi from Northstar HQ",
+          "4.8 stars from 300 ratings",
+          "Six large cookies, baked that morning",
+          "Flaky salt on top"
+        ]
+      },
+      "ninth-pike-grocery-basics": {
+        "bullets": [
+          "Delivery fee $3.99, 40-60 min, 0.4 mi from Northstar HQ",
+          "4.6 stars from 280 ratings",
+          "Half gallon 2%, dozen eggs, sourdough loaf, salted butter, 6 bananas",
+          "Substitutions confirmed by text"
+        ]
+      }
+    },
+    "carts": {
+      "bob": {
+        "puget-burger-classic": 2,
+        "puget-burger-shake": 1,
+        "la-esquina-chips-guac": 1
+      },
+      "carol": {
+        "siam-corner-tom-kha": 1
+      }
+    },
+    "orders": {
+      "dd-58201773": {
+        "id": "dd-58201773",
+        "buyer": "alice",
+        "tick": 4,
+        "date": "2026-03-03",
+        "items": [
+          {
+            "product": "bayfront-pizza-margherita",
+            "title": "Margherita, 14-inch - Bayfront Pizza Co.",
+            "qty": 2,
+            "price_cents": 1900
+          },
+          {
+            "product": "bayfront-pizza-garlic-knots",
+            "title": "Garlic knots, 6 - Bayfront Pizza Co.",
+            "qty": 1,
+            "price_cents": 700
+          }
+        ],
+        "total_cents": 5598,
+        "status": "Delivered in 31 min (fees $4.98, tip $6.00, dasher Marcus)",
+        "confirmation": "DD-7HQ2KX",
+        "seats": [],
+        "venue": ""
+      },
+      "dd-58210409": {
+        "id": "dd-58210409",
+        "buyer": "bob",
+        "tick": 7,
+        "date": "2026-03-11",
+        "items": [
+          {
+            "product": "siam-corner-massaman",
+            "title": "Massaman beef curry with jasmine rice - Siam Corner",
+            "qty": 1,
+            "price_cents": 1795
+          },
+          {
+            "product": "siam-corner-pad-thai",
+            "title": "Pad thai with prawns - Siam Corner",
+            "qty": 1,
+            "price_cents": 1650
+          }
+        ],
+        "total_cents": 4243,
+        "status": "Delivered in 27 min (fees $3.98, tip $4.00, dasher Lin)",
+        "confirmation": "DD-N3WV8P",
+        "seats": [],
+        "venue": ""
+      },
+      "dd-58218856": {
+        "id": "dd-58218856",
+        "buyer": "alice",
+        "tick": 9,
+        "date": "2026-03-13",
+        "items": [
+          {
+            "product": "marrow-creamery-pints",
+            "title": "Two pints, choose your flavours - Marrow Point Creamery (brown butter, blackberry)",
+            "qty": 1,
+            "price_cents": 1600
+          }
+        ],
+        "total_cents": 2298,
+        "status": "Delivered in 19 min (fees $3.98, tip $3.00, dasher Ines)",
+        "confirmation": "DD-K5RT2M",
+        "seats": [],
+        "venue": ""
+      }
+    },
+    "favorites": {
+      "alice": [
+        "bayfront-pizza-margherita",
+        "marrow-creamery-pints",
+        "siam-corner-pad-thai"
+      ],
+      "bob": [
+        "puget-burger-classic",
+        "la-esquina-burrito"
+      ],
+      "carol": [
+        "siam-corner-massaman",
+        "umi-sushi-poke"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://doordash.com/",
+      "title": "DoorDash - simulated food delivery near Northstar HQ",
+      "snippet": "Pizza, Thai, Mexican, burgers, sushi, desserts and groceries from eight invented Seattle restaurants and one market, with delivery fees and times on every item.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "doordash",
+        "food delivery",
+        "order food",
+        "delivery near me",
+        "takeout",
+        "dinner delivery"
+      ]
+    },
+    {
+      "url": "http://doordash.com/dp/bayfront-pizza-margherita",
+      "title": "Margherita, 14-inch - Bayfront Pizza Co. - $19.00",
+      "snippet": "Wood-fired, San Marzano tomatoes and fior di latte. 4.8 stars from 410 ratings, 30-40 minutes to Northstar HQ.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "margherita pizza",
+        "wood fired pizza seattle",
+        "bayfront pizza margherita",
+        "office pizza order"
+      ]
+    },
+    {
+      "url": "http://doordash.com/orders/dd-58201773",
+      "title": "Order dd-58201773 - two margheritas and garlic knots, $55.98",
+      "snippet": "3 March 2026, delivered in 31 minutes by Marcus. Confirmation DD-7HQ2KX.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "doordash receipt",
+        "pizza order receipt",
+        "order dd-58201773"
+      ]
+    }
+  ]
+}

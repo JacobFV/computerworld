@@ -1,0 +1,1279 @@
+{
+  "initial_state": {
+    "channels": {
+      "alice-builds": {
+        "id": "alice-builds",
+        "name": "Alice Builds",
+        "handle": "@alicebuilds",
+        "owner": "alice",
+        "subscribers": 12400,
+        "about": "Deterministic systems, slowly. Renderers, replay and the long tail of nondeterminism. Writing at http://alicechen.dev/"
+      },
+      "carol-ships": {
+        "id": "carol-ships",
+        "name": "Carol Ships It",
+        "handle": "@carolships",
+        "owner": "carol",
+        "subscribers": 3120,
+        "about": "Release management for people who would rather be writing code. Checklists, postmortems, and the meetings in between."
+      },
+      "northstar": {
+        "id": "northstar",
+        "name": "Northstar",
+        "handle": "@northstar",
+        "owner": "admin",
+        "subscribers": 8420,
+        "about": "The official channel of Northstar. Engineering notes live at http://eng.northstar.example/"
+      },
+      "panfried": {
+        "about": "Weeknight cooking that respects your Tuesday. Mina Okafor cooks one pan, one board, thirty minutes, no shopping trips to three stores. Recipes in the descriptions."
+      },
+      "thirdorder": {
+        "about": "Science explainers that stop at the second why and then keep going. Written by Dr. Priya Sundaram, animated by two people and a cat."
+      }
+    },
+    "items": {
+      "determinism-intro": {
+        "channel": "alice-builds",
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "The bit about HashMap iteration order at 4:10 is the one people always miss.",
+            "tick": 1,
+            "likes": 31
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "Sending this to every new hire from now on.",
+            "tick": 2,
+            "likes": 12
+          }
+        ],
+        "related": [
+          "atlas-walkthrough",
+          "flaky-test-windows",
+          "determinism-in-nature"
+        ]
+      },
+      "flaky-test-windows": {
+        "channel": "alice-builds",
+        "description": "A BFS path test that passes everywhere except one CI runner. We read the failure, find the hash-order bug, and fix it in nine lines. Issue: http://github.com/northstar/atlas/issues/14  Question: http://stackoverflow.com/questions/4411  Write-up: http://bmartinez.net/posts/hash-order-bit-me",
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "I lived this. The write-up in the description is mine, ask me anything.",
+            "tick": 3,
+            "likes": 22
+          }
+        ],
+        "related": [
+          "determinism-intro",
+          "atlas-walkthrough"
+        ]
+      },
+      "carol-postmortem": {
+        "id": "carol-postmortem",
+        "channel": "carol-ships",
+        "title": "Release postmortem: twelve minutes of elevated latency",
+        "description": "What INC-4 looked like from the release chair, why the rollback was boring, and the three checklist lines we added afterwards. Status page: http://status.northstar.example/",
+        "duration_s": 1264,
+        "published": "Feb 20, 2026",
+        "published_tick": 5,
+        "views": 6031,
+        "likes": 288,
+        "tags": [
+          "release",
+          "postmortem",
+          "northstar"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "admin",
+            "text": "Correction at 9:40 — the alert fired at minute two, not minute four.",
+            "tick": 6,
+            "likes": 9
+          }
+        ],
+        "related": [
+          "atlas-walkthrough",
+          "northstar-standup-live"
+        ]
+      },
+      "atlas-walkthrough": {
+        "id": "atlas-walkthrough",
+        "channel": "alice-builds",
+        "title": "Atlas 1.0 walkthrough — deterministic simulation end to end",
+        "description": "A full run of Atlas from seed to replay: processes, filesystem, network and browser, all reproducible byte for byte. Repo: http://github.com/northstar/atlas  Post: http://eng.northstar.example/posts/shipping-atlas  Coverage: http://theverge.com/2026/atlas-determinism",
+        "duration_s": 742,
+        "published": "Mar 4, 2026",
+        "published_tick": 7,
+        "views": 18342,
+        "likes": 903,
+        "tags": [
+          "atlas",
+          "determinism",
+          "northstar"
+        ],
+        "badges": [
+          "4K"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "The BFS bit at 6:20 finally made it click.",
+            "tick": 7,
+            "likes": 41
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "Replay from a checkpoint at 9:55 is the part I would lead with next time.",
+            "tick": 8,
+            "likes": 18
+          },
+          {
+            "id": "c3",
+            "author": "carol",
+            "text": "Two years of arguing about this in one video. Nice work.",
+            "tick": 8,
+            "likes": 15
+          }
+        ],
+        "related": [
+          "determinism-intro",
+          "carol-postmortem",
+          "flaky-test-windows"
+        ]
+      },
+      "devcon-keynote": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Booked. See everyone at the reproducibility track.",
+            "tick": 9,
+            "likes": 7
+          }
+        ],
+        "related": [
+          "atlas-walkthrough",
+          "determinism-intro"
+        ]
+      },
+      "northstar-standup-live": {
+        "id": "northstar-standup-live",
+        "channel": "northstar",
+        "title": "Northstar open standup — Atlas week one",
+        "description": "Streaming the first post-launch standup: what broke, what did not, and what shipped anyway. Walkthrough: http://youtube.com/watch?v=atlas-walkthrough",
+        "duration_s": 2701,
+        "published": "Mar 10, 2026",
+        "published_tick": 9,
+        "views": 1204,
+        "likes": 57,
+        "tags": [
+          "northstar",
+          "atlas"
+        ],
+        "badges": [
+          "LIVE"
+        ],
+        "comments": [],
+        "related": [
+          "atlas-walkthrough",
+          "carol-postmortem",
+          "northstar-atlas-1-1"
+        ]
+      },
+      "one-pan-chicken-thighs": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Made this Tuesday. The lid trick at 4:30 is the whole video.",
+            "tick": 2,
+            "likes": 412
+          },
+          {
+            "id": "c2",
+            "author": "mina_ok",
+            "text": "Thighs, never breasts. I will die on this hill.",
+            "tick": 2,
+            "likes": 930
+          },
+          {
+            "id": "c3",
+            "author": "carol",
+            "text": "Worked with tofu too, oddly.",
+            "tick": 3,
+            "likes": 88
+          }
+        ]
+      },
+      "knife-skills-ten-minutes": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Sent this to my brother who cuts toward his thumb.",
+            "tick": 4,
+            "likes": 201
+          },
+          {
+            "id": "c2",
+            "author": "alice",
+            "text": "The claw grip demo finally fixed my dicing.",
+            "tick": 5,
+            "likes": 64
+          }
+        ]
+      },
+      "weeknight-ramen": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "ktanaka",
+            "text": "As a Japanese person: this is fine, and the miso is correct.",
+            "tick": 14,
+            "likes": 2210
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "Egg at 6:40 changed my life a little.",
+            "tick": 15,
+            "likes": 140
+          }
+        ]
+      },
+      "sheet-pan-salmon": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Stems! Nobody uses the stems.",
+            "tick": 26,
+            "likes": 77
+          }
+        ]
+      },
+      "faroe-by-bus": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "tomasr",
+            "text": "Timetable: Route 300 to Klaksvik, then 500 and the 58 ferry. Check the weather board first.",
+            "tick": 2,
+            "likes": 3100
+          },
+          {
+            "id": "c2",
+            "author": "alice",
+            "text": "The tunnel roundabout at 14:20 is not something I expected to exist.",
+            "tick": 3,
+            "likes": 410
+          }
+        ]
+      },
+      "night-train-lisbon": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Booked this for October because of you. Thanks, I think.",
+            "tick": 10,
+            "likes": 520
+          },
+          {
+            "id": "c2",
+            "author": "sofia_r",
+            "text": "Lisbon at dawn from a train window. You got it.",
+            "tick": 11,
+            "likes": 860
+          }
+        ]
+      },
+      "kyrgyz-yurt-week": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "The horse has more screen presence than most presenters.",
+            "tick": 21,
+            "likes": 1400
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "How did you handle drinking water up there?",
+            "tick": 22,
+            "likes": 90
+          },
+          {
+            "id": "c3",
+            "author": "tomasr",
+            "text": "Boiled, always. Iodine tablets as backup. Covered at 17:00.",
+            "tick": 22,
+            "likes": 450
+          }
+        ]
+      },
+      "cover-rainy-window": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "I can hear the bakery. It makes it better.",
+            "tick": 2,
+            "likes": 3200
+          },
+          {
+            "id": "c2",
+            "author": "dmitri_k",
+            "text": "The bridge at 1:50 is the best part of the original and you made it better.",
+            "tick": 2,
+            "likes": 940
+          }
+        ]
+      },
+      "cover-northbound": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Request number 401: do it again.",
+            "tick": 12,
+            "likes": 1800
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "The double-tracked harmony is so clean.",
+            "tick": 13,
+            "likes": 220
+          }
+        ]
+      },
+      "cover-summer-static": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Out of tune and perfect.",
+            "tick": 30,
+            "likes": 700
+          }
+        ]
+      },
+      "why-ice-is-slippery": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The 'second why' framing is why I subscribe.",
+            "tick": 3,
+            "likes": 2100
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "Teachers: this is a full lesson plan.",
+            "tick": 4,
+            "likes": 610
+          },
+          {
+            "id": "c3",
+            "author": "carol",
+            "text": "I had the pressure explanation memorised for twenty years. Well.",
+            "tick": 4,
+            "likes": 330
+          }
+        ]
+      },
+      "how-gps-corrects-time": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Watched this twice. Once to understand, once to enjoy.",
+            "tick": 15,
+            "likes": 4400
+          },
+          {
+            "id": "c2",
+            "author": "dmitri_k",
+            "text": "Ten kilometres a day is a really good number for a headline.",
+            "tick": 16,
+            "likes": 900
+          }
+        ]
+      },
+      "determinism-in-nature": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Honoured by the cross-link. The double pendulum is my favourite unit test.",
+            "tick": 19,
+            "likes": 1500
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "Two channels I subscribe to talking to each other.",
+            "tick": 20,
+            "likes": 340
+          }
+        ]
+      },
+      "why-bread-rises": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "mina_ok",
+            "text": "I brought the dough and stayed for the microscope.",
+            "tick": 33,
+            "likes": 2600
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "Collab of the year.",
+            "tick": 34,
+            "likes": 410
+          }
+        ]
+      },
+      "hollow-depths-any-percent": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "dmitri_k",
+            "text": "The 12:40 clip is still not fully understood and I love that.",
+            "tick": 5,
+            "likes": 3300
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "I have played this game for 200 hours and did not know the wall could do that.",
+            "tick": 5,
+            "likes": 1100
+          }
+        ],
+        "related": [
+          "indie-dev-twelve-hour-build",
+          "pixel-art-101",
+          "alice-hashmap-order"
+        ]
+      },
+      "indie-dev-twelve-hour-build": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Deterministic fish RNG would have saved you at hour nine. Just saying.",
+            "tick": 13,
+            "likes": 780
+          },
+          {
+            "id": "c2",
+            "author": "jules_p",
+            "text": "We know. We know.",
+            "tick": 14,
+            "likes": 1200
+          }
+        ],
+        "related": [
+          "hollow-depths-any-percent",
+          "pixel-art-101",
+          "alice-hashmap-order"
+        ]
+      },
+      "pixel-art-101": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "I have no artistic talent and the knight still looked like a knight.",
+            "tick": 27,
+            "likes": 640
+          }
+        ],
+        "related": [
+          "hollow-depths-any-percent",
+          "indie-dev-twelve-hour-build",
+          "alice-hashmap-order"
+        ]
+      },
+      "twenty-minute-strength": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Twelve weeks in on this three times a week. Different person.",
+            "tick": 3,
+            "likes": 1900
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "Knee swap at 3:15 is why this channel is for actual humans.",
+            "tick": 3,
+            "likes": 720
+          }
+        ]
+      },
+      "desk-posture-fix": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Doing the thoracic one between builds. Recommend.",
+            "tick": 11,
+            "likes": 860
+          },
+          {
+            "id": "c2",
+            "author": "nadiab",
+            "text": "2pm. Set the alarm.",
+            "tick": 12,
+            "likes": 1400
+          }
+        ]
+      },
+      "running-first-5k": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Week five. You were right. Still here.",
+            "tick": 24,
+            "likes": 510
+          }
+        ]
+      },
+      "wirecut-chip-export-rules": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Finally a clip that just says the dates.",
+            "tick": 7,
+            "likes": 410
+          }
+        ],
+        "related": [
+          "wirecut-atlas-release",
+          "wirecut-heat-grid",
+          "atlas-walkthrough"
+        ]
+      },
+      "wirecut-atlas-release": {
+        "id": "wirecut-atlas-release",
+        "channel": "wirecut",
+        "title": "A simulator that promises the same bytes every time — Atlas 1.0 in ninety seconds",
+        "description": "Northstar shipped Atlas, a deterministic computer simulator. Why 'same bytes' matters, who is using it, and the caveat at 1:10. Coverage: http://theverge.com/2026/atlas-determinism  Repo: http://github.com/northstar/atlas",
+        "duration_s": 92,
+        "published": "Mar 5, 2026",
+        "published_tick": 8,
+        "views": 684000,
+        "likes": 22000,
+        "tags": [
+          "news",
+          "atlas",
+          "northstar"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "The caveat at 1:10 is fair and we said so in the postmortem.",
+            "tick": 8,
+            "likes": 150
+          },
+          {
+            "id": "c2",
+            "author": "alice",
+            "text": "Ninety seconds is more than most got. Thanks.",
+            "tick": 9,
+            "likes": 210
+          }
+        ],
+        "related": [
+          "wirecut-chip-export-rules",
+          "wirecut-heat-grid",
+          "atlas-walkthrough"
+        ]
+      },
+      "wirecut-heat-grid": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Substation at 0:50 was three blocks from me. Explains a lot.",
+            "tick": 28,
+            "likes": 300
+          }
+        ],
+        "related": [
+          "wirecut-chip-export-rules",
+          "wirecut-atlas-release",
+          "atlas-walkthrough"
+        ]
+      },
+      "hand-cut-dovetails": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "The honesty about the dull chisel is why I trust this channel.",
+            "tick": 6,
+            "likes": 1300
+          },
+          {
+            "id": "c2",
+            "author": "ray_l",
+            "text": "Sharpen first. I say it every video and I still didn't.",
+            "tick": 7,
+            "likes": 2100
+          }
+        ]
+      },
+      "workbench-weekend": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Built this. The flattening took me two weekends, not one.",
+            "tick": 18,
+            "likes": 540
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "The cut list on screen is such a small thing and so rare.",
+            "tick": 18,
+            "likes": 330
+          }
+        ]
+      },
+      "wood-finish-comparison": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The 'nothing' control sample is the right kind of experiment design.",
+            "tick": 32,
+            "likes": 470
+          }
+        ]
+      },
+      "loop-monologue-robot-vacuum": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "'The fridge is jealous' is the line of the year.",
+            "tick": 2,
+            "likes": 4100
+          },
+          {
+            "id": "c2",
+            "author": "hugo_b",
+            "text": "The vacuum has since been given a raise.",
+            "tick": 3,
+            "likes": 8800
+          }
+        ],
+        "related": [
+          "loop-desk-bit-deterministic",
+          "loop-guest-mina-okafor",
+          "one-pan-chicken-thighs"
+        ]
+      },
+      "loop-desk-bit-deterministic": {
+        "description": "Hugo watched one Alice Builds video and now has opinions. His mother has better ones. Alice's actual video: http://youtube.com/watch?v=determinism-intro",
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "His mother got the HashMap point faster than most engineers.",
+            "tick": 11,
+            "likes": 6200
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "Crying.",
+            "tick": 12,
+            "likes": 900
+          },
+          {
+            "id": "c3",
+            "author": "praman",
+            "text": "This is how determinism goes mainstream apparently.",
+            "tick": 12,
+            "likes": 410
+          }
+        ],
+        "related": [
+          "loop-monologue-robot-vacuum",
+          "loop-guest-mina-okafor",
+          "one-pan-chicken-thighs"
+        ]
+      },
+      "loop-guest-mina-okafor": {
+        "id": "loop-guest-mina-okafor",
+        "channel": "latenight-loop",
+        "title": "Mina Okafor teaches Hugo to dice an onion, badly",
+        "description": "Pan Fried's Mina brings a cutting board to the desk. Hugo brings a bandage. Mina's channel: http://youtube.com/channel/panfried",
+        "duration_s": 528,
+        "published": "May 29, 2026",
+        "published_tick": 20,
+        "views": 3410000,
+        "likes": 176000,
+        "tags": [
+          "comedy",
+          "latenight",
+          "guest"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "mina_ok",
+            "text": "No fingers were lost. Barely.",
+            "tick": 20,
+            "likes": 3900
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "The claw grip lecture from the knife video, live on TV.",
+            "tick": 21,
+            "likes": 650
+          }
+        ],
+        "related": [
+          "loop-monologue-robot-vacuum",
+          "loop-desk-bit-deterministic",
+          "one-pan-chicken-thighs"
+        ]
+      },
+      "spanish-in-30-days-week1": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "Grandma is the real teacher here.",
+            "tick": 2,
+            "likes": 2200
+          },
+          {
+            "id": "c2",
+            "author": "ktanaka",
+            "text": "I am still being corrected. Week one was six months ago.",
+            "tick": 2,
+            "likes": 3100
+          }
+        ]
+      },
+      "japanese-counters-explained": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "The pencil bit is a better mnemonic than any textbook.",
+            "tick": 14,
+            "likes": 700
+          },
+          {
+            "id": "c2",
+            "author": "sofia_r",
+            "text": "I still count pencils wrong.",
+            "tick": 15,
+            "likes": 1900
+          }
+        ]
+      },
+      "swap-day-immersion": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "The pharmacy scene is genuinely tense television.",
+            "tick": 26,
+            "likes": 860
+          },
+          {
+            "id": "c2",
+            "author": "praman",
+            "text": "Please do this every month.",
+            "tick": 27,
+            "likes": 540
+          }
+        ]
+      },
+      "carol-release-checklist": {
+        "id": "carol-release-checklist",
+        "channel": "carol-ships",
+        "title": "The release checklist, line by line",
+        "description": "All forty-one lines, why each one exists and which incident wrote it. Postmortem that added lines 38 to 40: http://youtube.com/watch?v=carol-postmortem",
+        "duration_s": 1548,
+        "published": "Apr 30, 2026",
+        "published_tick": 16,
+        "views": 4210,
+        "likes": 210,
+        "tags": [
+          "release",
+          "checklist",
+          "northstar"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Line 17 saved us last week. Thank you for the paranoia.",
+            "tick": 16,
+            "likes": 30
+          },
+          {
+            "id": "c2",
+            "author": "alice",
+            "text": "Pinning this in the release channel.",
+            "tick": 17,
+            "likes": 18
+          }
+        ],
+        "related": [
+          "carol-postmortem",
+          "northstar-atlas-1-1"
+        ]
+      },
+      "northstar-atlas-1-1": {
+        "id": "northstar-atlas-1-1",
+        "channel": "northstar",
+        "title": "Atlas 1.1: checkpoints, replay from anywhere, and a smaller binary",
+        "description": "What shipped in 1.1 and a demo of replaying from a checkpoint three hundred ticks in. Notes at http://eng.northstar.example/  Repo: http://github.com/northstar/atlas",
+        "duration_s": 1136,
+        "published": "Jun 12, 2026",
+        "published_tick": 22,
+        "views": 3620,
+        "likes": 198,
+        "tags": [
+          "northstar",
+          "atlas",
+          "release"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "praman",
+            "text": "Replay from checkpoint is the feature I asked for in the open standup. Thanks.",
+            "tick": 22,
+            "likes": 24
+          },
+          {
+            "id": "c2",
+            "author": "carol",
+            "text": "Release went out on time. Forty-one lines, all green.",
+            "tick": 23,
+            "likes": 15
+          }
+        ],
+        "related": [
+          "northstar-standup-live",
+          "carol-release-checklist"
+        ]
+      },
+      "alice-hashmap-order": {
+        "id": "alice-hashmap-order",
+        "channel": "alice-builds",
+        "title": "HashMap iteration order is not your friend (a short one)",
+        "description": "The four minute version of the point people keep asking about from the determinism intro. BTreeMap, sorted keys, or a seeded hasher — pick one and write it down. Post: http://alicechen.dev/",
+        "duration_s": 247,
+        "published": "May 15, 2026",
+        "published_tick": 18,
+        "views": 15300,
+        "likes": 1140,
+        "tags": [
+          "rust",
+          "determinism",
+          "hashmap"
+        ],
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "Four minutes. Finally something I can send without a 'sorry it's long'.",
+            "tick": 18,
+            "likes": 52
+          },
+          {
+            "id": "c2",
+            "author": "dmitri_k",
+            "text": "Watched this after the fishing game fiasco. Ouch.",
+            "tick": 19,
+            "likes": 41
+          }
+        ],
+        "related": [
+          "determinism-intro",
+          "flaky-test-windows",
+          "determinism-in-nature"
+        ]
+      }
+    },
+    "playlists": {
+      "atlas-launch-kit": {
+        "id": "atlas-launch-kit",
+        "title": "Atlas launch kit",
+        "owner": "alice",
+        "items": [
+          "determinism-intro",
+          "atlas-walkthrough",
+          "carol-postmortem"
+        ]
+      },
+      "reproducibility-track": {
+        "id": "reproducibility-track",
+        "title": "Reproducibility track, in order",
+        "items": [
+          "devcon-keynote",
+          "determinism-intro",
+          "atlas-walkthrough",
+          "northstar-atlas-1-1",
+          "alice-hashmap-order"
+        ],
+        "owner": "carol"
+      },
+      "sunday-workshop": {
+        "id": "sunday-workshop",
+        "title": "Sunday workshop",
+        "items": [
+          "workbench-weekend",
+          "hand-cut-dovetails",
+          "wood-finish-comparison"
+        ],
+        "owner": "bob"
+      },
+      "study-break-covers": {
+        "id": "study-break-covers",
+        "title": "Study break covers",
+        "items": [
+          "cover-rainy-window",
+          "cover-northbound",
+          "cover-summer-static"
+        ],
+        "owner": "alice"
+      }
+    },
+    "sections": [
+      {
+        "title": "Trending",
+        "items": [
+          "how-gps-corrects-time",
+          "cover-rainy-window",
+          "loop-monologue-robot-vacuum",
+          "kyrgyz-yurt-week",
+          "why-ice-is-slippery",
+          "desk-posture-fix"
+        ]
+      },
+      {
+        "title": "New this month",
+        "items": [
+          "why-bread-rises",
+          "wood-finish-comparison",
+          "cover-summer-static",
+          "wirecut-heat-grid",
+          "pixel-art-101",
+          "swap-day-immersion"
+        ]
+      },
+      {
+        "title": "From Northstar and friends",
+        "items": [
+          "atlas-walkthrough",
+          "northstar-atlas-1-1",
+          "carol-release-checklist",
+          "alice-hashmap-order",
+          "wirecut-atlas-release",
+          "loop-desk-bit-deterministic"
+        ]
+      }
+    ],
+    "subscriptions": {
+      "alice": [
+        "carol-ships",
+        "northstar",
+        "thirdorder",
+        "lena-covers",
+        "ironclad",
+        "tonguetied"
+      ],
+      "bob": [
+        "alice-builds",
+        "panfried",
+        "sawdust",
+        "pixelfoundry",
+        "offgrid-routes",
+        "latenight-loop"
+      ],
+      "carol": [
+        "alice-builds",
+        "northstar",
+        "panfried",
+        "ironclad",
+        "wirecut",
+        "thirdorder"
+      ]
+    },
+    "likes": {
+      "alice": [
+        "cover-rainy-window",
+        "why-ice-is-slippery",
+        "desk-posture-fix",
+        "determinism-in-nature"
+      ],
+      "bob": [
+        "atlas-walkthrough",
+        "one-pan-chicken-thighs",
+        "hollow-depths-any-percent",
+        "hand-cut-dovetails",
+        "night-train-lisbon"
+      ],
+      "carol": [
+        "determinism-intro",
+        "twenty-minute-strength",
+        "loop-desk-bit-deterministic",
+        "knife-skills-ten-minutes"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://youtube.com/watch?v=atlas-walkthrough",
+      "title": "Atlas 1.0 walkthrough — deterministic simulation end to end - YouTube",
+      "snippet": "Alice Builds runs Atlas from seed to replay: processes, filesystem, network and browser, reproducible byte for byte.",
+      "vertical": "videos",
+      "authority": 7,
+      "keywords": [
+        "atlas",
+        "walkthrough",
+        "determinism",
+        "northstar",
+        "shipping atlas",
+        "alice chen"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=carol-postmortem",
+      "title": "Release postmortem: twelve minutes of elevated latency - YouTube",
+      "snippet": "Carol Nakamura on INC-4 from the release chair, and the three checklist lines it added.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "postmortem",
+        "incident",
+        "release",
+        "northstar",
+        "latency"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=northstar-standup-live",
+      "title": "Northstar open standup — Atlas week one (live) - YouTube",
+      "snippet": "The first post-launch standup, streamed: what broke, what did not, and what shipped anyway.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "northstar",
+        "standup",
+        "live",
+        "atlas"
+      ]
+    },
+    {
+      "url": "http://youtube.com/channel/alice-builds",
+      "title": "Alice Builds - YouTube",
+      "snippet": "Deterministic systems, slowly. Renderers, replay and the long tail of nondeterminism.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "alice builds",
+        "alice chen",
+        "channel",
+        "determinism"
+      ]
+    },
+    {
+      "url": "http://youtube.com/channel/carol-ships",
+      "title": "Carol Ships It - YouTube",
+      "snippet": "Release management for people who would rather be writing code.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "carol ships it",
+        "carol nakamura",
+        "release management"
+      ]
+    },
+    {
+      "url": "http://youtube.com/channel/northstar",
+      "title": "Northstar - YouTube",
+      "snippet": "The official Northstar channel: launches, standups and engineering notes.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "northstar",
+        "official",
+        "channel"
+      ]
+    },
+    {
+      "url": "http://youtube.com/playlist?list=atlas-launch-kit",
+      "title": "Atlas launch kit - YouTube playlist",
+      "snippet": "Three videos in the order Alice recommends watching them before reading the launch post.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "atlas",
+        "playlist",
+        "launch kit"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=one-pan-chicken-thighs",
+      "title": "One pan, six chicken thighs, nobody does the dishes - YouTube",
+      "snippet": "Pan Fried with Mina: Crispy skin-side down, then the onions go in the same fat and finish under the lid.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": [
+        "chicken thighs",
+        "one pan",
+        "weeknight dinner",
+        "mina okafor"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=wirecut-atlas-release",
+      "title": "A simulator that promises the same bytes every time — Atlas 1.0 in ninety seconds - YouTube",
+      "snippet": "Wirecut News: Northstar shipped Atlas, a deterministic computer simulator.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "atlas 1.0",
+        "northstar",
+        "deterministic simulator",
+        "news clip"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=loop-desk-bit-deterministic",
+      "title": "Hugo tries to explain deterministic simulation to his mother (desk bit) - YouTube",
+      "snippet": "Late Night Loop: Hugo watched one Alice Builds video and now has opinions.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": [
+        "hugo bramble",
+        "deterministic simulation",
+        "desk bit",
+        "comedy"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=carol-release-checklist",
+      "title": "The release checklist, line by line - YouTube",
+      "snippet": "Carol Ships It: All forty-one lines, why each one exists and which incident wrote it.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "release checklist",
+        "forty-one lines",
+        "carol nakamura"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=northstar-atlas-1-1",
+      "title": "Atlas 1.1: checkpoints, replay from anywhere, and a smaller binary - YouTube",
+      "snippet": "Northstar: What shipped in 1.1 and a demo of replaying from a checkpoint three hundred ticks in.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "atlas 1.1",
+        "checkpoints",
+        "replay",
+        "northstar release"
+      ]
+    },
+    {
+      "url": "http://youtube.com/watch?v=alice-hashmap-order",
+      "title": "HashMap iteration order is not your friend (a short one) - YouTube",
+      "snippet": "Alice Builds: The four minute version of the point people keep asking about from the determinism intro.",
+      "vertical": "videos",
+      "authority": 4,
+      "keywords": [
+        "hashmap iteration order",
+        "btreemap",
+        "seeded hasher",
+        "alice chen"
+      ]
+    },
+    {
+      "url": "http://youtube.com/channel/panfried",
+      "title": "Pan Fried with Mina - YouTube",
+      "snippet": "Weeknight cooking that respects your Tuesday.",
+      "vertical": "videos",
+      "authority": 5,
+      "keywords": [
+        "pan fried",
+        "mina okafor",
+        "cooking channel",
+        "channel"
+      ]
+    },
+    {
+      "url": "http://youtube.com/channel/thirdorder",
+      "title": "Third Order - YouTube",
+      "snippet": "Science explainers that stop at the second why and then keep going.",
+      "vertical": "videos",
+      "authority": 6,
+      "keywords": [
+        "third order",
+        "science explainers",
+        "priya sundaram",
+        "channel"
+      ]
+    },
+    {
+      "url": "http://youtube.com/playlist?list=reproducibility-track",
+      "title": "Reproducibility track, in order - YouTube playlist",
+      "snippet": "5 videos, in the order the playlist owner recommends.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "reproducibility",
+        "atlas",
+        "playlist",
+        "devcon"
+      ]
+    },
+    {
+      "url": "http://youtube.com/playlist?list=sunday-workshop",
+      "title": "Sunday workshop - YouTube playlist",
+      "snippet": "3 videos, in the order the playlist owner recommends.",
+      "vertical": "videos",
+      "authority": 3,
+      "keywords": [
+        "woodworking playlist",
+        "workbench",
+        "dovetails"
+      ]
+    }
+  ]
+}

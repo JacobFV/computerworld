@@ -1,0 +1,367 @@
+{
+  "initial_state": {
+    "accounts": {
+      "alice-chen": {
+        "handle": "alice-chen",
+        "name": "Alice Chen",
+        "actor": "alice",
+        "headline": "Staff Engineer at Northstar",
+        "bio": "Simulation renderer, deterministic replay, and an unreasonable number of opinions about iteration order.",
+        "location": "Seattle, Washington",
+        "followers": 4120,
+        "following": 388,
+        "site": "http://alicechen.dev/",
+        "experience": [
+          {
+            "title": "Staff Engineer",
+            "company": "Northstar",
+            "period": "2021 - present"
+          },
+          {
+            "title": "Senior Engineer",
+            "company": "Cascade Systems",
+            "period": "2017 - 2021"
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Meridian Labs",
+            "period": "2014 - 2017"
+          }
+        ]
+      },
+      "bob-martinez": {
+        "handle": "bob-martinez",
+        "name": "Bob Martinez",
+        "actor": "bob",
+        "headline": "Senior Engineer at Northstar",
+        "bio": "Testing, CI and release engineering. I find the machine your test fails on.",
+        "location": "Seattle, Washington",
+        "followers": 1860,
+        "following": 512,
+        "site": "http://bmartinez.net/",
+        "experience": [
+          {
+            "title": "Senior Engineer",
+            "company": "Northstar",
+            "period": "2023 - present"
+          },
+          {
+            "title": "Software Engineer, Infrastructure",
+            "company": "Harbor Analytics",
+            "period": "2019 - 2023"
+          },
+          {
+            "title": "QA Engineer",
+            "company": "Harbor Analytics",
+            "period": "2016 - 2019"
+          }
+        ]
+      },
+      "carol-nakamura": {
+        "handle": "carol-nakamura",
+        "name": "Carol Nakamura",
+        "actor": "carol",
+        "headline": "Engineering Manager at Northstar",
+        "bio": "Release owner for Atlas 1.0. Speaking at DevCon Seattle 2026 on shipping software you can replay.",
+        "location": "Seattle, Washington",
+        "followers": 6204,
+        "following": 901,
+        "experience": [
+          {
+            "title": "Engineering Manager",
+            "company": "Northstar",
+            "period": "2022 - present"
+          },
+          {
+            "title": "Tech Lead",
+            "company": "Northstar",
+            "period": "2020 - 2022"
+          },
+          {
+            "title": "Senior Engineer",
+            "company": "Cascade Systems",
+            "period": "2015 - 2020"
+          }
+        ]
+      },
+      "northstar": {
+        "handle": "northstar",
+        "name": "Northstar",
+        "actor": "admin",
+        "headline": "Deterministic simulation software - Seattle, WA",
+        "bio": "We build Atlas: a simulated machine you can replay byte for byte. Engineering blog: http://eng.northstar.example/",
+        "location": "Seattle, Washington",
+        "followers": 9402,
+        "following": 12,
+        "site": "http://eng.northstar.example/",
+        "experience": [
+          {
+            "title": "Company page",
+            "company": "Northstar",
+            "period": "Founded 2019"
+          }
+        ]
+      }
+    },
+    "posts": {
+      "p-3101": {
+        "id": "p-3101",
+        "author": "northstar",
+        "text": "We are hiring two systems engineers to work on the Atlas replay harness. Determinism experience is not required; the willingness to delete a thread pool is.",
+        "tick": 4,
+        "likes": 214,
+        "reposts": 38
+      },
+      "p-3102": {
+        "id": "p-3102",
+        "author": "carol-nakamura",
+        "text": "I will be at DevCon Seattle this year talking about what it costs to ship software you can replay. If you are going, find me between sessions.",
+        "tick": 5,
+        "likes": 182,
+        "reposts": 21
+      },
+      "p-3103": {
+        "id": "p-3103",
+        "author": "bob-martinez",
+        "text": "Three years at Northstar this month. I came in to fix the test suite and stayed for the part where the test suite fixes itself. Write-up of my favourite bug: http://bmartinez.net/posts/hash-order-bit-me",
+        "tick": 6,
+        "likes": 341,
+        "reposts": 12
+      },
+      "p-3105": {
+        "id": "p-3105",
+        "author": "northstar",
+        "text": "Atlas 1.0 is generally available. Launch notes from the engineering team: http://eng.northstar.example/posts/shipping-atlas",
+        "tick": 7,
+        "likes": 1204,
+        "reposts": 210
+      },
+      "p-3106": {
+        "id": "p-3106",
+        "author": "alice-chen",
+        "text": "Two years on this one. Atlas 1.0 is out, and the walkthrough is here: http://youtube.com/watch?v=atlas-walkthrough",
+        "tick": 7,
+        "likes": 902,
+        "reposts": 141
+      },
+      "p-3107": {
+        "text": "My story on Northstar's Atlas is up. It is about enforcement, not marketing: http://theverge.com/2026/atlas-determinism"
+      },
+      "p-3108": {
+        "id": "p-3108",
+        "author": "carol-nakamura",
+        "text": "Grateful to this team and to every reviewer who said no to my good ideas. Coverage of the launch: http://theverge.com/2026/atlas-determinism",
+        "tick": 8,
+        "likes": 421,
+        "reposts": 44
+      },
+      "p-3109": {
+        "id": "p-3109",
+        "author": "alice-chen",
+        "text": "Longer write-up of what shipping Atlas actually taught me, for the people who asked what the hard part was: http://alicechen.dev/posts/what-i-learned-shipping-atlas",
+        "tick": 9,
+        "likes": 512,
+        "reposts": 97
+      }
+    },
+    "follows": {
+      "alice": [
+        "bob-martinez",
+        "carol-nakamura",
+        "northstar",
+        "tom-weber"
+      ],
+      "bob": [
+        "alice-chen",
+        "carol-nakamura",
+        "northstar",
+        "nadia-fischer"
+      ],
+      "carol": [
+        "alice-chen",
+        "bob-martinez",
+        "northstar",
+        "tom-weber"
+      ],
+      "admin": [
+        "alice-chen",
+        "bob-martinez",
+        "carol-nakamura"
+      ]
+    },
+    "connections": {
+      "alice": [
+        "bob-martinez",
+        "carol-nakamura"
+      ],
+      "bob": [
+        "alice-chen",
+        "carol-nakamura"
+      ],
+      "carol": [
+        "alice-chen",
+        "bob-martinez"
+      ]
+    },
+    "messages": {
+      "c-meridian": {
+        "members": [
+          "bob-martinez",
+          "nadia-fischer"
+        ],
+        "messages": [
+          {
+            "id": "dm-1",
+            "from": "nadia-fischer",
+            "text": "Hi Bob - Nadia Fischer, technical recruiting at Meridian Labs. I read your write-up on the Windows-only hash ordering failure, which is the most specific debugging story I have seen on this site in a year.",
+            "tick": 6
+          },
+          {
+            "id": "dm-2",
+            "from": "nadia-fischer",
+            "text": "We are standing up a simulation infrastructure team here and I would like fifteen minutes, entirely off the record. Same city, no relocation, and I am not going to pretend the comp is a secret: it is a band, and it is above yours.",
+            "tick": 6
+          },
+          {
+            "id": "dm-3",
+            "from": "bob-martinez",
+            "text": "Thanks Nadia. I am not looking right now - we just shipped and I would like to see the thing I built stay up for a quarter. Ask me again after DevCon and I will at least take the call.",
+            "tick": 7
+          },
+          {
+            "id": "dm-4",
+            "from": "nadia-fischer",
+            "text": "Completely fair. Calendar reminder set for after DevCon. Congratulations on the launch, the Verge piece was good.",
+            "tick": 8
+          }
+        ]
+      },
+      "c-verge-linkedin": {
+        "title": "Following up on the Atlas story",
+        "members": [
+          "alice-chen",
+          "tom-weber"
+        ],
+        "messages": [
+          {
+            "id": "dm-5",
+            "from": "tom-weber",
+            "text": "Alice - thanks again for the time. If Northstar ever wants to talk about the replay harness on the record, I would like to write that one properly.",
+            "tick": 8
+          },
+          {
+            "id": "dm-6",
+            "from": "alice-chen",
+            "text": "Ask Carol, she owns what we say out loud. I only own what it does.",
+            "tick": 9
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://linkedin.com/alice-chen",
+      "title": "Alice Chen - Staff Engineer at Northstar | LinkedIn",
+      "snippet": "Staff Engineer at Northstar since 2021. Previously Cascade Systems and Meridian Labs. Simulation renderer and deterministic replay.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "alice chen",
+        "linkedin",
+        "staff engineer",
+        "northstar",
+        "profile",
+        "resume"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/bob-martinez",
+      "title": "Bob Martinez - Senior Engineer at Northstar | LinkedIn",
+      "snippet": "Senior Engineer at Northstar since 2023. Testing, CI and release engineering. Previously Harbor Analytics.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "bob martinez",
+        "linkedin",
+        "senior engineer",
+        "northstar",
+        "profile",
+        "resume"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/carol-nakamura",
+      "title": "Carol Nakamura - Engineering Manager at Northstar | LinkedIn",
+      "snippet": "Engineering Manager at Northstar and release owner for Atlas 1.0. Speaking at DevCon Seattle 2026.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "carol nakamura",
+        "linkedin",
+        "engineering manager",
+        "northstar",
+        "devcon",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/northstar",
+      "title": "Northstar | LinkedIn company page",
+      "snippet": "Deterministic simulation software in Seattle. Atlas 1.0 is generally available; the team is hiring.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "northstar",
+        "company page",
+        "linkedin",
+        "hiring",
+        "atlas",
+        "seattle"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/messaging",
+      "title": "LinkedIn - Messaging",
+      "snippet": "Your LinkedIn inbox, including Nadia Fischer's recruiting message to Bob Martinez about Meridian Labs.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "linkedin",
+        "messaging",
+        "inbox",
+        "recruiter",
+        "nadia fischer",
+        "meridian labs"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/northstar/status/p-3101",
+      "title": "Northstar is hiring two systems engineers",
+      "snippet": "The Atlas replay harness team is hiring; determinism experience not required.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "northstar",
+        "hiring",
+        "jobs",
+        "systems engineer",
+        "linkedin"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/alice-chen/status/p-3109",
+      "title": "Alice Chen on what shipping Atlas taught her",
+      "snippet": "The LinkedIn version of Alice's write-up, linking the full post on alicechen.dev.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "shipping atlas",
+        "alice chen",
+        "linkedin",
+        "atlas",
+        "write-up"
+      ]
+    }
+  ]
+}

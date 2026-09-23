@@ -467,34 +467,27 @@ mod tests {
     use cw_web::dom::Document as Dom;
     /// The real world and the three sites files this crate owns: a seeded result card is a claim
     /// that the link resolves, so the tests read the shipped index rather than a fixture of it.
-    /// The reference company and the internet it joins: an engine indexes both.
-    const WORLDS: [&str; 2] = [
-        include_str!("../../../../worlds/company-2026/world.json"),
-        include_str!("../../../../worlds/internet/world.json"),
-    ];
+    /// The reference world's services, which is what an engine indexes as it boots.
     fn services() -> Vec<ServiceDefinition> {
-        WORLDS
-            .iter()
-            .flat_map(|w| {
-                let world: Value = serde_json::from_str(w).unwrap();
-                serde_json::from_value::<Vec<ServiceDefinition>>(world["services"].clone()).unwrap()
-            })
-            .collect()
+        cw_service_common::reference::reference_services()
     }
-    const SITES: [(&str, &str); 3] = [
-        (
-            "google-search",
-            include_str!("../../../../worlds/internet/sites/google-search.json"),
-        ),
-        (
-            "bing-search",
-            include_str!("../../../../worlds/internet/sites/bing-search.json"),
-        ),
-        (
-            "ddg-search",
-            include_str!("../../../../worlds/internet/sites/ddg-search.json"),
-        ),
-    ];
+    static SITES: std::sync::LazyLock<[(&'static str, &'static str); 3]> =
+        std::sync::LazyLock::new(|| {
+            [
+                (
+                    "google-search",
+                    cw_service_common::reference::reference_site_json("google-search"),
+                ),
+                (
+                    "bing-search",
+                    cw_service_common::reference::reference_site_json("bing-search"),
+                ),
+                (
+                    "ddg-search",
+                    cw_service_common::reference::reference_site_json("ddg-search"),
+                ),
+            ]
+        });
     fn ctx(actor: &str) -> ServiceContext {
         ServiceContext {
             actor: actor.into(),
@@ -652,7 +645,7 @@ mod tests {
     #[test]
     fn every_seeded_document_is_a_real_link() {
         let mut shared: Option<Vec<String>> = None;
-        for (id, _) in SITES {
+        for (id, _) in *SITES {
             let state = engine(id);
             let index = documents(&state);
             assert!(!index.is_empty(), "{id} has an empty index");
@@ -681,7 +674,7 @@ mod tests {
     /// index and the index grows with every site that lands.
     #[test]
     fn a_hit_returns_the_documents_url_unchanged() {
-        for (id, _) in SITES {
+        for (id, _) in *SITES {
             let mut state = engine(id);
             let index = documents(&state);
             let sweep = if id == "google-search" {
@@ -1109,7 +1102,7 @@ mod tests {
     /// and every page of every engine passes the strict validator (`get` runs it).
     #[test]
     fn an_empty_index_still_serves_every_route_strictly() {
-        for (id, _) in SITES {
+        for (id, _) in *SITES {
             let mut state = seeded(id, &[]);
             for url in [
                 "/",

@@ -1,0 +1,91 @@
+{
+  "initial_state": {
+    "articles": {
+      "gridline-injunction-hearing": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "bob",
+            "text": "A screenshot. That is exactly what it is.",
+            "tick": 14,
+            "likes": 11
+          }
+        ]
+      },
+      "harbourside-recovery": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "The NOTED sign is going to be in every civics textbook in ten years.",
+            "tick": 11,
+            "likes": 19
+          }
+        ]
+      },
+      "silver-lantern-oscar-buzz": {
+        "byline": "Jasmine Okafor, CNN Entertainment"
+      },
+      "orchestra-back-on-stage": {
+        "byline": "Jasmine Okafor, CNN Entertainment"
+      },
+      "replay-software-mainstream": {
+        "dek": "Northstar's Atlas release has put deterministic simulation in front of enterprise buyers who had never heard the term.",
+        "byline": "Priya Nair, CNN Business",
+        "body": [
+          "Northstar's release of Atlas 1.0 this week has done something unusual for a developer tool: it has made a technical idea, deterministic simulation, into a line item that corporate buyers are asking about.",
+          "The tools run software inside a simulated computer in which time, randomness and message order are all controlled, so a failure can be replayed exactly. The price is speed; simulated runs are several times slower than native ones.",
+          "Enterprise interest has been strongest in finance and infrastructure, where the cost of finding a bug often exceeds the cost of fixing it. Reuters reported the release at http://reuters.com/2026/northstar-atlas-determinism and The Verge has a longer feature at http://theverge.com/2026/atlas-determinism",
+          "Northstar has not disclosed its revenue."
+        ],
+        "links": [
+          {
+            "label": "Reuters: Northstar releases Atlas 1.0",
+            "url": "http://reuters.com/2026/northstar-atlas-determinism"
+          },
+          {
+            "label": "The Verge: Atlas bets everything on determinism",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          }
+        ],
+        "tags": [
+          "northstar",
+          "software",
+          "enterprise"
+        ]
+      }
+    },
+    "subscribers": [
+      "bmartinez@outlook.com"
+    ],
+    "saved": {
+      "bob": [
+        "gridline-injunction-hearing"
+      ]
+    },
+    "follows": {
+      "bob": [
+        "publication",
+        "gridline"
+      ],
+      "carol": [
+        "harbourside"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://cnn.com/2026/replay-software-mainstream",
+      "title": "The software that runs slower on purpose is finding buyers - CNN Business",
+      "snippet": "Northstar's Atlas release has put deterministic simulation in front of enterprise buyers.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "northstar",
+        "atlas",
+        "deterministic simulation",
+        "enterprise"
+      ]
+    }
+  ]
+}

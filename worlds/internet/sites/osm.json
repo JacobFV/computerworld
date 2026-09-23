@@ -35,7 +35,6 @@
         "hours": "Daily 5:00-00:30",
         "phone": "+1 206 555 0102",
         "website": "",
-        "summary": "Light rail and bus interchange two blocks south of the Northstar campus.",
         "tags": [
           "transit",
           "light rail",
@@ -44,7 +43,6 @@
       },
       "bridgetown-annex": {
         "id": "bridgetown-annex",
-        "name": "Northstar Bridgetown Annex",
         "kind": "office",
         "address": "55 Rivergate Way, Portland OR",
         "lat": 45515200,
@@ -53,11 +51,9 @@
         "reviews": 31,
         "hours": "Mon-Fri 9:00-17:00",
         "phone": "+1 503 555 0164",
-        "website": "http://northstar.example/",
         "summary": "The Portland satellite office: support, docs and two of the SRE rotations.",
         "tags": [
-          "office",
-          "northstar"
+          "office"
         ]
       },
       "cascade-arena": {
@@ -110,7 +106,6 @@
         "hours": "Mon-Fri 6:00-16:00, Sat-Sun 7:00-15:00",
         "phone": "+1 206 555 0119",
         "website": "",
-        "summary": "The Northstar standup runs on this. Cardamom bun, flat white, back upstairs.",
         "tags": [
           "cafe",
           "coffee",
@@ -192,25 +187,6 @@
           "food"
         ]
       },
-      "northstar-hq": {
-        "id": "northstar-hq",
-        "name": "Northstar HQ",
-        "kind": "office",
-        "address": "410 Bayfront Ave, Seattle WA",
-        "lat": 47572600,
-        "lon": -122348000,
-        "rating": 46,
-        "reviews": 128,
-        "hours": "Mon-Fri 8:00-18:00",
-        "phone": "+1 206 555 0148",
-        "website": "http://northstar.example/",
-        "summary": "Northstar's bayfront campus: engineering on four and five, the lab in the basement.",
-        "tags": [
-          "office",
-          "northstar",
-          "engineering"
-        ]
-      },
       "puget-field": {
         "id": "puget-field",
         "name": "Puget Sound Field",
@@ -251,7 +227,6 @@
       },
       "southbay-lab": {
         "id": "southbay-lab",
-        "name": "Northstar South Bay Lab",
         "kind": "office",
         "address": "2200 Orchard Row, San Jose CA",
         "lat": 37338200,
@@ -260,54 +235,19 @@
         "reviews": 19,
         "hours": "Mon-Fri 9:00-18:00",
         "phone": "+1 408 555 0192",
-        "website": "http://northstar.example/",
         "summary": "Hardware lab and the replay cluster that the determinism suite runs on.",
         "tags": [
           "office",
-          "northstar",
           "lab"
         ]
       }
     },
     "routes": {},
-    "saved": {
-      "bob": [
-        "marrow-point-park",
-        "bayfront-depot"
-      ]
-    },
+    "saved": {},
     "unit_prefs": {},
     "forecasts": {},
     "alerts": [],
-    "notes": [
-      {
-        "id": "note-1",
-        "author": "bob",
-        "place": "bayfront-depot",
-        "lat": 47569800,
-        "lon": -122344500,
-        "tick": 2,
-        "text": "The southbound platform entrance moved 30 m north during the works."
-      },
-      {
-        "id": "note-2",
-        "author": "carol",
-        "place": "devcon-center",
-        "lat": 47611400,
-        "lon": -122333000,
-        "tick": 4,
-        "text": "Hall D is missing. It is the annexe on the 9th Ave side."
-      },
-      {
-        "id": "note-3",
-        "author": "alice",
-        "place": "harborline-coffee",
-        "lat": 47574100,
-        "lon": -122345800,
-        "tick": 6,
-        "text": "Opening hours are 06:00 on weekdays now, not 07:00."
-      }
-    ],
+    "notes": [],
     "next_note": 4
   },
   "search_entries": [
@@ -360,18 +300,6 @@
         "market",
         "ninth and pike",
         "groceries seattle"
-      ]
-    },
-    {
-      "url": "http://openstreetmap.org/maps/dir?from=northstar-hq&to=devcon-center&mode=cycling",
-      "title": "Northstar HQ to Cascade Convention Center by bike - OpenStreetMap",
-      "snippet": "5.4 km on the integer grid, about 25 minutes by bike.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": [
-        "cycling directions",
-        "bike route",
-        "osm directions"
       ]
     }
   ]

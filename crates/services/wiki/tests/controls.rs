@@ -15,20 +15,23 @@ use cw_service_common::audit;
 use cw_service_wiki::{WikiService, WikiState};
 use serde_json::Value;
 
-const SITES: &[(&str, &str)] = &[
-    (
-        "wikipedia",
-        include_str!("../../../../worlds/internet/sites/wikipedia.json"),
-    ),
-    (
-        "archive",
-        include_str!("../../../../worlds/internet/sites/archive.json"),
-    ),
-    (
-        "imdb",
-        include_str!("../../../../worlds/internet/sites/imdb.json"),
-    ),
-];
+static SITES: std::sync::LazyLock<Vec<(&'static str, &'static str)>> =
+    std::sync::LazyLock::new(|| {
+        vec![
+            (
+                "wikipedia",
+                cw_service_common::reference::reference_site_json("wikipedia"),
+            ),
+            (
+                "archive",
+                cw_service_common::reference::reference_site_json("archive"),
+            ),
+            (
+                "imdb",
+                cw_service_common::reference::reference_site_json("imdb"),
+            ),
+        ]
+    });
 
 fn ctx() -> ServiceContext {
     ServiceContext {
@@ -64,7 +67,7 @@ fn self_links(state: &WikiState) -> Vec<String> {
 
 #[test]
 fn no_control_on_any_of_the_three_sites_is_a_lie() {
-    for (name, source) in SITES {
+    for &(name, source) in SITES.iter() {
         let file: Value = serde_json::from_str(source).expect("site file parses");
         let mut state = WikiService
             .initialize(file["initial_state"].clone(), &ctx())
@@ -119,7 +122,7 @@ fn no_control_on_any_of_the_three_sites_is_a_lie() {
 /// revisions.
 #[test]
 fn the_thin_pages_promise_nothing_either() {
-    for (name, source) in SITES {
+    for &(name, source) in SITES.iter() {
         let file: Value = serde_json::from_str(source).expect("site file parses");
         let mut state = WikiService
             .initialize(file["initial_state"].clone(), &ctx())
@@ -180,7 +183,7 @@ fn the_thin_pages_promise_nothing_either() {
 /// has to reach a different article, which is what the `n` the page carries is for.
 #[test]
 fn pressing_random_again_walks_on_instead_of_serving_the_same_article() {
-    for (name, source) in SITES {
+    for &(name, source) in SITES.iter() {
         let file: Value = serde_json::from_str(source).expect("site file parses");
         let mut state = WikiService
             .initialize(file["initial_state"].clone(), &ctx())
@@ -228,7 +231,7 @@ const PRESSABLE: &[&str] = &["cat", "btn", "card", "chip", "pill", "headline"];
 
 #[test]
 fn every_class_the_sheets_draw_as_pressable_lands_on_a_control() {
-    for (name, source) in SITES {
+    for &(name, source) in SITES.iter() {
         let file: Value = serde_json::from_str(source).expect("site file parses");
         let mut state = WikiService
             .initialize(file["initial_state"].clone(), &ctx())

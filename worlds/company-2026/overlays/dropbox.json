@@ -1,0 +1,185 @@
+{
+  "initial_state": {
+    "nodes": {
+      "launch-checklist": {
+        "kind": "file",
+        "name": "launch-checklist.txt",
+        "parent": "atlas-assets",
+        "owner": "carol",
+        "shared_with": [
+          "alice"
+        ],
+        "mime": "text/plain",
+        "content": "Frozen copy of the launch checklist, kept for the record.\nThe live one is http://docs.google.com/documents/atlas-launch and it is the\nonly copy anyone should be editing after the review.\n",
+        "tick": 0
+      },
+      "faq": {
+        "kind": "file",
+        "name": "faq.txt",
+        "parent": "atlas-assets",
+        "owner": "carol",
+        "shared_with": [
+          "alice"
+        ],
+        "mime": "text/plain",
+        "content": "Q. Is the renderer deterministic across platforms?\nA. Yes. Text metrics come from the bundled typeface, never the host.\nQ. What happens to a world on restore?\nA. It resumes at the tick it was snapshotted on, with identical state.\n",
+        "tick": 0
+      },
+      "demo-script": {
+        "kind": "file",
+        "name": "demo-script.txt",
+        "parent": "atlas-assets",
+        "owner": "carol",
+        "shared_with": [
+          "alice"
+        ],
+        "mime": "text/plain",
+        "content": "Walkthrough script, six minutes\n0:00 Open a world, show the seed.\n1:10 Run it twice, diff the frames, get nothing.\n3:20 Break determinism on purpose, show the diff light up.\n5:00 Snapshot, restore, keep going from the same tick.\n",
+        "tick": 0
+      },
+      "atlas-assets": {
+        "kind": "folder",
+        "name": "Atlas assets",
+        "parent": "root",
+        "owner": "carol",
+        "shared_with": [
+          "alice"
+        ],
+        "link": "a1c93f0e77b2",
+        "tick": 0
+      },
+      "f-archive": {
+        "kind": "folder",
+        "name": "Archive",
+        "parent": "root",
+        "owner": "carol",
+        "shared_with": [
+          "alice"
+        ],
+        "tick": 0
+      },
+      "old-logo": {
+        "kind": "file",
+        "name": "atlas-logo-2024.txt",
+        "parent": "f-archive",
+        "owner": "carol",
+        "shared_with": [
+          "alice"
+        ],
+        "mime": "text/plain",
+        "content": "Superseded 2024 wordmark. Kept only so old decks still resolve.\n",
+        "tick": 0
+      },
+      "root": {
+        "kind": "folder",
+        "name": "Dropbox",
+        "owner": "carol",
+        "tick": 0
+      },
+      "press-kit": {
+        "kind": "file",
+        "name": "press-kit.txt",
+        "parent": "atlas-assets",
+        "owner": "carol",
+        "shared_with": [
+          "alice"
+        ],
+        "mime": "text/plain",
+        "content": "Press kit contents\n- One paragraph on what Atlas is, in plain words, no adjectives.\n- The wordmark, light and dark.\n- Two screenshots of the renderer, taken at 1440 wide.\n- Carol Nakamura is the named contact for press questions.\n",
+        "tick": 0
+      },
+      "atlas-logo": {
+        "kind": "file",
+        "name": "atlas-logo.txt",
+        "parent": "atlas-assets",
+        "owner": "carol",
+        "shared_with": [
+          "alice"
+        ],
+        "mime": "text/plain",
+        "content": "Northstar Atlas wordmark, 2026 refresh.\nPrimary #1a73e8 on #ffffff; clear space is one cap height on every side.\nDo not stretch the mark, recolour it, or set it in outline.\n",
+        "tick": 0
+      },
+      "benchmarks": {
+        "kind": "file",
+        "name": "benchmarks.csv",
+        "parent": "atlas-assets",
+        "owner": "carol",
+        "shared_with": [
+          "alice"
+        ],
+        "mime": "text/csv",
+        "content": "run,platform,frames,p50_ms,p95_ms\n1,linux,1800,96,184\n2,linux,1800,95,181\n3,macos,1800,102,197\n4,windows,1800,118,241\n",
+        "tick": 0
+      },
+      "release-notes": {
+        "kind": "file",
+        "name": "release-notes.txt",
+        "parent": "atlas-assets",
+        "owner": "carol",
+        "shared_with": [
+          "alice"
+        ],
+        "mime": "text/plain",
+        "content": "Release notes, draft 4\n- Deterministic renderer: the same world and seed produce the same pixels.\n- Snapshot round trip is now byte-exact, including page state.\n- Known issue: the BFS path test still fails on Windows only.\n  Tracked at http://github.com/northstar/atlas\n",
+        "tick": 0
+      }
+    },
+    "starred": {
+      "carol": [
+        "atlas-assets"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://dropbox.com/",
+      "title": "Dropbox",
+      "snippet": "Carol's Dropbox: the Atlas assets that were carried over to Drive, and the archive.",
+      "keywords": [
+        "dropbox",
+        "cloud storage",
+        "files"
+      ],
+      "authority": 3
+    },
+    {
+      "url": "http://dropbox.com/drive/folders/atlas-assets",
+      "title": "Atlas assets - Dropbox",
+      "snippet": "The seven Atlas launch files, shared with alice and reachable by a public link.",
+      "keywords": [
+        "atlas assets",
+        "atlas",
+        "dropbox",
+        "launch assets",
+        "press kit",
+        "share link"
+      ],
+      "authority": 3
+    },
+    {
+      "url": "http://dropbox.com/s/a1c93f0e77b2",
+      "title": "Atlas assets - shared link",
+      "snippet": "The public Dropbox link to the Atlas assets folder; anyone holding it can open the folder.",
+      "keywords": [
+        "share link",
+        "shared link",
+        "atlas assets",
+        "dropbox"
+      ],
+      "authority": 2
+    },
+    {
+      "url": "http://dropbox.com/drive/folders/f-archive",
+      "title": "Archive - Dropbox",
+      "snippet": "Superseded Atlas brand files, kept so older decks still resolve.",
+      "keywords": [
+        "archive",
+        "dropbox",
+        "old logo",
+        "atlas"
+      ],
+      "authority": 1
+    }
+  ]
+}

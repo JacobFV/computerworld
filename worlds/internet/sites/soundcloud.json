@@ -68,14 +68,6 @@
         "subscribers": 129500,
         "about": "Rap about shipping software, deadlines and the p99. Mixtape \"Hotfix\" out now."
       },
-      "the-standup-podcast": {
-        "id": "the-standup-podcast",
-        "name": "The Standup",
-        "handle": "@thestandup",
-        "owner": "carol",
-        "subscribers": 43900,
-        "about": "A weekly podcast about building and shipping software, hosted by Carol Nakamura. New episodes Thursdays."
-      },
       "after-hours-radio": {
         "id": "after-hours-radio",
         "name": "After Hours Radio",
@@ -83,14 +75,6 @@
         "owner": null,
         "subscribers": 58700,
         "about": "A late-night interview podcast with people who work while everyone else sleeps."
-      },
-      "alice-remixes": {
-        "id": "alice-remixes",
-        "name": "Alice Remixes",
-        "handle": "@aliceremixes",
-        "owner": "alice",
-        "subscribers": 2100,
-        "about": "Occasional remixes and a field recording or two. Strictly a hobby."
       }
     },
     "items": {
@@ -446,7 +430,6 @@
       "standup-ep-42": {
         "id": "standup-ep-42",
         "channel": "the-standup-podcast",
-        "title": "The Standup #42: Deterministic replay with Alice Chen",
         "album": "The Standup",
         "track": 42,
         "duration_s": 2761,
@@ -515,26 +498,8 @@
           "night"
         ]
       },
-      "night-bus-alice-remix": {
-        "id": "night-bus-alice-remix",
-        "channel": "alice-remixes",
-        "title": "Night Bus (Alice replay remix)",
-        "album": "Night Bus (Alice replay remix)",
-        "track": 1,
-        "duration_s": 240,
-        "published": "Apr 2, 2026",
-        "published_tick": 9,
-        "plays": 12800,
-        "likes": 940,
-        "tags": [
-          "remix",
-          "pop",
-          "electronic"
-        ]
-      },
       "ferry-terminal-field": {
         "id": "ferry-terminal-field",
-        "channel": "alice-remixes",
         "title": "Ferry terminal, 6am (field recording)",
         "album": "Ferry terminal, 6am (field recording)",
         "track": 1,
@@ -587,10 +552,6 @@
         "genre": "Podcast",
         "year": "2026"
       },
-      "night-bus-alice-replay-remix": {
-        "genre": "Remix",
-        "year": "2026"
-      },
       "ferry-terminal-6am-field-recording": {
         "genre": "Field Recording",
         "year": "2026"
@@ -608,8 +569,7 @@
           "tape-hiss",
           "segfault",
           "sunday-demo",
-          "orbit-decay",
-          "night-bus-alice-remix"
+          "orbit-decay"
         ]
       },
       "study-beats": {
@@ -624,124 +584,16 @@
           "orbit-decay",
           "low-field"
         ]
-      },
-      "ship-it-loud": {
-        "id": "ship-it-loud",
-        "title": "Ship It Loud",
-        "owner": "carol",
-        "items": [
-          "hotfix",
-          "p99",
-          "friday-deploy",
-          "stack-overflow",
-          "segfault",
-          "night-bus"
-        ]
-      },
-      "late-night-listening": {
-        "id": "late-night-listening",
-        "title": "Late Night Listening",
-        "owner": "alice",
-        "items": [
-          "last-train-home",
-          "call-me-back",
-          "heliopause",
-          "first-frost",
-          "ferry-terminal-field"
-        ]
-      },
-      "podcast-queue": {
-        "id": "podcast-queue",
-        "title": "Podcast queue",
-        "owner": "bob",
-        "items": [
-          "standup-ep-42",
-          "after-hours-baker",
-          "standup-ep-41",
-          "after-hours-lighthouse"
-        ]
       }
     },
-    "subscriptions": {
-      "alice": [
-        "nova-reyes",
-        "deep-field",
-        "the-standup-podcast"
-      ],
-      "bob": [
-        "kernel-panic",
-        "mc-latency",
-        "after-hours-radio"
-      ],
-      "carol": [
-        "driftwood-collective",
-        "sable-and-oak",
-        "alice-remixes"
-      ]
-    },
-    "likes": {
-      "alice": [
-        "night-bus",
-        "heliopause",
-        "standup-ep-41"
-      ],
-      "bob": [
-        "p99",
-        "segfault",
-        "after-hours-baker"
-      ],
-      "carol": [
-        "low-field",
-        "tape-hiss",
-        "hotfix"
-      ]
-    },
-    "library": {
-      "alice": [
-        "night-bus",
-        "call-me-back",
-        "heliopause",
-        "orbit-decay",
-        "ferry-terminal-field"
-      ],
-      "bob": [
-        "hotfix",
-        "p99",
-        "segfault",
-        "stack-overflow",
-        "after-hours-baker"
-      ],
-      "carol": [
-        "tape-hiss",
-        "rain-on-the-skylight",
-        "low-field",
-        "barn-door",
-        "hotfix",
-        "standup-ep-42"
-      ]
-    },
-    "history": {
-      "alice": [
-        "standup-ep-42",
-        "night-bus",
-        "heliopause"
-      ],
-      "bob": [
-        "p99",
-        "hotfix",
-        "after-hours-lighthouse"
-      ],
-      "carol": [
-        "low-field",
-        "tape-hiss",
-        "standup-ep-43"
-      ]
-    },
+    "subscriptions": {},
+    "likes": {},
+    "library": {},
+    "history": {},
     "devices": {
       "livingroom": {
         "name": "Living Room",
         "kind": "speaker",
-        "url": "http://livingroom.speaker.internal/",
         "protocols": [
           "airplay",
           "cast"
@@ -750,7 +602,6 @@
       "kitchen": {
         "name": "Kitchen",
         "kind": "speaker",
-        "url": "http://kitchen.speaker.internal/",
         "protocols": [
           "cast",
           "dlna"
@@ -759,7 +610,6 @@
       "office-tv": {
         "name": "Office TV",
         "kind": "tv",
-        "url": "http://office-tv.speaker.internal/",
         "protocols": [
           "airplay",
           "cast",
@@ -769,7 +619,6 @@
       "bedroom": {
         "name": "Bedroom",
         "kind": "speaker",
-        "url": "http://bedroom.speaker.internal/",
         "protocols": [
           "airplay",
           "cast"
@@ -867,18 +716,6 @@
       ]
     },
     {
-      "url": "http://soundcloud.com/artist/the-standup-podcast",
-      "title": "The Standup | SoundCloud",
-      "snippet": "A weekly podcast about building and shipping software, hosted by Carol Nakamura.",
-      "vertical": "all",
-      "authority": 5,
-      "keywords": [
-        "the standup podcast",
-        "carol nakamura",
-        "software podcast"
-      ]
-    },
-    {
       "url": "http://soundcloud.com/artist/after-hours-radio",
       "title": "After Hours Radio | SoundCloud",
       "snippet": "A late-night interview podcast with people who work while everyone else sleeps.",
@@ -966,18 +803,6 @@
       "keywords": [
         "low field",
         "sable and oak low field"
-      ]
-    },
-    {
-      "url": "http://soundcloud.com/track/standup-ep-42",
-      "title": "The Standup #42: Deterministic replay with Alice Chen | SoundCloud",
-      "snippet": "Carol Nakamura interviews Alice Chen about replaying a whole computer from a seed.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "deterministic replay podcast",
-        "alice chen interview",
-        "the standup 42"
       ]
     },
     {

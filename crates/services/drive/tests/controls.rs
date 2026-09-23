@@ -18,8 +18,10 @@ use cw_web::dom::{Document, NodeId};
 use serde_json::{json, Value};
 use std::collections::{BTreeSet, VecDeque};
 
-const DRIVE: &str = include_str!("../../../../worlds/internet/sites/google-drive.json");
-const DROPBOX: &str = include_str!("../../../../worlds/internet/sites/dropbox.json");
+static DRIVE: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("google-drive"));
+static DROPBOX: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("dropbox"));
 /// A crawl that runs away is a bug in the links, not a reason to wait.
 const MAX_PAGES: usize = 600;
 /// The sidebar marks the entry for the screen you are on; the real products link it anyway.
@@ -457,25 +459,25 @@ const ENTRIES: [&str; 6] = [
 fn every_link_form_and_button_of_every_skin_is_answered_by_a_route() {
     let cases = [
         stirred(
-            boot(DRIVE, "alice", "gdrive"),
+            boot(*DRIVE, "alice", "gdrive"),
             "press-kit",
             "benchmarks",
             "faq",
         ),
         stirred(
-            boot(DRIVE, "bob", "gdrive"),
+            boot(*DRIVE, "bob", "gdrive"),
             "press-kit",
             "benchmarks",
             "demo-script",
         ),
         stirred(
-            boot(DROPBOX, "carol", "dropbox"),
+            boot(*DROPBOX, "carol", "dropbox"),
             "press-kit",
             "benchmarks",
             "faq",
         ),
         stirred(
-            boot(DROPBOX, "alice", "dropbox"),
+            boot(*DROPBOX, "alice", "dropbox"),
             "press-kit",
             "benchmarks",
             "faq",

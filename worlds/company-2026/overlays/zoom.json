@@ -1,0 +1,1025 @@
+{
+  "initial_state": {
+    "pages": {
+      "/": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "card",
+            "id": "hero",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "h",
+                "text": "Meetings, chat, phone and whiteboard in one app",
+                "level": 1
+              },
+              {
+                "kind": "text",
+                "id": "t",
+                "text": "Zoom Workplace brings AI Companion to every meeting: summaries, action items, and catch-up when you join late. Free for meetings up to 40 minutes."
+              },
+              {
+                "kind": "row",
+                "id": "hero-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "hero-signup",
+                    "text": "Sign up free",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "hero-join",
+                    "text": "Join a meeting",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "hero-dl",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  }
+                ],
+                "gap": 14,
+                "align": "center"
+              }
+            ],
+            "style": {
+              "background": "#f1f4f9",
+              "radius": 16,
+              "padding": 32
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-3",
+            "height": 14
+          },
+          {
+            "kind": "grid",
+            "id": "features",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "feat",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "feat-name",
+                    "text": "Meetings",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc",
+                    "text": "HD video for up to 1,000 participants, breakout rooms, polls, and AI Companion summaries."
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "feat-2",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "feat-name-2",
+                    "text": "Team Chat",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc-2",
+                    "text": "Channels and direct messages that carry over into meetings, with files and huddles."
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "feat-3",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "feat-name-3",
+                    "text": "Phone",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc-3",
+                    "text": "A cloud phone system with numbers in 49 countries, voicemail transcription and call queues."
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "feat-4",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "feat-name-4",
+                    "text": "Whiteboard",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc-4",
+                    "text": "Infinite canvas, templates and sticky notes that persist after the meeting."
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "feat-5",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "feat-name-5",
+                    "text": "Rooms",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc-5",
+                    "text": "Conference room hardware certified for Zoom, with one-touch join."
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "feat-6",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "feat-name-6",
+                    "text": "Events and Webinars",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc-6",
+                    "text": "Host up to 100,000 attendees with registration, Q&A and practice sessions."
+                  }
+                ],
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-4",
+            "height": 10
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "From the blog",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "blog-1",
+            "text": "AI Companion now takes notes in 30 languages",
+            "url": "http://zoom.us/blog/ai-companion-30-languages"
+          },
+          {
+            "kind": "link",
+            "id": "blog-2",
+            "text": "How the Northstar Workshop team runs a release review on Zoom",
+            "url": "http://zoom.us/blog/running-release-reviews"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
+        ]
+      },
+      "/j/1234567890": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "card",
+            "id": "room",
+            "children": [
+              {
+                "kind": "row",
+                "id": "room-head",
+                "children": [
+                  {
+                    "kind": "badge",
+                    "id": "live",
+                    "text": "LIVE",
+                    "style": {
+                      "size": 11,
+                      "color": "#ffffff",
+                      "background": "#e02828",
+                      "radius": 8,
+                      "padding": 4
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "room-title",
+                    "text": "Northstar release review",
+                    "style": {
+                      "size": 16,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "room-id",
+                    "text": "Meeting ID 123 456 7890",
+                    "style": {
+                      "size": 12,
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "gap": 12,
+                "align": "center"
+              },
+              {
+                "kind": "grid",
+                "id": "seats",
+                "columns": 3,
+                "children": [
+                  {
+                    "kind": "thumbnail",
+                    "id": "seat",
+                    "label": "Priya Raman (Host)",
+                    "style": {
+                      "background": "#2b2b3b",
+                      "color": "#ffffff",
+                      "height": 110,
+                      "radius": 8
+                    }
+                  },
+                  {
+                    "kind": "thumbnail",
+                    "id": "seat-2",
+                    "label": "Alice Chen",
+                    "style": {
+                      "background": "#2b2b3b",
+                      "color": "#ffffff",
+                      "height": 110,
+                      "radius": 8
+                    }
+                  },
+                  {
+                    "kind": "thumbnail",
+                    "id": "seat-3",
+                    "label": "Bob Martinez",
+                    "style": {
+                      "background": "#2b2b3b",
+                      "color": "#ffffff",
+                      "height": 110,
+                      "radius": 8
+                    }
+                  },
+                  {
+                    "kind": "thumbnail",
+                    "id": "seat-4",
+                    "label": "Carol Nguyen",
+                    "style": {
+                      "background": "#2b2b3b",
+                      "color": "#ffffff",
+                      "height": 110,
+                      "radius": 8
+                    }
+                  },
+                  {
+                    "kind": "thumbnail",
+                    "id": "seat-5",
+                    "label": "Tom Okafor",
+                    "style": {
+                      "background": "#2b2b3b",
+                      "color": "#ffffff",
+                      "height": 110,
+                      "radius": 8
+                    }
+                  },
+                  {
+                    "kind": "thumbnail",
+                    "id": "seat-6",
+                    "label": "You",
+                    "style": {
+                      "background": "#2b2b3b",
+                      "color": "#ffffff",
+                      "height": 110,
+                      "radius": 8
+                    }
+                  }
+                ],
+                "gap": 10
+              },
+              {
+                "kind": "row",
+                "id": "controls",
+                "children": [
+                  {
+                    "kind": "icon",
+                    "id": "ctl-mic",
+                    "name": "mic",
+                    "label": "Mute",
+                    "style": {
+                      "color": "#ffffff",
+                      "size": 20,
+                      "padding": 8,
+                      "background": "#3a3a4d",
+                      "radius": 20
+                    }
+                  },
+                  {
+                    "kind": "icon",
+                    "id": "ctl-cam",
+                    "name": "camera",
+                    "label": "Stop video",
+                    "style": {
+                      "color": "#ffffff",
+                      "size": 20,
+                      "padding": 8,
+                      "background": "#3a3a4d",
+                      "radius": 20
+                    }
+                  },
+                  {
+                    "kind": "icon",
+                    "id": "ctl-people",
+                    "name": "person",
+                    "label": "Participants (6)",
+                    "style": {
+                      "color": "#ffffff",
+                      "size": 20,
+                      "padding": 8,
+                      "background": "#3a3a4d",
+                      "radius": 20
+                    }
+                  },
+                  {
+                    "kind": "icon",
+                    "id": "ctl-chat",
+                    "name": "chat",
+                    "label": "Chat",
+                    "style": {
+                      "color": "#ffffff",
+                      "size": 20,
+                      "padding": 8,
+                      "background": "#3a3a4d",
+                      "radius": 20
+                    }
+                  },
+                  {
+                    "kind": "button",
+                    "id": "leave",
+                    "text": "Leave",
+                    "action": {
+                      "method": "GET",
+                      "url": "http://zoom.us/j",
+                      "fields": {}
+                    }
+                  }
+                ],
+                "gap": 10,
+                "align": "center"
+              }
+            ],
+            "style": {
+              "background": "#1b1b28",
+              "radius": 12,
+              "padding": 18
+            }
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "You are in the meeting. Audio is connected through your computer. The host has enabled AI Companion; a summary will be sent to participants afterwards."
+          },
+          {
+            "kind": "link",
+            "id": "audio",
+            "text": "Audio problems?",
+            "url": "http://zoom.us/support/audio-troubleshooting"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
+        ]
+      },
+      "/blog": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Blog",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Zoom Blog",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Product news, customer stories and tips for better meetings."
+          },
+          {
+            "kind": "card",
+            "id": "post",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "h-2",
+                "text": "AI Companion now takes notes in 30 languages",
+                "level": 2
+              },
+              {
+                "kind": "text",
+                "id": "t-2",
+                "text": "26 February 2026. Product. Meeting summaries, action items and the \"catch me up\" feature expand beyond English."
+              },
+              {
+                "kind": "link",
+                "id": "read",
+                "text": "Read",
+                "url": "http://zoom.us/blog/ai-companion-30-languages"
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d9d9de",
+              "radius": 12,
+              "padding": 16
+            }
+          },
+          {
+            "kind": "card",
+            "id": "post-2",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "h-3",
+                "text": "How the Northstar Workshop team runs a release review on Zoom",
+                "level": 2
+              },
+              {
+                "kind": "text",
+                "id": "t-3",
+                "text": "12 February 2026. Customer story. A sixteen-person software company on a thirty-minute ritual that ships releases."
+              },
+              {
+                "kind": "link",
+                "id": "read-2",
+                "text": "Read",
+                "url": "http://zoom.us/blog/running-release-reviews"
+              }
+            ],
+            "style": {
+              "background": "#ffffff",
+              "border": "#d9d9de",
+              "radius": 12,
+              "padding": 16
+            }
+          },
+          {
+            "kind": "link",
+            "id": "li",
+            "text": "Follow Zoom on LinkedIn",
+            "url": "http://linkedin.com/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
+        ]
+      },
+      "/blog/running-release-reviews": {
+        "title": "How the Northstar Workshop team runs a release review on Zoom - Zoom Blog",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "masthead",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "row",
+                "id": "nav-links",
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
+                ],
+                "gap": 12,
+                "align": "center"
+              }
+            ],
+            "gap": 18,
+            "align": "center",
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "link",
+            "id": "crumb",
+            "text": "Blog",
+            "url": "http://zoom.us/blog"
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "How the Northstar Workshop team runs a release review on Zoom",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "12 February 2026. Customer story."
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Northstar Workshop is a sixteen-person company building Atlas, a deterministic computer simulator. Every release passes through a thirty-minute review on Zoom with the release lead, two engineers and the support lead."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "\"The rule is that the checklist is on screen the whole time,\" says engineering manager Priya Raman. \"We share the document, walk the items in order, and the release code only gets written down after everyone in the room has said yes.\""
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "The team records to the cloud so the postmortem, if there is one, can quote the review. AI Companion writes the action items into the team's chat channel before the call ends."
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "Their advice for small teams: keep the meeting short, keep the checklist boring, and make one person the owner."
+          },
+          {
+            "kind": "link",
+            "id": "northstar",
+            "text": "Northstar Workshop",
+            "url": "http://northstar.example/"
+          },
+          {
+            "kind": "link",
+            "id": "join",
+            "text": "Join a meeting",
+            "url": "http://zoom.us/j"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
+          {
+            "kind": "row",
+            "id": "footer",
+            "children": [
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://zoom.us/blog",
+      "title": "Zoom Blog",
+      "snippet": "AI Companion in 30 languages and a customer story from Northstar Workshop.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "zoom blog",
+        "ai companion",
+        "zoom news"
+      ]
+    },
+    {
+      "url": "http://zoom.us/blog/running-release-reviews",
+      "title": "How the Northstar Workshop team runs a release review on Zoom",
+      "snippet": "A sixteen-person software company on the thirty-minute ritual that ships releases.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "northstar workshop",
+        "release review",
+        "customer story",
+        "atlas"
+      ]
+    }
+  ]
+}

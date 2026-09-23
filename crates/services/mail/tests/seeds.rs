@@ -1,4 +1,4 @@
-//! The three seeded mailboxes in `worlds/internet/sites` must survive `initialize` and render.
+//! The three seeded mailboxes in `worlds/internet/sites` with the reference company's overlays must survive `initialize` and render.
 //! A malformed seed is otherwise only discovered when the whole world is built.
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
@@ -7,10 +7,7 @@ use cw_service_mail::{MailService, MailState};
 use serde_json::Value;
 
 fn site(name: &str) -> Value {
-    let path = format!(
-        "{}/../../../worlds/internet/sites/{name}.json",
-        env!("CARGO_MANIFEST_DIR")
-    );
+    let path = cw_service_common::reference::reference_site_path(name);
     serde_json::from_str(&std::fs::read_to_string(path).expect("site file")).expect("valid JSON")
 }
 fn context(actor: &str) -> ServiceContext {

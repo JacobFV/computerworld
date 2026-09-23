@@ -4,9 +4,12 @@ use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
 use cw_service_shop::{ShopService, ShopState};
 use serde_json::Value;
-const AMAZON: &str = include_str!("../../../../worlds/internet/sites/amazon.json");
-const ETSY: &str = include_str!("../../../../worlds/internet/sites/etsy.json");
-const TICKETMASTER: &str = include_str!("../../../../worlds/internet/sites/ticketmaster.json");
+static AMAZON: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("amazon"));
+static ETSY: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("etsy"));
+static TICKETMASTER: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("ticketmaster"));
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
         actor: actor.into(),
@@ -66,7 +69,7 @@ fn post(state: &mut Value, actor: &str, url: &str, body: &[(&str, &str)]) -> (u1
 }
 #[test]
 fn storyline_5_order_1001_is_the_order_the_bank_points_at() {
-    let mut state = load(AMAZON);
+    let mut state = load(*AMAZON);
     let s: ShopState = serde_json::from_value(state.clone()).unwrap();
     let order = &s.orders["1001"];
     assert_eq!(order.buyer, "alice");
@@ -98,7 +101,7 @@ fn storyline_5_order_1001_is_the_order_the_bank_points_at() {
 }
 #[test]
 fn every_retail_page_the_seeds_advertise_resolves_and_the_catalogue_is_searchable() {
-    let mut state = load(AMAZON);
+    let mut state = load(*AMAZON);
     for url in [
         "http://amazon.com/",
         "http://amazon.com/cart",
@@ -129,7 +132,7 @@ fn every_retail_page_the_seeds_advertise_resolves_and_the_catalogue_is_searchabl
         "$429.99",
         "superscript cents still read as one price"
     );
-    let mut state = load(ETSY);
+    let mut state = load(*ETSY);
     for url in [
         "http://etsy.com/",
         "http://etsy.com/dp/et-print-map",
@@ -144,7 +147,7 @@ fn every_retail_page_the_seeds_advertise_resolves_and_the_catalogue_is_searchabl
 }
 #[test]
 fn a_seeded_cart_really_checks_out_and_decrements_the_catalogue() {
-    let mut state = load(AMAZON);
+    let mut state = load(*AMAZON);
     let before: ShopState = serde_json::from_value(state.clone()).unwrap();
     assert_eq!(before.carts["carol"]["b0lamp"], 1);
     let (status, _) = post(&mut state, "carol", "http://amazon.com/api/checkout", &[]);
@@ -171,7 +174,7 @@ fn a_seeded_cart_really_checks_out_and_decrements_the_catalogue() {
 }
 #[test]
 fn storyline_4_carol_holds_seat_a_14_7_and_the_next_seat_follows_from_it() {
-    let mut state = load(TICKETMASTER);
+    let mut state = load(*TICKETMASTER);
     let s: ShopState = serde_json::from_value(state.clone()).unwrap();
     assert_eq!(s.orders["TM-2210"].buyer, "carol");
     assert_eq!(s.orders["TM-2210"].seats, vec!["A-14-7".to_string()]);
@@ -216,7 +219,7 @@ fn storyline_4_carol_holds_seat_a_14_7_and_the_next_seat_follows_from_it() {
 }
 #[test]
 fn every_ticket_page_the_seed_advertises_resolves() {
-    let mut state = load(TICKETMASTER);
+    let mut state = load(*TICKETMASTER);
     for url in [
         "http://ticketmaster.com/",
         "http://ticketmaster.com/my-tickets",
@@ -252,10 +255,7 @@ fn every_shipped_storefront_serves_strict_html_with_the_agent_ids() {
         "doordash",
         "ticketmaster",
     ] {
-        let path = format!(
-            "{}/../../../worlds/internet/sites/{site}.json",
-            env!("CARGO_MANIFEST_DIR")
-        );
+        let path = cw_service_common::reference::reference_site_path(site);
         let mut state = load(&std::fs::read_to_string(path).unwrap());
         let s: ShopState = serde_json::from_value(state.clone()).unwrap();
         let host = format!("http://{site}.com");
@@ -343,10 +343,7 @@ fn every_seeded_cart_is_one_the_catalogue_can_still_fill() {
         "doordash",
         "ticketmaster",
     ] {
-        let path = format!(
-            "{}/../../../worlds/internet/sites/{site}.json",
-            env!("CARGO_MANIFEST_DIR")
-        );
+        let path = cw_service_common::reference::reference_site_path(site);
         let raw = std::fs::read_to_string(path).unwrap();
         let s: ShopState = serde_json::from_value(load(&raw)).unwrap();
         for (actor, cart) in &s.carts {

@@ -1,0 +1,126 @@
+{
+  "initial_state": {
+    "products": {
+      "lis-miradouro-hotel": {
+        "reviews": [
+          {
+            "id": "rv-1",
+            "author": "carol",
+            "stars": 5,
+            "title": "The terrace view is the whole city",
+            "body": "Room was quiet despite the tram. Breakfast had proper pastel de nata. The hill is steep; take the tram up.",
+            "tick": 6
+          }
+        ]
+      },
+      "kyo-machiya-gion": {
+        "reviews": [
+          {
+            "id": "rv-2",
+            "author": "alice",
+            "stars": 5,
+            "title": "Worth every yen",
+            "body": "The bath after a day of temples is the reason to book this. Quiet lane, and the host left a hand-drawn map of the neighbourhood.",
+            "tick": 4
+          }
+        ]
+      },
+      "mex-condesa-loft": {
+        "reviews": [
+          {
+            "id": "rv-3",
+            "author": "bob",
+            "stars": 4,
+            "title": "Great for a work week",
+            "body": "Wifi held up on every call. Parque Mexico dog walkers start early, so bring earplugs if you sleep late.",
+            "tick": 5
+          }
+        ]
+      },
+      "rey-guesthouse-ada": {
+        "reviews": [
+          {
+            "id": "rv-4",
+            "author": "carol",
+            "stars": 5,
+            "title": "Ada knows everything",
+            "body": "She rebooked our glacier tour when the weather turned and the skyr at breakfast is homemade.",
+            "tick": 3
+          }
+        ]
+      }
+    },
+    "carts": {
+      "alice": {
+        "kyo-machiya-gion": 3
+      }
+    },
+    "orders": {
+      "2261488035": {
+        "id": "2261488035",
+        "buyer": "carol",
+        "tick": 7,
+        "date": "2026-03-11",
+        "items": [
+          {
+            "product": "lis-miradouro-hotel",
+            "title": "Hotel Miradouro da Graca - Lisbon, 4 stars (double, city view, 4 nights, 18-22 May 2026)",
+            "qty": 4,
+            "price_cents": 18400
+          }
+        ],
+        "total_cents": 73600,
+        "status": "Confirmed",
+        "confirmation": "BKG-N4T7WZ",
+        "seats": [],
+        "venue": ""
+      },
+      "2261490117": {
+        "id": "2261490117",
+        "buyer": "alice",
+        "tick": 2,
+        "date": "2026-03-01",
+        "items": [
+          {
+            "product": "rey-guesthouse-ada",
+            "title": "Guesthouse Ada - Reykjavik, double with shared bathroom (3 nights, 9-12 April 2026)",
+            "qty": 3,
+            "price_cents": 11200
+          }
+        ],
+        "total_cents": 33600,
+        "status": "Confirmed",
+        "confirmation": "BKG-7RXK2M",
+        "seats": [],
+        "venue": ""
+      }
+    },
+    "favorites": {
+      "carol": [
+        "lis-alfama-apartment",
+        "kyo-arashiyama-ryokan"
+      ],
+      "alice": [
+        "nyc-brooklyn-brownstone",
+        "mex-roma-boutique"
+      ],
+      "bob": [
+        "mex-condesa-loft"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://booking.com/orders/2261490117",
+      "title": "Booking 2261490117 - Guesthouse Ada, Reykjavik, 9-12 April 2026",
+      "snippet": "Three nights confirmed for $336.00, confirmation BKG-7RXK2M.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "booking confirmation",
+        "reykjavik booking",
+        "booking 2261490117"
+      ]
+    }
+  ]
+}

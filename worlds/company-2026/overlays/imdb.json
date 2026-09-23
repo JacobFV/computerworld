@@ -1,0 +1,9 @@
+{
+  "initial_state": {
+    "accounts": {
+      "alice": "alice_c",
+      "bob": "bmartinez",
+      "carol": "cnakamura"
+    }
+  }
+}

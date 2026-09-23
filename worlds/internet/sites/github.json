@@ -11,579 +11,122 @@
   "initial_state": {
     "skin": "github",
     "repositories": {
-      "atlas": {
-        "owner": "northstar",
-        "description": "Deterministic simulation runtime: processes, filesystem, network and browser, replayable byte for byte.",
+      "tidy-csv": {
+        "owner": "felix-brandt",
+        "description": "Normalise messy CSV exports: headers, dates, trailing commas.",
         "topics": [
-          "rust",
-          "determinism",
-          "simulation",
-          "testing"
+          "csv",
+          "cli",
+          "data-cleaning"
         ],
         "stars": [
-          "alicechen",
-          "bmartinez",
-          "cnakamura",
-          "praman",
-          "dvasquez",
-          "jokafor",
-          "mlindqvist"
+          "hannah-liu",
+          "tvu",
+          "jlindqvist"
         ],
-        "forks": 37,
-        "next_number": 21,
-        "readers": [],
-        "writers": [
-          "admin",
-          "alice",
-          "alicechen",
-          "bmartinez",
-          "bob",
-          "carol",
-          "cnakamura",
-          "northstar-ops",
-          "praman"
-        ],
-        "objects": {
-          "35800a07f6c51326c240d7f967ef7e3056eabf7b7a7fc3b226b2d73a8cb31895": {
-            "parents": [],
-            "files": {
-              "Cargo.toml": "[package]\nname = \"atlas\"\nversion = \"0.1.0\"\nedition = \"2021\"\nlicense = \"MIT\"\n\n[dependencies]\n",
-              "LICENSE": "MIT License\n\nCopyright (c) 2026 Northstar\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n",
-              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n",
-              "src/lib.rs": "//! Atlas: a simulated machine, replayable byte for byte.\n\npub mod seed;\n\npub fn version() -> &'static str {\n    env!(\"CARGO_PKG_VERSION\")\n}\n",
-              "src/seed.rs": "/// One stream per service, so insertion order never perturbs a neighbour.\npub fn stream(seed: u64, service: &str) -> u64 {\n    let mut h = seed ^ 0x9e37_79b9_7f4a_7c15;\n    for b in service.bytes() {\n        h = (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3);\n    }\n    h\n}\n"
-            },
-            "message": "Initial commit",
-            "author": "alicechen",
-            "tick": 20
-          },
-          "36cc0716dfbd364721e9c522da49b916f31445203d79975d33d3bb049854ee6c": {
-            "parents": [
-              "35800a07f6c51326c240d7f967ef7e3056eabf7b7a7fc3b226b2d73a8cb31895"
-            ],
-            "files": {
-              "Cargo.toml": "[package]\nname = \"atlas\"\nversion = \"0.1.0\"\nedition = \"2021\"\nlicense = \"MIT\"\n\n[dependencies]\n",
-              "LICENSE": "MIT License\n\nCopyright (c) 2026 Northstar\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n",
-              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n",
-              "src/bfs.rs": "use std::collections::HashMap;\n\n/// Fewest-hop path between two nodes. Ties are broken by neighbour order, which\n/// is exactly the thing a HashMap refuses to promise you.\npub fn shortest(links: &HashMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "src/lib.rs": "//! Atlas: a simulated machine, replayable byte for byte.\n\npub mod bfs;\npub mod seed;\n\npub fn version() -> &'static str {\n    env!(\"CARGO_PKG_VERSION\")\n}\n",
-              "src/seed.rs": "/// One stream per service, so insertion order never perturbs a neighbour.\npub fn stream(seed: u64, service: &str) -> u64 {\n    let mut h = seed ^ 0x9e37_79b9_7f4a_7c15;\n    for b in service.bytes() {\n        h = (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3);\n    }\n    h\n}\n",
-              "tests/path.rs": "use atlas::bfs::shortest;\nuse std::collections::HashMap;\n\nfn fixture() -> HashMap<String, Vec<String>> {\n    let mut links = HashMap::new();\n    links.insert(\"alice-mac\".into(), vec![\"switch\".into(), \"app-server\".into()]);\n    links.insert(\"switch\".into(), vec![\"app-server\".into()]);\n    links\n}\n\n#[test]\nfn bfs_takes_the_fewest_hop_path() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
-            },
-            "message": "Add the BFS router and its path test",
-            "author": "bmartinez",
-            "tick": 96
-          },
-          "df3d6e45a775b0439440ce0fa43c05972faace39ebab1e0be886390565e91908": {
-            "parents": [
-              "36cc0716dfbd364721e9c522da49b916f31445203d79975d33d3bb049854ee6c"
-            ],
-            "files": {
-              "Cargo.toml": "[package]\nname = \"atlas\"\nversion = \"0.1.0\"\nedition = \"2021\"\nlicense = \"MIT\"\n\n[dependencies]\n",
-              "LICENSE": "MIT License\n\nCopyright (c) 2026 Northstar\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n",
-              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n",
-              "src/bfs.rs": "use std::collections::HashMap;\n\n/// Fewest-hop path between two nodes. Ties are broken by neighbour order, which\n/// is exactly the thing a HashMap refuses to promise you.\npub fn shortest(links: &HashMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "src/clock.rs": "/// The only clock a service has. There is no wall-clock fallback on purpose.\n#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]\npub struct Tick(pub u64);\n\nimpl Tick {\n    pub fn advance(self, by: u64) -> Tick {\n        Tick(self.0 + by)\n    }\n}\n",
-              "src/lib.rs": "//! Atlas: a simulated machine, replayable byte for byte.\n\npub mod bfs;\npub mod clock;\npub mod seed;\n\npub fn version() -> &'static str {\n    env!(\"CARGO_PKG_VERSION\")\n}\n",
-              "src/seed.rs": "/// One stream per service, so insertion order never perturbs a neighbour.\npub fn stream(seed: u64, service: &str) -> u64 {\n    let mut h = seed ^ 0x9e37_79b9_7f4a_7c15;\n    for b in service.bytes() {\n        h = (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3);\n    }\n    h\n}\n",
-              "tests/path.rs": "use atlas::bfs::shortest;\nuse std::collections::HashMap;\n\nfn fixture() -> HashMap<String, Vec<String>> {\n    let mut links = HashMap::new();\n    links.insert(\"alice-mac\".into(), vec![\"switch\".into(), \"app-server\".into()]);\n    links.insert(\"switch\".into(), vec![\"app-server\".into()]);\n    links\n}\n\n#[test]\nfn bfs_takes_the_fewest_hop_path() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
-            },
-            "message": "Add a tick clock with no wall-clock fallback",
-            "author": "alicechen",
-            "tick": 200
-          },
-          "bc0e51427861e1704f4be4d4c6695c13988cd7981e60c8ba2ad3f72f7dd23c0f": {
-            "parents": [
-              "df3d6e45a775b0439440ce0fa43c05972faace39ebab1e0be886390565e91908"
-            ],
-            "files": {
-              "CONTRIBUTING.md": "# Contributing\n\n1. No wall clock, no ambient RNG, no host I/O. Time is the tick you were handed.\n2. Integer arithmetic only: money in cents, coordinates in micro-degrees.\n3. Anything unordered - a HashMap, a thread, a directory listing - is a bug\n   waiting for a Windows runner to find it. See issue #14.\n",
-              "Cargo.toml": "[package]\nname = \"atlas\"\nversion = \"0.1.0\"\nedition = \"2021\"\nlicense = \"MIT\"\n\n[dependencies]\n",
-              "LICENSE": "MIT License\n\nCopyright (c) 2026 Northstar\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n",
-              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n",
-              "src/bfs.rs": "use std::collections::HashMap;\n\n/// Fewest-hop path between two nodes. Ties are broken by neighbour order, which\n/// is exactly the thing a HashMap refuses to promise you.\npub fn shortest(links: &HashMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "src/clock.rs": "/// The only clock a service has. There is no wall-clock fallback on purpose.\n#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]\npub struct Tick(pub u64);\n\nimpl Tick {\n    pub fn advance(self, by: u64) -> Tick {\n        Tick(self.0 + by)\n    }\n}\n",
-              "src/lib.rs": "//! Atlas: a simulated machine, replayable byte for byte.\n\npub mod bfs;\npub mod clock;\npub mod seed;\n\npub fn version() -> &'static str {\n    env!(\"CARGO_PKG_VERSION\")\n}\n",
-              "src/seed.rs": "/// One stream per service, so insertion order never perturbs a neighbour.\npub fn stream(seed: u64, service: &str) -> u64 {\n    let mut h = seed ^ 0x9e37_79b9_7f4a_7c15;\n    for b in service.bytes() {\n        h = (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3);\n    }\n    h\n}\n",
-              "tests/path.rs": "use atlas::bfs::shortest;\nuse std::collections::HashMap;\n\nfn fixture() -> HashMap<String, Vec<String>> {\n    let mut links = HashMap::new();\n    links.insert(\"alice-mac\".into(), vec![\"switch\".into(), \"app-server\".into()]);\n    links.insert(\"switch\".into(), vec![\"app-server\".into()]);\n    links\n}\n\n#[test]\nfn bfs_takes_the_fewest_hop_path() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
-            },
-            "message": "Add the contributing guide",
-            "author": "cnakamura",
-            "tick": 290
-          },
-          "a930cffec48aeabbf6d179e4613f16ef4d1e29206069acbff3d09d8a884adb62": {
-            "parents": [
-              "df3d6e45a775b0439440ce0fa43c05972faace39ebab1e0be886390565e91908",
-              "bc0e51427861e1704f4be4d4c6695c13988cd7981e60c8ba2ad3f72f7dd23c0f"
-            ],
-            "files": {
-              "CONTRIBUTING.md": "# Contributing\n\n1. No wall clock, no ambient RNG, no host I/O. Time is the tick you were handed.\n2. Integer arithmetic only: money in cents, coordinates in micro-degrees.\n3. Anything unordered - a HashMap, a thread, a directory listing - is a bug\n   waiting for a Windows runner to find it. See issue #14.\n",
-              "Cargo.toml": "[package]\nname = \"atlas\"\nversion = \"0.1.0\"\nedition = \"2021\"\nlicense = \"MIT\"\n\n[dependencies]\n",
-              "LICENSE": "MIT License\n\nCopyright (c) 2026 Northstar\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n",
-              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n",
-              "src/bfs.rs": "use std::collections::HashMap;\n\n/// Fewest-hop path between two nodes. Ties are broken by neighbour order, which\n/// is exactly the thing a HashMap refuses to promise you.\npub fn shortest(links: &HashMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "src/clock.rs": "/// The only clock a service has. There is no wall-clock fallback on purpose.\n#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]\npub struct Tick(pub u64);\n\nimpl Tick {\n    pub fn advance(self, by: u64) -> Tick {\n        Tick(self.0 + by)\n    }\n}\n",
-              "src/lib.rs": "//! Atlas: a simulated machine, replayable byte for byte.\n\npub mod bfs;\npub mod clock;\npub mod seed;\n\npub fn version() -> &'static str {\n    env!(\"CARGO_PKG_VERSION\")\n}\n",
-              "src/seed.rs": "/// One stream per service, so insertion order never perturbs a neighbour.\npub fn stream(seed: u64, service: &str) -> u64 {\n    let mut h = seed ^ 0x9e37_79b9_7f4a_7c15;\n    for b in service.bytes() {\n        h = (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3);\n    }\n    h\n}\n",
-              "tests/path.rs": "use atlas::bfs::shortest;\nuse std::collections::HashMap;\n\nfn fixture() -> HashMap<String, Vec<String>> {\n    let mut links = HashMap::new();\n    links.insert(\"alice-mac\".into(), vec![\"switch\".into(), \"app-server\".into()]);\n    links.insert(\"switch\".into(), vec![\"app-server\".into()]);\n    links\n}\n\n#[test]\nfn bfs_takes_the_fewest_hop_path() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
-            },
-            "message": "Merge pull request #11 from northstar/contributing\n\nAdd the contributing guide",
-            "author": "alicechen",
-            "tick": 330
-          },
-          "f3dd05262c183c37e9ffbe884c88cbab27ffc8ac2054544a46503300f8a355c0": {
-            "parents": [
-              "a930cffec48aeabbf6d179e4613f16ef4d1e29206069acbff3d09d8a884adb62"
-            ],
-            "files": {
-              ".github/workflows/ci.yml": "name: ci\non: [push, pull_request]\njobs:\n  test:\n    strategy:\n      matrix:\n        os: [ubuntu-latest, macos-latest, windows-latest]\n    runs-on: ${{ matrix.os }}\n    steps:\n      - uses: actions/checkout@v4\n      - run: cargo test --workspace\n",
-              "CONTRIBUTING.md": "# Contributing\n\n1. No wall clock, no ambient RNG, no host I/O. Time is the tick you were handed.\n2. Integer arithmetic only: money in cents, coordinates in micro-degrees.\n3. Anything unordered - a HashMap, a thread, a directory listing - is a bug\n   waiting for a Windows runner to find it. See issue #14.\n",
-              "Cargo.toml": "[package]\nname = \"atlas\"\nversion = \"0.1.0\"\nedition = \"2021\"\nlicense = \"MIT\"\n\n[dependencies]\n",
-              "LICENSE": "MIT License\n\nCopyright (c) 2026 Northstar\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n",
-              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n",
-              "src/bfs.rs": "use std::collections::HashMap;\n\n/// Fewest-hop path between two nodes. Ties are broken by neighbour order, which\n/// is exactly the thing a HashMap refuses to promise you.\npub fn shortest(links: &HashMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "src/clock.rs": "/// The only clock a service has. There is no wall-clock fallback on purpose.\n#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]\npub struct Tick(pub u64);\n\nimpl Tick {\n    pub fn advance(self, by: u64) -> Tick {\n        Tick(self.0 + by)\n    }\n}\n",
-              "src/lib.rs": "//! Atlas: a simulated machine, replayable byte for byte.\n\npub mod bfs;\npub mod clock;\npub mod seed;\n\npub fn version() -> &'static str {\n    env!(\"CARGO_PKG_VERSION\")\n}\n",
-              "src/seed.rs": "/// One stream per service, so insertion order never perturbs a neighbour.\npub fn stream(seed: u64, service: &str) -> u64 {\n    let mut h = seed ^ 0x9e37_79b9_7f4a_7c15;\n    for b in service.bytes() {\n        h = (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3);\n    }\n    h\n}\n",
-              "tests/path.rs": "use atlas::bfs::shortest;\nuse std::collections::HashMap;\n\nfn fixture() -> HashMap<String, Vec<String>> {\n    let mut links = HashMap::new();\n    links.insert(\"alice-mac\".into(), vec![\"switch\".into(), \"app-server\".into()]);\n    links.insert(\"switch\".into(), vec![\"app-server\".into()]);\n    links\n}\n\n#[test]\nfn bfs_takes_the_fewest_hop_path() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
-            },
-            "message": "Run the test matrix on Windows too",
-            "author": "northstar-ops",
-            "tick": 480
-          },
-          "e2617393b3848bc8c8e1eb29f56f960c928841d54160efa10ad49e585feefddf": {
-            "parents": [
-              "f3dd05262c183c37e9ffbe884c88cbab27ffc8ac2054544a46503300f8a355c0"
-            ],
-            "files": {
-              ".github/workflows/ci.yml": "name: ci\non: [push, pull_request]\njobs:\n  test:\n    strategy:\n      matrix:\n        os: [ubuntu-latest, macos-latest, windows-latest]\n    runs-on: ${{ matrix.os }}\n    steps:\n      - uses: actions/checkout@v4\n      - run: cargo test --workspace\n",
-              "CONTRIBUTING.md": "# Contributing\n\n1. No wall clock, no ambient RNG, no host I/O. Time is the tick you were handed.\n2. Integer arithmetic only: money in cents, coordinates in micro-degrees.\n3. Anything unordered - a HashMap, a thread, a directory listing - is a bug\n   waiting for a Windows runner to find it. See issue #14.\n",
-              "Cargo.toml": "[package]\nname = \"atlas\"\nversion = \"0.1.0\"\nedition = \"2021\"\nlicense = \"MIT\"\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
-              "LICENSE": "MIT License\n\nCopyright (c) 2026 Northstar\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n",
-              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n\n## Quick start\n\n```\ncargo add atlas\ncargo run --example company -- --seed 42 --ticks 1200\n```\n\nThe example boots the `company` world, runs it for 1200 ticks and prints the\ndigest of everything the machines drew. Run it twice; the digests match.\n\n## What is deterministic\n\n- Time: every service is handed a tick, never a wall clock.\n- Randomness: one stream per service, seeded from `service/{id}/initialize`.\n- Order: anything unordered is a bug waiting for a Windows runner to find it.\n\n## Links\n\n- Handbook: http://intranet.internal/\n- Walkthrough: http://youtube.com/watch?v=atlas-walkthrough\n- Status: http://status.northstar.example/\n- Product: http://northstar.example/product\n\n## License\n\nMIT, see `LICENSE`.\n",
-              "src/bfs.rs": "use std::collections::HashMap;\n\n/// Fewest-hop path between two nodes. Ties are broken by neighbour order, which\n/// is exactly the thing a HashMap refuses to promise you.\npub fn shortest(links: &HashMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "src/clock.rs": "/// The only clock a service has. There is no wall-clock fallback on purpose.\n#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]\npub struct Tick(pub u64);\n\nimpl Tick {\n    pub fn advance(self, by: u64) -> Tick {\n        Tick(self.0 + by)\n    }\n}\n",
-              "src/lib.rs": "//! Atlas: a simulated machine, replayable byte for byte.\n\npub mod bfs;\npub mod clock;\npub mod seed;\n\npub fn version() -> &'static str {\n    env!(\"CARGO_PKG_VERSION\")\n}\n",
-              "src/seed.rs": "/// One stream per service, so insertion order never perturbs a neighbour.\npub fn stream(seed: u64, service: &str) -> u64 {\n    let mut h = seed ^ 0x9e37_79b9_7f4a_7c15;\n    for b in service.bytes() {\n        h = (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3);\n    }\n    h\n}\n",
-              "tests/path.rs": "use atlas::bfs::shortest;\nuse std::collections::HashMap;\n\nfn fixture() -> HashMap<String, Vec<String>> {\n    let mut links = HashMap::new();\n    links.insert(\"alice-mac\".into(), vec![\"switch\".into(), \"app-server\".into()]);\n    links.insert(\"switch\".into(), vec![\"app-server\".into()]);\n    links\n}\n\n#[test]\nfn bfs_takes_the_fewest_hop_path() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
-            },
-            "message": "Expand the README with a quick start and pin serde",
-            "author": "alicechen",
-            "tick": 700
-          },
-          "fcc99baf34a77cb08f57ee13b50a0e66ec74a22999c6186c00a70ff142cb0e05": {
-            "parents": [
-              "e2617393b3848bc8c8e1eb29f56f960c928841d54160efa10ad49e585feefddf"
-            ],
-            "files": {
-              ".github/workflows/ci.yml": "name: ci\non: [push, pull_request]\njobs:\n  test:\n    strategy:\n      matrix:\n        os: [ubuntu-latest, macos-latest, windows-latest]\n    runs-on: ${{ matrix.os }}\n    steps:\n      - uses: actions/checkout@v4\n      - run: cargo test --workspace\n",
-              "CONTRIBUTING.md": "# Contributing\n\n1. No wall clock, no ambient RNG, no host I/O. Time is the tick you were handed.\n2. Integer arithmetic only: money in cents, coordinates in micro-degrees.\n3. Anything unordered - a HashMap, a thread, a directory listing - is a bug\n   waiting for a Windows runner to find it. See issue #14.\n",
-              "Cargo.toml": "[package]\nname = \"atlas\"\nversion = \"0.1.0\"\nedition = \"2021\"\nlicense = \"MIT\"\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
-              "LICENSE": "MIT License\n\nCopyright (c) 2026 Northstar\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n",
-              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n\n## Quick start\n\n```\ncargo add atlas\ncargo run --example company -- --seed 42 --ticks 1200\n```\n\nThe example boots the `company` world, runs it for 1200 ticks and prints the\ndigest of everything the machines drew. Run it twice; the digests match.\n\n## What is deterministic\n\n- Time: every service is handed a tick, never a wall clock.\n- Randomness: one stream per service, seeded from `service/{id}/initialize`.\n- Order: anything unordered is a bug waiting for a Windows runner to find it.\n\n## Links\n\n- Handbook: http://intranet.internal/\n- Walkthrough: http://youtube.com/watch?v=atlas-walkthrough\n- Status: http://status.northstar.example/\n- Product: http://northstar.example/product\n\n## License\n\nMIT, see `LICENSE`.\n",
-              "src/bfs.rs": "use std::collections::BTreeMap;\n\n/// Fewest-hop path between two nodes. Ties are broken by neighbour order, which\n/// is only stable if the map iterates in a stable order. BTreeMap does.\npub fn shortest(links: &BTreeMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "src/clock.rs": "/// The only clock a service has. There is no wall-clock fallback on purpose.\n#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]\npub struct Tick(pub u64);\n\nimpl Tick {\n    pub fn advance(self, by: u64) -> Tick {\n        Tick(self.0 + by)\n    }\n}\n",
-              "src/lib.rs": "//! Atlas: a simulated machine, replayable byte for byte.\n\npub mod bfs;\npub mod clock;\npub mod seed;\n\npub fn version() -> &'static str {\n    env!(\"CARGO_PKG_VERSION\")\n}\n",
-              "src/seed.rs": "/// One stream per service, so insertion order never perturbs a neighbour.\npub fn stream(seed: u64, service: &str) -> u64 {\n    let mut h = seed ^ 0x9e37_79b9_7f4a_7c15;\n    for b in service.bytes() {\n        h = (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3);\n    }\n    h\n}\n",
-              "tests/path.rs": "use atlas::bfs::shortest;\nuse std::collections::HashMap;\n\nfn fixture() -> HashMap<String, Vec<String>> {\n    let mut links = HashMap::new();\n    links.insert(\"alice-mac\".into(), vec![\"switch\".into(), \"app-server\".into()]);\n    links.insert(\"switch\".into(), vec![\"app-server\".into()]);\n    links\n}\n\n#[test]\nfn bfs_takes_the_fewest_hop_path() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
-            },
-            "message": "Sort refs before iterating in BFS",
-            "author": "praman",
-            "tick": 1010
-          },
-          "5a1d56e0b5bddc9de50d5ae32495fc31a4008e126d736017033ba4d2f44b5f24": {
-            "parents": [
-              "fcc99baf34a77cb08f57ee13b50a0e66ec74a22999c6186c00a70ff142cb0e05"
-            ],
-            "files": {
-              ".github/workflows/ci.yml": "name: ci\non: [push, pull_request]\njobs:\n  test:\n    strategy:\n      matrix:\n        os: [ubuntu-latest, macos-latest, windows-latest]\n    runs-on: ${{ matrix.os }}\n    steps:\n      - uses: actions/checkout@v4\n      - run: cargo test --workspace\n",
-              "CONTRIBUTING.md": "# Contributing\n\n1. No wall clock, no ambient RNG, no host I/O. Time is the tick you were handed.\n2. Integer arithmetic only: money in cents, coordinates in micro-degrees.\n3. Anything unordered - a HashMap, a thread, a directory listing - is a bug\n   waiting for a Windows runner to find it. See issue #14.\n",
-              "Cargo.toml": "[package]\nname = \"atlas\"\nversion = \"0.1.0\"\nedition = \"2021\"\nlicense = \"MIT\"\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
-              "LICENSE": "MIT License\n\nCopyright (c) 2026 Northstar\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n",
-              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n\n## Quick start\n\n```\ncargo add atlas\ncargo run --example company -- --seed 42 --ticks 1200\n```\n\nThe example boots the `company` world, runs it for 1200 ticks and prints the\ndigest of everything the machines drew. Run it twice; the digests match.\n\n## What is deterministic\n\n- Time: every service is handed a tick, never a wall clock.\n- Randomness: one stream per service, seeded from `service/{id}/initialize`.\n- Order: anything unordered is a bug waiting for a Windows runner to find it.\n\n## Links\n\n- Handbook: http://intranet.internal/\n- Walkthrough: http://youtube.com/watch?v=atlas-walkthrough\n- Status: http://status.northstar.example/\n- Product: http://northstar.example/product\n\n## License\n\nMIT, see `LICENSE`.\n",
-              "src/bfs.rs": "use std::collections::BTreeMap;\n\n/// Fewest-hop path between two nodes. Ties are broken by neighbour order, which\n/// is only stable if the map iterates in a stable order. BTreeMap does.\npub fn shortest(links: &BTreeMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "src/clock.rs": "/// The only clock a service has. There is no wall-clock fallback on purpose.\n#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]\npub struct Tick(pub u64);\n\nimpl Tick {\n    pub fn advance(self, by: u64) -> Tick {\n        Tick(self.0 + by)\n    }\n}\n",
-              "src/lib.rs": "//! Atlas: a simulated machine, replayable byte for byte.\n\npub mod bfs;\npub mod clock;\npub mod seed;\n\npub fn version() -> &'static str {\n    env!(\"CARGO_PKG_VERSION\")\n}\n",
-              "src/seed.rs": "/// One stream per service, so insertion order never perturbs a neighbour.\npub fn stream(seed: u64, service: &str) -> u64 {\n    let mut h = seed ^ 0x9e37_79b9_7f4a_7c15;\n    for b in service.bytes() {\n        h = (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3);\n    }\n    h\n}\n",
-              "tests/path.rs": "use atlas::bfs::shortest;\nuse std::collections::BTreeMap;\n\nfn fixture() -> BTreeMap<String, Vec<String>> {\n    let mut links = BTreeMap::new();\n    links.insert(\"alice-mac\".into(), vec![\"switch\".into(), \"app-server\".into()]);\n    links.insert(\"switch\".into(), vec![\"app-server\".into()]);\n    links\n}\n\n#[test]\nfn bfs_takes_the_fewest_hop_path() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n\n#[test]\nfn neighbour_order_is_part_of_the_answer() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap(), vec![\"alice-mac\", \"app-server\"]);\n}\n"
-            },
-            "message": "Pin the neighbour order in the path test",
-            "author": "praman",
-            "tick": 1040
-          },
-          "65249804ebb8c2571fde0f92c75672fa3cb1cfe8e9ba04dc24a7dd867c67182c": {
-            "parents": [
-              "e2617393b3848bc8c8e1eb29f56f960c928841d54160efa10ad49e585feefddf"
-            ],
-            "files": {
-              ".github/workflows/ci.yml": "name: ci\non: [push, pull_request]\njobs:\n  test:\n    strategy:\n      matrix:\n        os: [ubuntu-latest, macos-latest, windows-latest]\n    runs-on: ${{ matrix.os }}\n    steps:\n      - uses: actions/checkout@v4\n      - run: cargo test --workspace\n",
-              "CONTRIBUTING.md": "# Contributing\n\n1. No wall clock, no ambient RNG, no host I/O. Time is the tick you were handed.\n2. Integer arithmetic only: money in cents, coordinates in micro-degrees.\n3. Anything unordered - a HashMap, a thread, a directory listing - is a bug\n   waiting for a Windows runner to find it. See issue #14.\n",
-              "Cargo.toml": "[package]\nname = \"atlas\"\nversion = \"0.1.0\"\nedition = \"2021\"\nlicense = \"MIT\"\n\n[dependencies]\nserde = { version = \"1\", features = [\"derive\"] }\nserde_json = \"1\"\n",
-              "LICENSE": "MIT License\n\nCopyright (c) 2026 Northstar\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n",
-              "README.md": "# Atlas\n\nAtlas runs a whole simulated machine - processes, filesystem, network, browser -\nfrom a seed, and replays it byte for byte.\n\nSame seed, same inputs, same bytes out.\n\n## Quick start\n\n```\ncargo add atlas\ncargo run --example company -- --seed 42 --ticks 1200\n```\n\nThe example boots the `company` world, runs it for 1200 ticks and prints the\ndigest of everything the machines drew. Run it twice; the digests match.\n\n## What is deterministic\n\n- Time: every service is handed a tick, never a wall clock.\n- Randomness: one stream per service, seeded from `service/{id}/initialize`.\n- Order: anything unordered is a bug waiting for a Windows runner to find it.\n\n## Links\n\n- Handbook: http://intranet.internal/\n- Walkthrough: http://youtube.com/watch?v=atlas-walkthrough\n- Status: http://status.northstar.example/\n- Product: http://northstar.example/product\n\n## License\n\nMIT, see `LICENSE`.\n",
-              "docs/determinism.md": "# Why the same seed gives the same bytes\n\nAtlas never asks the host what time it is, never reads `/dev/urandom` and never\niterates a structure whose order the language does not promise.\n\n## Time\n\nEvery service is handed a tick. A tick is an integer.\n\n## Randomness\n\nOne stream per service, seeded from `service/{id}/initialize`, so adding a service\nnever changes another's draws.\n\n## Order\n\nTODO: the BFS story from #14.\n",
-              "src/bfs.rs": "use std::collections::HashMap;\n\n/// Fewest-hop path between two nodes. Ties are broken by neighbour order, which\n/// is exactly the thing a HashMap refuses to promise you.\npub fn shortest(links: &HashMap<String, Vec<String>>, from: &str, to: &str) -> Option<Vec<String>> {\n    let mut queue = vec![vec![from.to_string()]];\n    while let Some(path) = queue.pop() {\n        let at = path.last().expect(\"path is never empty\");\n        if at == to {\n            return Some(path);\n        }\n        for next in links.get(at)? {\n            let mut onward = path.clone();\n            onward.push(next.clone());\n            queue.push(onward);\n        }\n    }\n    None\n}\n",
-              "src/clock.rs": "/// The only clock a service has. There is no wall-clock fallback on purpose.\n#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]\npub struct Tick(pub u64);\n\nimpl Tick {\n    pub fn advance(self, by: u64) -> Tick {\n        Tick(self.0 + by)\n    }\n}\n",
-              "src/lib.rs": "//! Atlas: a simulated machine, replayable byte for byte.\n\npub mod bfs;\npub mod clock;\npub mod seed;\n\npub fn version() -> &'static str {\n    env!(\"CARGO_PKG_VERSION\")\n}\n",
-              "src/seed.rs": "/// One stream per service, so insertion order never perturbs a neighbour.\npub fn stream(seed: u64, service: &str) -> u64 {\n    let mut h = seed ^ 0x9e37_79b9_7f4a_7c15;\n    for b in service.bytes() {\n        h = (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3);\n    }\n    h\n}\n",
-              "tests/path.rs": "use atlas::bfs::shortest;\nuse std::collections::HashMap;\n\nfn fixture() -> HashMap<String, Vec<String>> {\n    let mut links = HashMap::new();\n    links.insert(\"alice-mac\".into(), vec![\"switch\".into(), \"app-server\".into()]);\n    links.insert(\"switch\".into(), vec![\"app-server\".into()]);\n    links\n}\n\n#[test]\nfn bfs_takes_the_fewest_hop_path() {\n    let links = fixture();\n    assert_eq!(shortest(&links, \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
-            },
-            "message": "Draft the determinism explainer",
-            "author": "cnakamura",
-            "tick": 1100
-          }
-        },
-        "refs": {
-          "refs/heads/main": "e2617393b3848bc8c8e1eb29f56f960c928841d54160efa10ad49e585feefddf",
-          "refs/heads/sort-refs": "5a1d56e0b5bddc9de50d5ae32495fc31a4008e126d736017033ba4d2f44b5f24",
-          "refs/heads/determinism-doc": "65249804ebb8c2571fde0f92c75672fa3cb1cfe8e9ba04dc24a7dd867c67182c",
-          "refs/heads/contributing": "bc0e51427861e1704f4be4d4c6695c13988cd7981e60c8ba2ad3f72f7dd23c0f"
-        },
-        "issues": {
-          "9": {
-            "number": 9,
-            "title": "Document the seeded determinism streams",
-            "body": "Every service draws from service/{id}/initialize, so insertion order does not perturb anyone else. That is worth a paragraph in CONTRIBUTING.md.",
-            "state": "closed",
-            "author": "praman",
-            "tick": 250,
-            "assignee": "cnakamura",
-            "labels": [
-              "documentation"
-            ],
-            "comments": [
-              {
-                "author": "cnakamura",
-                "body": "Taking this with the contributing guide, #11.",
-                "tick": 262
-              },
-              {
-                "author": "alicechen",
-                "body": "Landed in CONTRIBUTING.md.",
-                "tick": 331
-              }
-            ]
-          },
-          "12": {
-            "number": 12,
-            "title": "Expose the tick clock through the CLI",
-            "body": "`atlas run` should accept `--ticks N` and print the final tick, so a replay script can assert on it without parsing the digest.",
-            "state": "open",
-            "author": "bmartinez",
-            "tick": 520,
-            "labels": [
-              "enhancement"
-            ],
-            "comments": [
-              {
-                "author": "alicechen",
-                "body": "Agreed. The clock module already has everything the flag needs.",
-                "tick": 540
-              }
-            ]
-          },
-          "13": {
-            "number": 13,
-            "title": "Typo in CONTRIBUTING.md: rule 3 says 'directory listing' twice",
-            "body": "Small one, good for a first PR.",
-            "state": "open",
-            "author": "cnakamura",
-            "tick": 600,
-            "labels": [
-              "documentation",
-              "good first issue"
-            ]
-          },
-          "14": {
-            "number": 14,
-            "title": "BFS path test fails on Windows only",
-            "body": "tests/path.rs is green on Linux and macOS and red on the Windows runner about one run in four.\n\nRepro: http://github.com/gist/flaky-repro\n\nThe fixture has two equal-length paths from alice-mac to app-server and the test assumes the same one comes back every time.",
-            "state": "open",
-            "author": "bmartinez",
-            "tick": 950,
-            "assignee": "praman",
-            "labels": [
-              "bug"
-            ],
-            "comments": [
-              {
-                "author": "alicechen",
-                "body": "Smells like hash-map iteration order - src/bfs.rs walks links.get(at) straight out of a HashMap.",
-                "tick": 955
-              },
-              {
-                "author": "praman",
-                "body": "It is. I wrote the long version here: http://stackoverflow.com/questions/t-4411",
-                "tick": 990
-              },
-              {
-                "author": "bmartinez",
-                "body": "Confirmed, and written up at http://bmartinez.net/posts/hash-order-bit-me",
-                "tick": 1000
-              }
-            ]
-          },
-          "16": {
-            "number": 16,
-            "title": "Release build warns about an unused import in src/seed.rs",
-            "body": "`cargo build --release` prints one warning. Zero warnings is the rule.",
-            "state": "closed",
-            "author": "alicechen",
-            "tick": 720,
-            "labels": [
-              "bug"
-            ],
-            "comments": [
-              {
-                "author": "northstar-ops",
-                "body": "Fixed on main; closing.",
-                "tick": 760
-              }
-            ]
-          },
-          "17": {
-            "number": 17,
-            "title": "Replay diverges when the seed is zero",
-            "body": "With `--seed 0` two runs disagree after tick 800. Every other seed I tried is stable. Suspect the per-service stream collapses to the same value for every service.",
-            "state": "open",
-            "author": "praman",
-            "tick": 1000,
-            "labels": [
-              "bug",
-              "help wanted"
-            ],
-            "comments": [
-              {
-                "author": "alicechen",
-                "body": "stream() xors the seed into a constant; with 0 that constant is shared by every service. Nice catch.",
-                "tick": 1020
-              }
-            ]
-          },
-          "18": {
-            "number": 18,
-            "title": "Publish a determinism explainer for the launch",
-            "body": "The launch checklist wants one page a reader can send to a sceptic. Draft lives in the launch doc: http://docs.google.com/documents/atlas-launch",
-            "state": "open",
-            "author": "cnakamura",
-            "tick": 1080,
-            "assignee": "cnakamura",
-            "labels": [
-              "documentation",
-              "launch"
-            ]
-          },
-          "20": {
-            "number": 20,
-            "title": "Does Atlas run on Windows ARM?",
-            "body": "The CI matrix only lists x64 runners. Is ARM supported or just untested?",
-            "state": "open",
-            "author": "dvasquez",
-            "tick": 1150,
-            "labels": [
-              "question"
-            ]
-          }
-        },
-        "pull_requests": {
-          "11": {
-            "number": 11,
-            "title": "Add the contributing guide",
-            "body": "Three rules, one page. Closes #9.",
-            "state": "merged",
-            "author": "cnakamura",
-            "tick": 330,
-            "head": "refs/heads/contributing",
-            "base": "refs/heads/main",
-            "merged_by": "alicechen",
-            "labels": [
-              "documentation"
-            ],
-            "reviews": [
-              {
-                "author": "alicechen",
-                "decision": "approve",
-                "body": "Short and true. Merging.",
-                "tick": 320
-              }
-            ]
-          },
-          "15": {
-            "number": 15,
-            "title": "Sort refs before iterating in BFS",
-            "body": "Swap the HashMap for a BTreeMap so neighbour order is part of the contract, and pin that order in the test.\n\nCloses #14.",
-            "state": "open",
-            "author": "praman",
-            "tick": 1045,
-            "assignee": "alicechen",
-            "labels": [
-              "bug"
-            ],
-            "head": "refs/heads/sort-refs",
-            "base": "refs/heads/main",
-            "comments": [
-              {
-                "author": "bmartinez",
-                "body": "Ran it 200 times on the Windows matrix. Green every time.",
-                "tick": 1062
-              }
-            ],
-            "reviews": [
-              {
-                "author": "bmartinez",
-                "decision": "request_changes",
-                "body": "The test still builds a HashMap fixture on line 4; it should use the same map type as the router.",
-                "tick": 1050
-              },
-              {
-                "author": "alicechen",
-                "decision": "approve",
-                "body": "Exactly right. The map was never the fast path anyway.",
-                "tick": 1070
-              }
-            ]
-          },
-          "19": {
-            "number": 19,
-            "title": "Draft the determinism explainer",
-            "body": "First pass at the page #18 asks for. The Order section is still a TODO until #15 lands.",
-            "state": "open",
-            "draft": true,
-            "author": "cnakamura",
-            "tick": 1105,
-            "labels": [
-              "documentation"
-            ],
-            "head": "refs/heads/determinism-doc",
-            "base": "refs/heads/main"
-          }
+        "forks": 3,
+        "files": {
+          "README.md": "# tidy-csv\n\nA small command-line tool that cleans CSV exports before you load them anywhere.\n\n    tidy-csv input.csv > clean.csv\n\n- trims and de-duplicates header names\n- rewrites dates to ISO 8601\n- drops trailing empty columns\n",
+          "src/main.rs": "fn main() {\n    let path = std::env::args().nth(1).expect(\"usage: tidy-csv <file>\");\n    let text = std::fs::read_to_string(path).expect(\"readable file\");\n    for line in text.lines() {\n        println!(\"{}\", line.trim_end_matches(','));\n    }\n}\n",
+          "LICENSE": "MIT License\n"
         }
       },
-      "atlas-actions": {
-        "owner": "northstar",
-        "description": "Reusable CI workflows, including the Windows matrix that keeps catching hash-order bugs.",
+      "trail-notes": {
+        "owner": "hannah-liu",
+        "description": "A static site of hiking notes, built with plain Markdown.",
         "topics": [
-          "ci",
-          "github-actions"
+          "static-site",
+          "markdown",
+          "hiking"
         ],
         "stars": [
-          "alicechen",
-          "cnakamura"
+          "felix-brandt"
         ],
-        "forks": 4,
-        "next_number": 8,
-        "writers": [
-          "admin",
-          "alice",
-          "alicechen",
-          "bmartinez",
-          "bob",
-          "carol",
-          "cnakamura",
-          "northstar-ops"
-        ],
-        "objects": {
-          "4a56f5637547bbd3793f3028aea0b313a7d91ef78aa53421ac3f9221a2f08a8e": {
-            "parents": [],
-            "files": {
-              "README.md": "# atlas-actions\n\nThe workflows every Northstar repository imports.\n",
-              "workflows/windows.yml": "name: windows\njobs:\n  test:\n    runs: 1\n    shell: powershell\n"
-            },
-            "message": "Initial commit",
-            "author": "northstar-ops",
-            "tick": 400
-          },
-          "2b0c8c61cb6bbf0cd35b20332015cfef4e8d83a71c8cd13468962b99ad2dffae": {
-            "parents": [
-              "4a56f5637547bbd3793f3028aea0b313a7d91ef78aa53421ac3f9221a2f08a8e"
-            ],
-            "files": {
-              "README.md": "# atlas-actions\n\nThe workflows every Northstar repository imports.\n\nThe `windows` job runs each test 20 times. See http://github.com/northstar/atlas/issues/14 for why.\n",
-              "workflows/windows.yml": "name: windows\njobs:\n  test:\n    runs: 20\n    shell: powershell\n"
-            },
-            "message": "Run each Windows test 20 times",
-            "author": "bmartinez",
-            "tick": 980
-          }
-        },
-        "refs": {
-          "refs/heads/main": "2b0c8c61cb6bbf0cd35b20332015cfef4e8d83a71c8cd13468962b99ad2dffae"
-        },
-        "issues": {
-          "7": {
-            "number": 7,
-            "title": "Windows runner times out on a cold cache",
-            "body": "First run after a cache eviction takes 19 minutes and trips the 15 minute limit.",
-            "state": "open",
-            "author": "bmartinez",
-            "tick": 1020,
-            "assignee": "bmartinez",
-            "labels": [
-              "ci"
-            ]
-          }
+        "files": {
+          "README.md": "# trail-notes\n\nNotes from weekend hikes, one Markdown file per trail.\n",
+          "trails/ridge-loop.md": "# Ridge loop\n\n11 km, 600 m of climbing. Start early; the upper meadow has no shade.\n"
         }
       },
-      "dotfiles": {
-        "owner": "alicechen",
-        "description": "Alice's shell, editor and tmux configuration.",
+      "web-tools": {
+        "owner": "david-ross",
+        "description": "Browser DevTools extensions for debugging HTTP traffic",
         "topics": [
-          "dotfiles"
+          "javascript",
+          "devtools",
+          "http"
         ],
         "stars": [
-          "bmartinez"
+          "hannah-liu",
+          "elena-morales"
         ],
-        "forks": 2,
-        "writers": [
-          "alice",
-          "alicechen"
+        "forks": 5,
+        "files": {
+          "README.md": "# web-tools\n\nSet of browser extensions for debugging web requests and responses.\n\n- Network tab formatter\n- JSON prettifier\n- HTTP header inspector\n",
+          "package.json": "{\"name\": \"web-tools\", \"version\": \"2.3.1\", \"description\": \"DevTools extensions\"}\n"
+        }
+      },
+      "config-sync": {
+        "owner": "elena-morales",
+        "description": "Keep dotfiles in sync across machines with Git",
+        "topics": [
+          "bash",
+          "dotfiles",
+          "sync"
         ],
-        "objects": {
-          "fd56ed5817851a68622a7dbd8c6f01161ad0219a33fd3d0976687c6c3f084fd7": {
-            "parents": [],
-            "files": {
-              "README.md": "# dotfiles\n\nWhat I actually type. Blog: http://alicechen.dev/\n",
-              "shell/aliases.sh": "alias gs='git status --short'\nalias ll='ls -lah'\n"
-            },
-            "message": "Initial commit",
-            "author": "alicechen",
-            "tick": 60
-          },
-          "b6ebb2827ecd17b27092b74961150b8d2567b9a8335d71d145e6c00a5b62e21a": {
-            "parents": [
-              "fd56ed5817851a68622a7dbd8c6f01161ad0219a33fd3d0976687c6c3f084fd7"
-            ],
-            "files": {
-              "README.md": "# dotfiles\n\nWhat I actually type. Blog: http://alicechen.dev/\n",
-              "shell/aliases.sh": "alias gs='git status --short'\nalias ll='ls -lah'\n",
-              "tmux.conf": "set -g prefix C-a\nset -g mouse on\n"
-            },
-            "message": "Add the tmux config",
-            "author": "alicechen",
-            "tick": 880
-          }
-        },
-        "refs": {
-          "refs/heads/main": "b6ebb2827ecd17b27092b74961150b8d2567b9a8335d71d145e6c00a5b62e21a"
+        "stars": [
+          "james-kim",
+          "tvu",
+          "felix-brandt"
+        ],
+        "forks": 8,
+        "files": {
+          "README.md": "# config-sync\n\nA simple tool to synchronize dotfiles across machines.\n\n    config-sync init\n    config-sync push\n    config-sync pull\n",
+          "sync.sh": "#!/bin/bash\nset -e\necho \"Syncing configuration files...\"\nfor dir in ~/.config ~/.ssh; do\n  git -C \"$dir\" pull origin main\ndone\necho \"Done.\"\n"
+        }
+      },
+      "api-validator": {
+        "owner": "james-kim",
+        "description": "OpenAPI schema validator and test generator",
+        "topics": [
+          "openapi",
+          "testing",
+          "validation"
+        ],
+        "stars": [
+          "samir-patel",
+          "david-ross"
+        ],
+        "forks": 12,
+        "files": {
+          "README.md": "# api-validator\n\nValidate OpenAPI schemas and generate integration tests.\n\n    validator validate openapi.yaml\n    validator test --schema openapi.yaml\n",
+          "src/main.py": "import sys\nfrom validator import Schema, Tester\n\nif __name__ == \"__main__\":\n    schema = Schema.load(sys.argv[1])\n    schema.validate()\n    print(\"Schema is valid\")\n"
         }
       }
     },
     "gists": {
-      "bfs-order": {
-        "owner": "praman",
-        "description": "Sort before you iterate",
+      "retry-backoff": {
+        "owner": "tvu",
+        "description": "Exponential backoff with jitter, in twelve lines",
         "files": {
-          "order.rs": "// A HashMap promises you a value, never an order.\n// If the order is part of your output, it is part of your types.\nlet mut neighbours: Vec<&str> = links[at].iter().map(String::as_str).collect();\nneighbours.sort_unstable();\n"
+          "backoff.py": "import random\n\ndef delays(base=0.5, cap=30.0, attempts=6):\n    \"\"\"Yield sleep times for each retry: capped, with full jitter.\"\"\"\n    for n in range(attempts):\n        yield random.uniform(0, min(cap, base * 2 ** n))\n"
         },
-        "tick": 1005
+        "tick": 940
       },
-      "flaky-repro": {
-        "owner": "bmartinez",
-        "description": "Minimal repro for the Windows-only BFS failure",
+      "http-parse": {
+        "owner": "samir-patel",
+        "description": "Parse HTTP status lines quickly",
         "files": {
-          "repro.rs": "// Run 50 times. On Windows two of them come back with the long path.\nfor _ in 0..50 {\n    assert_eq!(shortest(&fixture(), \"alice-mac\", \"app-server\").unwrap().len(), 2);\n}\n"
+          "http-parse.py": "import re\n\ndef parse_status(line):\n    match = re.match(r\"HTTP/(\\d\\.\\d) (\\d{3}) (.+)\", line)\n    return match.groups() if match else None\n"
         },
-        "tick": 948
+        "tick": 1042
+      },
+      "sqlite-perf": {
+        "owner": "natasha-weber",
+        "description": "SQLite performance monitoring queries",
+        "files": {
+          "analyze.sql": "PRAGMA journal_mode = WAL;\nPRAGMA optimize;\nSELECT COUNT(*) FROM sqlite_master;\n"
+        },
+        "tick": 1156
       }
     }
   },
@@ -602,113 +145,82 @@
       ]
     },
     {
-      "url": "http://github.com/northstar",
-      "title": "northstar · GitHub",
-      "snippet": "The Northstar organisation: atlas and atlas-actions.",
-      "authority": 7,
-      "keywords": [
-        "northstar",
-        "org",
-        "github"
-      ]
-    },
-    {
-      "url": "http://github.com/northstar/atlas",
-      "title": "northstar/atlas · GitHub",
-      "snippet": "Deterministic simulation runtime: processes, filesystem, network and browser, replayable byte for byte.",
-      "authority": 8,
-      "keywords": [
-        "atlas",
-        "northstar",
-        "determinism",
-        "rust",
-        "simulation",
-        "runtime"
-      ]
-    },
-    {
-      "url": "http://github.com/northstar/atlas/issues",
-      "title": "Issues · northstar/atlas",
-      "snippet": "Open issues on the Atlas runtime, including the Windows-only path test.",
-      "authority": 6,
-      "keywords": [
-        "issues",
-        "atlas",
-        "bugs"
-      ]
-    },
-    {
-      "url": "http://github.com/northstar/atlas/issues/14",
-      "title": "BFS path test fails on Windows only · Issue #14 · northstar/atlas",
-      "snippet": "Green on Linux and macOS, red on the Windows runner about one run in four. Hash-map iteration order.",
-      "authority": 7,
-      "keywords": [
-        "flaky",
-        "windows",
-        "bfs",
-        "test",
-        "hash order",
-        "atlas"
-      ]
-    },
-    {
-      "url": "http://github.com/northstar/atlas/pulls",
-      "title": "Pull requests · northstar/atlas",
-      "snippet": "Open pull requests against the Atlas main branch.",
+      "url": "http://github.com/felix-brandt/tidy-csv",
+      "title": "felix-brandt/tidy-csv · GitHub",
+      "snippet": "Normalise messy CSV exports: headers, dates, trailing commas.",
       "authority": 5,
       "keywords": [
-        "pull request",
-        "atlas",
-        "review"
+        "csv",
+        "cli",
+        "tidy-csv",
+        "data cleaning"
       ]
     },
     {
-      "url": "http://github.com/northstar/atlas/pull/15",
-      "title": "Sort refs before iterating in BFS by praman · Pull Request #15",
-      "snippet": "Swap the HashMap for a BTreeMap so neighbour order is part of the contract. Closes #14.",
-      "authority": 6,
+      "url": "http://github.com/hannah-liu/trail-notes",
+      "title": "hannah-liu/trail-notes · GitHub",
+      "snippet": "A static site of hiking notes, built with plain Markdown.",
+      "authority": 4,
       "keywords": [
-        "pull request",
-        "btreemap",
-        "praman",
-        "bfs",
-        "atlas"
+        "hiking",
+        "markdown",
+        "static site"
       ]
     },
     {
-      "url": "http://github.com/northstar/atlas-actions",
-      "title": "northstar/atlas-actions · GitHub",
-      "snippet": "Reusable CI workflows, including the Windows matrix that keeps catching hash-order bugs.",
-      "authority": 5,
+      "url": "http://github.com/david-ross/web-tools",
+      "title": "david-ross/web-tools · GitHub",
+      "snippet": "Browser DevTools extensions for debugging HTTP traffic",
+      "authority": 4,
       "keywords": [
-        "ci",
-        "github actions",
-        "windows",
-        "northstar"
+        "devtools",
+        "http",
+        "debugging",
+        "javascript"
       ]
     },
     {
-      "url": "http://github.com/alicechen/dotfiles",
-      "title": "alicechen/dotfiles · GitHub",
-      "snippet": "Alice Chen's shell, editor and tmux configuration.",
+      "url": "http://github.com/elena-morales/config-sync",
+      "title": "elena-morales/config-sync · GitHub",
+      "snippet": "Keep dotfiles in sync across machines with Git",
       "authority": 4,
       "keywords": [
         "dotfiles",
-        "alice chen",
-        "shell",
-        "tmux"
+        "sync",
+        "bash"
       ]
     },
     {
-      "url": "http://github.com/gist/bfs-order",
-      "title": "Sort before you iterate · GitHub Gist",
-      "snippet": "A HashMap promises you a value, never an order. If the order is part of your output, it is part of your types.",
-      "authority": 4,
+      "url": "http://github.com/james-kim/api-validator",
+      "title": "james-kim/api-validator · GitHub",
+      "snippet": "OpenAPI schema validator and test generator",
+      "authority": 5,
       "keywords": [
-        "gist",
-        "hash order",
-        "praman",
-        "sort"
+        "openapi",
+        "testing",
+        "validation",
+        "schema"
+      ]
+    },
+    {
+      "url": "http://github.com/gist/http-parse",
+      "title": "http-parse · GitHub Gist",
+      "snippet": "Parse HTTP status lines quickly",
+      "authority": 2,
+      "keywords": [
+        "http",
+        "parsing"
+      ]
+    },
+    {
+      "url": "http://github.com/gist/sqlite-perf",
+      "title": "sqlite-perf · GitHub Gist",
+      "snippet": "SQLite performance monitoring queries",
+      "authority": 2,
+      "keywords": [
+        "sqlite",
+        "database",
+        "performance"
       ]
     }
   ]

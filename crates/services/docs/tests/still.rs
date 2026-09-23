@@ -55,10 +55,7 @@ fn render(html: &str, file: &str, viewport: Viewport) {
     println!("wrote {}", target.display());
 }
 fn site(name: &str) -> Value {
-    let path = format!(
-        "{}/../../../worlds/internet/sites/{name}.json",
-        env!("CARGO_MANIFEST_DIR")
-    );
+    let path = cw_service_common::reference::reference_site_path(name);
     serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
 }
 

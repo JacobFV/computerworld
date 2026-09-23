@@ -119,19 +119,19 @@ fn geo_site_stills() {
     let sites = [
         (
             "google-maps",
-            include_str!("../../../../worlds/internet/sites/google-maps.json"),
+            cw_service_common::reference::reference_site_json("google-maps"),
             "http://maps.google.com",
             "carol",
         ),
         (
             "osm",
-            include_str!("../../../../worlds/internet/sites/osm.json"),
+            cw_service_common::reference::reference_site_json("osm"),
             "http://openstreetmap.org",
             "bob",
         ),
         (
             "weather",
-            include_str!("../../../../worlds/internet/sites/weather.json"),
+            cw_service_common::reference::reference_site_json("weather"),
             "http://weather.com",
             "alice",
         ),

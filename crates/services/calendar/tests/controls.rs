@@ -24,10 +24,7 @@ fn context(actor: &str) -> ServiceContext {
 }
 /// The seeded Google Calendar the world ships.
 fn seeded() -> Value {
-    let path = format!(
-        "{}/../../../worlds/internet/sites/google-calendar.json",
-        env!("CARGO_MANIFEST_DIR")
-    );
+    let path = cw_service_common::reference::reference_site_path("google-calendar");
     let site: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("site file"))
         .expect("valid JSON");
     CalendarService

@@ -15,56 +15,59 @@ use cw_service_common::audit;
 use cw_service_press::PressService;
 use serde_json::Value;
 
-const SITES: &[(&str, &str)] = &[
-    (
-        "reuters",
-        include_str!("../../../../worlds/internet/sites/reuters.json"),
-    ),
-    (
-        "theverge",
-        include_str!("../../../../worlds/internet/sites/theverge.json"),
-    ),
-    (
-        "arstechnica",
-        include_str!("../../../../worlds/internet/sites/arstechnica.json"),
-    ),
-    (
-        "alice-blog",
-        include_str!("../../../../worlds/company-2026/sites/alice-blog.json"),
-    ),
-    (
-        "bob-blog",
-        include_str!("../../../../worlds/company-2026/sites/bob-blog.json"),
-    ),
-    (
-        "northstar-eng",
-        include_str!("../../../../worlds/company-2026/sites/northstar-eng.json"),
-    ),
-    (
-        "nytimes",
-        include_str!("../../../../worlds/internet/sites/nytimes.json"),
-    ),
-    (
-        "bbc",
-        include_str!("../../../../worlds/internet/sites/bbc.json"),
-    ),
-    (
-        "cnn",
-        include_str!("../../../../worlds/internet/sites/cnn.json"),
-    ),
-    (
-        "google-news",
-        include_str!("../../../../worlds/internet/sites/google-news.json"),
-    ),
-    (
-        "medium",
-        include_str!("../../../../worlds/internet/sites/medium.json"),
-    ),
-    (
-        "substack",
-        include_str!("../../../../worlds/internet/sites/substack.json"),
-    ),
-];
+static SITES: std::sync::LazyLock<Vec<(&'static str, &'static str)>> =
+    std::sync::LazyLock::new(|| {
+        vec![
+            (
+                "reuters",
+                cw_service_common::reference::reference_site_json("reuters"),
+            ),
+            (
+                "theverge",
+                cw_service_common::reference::reference_site_json("theverge"),
+            ),
+            (
+                "arstechnica",
+                cw_service_common::reference::reference_site_json("arstechnica"),
+            ),
+            (
+                "alice-blog",
+                include_str!("../../../../worlds/company-2026/sites/alice-blog.json"),
+            ),
+            (
+                "bob-blog",
+                include_str!("../../../../worlds/company-2026/sites/bob-blog.json"),
+            ),
+            (
+                "northstar-eng",
+                include_str!("../../../../worlds/company-2026/sites/northstar-eng.json"),
+            ),
+            (
+                "nytimes",
+                cw_service_common::reference::reference_site_json("nytimes"),
+            ),
+            (
+                "bbc",
+                cw_service_common::reference::reference_site_json("bbc"),
+            ),
+            (
+                "cnn",
+                cw_service_common::reference::reference_site_json("cnn"),
+            ),
+            (
+                "google-news",
+                cw_service_common::reference::reference_site_json("google-news"),
+            ),
+            (
+                "medium",
+                cw_service_common::reference::reference_site_json("medium"),
+            ),
+            (
+                "substack",
+                cw_service_common::reference::reference_site_json("substack"),
+            ),
+        ]
+    });
 
 fn ctx() -> ServiceContext {
     ServiceContext {
@@ -119,7 +122,7 @@ fn tags(state: &Value) -> Vec<String> {
 /// Every seeded publication, crawled end to end with every control exercised.
 #[test]
 fn no_control_on_any_publication_is_a_lie() {
-    for (name, source) in SITES {
+    for (name, source) in SITES.iter().copied() {
         let file: Value = serde_json::from_str(source).expect("site file parses");
         let mut state = PressService
             .initialize(file["initial_state"].clone(), &ctx())
@@ -252,7 +255,7 @@ fn the_splash_and_an_empty_topic_promise_nothing_either() {
 /// the front page is not the control it says it is.
 #[test]
 fn a_control_in_the_furniture_comes_back_to_the_page_it_was_pressed_from() {
-    for (name, source) in SITES {
+    for (name, source) in SITES.iter().copied() {
         let file: Value = serde_json::from_str(source).expect("site file parses");
         let mut state = PressService
             .initialize(file["initial_state"].clone(), &ctx())
@@ -308,7 +311,7 @@ const PRESSABLE: &[&str] = &["pill", "chip", "card", "saved", "brand"];
 
 #[test]
 fn every_class_the_sheets_draw_as_pressable_lands_on_a_control() {
-    for (name, source) in SITES {
+    for (name, source) in SITES.iter().copied() {
         let file: Value = serde_json::from_str(source).expect("site file parses");
         let mut state = PressService
             .initialize(file["initial_state"].clone(), &ctx())

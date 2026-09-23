@@ -2,9 +2,19 @@
   "id": "booking",
   "kind": "shop",
   "node": "booking",
-  "domains": ["booking.com", "www.booking.com"],
+  "domains": [
+    "booking.com",
+    "www.booking.com"
+  ],
   "port": 80,
-  "place": {"address": "198.51.100.111", "zone": "internet", "link": {"from": "pop-eu", "latency_us": 2200}},
+  "place": {
+    "address": "198.51.100.111",
+    "zone": "internet",
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 2200
+    }
+  },
   "initial_state": {
     "mode": "retail",
     "brand": "Booking.com",
@@ -19,203 +29,508 @@
       "content_width": 1100
     },
     "categories": [
-      {"id": "lisbon", "title": "Lisbon"},
-      {"id": "kyoto", "title": "Kyoto"},
-      {"id": "mexico-city", "title": "Mexico City"},
-      {"id": "reykjavik", "title": "Reykjavik"},
-      {"id": "new-york", "title": "New York"}
+      {
+        "id": "lisbon",
+        "title": "Lisbon"
+      },
+      {
+        "id": "kyoto",
+        "title": "Kyoto"
+      },
+      {
+        "id": "mexico-city",
+        "title": "Mexico City"
+      },
+      {
+        "id": "reykjavik",
+        "title": "Reykjavik"
+      },
+      {
+        "id": "new-york",
+        "title": "New York"
+      }
     ],
     "products": {
       "lis-miradouro-hotel": {
-        "id": "lis-miradouro-hotel", "category": "lisbon",
+        "id": "lis-miradouro-hotel",
+        "category": "lisbon",
         "title": "Hotel Miradouro da Graca - Lisbon, 4 stars",
         "seller": "Hotel Miradouro da Graca",
-        "price_cents": 18400, "rating_sum": 3806, "rating_count": 860, "stock": 5, "fast_shipping": false,
-        "bullets": ["Review score 8.9/10 from 860 reviews", "Graca, 12 minutes' walk to Alfama", "Free cancellation until 3 days before arrival", "Breakfast included"],
+        "price_cents": 18400,
+        "rating_sum": 3806,
+        "rating_count": 860,
+        "stock": 5,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 8.9/10 from 860 reviews",
+          "Graca, 12 minutes' walk to Alfama",
+          "Free cancellation until 3 days before arrival",
+          "Breakfast included"
+        ],
         "description": "Price per night for a double room with a city view. Rooftop terrace over the castle hill, air conditioning, a small gym and a bar that does a decent bica. Tram 28 stops at the corner. Free cancellation until 3 days before arrival, then the first night is charged.",
-        "reviews": [
-          {"id": "rv-1", "author": "carol", "stars": 5, "title": "The terrace view is the whole city", "body": "Room was quiet despite the tram. Breakfast had proper pastel de nata. The hill is steep; take the tram up.", "tick": 6}
-        ]
+        "reviews": []
       },
       "lis-alfama-apartment": {
-        "id": "lis-alfama-apartment", "category": "lisbon",
+        "id": "lis-alfama-apartment",
+        "category": "lisbon",
         "title": "Alfama Rooftop Apartment - Lisbon, entire apartment",
         "seller": "Casas do Tejo",
-        "price_cents": 12900, "rating_sum": 1246, "rating_count": 280, "stock": 1, "fast_shipping": false,
-        "bullets": ["Review score 8.9/10 from 280 reviews", "Alfama, river view from the roof", "Non-refundable rate, 15% below the flexible rate", "Kitchen, washing machine, wifi"],
+        "price_cents": 12900,
+        "rating_sum": 1246,
+        "rating_count": 280,
+        "stock": 1,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 8.9/10 from 280 reviews",
+          "Alfama, river view from the roof",
+          "Non-refundable rate, 15% below the flexible rate",
+          "Kitchen, washing machine, wifi"
+        ],
         "description": "Price per night, one-bedroom apartment on the fourth floor with no lift and a private rooftop over the Tagus. Self check-in with a lockbox. This rate is non-refundable; the flexible rate is $152 a night.",
         "reviews": []
       },
       "lis-baixa-hostel": {
-        "id": "lis-baixa-hostel", "category": "lisbon",
+        "id": "lis-baixa-hostel",
+        "category": "lisbon",
         "title": "Baixa Central Hostel - Lisbon, private double",
         "seller": "Baixa Central Hostel",
-        "price_cents": 6800, "rating_sum": 5820, "rating_count": 1450, "stock": 9, "fast_shipping": false,
-        "bullets": ["Review score 8.0/10 from 1,450 reviews", "Baixa, 4 minutes to Rossio station", "Free cancellation until the day before", "Shared kitchen, 24-hour reception"],
+        "price_cents": 6800,
+        "rating_sum": 5820,
+        "rating_count": 1450,
+        "stock": 9,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 8.0/10 from 1,450 reviews",
+          "Baixa, 4 minutes to Rossio station",
+          "Free cancellation until the day before",
+          "Shared kitchen, 24-hour reception"
+        ],
         "description": "Price per night for a private double with a shared bathroom on the floor. Rooftop bar, free walking tour every morning at 10:00, luggage storage. Cancel free until 18:00 the day before arrival.",
         "reviews": []
       },
       "kyo-machiya-gion": {
-        "id": "kyo-machiya-gion", "category": "kyoto",
+        "id": "kyo-machiya-gion",
+        "category": "kyoto",
         "title": "Gion Machiya Tsubaki - Kyoto, traditional townhouse",
         "seller": "Kyoto Machiya Stays",
-        "price_cents": 31000, "rating_sum": 2001, "rating_count": 410, "stock": 4, "fast_shipping": false,
-        "bullets": ["Review score 9.8/10 from 410 reviews", "Gion, 6 minutes' walk to Yasaka Shrine", "Free cancellation until 7 days before arrival", "Sleeps 4, private garden, cypress bath"],
+        "price_cents": 31000,
+        "rating_sum": 2001,
+        "rating_count": 410,
+        "stock": 4,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 9.8/10 from 410 reviews",
+          "Gion, 6 minutes' walk to Yasaka Shrine",
+          "Free cancellation until 7 days before arrival",
+          "Sleeps 4, private garden, cypress bath"
+        ],
         "description": "Price per night for the whole restored machiya: two tatami bedrooms, a small inner garden and a hinoki bath. Futons made up nightly on request. Free cancellation until 7 days before arrival, then 50%.",
-        "reviews": [
-          {"id": "rv-2", "author": "alice", "stars": 5, "title": "Worth every yen", "body": "The bath after a day of temples is the reason to book this. Quiet lane, and the host left a hand-drawn map of the neighbourhood.", "tick": 4}
-        ]
+        "reviews": []
       },
       "kyo-station-hotel": {
-        "id": "kyo-station-hotel", "category": "kyoto",
+        "id": "kyo-station-hotel",
+        "category": "kyoto",
         "title": "Kyoto Station Karasuma Hotel - 3 stars",
         "seller": "Karasuma Hotels",
-        "price_cents": 9900, "rating_sum": 7052, "rating_count": 1720, "stock": 12, "fast_shipping": false,
-        "bullets": ["Review score 8.2/10 from 1,720 reviews", "Shimogyo, 5 minutes' walk to Kyoto Station", "Free cancellation until 1 day before arrival", "Compact double, public bath on the top floor"],
-        "description": "Price per night for a compact double, 16 square metres. Public bath on the ninth floor, coin laundry, breakfast buffet for $14. Ideal for day trips: Nara and Osaka trains are five minutes away.", 
+        "price_cents": 9900,
+        "rating_sum": 7052,
+        "rating_count": 1720,
+        "stock": 12,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 8.2/10 from 1,720 reviews",
+          "Shimogyo, 5 minutes' walk to Kyoto Station",
+          "Free cancellation until 1 day before arrival",
+          "Compact double, public bath on the top floor"
+        ],
+        "description": "Price per night for a compact double, 16 square metres. Public bath on the ninth floor, coin laundry, breakfast buffet for $14. Ideal for day trips: Nara and Osaka trains are five minutes away.",
         "reviews": []
       },
       "kyo-arashiyama-ryokan": {
-        "id": "kyo-arashiyama-ryokan", "category": "kyoto",
+        "id": "kyo-arashiyama-ryokan",
+        "category": "kyoto",
         "title": "Arashiyama Riverside Ryokan - Kyoto, half board",
         "seller": "Arashiyama Riverside Ryokan",
-        "price_cents": 48000, "rating_sum": 1568, "rating_count": 320, "stock": 3, "fast_shipping": false,
-        "bullets": ["Review score 9.8/10 from 320 reviews", "Arashiyama, on the Katsura river", "Non-refundable within 14 days of arrival", "Kaiseki dinner and breakfast for two included"],
+        "price_cents": 48000,
+        "rating_sum": 1568,
+        "rating_count": 320,
+        "stock": 3,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 9.8/10 from 320 reviews",
+          "Arashiyama, on the Katsura river",
+          "Non-refundable within 14 days of arrival",
+          "Kaiseki dinner and breakfast for two included"
+        ],
         "description": "Price per night for two, kaiseki dinner and breakfast included. River-view tatami room with an outdoor bath. Check-in 15:00, dinner served in the room from 18:30. Cancellations inside 14 days are charged in full.",
         "reviews": []
       },
       "mex-roma-boutique": {
-        "id": "mex-roma-boutique", "category": "mexico-city",
+        "id": "mex-roma-boutique",
+        "category": "mexico-city",
         "title": "Casa Jacaranda - Mexico City, boutique hotel in Roma Norte",
         "seller": "Casa Jacaranda",
-        "price_cents": 15600, "rating_sum": 2832, "rating_count": 610, "stock": 4, "fast_shipping": false,
-        "bullets": ["Review score 9.3/10 from 610 reviews", "Roma Norte, 2 blocks from Alvaro Obregon", "Free cancellation until 2 days before arrival", "Courtyard breakfast included"],
+        "price_cents": 15600,
+        "rating_sum": 2832,
+        "rating_count": 610,
+        "stock": 4,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 9.3/10 from 610 reviews",
+          "Roma Norte, 2 blocks from Alvaro Obregon",
+          "Free cancellation until 2 days before arrival",
+          "Courtyard breakfast included"
+        ],
         "description": "Price per night for a courtyard king. Twelve rooms in a 1920s house, a jacaranda tree in the patio and breakfast under it. Airport pickup can be added at check-out for $38.",
         "reviews": []
       },
       "mex-condesa-loft": {
-        "id": "mex-condesa-loft", "category": "mexico-city",
+        "id": "mex-condesa-loft",
+        "category": "mexico-city",
         "title": "Condesa Park Loft - Mexico City, entire loft",
         "seller": "Lofts DF",
-        "price_cents": 9800, "rating_sum": 1610, "rating_count": 370, "stock": 1, "fast_shipping": false,
-        "bullets": ["Review score 8.7/10 from 370 reviews", "Condesa, facing Parque Mexico", "Free cancellation until 5 days before arrival", "Fast wifi, desk, washing machine"],
+        "price_cents": 9800,
+        "rating_sum": 1610,
+        "rating_count": 370,
+        "stock": 1,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 8.7/10 from 370 reviews",
+          "Condesa, facing Parque Mexico",
+          "Free cancellation until 5 days before arrival",
+          "Fast wifi, desk, washing machine"
+        ],
         "description": "Price per night, one-bedroom loft on the third floor with a balcony over the park. Set up for working: a proper desk, a second screen and 400 Mbps fibre. Coffee shops on every corner.",
-        "reviews": [
-          {"id": "rv-3", "author": "bob", "stars": 4, "title": "Great for a work week", "body": "Wifi held up on every call. Parque Mexico dog walkers start early, so bring earplugs if you sleep late.", "tick": 5}
-        ]
+        "reviews": []
       },
       "mex-centro-grand": {
-        "id": "mex-centro-grand", "category": "mexico-city",
+        "id": "mex-centro-grand",
+        "category": "mexico-city",
         "title": "Gran Hotel Zocalo Vista - Mexico City, 5 stars",
         "seller": "Gran Hotel Zocalo Vista",
-        "price_cents": 26500, "rating_sum": 4480, "rating_count": 980, "stock": 7, "fast_shipping": false,
-        "bullets": ["Review score 9.1/10 from 980 reviews", "Centro Historico, on the Zocalo", "Free cancellation until 1 day before arrival", "Rooftop restaurant, spa, pool"],
+        "price_cents": 26500,
+        "rating_sum": 4480,
+        "rating_count": 980,
+        "stock": 7,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 9.1/10 from 980 reviews",
+          "Centro Historico, on the Zocalo",
+          "Free cancellation until 1 day before arrival",
+          "Rooftop restaurant, spa, pool"
+        ],
         "description": "Price per night for a superior room. The stained-glass atrium is the reason people book; the rooftop restaurant over the square is the reason they stay in for dinner. Breakfast $24.",
         "reviews": []
       },
       "rey-harbour-hotel": {
-        "id": "rey-harbour-hotel", "category": "reykjavik",
+        "id": "rey-harbour-hotel",
+        "category": "reykjavik",
         "title": "Reykjavik Old Harbour Hotel - 4 stars",
         "seller": "Old Harbour Hotels",
-        "price_cents": 24900, "rating_sum": 2244, "rating_count": 510, "stock": 6, "fast_shipping": false,
-        "bullets": ["Review score 8.8/10 from 510 reviews", "Old Harbour, whale-watching pier 3 minutes away", "Free cancellation until 2 days before arrival", "Breakfast included, geothermal hot tub"],
+        "price_cents": 24900,
+        "rating_sum": 2244,
+        "rating_count": 510,
+        "stock": 6,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 8.8/10 from 510 reviews",
+          "Old Harbour, whale-watching pier 3 minutes away",
+          "Free cancellation until 2 days before arrival",
+          "Breakfast included, geothermal hot tub"
+        ],
         "description": "Price per night for a standard double. Harbour-facing rooms have blackout blinds for the summer light. The hot tub on the terrace is fed from the city's geothermal supply. Winter aurora wake-up calls on request.",
         "reviews": []
       },
       "rey-laugavegur-apartment": {
-        "id": "rey-laugavegur-apartment", "category": "reykjavik",
+        "id": "rey-laugavegur-apartment",
+        "category": "reykjavik",
         "title": "Laugavegur Studio - Reykjavik, entire studio",
         "seller": "Nordic Stays",
-        "price_cents": 16900, "rating_sum": 1075, "rating_count": 250, "stock": 2, "fast_shipping": false,
-        "bullets": ["Review score 8.6/10 from 250 reviews", "Miobaer, on the main shopping street", "Non-refundable rate", "Kitchenette, underfloor heating"],
+        "price_cents": 16900,
+        "rating_sum": 1075,
+        "rating_count": 250,
+        "stock": 2,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 8.6/10 from 250 reviews",
+          "Miobaer, on the main shopping street",
+          "Non-refundable rate",
+          "Kitchenette, underfloor heating"
+        ],
         "description": "Price per night, studio for two above a bookshop on Laugavegur. Underfloor heating, a kitchenette that makes the grocery-store prices bearable, and a bus to the airport from the corner. Non-refundable; the flexible rate is $196.",
         "reviews": []
       },
       "rey-guesthouse-ada": {
-        "id": "rey-guesthouse-ada", "category": "reykjavik",
+        "id": "rey-guesthouse-ada",
+        "category": "reykjavik",
         "title": "Guesthouse Ada - Reykjavik, double with shared bathroom",
         "seller": "Guesthouse Ada",
-        "price_cents": 11200, "rating_sum": 2660, "rating_count": 620, "stock": 4, "fast_shipping": false,
-        "bullets": ["Review score 8.6/10 from 620 reviews", "Vesturbaer, 10 minutes' walk to the centre", "Free cancellation until 3 days before arrival", "Shared kitchen, free parking"],
+        "price_cents": 11200,
+        "rating_sum": 2660,
+        "rating_count": 620,
+        "stock": 4,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 8.6/10 from 620 reviews",
+          "Vesturbaer, 10 minutes' walk to the centre",
+          "Free cancellation until 3 days before arrival",
+          "Shared kitchen, free parking"
+        ],
         "description": "Price per night for a double with a shared bathroom. Family-run, six rooms, a kitchen guests actually use and free parking, which matters if you are driving the ring road. Breakfast is $16 and worth it.",
-        "reviews": [
-          {"id": "rv-4", "author": "carol", "stars": 5, "title": "Ada knows everything", "body": "She rebooked our glacier tour when the weather turned and the skyr at breakfast is homemade.", "tick": 3}
-        ]
+        "reviews": []
       },
       "nyc-midtown-tower": {
-        "id": "nyc-midtown-tower", "category": "new-york",
+        "id": "nyc-midtown-tower",
+        "category": "new-york",
         "title": "Midtown Tower Hotel - New York, 4 stars",
         "seller": "Midtown Tower Hotel",
-        "price_cents": 32900, "rating_sum": 6120, "rating_count": 1530, "stock": 14, "fast_shipping": false,
-        "bullets": ["Review score 8.0/10 from 1,530 reviews", "Midtown West, 6 minutes' walk to Times Square", "Free cancellation until 1 day before arrival", "Gym, 24-hour room service"],
+        "price_cents": 32900,
+        "rating_sum": 6120,
+        "rating_count": 1530,
+        "stock": 14,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 8.0/10 from 1,530 reviews",
+          "Midtown West, 6 minutes' walk to Times Square",
+          "Free cancellation until 1 day before arrival",
+          "Gym, 24-hour room service"
+        ],
         "description": "Price per night for a queen room on floors 20-38, plus a $35 resort fee at check-out. Rooms are small and the views are not; ask for a north-facing floor above 30. Breakfast $29.",
         "reviews": []
       },
       "nyc-brooklyn-brownstone": {
-        "id": "nyc-brooklyn-brownstone", "category": "new-york",
+        "id": "nyc-brooklyn-brownstone",
+        "category": "new-york",
         "title": "Fort Greene Brownstone Suite - Brooklyn, private floor",
         "seller": "Brownstone Stays BK",
-        "price_cents": 21500, "rating_sum": 1462, "rating_count": 310, "stock": 1, "fast_shipping": false,
-        "bullets": ["Review score 9.4/10 from 310 reviews", "Fort Greene, 3 minutes to the C train", "Free cancellation until 7 days before arrival", "Sleeps 3, kitchen, back garden"],
+        "price_cents": 21500,
+        "rating_sum": 1462,
+        "rating_count": 310,
+        "stock": 1,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 9.4/10 from 310 reviews",
+          "Fort Greene, 3 minutes to the C train",
+          "Free cancellation until 7 days before arrival",
+          "Sleeps 3, kitchen, back garden"
+        ],
         "description": "Price per night for the garden floor of an 1880s brownstone: bedroom, living room with a sofa bed, full kitchen and the back garden. Hosts live upstairs. Manhattan is 15 minutes on the C.",
         "reviews": []
       },
       "nyc-les-boutique": {
-        "id": "nyc-les-boutique", "category": "new-york",
+        "id": "nyc-les-boutique",
+        "category": "new-york",
         "title": "The Orchard Street Hotel - New York, boutique, Lower East Side",
         "seller": "The Orchard Street Hotel",
-        "price_cents": 27800, "rating_sum": 2436, "rating_count": 540, "stock": 3, "fast_shipping": false,
-        "bullets": ["Review score 9.0/10 from 540 reviews", "Lower East Side, 2 blocks from Delancey St station", "Non-refundable rate, 20% below flexible", "Rooftop bar, record player in every room"],
+        "price_cents": 27800,
+        "rating_sum": 2436,
+        "rating_count": 540,
+        "stock": 3,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 9.0/10 from 540 reviews",
+          "Lower East Side, 2 blocks from Delancey St station",
+          "Non-refundable rate, 20% below flexible",
+          "Rooftop bar, record player in every room"
+        ],
         "description": "Price per night for a standard king with a Bluetooth turntable and a small library of records at the front desk. Rooftop bar closes at 01:00 on weekends, and the rooms below it hear that. Non-refundable rate.",
         "reviews": []
       },
       "nyc-queens-budget": {
-        "id": "nyc-queens-budget", "category": "new-york",
+        "id": "nyc-queens-budget",
+        "category": "new-york",
         "title": "Long Island City Inn - Queens, 2 stars",
         "seller": "LIC Inn",
-        "price_cents": 13900, "rating_sum": 3364, "rating_count": 890, "stock": 10, "fast_shipping": false,
-        "bullets": ["Review score 7.6/10 from 890 reviews", "Long Island City, 1 stop to Manhattan on the 7", "Free cancellation until 1 day before arrival", "Free parking, free breakfast"],
+        "price_cents": 13900,
+        "rating_sum": 3364,
+        "rating_count": 890,
+        "stock": 10,
+        "fast_shipping": false,
+        "bullets": [
+          "Review score 7.6/10 from 890 reviews",
+          "Long Island City, 1 stop to Manhattan on the 7",
+          "Free cancellation until 1 day before arrival",
+          "Free parking, free breakfast"
+        ],
         "description": "Price per night for a double. Clean, plain, and one stop from Grand Central on the 7 train. The free parking is the reason drivers book it; the free breakfast is bagels and coffee.",
         "reviews": []
       }
     },
-    "carts": {
-      "alice": {"kyo-machiya-gion": 3}
-    },
-    "orders": {
-      "2261488035": {
-        "id": "2261488035", "buyer": "carol", "tick": 7, "date": "2026-03-11",
-        "items": [{"product": "lis-miradouro-hotel", "title": "Hotel Miradouro da Graca - Lisbon, 4 stars (double, city view, 4 nights, 18-22 May 2026)", "qty": 4, "price_cents": 18400}],
-        "total_cents": 73600, "status": "Confirmed", "confirmation": "BKG-N4T7WZ", "seats": [], "venue": ""
-      },
-      "2261490117": {
-        "id": "2261490117", "buyer": "alice", "tick": 2, "date": "2026-03-01",
-        "items": [{"product": "rey-guesthouse-ada", "title": "Guesthouse Ada - Reykjavik, double with shared bathroom (3 nights, 9-12 April 2026)", "qty": 3, "price_cents": 11200}],
-        "total_cents": 33600, "status": "Confirmed", "confirmation": "BKG-7RXK2M", "seats": [], "venue": ""
-      }
-    },
-    "favorites": {
-      "carol": ["lis-alfama-apartment", "kyo-arashiyama-ryokan"],
-      "alice": ["nyc-brooklyn-brownstone", "mex-roma-boutique"],
-      "bob": ["mex-condesa-loft"]
-    },
+    "carts": {},
+    "orders": {},
+    "favorites": {},
     "messages": [],
     "next_order": 2261490118
   },
   "search_entries": [
-    {"url": "http://booking.com/", "title": "Booking.com - simulated hotels and apartments in five cities", "snippet": "Lisbon, Kyoto, Mexico City, Reykjavik and New York. Nightly prices, review scores out of 10 and cancellation terms on every stay.", "vertical": "all", "authority": 6, "keywords": ["booking", "hotels", "hotel booking", "accommodation", "places to stay", "apartments"]},
-    {"url": "http://booking.com/s?c=lisbon", "title": "Lisbon hotels and apartments - Booking.com", "snippet": "Three stays in Graca, Alfama and Baixa from $68 a night.", "vertical": "all", "authority": 5, "keywords": ["lisbon hotels", "lisbon apartment", "where to stay in lisbon", "alfama"]},
-    {"url": "http://booking.com/s?c=kyoto", "title": "Kyoto hotels, machiya and ryokan - Booking.com", "snippet": "A Gion townhouse, a station hotel and a riverside ryokan with kaiseki dinner, from $99 a night.", "vertical": "all", "authority": 5, "keywords": ["kyoto hotels", "kyoto ryokan", "machiya kyoto", "where to stay in kyoto"]},
-    {"url": "http://booking.com/s?c=new-york", "title": "New York hotels - Booking.com", "snippet": "Midtown, the Lower East Side, a Brooklyn brownstone and a Queens budget inn, from $139 a night.", "vertical": "all", "authority": 5, "keywords": ["new york hotels", "nyc hotel", "manhattan hotel", "brooklyn stay"]},
-    {"url": "http://booking.com/dp/lis-miradouro-hotel", "title": "Hotel Miradouro da Graca, Lisbon - $184 per night", "snippet": "4-star hotel in Graca, 8.9/10 from 860 reviews. Rooftop terrace over the castle, breakfast included, free cancellation until 3 days before.", "vertical": "all", "authority": 5, "keywords": ["hotel miradouro", "graca hotel", "lisbon 4 star hotel", "lisbon rooftop hotel"]},
-    {"url": "http://booking.com/dp/kyo-machiya-gion", "title": "Gion Machiya Tsubaki, Kyoto - $310 per night", "snippet": "Whole restored townhouse in Gion, 9.8/10 from 410 reviews. Sleeps 4, private garden, cypress bath.", "vertical": "all", "authority": 5, "keywords": ["gion machiya", "kyoto townhouse", "machiya tsubaki", "kyoto family stay"]},
-    {"url": "http://booking.com/dp/kyo-arashiyama-ryokan", "title": "Arashiyama Riverside Ryokan, Kyoto - $480 per night, half board", "snippet": "River-view tatami room with outdoor bath, kaiseki dinner and breakfast for two. 9.8/10 from 320 reviews.", "vertical": "all", "authority": 4, "keywords": ["arashiyama ryokan", "kyoto ryokan kaiseki", "ryokan with private onsen"]},
-    {"url": "http://booking.com/dp/mex-roma-boutique", "title": "Casa Jacaranda, Mexico City - $156 per night", "snippet": "Twelve-room boutique hotel in Roma Norte, 9.3/10 from 610 reviews. Courtyard breakfast included.", "vertical": "all", "authority": 4, "keywords": ["casa jacaranda", "roma norte hotel", "mexico city boutique hotel", "cdmx hotel"]},
-    {"url": "http://booking.com/dp/mex-condesa-loft", "title": "Condesa Park Loft, Mexico City - $98 per night", "snippet": "One-bedroom loft facing Parque Mexico with a desk and 400 Mbps fibre. 8.7/10 from 370 reviews.", "vertical": "all", "authority": 4, "keywords": ["condesa loft", "mexico city apartment", "condesa apartment", "work from mexico city"]},
-    {"url": "http://booking.com/dp/rey-harbour-hotel", "title": "Reykjavik Old Harbour Hotel - $249 per night", "snippet": "4-star hotel by the whale-watching pier, 8.8/10 from 510 reviews. Breakfast and geothermal hot tub included.", "vertical": "all", "authority": 4, "keywords": ["reykjavik hotel", "old harbour hotel", "iceland hotel", "reykjavik 4 star"]},
-    {"url": "http://booking.com/dp/rey-guesthouse-ada", "title": "Guesthouse Ada, Reykjavik - $112 per night", "snippet": "Family-run six-room guesthouse in Vesturbaer with free parking, 8.6/10 from 620 reviews.", "vertical": "all", "authority": 4, "keywords": ["reykjavik guesthouse", "guesthouse ada", "cheap reykjavik stay", "reykjavik free parking"]},
-    {"url": "http://booking.com/dp/nyc-brooklyn-brownstone", "title": "Fort Greene Brownstone Suite, Brooklyn - $215 per night", "snippet": "Garden floor of an 1880s brownstone, sleeps 3, 9.4/10 from 310 reviews. Free cancellation until 7 days before.", "vertical": "all", "authority": 4, "keywords": ["brooklyn brownstone", "fort greene stay", "brooklyn apartment", "new york garden apartment"]},
-    {"url": "http://booking.com/orders/2261490117", "title": "Booking 2261490117 - Guesthouse Ada, Reykjavik, 9-12 April 2026", "snippet": "Three nights confirmed for $336.00, confirmation BKG-7RXK2M.", "vertical": "all", "authority": 3, "keywords": ["booking confirmation", "reykjavik booking", "booking 2261490117"]},
-    {"url": "http://booking.com/orders", "title": "My bookings - Booking.com", "snippet": "Every reservation made by the signed-in account, with confirmation code and status.", "vertical": "all", "authority": 3, "keywords": ["my bookings", "reservations", "booking history"]}
+    {
+      "url": "http://booking.com/",
+      "title": "Booking.com - simulated hotels and apartments in five cities",
+      "snippet": "Lisbon, Kyoto, Mexico City, Reykjavik and New York. Nightly prices, review scores out of 10 and cancellation terms on every stay.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "booking",
+        "hotels",
+        "hotel booking",
+        "accommodation",
+        "places to stay",
+        "apartments"
+      ]
+    },
+    {
+      "url": "http://booking.com/s?c=lisbon",
+      "title": "Lisbon hotels and apartments - Booking.com",
+      "snippet": "Three stays in Graca, Alfama and Baixa from $68 a night.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "lisbon hotels",
+        "lisbon apartment",
+        "where to stay in lisbon",
+        "alfama"
+      ]
+    },
+    {
+      "url": "http://booking.com/s?c=kyoto",
+      "title": "Kyoto hotels, machiya and ryokan - Booking.com",
+      "snippet": "A Gion townhouse, a station hotel and a riverside ryokan with kaiseki dinner, from $99 a night.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "kyoto hotels",
+        "kyoto ryokan",
+        "machiya kyoto",
+        "where to stay in kyoto"
+      ]
+    },
+    {
+      "url": "http://booking.com/s?c=new-york",
+      "title": "New York hotels - Booking.com",
+      "snippet": "Midtown, the Lower East Side, a Brooklyn brownstone and a Queens budget inn, from $139 a night.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "new york hotels",
+        "nyc hotel",
+        "manhattan hotel",
+        "brooklyn stay"
+      ]
+    },
+    {
+      "url": "http://booking.com/dp/lis-miradouro-hotel",
+      "title": "Hotel Miradouro da Graca, Lisbon - $184 per night",
+      "snippet": "4-star hotel in Graca, 8.9/10 from 860 reviews. Rooftop terrace over the castle, breakfast included, free cancellation until 3 days before.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "hotel miradouro",
+        "graca hotel",
+        "lisbon 4 star hotel",
+        "lisbon rooftop hotel"
+      ]
+    },
+    {
+      "url": "http://booking.com/dp/kyo-machiya-gion",
+      "title": "Gion Machiya Tsubaki, Kyoto - $310 per night",
+      "snippet": "Whole restored townhouse in Gion, 9.8/10 from 410 reviews. Sleeps 4, private garden, cypress bath.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "gion machiya",
+        "kyoto townhouse",
+        "machiya tsubaki",
+        "kyoto family stay"
+      ]
+    },
+    {
+      "url": "http://booking.com/dp/kyo-arashiyama-ryokan",
+      "title": "Arashiyama Riverside Ryokan, Kyoto - $480 per night, half board",
+      "snippet": "River-view tatami room with outdoor bath, kaiseki dinner and breakfast for two. 9.8/10 from 320 reviews.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "arashiyama ryokan",
+        "kyoto ryokan kaiseki",
+        "ryokan with private onsen"
+      ]
+    },
+    {
+      "url": "http://booking.com/dp/mex-roma-boutique",
+      "title": "Casa Jacaranda, Mexico City - $156 per night",
+      "snippet": "Twelve-room boutique hotel in Roma Norte, 9.3/10 from 610 reviews. Courtyard breakfast included.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "casa jacaranda",
+        "roma norte hotel",
+        "mexico city boutique hotel",
+        "cdmx hotel"
+      ]
+    },
+    {
+      "url": "http://booking.com/dp/mex-condesa-loft",
+      "title": "Condesa Park Loft, Mexico City - $98 per night",
+      "snippet": "One-bedroom loft facing Parque Mexico with a desk and 400 Mbps fibre. 8.7/10 from 370 reviews.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "condesa loft",
+        "mexico city apartment",
+        "condesa apartment",
+        "work from mexico city"
+      ]
+    },
+    {
+      "url": "http://booking.com/dp/rey-harbour-hotel",
+      "title": "Reykjavik Old Harbour Hotel - $249 per night",
+      "snippet": "4-star hotel by the whale-watching pier, 8.8/10 from 510 reviews. Breakfast and geothermal hot tub included.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "reykjavik hotel",
+        "old harbour hotel",
+        "iceland hotel",
+        "reykjavik 4 star"
+      ]
+    },
+    {
+      "url": "http://booking.com/dp/rey-guesthouse-ada",
+      "title": "Guesthouse Ada, Reykjavik - $112 per night",
+      "snippet": "Family-run six-room guesthouse in Vesturbaer with free parking, 8.6/10 from 620 reviews.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "reykjavik guesthouse",
+        "guesthouse ada",
+        "cheap reykjavik stay",
+        "reykjavik free parking"
+      ]
+    },
+    {
+      "url": "http://booking.com/dp/nyc-brooklyn-brownstone",
+      "title": "Fort Greene Brownstone Suite, Brooklyn - $215 per night",
+      "snippet": "Garden floor of an 1880s brownstone, sleeps 3, 9.4/10 from 310 reviews. Free cancellation until 7 days before.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "brooklyn brownstone",
+        "fort greene stay",
+        "brooklyn apartment",
+        "new york garden apartment"
+      ]
+    },
+    {
+      "url": "http://booking.com/orders",
+      "title": "My bookings - Booking.com",
+      "snippet": "Every reservation made by the signed-in account, with confirmation code and status.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "my bookings",
+        "reservations",
+        "booking history"
+      ]
+    }
   ]
 }

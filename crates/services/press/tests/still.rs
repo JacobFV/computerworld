@@ -11,56 +11,59 @@ use cw_web::{Strictness, Viewport};
 use serde_json::Value;
 use std::path::PathBuf;
 
-const SITES: &[(&str, &str)] = &[
-    (
-        "nytimes",
-        include_str!("../../../../worlds/internet/sites/nytimes.json"),
-    ),
-    (
-        "bbc",
-        include_str!("../../../../worlds/internet/sites/bbc.json"),
-    ),
-    (
-        "cnn",
-        include_str!("../../../../worlds/internet/sites/cnn.json"),
-    ),
-    (
-        "reuters",
-        include_str!("../../../../worlds/internet/sites/reuters.json"),
-    ),
-    (
-        "theverge",
-        include_str!("../../../../worlds/internet/sites/theverge.json"),
-    ),
-    (
-        "arstechnica",
-        include_str!("../../../../worlds/internet/sites/arstechnica.json"),
-    ),
-    (
-        "google-news",
-        include_str!("../../../../worlds/internet/sites/google-news.json"),
-    ),
-    (
-        "medium",
-        include_str!("../../../../worlds/internet/sites/medium.json"),
-    ),
-    (
-        "substack",
-        include_str!("../../../../worlds/internet/sites/substack.json"),
-    ),
-    (
-        "alice-blog",
-        include_str!("../../../../worlds/company-2026/sites/alice-blog.json"),
-    ),
-    (
-        "bob-blog",
-        include_str!("../../../../worlds/company-2026/sites/bob-blog.json"),
-    ),
-    (
-        "northstar-eng",
-        include_str!("../../../../worlds/company-2026/sites/northstar-eng.json"),
-    ),
-];
+static SITES: std::sync::LazyLock<Vec<(&'static str, &'static str)>> =
+    std::sync::LazyLock::new(|| {
+        vec![
+            (
+                "nytimes",
+                cw_service_common::reference::reference_site_json("nytimes"),
+            ),
+            (
+                "bbc",
+                cw_service_common::reference::reference_site_json("bbc"),
+            ),
+            (
+                "cnn",
+                cw_service_common::reference::reference_site_json("cnn"),
+            ),
+            (
+                "reuters",
+                cw_service_common::reference::reference_site_json("reuters"),
+            ),
+            (
+                "theverge",
+                cw_service_common::reference::reference_site_json("theverge"),
+            ),
+            (
+                "arstechnica",
+                cw_service_common::reference::reference_site_json("arstechnica"),
+            ),
+            (
+                "google-news",
+                cw_service_common::reference::reference_site_json("google-news"),
+            ),
+            (
+                "medium",
+                cw_service_common::reference::reference_site_json("medium"),
+            ),
+            (
+                "substack",
+                cw_service_common::reference::reference_site_json("substack"),
+            ),
+            (
+                "alice-blog",
+                include_str!("../../../../worlds/company-2026/sites/alice-blog.json"),
+            ),
+            (
+                "bob-blog",
+                include_str!("../../../../worlds/company-2026/sites/bob-blog.json"),
+            ),
+            (
+                "northstar-eng",
+                include_str!("../../../../worlds/company-2026/sites/northstar-eng.json"),
+            ),
+        ]
+    });
 
 fn render(html: &str, file: &str, viewport: Viewport) {
     let doc = cw_web::html::parse(html);
@@ -144,10 +147,10 @@ fn press_site_stills() {
         scale: 1,
         zoom: 100,
     };
-    for (site, source) in SITES {
+    for (site, source) in SITES.iter().copied() {
         if only
             .as_deref()
-            .is_some_and(|o| !o.split(',').any(|s| s == *site))
+            .is_some_and(|o| !o.split(',').any(|s| s == site))
         {
             continue;
         }

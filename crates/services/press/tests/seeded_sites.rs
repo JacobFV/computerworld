@@ -9,56 +9,59 @@ use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_service_press::PressService;
 use cw_web::dom::Document as Dom;
 use serde_json::Value;
-const SITES: &[(&str, &str)] = &[
-    (
-        "reuters",
-        include_str!("../../../../worlds/internet/sites/reuters.json"),
-    ),
-    (
-        "theverge",
-        include_str!("../../../../worlds/internet/sites/theverge.json"),
-    ),
-    (
-        "arstechnica",
-        include_str!("../../../../worlds/internet/sites/arstechnica.json"),
-    ),
-    (
-        "alice-blog",
-        include_str!("../../../../worlds/company-2026/sites/alice-blog.json"),
-    ),
-    (
-        "bob-blog",
-        include_str!("../../../../worlds/company-2026/sites/bob-blog.json"),
-    ),
-    (
-        "northstar-eng",
-        include_str!("../../../../worlds/company-2026/sites/northstar-eng.json"),
-    ),
-    (
-        "nytimes",
-        include_str!("../../../../worlds/internet/sites/nytimes.json"),
-    ),
-    (
-        "bbc",
-        include_str!("../../../../worlds/internet/sites/bbc.json"),
-    ),
-    (
-        "cnn",
-        include_str!("../../../../worlds/internet/sites/cnn.json"),
-    ),
-    (
-        "google-news",
-        include_str!("../../../../worlds/internet/sites/google-news.json"),
-    ),
-    (
-        "medium",
-        include_str!("../../../../worlds/internet/sites/medium.json"),
-    ),
-    (
-        "substack",
-        include_str!("../../../../worlds/internet/sites/substack.json"),
-    ),
-];
+static SITES: std::sync::LazyLock<Vec<(&'static str, &'static str)>> =
+    std::sync::LazyLock::new(|| {
+        vec![
+            (
+                "reuters",
+                cw_service_common::reference::reference_site_json("reuters"),
+            ),
+            (
+                "theverge",
+                cw_service_common::reference::reference_site_json("theverge"),
+            ),
+            (
+                "arstechnica",
+                cw_service_common::reference::reference_site_json("arstechnica"),
+            ),
+            (
+                "alice-blog",
+                include_str!("../../../../worlds/company-2026/sites/alice-blog.json"),
+            ),
+            (
+                "bob-blog",
+                include_str!("../../../../worlds/company-2026/sites/bob-blog.json"),
+            ),
+            (
+                "northstar-eng",
+                include_str!("../../../../worlds/company-2026/sites/northstar-eng.json"),
+            ),
+            (
+                "nytimes",
+                cw_service_common::reference::reference_site_json("nytimes"),
+            ),
+            (
+                "bbc",
+                cw_service_common::reference::reference_site_json("bbc"),
+            ),
+            (
+                "cnn",
+                cw_service_common::reference::reference_site_json("cnn"),
+            ),
+            (
+                "google-news",
+                cw_service_common::reference::reference_site_json("google-news"),
+            ),
+            (
+                "medium",
+                cw_service_common::reference::reference_site_json("medium"),
+            ),
+            (
+                "substack",
+                cw_service_common::reference::reference_site_json("substack"),
+            ),
+        ]
+    });
 fn raw(id: &str) -> &'static str {
     SITES
         .iter()
@@ -134,7 +137,7 @@ fn ids(state: &Value) -> Vec<String> {
 }
 #[test]
 fn every_page_a_seed_names_resolves_on_every_publication() {
-    for (name, source) in SITES {
+    for &(name, source) in SITES.iter() {
         let (mut state, origin, entries) = site(source);
         let blog = state["layout"] == "blog";
         let front = page(&mut state, &format!("{origin}/"));
@@ -274,7 +277,7 @@ fn every_page_a_seed_names_resolves_on_every_publication() {
 }
 #[test]
 fn a_reader_can_comment_save_follow_and_subscribe_on_every_publication() {
-    for (name, source) in SITES {
+    for &(name, source) in SITES.iter() {
         let (mut state, origin, _) = site(source);
         let id = ids(&state)
             .into_iter()
@@ -437,7 +440,7 @@ fn the_storylines_the_content_bible_pins_are_present() {
             .unwrap()
             .contains("youtube.com/watch?v=atlas-walkthrough")));
     // Storyline 1 keeps the release code to the doc, the mail and the tracker; not in the press.
-    for (name, source) in SITES {
+    for &(name, source) in SITES.iter() {
         assert!(
             !source.contains("ATLAS-2026"),
             "{name} leaks the release code"

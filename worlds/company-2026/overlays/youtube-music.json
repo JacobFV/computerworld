@@ -1,0 +1,133 @@
+{
+  "initial_state": {
+    "playlists": {
+      "ship-it": {
+        "id": "ship-it",
+        "title": "Ship It",
+        "items": [
+          "cold-start",
+          "green-build",
+          "rollback",
+          "fan-out",
+          "mutex",
+          "backpressure",
+          "tail-latency",
+          "p99",
+          "puget",
+          "ferry-terminal",
+          "tiling"
+        ],
+        "owner": "carol"
+      },
+      "deep-focus": {
+        "id": "deep-focus",
+        "title": "Deep Focus",
+        "items": [
+          "cold-start",
+          "p99",
+          "tiling",
+          "seedless"
+        ],
+        "owner": "alice"
+      },
+      "morning-commute": {
+        "id": "morning-commute",
+        "title": "Morning Commute",
+        "items": [
+          "fan-out",
+          "puget",
+          "mark-and-sweep",
+          "stop-the-world",
+          "mutex"
+        ],
+        "owner": "bob"
+      }
+    },
+    "subscriptions": {
+      "alice": [
+        "tessellate",
+        "cache-miss"
+      ],
+      "carol": [
+        "low-latency"
+      ],
+      "bob": [
+        "byte-order"
+      ]
+    },
+    "likes": {
+      "alice": [
+        "tiling",
+        "cold-reads",
+        "mark-and-sweep"
+      ],
+      "carol": [
+        "backpressure",
+        "fan-out"
+      ],
+      "bob": [
+        "little-endian"
+      ]
+    },
+    "library": {
+      "alice": [
+        "tiling",
+        "seedless",
+        "cold-start",
+        "green-build",
+        "rollback",
+        "mark-and-sweep",
+        "puget",
+        "cold-reads",
+        "warm-cache"
+      ],
+      "carol": [
+        "backpressure",
+        "tail-latency",
+        "p99",
+        "fan-out",
+        "mutex",
+        "cold-start"
+      ],
+      "bob": [
+        "fan-out",
+        "mutex",
+        "little-endian"
+      ]
+    },
+    "history": {
+      "alice": [
+        "tiling",
+        "cold-reads",
+        "cold-start",
+        "p99",
+        "puget",
+        "mark-and-sweep"
+      ],
+      "carol": [
+        "cold-start",
+        "backpressure",
+        "fan-out",
+        "little-endian"
+      ],
+      "bob": [
+        "mutex",
+        "big-endian"
+      ]
+    },
+    "devices": {
+      "livingroom": {
+        "url": "http://livingroom.speaker.internal/"
+      },
+      "kitchen": {
+        "url": "http://kitchen.speaker.internal/"
+      },
+      "office-tv": {
+        "url": "http://office-tv.speaker.internal/"
+      },
+      "bedroom": {
+        "url": "http://bedroom.speaker.internal/"
+      }
+    }
+  }
+}

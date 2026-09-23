@@ -18,35 +18,7 @@
       "muted": "#5a5a5a",
       "content_width": 1000
     },
-    "accounts": {
-      "chk-4417": {
-        "id": "chk-4417",
-        "owner": "alice",
-        "kind": "checking",
-        "name": "Everyday Checking (...4417)",
-        "balance_cents": 812455,
-        "available_cents": 812455,
-        "limit_cents": 0
-      },
-      "sav-9902": {
-        "id": "sav-9902",
-        "owner": "alice",
-        "kind": "savings",
-        "name": "Reserve Savings (...9902)",
-        "balance_cents": 1450000,
-        "available_cents": 1450000,
-        "limit_cents": 0
-      },
-      "cc-3310": {
-        "id": "cc-3310",
-        "owner": "alice",
-        "kind": "credit",
-        "name": "Horizon Card (...3310)",
-        "balance_cents": -52051,
-        "available_cents": 947949,
-        "limit_cents": 1000000
-      }
-    },
+    "accounts": {},
     "transactions": {
       "tx-1": {
         "id": "tx-1",
@@ -65,7 +37,6 @@
         "account": "chk-4417",
         "tick": 0,
         "date": "2026-02-27",
-        "merchant": "NORTHSTAR PAYROLL",
         "category": "Income",
         "amount_cents": 512000,
         "memo": "Salary, February",

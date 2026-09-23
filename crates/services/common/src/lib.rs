@@ -6,6 +6,8 @@
 #[cfg(any(test, feature = "validate"))]
 pub mod audit;
 pub mod html;
+#[cfg(feature = "validate")]
+pub mod reference;
 use cw_protocol::{
     HttpRequest, HttpResponse, Page, PageAction, PageElement, PageTheme, Result, SimError, Style,
 };

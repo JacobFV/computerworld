@@ -1,0 +1,151 @@
+{
+  "initial_state": {
+    "products": {
+      "ride-uberx-annex-airport": {
+        "description": "Everyday ride from the Northstar Bridgetown Annex to the airport. The estimate assumes the I-84 route; surge is shown before you confirm. Nearest driver is usually 3-5 minutes away on a weekday afternoon."
+      },
+      "eats-hawthorne-burger": {
+        "reviews": [
+          {
+            "id": "rv-1",
+            "author": "alice",
+            "stars": 4,
+            "title": "Arrived hot",
+            "body": "Twenty-two minutes to the Annex and the fries were still crisp, which is rare.",
+            "tick": 6
+          }
+        ]
+      },
+      "eats-ramen-mississippi": {
+        "reviews": [
+          {
+            "id": "rv-2",
+            "author": "carol",
+            "stars": 5,
+            "title": "The separate tubs work",
+            "body": "Noodles were still springy after a thirty-minute ride. Best delivery ramen I have had.",
+            "tick": 8
+          }
+        ]
+      }
+    },
+    "carts": {
+      "bob": {
+        "eats-pizza-alberta": 1,
+        "eats-hawthorne-burger": 1
+      }
+    },
+    "orders": {
+      "trip-8f3a1c": {
+        "id": "trip-8f3a1c",
+        "buyer": "alice",
+        "tick": 2,
+        "date": "2026-03-01",
+        "items": [
+          {
+            "product": "ride-uberx-annex-hq",
+            "title": "UberX - Portland Union Station to Bridgetown Annex (11 min, 2.8 mi, driver Teodor, 4.96)",
+            "qty": 1,
+            "price_cents": 1420
+          }
+        ],
+        "total_cents": 1620,
+        "status": "Completed, $2.00 tip added",
+        "confirmation": "TRP-C4W9HN",
+        "seats": [],
+        "venue": ""
+      },
+      "trip-9b02d7": {
+        "id": "trip-9b02d7",
+        "buyer": "alice",
+        "tick": 3,
+        "date": "2026-03-02",
+        "items": [
+          {
+            "product": "ride-comfort-annex-airport",
+            "title": "Comfort - Bridgetown Annex to Portland Airport (27 min, 12.1 mi, driver Yolanda, 4.98)",
+            "qty": 1,
+            "price_cents": 4185
+          }
+        ],
+        "total_cents": 4685,
+        "status": "Completed, $5.00 tip added",
+        "confirmation": "TRP-M7K2QD",
+        "seats": [],
+        "venue": ""
+      },
+      "eats-1042977": {
+        "id": "eats-1042977",
+        "buyer": "alice",
+        "tick": 6,
+        "date": "2026-03-09",
+        "items": [
+          {
+            "product": "eats-hawthorne-burger",
+            "title": "Hawthorne Burger Co. - Double smash burger combo",
+            "qty": 1,
+            "price_cents": 1650
+          },
+          {
+            "product": "eats-tacos-division",
+            "title": "Taqueria Division - Three al pastor tacos with rice and beans",
+            "qty": 1,
+            "price_cents": 1425
+          }
+        ],
+        "total_cents": 3873,
+        "status": "Delivered, 24 min (fees $4.98, tip $3.00, courier Priyanka)",
+        "confirmation": "EAT-X8N3FP",
+        "seats": [],
+        "venue": ""
+      },
+      "trip-a17e40": {
+        "id": "trip-a17e40",
+        "buyer": "bob",
+        "tick": 8,
+        "date": "2026-03-12",
+        "items": [
+          {
+            "product": "ride-xl-pearl-hawthorne",
+            "title": "UberXL - Pearl District to Hawthorne (17 min, 4.4 mi, driver Sam, 4.91)",
+            "qty": 1,
+            "price_cents": 2690
+          }
+        ],
+        "total_cents": 2690,
+        "status": "Completed",
+        "confirmation": "TRP-Q2ZD8L",
+        "seats": [],
+        "venue": ""
+      }
+    },
+    "favorites": {
+      "alice": [
+        "eats-ramen-mississippi",
+        "reserve-black-airport"
+      ],
+      "bob": [
+        "eats-pizza-alberta"
+      ],
+      "carol": [
+        "eats-thai-belmont",
+        "eats-ramen-mississippi"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://uber.com/orders/trip-9b02d7",
+      "title": "Trip receipt trip-9b02d7 - Comfort to Portland Airport, $46.85",
+      "snippet": "2 March 2026, 27 minutes, 12.1 miles, driver Yolanda. Fare $41.85 plus a $5.00 tip.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "uber receipt",
+        "trip receipt",
+        "airport trip receipt",
+        "trip-9b02d7"
+      ]
+    }
+  ]
+}

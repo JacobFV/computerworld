@@ -11,8 +11,10 @@ use cw_web::{Strictness, Viewport};
 use serde_json::Value;
 use std::path::PathBuf;
 
-const NORTHWIND: &str = include_str!("../../../../worlds/internet/sites/northwind.json");
-const PAYPAL: &str = include_str!("../../../../worlds/internet/sites/paypal.json");
+static NORTHWIND: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("northwind"));
+static PAYPAL: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("paypal"));
 
 fn render(html: &str, file: &str, viewport: Viewport) {
     let doc = cw_web::html::parse(html);
@@ -76,8 +78,8 @@ fn bank_site_stills() {
         zoom: 100,
     };
     for (site, host, name) in [
-        (NORTHWIND, "northwind.example", "northwind"),
-        (PAYPAL, "paypal.com", "paypal"),
+        (*NORTHWIND, "northwind.example", "northwind"),
+        (*PAYPAL, "paypal.com", "paypal"),
     ] {
         let seed: Value = serde_json::from_str(site).unwrap();
         let mut state = BankService

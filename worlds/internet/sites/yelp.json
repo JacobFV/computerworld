@@ -32,33 +32,6 @@
       "content_width": 1000
     },
     "members": {
-      "alice_c": {
-        "handle": "alice_c",
-        "name": "Alice C.",
-        "actor": "alice",
-        "reputation": 412,
-        "flair": "Elite '26",
-        "bio": "Portland-ish, coffee first, opinions second.",
-        "site": ""
-      },
-      "bob_m": {
-        "handle": "bob_m",
-        "name": "Bob M.",
-        "actor": "bob",
-        "reputation": 188,
-        "flair": "",
-        "bio": "I review the places I actually go back to.",
-        "site": ""
-      },
-      "carol_n": {
-        "handle": "carol_n",
-        "name": "Carol N.",
-        "actor": "carol",
-        "reputation": 96,
-        "flair": "",
-        "bio": "Mostly lunch spots near the office.",
-        "site": ""
-      },
       "dana_eats": {
         "handle": "dana_eats",
         "name": "Dana R.",
@@ -75,15 +48,6 @@
         "reputation": 720,
         "flair": "Elite '26",
         "bio": "Cyclist, brunch enthusiast, harsh on parking.",
-        "site": ""
-      },
-      "priya_r": {
-        "handle": "priya_r",
-        "name": "Priya R.",
-        "actor": null,
-        "reputation": 265,
-        "flair": "",
-        "bio": "Vegetarian. If the menu has one option, I will find it.",
         "site": ""
       },
       "the_ostrowskis": {
@@ -120,15 +84,6 @@
         "reputation": 33,
         "flair": "",
         "bio": "I only write reviews when something was either very good or very bad.",
-        "site": ""
-      },
-      "nguyen_family": {
-        "handle": "nguyen_family",
-        "name": "Linh N.",
-        "actor": null,
-        "reputation": 210,
-        "flair": "",
-        "bio": "Dentist appointments, oil changes, and dim sum: the essentials.",
         "site": ""
       }
     },
@@ -199,68 +154,12 @@
             "comments": []
           },
           {
-            "id": "r-101",
-            "author": "alice_c",
-            "parent": null,
-            "body": "****. 4/5. Excellent food, tight room - if you are seated by the door you will feel every arrival. Ask for the back.",
-            "tick": 5,
-            "score": 13,
-            "comments": []
-          },
-          {
             "id": "r-102",
             "author": "tomas_k",
             "parent": null,
             "body": "***** 5/5. Went for an anniversary. They remembered from the booking note and brought a small dessert. Little things.",
             "tick": 8,
             "score": 15,
-            "comments": []
-          }
-        ]
-      },
-      "t-1001": {
-        "id": "t-1001",
-        "board": "restaurants",
-        "author": "priya_r",
-        "title": "Saffron & Sage - Belmont",
-        "body": "Saffron & Sage\n3320 SE Belmont St, Belmont, Rosewood OR 97210\nHours: Daily 11:30-21:30\nPrice: $$   Rating: 4.4 stars (3 reviews)\n\nSouthern Indian, mostly vegetarian, dosas to order. Lunch thali is the move. Cash and cards, no reservations.",
-        "url": null,
-        "tags": [
-          "indian",
-          "vegetarian",
-          "lunch",
-          "dosa"
-        ],
-        "tick": 4,
-        "score": 71,
-        "views": 4880,
-        "accepted": null,
-        "replies": [
-          {
-            "id": "r-103",
-            "author": "priya_r",
-            "parent": null,
-            "body": "***** 5/5. Finally a place where the vegetarian menu is the menu. Masala dosa is crisp edge to edge; the sambar has real tamarind sourness.",
-            "tick": 4,
-            "score": 15,
-            "comments": []
-          },
-          {
-            "id": "r-104",
-            "author": "bob_m",
-            "parent": null,
-            "body": "****. 4/5. Thali is enormous for the price. Chai is sweet by default, ask for less sugar.",
-            "tick": 6,
-            "score": 14,
-            "comments": []
-          },
-          {
-            "id": "r-105",
-            "author": "the_ostrowskis",
-            "parent": null,
-            "body": "****. 4/5. Kids demolished the plain dosas. Busy at 12:30 on weekdays; come at noon.",
-            "tick": 9,
-            "score": 13,
             "comments": []
           }
         ]
@@ -337,15 +236,6 @@
             "tick": 6,
             "score": 17,
             "comments": []
-          },
-          {
-            "id": "r-110",
-            "author": "carol_n",
-            "parent": null,
-            "body": "****. 4/5. Solid weeknight pizza, ready in fifteen when you call ahead. Pepperoni cups nicely.",
-            "tick": 8,
-            "score": 12,
-            "comments": []
           }
         ]
       },
@@ -384,71 +274,6 @@
             "tick": 9,
             "score": 16,
             "comments": []
-          },
-          {
-            "id": "r-113",
-            "author": "bob_m",
-            "parent": null,
-            "body": "****. 4/5. Great tacos, limited seating, the parking lot is chaos. Walk or bike.",
-            "tick": 11,
-            "score": 15,
-            "comments": []
-          },
-          {
-            "id": "r-114",
-            "author": "nguyen_family",
-            "parent": null,
-            "body": "***** 5/5. Best value meal in the city. Horchata is house-made.",
-            "tick": 12,
-            "score": 15,
-            "comments": []
-          }
-        ]
-      },
-      "t-1005": {
-        "id": "t-1005",
-        "board": "coffee",
-        "author": "alice_c",
-        "title": "Northlight Coffee Roasters - Alder District",
-        "body": "Northlight Coffee Roasters\n1180 NW Kearney St, Alder District, Rosewood OR 97210\nHours: Mon-Fri 06:30-17:00, Sat-Sun 07:30-16:00\nPrice: $$   Rating: 4.6 stars (3 reviews)\n\nIn-house roaster, single-origin pour-overs, a few pastries from the bakery next door. Plenty of outlets, decent wifi, no laptops at the window bar after 11.",
-        "url": null,
-        "tags": [
-          "coffee",
-          "roaster",
-          "wifi",
-          "pour-over"
-        ],
-        "tick": 2,
-        "score": 102,
-        "views": 8410,
-        "accepted": null,
-        "replies": [
-          {
-            "id": "r-115",
-            "author": "alice_c",
-            "parent": null,
-            "body": "***** 5/5. The Ethiopian pour-over changed my mind about light roasts. Staff will talk beans with you for as long as you want and no longer.",
-            "tick": 2,
-            "score": 17,
-            "comments": []
-          },
-          {
-            "id": "r-116",
-            "author": "marcus_pdx",
-            "parent": null,
-            "body": "****. 4/5. Excellent espresso, good work spot before ten. The no-laptop window rule is fair and enforced.",
-            "tick": 4,
-            "score": 12,
-            "comments": []
-          },
-          {
-            "id": "r-117",
-            "author": "tomas_k",
-            "parent": null,
-            "body": "***** 5/5. Consistent. I have had maybe two hundred flat whites here and one was bad.",
-            "tick": 13,
-            "score": 16,
-            "comments": []
           }
         ]
       },
@@ -476,53 +301,6 @@
             "body": "****. 4/5. Quietest room in the neighbourhood. Oolong flight is the way in if you do not know what you like yet.",
             "tick": 8,
             "score": 12,
-            "comments": []
-          },
-          {
-            "id": "r-119",
-            "author": "priya_r",
-            "parent": null,
-            "body": "***** 5/5. Masala chai made properly, with whole spices, not syrup. Rare.",
-            "tick": 10,
-            "score": 17,
-            "comments": []
-          }
-        ]
-      },
-      "t-1007": {
-        "id": "t-1007",
-        "board": "coffee",
-        "author": "carol_n",
-        "title": "Second Shift Bakery & Espresso - Hawthorne",
-        "body": "Second Shift Bakery & Espresso\n1935 SE Hawthorne Blvd, Hawthorne, Rosewood OR 97210\nHours: Tue-Sun 07:00-14:00, closed Mon\nPrice: $   Rating: 4.4 stars (2 reviews)\n\nSourdough, morning buns, cardamom knots. Espresso from Northlight beans. Sells out of buns by ten on weekends.",
-        "url": null,
-        "tags": [
-          "bakery",
-          "coffee",
-          "breakfast",
-          "pastry"
-        ],
-        "tick": 9,
-        "score": 57,
-        "views": 3620,
-        "accepted": null,
-        "replies": [
-          {
-            "id": "r-120",
-            "author": "carol_n",
-            "parent": null,
-            "body": "***** 5/5. Cardamom knot is worth setting an alarm for. Coffee is good; the pastries are the reason to come.",
-            "tick": 9,
-            "score": 16,
-            "comments": []
-          },
-          {
-            "id": "r-121",
-            "author": "the_ostrowskis",
-            "parent": null,
-            "body": "****. 4/5. Weekend line is long but the kids can watch the bakers through the window. Get there before nine.",
-            "tick": 11,
-            "score": 15,
             "comments": []
           }
         ]
@@ -552,24 +330,6 @@
             "body": "***** 5/5. Forty years around garages and this is one of the good ones. Estimate matched the invoice to the dollar. They showed me the worn pads.",
             "tick": 3,
             "score": 18,
-            "comments": []
-          },
-          {
-            "id": "r-123",
-            "author": "nguyen_family",
-            "parent": null,
-            "body": "***** 5/5. Called with a diagnosis, quoted a price, done same day. Did not upsell the cabin filter.",
-            "tick": 6,
-            "score": 17,
-            "comments": []
-          },
-          {
-            "id": "r-124",
-            "author": "bob_m",
-            "parent": null,
-            "body": "****. 4/5. Fair and quick. Waiting room is a bench and a coffee pot, so plan to leave the car.",
-            "tick": 14,
-            "score": 14,
             "comments": []
           }
         ]
@@ -611,173 +371,6 @@
           }
         ]
       },
-      "t-1010": {
-        "id": "t-1010",
-        "board": "health",
-        "author": "nguyen_family",
-        "title": "Bridgetown Family Dental - Alder District",
-        "body": "Bridgetown Family Dental\n920 NW Lovejoy St, Suite 210, Alder District, Rosewood OR 97210\nHours: Mon-Thu 07:30-17:00, Fri 07:30-13:00\nPrice: $$$   Rating: 4.7 stars (3 reviews)\n\nGeneral and paediatric dentistry, three hygienists, evening slots on Tuesdays. Takes most insurance; upfront pricing for the rest.",
-        "url": null,
-        "tags": [
-          "dentist",
-          "family",
-          "insurance"
-        ],
-        "tick": 4,
-        "score": 66,
-        "views": 3420,
-        "accepted": null,
-        "replies": [
-          {
-            "id": "r-127",
-            "author": "nguyen_family",
-            "parent": null,
-            "body": "***** 5/5. Three kids, zero tears. The hygienist explained every tool before using it. Front desk sorted the insurance before we sat down.",
-            "tick": 4,
-            "score": 15,
-            "comments": []
-          },
-          {
-            "id": "r-128",
-            "author": "alice_c",
-            "parent": null,
-            "body": "***** 5/5. Painless cleaning, no lecture, no invented cavities. Tuesday evening slots are a gift for anyone with a job.",
-            "tick": 7,
-            "score": 18,
-            "comments": []
-          },
-          {
-            "id": "r-129",
-            "author": "bob_m",
-            "parent": null,
-            "body": "****. 4/5. Good dentist, expensive without insurance - ask for the cash price before agreeing to X-rays.",
-            "tick": 13,
-            "score": 13,
-            "comments": []
-          }
-        ]
-      },
-      "t-1011": {
-        "id": "t-1011",
-        "board": "health",
-        "author": "priya_r",
-        "title": "Eastside Physio & Sports Clinic - Hawthorne",
-        "body": "Eastside Physio & Sports Clinic\n2210 SE Hawthorne Blvd, Hawthorne, Rosewood OR 97210\nHours: Mon-Fri 07:00-19:00, Sat 08:00-12:00\nPrice: $$   Rating: 4.6 stars (2 reviews)\n\nPhysiotherapy, running gait analysis, post-surgery rehab. Direct billing for most plans.",
-        "url": null,
-        "tags": [
-          "physio",
-          "sports",
-          "rehab",
-          "running"
-        ],
-        "tick": 12,
-        "score": 41,
-        "views": 2160,
-        "accepted": null,
-        "replies": [
-          {
-            "id": "r-130",
-            "author": "priya_r",
-            "parent": null,
-            "body": "***** 5/5. Fixed a knee two other clinics had given up on. Homework is specific and they check you actually did it.",
-            "tick": 12,
-            "score": 15,
-            "comments": []
-          },
-          {
-            "id": "r-131",
-            "author": "marcus_pdx",
-            "parent": null,
-            "body": "****. 4/5. Gait analysis found a shoe problem in ten minutes. Slightly pricey but I stopped hurting.",
-            "tick": 14,
-            "score": 14,
-            "comments": []
-          }
-        ]
-      },
-      "t-1012": {
-        "id": "t-1012",
-        "board": "fitness",
-        "author": "bob_m",
-        "title": "Ironwood Climbing Gym - St. Johns",
-        "body": "Ironwood Climbing Gym\n7311 N Burlington Ave, St. Johns, Rosewood OR 97210\nHours: Mon-Fri 06:00-23:00, Sat-Sun 08:00-22:00\nPrice: $$   Rating: 4.5 stars (3 reviews)\n\nBouldering and top-rope, resets weekly, a decent weight room. Beginner intro every Saturday morning. Monthly from 79 dollars.",
-        "url": null,
-        "tags": [
-          "climbing",
-          "gym",
-          "bouldering"
-        ],
-        "tick": 5,
-        "score": 59,
-        "views": 3880,
-        "accepted": null,
-        "replies": [
-          {
-            "id": "r-132",
-            "author": "bob_m",
-            "parent": null,
-            "body": "***** 5/5. Weekly resets keep it interesting and the setters grade honestly. Weight room is a real one, not an afterthought.",
-            "tick": 5,
-            "score": 16,
-            "comments": []
-          },
-          {
-            "id": "r-133",
-            "author": "sofia.l",
-            "parent": null,
-            "body": "****. 4/5. Did the Saturday intro with no experience and was climbing by lunch. Evenings are packed; mornings are empty.",
-            "tick": 9,
-            "score": 13,
-            "comments": []
-          },
-          {
-            "id": "r-134",
-            "author": "tomas_k",
-            "parent": null,
-            "body": "****. 4/5. Good gym, showers are cold about one visit in five.",
-            "tick": 17,
-            "score": 13,
-            "comments": []
-          }
-        ]
-      },
-      "t-1013": {
-        "id": "t-1013",
-        "board": "fitness",
-        "author": "carol_n",
-        "title": "Stillwater Yoga - Belmont",
-        "body": "Stillwater Yoga\n3502 SE Belmont St, Belmont, Rosewood OR 97210\nHours: Daily 06:00-20:30\nPrice: $$   Rating: 4.4 stars (2 reviews)\n\nVinyasa, yin, a 06:15 class for the commuters. First week free, then class packs or monthly. Mats provided.",
-        "url": null,
-        "tags": [
-          "yoga",
-          "fitness",
-          "morning"
-        ],
-        "tick": 13,
-        "score": 36,
-        "views": 2050,
-        "accepted": null,
-        "replies": [
-          {
-            "id": "r-135",
-            "author": "carol_n",
-            "parent": null,
-            "body": "***** 5/5. The 06:15 class is the only reason I am functional at 09:00 meetings. Teachers adjust without fuss.",
-            "tick": 13,
-            "score": 16,
-            "comments": []
-          },
-          {
-            "id": "r-136",
-            "author": "dana_eats",
-            "parent": null,
-            "body": "****. 4/5. Warm, small studio; the yin class on Sundays is a reset. Book the popular slots a day ahead.",
-            "tick": 15,
-            "score": 15,
-            "comments": []
-          }
-        ]
-      },
       "t-1014": {
         "id": "t-1014",
         "board": "fitness",
@@ -815,69 +408,10 @@
             "comments": []
           }
         ]
-      },
-      "t-1015": {
-        "id": "t-1015",
-        "board": "home",
-        "author": "alice_c",
-        "title": "Reliant Plumbing Co. - Foster-Powell",
-        "body": "Reliant Plumbing Co.\n6480 SE Foster Rd, Foster-Powell, Rosewood OR 97210\nHours: Mon-Fri 07:00-18:00, 24h emergency line\nPrice: $$$   Rating: 4.6 stars (3 reviews)\n\nLicensed and bonded, residential plumbing, water heaters, drain camera. Flat call-out fee credited toward the repair.",
-        "url": null,
-        "tags": [
-          "plumber",
-          "emergency",
-          "water-heater"
-        ],
-        "tick": 6,
-        "score": 47,
-        "views": 2620,
-        "accepted": null,
-        "replies": [
-          {
-            "id": "r-139",
-            "author": "alice_c",
-            "parent": null,
-            "body": "***** 5/5. Sunday night water heater failure, at the door by nine on Monday, done by noon. Price was what they said on the phone.",
-            "tick": 6,
-            "score": 17,
-            "comments": []
-          },
-          {
-            "id": "r-140",
-            "author": "nguyen_family",
-            "parent": null,
-            "body": "****. 4/5. Cleared a drain two others could not. Not cheap, but the camera showed exactly what the problem was.",
-            "tick": 10,
-            "score": 14,
-            "comments": []
-          },
-          {
-            "id": "r-141",
-            "author": "tomas_k",
-            "parent": null,
-            "body": "***** 5/5. Called before arriving, wore shoe covers, cleaned up. Rare combination.",
-            "tick": 18,
-            "score": 17,
-            "comments": []
-          }
-        ]
       }
     },
     "votes": {},
-    "subscriptions": {
-      "alice": [
-        "coffee",
-        "restaurants"
-      ],
-      "bob": [
-        "auto",
-        "fitness"
-      ],
-      "carol": [
-        "restaurants",
-        "fitness"
-      ]
-    },
+    "subscriptions": {},
     "next_id": 2000
   },
   "search_entries": [
@@ -1001,36 +535,6 @@
       ]
     },
     {
-      "url": "http://yelp.com/r/restaurants/comments/t-1001",
-      "title": "Saffron & Sage - Belmont - Yelp",
-      "snippet": "4.4 stars. Southern Indian, mostly vegetarian, dosas to order. Lunch thali.",
-      "vertical": "all",
-      "authority": 5,
-      "keywords": [
-        "saffron and sage",
-        "indian",
-        "vegetarian",
-        "dosa",
-        "belmont",
-        "thali"
-      ]
-    },
-    {
-      "url": "http://yelp.com/r/coffee/comments/t-1005",
-      "title": "Northlight Coffee Roasters - Alder District - Yelp",
-      "snippet": "4.6 stars, 3 reviews. In-house roaster, single-origin pour-overs, outlets and wifi. No laptops at the window bar after 11.",
-      "vertical": "all",
-      "authority": 6,
-      "keywords": [
-        "northlight coffee",
-        "coffee roaster",
-        "pour-over",
-        "espresso",
-        "wifi",
-        "work cafe"
-      ]
-    },
-    {
       "url": "http://yelp.com/r/auto/comments/t-1008",
       "title": "Lombard Street Garage - St. Johns - Yelp",
       "snippet": "4.8 stars. Independent mechanic; they call with the estimate first and show you the old part.",
@@ -1043,48 +547,6 @@
         "brakes",
         "st johns",
         "auto repair"
-      ]
-    },
-    {
-      "url": "http://yelp.com/r/health/comments/t-1010",
-      "title": "Bridgetown Family Dental - Alder District - Yelp",
-      "snippet": "4.7 stars. Family and paediatric dentistry, Tuesday evening slots, upfront pricing.",
-      "vertical": "all",
-      "authority": 5,
-      "keywords": [
-        "bridgetown family dental",
-        "dentist",
-        "pediatric dentist",
-        "insurance",
-        "evening appointments"
-      ]
-    },
-    {
-      "url": "http://yelp.com/r/fitness/comments/t-1012",
-      "title": "Ironwood Climbing Gym - St. Johns - Yelp",
-      "snippet": "4.5 stars. Bouldering and top-rope, weekly resets, Saturday beginner intro, from 79 dollars a month.",
-      "vertical": "all",
-      "authority": 5,
-      "keywords": [
-        "ironwood climbing",
-        "climbing gym",
-        "bouldering",
-        "beginner",
-        "st johns"
-      ]
-    },
-    {
-      "url": "http://yelp.com/r/home/comments/t-1015",
-      "title": "Reliant Plumbing Co. - Foster-Powell - Yelp",
-      "snippet": "4.6 stars. Licensed plumber, 24h emergency line, water heaters, flat call-out credited to the repair.",
-      "vertical": "all",
-      "authority": 5,
-      "keywords": [
-        "reliant plumbing",
-        "plumber",
-        "emergency plumber",
-        "water heater",
-        "drain"
       ]
     }
   ]

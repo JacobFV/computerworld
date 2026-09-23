@@ -179,6 +179,10 @@ pub struct WorldDefinition {
     /// carries no internet at all.
     #[serde(default = "yes", skip_serializing_if = "is_true")]
     pub internet: bool,
+    /// This world's own additions to the internet's sites, by site id: its people's inboxes,
+    /// repositories and posts on sites every world shares. Applied as the internet joins.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub internet_overlays: BTreeMap<String, SiteOverlay>,
     #[serde(default)]
     pub metadata: Value,
 }
@@ -192,6 +196,21 @@ pub const INTERNET_ATTACHMENTS: &[&str] = &[
     "pop-eu",
     "dns-public",
 ];
+/// A world's additions to one of the internet's sites. `initial_state` is merged into the
+/// site's as a JSON merge patch — objects key by key, anything else (an array included)
+/// replaced — `search_entries` are appended to the site's, so the world's pages are indexed
+/// too, and `domains` adds the names the world's own corner of the site answers on, such as
+/// a workspace's subdomain.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SiteOverlay {
+    #[serde(default)]
+    pub initial_state: Value,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub search_entries: Vec<Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub domains: Vec<String>,
+}
 fn is_true(value: &bool) -> bool {
     *value
 }
@@ -1515,6 +1534,11 @@ impl WorldDefinition {
                 }
             }
         }
+        if !self.internet && !self.internet_overlays.is_empty() {
+            return Err(SimError::invalid(
+                "internet_overlays need the internet: this world sets internet: false",
+            ));
+        }
         if self.internet {
             // Named here, declared by the internet when it joins; the joined world is
             // validated again, so a name the internet does not declare is still refused.
@@ -1738,6 +1762,7 @@ mod tests {
             network: NetworkDefinition::default(),
             services: vec![],
             internet: false,
+            internet_overlays: BTreeMap::new(),
             metadata: Value::Null,
         };
         assert!(w.validate().is_err())

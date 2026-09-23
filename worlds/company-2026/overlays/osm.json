@@ -1,0 +1,97 @@
+{
+  "initial_state": {
+    "places": {
+      "bayfront-depot": {
+        "summary": "Light rail and bus interchange two blocks south of the Northstar campus."
+      },
+      "bridgetown-annex": {
+        "name": "Northstar Bridgetown Annex",
+        "website": "http://northstar.example/",
+        "tags": [
+          "office",
+          "northstar"
+        ]
+      },
+      "harborline-coffee": {
+        "summary": "The Northstar standup runs on this. Cardamom bun, flat white, back upstairs."
+      },
+      "northstar-hq": {
+        "id": "northstar-hq",
+        "name": "Northstar HQ",
+        "kind": "office",
+        "address": "410 Bayfront Ave, Seattle WA",
+        "lat": 47572600,
+        "lon": -122348000,
+        "rating": 46,
+        "reviews": 128,
+        "hours": "Mon-Fri 8:00-18:00",
+        "phone": "+1 206 555 0148",
+        "website": "http://northstar.example/",
+        "summary": "Northstar's bayfront campus: engineering on four and five, the lab in the basement.",
+        "tags": [
+          "office",
+          "northstar",
+          "engineering"
+        ]
+      },
+      "southbay-lab": {
+        "name": "Northstar South Bay Lab",
+        "website": "http://northstar.example/",
+        "tags": [
+          "office",
+          "northstar",
+          "lab"
+        ]
+      }
+    },
+    "saved": {
+      "bob": [
+        "marrow-point-park",
+        "bayfront-depot"
+      ]
+    },
+    "notes": [
+      {
+        "id": "note-1",
+        "author": "bob",
+        "place": "bayfront-depot",
+        "lat": 47569800,
+        "lon": -122344500,
+        "tick": 2,
+        "text": "The southbound platform entrance moved 30 m north during the works."
+      },
+      {
+        "id": "note-2",
+        "author": "carol",
+        "place": "devcon-center",
+        "lat": 47611400,
+        "lon": -122333000,
+        "tick": 4,
+        "text": "Hall D is missing. It is the annexe on the 9th Ave side."
+      },
+      {
+        "id": "note-3",
+        "author": "alice",
+        "place": "harborline-coffee",
+        "lat": 47574100,
+        "lon": -122345800,
+        "tick": 6,
+        "text": "Opening hours are 06:00 on weekdays now, not 07:00."
+      }
+    ]
+  },
+  "search_entries": [
+    {
+      "url": "http://openstreetmap.org/maps/dir?from=northstar-hq&to=devcon-center&mode=cycling",
+      "title": "Northstar HQ to Cascade Convention Center by bike - OpenStreetMap",
+      "snippet": "5.4 km on the integer grid, about 25 minutes by bike.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "cycling directions",
+        "bike route",
+        "osm directions"
+      ]
+    }
+  ]
+}

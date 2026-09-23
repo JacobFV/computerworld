@@ -2,7 +2,10 @@
   "id": "ddg-search",
   "kind": "search",
   "node": "ddg-search",
-  "domains": ["duckduckgo.com", "ddg.gg"],
+  "domains": [
+    "duckduckgo.com",
+    "ddg.gg"
+  ],
   "port": 80,
   "initial_state": {
     "brand": "DuckDuckGo",
@@ -19,20 +22,57 @@
     "retain_history": false,
     "bang_prefix": "!",
     "bangs": {
-      "gh": {"title": "GitHub", "template": "http://github.com/search?q={}"},
-      "w": {"title": "Wikipedia", "template": "http://wikipedia.org/search?q={}"},
-      "so": {"title": "Stack Overflow", "template": "http://stackoverflow.com/search?q={}"},
-      "yt": {"title": "YouTube", "template": "http://youtube.com/results?search_query={}"},
-      "r": {"title": "Reddit", "template": "http://reddit.com/search?q={}"},
-      "hn": {"title": "Hacker News", "template": "http://news.ycombinator.com/search?q={}"}
+      "gh": {
+        "title": "GitHub",
+        "template": "http://github.com/search?q={}"
+      },
+      "w": {
+        "title": "Wikipedia",
+        "template": "http://wikipedia.org/search?q={}"
+      },
+      "so": {
+        "title": "Stack Overflow",
+        "template": "http://stackoverflow.com/search?q={}"
+      },
+      "yt": {
+        "title": "YouTube",
+        "template": "http://youtube.com/results?search_query={}"
+      },
+      "r": {
+        "title": "Reddit",
+        "template": "http://reddit.com/search?q={}"
+      },
+      "hn": {
+        "title": "Hacker News",
+        "template": "http://news.ycombinator.com/search?q={}"
+      }
     },
-    "rank_weights": {"title": 9, "keywords": 6, "snippet": 1, "authority": 1},
-    "verticals": ["all", "images", "news", "videos"],
+    "rank_weights": {
+      "title": 9,
+      "keywords": 6,
+      "snippet": 1,
+      "authority": 1
+    },
+    "verticals": [
+      "all",
+      "images",
+      "news",
+      "videos"
+    ],
     "about": "DuckDuckGo scores almost entirely on what a page says rather than who published it, and it keeps no history: nothing typed into the box is stored against the person who typed it. A query beginning with ! is a bang and jumps straight to another site.",
     "footer": [
-      {"text": "Wikipedia", "url": "http://wikipedia.org/"},
-      {"text": "Hacker News", "url": "http://news.ycombinator.com/"},
-      {"text": "GitHub", "url": "http://github.com/"}
+      {
+        "text": "Wikipedia",
+        "url": "http://wikipedia.org/"
+      },
+      {
+        "text": "Hacker News",
+        "url": "http://news.ycombinator.com/"
+      },
+      {
+        "text": "GitHub",
+        "url": "http://github.com/"
+      }
     ],
     "history": {},
     "authority_overrides": {
@@ -50,11 +90,6 @@
       "mastodon.social": 5,
       "x.com": 2,
       "linkedin.com": 2,
-      "alicechen.dev": 5,
-      "bmartinez.net": 5,
-      "eng.northstar.example": 4,
-      "northstar.example": 3,
-      "status.northstar.example": 3,
       "docs.google.com": 1,
       "drive.google.com": 1,
       "mail.google.com": 1,
@@ -84,7 +119,14 @@
       "snippet": "Search without being tracked. Bang shortcuts such as !gh and !w jump straight to another site.",
       "vertical": "all",
       "authority": 5,
-      "keywords": ["duckduckgo", "ddg", "privacy", "search", "search engine", "bangs"]
+      "keywords": [
+        "duckduckgo",
+        "ddg",
+        "privacy",
+        "search",
+        "search engine",
+        "bangs"
+      ]
     },
     {
       "url": "http://duckduckgo.com/about",
@@ -92,7 +134,14 @@
       "snippet": "How DuckDuckGo ranks pages on their text rather than their publisher, and why it keeps no recent searches.",
       "vertical": "all",
       "authority": 3,
-      "keywords": ["duckduckgo", "about", "bangs", "privacy", "search history", "ranking"]
+      "keywords": [
+        "duckduckgo",
+        "about",
+        "bangs",
+        "privacy",
+        "search history",
+        "ranking"
+      ]
     }
   ]
 }

@@ -1,0 +1,228 @@
+{
+  "initial_state": {
+    "products": {
+      "115402998811": {
+        "reviews": [
+          {
+            "id": "rv-1",
+            "author": "bob",
+            "stars": 5,
+            "title": "Arrived as described, no dead pixels",
+            "body": "The rear scuff is exactly where the photo said. Panel is flawless and the stand is genuinely new. Would buy from this seller again.",
+            "tick": 4
+          }
+        ]
+      },
+      "334876120099": {
+        "id": "334876120099",
+        "category": "electronics",
+        "title": "Meridian 87-key Mechanical Keyboard - hot-swap, boxed, barely used",
+        "price_cents": 9500,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 1,
+        "fast_shipping": true,
+        "bullets": [
+          "Condition: Used, like new",
+          "Buy It Now $95.00",
+          "Free shipping, ships from Seattle, WA",
+          "30-day returns"
+        ],
+        "description": "Bought a second one by mistake. Aluminium case, tactile 55g switches, hot-swap sockets, detachable USB-C cable and the original box. Typed on for about a week.",
+        "reviews": [],
+        "seller": "northstar_bob (100% positive, 48)"
+      },
+      "155923001118": {
+        "reviews": [
+          {
+            "id": "rv-2",
+            "author": "carol",
+            "stars": 5,
+            "title": "Exactly the coin in the photo",
+            "body": "Capsule was sealed and the coin matched the listing photo down to the toning at the rim.",
+            "tick": 6
+          }
+        ]
+      },
+      "375001284450": {
+        "reviews": [
+          {
+            "id": "rv-3",
+            "author": "alice",
+            "stars": 4,
+            "title": "Size up",
+            "body": "Good shoe, exactly as pictured, but the listing is right about the sizing and I should have listened.",
+            "tick": 5
+          }
+        ]
+      },
+      "166222009914": {
+        "reviews": [
+          {
+            "id": "rv-4",
+            "author": "carol",
+            "stars": 5,
+            "title": "Everything came up",
+            "body": "Sowed all eight under lights in March, near 100% germination. The Bayfront Black is the one worth growing.",
+            "tick": 7
+          }
+        ]
+      },
+      "315702214406": {
+        "reviews": [
+          {
+            "id": "rv-5",
+            "author": "bob",
+            "stars": 3,
+            "title": "Bright, but read the note about reflectors",
+            "body": "Very bright, and in my reflector housing that means everyone flashes me. On a projector car they would be five stars.",
+            "tick": 3
+          }
+        ]
+      }
+    },
+    "carts": {
+      "alice": {
+        "185640211037": 1,
+        "364119850222": 1
+      },
+      "carol": {
+        "166222009914": 2
+      }
+    },
+    "orders": {
+      "07-12984-33101": {
+        "id": "07-12984-33101",
+        "buyer": "alice",
+        "tick": 4,
+        "date": "2026-03-03",
+        "items": [
+          {
+            "product": "375001284450",
+            "title": "Marrow Point trail runners, women's US 8, teal - new with tags",
+            "qty": 1,
+            "price_cents": 6400
+          }
+        ],
+        "total_cents": 6400,
+        "status": "Delivered",
+        "confirmation": "EBY-4KQ7ZD",
+        "seats": [],
+        "venue": ""
+      },
+      "07-12990-58817": {
+        "id": "07-12990-58817",
+        "buyer": "bob",
+        "tick": 3,
+        "date": "2026-03-02",
+        "items": [
+          {
+            "product": "115402998811",
+            "title": "Lumen 24-inch 1440p Monitor - Refurbished by seller, 90-day warranty",
+            "qty": 1,
+            "price_cents": 15900
+          }
+        ],
+        "total_cents": 15900,
+        "status": "Delivered",
+        "confirmation": "EBY-M2XR9F",
+        "seats": [],
+        "venue": ""
+      },
+      "07-13004-71206": {
+        "id": "07-13004-71206",
+        "buyer": "carol",
+        "tick": 6,
+        "date": "2026-03-09",
+        "items": [
+          {
+            "product": "155923001118",
+            "title": "Silver Half-Dollar 1964, uncirculated, in capsule",
+            "qty": 2,
+            "price_cents": 2400
+          }
+        ],
+        "total_cents": 4800,
+        "status": "Shipped",
+        "confirmation": "EBY-P8VW3L",
+        "seats": [],
+        "venue": ""
+      }
+    },
+    "favorites": {
+      "alice": [
+        "204955330761",
+        "296004178822",
+        "226700131188"
+      ],
+      "bob": [
+        "225118004402",
+        "405200144391"
+      ],
+      "carol": [
+        "145118820034"
+      ]
+    },
+    "messages": [
+      {
+        "id": "msg-1",
+        "from": "alice",
+        "to": "closet_clearout_kate (99.1% positive, 634)",
+        "product": "204955330761",
+        "text": "Would you take $95 for the field jacket? Happy to pay today.",
+        "tick": 8
+      },
+      {
+        "id": "msg-2",
+        "from": "closet_clearout_kate (99.1% positive, 634)",
+        "to": "alice",
+        "product": "204955330761",
+        "text": "I can do $100 with shipping included. Send the offer through the listing and I will accept it tonight.",
+        "tick": 8
+      },
+      {
+        "id": "msg-3",
+        "from": "bob",
+        "to": "tapedeck_tom (100% positive, 2,311)",
+        "product": "225118004402",
+        "text": "Does the MR-7 record, or is it playback only? The photos do not show a record button.",
+        "tick": 9
+      },
+      {
+        "id": "msg-4",
+        "from": "tapedeck_tom (100% positive, 2,311)",
+        "to": "bob",
+        "product": "225118004402",
+        "text": "Playback only, the MR-7 never had a record head. Auto-reverse works both directions.",
+        "tick": 9
+      }
+    ]
+  },
+  "search_entries": [
+    {
+      "url": "http://ebay.com/orders/07-12984-33101",
+      "title": "Order 07-12984-33101 - Marrow Point trail runners",
+      "snippet": "One pair of trail runners for $64.00, delivered. The order the PayPal payment to eBay points back at.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "ebay order",
+        "trail runners order",
+        "order 07-12984-33101"
+      ]
+    },
+    {
+      "url": "http://ebay.com/dp/334876120099",
+      "title": "Meridian 87-key Mechanical Keyboard, like new - $95.00",
+      "snippet": "Hot-swap sockets, aluminium case, boxed, used a week. Free shipping from Seattle, 30-day returns.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "mechanical keyboard",
+        "meridian keyboard",
+        "87 key",
+        "used keyboard"
+      ]
+    }
+  ]
+}

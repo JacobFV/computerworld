@@ -139,7 +139,6 @@ network:
     - {name: "mastodon.social", address: "203.0.113.61", ttl_us: 300000000, resolver: "dns-public"}
     - {name: "mobile.twitter.com", address: "x.com", ttl_us: 300000000, resolver: "dns-public"}
     - {name: "news.ycombinator.com", address: "203.0.113.82", ttl_us: 300000000, resolver: "dns-public"}
-    - {name: "northstar.slack.com", address: "slack.com", ttl_us: 300000000, resolver: "dns-public"}
     - {name: "northwind.example", address: "198.51.100.60", ttl_us: 300000000, resolver: "dns-public"}
     - {name: "old.reddit.com", address: "reddit.com", ttl_us: 300000000, resolver: "dns-public"}
     - {name: "open.spotify.com", address: "spotify.com", ttl_us: 300000000, resolver: "dns-public"}

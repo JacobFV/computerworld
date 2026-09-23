@@ -1,0 +1,370 @@
+{
+  "initial_state": {
+    "pages": {
+      "/blog": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "b5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "b1",
+                "text": "Cloudflare",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "b2",
+                "text": "Home",
+                "url": "http://cloudflare.com/"
+              },
+              {
+                "kind": "link",
+                "id": "b3",
+                "text": "Products",
+                "url": "http://cloudflare.com/products"
+              },
+              {
+                "kind": "link",
+                "id": "b4",
+                "text": "Docs",
+                "url": "http://cloudflare.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#0b0f19",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "b9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "b10",
+            "text": "The Cloudflare Blog",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "b11",
+            "text": "Engineering, security, and product news from the people who build the network."
+          },
+          {
+            "kind": "grid",
+            "id": "b27",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "b16",
+                "children": [
+                  {
+                    "kind": "badge",
+                    "id": "b12",
+                    "text": "Developer platform",
+                    "style": {
+                      "size": 11,
+                      "color": "#ffffff",
+                      "background": "#f6821f",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "b13",
+                    "text": "The Workers platform in 2026: what changed and what is next",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "b14",
+                    "text": "Ines Marchetti · 2026-04-08",
+                    "style": {
+                      "size": 12,
+                      "color": "#5f6b7a"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "b15",
+                    "text": "This year's Developer Week shipped three things we have been asked for since Workers launched: native Python with a real package ecosystem, Durable Objects with SQLite storage and point-in-time recovery, and a container runtime for the jobs that do not fit in an isolate.."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://cloudflare.com/blog/workers-platform-2026"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "b21",
+                "children": [
+                  {
+                    "kind": "badge",
+                    "id": "b17",
+                    "text": "Security",
+                    "style": {
+                      "size": 11,
+                      "color": "#ffffff",
+                      "background": "#f6821f",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "b18",
+                    "text": "Post-quantum key agreement is now the default for every proxied site",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "b19",
+                    "text": "Dmitri Sokolov · 2026-02-17",
+                    "style": {
+                      "size": 12,
+                      "color": "#5f6b7a"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "b20",
+                    "text": "As of this week, every TLS 1.3 handshake to a Cloudflare-proxied site negotiates a hybrid key agreement that combines X25519 with ML-KEM."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://cloudflare.com/blog/post-quantum-by-default"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "b26",
+                "children": [
+                  {
+                    "kind": "badge",
+                    "id": "b22",
+                    "text": "Incident review",
+                    "style": {
+                      "size": 11,
+                      "color": "#ffffff",
+                      "background": "#f6821f",
+                      "radius": 10,
+                      "padding": 5
+                    }
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "b23",
+                    "text": "Postmortem: DNS resolution errors on March 4, 2026",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "b24",
+                    "text": "Hannah Okafor · 2026-03-06",
+                    "style": {
+                      "size": 12,
+                      "color": "#5f6b7a"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "b25",
+                    "text": "For 23 minutes on March 4, between 14:11 and 14:34 UTC, some authoritative DNS queries for zones on Cloudflare returned SERVFAIL."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://cloudflare.com/blog/outage-2026-03-04-postmortem"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "link",
+            "id": "b28",
+            "text": "Discussed on Hacker News",
+            "url": "http://news.ycombinator.com/"
+          },
+          {
+            "kind": "row",
+            "id": "b8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "b6",
+                "text": "Plans",
+                "url": "http://cloudflare.com/plans"
+              },
+              {
+                "kind": "link",
+                "id": "b7",
+                "text": "Docs",
+                "url": "http://cloudflare.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/blog/outage-2026-03-04-postmortem": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "b24",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "b21",
+                "text": "Cloudflare",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "b22",
+                "text": "Home",
+                "url": "http://cloudflare.com/"
+              },
+              {
+                "kind": "link",
+                "id": "b23",
+                "text": "Blog",
+                "url": "http://cloudflare.com/blog"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#0b0f19",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "b28",
+            "height": 12
+          },
+          {
+            "kind": "badge",
+            "id": "b29",
+            "text": "Incident review",
+            "style": {
+              "size": 11,
+              "color": "#ffffff",
+              "background": "#f6821f",
+              "radius": 10,
+              "padding": 5
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "b210",
+            "text": "Postmortem: DNS resolution errors on March 4, 2026",
+            "style": {
+              "size": 28,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "b211",
+            "text": "Hannah Okafor · 2026-03-06",
+            "style": {
+              "size": 13,
+              "color": "#5f6b7a"
+            }
+          },
+          {
+            "kind": "divider",
+            "id": "b212"
+          },
+          {
+            "kind": "text",
+            "id": "b213",
+            "text": "For 23 minutes on March 4, between 14:11 and 14:34 UTC, some authoritative DNS queries for zones on Cloudflare returned SERVFAIL. About 4 percent of queries in that window were affected, concentrated in two European locations."
+          },
+          {
+            "kind": "text",
+            "id": "b214",
+            "text": "Root cause: a configuration push that changed the zone database sharding rolled out to two data centers whose local cache still held the previous shard map. Queries that hashed to a moved shard could not find their zone. The rollout was automatically halted when error rates crossed the threshold, and the two locations were drained while the caches refreshed."
+          },
+          {
+            "kind": "text",
+            "id": "b215",
+            "text": "What we changed: a shard map change now invalidates the local cache in the same transaction, and the canary stage of the rollout waits for a full cache refresh before proceeding. We are sorry for the disruption; the Status page carries the full timeline."
+          },
+          {
+            "kind": "row",
+            "id": "b218",
+            "children": [
+              {
+                "kind": "link",
+                "id": "b216",
+                "text": "Share on X",
+                "url": "http://x.com/"
+              },
+              {
+                "kind": "link",
+                "id": "b217",
+                "text": "Status page",
+                "url": "http://cloudflare.com/status"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "b27",
+            "children": [
+              {
+                "kind": "link",
+                "id": "b25",
+                "text": "Plans",
+                "url": "http://cloudflare.com/plans"
+              },
+              {
+                "kind": "link",
+                "id": "b26",
+                "text": "Docs",
+                "url": "http://cloudflare.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      }
+    }
+  }
+}

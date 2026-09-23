@@ -11,18 +11,21 @@ use cw_web::{Strictness, Viewport};
 use serde_json::Value;
 use std::path::PathBuf;
 
-const SITES: [(&str, &str, &str); 2] = [
-    (
-        "openai",
-        "http://chatgpt.com",
-        include_str!("../../../../worlds/internet/sites/openai.json"),
-    ),
-    (
-        "anthropic",
-        "http://claude.ai",
-        include_str!("../../../../worlds/internet/sites/anthropic.json"),
-    ),
-];
+static SITES: std::sync::LazyLock<[(&'static str, &'static str, &'static str); 2]> =
+    std::sync::LazyLock::new(|| {
+        [
+            (
+                "openai",
+                "http://chatgpt.com",
+                cw_service_common::reference::reference_site_json("openai"),
+            ),
+            (
+                "anthropic",
+                "http://claude.ai",
+                cw_service_common::reference::reference_site_json("anthropic"),
+            ),
+        ]
+    });
 
 fn render(html: &str, file: &str, viewport: Viewport) {
     let doc = cw_web::html::parse(html);
@@ -77,7 +80,7 @@ fn assistant_home_and_conversation_stills() {
         scale: 1,
         zoom: 100,
     };
-    for (site, origin, source) in SITES {
+    for (site, origin, source) in *SITES {
         let seed: Value = serde_json::from_str(source).unwrap();
         let mut ctx = ServiceContext {
             actor: "alice".into(),

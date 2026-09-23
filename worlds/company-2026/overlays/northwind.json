@@ -1,0 +1,38 @@
+{
+  "initial_state": {
+    "accounts": {
+      "chk-4417": {
+        "id": "chk-4417",
+        "kind": "checking",
+        "name": "Everyday Checking (...4417)",
+        "balance_cents": 812455,
+        "available_cents": 812455,
+        "limit_cents": 0,
+        "owner": "alice"
+      },
+      "sav-9902": {
+        "id": "sav-9902",
+        "kind": "savings",
+        "name": "Reserve Savings (...9902)",
+        "balance_cents": 1450000,
+        "available_cents": 1450000,
+        "limit_cents": 0,
+        "owner": "alice"
+      },
+      "cc-3310": {
+        "id": "cc-3310",
+        "kind": "credit",
+        "name": "Horizon Card (...3310)",
+        "balance_cents": -52051,
+        "available_cents": 947949,
+        "limit_cents": 1000000,
+        "owner": "alice"
+      }
+    },
+    "transactions": {
+      "tx-2": {
+        "merchant": "NORTHSTAR PAYROLL"
+      }
+    }
+  }
+}

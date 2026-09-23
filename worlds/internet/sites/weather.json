@@ -34,7 +34,6 @@
         "hours": "Daily 5:00-00:30",
         "phone": "+1 206 555 0102",
         "website": "",
-        "summary": "Light rail and bus interchange two blocks south of the Northstar campus.",
         "tags": [
           "transit",
           "light rail",
@@ -43,7 +42,6 @@
       },
       "bridgetown-annex": {
         "id": "bridgetown-annex",
-        "name": "Northstar Bridgetown Annex",
         "kind": "office",
         "address": "55 Rivergate Way, Portland OR",
         "lat": 45515200,
@@ -52,11 +50,9 @@
         "reviews": 31,
         "hours": "Mon-Fri 9:00-17:00",
         "phone": "+1 503 555 0164",
-        "website": "http://northstar.example/",
         "summary": "The Portland satellite office: support, docs and two of the SRE rotations.",
         "tags": [
-          "office",
-          "northstar"
+          "office"
         ]
       },
       "cascade-arena": {
@@ -109,7 +105,6 @@
         "hours": "Mon-Fri 6:00-16:00, Sat-Sun 7:00-15:00",
         "phone": "+1 206 555 0119",
         "website": "",
-        "summary": "The Northstar standup runs on this. Cardamom bun, flat white, back upstairs.",
         "tags": [
           "cafe",
           "coffee",
@@ -191,25 +186,6 @@
           "food"
         ]
       },
-      "northstar-hq": {
-        "id": "northstar-hq",
-        "name": "Northstar HQ",
-        "kind": "office",
-        "address": "410 Bayfront Ave, Seattle WA",
-        "lat": 47572600,
-        "lon": -122348000,
-        "rating": 46,
-        "reviews": 128,
-        "hours": "Mon-Fri 8:00-18:00",
-        "phone": "+1 206 555 0148",
-        "website": "http://northstar.example/",
-        "summary": "Northstar's bayfront campus: engineering on four and five, the lab in the basement.",
-        "tags": [
-          "office",
-          "northstar",
-          "engineering"
-        ]
-      },
       "puget-field": {
         "id": "puget-field",
         "name": "Puget Sound Field",
@@ -250,7 +226,6 @@
       },
       "southbay-lab": {
         "id": "southbay-lab",
-        "name": "Northstar South Bay Lab",
         "kind": "office",
         "address": "2200 Orchard Row, San Jose CA",
         "lat": 37338200,
@@ -259,33 +234,19 @@
         "reviews": 19,
         "hours": "Mon-Fri 9:00-18:00",
         "phone": "+1 408 555 0192",
-        "website": "http://northstar.example/",
         "summary": "Hardware lab and the replay cluster that the determinism suite runs on.",
         "tags": [
           "office",
-          "northstar",
           "lab"
         ]
       }
     },
     "routes": {},
-    "saved": {
-      "alice": [
-        "seattle"
-      ],
-      "carol": [
-        "seattle",
-        "portland"
-      ],
-      "bob": [
-        "san-jose"
-      ]
-    },
+    "saved": {},
     "unit_prefs": {},
     "forecasts": {
       "seattle": {
         "id": "seattle",
-        "place": "northstar-hq",
         "city": "Seattle, WA",
         "now_f": 57,
         "cond": "Rain",
@@ -536,17 +497,6 @@
         "body": "Steady rain and gusts to 30 mph across the Seattle metro. Allow extra time on the Pike St approach.",
         "tick": 4,
         "acked": []
-      },
-      {
-        "id": "wx-2",
-        "city": "portland",
-        "severity": "Watch",
-        "title": "River level watch on the Rivergate reach",
-        "body": "Levels are rising after four days of rain upstream. No action needed yet.",
-        "tick": 5,
-        "acked": [
-          "carol"
-        ]
       }
     ],
     "notes": [],

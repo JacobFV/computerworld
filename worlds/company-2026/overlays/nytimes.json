@@ -1,0 +1,105 @@
+{
+  "initial_state": {
+    "articles": {
+      "trade-pact-textiles": {
+        "byline": "Priya Venkataraman"
+      },
+      "gridline-antitrust-suit": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "tessera_alum",
+            "text": "I worked there. We spent the last eight months of the company trying to figure out why our invites rendered as plain text. Now I know.",
+            "tick": 11,
+            "likes": 44
+          },
+          {
+            "id": "c2",
+            "author": "bob",
+            "text": "The security-feature defense is going to be hard to square with that internal message.",
+            "tick": 11,
+            "likes": 17
+          }
+        ]
+      },
+      "deep-vent-microbes": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "carol",
+            "text": "The five-times-checked vial is the most scientist sentence I have read this year.",
+            "tick": 9,
+            "likes": 21
+          }
+        ]
+      },
+      "cooking-brown-butter-carrots": {
+        "comments": [
+          {
+            "id": "c1",
+            "author": "alice",
+            "text": "Made this on Sunday. The butter really does need to go further than feels safe.",
+            "tick": 8,
+            "likes": 9
+          }
+        ]
+      },
+      "bakery-chain-ipo": {
+        "byline": "Priya Venkataraman"
+      },
+      "replay-tools-enterprise": {
+        "body": [
+          "For most of the history of computing, the pitch for a new tool has been that it is faster. A small category of software is now selling itself on the opposite claim: it is slower, on purpose, and in exchange it will show you exactly what went wrong.",
+          "The tools, known as deterministic simulators, run a program in an environment where time, randomness and the order of events are all controlled. A failure that happens once can be replayed as many times as an engineer wants, unchanged. Northstar, a Seattle firm, released a widely discussed one this month; Reuters covered the release at http://reuters.com/2026/northstar-atlas-determinism",
+          "Enterprise buyers, particularly in finance and infrastructure, have been the earliest adopters. 'We spend more on finding bugs than on fixing them,' said the head of platform engineering at a large payments company. 'Anything that turns finding into a mechanical step pays for itself in a quarter.'",
+          "The trade-off is real. Simulated runs are typically several times slower than native ones, and the tools do not help with failures that only appear at full speed. Vendors say that category is smaller than engineers assume."
+        ],
+        "links": [
+          {
+            "label": "Reuters: Northstar releases Atlas 1.0",
+            "url": "http://reuters.com/2026/northstar-atlas-determinism"
+          },
+          {
+            "label": "The Verge: inside Atlas",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          }
+        ]
+      }
+    },
+    "subscribers": [
+      "alice.chen@gmail.com"
+    ],
+    "saved": {
+      "alice": [
+        "gridline-antitrust-suit"
+      ],
+      "carol": [
+        "deep-vent-microbes"
+      ]
+    },
+    "follows": {
+      "alice": [
+        "publication",
+        "antitrust"
+      ],
+      "bob": [
+        "software"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://nytimes.com/2026/replay-tools-enterprise",
+      "title": "Why Big Companies Are Suddenly Paying for Software That Runs Slower - The New York Times",
+      "snippet": "Deterministic simulators trade speed for the ability to replay a failure exactly.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "deterministic simulator",
+        "replay",
+        "northstar",
+        "enterprise software"
+      ]
+    }
+  ]
+}

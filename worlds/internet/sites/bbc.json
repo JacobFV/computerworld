@@ -2,63 +2,138 @@
   "id": "bbc",
   "kind": "press",
   "node": "bbc",
-  "domains": ["bbc.com", "www.bbc.com", "bbc.co.uk", "www.bbc.co.uk", "news.bbc.co.uk"],
+  "domains": [
+    "bbc.com",
+    "www.bbc.com",
+    "bbc.co.uk",
+    "www.bbc.co.uk",
+    "news.bbc.co.uk"
+  ],
   "port": 80,
   "place": {
     "address": "203.0.113.142",
     "zone": "internet",
-    "link": {"from": "pop-eu", "latency_us": 2200}
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 2200
+    }
   },
   "initial_state": {
     "layout": "wire",
     "skin": "bbc",
     "brand": "BBC News",
     "tagline": "News from the UK and around the world.",
-    "theme": {"accent": "#bb1919", "background": "#ffffff", "surface": "#f2f2f2", "ink": "#141414", "muted": "#5a5a5a", "content_width": 960},
+    "theme": {
+      "accent": "#bb1919",
+      "background": "#ffffff",
+      "surface": "#f2f2f2",
+      "ink": "#141414",
+      "muted": "#5a5a5a",
+      "content_width": 960
+    },
     "sections": [
-      {"id": "uk", "title": "UK"},
-      {"id": "world", "title": "World"},
-      {"id": "business", "title": "Business"},
-      {"id": "technology", "title": "Technology"},
-      {"id": "science", "title": "Science"},
-      {"id": "health", "title": "Health"},
-      {"id": "sport", "title": "Sport"},
-      {"id": "culture", "title": "Culture"}
+      {
+        "id": "uk",
+        "title": "UK"
+      },
+      {
+        "id": "world",
+        "title": "World"
+      },
+      {
+        "id": "business",
+        "title": "Business"
+      },
+      {
+        "id": "technology",
+        "title": "Technology"
+      },
+      {
+        "id": "science",
+        "title": "Science"
+      },
+      {
+        "id": "health",
+        "title": "Health"
+      },
+      {
+        "id": "sport",
+        "title": "Sport"
+      },
+      {
+        "id": "culture",
+        "title": "Culture"
+      }
     ],
     "articles": {
       "harbourside-barrier-review": {
-        "id": "harbourside-barrier-review", "section": "uk", "year": "2026",
+        "id": "harbourside-barrier-review",
+        "section": "uk",
+        "year": "2026",
         "title": "Harbourside flood: council orders review of barrier it was told to raise in 2019",
         "dek": "Two thousand residents remain out of their homes after the highest storm surge recorded in the town.",
-        "byline": "Rhian Powell, BBC News", "date": "Feb 24, 2026", "tick": 14, "read_minutes": 4,
+        "byline": "Rhian Powell, BBC News",
+        "date": "Feb 24, 2026",
+        "tick": 14,
+        "read_minutes": 4,
         "body": [
           "Harbourside Council has ordered an urgent review of the town's sea barrier, four days after a storm surge overtopped it by more than half a metre and flooded around eight hundred homes and businesses.",
           "A report commissioned in 2019 recommended raising the 1974 barrier by one metre. Councillors voted to 'note' its findings but no funding was allocated. The council leader, who took office in 2023, told the BBC the recommendation would now be implemented 'as a matter of urgency, whatever it costs'.",
           "At a public meeting on Monday evening residents pressed councillors on why the report had not been acted upon. Amos Ferreira, whose chandlery on the seafront lost most of its stock, said: 'I do not want an apology, I want to know who read it and put it in a drawer.'",
           "The Environment Agency said the surge was the highest recorded at the Harbourside gauge since it was installed in 1961. A damage estimate is expected within a fortnight. No deaths or serious injuries have been reported."
         ],
-        "links": [{"label": "How the surge happened", "url": "http://bbc.com/2026/harbourside-surge-explained"}],
-        "tags": ["harbourside", "flooding", "councils"], "comments": []
+        "links": [
+          {
+            "label": "How the surge happened",
+            "url": "http://bbc.com/2026/harbourside-surge-explained"
+          }
+        ],
+        "tags": [
+          "harbourside",
+          "flooding",
+          "councils"
+        ],
+        "comments": []
       },
       "harbourside-surge-explained": {
-        "id": "harbourside-surge-explained", "section": "science", "year": "2026",
+        "id": "harbourside-surge-explained",
+        "section": "science",
+        "year": "2026",
         "title": "What made the Harbourside surge so high?",
         "dek": "A spring tide, a deep low and a wind in exactly the wrong direction combined on Saturday night.",
-        "byline": "Tomasz Weir, BBC Weather", "date": "Feb 23, 2026", "tick": 13, "read_minutes": 3,
+        "byline": "Tomasz Weir, BBC Weather",
+        "date": "Feb 23, 2026",
+        "tick": 13,
+        "read_minutes": 3,
         "body": [
           "Storm surges are not unusual on this stretch of coast, but Saturday's was the product of three things happening at once. The first was a spring tide, with the moon nearly full and the predicted high water already among the highest of the year.",
           "The second was atmospheric pressure. The low that crossed the coast on Saturday evening was unusually deep, and lower pressure lets the sea surface rise: roughly one centimetre for every millibar. That alone added around forty centimetres.",
           "The third was the wind. For six hours before high water a gale blew directly onshore, pushing water into the bay faster than it could drain. The gauge at Harbourside recorded a level 1.3 metres above the predicted tide, the largest departure in its sixty-five-year record.",
           "Forecasters had warned of a significant surge on Friday. Whether the barrier could have held even with the 2019 raise is a question the council's review will have to answer."
         ],
-        "links": [{"label": "Council orders barrier review", "url": "http://bbc.com/2026/harbourside-barrier-review"}],
-        "tags": ["harbourside", "weather", "flooding"], "comments": []
+        "links": [
+          {
+            "label": "Council orders barrier review",
+            "url": "http://bbc.com/2026/harbourside-barrier-review"
+          }
+        ],
+        "tags": [
+          "harbourside",
+          "weather",
+          "flooding"
+        ],
+        "comments": []
       },
       "meridian-strait-deal": {
-        "id": "meridian-strait-deal", "section": "world", "year": "2026",
+        "id": "meridian-strait-deal",
+        "section": "world",
+        "year": "2026",
         "title": "Meridian Strait: three states sign shipping deal after five days of talks",
         "dek": "Isle Corvane will collect the largest share of pilotage fees in return for leading rescue operations in the strait.",
-        "byline": "Anneliese Kerr, BBC News, Valmora", "date": "Feb 28, 2026", "tick": 12, "read_minutes": 4,
+        "byline": "Anneliese Kerr, BBC News, Valmora",
+        "date": "Feb 28, 2026",
+        "tick": 12,
+        "read_minutes": 4,
         "body": [
           "The three coastal states of the Meridian Strait have signed an agreement on a shared traffic scheme after talks in Valmora ran four days beyond their scheduled end.",
           "The sticking point had been pilotage fees. Under the deal, Isle Corvane, the smallest of the three, will receive forty per cent of the fees collected in the strait in recognition of the rescue and salvage work its coast guard carries out. The two larger states will split the remainder according to coastline length.",
@@ -66,45 +141,47 @@
           "The scheme is due to begin in January 2027. A joint statement described the talks as 'demanding but conducted in good faith throughout', which one delegate privately translated as 'we ran out of restaurants'."
         ],
         "links": [],
-        "tags": ["meridian", "shipping", "diplomacy"], "comments": [
-          {"id": "c1", "author": "carol", "text": "Forty per cent for the smallest state is a bigger concession than anyone expected on Monday.", "tick": 12, "likes": 6}
-        ]
+        "tags": [
+          "meridian",
+          "shipping",
+          "diplomacy"
+        ],
+        "comments": []
       },
       "calderra-sunwick-textiles": {
-        "id": "calderra-sunwick-textiles", "section": "business", "year": "2026",
+        "id": "calderra-sunwick-textiles",
+        "section": "business",
+        "year": "2026",
         "title": "Calderra and Sunwick scrap garment tariff in deal that could reshape clothing supply chains",
         "dek": "Retail buyers say the direct route between the cotton and the sewing floors takes eleven days off a lead time.",
-        "byline": "Bethan Lloyd, BBC Business", "date": "Mar 4, 2026", "tick": 11, "read_minutes": 3,
+        "byline": "Bethan Lloyd, BBC Business",
+        "date": "Mar 4, 2026",
+        "tick": 11,
+        "read_minutes": 3,
         "body": [
           "Calderra and Sunwick have agreed to remove the tariff on finished garments crossing between them, ending a thirty-year arrangement under which Calderran cloth travelled by sea to a third country to be cut and sewn.",
           "The agreement, which takes effect on 1 July, is short, running to nineteen pages, but retailers say its consequences will be felt across the industry. Sourcing teams at several large chains are already pricing the direct route, which they say removes around eleven days from a typical lead time.",
           "The country that has done the sewing for three decades declined to comment. Analysts expect it to seek its own agreement with Calderra within the year."
         ],
         "links": [],
-        "tags": ["trade", "textiles", "calderra", "sunwick"], "comments": []
-      },
-      "northstar-atlas-launch": {
-        "id": "northstar-atlas-launch", "section": "technology", "year": "2026",
-        "title": "Software that promises to replay any crash exactly goes on general release",
-        "dek": "Seattle firm Northstar has released Atlas, a simulator that removes chance from the programs it runs.",
-        "byline": "Ravi Chandran, BBC Technology", "date": "Mar 5, 2026", "tick": 10, "read_minutes": 3,
-        "body": [
-          "A US developer-tools company has released software it says can reproduce any recorded failure of a program exactly, as many times as an engineer needs to look at it.",
-          "Atlas, made by Seattle-based Northstar, runs a program inside a simulated computer in which the clock, random numbers and the order of network messages are all under the simulator's control. The company says this means a bug seen once can be replayed byte for byte rather than hunted for by running the program repeatedly.",
-          "The approach is not new in research but has rarely been packaged as a product. The trade-off is speed: programs run several times more slowly under simulation. Northstar has published the source code, and the release was reported at http://reuters.com/2026/northstar-atlas-determinism",
-          "The company has not disclosed its revenue or how many people it employs."
+        "tags": [
+          "trade",
+          "textiles",
+          "calderra",
+          "sunwick"
         ],
-        "links": [
-          {"label": "Reuters: Northstar releases Atlas 1.0", "url": "http://reuters.com/2026/northstar-atlas-determinism"},
-          {"label": "Ars Technica's technical deep dive", "url": "http://arstechnica.com/2026/atlas-deep-dive"}
-        ],
-        "tags": ["northstar", "atlas", "software"], "comments": []
+        "comments": []
       },
       "nhs-appointment-system": {
-        "id": "nhs-appointment-system", "section": "health", "year": "2026",
+        "id": "nhs-appointment-system",
+        "section": "health",
+        "year": "2026",
         "title": "GP surgeries in three counties to trial shared appointment system",
         "dek": "Patients in Wexcombe, Ashcombe and Marlow Vale will be able to book at any practice in the pilot area from April.",
-        "byline": "Farah Idris, BBC Health", "date": "Mar 2, 2026", "tick": 9, "read_minutes": 3,
+        "byline": "Farah Idris, BBC Health",
+        "date": "Mar 2, 2026",
+        "tick": 9,
+        "read_minutes": 3,
         "body": [
           "Around three hundred thousand patients across three counties will be able to book a GP appointment at any practice taking part in a pilot scheme starting in April, health officials have announced.",
           "Under the scheme, forty-one surgeries will pool their same-day appointments into a single list. A patient unable to get a slot at their own practice will be offered the nearest available one instead, with their records shared for the visit.",
@@ -112,13 +189,23 @@
           "The British Medical Association said it supported the aims of the trial but wanted assurances that practices would not be penalised for patients who chose to go elsewhere."
         ],
         "links": [],
-        "tags": ["nhs", "gp", "health"], "comments": []
+        "tags": [
+          "nhs",
+          "gp",
+          "health"
+        ],
+        "comments": []
       },
       "ashcombe-seagrass-survey": {
-        "id": "ashcombe-seagrass-survey", "section": "science", "year": "2026",
+        "id": "ashcombe-seagrass-survey",
+        "section": "science",
+        "year": "2026",
         "title": "Seagrass meadow the size of fifteen football pitches found in Ashcombe lagoon",
         "dek": "The bed had been growing unnoticed since a sewage outfall was closed in 2011, marine biologists believe.",
-        "byline": "Tomasz Weir, BBC News", "date": "Feb 3, 2026", "tick": 8, "read_minutes": 3,
+        "byline": "Tomasz Weir, BBC News",
+        "date": "Feb 3, 2026",
+        "tick": 8,
+        "read_minutes": 3,
         "body": [
           "A sonar survey carried out ahead of dredging work in the Ashcombe tidal lagoon has found an eleven-hectare seagrass meadow that did not appear on any existing chart.",
           "The bed covers roughly the southern third of the lagoon. Dr Hannah Rees, who led the survey for the Marine Biological Institute at Wexcombe, said it had most likely been growing since a sewage outfall was closed in 2011 and could explain why the lagoon's fish stocks recovered faster than models predicted.",
@@ -126,40 +213,73 @@
           "The survey is being written up for peer review."
         ],
         "links": [],
-        "tags": ["ashcombe", "seagrass", "marine"], "comments": []
+        "tags": [
+          "ashcombe",
+          "seagrass",
+          "marine"
+        ],
+        "comments": []
       },
       "harrowgate-derby": {
-        "id": "harrowgate-derby", "section": "sport", "year": "2026",
+        "id": "harrowgate-derby",
+        "section": "sport",
+        "year": "2026",
         "title": "Harrowgate Athletic 2-1 Westfield Rovers: Duarte header in stoppage time settles derby",
         "dek": "Ines Duarte's fourteenth goal of the season moved Athletic to second with nine games to play.",
-        "byline": "Callum Reid, BBC Sport at Mill Lane", "date": "Feb 28, 2026", "tick": 7, "read_minutes": 3,
+        "byline": "Callum Reid, BBC Sport at Mill Lane",
+        "date": "Feb 28, 2026",
+        "tick": 7,
+        "read_minutes": 3,
         "body": [
           "Ines Duarte rose to meet a corner in the fourth minute of added time to give Harrowgate Athletic a 2-1 win over Westfield Rovers in a derby that had looked destined for a draw.",
-          "Athletic had led from the twelfth minute through a low finish from Priya Sandhu, but Rovers equalised on the hour from the penalty spot after a handball that referee Mark Coyle awarded on review. Rovers manager Dai Evans said afterwards the penalty was 'the only thing that went right for us all afternoon'.",
           "The winner came from Athletic's ninth corner of the match. Duarte, unmarked at the far post, headed in from six yards in front of a sold-out Mill Lane.",
           "The result leaves Athletic second in the table, four points behind the leaders with nine games remaining. Rovers stay eleventh."
         ],
         "links": [],
-        "tags": ["football", "harrowgate", "derby"], "comments": []
+        "tags": [
+          "football",
+          "harrowgate",
+          "derby"
+        ],
+        "comments": []
       },
       "silver-lantern-second-weekend": {
-        "id": "silver-lantern-second-weekend", "section": "culture", "year": "2026",
+        "id": "silver-lantern-second-weekend",
+        "section": "culture",
+        "year": "2026",
         "title": "The Silver Lantern holds top spot as period drama defies box-office expectations",
         "dek": "The lighthouse-keeper film dropped just twenty-two per cent in its second weekend.",
-        "byline": "Imogen Hart, BBC Culture", "date": "Mar 1, 2026", "tick": 6, "read_minutes": 2,
+        "byline": "Imogen Hart, BBC Culture",
+        "date": "Mar 1, 2026",
+        "tick": 6,
+        "read_minutes": 2,
         "body": [
           "The Silver Lantern, a drama about a lighthouse keeper on a remote island in the 1890s, has held the top spot at the box office for a second weekend, seeing off two new releases.",
           "The film's takings fell by twenty-two per cent from its opening weekend, an unusually small drop for a film with no existing franchise behind it. Its distributor, Halcyon Pictures, said it would widen the release by a further four hundred screens.",
           "Reviews have been strong, with particular praise for lead actress Nell Farrow, who spends much of the film alone on screen. The Silver Lantern is expected to pass its production budget by the end of the week."
         ],
-        "links": [{"label": "Review: The Silver Lantern", "url": "http://bbc.com/2026/silver-lantern-review"}],
-        "tags": ["film", "box-office"], "comments": []
+        "links": [
+          {
+            "label": "Review: The Silver Lantern",
+            "url": "http://bbc.com/2026/silver-lantern-review"
+          }
+        ],
+        "tags": [
+          "film",
+          "box-office"
+        ],
+        "comments": []
       },
       "silver-lantern-review": {
-        "id": "silver-lantern-review", "section": "culture", "year": "2026",
+        "id": "silver-lantern-review",
+        "section": "culture",
+        "year": "2026",
         "title": "The Silver Lantern review: a quiet film that trusts its audience",
         "dek": "Nell Farrow carries a story with almost no dialogue and makes every silence count. Four stars.",
-        "byline": "Imogen Hart, BBC Culture", "date": "Feb 20, 2026", "tick": 5, "read_minutes": 4,
+        "byline": "Imogen Hart, BBC Culture",
+        "date": "Feb 20, 2026",
+        "tick": 5,
+        "read_minutes": 4,
         "body": [
           "For long stretches of The Silver Lantern nothing happens, and it is to the enormous credit of director Alun Prys and his lead, Nell Farrow, that nothing has rarely been so gripping.",
           "Farrow plays Edith Rowe, who in 1893 takes over the keeping of a lighthouse on an island four hours from the mainland after her husband's death. There is one other character for most of the film, a relief keeper who visits monthly, and a great deal of weather.",
@@ -167,31 +287,54 @@
           "It is not a film for everyone, and audiences expecting a plot will find it slow. But it is a film made by people who trusted that an audience would come to them, and this weekend's box office suggests they were right."
         ],
         "links": [],
-        "tags": ["film", "review"], "comments": [
-          {"id": "c1", "author": "alice", "text": "The storm sequence is worth the ticket on its own.", "tick": 6, "likes": 4}
-        ]
+        "tags": [
+          "film",
+          "review"
+        ],
+        "comments": []
       },
       "reproducible-builds-draft": {
-        "id": "reproducible-builds-draft", "section": "technology", "year": "2026",
+        "id": "reproducible-builds-draft",
+        "section": "technology",
+        "year": "2026",
         "title": "Standards body publishes draft rules for reproducible software builds",
         "dek": "The proposal would require that software in regulated industries can be rebuilt bit for bit from its source.",
-        "byline": "Ravi Chandran, BBC Technology", "date": "Jan 29, 2026", "tick": 4, "read_minutes": 3,
+        "byline": "Ravi Chandran, BBC Technology",
+        "date": "Jan 29, 2026",
+        "tick": 4,
+        "read_minutes": 3,
         "body": [
           "An international standards body has published draft rules that would require software used in regulated industries to be reproducible: the same source code, built twice, must produce byte-for-byte identical output.",
           "Supporters say reproducibility makes it possible to prove that a piece of software running in the field is the one that was audited, and that no step of the build has been tampered with. Critics say the rules would be costly for smaller firms and that many widely used build tools cannot currently meet them.",
           "The draft is open for comment until June. Reuters first reported it at http://reuters.com/2026/standards-body-reproducible-builds and Ars Technica has examined what it would mean for regulated industries at http://arstechnica.com/2026/replay-in-regulated-industries"
         ],
         "links": [
-          {"label": "Reuters: the standards body draft", "url": "http://reuters.com/2026/standards-body-reproducible-builds"},
-          {"label": "Ars Technica: replay in regulated industries", "url": "http://arstechnica.com/2026/replay-in-regulated-industries"}
+          {
+            "label": "Reuters: the standards body draft",
+            "url": "http://reuters.com/2026/standards-body-reproducible-builds"
+          },
+          {
+            "label": "Ars Technica: replay in regulated industries",
+            "url": "http://arstechnica.com/2026/replay-in-regulated-industries"
+          }
         ],
-        "tags": ["standards", "reproducibility", "regulation"], "comments": []
+        "tags": [
+          "standards",
+          "reproducibility",
+          "regulation"
+        ],
+        "comments": []
       },
       "marlow-vale-rail-reopening": {
-        "id": "marlow-vale-rail-reopening", "section": "uk", "year": "2026",
+        "id": "marlow-vale-rail-reopening",
+        "section": "uk",
+        "year": "2026",
         "title": "Marlow Vale line reopens after sixty years with a train that arrived four minutes early",
         "dek": "The eleven-mile branch closed in 1966 and was rebuilt at a cost of ninety million pounds.",
-        "byline": "Rhian Powell, BBC News", "date": "Feb 14, 2026", "tick": 3, "read_minutes": 3,
+        "byline": "Rhian Powell, BBC News",
+        "date": "Feb 14, 2026",
+        "tick": 3,
+        "read_minutes": 3,
         "body": [
           "The first scheduled passenger train on the Marlow Vale line in sixty years arrived at Marlow Bridge station on Saturday morning four minutes ahead of time, to the sound of a brass band and, one passenger noted, 'about nine hundred people who could not believe it'.",
           "The eleven-mile branch closed in 1966 and its track was lifted within the decade. A campaign to reopen it began in 1994 and secured funding in 2019. Rebuilding cost ninety million pounds, including a new bridge over the Marlow river and three stations.",
@@ -199,53 +342,239 @@
           "The first train was driven by Gwen Hollis, whose grandfather drove the last one in 1966."
         ],
         "links": [],
-        "tags": ["rail", "marlow-vale", "transport"], "comments": []
+        "tags": [
+          "rail",
+          "marlow-vale",
+          "transport"
+        ],
+        "comments": []
       },
       "hearthline-listing-london": {
-        "id": "hearthline-listing-london", "section": "business", "year": "2026",
+        "id": "hearthline-listing-london",
+        "section": "business",
+        "year": "2026",
         "title": "Bakery chain Hearthline seeks two billion dollar valuation in New York listing",
         "dek": "The company has grown for nineteen years without franchising and says it will not start now.",
-        "byline": "Bethan Lloyd, BBC Business", "date": "Feb 18, 2026", "tick": 2, "read_minutes": 2,
+        "byline": "Bethan Lloyd, BBC Business",
+        "date": "Feb 18, 2026",
+        "tick": 2,
+        "read_minutes": 2,
         "body": [
           "US bakery chain Hearthline has filed for a stock market listing that would value it at around two billion dollars, as it seeks funds to double its two hundred stores over five years.",
           "Founder Mireille Dubois has long refused to franchise the business, and the listing documents commit the company to keeping every store under its own ownership. The money raised will go towards a network of central bakeries and around two hundred new shops.",
           "Analysts said the valuation assumed a rate of growth the company had never previously attempted."
         ],
         "links": [],
-        "tags": ["hearthline", "ipo", "retail"], "comments": []
+        "tags": [
+          "hearthline",
+          "ipo",
+          "retail"
+        ],
+        "comments": []
       },
       "flu-season-peak": {
-        "id": "flu-season-peak", "section": "health", "year": "2026",
+        "id": "flu-season-peak",
+        "section": "health",
+        "year": "2026",
         "title": "Flu season has peaked, health officials say, but hospitals remain busy",
         "dek": "Admissions fell for a second week, though they remain above the five-year average for February.",
-        "byline": "Farah Idris, BBC Health", "date": "Feb 12, 2026", "tick": 1, "read_minutes": 2,
+        "byline": "Farah Idris, BBC Health",
+        "date": "Feb 12, 2026",
+        "tick": 1,
+        "read_minutes": 2,
         "body": [
           "This winter's flu season appears to have passed its peak, health officials said on Thursday, after hospital admissions for the illness fell for a second consecutive week.",
           "Admissions remain around a fifth above the average for mid-February over the past five years, and officials said hospitals would stay under pressure for several more weeks. The dominant strain this winter was well matched by the vaccine, and uptake among over-65s was the highest recorded.",
           "People who are eligible and have not yet had the vaccine are still advised to do so."
         ],
         "links": [],
-        "tags": ["flu", "nhs", "health"], "comments": []
+        "tags": [
+          "flu",
+          "nhs",
+          "health"
+        ],
+        "comments": []
       }
     },
-    "subscribers": ["carol.nakamura@gmail.com"],
-    "saved": {"carol": ["meridian-strait-deal"], "bob": ["harrowgate-derby"]},
-    "follows": {"carol": ["publication"], "alice": ["film"]}
+    "subscribers": [],
+    "saved": {},
+    "follows": {}
   },
   "search_entries": [
-    {"url": "http://bbc.com/", "title": "BBC News", "snippet": "News from the UK and around the world: UK, world, business, technology, science, health, sport and culture.", "vertical": "news", "authority": 9, "keywords": ["bbc", "bbc news", "news", "uk news", "world news"]},
-    {"url": "http://bbc.com/2026/harbourside-barrier-review", "title": "Harbourside flood: council orders review of barrier it was told to raise in 2019 - BBC News", "snippet": "Two thousand residents remain out of their homes after the highest storm surge recorded in the town.", "vertical": "news", "authority": 8, "keywords": ["harbourside", "flood", "sea barrier", "council", "storm surge"]},
-    {"url": "http://bbc.com/2026/harbourside-surge-explained", "title": "What made the Harbourside surge so high? - BBC News", "snippet": "A spring tide, a deep low and a wind in exactly the wrong direction combined on Saturday night.", "vertical": "news", "authority": 7, "keywords": ["storm surge", "harbourside", "spring tide", "weather"]},
-    {"url": "http://bbc.com/2026/meridian-strait-deal", "title": "Meridian Strait: three states sign shipping deal after five days of talks - BBC News", "snippet": "Isle Corvane will collect the largest share of pilotage fees in return for leading rescue operations.", "vertical": "news", "authority": 8, "keywords": ["meridian strait", "shipping deal", "isle corvane", "valmora", "pilotage"]},
-    {"url": "http://bbc.com/2026/calderra-sunwick-textiles", "title": "Calderra and Sunwick scrap garment tariff - BBC News", "snippet": "Retail buyers say the direct route between the cotton and the sewing floors takes eleven days off a lead time.", "vertical": "news", "authority": 7, "keywords": ["calderra", "sunwick", "tariff", "textiles", "garments"]},
-    {"url": "http://bbc.com/2026/northstar-atlas-launch", "title": "Software that promises to replay any crash exactly goes on general release - BBC News", "snippet": "Seattle firm Northstar has released Atlas, a simulator that removes chance from the programs it runs.", "vertical": "news", "authority": 7, "keywords": ["northstar", "atlas", "simulator", "replay", "software"]},
-    {"url": "http://bbc.com/2026/nhs-appointment-system", "title": "GP surgeries in three counties to trial shared appointment system - BBC News", "snippet": "Patients in Wexcombe, Ashcombe and Marlow Vale will be able to book at any practice in the pilot area.", "vertical": "news", "authority": 7, "keywords": ["gp appointments", "nhs", "wexcombe", "ashcombe", "pilot"]},
-    {"url": "http://bbc.com/2026/ashcombe-seagrass-survey", "title": "Seagrass meadow the size of fifteen football pitches found in Ashcombe lagoon - BBC News", "snippet": "The bed had been growing unnoticed since a sewage outfall was closed in 2011.", "vertical": "news", "authority": 7, "keywords": ["seagrass", "ashcombe", "lagoon", "hannah rees", "marine"]},
-    {"url": "http://bbc.com/2026/harrowgate-derby", "title": "Harrowgate Athletic 2-1 Westfield Rovers - BBC Sport", "snippet": "Ines Duarte's fourteenth goal of the season moved Athletic to second with nine games to play.", "vertical": "news", "authority": 7, "keywords": ["harrowgate athletic", "westfield rovers", "derby", "ines duarte", "football"]},
-    {"url": "http://bbc.com/2026/silver-lantern-review", "title": "The Silver Lantern review: a quiet film that trusts its audience - BBC Culture", "snippet": "Nell Farrow carries a story with almost no dialogue and makes every silence count. Four stars.", "vertical": "news", "authority": 6, "keywords": ["silver lantern", "review", "nell farrow", "alun prys", "film"]},
-    {"url": "http://bbc.com/2026/marlow-vale-rail-reopening", "title": "Marlow Vale line reopens after sixty years - BBC News", "snippet": "The eleven-mile branch closed in 1966 and was rebuilt at a cost of ninety million pounds.", "vertical": "news", "authority": 7, "keywords": ["marlow vale", "railway", "reopening", "marlow bridge"]},
-    {"url": "http://bbc.com/2026/reproducible-builds-draft", "title": "Standards body publishes draft rules for reproducible software builds - BBC News", "snippet": "The proposal would require that software in regulated industries can be rebuilt bit for bit from its source.", "vertical": "news", "authority": 7, "keywords": ["reproducible builds", "standards", "regulation", "software"]},
-    {"url": "http://bbc.com/sport", "title": "Sport - BBC News", "snippet": "Football, results and reports.", "vertical": "news", "authority": 8, "keywords": ["bbc sport", "sport", "football results"]},
-    {"url": "http://bbc.com/uk", "title": "UK - BBC News", "snippet": "News from across the UK.", "vertical": "news", "authority": 8, "keywords": ["bbc uk", "uk news", "britain"]}
+    {
+      "url": "http://bbc.com/",
+      "title": "BBC News",
+      "snippet": "News from the UK and around the world: UK, world, business, technology, science, health, sport and culture.",
+      "vertical": "news",
+      "authority": 9,
+      "keywords": [
+        "bbc",
+        "bbc news",
+        "news",
+        "uk news",
+        "world news"
+      ]
+    },
+    {
+      "url": "http://bbc.com/2026/harbourside-barrier-review",
+      "title": "Harbourside flood: council orders review of barrier it was told to raise in 2019 - BBC News",
+      "snippet": "Two thousand residents remain out of their homes after the highest storm surge recorded in the town.",
+      "vertical": "news",
+      "authority": 8,
+      "keywords": [
+        "harbourside",
+        "flood",
+        "sea barrier",
+        "council",
+        "storm surge"
+      ]
+    },
+    {
+      "url": "http://bbc.com/2026/harbourside-surge-explained",
+      "title": "What made the Harbourside surge so high? - BBC News",
+      "snippet": "A spring tide, a deep low and a wind in exactly the wrong direction combined on Saturday night.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "storm surge",
+        "harbourside",
+        "spring tide",
+        "weather"
+      ]
+    },
+    {
+      "url": "http://bbc.com/2026/meridian-strait-deal",
+      "title": "Meridian Strait: three states sign shipping deal after five days of talks - BBC News",
+      "snippet": "Isle Corvane will collect the largest share of pilotage fees in return for leading rescue operations.",
+      "vertical": "news",
+      "authority": 8,
+      "keywords": [
+        "meridian strait",
+        "shipping deal",
+        "isle corvane",
+        "valmora",
+        "pilotage"
+      ]
+    },
+    {
+      "url": "http://bbc.com/2026/calderra-sunwick-textiles",
+      "title": "Calderra and Sunwick scrap garment tariff - BBC News",
+      "snippet": "Retail buyers say the direct route between the cotton and the sewing floors takes eleven days off a lead time.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "calderra",
+        "sunwick",
+        "tariff",
+        "textiles",
+        "garments"
+      ]
+    },
+    {
+      "url": "http://bbc.com/2026/nhs-appointment-system",
+      "title": "GP surgeries in three counties to trial shared appointment system - BBC News",
+      "snippet": "Patients in Wexcombe, Ashcombe and Marlow Vale will be able to book at any practice in the pilot area.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "gp appointments",
+        "nhs",
+        "wexcombe",
+        "ashcombe",
+        "pilot"
+      ]
+    },
+    {
+      "url": "http://bbc.com/2026/ashcombe-seagrass-survey",
+      "title": "Seagrass meadow the size of fifteen football pitches found in Ashcombe lagoon - BBC News",
+      "snippet": "The bed had been growing unnoticed since a sewage outfall was closed in 2011.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "seagrass",
+        "ashcombe",
+        "lagoon",
+        "hannah rees",
+        "marine"
+      ]
+    },
+    {
+      "url": "http://bbc.com/2026/harrowgate-derby",
+      "title": "Harrowgate Athletic 2-1 Westfield Rovers - BBC Sport",
+      "snippet": "Ines Duarte's fourteenth goal of the season moved Athletic to second with nine games to play.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "harrowgate athletic",
+        "westfield rovers",
+        "derby",
+        "ines duarte",
+        "football"
+      ]
+    },
+    {
+      "url": "http://bbc.com/2026/silver-lantern-review",
+      "title": "The Silver Lantern review: a quiet film that trusts its audience - BBC Culture",
+      "snippet": "Nell Farrow carries a story with almost no dialogue and makes every silence count. Four stars.",
+      "vertical": "news",
+      "authority": 6,
+      "keywords": [
+        "silver lantern",
+        "review",
+        "nell farrow",
+        "alun prys",
+        "film"
+      ]
+    },
+    {
+      "url": "http://bbc.com/2026/marlow-vale-rail-reopening",
+      "title": "Marlow Vale line reopens after sixty years - BBC News",
+      "snippet": "The eleven-mile branch closed in 1966 and was rebuilt at a cost of ninety million pounds.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "marlow vale",
+        "railway",
+        "reopening",
+        "marlow bridge"
+      ]
+    },
+    {
+      "url": "http://bbc.com/2026/reproducible-builds-draft",
+      "title": "Standards body publishes draft rules for reproducible software builds - BBC News",
+      "snippet": "The proposal would require that software in regulated industries can be rebuilt bit for bit from its source.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "reproducible builds",
+        "standards",
+        "regulation",
+        "software"
+      ]
+    },
+    {
+      "url": "http://bbc.com/sport",
+      "title": "Sport - BBC News",
+      "snippet": "Football, results and reports.",
+      "vertical": "news",
+      "authority": 8,
+      "keywords": [
+        "bbc sport",
+        "sport",
+        "football results"
+      ]
+    },
+    {
+      "url": "http://bbc.com/uk",
+      "title": "UK - BBC News",
+      "snippet": "News from across the UK.",
+      "vertical": "news",
+      "authority": 8,
+      "keywords": [
+        "bbc uk",
+        "uk news",
+        "britain"
+      ]
+    }
   ]
 }

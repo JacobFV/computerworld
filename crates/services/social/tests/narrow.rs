@@ -112,10 +112,7 @@ fn widest_box(html: &str, width: u32) -> (f64, String) {
 #[test]
 fn every_page_of_every_skin_fits_a_phone() {
     for site in SITES {
-        let path = format!(
-            "{}/../../../worlds/internet/sites/{site}.json",
-            env!("CARGO_MANIFEST_DIR")
-        );
+        let path = cw_service_common::reference::reference_site_path(site);
         let file: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         let domain = file["domains"][0].as_str().unwrap().to_owned();
         let mut state = SocialService

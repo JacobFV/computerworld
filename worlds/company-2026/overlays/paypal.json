@@ -1,0 +1,267 @@
+{
+  "initial_state": {
+    "accounts": {
+      "pp-alice": {
+        "id": "pp-alice",
+        "owner": "alice",
+        "kind": "balance",
+        "name": "PayPal Balance (linked: Horizon Card ...3310, Northwind Checking ...4417)",
+        "balance_cents": 48312,
+        "available_cents": 48312,
+        "limit_cents": 0
+      },
+      "ppc-alice": {
+        "id": "ppc-alice",
+        "owner": "alice",
+        "kind": "credit",
+        "name": "PayPal Credit (...7702)",
+        "balance_cents": -33600,
+        "available_cents": 216400,
+        "limit_cents": 250000
+      },
+      "pp-bob": {
+        "id": "pp-bob",
+        "owner": "bob",
+        "kind": "balance",
+        "name": "PayPal Balance (linked: Puget Federal Debit ...5518)",
+        "balance_cents": 21745,
+        "available_cents": 21745,
+        "limit_cents": 0
+      },
+      "pp-carol": {
+        "id": "pp-carol",
+        "owner": "carol",
+        "kind": "balance",
+        "name": "PayPal Balance (linked: Cascade Credit Union Visa ...9084)",
+        "balance_cents": 130580,
+        "available_cents": 130580,
+        "limit_cents": 0
+      },
+      "pps-carol": {
+        "id": "pps-carol",
+        "owner": "carol",
+        "kind": "savings",
+        "name": "PayPal Savings (4.10% APY)",
+        "balance_cents": 620000,
+        "available_cents": 620000,
+        "limit_cents": 0
+      }
+    },
+    "transactions": {
+      "tx-1": {
+        "account": "pp-alice"
+      },
+      "tx-2": {
+        "account": "pp-alice"
+      },
+      "tx-3": {
+        "account": "pp-alice"
+      },
+      "tx-4": {
+        "account": "pp-alice"
+      },
+      "tx-5": {
+        "account": "pp-alice"
+      },
+      "tx-6": {
+        "account": "pp-alice"
+      },
+      "tx-7": {
+        "account": "pp-alice"
+      },
+      "tx-8": {
+        "account": "pp-alice",
+        "merchant": "SENT TO BOB TANAKA"
+      },
+      "tx-9": {
+        "account": "pp-bob",
+        "merchant": "RECEIVED FROM ALICE NAKAMURA"
+      },
+      "tx-10": {
+        "account": "pp-alice"
+      },
+      "tx-11": {
+        "account": "pp-alice"
+      },
+      "tx-12": {
+        "account": "pp-alice",
+        "merchant": "RECEIVED FROM CAROL NDIAYE"
+      },
+      "tx-13": {
+        "account": "pp-alice"
+      },
+      "tx-14": {
+        "account": "ppc-alice"
+      },
+      "tx-15": {
+        "account": "pp-alice"
+      },
+      "tx-16": {
+        "account": "pp-bob"
+      },
+      "tx-17": {
+        "account": "pp-bob"
+      },
+      "tx-18": {
+        "account": "pp-bob"
+      },
+      "tx-19": {
+        "account": "pp-bob"
+      },
+      "tx-20": {
+        "account": "pp-bob"
+      },
+      "tx-21": {
+        "account": "pp-bob"
+      },
+      "tx-22": {
+        "account": "pp-bob",
+        "merchant": "SENT TO CAROL NDIAYE"
+      },
+      "tx-23": {
+        "account": "pp-carol",
+        "merchant": "RECEIVED FROM BOB TANAKA"
+      },
+      "tx-24": {
+        "account": "pp-carol"
+      },
+      "tx-25": {
+        "account": "pp-carol"
+      },
+      "tx-26": {
+        "account": "pp-carol"
+      },
+      "tx-27": {
+        "account": "pp-carol"
+      },
+      "tx-28": {
+        "account": "pp-carol",
+        "merchant": "SENT TO ALICE NAKAMURA"
+      },
+      "tx-29": {
+        "account": "pp-carol"
+      },
+      "tx-30": {
+        "account": "pp-carol"
+      },
+      "tx-31": {
+        "account": "pps-carol"
+      },
+      "tx-32": {
+        "account": "pps-carol"
+      },
+      "tx-33": {
+        "account": "pp-alice"
+      },
+      "tx-34": {
+        "account": "pp-alice",
+        "memo": "Letterpress notebook, gift for Carol"
+      },
+      "tx-35": {
+        "account": "pp-alice"
+      },
+      "tx-36": {
+        "account": "pp-alice"
+      },
+      "tx-37": {
+        "account": "pp-alice"
+      },
+      "tx-38": {
+        "account": "pp-bob"
+      },
+      "tx-39": {
+        "account": "pp-bob"
+      },
+      "tx-40": {
+        "account": "pp-carol"
+      },
+      "tx-41": {
+        "account": "pp-carol"
+      }
+    },
+    "payees": {
+      "bob-tanaka": {
+        "id": "bob-tanaka",
+        "name": "Bob Tanaka",
+        "account_hint": "@bobtanaka"
+      },
+      "carol-ndiaye": {
+        "id": "carol-ndiaye",
+        "name": "Carol Ndiaye",
+        "account_hint": "@carolndiaye"
+      },
+      "alice-nakamura": {
+        "id": "alice-nakamura",
+        "name": "Alice Nakamura",
+        "account_hint": "@alicenakamura"
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://paypal.com/accounts/pp-alice",
+      "title": "PayPal Balance - activity",
+      "snippet": "Payments to Airbnb, Booking.com, Uber, eBay, DoorDash and Etsy, Spotify and Meridian Wireless bills, a refund, a pending withdrawal, and money sent to and received from friends.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "paypal activity",
+        "paypal transactions",
+        "recent payments",
+        "paypal history"
+      ]
+    },
+    {
+      "url": "http://paypal.com/accounts/pp-alice/transactions/tx-5",
+      "title": "eBay - outlet_overstock_nw -$64.00 - payment detail",
+      "snippet": "Order 07-12984-33101, trail runners, paid from PayPal Balance. The detail links back to the eBay order.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "ebay payment",
+        "paypal ebay",
+        "trail runners payment",
+        "order 07-12984-33101"
+      ]
+    },
+    {
+      "url": "http://paypal.com/accounts/ppc-alice",
+      "title": "PayPal Credit (...7702) - activity",
+      "snippet": "A $2,500 line with the Reykjavik stay on a 0% Pay in 4 plan. $2,164.00 available.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "paypal credit",
+        "pay in 4",
+        "buy now pay later",
+        "paypal credit limit"
+      ]
+    },
+    {
+      "url": "http://paypal.com/transfers",
+      "title": "Send money and pay merchants - PayPal",
+      "snippet": "Send to Bob, Carol or Alice by handle, pay a saved merchant, or move balance to PayPal Savings. Both legs are written together.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "send money",
+        "paypal send",
+        "pay a friend",
+        "transfer to savings",
+        "split a bill"
+      ]
+    },
+    {
+      "url": "http://paypal.com/statements/pp-alice/2026-03",
+      "title": "PayPal Balance statement - March 2026",
+      "snippet": "A month of wallet activity with the opening and closing balance.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "paypal statement",
+        "monthly statement",
+        "march statement paypal"
+      ]
+    }
+  ]
+}

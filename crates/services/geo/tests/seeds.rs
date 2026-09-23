@@ -5,9 +5,12 @@ use cw_sdk::{Service, ServiceContext};
 use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_service_geo::{GeoService, GeoState};
 use serde_json::Value;
-const GOOGLE_MAPS: &str = include_str!("../../../../worlds/internet/sites/google-maps.json");
-const OSM: &str = include_str!("../../../../worlds/internet/sites/osm.json");
-const WEATHER: &str = include_str!("../../../../worlds/internet/sites/weather.json");
+static GOOGLE_MAPS: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("google-maps"));
+static OSM: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("osm"));
+static WEATHER: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("weather"));
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
         actor: actor.into(),
@@ -81,13 +84,13 @@ impl Dom {
 #[test]
 fn the_three_geo_sites_share_one_places_dataset() {
     let places = |raw: &str| site(raw)["initial_state"]["places"].clone();
-    assert_eq!(places(GOOGLE_MAPS), places(OSM));
-    assert_eq!(places(GOOGLE_MAPS), places(WEATHER));
-    assert!(places(GOOGLE_MAPS).as_object().unwrap().len() >= 12);
+    assert_eq!(places(*GOOGLE_MAPS), places(*OSM));
+    assert_eq!(places(*GOOGLE_MAPS), places(*WEATHER));
+    assert!(places(*GOOGLE_MAPS).as_object().unwrap().len() >= 12);
 }
 #[test]
 fn storyline_4_has_the_saved_fourteen_minute_drive_to_devcon() {
-    let mut state = load(GOOGLE_MAPS);
+    let mut state = load(*GOOGLE_MAPS);
     let seeded: GeoState = serde_json::from_value(state.clone()).unwrap();
     let cached = seeded.routes["northstar-hq|devcon-center|driving"].clone();
     assert_eq!((cached.metres, cached.minutes), (5_428, 14));
@@ -116,7 +119,7 @@ fn storyline_4_has_the_saved_fourteen_minute_drive_to_devcon() {
 }
 #[test]
 fn every_maps_page_the_seed_advertises_resolves() {
-    let mut state = load(GOOGLE_MAPS);
+    let mut state = load(*GOOGLE_MAPS);
     for url in [
         "http://maps.google.com/",
         "http://maps.google.com/maps",
@@ -156,7 +159,7 @@ fn every_maps_page_the_seed_advertises_resolves() {
 }
 #[test]
 fn openstreetmap_reads_the_same_places_in_metric_and_carries_its_notes() {
-    let mut state = load(OSM);
+    let mut state = load(*OSM);
     let dir = page(
         &mut state,
         "bob",
@@ -202,7 +205,7 @@ fn openstreetmap_reads_the_same_places_in_metric_and_carries_its_notes() {
 }
 #[test]
 fn storyline_4_has_rain_in_seattle_on_the_devcon_travel_day() {
-    let mut state = load(WEATHER);
+    let mut state = load(*WEATHER);
     let today = page(
         &mut state,
         "carol",

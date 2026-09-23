@@ -18,7 +18,7 @@ fn ctx() -> ServiceContext {
 }
 fn site(name: &str, skin: &str) -> Value {
     let raw =
-        std::fs::read_to_string(format!("../../../worlds/internet/sites/{name}.json")).unwrap();
+        std::fs::read_to_string(cw_service_common::reference::reference_site_path(name)).unwrap();
     let mut site: Value = serde_json::from_str(&raw).unwrap();
     site["initial_state"]["skin"] = skin.into();
     GitService

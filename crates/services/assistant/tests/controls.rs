@@ -19,8 +19,10 @@ use cw_service_common::audit;
 use serde_json::{json, Value};
 use std::collections::BTreeSet;
 
-const OPENAI: &str = include_str!("../../../../worlds/internet/sites/openai.json");
-const ANTHROPIC: &str = include_str!("../../../../worlds/internet/sites/anthropic.json");
+static OPENAI: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("openai"));
+static ANTHROPIC: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("anthropic"));
 
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
@@ -102,8 +104,8 @@ fn readers(initial: &Value) -> BTreeSet<String> {
 fn no_page_of_either_assistant_offers_a_control_that_cannot_act() {
     let mut faults = Vec::new();
     for (source, origin) in [
-        (OPENAI, "http://chatgpt.com"),
-        (ANTHROPIC, "http://claude.ai"),
+        (*OPENAI, "http://chatgpt.com"),
+        (*ANTHROPIC, "http://claude.ai"),
     ] {
         let site: Value = serde_json::from_str(source).unwrap();
         let initial = site["initial_state"].clone();
@@ -135,8 +137,8 @@ fn no_page_of_either_assistant_offers_a_control_that_cannot_act() {
 #[test]
 fn the_pages_say_what_is_on_them() {
     for (source, origin) in [
-        (OPENAI, "http://chatgpt.com"),
-        (ANTHROPIC, "http://claude.ai"),
+        (*OPENAI, "http://chatgpt.com"),
+        (*ANTHROPIC, "http://claude.ai"),
     ] {
         let site: Value = serde_json::from_str(source).unwrap();
         let mut state = AssistantService

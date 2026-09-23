@@ -14,9 +14,12 @@ use cw_service_common::audit;
 use cw_service_geo::GeoService;
 use serde_json::Value;
 
-const GOOGLE_MAPS: &str = include_str!("../../../../worlds/internet/sites/google-maps.json");
-const OSM: &str = include_str!("../../../../worlds/internet/sites/osm.json");
-const WEATHER: &str = include_str!("../../../../worlds/internet/sites/weather.json");
+static GOOGLE_MAPS: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("google-maps"));
+static OSM: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("osm"));
+static WEATHER: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("weather"));
 
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
@@ -84,7 +87,7 @@ fn google_maps_has_no_dead_control_on_any_page() {
         out.push_str(&report(
             "maps.google.com",
             actor,
-            &sweep(GOOGLE_MAPS, "maps.google.com", actor, &seeds),
+            &sweep(*GOOGLE_MAPS, "maps.google.com", actor, &seeds),
         ));
     }
     assert!(out.is_empty(), "{out}");
@@ -104,7 +107,7 @@ fn openstreetmap_has_no_dead_control_on_any_page() {
         out.push_str(&report(
             "openstreetmap.org",
             actor,
-            &sweep(OSM, "openstreetmap.org", actor, &seeds),
+            &sweep(*OSM, "openstreetmap.org", actor, &seeds),
         ));
     }
     assert!(out.is_empty(), "{out}");
@@ -127,7 +130,7 @@ fn weather_has_no_dead_control_on_any_page() {
         out.push_str(&report(
             "weather.com",
             actor,
-            &sweep(WEATHER, "weather.com", actor, &seeds),
+            &sweep(*WEATHER, "weather.com", actor, &seeds),
         ));
     }
     assert!(out.is_empty(), "{out}");
@@ -198,7 +201,7 @@ fn render(raw: &str, host: &str, actor: &str, path: &str) -> String {
 fn nothing_that_is_drawn_as_pressable_is_inert() {
     let pages = [
         (
-            GOOGLE_MAPS,
+            *GOOGLE_MAPS,
             "maps.google.com",
             "alice",
             [
@@ -213,7 +216,7 @@ fn nothing_that_is_drawn_as_pressable_is_inert() {
             .as_slice(),
         ),
         (
-            OSM,
+            *OSM,
             "openstreetmap.org",
             "bob",
             [
@@ -228,7 +231,7 @@ fn nothing_that_is_drawn_as_pressable_is_inert() {
             .as_slice(),
         ),
         (
-            WEATHER,
+            *WEATHER,
             "weather.com",
             "alice",
             [

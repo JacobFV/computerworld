@@ -5,8 +5,10 @@ use cw_sdk::{Service, ServiceContext};
 use cw_service_bank::{BankService, BankState};
 use cw_service_common::html::validate_strict;
 use serde_json::Value;
-const CHASE: &str = include_str!("../../../../worlds/internet/sites/northwind.json");
-const PAYPAL: &str = include_str!("../../../../worlds/internet/sites/paypal.json");
+static CHASE: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("northwind"));
+static PAYPAL: std::sync::LazyLock<&'static str> =
+    std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("paypal"));
 const ORDER_1001: &str = "http://amazon.com/orders/1001";
 fn ctx(actor: &str) -> ServiceContext {
     ServiceContext {
@@ -18,7 +20,7 @@ fn ctx(actor: &str) -> ServiceContext {
     }
 }
 fn load() -> Value {
-    load_site(CHASE)
+    load_site(*CHASE)
 }
 fn load_site(raw: &str) -> Value {
     let doc: Value = serde_json::from_str(raw).expect("site file must be JSON");
@@ -120,8 +122,8 @@ fn every_page_the_seed_advertises_resolves_for_its_owner_and_no_one_else() {
 #[test]
 fn every_page_of_both_shipped_seeds_validates_strictly() {
     for (raw, host, actors) in [
-        (CHASE, "northwind.example", ["alice"].as_slice()),
-        (PAYPAL, "paypal.com", ["alice", "bob", "carol"].as_slice()),
+        (*CHASE, "northwind.example", ["alice"].as_slice()),
+        (*PAYPAL, "paypal.com", ["alice", "bob", "carol"].as_slice()),
     ] {
         let mut state = load_site(raw);
         let s: BankState = serde_json::from_value(state.clone()).unwrap();

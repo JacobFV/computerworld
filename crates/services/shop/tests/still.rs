@@ -117,8 +117,7 @@ fn storefront_stills() {
         if !only.is_empty() && !only.iter().any(|s| s == site) {
             continue;
         }
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join(format!("../../../worlds/internet/sites/{site}.json"));
+        let path = PathBuf::from(cw_service_common::reference::reference_site_path(site));
         let seed: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
         let ctx = |actor: &str| ServiceContext {
             actor: actor.into(),

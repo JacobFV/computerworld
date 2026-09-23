@@ -1,0 +1,88 @@
+{
+  "initial_state": {
+    "articles": {
+      "northstar-atlas-release": {
+        "id": "northstar-atlas-release",
+        "section": "top",
+        "year": "2026",
+        "title": "Northstar ships Atlas 1.0 with a promise of byte-for-byte replay",
+        "dek": "Full coverage: the Seattle developer-tools firm says any recorded run of its simulator can be reproduced exactly from its seed.",
+        "byline": "Google News",
+        "date": "Mar 5, 2026",
+        "tick": 14,
+        "read_minutes": 1,
+        "body": [
+          "Northstar released version 1.0 of Atlas on Wednesday, a simulation runtime that removes the wall clock, host randomness and unordered iteration from the code it runs so that a failure can be replayed rather than reproduced by repetition. The company published the source alongside the release and has not disclosed revenue or headcount. Reuters filed the release as a two-minute wire story, while The Verge ran a longer feature built around an interview with engineering manager Carol Nakamura.",
+          "Source: Reuters, The Verge. Read the wire story at http://reuters.com/2026/northstar-atlas-determinism and the feature at http://theverge.com/2026/atlas-determinism"
+        ],
+        "links": [
+          {
+            "label": "Reuters: Northstar releases Atlas 1.0",
+            "url": "http://reuters.com/2026/northstar-atlas-determinism"
+          },
+          {
+            "label": "The Verge: Atlas bets everything on determinism",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          }
+        ],
+        "tags": [
+          "northstar",
+          "atlas",
+          "software"
+        ],
+        "comments": []
+      },
+      "northstar-latency-outage": {
+        "id": "northstar-latency-outage",
+        "section": "technology",
+        "year": "2026",
+        "title": "Northstar restores service after a four-hour latency incident",
+        "dek": "The company blamed a scheduler regression and published a postmortem the same week.",
+        "byline": "Google News",
+        "date": "Feb 19, 2026",
+        "tick": 7,
+        "read_minutes": 1,
+        "body": [
+          "Northstar's hosted service returned to normal latency on Thursday after roughly four hours of degraded response times that the company traced to a scheduler regression. Reuters carried the confirmation from the company; the status page and the engineering blog both published timelines within the week.",
+          "Source: Reuters. Read the confirmation at http://reuters.com/2026/northstar-latency-incident"
+        ],
+        "links": [
+          {
+            "label": "Reuters: Northstar latency incident",
+            "url": "http://reuters.com/2026/northstar-latency-incident"
+          }
+        ],
+        "tags": [
+          "northstar",
+          "outage"
+        ],
+        "comments": []
+      }
+    },
+    "saved": {
+      "alice": [
+        "northstar-atlas-release"
+      ]
+    },
+    "follows": {
+      "bob": [
+        "technology"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://news.google.com/2026/northstar-atlas-release",
+      "title": "Northstar ships Atlas 1.0 with a promise of byte-for-byte replay - Google News",
+      "snippet": "Full coverage of the Atlas 1.0 release from Reuters and The Verge.",
+      "vertical": "news",
+      "authority": 7,
+      "keywords": [
+        "northstar",
+        "atlas",
+        "atlas 1.0",
+        "full coverage"
+      ]
+    }
+  ]
+}

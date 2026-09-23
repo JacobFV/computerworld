@@ -10,25 +10,3531 @@
   "port": 80,
   "initial_state": {
     "pages": {
-      "/": {"version":1,"title":"Cloud Computing Services - Amazon Web Services (AWS)","elements":[{"kind":"row","id":"h8","children":[{"kind":"styled","id":"h1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"h2","text":"Products","url":"http://aws.amazon.com/ec2"},{"kind":"link","id":"h3","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"h4","text":"Free Tier","url":"http://aws.amazon.com/free"},{"kind":"link","id":"h5","text":"Documentation","url":"http://aws.amazon.com/docs"},{"kind":"link","id":"h6","text":"What's New","url":"http://aws.amazon.com/whats-new"},{"kind":"link","id":"h7","text":"Sign in to the Console","url":"http://aws.amazon.com/console"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"h14","height":12},{"kind":"styled","id":"h15","text":"Start building on AWS today","style":{"size":34,"weight":"bold"}},{"kind":"styled","id":"h16","text":"Over 200 fully featured services from data centers in 36 geographic Regions. Compute, storage, databases, machine learning, and everything to run them.","style":{"size":16,"color":"#545b64"}},{"kind":"row","id":"h22","children":[{"kind":"card","id":"h17","children":[{"kind":"styled","id":"h18","text":"Create an AWS account","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#ff9900","radius":8,"padding":12},"action":{"method":"GET","url":"http://aws.amazon.com/free"}},{"kind":"card","id":"h19","children":[{"kind":"styled","id":"h20","text":"Sign in to the Console","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#0972d3","radius":8,"padding":12},"action":{"method":"GET","url":"http://aws.amazon.com/console"}},{"kind":"link","id":"h21","text":"Explore the Free Tier","url":"http://aws.amazon.com/free"}],"gap":12,"align":"center"},{"kind":"grid","id":"h32","columns":3,"children":[{"kind":"card","id":"h25","children":[{"kind":"heading","id":"h23","text":"Amazon EC2","level":3},{"kind":"text","id":"h24","text":"Secure and resizable virtual servers in the cloud"}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/ec2"}},{"kind":"card","id":"h28","children":[{"kind":"heading","id":"h26","text":"Amazon S3","level":3},{"kind":"text","id":"h27","text":"Object storage built to retrieve any amount of data from anywhere"}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/s3"}},{"kind":"card","id":"h31","children":[{"kind":"heading","id":"h29","text":"AWS Lambda","level":3},{"kind":"text","id":"h30","text":"Run code without thinking about servers"}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/lambda"}}],"gap":12},{"kind":"grid","id":"h42","columns":3,"children":[{"kind":"card","id":"h35","children":[{"kind":"heading","id":"h33","text":"Amazon RDS","level":3},{"kind":"text","id":"h34","text":"Managed relational databases in the cloud"}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/rds"}},{"kind":"card","id":"h38","children":[{"kind":"heading","id":"h36","text":"Amazon DynamoDB","level":3},{"kind":"text","id":"h37","text":"Serverless key-value database at any scale"}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/dynamodb"}}],"gap":12},{"kind":"heading","id":"h43","text":"What's new","level":2},{"kind":"text","id":"h44","text":"Graviton5 instances are generally available with 40 percent better price-performance than Graviton4. Lambda now supports 15-minute streaming responses. S3 Express One Zone is available in all commercial Regions."},{"kind":"row","id":"h47","children":[{"kind":"link","id":"h45","text":"All announcements","url":"http://aws.amazon.com/whats-new"},{"kind":"link","id":"h46","text":"Pricing overview","url":"http://aws.amazon.com/pricing"}],"gap":12,"align":"center"},{"kind":"row","id":"h13","children":[{"kind":"link","id":"h9","text":"AWS on GitHub","url":"http://github.com/"},{"kind":"link","id":"h10","text":"AWS on YouTube","url":"http://youtube.com/"},{"kind":"link","id":"h11","text":"Amazon.com","url":"http://amazon.com/"},{"kind":"text","id":"h12","text":"Amazon Web Services, Inc. or its affiliates."}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/ec2": {"version":1,"title":"Amazon EC2 · AWS","elements":[{"kind":"row","id":"ec5","children":[{"kind":"styled","id":"ec1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"ec2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"ec3","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"ec4","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"ec10","height":12},{"kind":"row","id":"ec13","children":[{"kind":"badge","id":"ec11","text":"Compute","style":{"size":11,"color":"#ffffff","background":"#0972d3","radius":10,"padding":5}},{"kind":"styled","id":"ec12","text":"Amazon EC2","style":{"size":28,"weight":"bold"}}],"gap":12,"align":"center"},{"kind":"styled","id":"ec14","text":"Secure and resizable virtual servers in the cloud","style":{"size":16,"color":"#545b64"}},{"kind":"text","id":"ec15","text":"EC2 gives you a virtual machine in minutes: pick an instance type, an AMI, a VPC subnet, and a key pair, and you have a server with a public address. Over 800 instance types cover general purpose, compute, memory, storage, and accelerated workloads, on Intel, AMD, and Graviton processors."},{"kind":"text","id":"ec16","text":"Pay by the second for On-Demand, save up to 72 percent with Savings Plans, or bid on spare capacity with Spot for fault-tolerant work. Auto Scaling groups add and remove instances against a target such as CPU or request count, and Elastic Load Balancing spreads traffic across them."},{"kind":"card","id":"ec19","children":[{"kind":"heading","id":"ec17","text":"Pricing","level":3},{"kind":"text","id":"ec18","text":"t3.micro from $0.0104 per hour On-Demand in us-east-1. m7g.large from $0.0816. Spot typically 60 to 90 percent below On-Demand."}],"style":{"radius":10,"padding":16}},{"kind":"row","id":"ec24","children":[{"kind":"card","id":"ec20","children":[{"kind":"styled","id":"ec21","text":"Get started","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#ff9900","radius":8,"padding":12},"action":{"method":"GET","url":"http://aws.amazon.com/console"}},{"kind":"link","id":"ec22","text":"Read the documentation","url":"http://aws.amazon.com/docs/ec2-getting-started"}],"gap":12,"align":"center"},{"kind":"row","id":"ec9","children":[{"kind":"link","id":"ec6","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"ec7","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/s3": {"version":1,"title":"Amazon S3 · AWS","elements":[{"kind":"row","id":"s35","children":[{"kind":"styled","id":"s31","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"s32","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"s33","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"s34","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"s310","height":12},{"kind":"row","id":"s313","children":[{"kind":"badge","id":"s311","text":"Storage","style":{"size":11,"color":"#ffffff","background":"#0972d3","radius":10,"padding":5}},{"kind":"styled","id":"s312","text":"Amazon S3","style":{"size":28,"weight":"bold"}}],"gap":12,"align":"center"},{"kind":"styled","id":"s314","text":"Object storage built to retrieve any amount of data from anywhere","style":{"size":16,"color":"#545b64"}},{"kind":"text","id":"s315","text":"S3 stores objects in buckets with eleven nines of durability. There is no filesystem to size and no volume to grow; put an object with a key and it is there. Versioning keeps every write, and lifecycle rules move cold data to cheaper storage classes automatically."},{"kind":"text","id":"s316","text":"Storage classes trade access speed for price: S3 Standard for hot data, Intelligent-Tiering when access patterns are unknown, Standard-IA and One Zone-IA for infrequent reads, and Glacier Instant, Flexible, and Deep Archive for archives. Block Public Access is on by default for new buckets."},{"kind":"card","id":"s319","children":[{"kind":"heading","id":"s317","text":"Pricing","level":3},{"kind":"text","id":"s318","text":"S3 Standard $0.023 per GB-month for the first 50 TB. PUT requests $0.005 per 1,000, GET $0.0004 per 1,000. Glacier Deep Archive $0.00099 per GB-month."}],"style":{"radius":10,"padding":16}},{"kind":"row","id":"s324","children":[{"kind":"card","id":"s320","children":[{"kind":"styled","id":"s321","text":"Get started","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#ff9900","radius":8,"padding":12},"action":{"method":"GET","url":"http://aws.amazon.com/console"}},{"kind":"link","id":"s322","text":"Read the documentation","url":"http://aws.amazon.com/docs/s3-bucket-basics"}],"gap":12,"align":"center"},{"kind":"row","id":"s39","children":[{"kind":"link","id":"s36","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"s37","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/lambda": {"version":1,"title":"AWS Lambda · AWS","elements":[{"kind":"row","id":"la5","children":[{"kind":"styled","id":"la1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"la2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"la3","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"la4","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"la10","height":12},{"kind":"row","id":"la13","children":[{"kind":"badge","id":"la11","text":"Compute","style":{"size":11,"color":"#ffffff","background":"#0972d3","radius":10,"padding":5}},{"kind":"styled","id":"la12","text":"AWS Lambda","style":{"size":28,"weight":"bold"}}],"gap":12,"align":"center"},{"kind":"styled","id":"la14","text":"Run code without thinking about servers","style":{"size":16,"color":"#545b64"}},{"kind":"text","id":"la15","text":"Lambda runs a function in response to an event: an HTTP request through API Gateway or a function URL, an object landing in S3, a message on SQS, a change in DynamoDB, or a schedule. You upload code in Python, Node.js, Java, Go, .NET, Ruby, or a container image, and Lambda scales it from zero to thousands of concurrent executions."},{"kind":"text","id":"la16","text":"Billing is per request and per millisecond of execution at the memory you configure, from 128 MB to 10 GB. SnapStart and provisioned concurrency remove cold starts for latency-sensitive paths. Functions run inside a VPC when they need private resources such as RDS."},{"kind":"card","id":"la19","children":[{"kind":"heading","id":"la17","text":"Pricing","level":3},{"kind":"text","id":"la18","text":"$0.20 per million requests and $0.0000166667 per GB-second. The free tier includes 1 million requests and 400,000 GB-seconds every month, forever."}],"style":{"radius":10,"padding":16}},{"kind":"row","id":"la24","children":[{"kind":"card","id":"la20","children":[{"kind":"styled","id":"la21","text":"Get started","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#ff9900","radius":8,"padding":12},"action":{"method":"GET","url":"http://aws.amazon.com/console"}},{"kind":"link","id":"la22","text":"Read the documentation","url":"http://aws.amazon.com/docs/lambda-first-function"}],"gap":12,"align":"center"},{"kind":"row","id":"la9","children":[{"kind":"link","id":"la6","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"la7","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/rds": {"version":1,"title":"Amazon RDS · AWS","elements":[{"kind":"row","id":"rd5","children":[{"kind":"styled","id":"rd1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"rd2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"rd3","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"rd4","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"rd10","height":12},{"kind":"row","id":"rd13","children":[{"kind":"badge","id":"rd11","text":"Database","style":{"size":11,"color":"#ffffff","background":"#0972d3","radius":10,"padding":5}},{"kind":"styled","id":"rd12","text":"Amazon RDS","style":{"size":28,"weight":"bold"}}],"gap":12,"align":"center"},{"kind":"styled","id":"rd14","text":"Managed relational databases in the cloud","style":{"size":16,"color":"#545b64"}},{"kind":"text","id":"rd15","text":"RDS runs PostgreSQL, MySQL, MariaDB, Oracle, SQL Server, and Db2 with backups, patching, monitoring, and failover handled for you. A Multi-AZ deployment keeps a synchronous standby in a second Availability Zone and fails over in about a minute."},{"kind":"text","id":"rd16","text":"Aurora is the RDS-compatible engine built for the cloud: storage that grows to 128 TiB automatically, up to 15 read replicas, and Aurora Serverless v2 that scales capacity in fractions of a second. Performance Insights shows which queries are spending your CPU."},{"kind":"card","id":"rd19","children":[{"kind":"heading","id":"rd17","text":"Pricing","level":3},{"kind":"text","id":"rd18","text":"db.t4g.micro PostgreSQL from $0.016 per hour. Storage $0.115 per GB-month for gp3. Aurora Serverless v2 from $0.12 per ACU-hour."}],"style":{"radius":10,"padding":16}},{"kind":"row","id":"rd24","children":[{"kind":"card","id":"rd20","children":[{"kind":"styled","id":"rd21","text":"Get started","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#ff9900","radius":8,"padding":12},"action":{"method":"GET","url":"http://aws.amazon.com/console"}},{"kind":"link","id":"rd22","text":"Read the documentation","url":"http://aws.amazon.com/docs/ec2-getting-started"}],"gap":12,"align":"center"},{"kind":"row","id":"rd9","children":[{"kind":"link","id":"rd6","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"rd7","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/dynamodb": {"version":1,"title":"Amazon DynamoDB · AWS","elements":[{"kind":"row","id":"dy5","children":[{"kind":"styled","id":"dy1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"dy2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"dy3","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"dy4","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"dy10","height":12},{"kind":"row","id":"dy13","children":[{"kind":"badge","id":"dy11","text":"Database","style":{"size":11,"color":"#ffffff","background":"#0972d3","radius":10,"padding":5}},{"kind":"styled","id":"dy12","text":"Amazon DynamoDB","style":{"size":28,"weight":"bold"}}],"gap":12,"align":"center"},{"kind":"styled","id":"dy14","text":"Serverless key-value database at any scale","style":{"size":16,"color":"#545b64"}},{"kind":"text","id":"dy15","text":"DynamoDB delivers single-digit millisecond reads and writes at any request rate, with no servers to provision. A table is a partition key, an optional sort key, and items; global secondary indexes give you other access patterns without a second copy of the data."},{"kind":"text","id":"dy16","text":"On-demand mode charges per request and absorbs traffic spikes without capacity planning. Global tables replicate a table across Regions with active-active writes, DynamoDB Streams emit every change for Lambda to consume, and point-in-time recovery restores any second in the last 35 days."},{"kind":"card","id":"dy19","children":[{"kind":"heading","id":"dy17","text":"Pricing","level":3},{"kind":"text","id":"dy18","text":"On-demand: $1.25 per million write request units and $0.25 per million read request units. Storage $0.25 per GB-month. The free tier includes 25 GB of storage."}],"style":{"radius":10,"padding":16}},{"kind":"row","id":"dy24","children":[{"kind":"card","id":"dy20","children":[{"kind":"styled","id":"dy21","text":"Get started","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#ff9900","radius":8,"padding":12},"action":{"method":"GET","url":"http://aws.amazon.com/console"}},{"kind":"link","id":"dy22","text":"Read the documentation","url":"http://aws.amazon.com/docs/lambda-first-function"}],"gap":12,"align":"center"},{"kind":"row","id":"dy9","children":[{"kind":"link","id":"dy6","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"dy7","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/pricing": {"version":1,"title":"AWS Pricing","elements":[{"kind":"row","id":"pc5","children":[{"kind":"styled","id":"pc1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"pc2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"pc3","text":"Free Tier","url":"http://aws.amazon.com/free"},{"kind":"link","id":"pc4","text":"Console","url":"http://aws.amazon.com/console"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"pc10","height":12},{"kind":"heading","id":"pc11","text":"AWS Pricing","level":1},{"kind":"text","id":"pc12","text":"Pay only for what you use, with no long-term contracts required. Every service has its own pricing page; the models below apply across the platform."},{"kind":"grid","id":"pc22","columns":3,"children":[{"kind":"card","id":"pc15","children":[{"kind":"heading","id":"pc13","text":"Pay as you go","level":3},{"kind":"text","id":"pc14","text":"Per-second billing for compute, per-request billing for serverless, per-GB-month for storage. Stop using a service and the charges stop."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"pc18","children":[{"kind":"heading","id":"pc16","text":"Save when you commit","level":3},{"kind":"text","id":"pc17","text":"Savings Plans and Reserved Instances discount EC2, Lambda, Fargate, and RDS by up to 72 percent for a one- or three-year commitment."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"pc21","children":[{"kind":"heading","id":"pc19","text":"Pay less by using more","level":3},{"kind":"text","id":"pc20","text":"Tiered pricing for S3, data transfer, and CloudFront means the per-unit price drops as usage grows."}],"style":{"radius":10,"padding":16}}],"gap":12},{"kind":"heading","id":"pc23","text":"Sample monthly estimates","level":2},{"kind":"text","id":"pc24","text":"A small web application (one t3.small, 20 GB gp3 storage, an Application Load Balancer, 50 GB of data transfer out) runs about $38 per month On-Demand in us-east-1. Adding a db.t4g.micro RDS PostgreSQL instance with 20 GB of storage adds about $15."},{"kind":"text","id":"pc25","text":"Data transfer in is free. The first 100 GB per month of data transfer out to the internet is free across all services; beyond that it starts at $0.09 per GB and falls with volume."},{"kind":"row","id":"pc30","children":[{"kind":"link","id":"pc26","text":"EC2 pricing","url":"http://aws.amazon.com/ec2"},{"kind":"link","id":"pc27","text":"S3 pricing","url":"http://aws.amazon.com/s3"},{"kind":"link","id":"pc28","text":"Lambda pricing","url":"http://aws.amazon.com/lambda"},{"kind":"link","id":"pc29","text":"Free Tier","url":"http://aws.amazon.com/free"}],"gap":12,"align":"center"},{"kind":"row","id":"pc9","children":[{"kind":"link","id":"pc6","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"pc7","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/free": {"version":1,"title":"AWS Free Tier","elements":[{"kind":"row","id":"fr5","children":[{"kind":"styled","id":"fr1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"fr2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"fr3","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"fr4","text":"Console","url":"http://aws.amazon.com/console"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"fr10","height":12},{"kind":"heading","id":"fr11","text":"AWS Free Tier","level":1},{"kind":"text","id":"fr12","text":"Explore more than 100 products at no charge. Offers come in three kinds: always free, 12 months free from account creation, and short-term trials."},{"kind":"grid","id":"fr22","columns":3,"children":[{"kind":"card","id":"fr15","children":[{"kind":"heading","id":"fr13","text":"Always free","level":3},{"kind":"text","id":"fr14","text":"Lambda: 1 million requests and 400,000 GB-seconds per month. DynamoDB: 25 GB of storage and 25 provisioned read and write capacity units. CloudWatch: 10 custom metrics and 10 alarms. SNS: 1 million publishes."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"fr18","children":[{"kind":"heading","id":"fr16","text":"12 months free","level":3},{"kind":"text","id":"fr17","text":"EC2: 750 hours per month of t2.micro or t3.micro. S3: 5 GB of Standard storage, 20,000 GET and 2,000 PUT requests. RDS: 750 hours of db.t4g.micro and 20 GB of storage. CloudFront: 1 TB of data transfer out."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"fr21","children":[{"kind":"heading","id":"fr19","text":"Trials","level":3},{"kind":"text","id":"fr20","text":"SageMaker: 250 hours of ml.t3.medium notebook for two months. Redshift: two months of dc2.large. Inspector: 15 days. Amazon Q Developer: free tier with monthly limits on chat and code suggestions."}],"style":{"radius":10,"padding":16}}],"gap":12},{"kind":"text","id":"fr23","text":"New accounts created after July 2025 start with $100 in credits and can earn $100 more by completing five getting-started activities. A free-plan account is never charged; upgrade to a paid plan to use services beyond the free allowance."},{"kind":"row","id":"fr28","children":[{"kind":"card","id":"fr24","children":[{"kind":"styled","id":"fr25","text":"Create a free account","style":{"size":14,"weight":"bold","color":"#ffffff"}}],"style":{"background":"#ff9900","radius":8,"padding":12},"action":{"method":"GET","url":"http://aws.amazon.com/console"}},{"kind":"link","id":"fr26","text":"Getting started with EC2","url":"http://aws.amazon.com/docs/ec2-getting-started"},{"kind":"link","id":"fr27","text":"Your first Lambda function","url":"http://aws.amazon.com/docs/lambda-first-function"}],"gap":12,"align":"center"},{"kind":"row","id":"fr9","children":[{"kind":"link","id":"fr6","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"fr7","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/docs": {"version":1,"title":"AWS Documentation","elements":[{"kind":"row","id":"dc5","children":[{"kind":"styled","id":"dc1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"dc2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"dc3","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"dc4","text":"Console","url":"http://aws.amazon.com/console"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"dc10","height":12},{"kind":"heading","id":"dc11","text":"AWS Documentation","level":1},{"kind":"text","id":"dc12","text":"User guides, API references, and tutorials for every AWS service. Start with the guides below if you are new."},{"kind":"grid","id":"dc25","columns":2,"children":[{"kind":"card","id":"dc15","children":[{"kind":"heading","id":"dc13","text":"Getting started with Amazon EC2","level":3},{"kind":"text","id":"dc14","text":"Launch a Linux instance, connect to it, and terminate it."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/docs/ec2-getting-started"}},{"kind":"card","id":"dc18","children":[{"kind":"heading","id":"dc16","text":"Amazon S3 bucket basics","level":3},{"kind":"text","id":"dc17","text":"Create a bucket, upload an object, and read it back with the CLI."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/docs/s3-bucket-basics"}},{"kind":"card","id":"dc21","children":[{"kind":"heading","id":"dc19","text":"Create your first Lambda function","level":3},{"kind":"text","id":"dc20","text":"Write a handler, deploy it from the console, and invoke it with a test event."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/docs/lambda-first-function"}},{"kind":"card","id":"dc24","children":[{"kind":"heading","id":"dc22","text":"IAM users, groups, and roles","level":3},{"kind":"text","id":"dc23","text":"How identities and permissions work, and what to create for people versus workloads."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/docs/iam-users"}}],"gap":12},{"kind":"heading","id":"dc26","text":"Tools","level":2},{"kind":"text","id":"dc27","text":"The AWS CLI, the SDKs for Python (boto3), JavaScript, Java, Go, .NET, and Rust, the CDK, and CloudFormation are all documented here. Sample code for every SDK is on GitHub, and most questions have already been answered on Stack Overflow."},{"kind":"row","id":"dc31","children":[{"kind":"link","id":"dc28","text":"AWS samples on GitHub","url":"http://github.com/"},{"kind":"link","id":"dc29","text":"Stack Overflow","url":"http://stackoverflow.com/"},{"kind":"link","id":"dc30","text":"Service pricing","url":"http://aws.amazon.com/pricing"}],"gap":12,"align":"center"},{"kind":"row","id":"dc9","children":[{"kind":"link","id":"dc6","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"dc7","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/docs/ec2-getting-started": {"version":1,"title":"Getting started with Amazon EC2 · AWS Documentation","elements":[{"kind":"row","id":"dec4","children":[{"kind":"styled","id":"dec1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"dec2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"dec3","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"dec9","height":12},{"kind":"heading","id":"dec10","text":"Getting started with Amazon EC2","level":1},{"kind":"styled","id":"dec11","text":"Launch a Linux instance, connect to it, and terminate it.","style":{"size":16,"color":"#545b64"}},{"kind":"text","id":"dec12","text":"1. Open the EC2 console and choose Launch instance. Name it, pick Amazon Linux 2023, and choose t3.micro, which is Free Tier eligible."},{"kind":"text","id":"dec13","text":"2. Create a key pair and download the .pem file; you will not be able to download it again. In Network settings, allow SSH from your IP address only."},{"kind":"text","id":"dec14","text":"3. Launch, wait for the status check to pass, then connect. Terminate the instance when you are done so it stops accruing charges."},{"kind":"card","id":"dec16","children":[{"kind":"styled","id":"dec15","text":"$ chmod 400 my-key.pem\n$ ssh -i my-key.pem ec2-user@ec2-54-201-10-42.us-west-2.compute.amazonaws.com\n   ,     #_\n   ~\\_  ####_        Amazon Linux 2023\n  ~~  \\_#####\\\n[ec2-user@ip-172-31-8-14 ~]$ sudo dnf install -y nginx && sudo systemctl enable --now nginx","style":{"size":13,"color":"#e2e8f0"}}],"style":{"background":"#0f172a","radius":8,"padding":14}},{"kind":"row","id":"dec19","children":[{"kind":"link","id":"dec17","text":"Service page","url":"http://aws.amazon.com/ec2"},{"kind":"link","id":"dec18","text":"Open the console","url":"http://aws.amazon.com/console"}],"gap":12,"align":"center"},{"kind":"row","id":"dec8","children":[{"kind":"link","id":"dec5","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"dec6","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/docs/s3-bucket-basics": {"version":1,"title":"Amazon S3 bucket basics · AWS Documentation","elements":[{"kind":"row","id":"ds34","children":[{"kind":"styled","id":"ds31","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"ds32","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"ds33","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"ds39","height":12},{"kind":"heading","id":"ds310","text":"Amazon S3 bucket basics","level":1},{"kind":"styled","id":"ds311","text":"Create a bucket, upload an object, and read it back with the CLI.","style":{"size":16,"color":"#545b64"}},{"kind":"text","id":"ds312","text":"1. Bucket names are globally unique and DNS-compatible: lowercase letters, numbers, and hyphens, 3 to 63 characters. Choose the Region closest to the application that will read the data."},{"kind":"text","id":"ds313","text":"2. Block Public Access is enabled by default. Leave it on and grant access with IAM policies or presigned URLs; only turn it off for a bucket that serves a public website."},{"kind":"text","id":"ds314","text":"3. Enable versioning before you need it. It protects against accidental overwrites and deletes, and lifecycle rules can expire old versions to control cost."},{"kind":"card","id":"ds316","children":[{"kind":"styled","id":"ds315","text":"$ aws s3 mb s3://northstar-build-artifacts --region us-west-2\n$ aws s3 cp ./atlas-0.1.1.tar.gz s3://northstar-build-artifacts/releases/\nupload: ./atlas-0.1.1.tar.gz to s3://northstar-build-artifacts/releases/atlas-0.1.1.tar.gz\n$ aws s3 ls s3://northstar-build-artifacts/releases/\n2026-09-12 09:41:07   18432011 atlas-0.1.1.tar.gz","style":{"size":13,"color":"#e2e8f0"}}],"style":{"background":"#0f172a","radius":8,"padding":14}},{"kind":"row","id":"ds319","children":[{"kind":"link","id":"ds317","text":"Service page","url":"http://aws.amazon.com/s3"},{"kind":"link","id":"ds318","text":"Open the console","url":"http://aws.amazon.com/console"}],"gap":12,"align":"center"},{"kind":"row","id":"ds38","children":[{"kind":"link","id":"ds35","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"ds36","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/docs/lambda-first-function": {"version":1,"title":"Create your first Lambda function · AWS Documentation","elements":[{"kind":"row","id":"dla4","children":[{"kind":"styled","id":"dla1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"dla2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"dla3","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"dla9","height":12},{"kind":"heading","id":"dla10","text":"Create your first Lambda function","level":1},{"kind":"styled","id":"dla11","text":"Write a handler, deploy it from the console, and invoke it with a test event.","style":{"size":16,"color":"#545b64"}},{"kind":"text","id":"dla12","text":"1. In the Lambda console choose Create function, Author from scratch, name it hello-world, and pick the Python 3.13 runtime. The console creates an execution role with permission to write logs."},{"kind":"text","id":"dla13","text":"2. Replace the handler code with the sample below and choose Deploy. The handler receives the event as a dictionary and returns a response object; API Gateway and function URLs expect statusCode and body."},{"kind":"text","id":"dla14","text":"3. Choose Test, create a test event with any JSON, and invoke. The result, logs, duration, and billed memory appear in the console. Add a function URL to call it over HTTPS."},{"kind":"card","id":"dla16","children":[{"kind":"styled","id":"dla15","text":"import json\n\ndef lambda_handler(event, context):\n    name = event.get(\"name\", \"world\")\n    return {\n        \"statusCode\": 200,\n        \"body\": json.dumps({\"message\": f\"Hello, {name}\"}),\n    }","style":{"size":13,"color":"#e2e8f0"}}],"style":{"background":"#0f172a","radius":8,"padding":14}},{"kind":"row","id":"dla19","children":[{"kind":"link","id":"dla17","text":"Service page","url":"http://aws.amazon.com/lambda"},{"kind":"link","id":"dla18","text":"Open the console","url":"http://aws.amazon.com/console"}],"gap":12,"align":"center"},{"kind":"row","id":"dla8","children":[{"kind":"link","id":"dla5","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"dla6","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/docs/iam-users": {"version":1,"title":"IAM users, groups, and roles · AWS Documentation","elements":[{"kind":"row","id":"dia4","children":[{"kind":"styled","id":"dia1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"dia2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"dia3","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"dia9","height":12},{"kind":"heading","id":"dia10","text":"IAM users, groups, and roles","level":1},{"kind":"styled","id":"dia11","text":"How identities and permissions work, and what to create for people versus workloads.","style":{"size":16,"color":"#545b64"}},{"kind":"text","id":"dia12","text":"1. An IAM user is a long-term identity with a password for the console or access keys for the CLI and API. Put users in groups and attach policies to the groups, not to the users. Require MFA for everyone."},{"kind":"text","id":"dia13","text":"2. A role is an identity that is assumed, not signed into. EC2 instances, Lambda functions, and people federating from an identity provider assume roles and receive temporary credentials. Prefer roles over access keys for anything that runs on AWS."},{"kind":"text","id":"dia14","text":"3. Policies are JSON documents that allow or deny actions on resources. Start from least privilege: grant the specific actions a task needs on the specific resources, and use IAM Access Analyzer to find unused permissions."},{"kind":"card","id":"dia16","children":[{"kind":"styled","id":"dia15","text":"{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [{\n    \"Effect\": \"Allow\",\n    \"Action\": [\"s3:GetObject\", \"s3:PutObject\"],\n    \"Resource\": \"arn:aws:s3:::northstar-build-artifacts/releases/*\"\n  }]\n}","style":{"size":13,"color":"#e2e8f0"}}],"style":{"background":"#0f172a","radius":8,"padding":14}},{"kind":"row","id":"dia19","children":[{"kind":"link","id":"dia17","text":"Service page","url":"http://aws.amazon.com/docs"},{"kind":"link","id":"dia18","text":"Open the console","url":"http://aws.amazon.com/console"}],"gap":12,"align":"center"},{"kind":"row","id":"dia8","children":[{"kind":"link","id":"dia5","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"dia6","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/console": {"version":1,"title":"AWS Console - Sign in","elements":[{"kind":"row","id":"cs4","children":[{"kind":"styled","id":"cs1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"cs2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"cs3","text":"Free Tier","url":"http://aws.amazon.com/free"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"cs9","height":12},{"kind":"heading","id":"cs10","text":"Sign in","level":1},{"kind":"text","id":"cs11","text":"Sign in with your root user email or an IAM user name. Sessions expire after 12 hours."},{"kind":"form","id":"cs12","action":{"method":"GET","url":"http://aws.amazon.com/console/home","fields":{"account":"$cs-acct","username":"$cs-user"}},"children":[{"kind":"input","id":"cs-acct","label":"Account ID (12 digits) or account alias","value":"","placeholder":"123456789012"},{"kind":"input","id":"cs-user","label":"IAM user name","value":"","placeholder":""},{"kind":"input","id":"cs-pass","label":"Password","value":"","placeholder":""},{"kind":"button","id":"cs-go","text":"Sign in","action":{"method":"GET","url":"http://aws.amazon.com/console/home","fields":{"account":"$cs-acct","username":"$cs-user"}}}]},{"kind":"text","id":"cs13","text":"By continuing you agree to the AWS Customer Agreement. Forgot your password? Reset it from the email on the account, or ask your administrator if you use an IAM user."},{"kind":"row","id":"cs16","children":[{"kind":"link","id":"cs14","text":"Create a new AWS account","url":"http://aws.amazon.com/free"},{"kind":"link","id":"cs15","text":"Sign in with IAM Identity Center","url":"http://aws.amazon.com/docs/iam-users"}],"gap":12,"align":"center"},{"kind":"row","id":"cs8","children":[{"kind":"link","id":"cs5","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"cs6","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/console/home": {"version":1,"title":"AWS Management Console","elements":[{"kind":"row","id":"ch4","children":[{"kind":"styled","id":"ch1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"ch2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"ch3","text":"Console","url":"http://aws.amazon.com/console"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"ch9","height":12},{"kind":"row","id":"ch13","children":[{"kind":"heading","id":"ch10","text":"Console Home","level":1},{"kind":"badge","id":"ch11","text":"us-west-2","style":{"size":11,"color":"#232f3e","background":"#e9ebed","radius":10,"padding":5}},{"kind":"styled","id":"ch12","text":"northstar-prod · 4102-2871-9930","style":{"size":13,"color":"#545b64"}}],"gap":12,"align":"center"},{"kind":"text","id":"ch14","text":"Recently visited"},{"kind":"grid","id":"ch30","columns":3,"children":[{"kind":"card","id":"ch17","children":[{"kind":"heading","id":"ch15","text":"Amazon EC2","level":3},{"kind":"text","id":"ch16","text":"Secure and resizable virtual servers in the cloud"}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/ec2"}},{"kind":"card","id":"ch20","children":[{"kind":"heading","id":"ch18","text":"Amazon S3","level":3},{"kind":"text","id":"ch19","text":"Object storage built to retrieve any amount of data from anywhere"}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/s3"}},{"kind":"card","id":"ch23","children":[{"kind":"heading","id":"ch21","text":"AWS Lambda","level":3},{"kind":"text","id":"ch22","text":"Run code without thinking about servers"}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/lambda"}},{"kind":"card","id":"ch26","children":[{"kind":"heading","id":"ch24","text":"Amazon RDS","level":3},{"kind":"text","id":"ch25","text":"Managed relational databases in the cloud"}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/rds"}},{"kind":"card","id":"ch29","children":[{"kind":"heading","id":"ch27","text":"Amazon DynamoDB","level":3},{"kind":"text","id":"ch28","text":"Serverless key-value database at any scale"}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/dynamodb"}}],"gap":12},{"kind":"grid","id":"ch40","columns":3,"children":[{"kind":"card","id":"ch33","children":[{"kind":"heading","id":"ch31","text":"Cost and usage","level":3},{"kind":"text","id":"ch32","text":"Month-to-date: $2,418.60. Forecast: $3,905.00. Top services: EC2 $1,204, RDS $612, S3 $288."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"ch36","children":[{"kind":"heading","id":"ch34","text":"Health","level":3},{"kind":"text","id":"ch35","text":"No open issues. 2 scheduled changes: EC2 maintenance for i-0a4c1 on 2026-09-28."}],"style":{"radius":10,"padding":16}},{"kind":"card","id":"ch39","children":[{"kind":"heading","id":"ch37","text":"Security","level":3},{"kind":"text","id":"ch38","text":"IAM Access Analyzer: 1 finding. Root user MFA: enabled. 3 access keys older than 90 days."}],"style":{"radius":10,"padding":16}}],"gap":12},{"kind":"row","id":"ch45","children":[{"kind":"link","id":"ch41","text":"Billing and pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"ch42","text":"Documentation","url":"http://aws.amazon.com/docs"},{"kind":"link","id":"ch43","text":"What's new","url":"http://aws.amazon.com/whats-new"},{"kind":"link","id":"ch44","text":"Sign out","url":"http://aws.amazon.com/console"}],"gap":12,"align":"center"},{"kind":"row","id":"ch8","children":[{"kind":"link","id":"ch5","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"ch6","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/whats-new": {"version":1,"title":"What's New with AWS","elements":[{"kind":"row","id":"wn4","children":[{"kind":"styled","id":"wn1","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"wn2","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"wn3","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"wn9","height":12},{"kind":"heading","id":"wn10","text":"What's New with AWS","level":1},{"kind":"text","id":"wn11","text":"Announcements of new services, features, and Region launches. Filter by service in the console, or subscribe to the RSS feed."},{"kind":"grid","id":"wn24","columns":3,"children":[{"kind":"card","id":"wn15","children":[{"kind":"styled","id":"wn12","text":"2026-08-26","style":{"size":12,"color":"#545b64"}},{"kind":"heading","id":"wn13","text":"Amazon EC2 Graviton5 instances are now generally available","level":3},{"kind":"text","id":"wn14","text":"The M9g, C9g, and R9g instance families, powered by AWS Graviton5 processors, are available today in US East (N."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/whats-new/graviton5-ga"}},{"kind":"card","id":"wn19","children":[{"kind":"styled","id":"wn16","text":"2026-06-30","style":{"size":12,"color":"#545b64"}},{"kind":"heading","id":"wn17","text":"AWS Lambda increases response streaming duration to 15 minutes","level":3},{"kind":"text","id":"wn18","text":"Lambda functions using response streaming can now stream for the full 15-minute maximum execution time, up from 5 minutes, with a payload limit of 200 MB."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/whats-new/lambda-streaming-15m"}},{"kind":"card","id":"wn23","children":[{"kind":"styled","id":"wn20","text":"2026-05-12","style":{"size":12,"color":"#545b64"}},{"kind":"heading","id":"wn21","text":"Amazon S3 Express One Zone now available in all commercial AWS Regions","level":3},{"kind":"text","id":"wn22","text":"S3 Express One Zone, the high-performance single-Availability-Zone storage class with consistent single-digit millisecond latency, is now available in every commercial Region."}],"style":{"radius":10,"padding":16},"action":{"method":"GET","url":"http://aws.amazon.com/whats-new/s3-express-all-regions"}}],"gap":12},{"kind":"row","id":"wn27","children":[{"kind":"link","id":"wn25","text":"Follow AWS on X","url":"http://x.com/"},{"kind":"link","id":"wn26","text":"Watch re:Invent sessions on YouTube","url":"http://youtube.com/"}],"gap":12,"align":"center"},{"kind":"row","id":"wn8","children":[{"kind":"link","id":"wn5","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"wn6","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/whats-new/graviton5-ga": {"version":1,"title":"Amazon EC2 Graviton5 instances are now generally available · What's New with AWS","elements":[{"kind":"row","id":"n04","children":[{"kind":"styled","id":"n01","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"n02","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"n03","text":"What's New","url":"http://aws.amazon.com/whats-new"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"n09","height":12},{"kind":"styled","id":"n010","text":"Posted on 2026-08-26","style":{"size":13,"color":"#545b64"}},{"kind":"styled","id":"n011","text":"Amazon EC2 Graviton5 instances are now generally available","style":{"size":26,"weight":"bold"}},{"kind":"divider","id":"n012"},{"kind":"text","id":"n013","text":"The M9g, C9g, and R9g instance families, powered by AWS Graviton5 processors, are available today in US East (N. Virginia), US West (Oregon), and Europe (Frankfurt). Graviton5 delivers up to 40 percent better price-performance than Graviton4 for web servers, containerized microservices, and in-memory caches, with 50 percent more memory bandwidth per vCPU."},{"kind":"text","id":"n014","text":"Instances range from medium to 48xlarge and support EBS-only and local NVMe variants. Existing Arm64 AMIs run unchanged."},{"kind":"row","id":"n017","children":[{"kind":"link","id":"n015","text":"Service page","url":"http://aws.amazon.com/ec2"},{"kind":"link","id":"n016","text":"Pricing","url":"http://aws.amazon.com/pricing"}],"gap":12,"align":"center"},{"kind":"row","id":"n08","children":[{"kind":"link","id":"n05","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"n06","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/whats-new/lambda-streaming-15m": {"version":1,"title":"AWS Lambda increases response streaming duration to 15 minutes · What's New with AWS","elements":[{"kind":"row","id":"n14","children":[{"kind":"styled","id":"n11","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"n12","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"n13","text":"What's New","url":"http://aws.amazon.com/whats-new"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"n19","height":12},{"kind":"styled","id":"n110","text":"Posted on 2026-06-30","style":{"size":13,"color":"#545b64"}},{"kind":"styled","id":"n111","text":"AWS Lambda increases response streaming duration to 15 minutes","style":{"size":26,"weight":"bold"}},{"kind":"divider","id":"n112"},{"kind":"text","id":"n113","text":"Lambda functions using response streaming can now stream for the full 15-minute maximum execution time, up from 5 minutes, with a payload limit of 200 MB. This is useful for generating large reports, long-running model inference, and server-sent events."},{"kind":"text","id":"n114","text":"Response streaming is available for Node.js managed runtimes and custom runtimes through the Runtime API. There is no additional charge; standard Lambda pricing applies."},{"kind":"row","id":"n117","children":[{"kind":"link","id":"n115","text":"Service page","url":"http://aws.amazon.com/lambda"},{"kind":"link","id":"n116","text":"Pricing","url":"http://aws.amazon.com/pricing"}],"gap":12,"align":"center"},{"kind":"row","id":"n18","children":[{"kind":"link","id":"n15","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"n16","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}},
-      "/whats-new/s3-express-all-regions": {"version":1,"title":"Amazon S3 Express One Zone now available in all commercial AWS Regions · What's New with AWS","elements":[{"kind":"row","id":"n24","children":[{"kind":"styled","id":"n21","text":"aws","style":{"size":18,"weight":"bold","color":"#ffffff"}},{"kind":"link","id":"n22","text":"Home","url":"http://aws.amazon.com/"},{"kind":"link","id":"n23","text":"What's New","url":"http://aws.amazon.com/whats-new"}],"gap":16,"align":"center","style":{"background":"#232f3e","padding":14}},{"kind":"spacer","id":"n29","height":12},{"kind":"styled","id":"n210","text":"Posted on 2026-05-12","style":{"size":13,"color":"#545b64"}},{"kind":"styled","id":"n211","text":"Amazon S3 Express One Zone now available in all commercial AWS Regions","style":{"size":26,"weight":"bold"}},{"kind":"divider","id":"n212"},{"kind":"text","id":"n213","text":"S3 Express One Zone, the high-performance single-Availability-Zone storage class with consistent single-digit millisecond latency, is now available in every commercial Region. Directory buckets can be co-located with compute to reduce request latency by up to 10x compared with S3 Standard."},{"kind":"text","id":"n214","text":"The class is designed for request-intensive workloads such as machine learning training, interactive analytics, and media rendering. Data can be moved from S3 Standard with a single import job."},{"kind":"row","id":"n217","children":[{"kind":"link","id":"n215","text":"Service page","url":"http://aws.amazon.com/s3"},{"kind":"link","id":"n216","text":"Pricing","url":"http://aws.amazon.com/pricing"}],"gap":12,"align":"center"},{"kind":"row","id":"n28","children":[{"kind":"link","id":"n25","text":"Pricing","url":"http://aws.amazon.com/pricing"},{"kind":"link","id":"n26","text":"Documentation","url":"http://aws.amazon.com/docs"}],"gap":14,"align":"center"}],"theme":{"accent":"#0972d3","background":"#ffffff","surface":"#f2f3f3","ink":"#232f3e","muted":"#545b64"}}
+      "/": {
+        "version": 1,
+        "title": "Cloud Computing Services - Amazon Web Services (AWS)",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "h8",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "h1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "h2",
+                "text": "Products",
+                "url": "http://aws.amazon.com/ec2"
+              },
+              {
+                "kind": "link",
+                "id": "h3",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "h4",
+                "text": "Free Tier",
+                "url": "http://aws.amazon.com/free"
+              },
+              {
+                "kind": "link",
+                "id": "h5",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              },
+              {
+                "kind": "link",
+                "id": "h6",
+                "text": "What's New",
+                "url": "http://aws.amazon.com/whats-new"
+              },
+              {
+                "kind": "link",
+                "id": "h7",
+                "text": "Sign in to the Console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "h14",
+            "height": 12
+          },
+          {
+            "kind": "styled",
+            "id": "h15",
+            "text": "Start building on AWS today",
+            "style": {
+              "size": 34,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "h16",
+            "text": "Over 200 fully featured services from data centers in 36 geographic Regions. Compute, storage, databases, machine learning, and everything to run them.",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "row",
+            "id": "h22",
+            "children": [
+              {
+                "kind": "card",
+                "id": "h17",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "h18",
+                    "text": "Create an AWS account",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ff9900",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/free"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "h19",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "h20",
+                    "text": "Sign in to the Console",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#0972d3",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/console"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "h21",
+                "text": "Explore the Free Tier",
+                "url": "http://aws.amazon.com/free"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "grid",
+            "id": "h32",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "h25",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h23",
+                    "text": "Amazon EC2",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h24",
+                    "text": "Secure and resizable virtual servers in the cloud"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/ec2"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "h28",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h26",
+                    "text": "Amazon S3",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h27",
+                    "text": "Object storage built to retrieve any amount of data from anywhere"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/s3"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "h31",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h29",
+                    "text": "AWS Lambda",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h30",
+                    "text": "Run code without thinking about servers"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/lambda"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "grid",
+            "id": "h42",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "h35",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h33",
+                    "text": "Amazon RDS",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h34",
+                    "text": "Managed relational databases in the cloud"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/rds"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "h38",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h36",
+                    "text": "Amazon DynamoDB",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h37",
+                    "text": "Serverless key-value database at any scale"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/dynamodb"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "h43",
+            "text": "What's new",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "h44",
+            "text": "Graviton5 instances are generally available with 40 percent better price-performance than Graviton4. Lambda now supports 15-minute streaming responses. S3 Express One Zone is available in all commercial Regions."
+          },
+          {
+            "kind": "row",
+            "id": "h47",
+            "children": [
+              {
+                "kind": "link",
+                "id": "h45",
+                "text": "All announcements",
+                "url": "http://aws.amazon.com/whats-new"
+              },
+              {
+                "kind": "link",
+                "id": "h46",
+                "text": "Pricing overview",
+                "url": "http://aws.amazon.com/pricing"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "h13",
+            "children": [
+              {
+                "kind": "link",
+                "id": "h9",
+                "text": "AWS on GitHub",
+                "url": "http://github.com/"
+              },
+              {
+                "kind": "link",
+                "id": "h10",
+                "text": "AWS on YouTube",
+                "url": "http://youtube.com/"
+              },
+              {
+                "kind": "link",
+                "id": "h11",
+                "text": "Amazon.com",
+                "url": "http://amazon.com/"
+              },
+              {
+                "kind": "text",
+                "id": "h12",
+                "text": "Amazon Web Services, Inc. or its affiliates."
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/ec2": {
+        "version": 1,
+        "title": "Amazon EC2 · AWS",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "ec5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "ec1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "ec2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "ec3",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "ec4",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "ec10",
+            "height": 12
+          },
+          {
+            "kind": "row",
+            "id": "ec13",
+            "children": [
+              {
+                "kind": "badge",
+                "id": "ec11",
+                "text": "Compute",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#0972d3",
+                  "radius": 10,
+                  "padding": 5
+                }
+              },
+              {
+                "kind": "styled",
+                "id": "ec12",
+                "text": "Amazon EC2",
+                "style": {
+                  "size": 28,
+                  "weight": "bold"
+                }
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "styled",
+            "id": "ec14",
+            "text": "Secure and resizable virtual servers in the cloud",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "ec15",
+            "text": "EC2 gives you a virtual machine in minutes: pick an instance type, an AMI, a VPC subnet, and a key pair, and you have a server with a public address. Over 800 instance types cover general purpose, compute, memory, storage, and accelerated workloads, on Intel, AMD, and Graviton processors."
+          },
+          {
+            "kind": "text",
+            "id": "ec16",
+            "text": "Pay by the second for On-Demand, save up to 72 percent with Savings Plans, or bid on spare capacity with Spot for fault-tolerant work. Auto Scaling groups add and remove instances against a target such as CPU or request count, and Elastic Load Balancing spreads traffic across them."
+          },
+          {
+            "kind": "card",
+            "id": "ec19",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "ec17",
+                "text": "Pricing",
+                "level": 3
+              },
+              {
+                "kind": "text",
+                "id": "ec18",
+                "text": "t3.micro from $0.0104 per hour On-Demand in us-east-1. m7g.large from $0.0816. Spot typically 60 to 90 percent below On-Demand."
+              }
+            ],
+            "style": {
+              "radius": 10,
+              "padding": 16
+            }
+          },
+          {
+            "kind": "row",
+            "id": "ec24",
+            "children": [
+              {
+                "kind": "card",
+                "id": "ec20",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "ec21",
+                    "text": "Get started",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ff9900",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/console"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "ec22",
+                "text": "Read the documentation",
+                "url": "http://aws.amazon.com/docs/ec2-getting-started"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "ec9",
+            "children": [
+              {
+                "kind": "link",
+                "id": "ec6",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "ec7",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/s3": {
+        "version": 1,
+        "title": "Amazon S3 · AWS",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "s35",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "s31",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "s32",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "s33",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "s34",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "s310",
+            "height": 12
+          },
+          {
+            "kind": "row",
+            "id": "s313",
+            "children": [
+              {
+                "kind": "badge",
+                "id": "s311",
+                "text": "Storage",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#0972d3",
+                  "radius": 10,
+                  "padding": 5
+                }
+              },
+              {
+                "kind": "styled",
+                "id": "s312",
+                "text": "Amazon S3",
+                "style": {
+                  "size": 28,
+                  "weight": "bold"
+                }
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "styled",
+            "id": "s314",
+            "text": "Object storage built to retrieve any amount of data from anywhere",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "s315",
+            "text": "S3 stores objects in buckets with eleven nines of durability. There is no filesystem to size and no volume to grow; put an object with a key and it is there. Versioning keeps every write, and lifecycle rules move cold data to cheaper storage classes automatically."
+          },
+          {
+            "kind": "text",
+            "id": "s316",
+            "text": "Storage classes trade access speed for price: S3 Standard for hot data, Intelligent-Tiering when access patterns are unknown, Standard-IA and One Zone-IA for infrequent reads, and Glacier Instant, Flexible, and Deep Archive for archives. Block Public Access is on by default for new buckets."
+          },
+          {
+            "kind": "card",
+            "id": "s319",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "s317",
+                "text": "Pricing",
+                "level": 3
+              },
+              {
+                "kind": "text",
+                "id": "s318",
+                "text": "S3 Standard $0.023 per GB-month for the first 50 TB. PUT requests $0.005 per 1,000, GET $0.0004 per 1,000. Glacier Deep Archive $0.00099 per GB-month."
+              }
+            ],
+            "style": {
+              "radius": 10,
+              "padding": 16
+            }
+          },
+          {
+            "kind": "row",
+            "id": "s324",
+            "children": [
+              {
+                "kind": "card",
+                "id": "s320",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "s321",
+                    "text": "Get started",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ff9900",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/console"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "s322",
+                "text": "Read the documentation",
+                "url": "http://aws.amazon.com/docs/s3-bucket-basics"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "s39",
+            "children": [
+              {
+                "kind": "link",
+                "id": "s36",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "s37",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/lambda": {
+        "version": 1,
+        "title": "AWS Lambda · AWS",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "la5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "la1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "la2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "la3",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "la4",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "la10",
+            "height": 12
+          },
+          {
+            "kind": "row",
+            "id": "la13",
+            "children": [
+              {
+                "kind": "badge",
+                "id": "la11",
+                "text": "Compute",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#0972d3",
+                  "radius": 10,
+                  "padding": 5
+                }
+              },
+              {
+                "kind": "styled",
+                "id": "la12",
+                "text": "AWS Lambda",
+                "style": {
+                  "size": 28,
+                  "weight": "bold"
+                }
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "styled",
+            "id": "la14",
+            "text": "Run code without thinking about servers",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "la15",
+            "text": "Lambda runs a function in response to an event: an HTTP request through API Gateway or a function URL, an object landing in S3, a message on SQS, a change in DynamoDB, or a schedule. You upload code in Python, Node.js, Java, Go, .NET, Ruby, or a container image, and Lambda scales it from zero to thousands of concurrent executions."
+          },
+          {
+            "kind": "text",
+            "id": "la16",
+            "text": "Billing is per request and per millisecond of execution at the memory you configure, from 128 MB to 10 GB. SnapStart and provisioned concurrency remove cold starts for latency-sensitive paths. Functions run inside a VPC when they need private resources such as RDS."
+          },
+          {
+            "kind": "card",
+            "id": "la19",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "la17",
+                "text": "Pricing",
+                "level": 3
+              },
+              {
+                "kind": "text",
+                "id": "la18",
+                "text": "$0.20 per million requests and $0.0000166667 per GB-second. The free tier includes 1 million requests and 400,000 GB-seconds every month, forever."
+              }
+            ],
+            "style": {
+              "radius": 10,
+              "padding": 16
+            }
+          },
+          {
+            "kind": "row",
+            "id": "la24",
+            "children": [
+              {
+                "kind": "card",
+                "id": "la20",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "la21",
+                    "text": "Get started",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ff9900",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/console"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "la22",
+                "text": "Read the documentation",
+                "url": "http://aws.amazon.com/docs/lambda-first-function"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "la9",
+            "children": [
+              {
+                "kind": "link",
+                "id": "la6",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "la7",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/rds": {
+        "version": 1,
+        "title": "Amazon RDS · AWS",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "rd5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "rd1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "rd2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "rd3",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "rd4",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "rd10",
+            "height": 12
+          },
+          {
+            "kind": "row",
+            "id": "rd13",
+            "children": [
+              {
+                "kind": "badge",
+                "id": "rd11",
+                "text": "Database",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#0972d3",
+                  "radius": 10,
+                  "padding": 5
+                }
+              },
+              {
+                "kind": "styled",
+                "id": "rd12",
+                "text": "Amazon RDS",
+                "style": {
+                  "size": 28,
+                  "weight": "bold"
+                }
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "styled",
+            "id": "rd14",
+            "text": "Managed relational databases in the cloud",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "rd15",
+            "text": "RDS runs PostgreSQL, MySQL, MariaDB, Oracle, SQL Server, and Db2 with backups, patching, monitoring, and failover handled for you. A Multi-AZ deployment keeps a synchronous standby in a second Availability Zone and fails over in about a minute."
+          },
+          {
+            "kind": "text",
+            "id": "rd16",
+            "text": "Aurora is the RDS-compatible engine built for the cloud: storage that grows to 128 TiB automatically, up to 15 read replicas, and Aurora Serverless v2 that scales capacity in fractions of a second. Performance Insights shows which queries are spending your CPU."
+          },
+          {
+            "kind": "card",
+            "id": "rd19",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "rd17",
+                "text": "Pricing",
+                "level": 3
+              },
+              {
+                "kind": "text",
+                "id": "rd18",
+                "text": "db.t4g.micro PostgreSQL from $0.016 per hour. Storage $0.115 per GB-month for gp3. Aurora Serverless v2 from $0.12 per ACU-hour."
+              }
+            ],
+            "style": {
+              "radius": 10,
+              "padding": 16
+            }
+          },
+          {
+            "kind": "row",
+            "id": "rd24",
+            "children": [
+              {
+                "kind": "card",
+                "id": "rd20",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "rd21",
+                    "text": "Get started",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ff9900",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/console"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "rd22",
+                "text": "Read the documentation",
+                "url": "http://aws.amazon.com/docs/ec2-getting-started"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "rd9",
+            "children": [
+              {
+                "kind": "link",
+                "id": "rd6",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "rd7",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/dynamodb": {
+        "version": 1,
+        "title": "Amazon DynamoDB · AWS",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "dy5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "dy1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "dy2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "dy3",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "dy4",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "dy10",
+            "height": 12
+          },
+          {
+            "kind": "row",
+            "id": "dy13",
+            "children": [
+              {
+                "kind": "badge",
+                "id": "dy11",
+                "text": "Database",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#0972d3",
+                  "radius": 10,
+                  "padding": 5
+                }
+              },
+              {
+                "kind": "styled",
+                "id": "dy12",
+                "text": "Amazon DynamoDB",
+                "style": {
+                  "size": 28,
+                  "weight": "bold"
+                }
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "styled",
+            "id": "dy14",
+            "text": "Serverless key-value database at any scale",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "dy15",
+            "text": "DynamoDB delivers single-digit millisecond reads and writes at any request rate, with no servers to provision. A table is a partition key, an optional sort key, and items; global secondary indexes give you other access patterns without a second copy of the data."
+          },
+          {
+            "kind": "text",
+            "id": "dy16",
+            "text": "On-demand mode charges per request and absorbs traffic spikes without capacity planning. Global tables replicate a table across Regions with active-active writes, DynamoDB Streams emit every change for Lambda to consume, and point-in-time recovery restores any second in the last 35 days."
+          },
+          {
+            "kind": "card",
+            "id": "dy19",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "dy17",
+                "text": "Pricing",
+                "level": 3
+              },
+              {
+                "kind": "text",
+                "id": "dy18",
+                "text": "On-demand: $1.25 per million write request units and $0.25 per million read request units. Storage $0.25 per GB-month. The free tier includes 25 GB of storage."
+              }
+            ],
+            "style": {
+              "radius": 10,
+              "padding": 16
+            }
+          },
+          {
+            "kind": "row",
+            "id": "dy24",
+            "children": [
+              {
+                "kind": "card",
+                "id": "dy20",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "dy21",
+                    "text": "Get started",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ff9900",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/console"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "dy22",
+                "text": "Read the documentation",
+                "url": "http://aws.amazon.com/docs/lambda-first-function"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "dy9",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dy6",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "dy7",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/pricing": {
+        "version": 1,
+        "title": "AWS Pricing",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "pc5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "pc1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "pc2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "pc3",
+                "text": "Free Tier",
+                "url": "http://aws.amazon.com/free"
+              },
+              {
+                "kind": "link",
+                "id": "pc4",
+                "text": "Console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "pc10",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "pc11",
+            "text": "AWS Pricing",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "pc12",
+            "text": "Pay only for what you use, with no long-term contracts required. Every service has its own pricing page; the models below apply across the platform."
+          },
+          {
+            "kind": "grid",
+            "id": "pc22",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "pc15",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "pc13",
+                    "text": "Pay as you go",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "pc14",
+                    "text": "Per-second billing for compute, per-request billing for serverless, per-GB-month for storage. Stop using a service and the charges stop."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "pc18",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "pc16",
+                    "text": "Save when you commit",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "pc17",
+                    "text": "Savings Plans and Reserved Instances discount EC2, Lambda, Fargate, and RDS by up to 72 percent for a one- or three-year commitment."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "pc21",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "pc19",
+                    "text": "Pay less by using more",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "pc20",
+                    "text": "Tiered pricing for S3, data transfer, and CloudFront means the per-unit price drops as usage grows."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "pc23",
+            "text": "Sample monthly estimates",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "pc24",
+            "text": "A small web application (one t3.small, 20 GB gp3 storage, an Application Load Balancer, 50 GB of data transfer out) runs about $38 per month On-Demand in us-east-1. Adding a db.t4g.micro RDS PostgreSQL instance with 20 GB of storage adds about $15."
+          },
+          {
+            "kind": "text",
+            "id": "pc25",
+            "text": "Data transfer in is free. The first 100 GB per month of data transfer out to the internet is free across all services; beyond that it starts at $0.09 per GB and falls with volume."
+          },
+          {
+            "kind": "row",
+            "id": "pc30",
+            "children": [
+              {
+                "kind": "link",
+                "id": "pc26",
+                "text": "EC2 pricing",
+                "url": "http://aws.amazon.com/ec2"
+              },
+              {
+                "kind": "link",
+                "id": "pc27",
+                "text": "S3 pricing",
+                "url": "http://aws.amazon.com/s3"
+              },
+              {
+                "kind": "link",
+                "id": "pc28",
+                "text": "Lambda pricing",
+                "url": "http://aws.amazon.com/lambda"
+              },
+              {
+                "kind": "link",
+                "id": "pc29",
+                "text": "Free Tier",
+                "url": "http://aws.amazon.com/free"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "pc9",
+            "children": [
+              {
+                "kind": "link",
+                "id": "pc6",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "pc7",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/free": {
+        "version": 1,
+        "title": "AWS Free Tier",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "fr5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "fr1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "fr2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "fr3",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "fr4",
+                "text": "Console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "fr10",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "fr11",
+            "text": "AWS Free Tier",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "fr12",
+            "text": "Explore more than 100 products at no charge. Offers come in three kinds: always free, 12 months free from account creation, and short-term trials."
+          },
+          {
+            "kind": "grid",
+            "id": "fr22",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "fr15",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "fr13",
+                    "text": "Always free",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "fr14",
+                    "text": "Lambda: 1 million requests and 400,000 GB-seconds per month. DynamoDB: 25 GB of storage and 25 provisioned read and write capacity units. CloudWatch: 10 custom metrics and 10 alarms. SNS: 1 million publishes."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "fr18",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "fr16",
+                    "text": "12 months free",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "fr17",
+                    "text": "EC2: 750 hours per month of t2.micro or t3.micro. S3: 5 GB of Standard storage, 20,000 GET and 2,000 PUT requests. RDS: 750 hours of db.t4g.micro and 20 GB of storage. CloudFront: 1 TB of data transfer out."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "fr21",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "fr19",
+                    "text": "Trials",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "fr20",
+                    "text": "SageMaker: 250 hours of ml.t3.medium notebook for two months. Redshift: two months of dc2.large. Inspector: 15 days. Amazon Q Developer: free tier with monthly limits on chat and code suggestions."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "text",
+            "id": "fr23",
+            "text": "New accounts created after July 2025 start with $100 in credits and can earn $100 more by completing five getting-started activities. A free-plan account is never charged; upgrade to a paid plan to use services beyond the free allowance."
+          },
+          {
+            "kind": "row",
+            "id": "fr28",
+            "children": [
+              {
+                "kind": "card",
+                "id": "fr24",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "fr25",
+                    "text": "Create a free account",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#ff9900",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/console"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "fr26",
+                "text": "Getting started with EC2",
+                "url": "http://aws.amazon.com/docs/ec2-getting-started"
+              },
+              {
+                "kind": "link",
+                "id": "fr27",
+                "text": "Your first Lambda function",
+                "url": "http://aws.amazon.com/docs/lambda-first-function"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "fr9",
+            "children": [
+              {
+                "kind": "link",
+                "id": "fr6",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "fr7",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/docs": {
+        "version": 1,
+        "title": "AWS Documentation",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "dc5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "dc1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "dc2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "dc3",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "dc4",
+                "text": "Console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "dc10",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "dc11",
+            "text": "AWS Documentation",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "dc12",
+            "text": "User guides, API references, and tutorials for every AWS service. Start with the guides below if you are new."
+          },
+          {
+            "kind": "grid",
+            "id": "dc25",
+            "columns": 2,
+            "children": [
+              {
+                "kind": "card",
+                "id": "dc15",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "dc13",
+                    "text": "Getting started with Amazon EC2",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "dc14",
+                    "text": "Launch a Linux instance, connect to it, and terminate it."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/docs/ec2-getting-started"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "dc18",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "dc16",
+                    "text": "Amazon S3 bucket basics",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "dc17",
+                    "text": "Create a bucket, upload an object, and read it back with the CLI."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/docs/s3-bucket-basics"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "dc21",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "dc19",
+                    "text": "Create your first Lambda function",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "dc20",
+                    "text": "Write a handler, deploy it from the console, and invoke it with a test event."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/docs/lambda-first-function"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "dc24",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "dc22",
+                    "text": "IAM users, groups, and roles",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "dc23",
+                    "text": "How identities and permissions work, and what to create for people versus workloads."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/docs/iam-users"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "dc26",
+            "text": "Tools",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "dc27",
+            "text": "The AWS CLI, the SDKs for Python (boto3), JavaScript, Java, Go, .NET, and Rust, the CDK, and CloudFormation are all documented here. Sample code for every SDK is on GitHub, and most questions have already been answered on Stack Overflow."
+          },
+          {
+            "kind": "row",
+            "id": "dc31",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dc28",
+                "text": "AWS samples on GitHub",
+                "url": "http://github.com/"
+              },
+              {
+                "kind": "link",
+                "id": "dc29",
+                "text": "Stack Overflow",
+                "url": "http://stackoverflow.com/"
+              },
+              {
+                "kind": "link",
+                "id": "dc30",
+                "text": "Service pricing",
+                "url": "http://aws.amazon.com/pricing"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "dc9",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dc6",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "dc7",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/docs/ec2-getting-started": {
+        "version": 1,
+        "title": "Getting started with Amazon EC2 · AWS Documentation",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "dec4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "dec1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "dec2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "dec3",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "dec9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "dec10",
+            "text": "Getting started with Amazon EC2",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "dec11",
+            "text": "Launch a Linux instance, connect to it, and terminate it.",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "dec12",
+            "text": "1. Open the EC2 console and choose Launch instance. Name it, pick Amazon Linux 2023, and choose t3.micro, which is Free Tier eligible."
+          },
+          {
+            "kind": "text",
+            "id": "dec13",
+            "text": "2. Create a key pair and download the .pem file; you will not be able to download it again. In Network settings, allow SSH from your IP address only."
+          },
+          {
+            "kind": "text",
+            "id": "dec14",
+            "text": "3. Launch, wait for the status check to pass, then connect. Terminate the instance when you are done so it stops accruing charges."
+          },
+          {
+            "kind": "card",
+            "id": "dec16",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "dec15",
+                "text": "$ chmod 400 my-key.pem\n$ ssh -i my-key.pem ec2-user@ec2-54-201-10-42.us-west-2.compute.amazonaws.com\n   ,     #_\n   ~\\_  ####_        Amazon Linux 2023\n  ~~  \\_#####\\\n[ec2-user@ip-172-31-8-14 ~]$ sudo dnf install -y nginx && sudo systemctl enable --now nginx",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "row",
+            "id": "dec19",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dec17",
+                "text": "Service page",
+                "url": "http://aws.amazon.com/ec2"
+              },
+              {
+                "kind": "link",
+                "id": "dec18",
+                "text": "Open the console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "dec8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dec5",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "dec6",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/docs/s3-bucket-basics": {
+        "version": 1,
+        "title": "Amazon S3 bucket basics · AWS Documentation",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "ds34",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "ds31",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "ds32",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "ds33",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "ds39",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "ds310",
+            "text": "Amazon S3 bucket basics",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "ds311",
+            "text": "Create a bucket, upload an object, and read it back with the CLI.",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "ds312",
+            "text": "1. Bucket names are globally unique and DNS-compatible: lowercase letters, numbers, and hyphens, 3 to 63 characters. Choose the Region closest to the application that will read the data."
+          },
+          {
+            "kind": "text",
+            "id": "ds313",
+            "text": "2. Block Public Access is enabled by default. Leave it on and grant access with IAM policies or presigned URLs; only turn it off for a bucket that serves a public website."
+          },
+          {
+            "kind": "text",
+            "id": "ds314",
+            "text": "3. Enable versioning before you need it. It protects against accidental overwrites and deletes, and lifecycle rules can expire old versions to control cost."
+          },
+          {
+            "kind": "row",
+            "id": "ds319",
+            "children": [
+              {
+                "kind": "link",
+                "id": "ds317",
+                "text": "Service page",
+                "url": "http://aws.amazon.com/s3"
+              },
+              {
+                "kind": "link",
+                "id": "ds318",
+                "text": "Open the console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "ds38",
+            "children": [
+              {
+                "kind": "link",
+                "id": "ds35",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "ds36",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/docs/lambda-first-function": {
+        "version": 1,
+        "title": "Create your first Lambda function · AWS Documentation",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "dla4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "dla1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "dla2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "dla3",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "dla9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "dla10",
+            "text": "Create your first Lambda function",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "dla11",
+            "text": "Write a handler, deploy it from the console, and invoke it with a test event.",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "dla12",
+            "text": "1. In the Lambda console choose Create function, Author from scratch, name it hello-world, and pick the Python 3.13 runtime. The console creates an execution role with permission to write logs."
+          },
+          {
+            "kind": "text",
+            "id": "dla13",
+            "text": "2. Replace the handler code with the sample below and choose Deploy. The handler receives the event as a dictionary and returns a response object; API Gateway and function URLs expect statusCode and body."
+          },
+          {
+            "kind": "text",
+            "id": "dla14",
+            "text": "3. Choose Test, create a test event with any JSON, and invoke. The result, logs, duration, and billed memory appear in the console. Add a function URL to call it over HTTPS."
+          },
+          {
+            "kind": "card",
+            "id": "dla16",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "dla15",
+                "text": "import json\n\ndef lambda_handler(event, context):\n    name = event.get(\"name\", \"world\")\n    return {\n        \"statusCode\": 200,\n        \"body\": json.dumps({\"message\": f\"Hello, {name}\"}),\n    }",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "row",
+            "id": "dla19",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dla17",
+                "text": "Service page",
+                "url": "http://aws.amazon.com/lambda"
+              },
+              {
+                "kind": "link",
+                "id": "dla18",
+                "text": "Open the console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "dla8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dla5",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "dla6",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/docs/iam-users": {
+        "version": 1,
+        "title": "IAM users, groups, and roles · AWS Documentation",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "dia4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "dia1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "dia2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "dia3",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "dia9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "dia10",
+            "text": "IAM users, groups, and roles",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "dia11",
+            "text": "How identities and permissions work, and what to create for people versus workloads.",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "dia12",
+            "text": "1. An IAM user is a long-term identity with a password for the console or access keys for the CLI and API. Put users in groups and attach policies to the groups, not to the users. Require MFA for everyone."
+          },
+          {
+            "kind": "text",
+            "id": "dia13",
+            "text": "2. A role is an identity that is assumed, not signed into. EC2 instances, Lambda functions, and people federating from an identity provider assume roles and receive temporary credentials. Prefer roles over access keys for anything that runs on AWS."
+          },
+          {
+            "kind": "text",
+            "id": "dia14",
+            "text": "3. Policies are JSON documents that allow or deny actions on resources. Start from least privilege: grant the specific actions a task needs on the specific resources, and use IAM Access Analyzer to find unused permissions."
+          },
+          {
+            "kind": "row",
+            "id": "dia19",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dia17",
+                "text": "Service page",
+                "url": "http://aws.amazon.com/docs"
+              },
+              {
+                "kind": "link",
+                "id": "dia18",
+                "text": "Open the console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "dia8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dia5",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "dia6",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/console": {
+        "version": 1,
+        "title": "AWS Console - Sign in",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "cs4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "cs1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "cs2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "cs3",
+                "text": "Free Tier",
+                "url": "http://aws.amazon.com/free"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "cs9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "cs10",
+            "text": "Sign in",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "cs11",
+            "text": "Sign in with your root user email or an IAM user name. Sessions expire after 12 hours."
+          },
+          {
+            "kind": "form",
+            "id": "cs12",
+            "action": {
+              "method": "GET",
+              "url": "http://aws.amazon.com/console/home",
+              "fields": {
+                "account": "$cs-acct",
+                "username": "$cs-user"
+              }
+            },
+            "children": [
+              {
+                "kind": "input",
+                "id": "cs-acct",
+                "label": "Account ID (12 digits) or account alias",
+                "value": "",
+                "placeholder": "123456789012"
+              },
+              {
+                "kind": "input",
+                "id": "cs-user",
+                "label": "IAM user name",
+                "value": "",
+                "placeholder": ""
+              },
+              {
+                "kind": "input",
+                "id": "cs-pass",
+                "label": "Password",
+                "value": "",
+                "placeholder": ""
+              },
+              {
+                "kind": "button",
+                "id": "cs-go",
+                "text": "Sign in",
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/console/home",
+                  "fields": {
+                    "account": "$cs-acct",
+                    "username": "$cs-user"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "kind": "text",
+            "id": "cs13",
+            "text": "By continuing you agree to the AWS Customer Agreement. Forgot your password? Reset it from the email on the account, or ask your administrator if you use an IAM user."
+          },
+          {
+            "kind": "row",
+            "id": "cs16",
+            "children": [
+              {
+                "kind": "link",
+                "id": "cs14",
+                "text": "Create a new AWS account",
+                "url": "http://aws.amazon.com/free"
+              },
+              {
+                "kind": "link",
+                "id": "cs15",
+                "text": "Sign in with IAM Identity Center",
+                "url": "http://aws.amazon.com/docs/iam-users"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "cs8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "cs5",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "cs6",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/console/home": {
+        "version": 1,
+        "title": "AWS Management Console",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "ch4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "ch1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "ch2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "ch3",
+                "text": "Console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "ch9",
+            "height": 12
+          },
+          {
+            "kind": "text",
+            "id": "ch14",
+            "text": "Recently visited"
+          },
+          {
+            "kind": "grid",
+            "id": "ch30",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "ch17",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch15",
+                    "text": "Amazon EC2",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch16",
+                    "text": "Secure and resizable virtual servers in the cloud"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/ec2"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch20",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch18",
+                    "text": "Amazon S3",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch19",
+                    "text": "Object storage built to retrieve any amount of data from anywhere"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/s3"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch23",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch21",
+                    "text": "AWS Lambda",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch22",
+                    "text": "Run code without thinking about servers"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/lambda"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch26",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch24",
+                    "text": "Amazon RDS",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch25",
+                    "text": "Managed relational databases in the cloud"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/rds"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch29",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch27",
+                    "text": "Amazon DynamoDB",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch28",
+                    "text": "Serverless key-value database at any scale"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/dynamodb"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "grid",
+            "id": "ch40",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "ch33",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch31",
+                    "text": "Cost and usage",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch32",
+                    "text": "Month-to-date: $2,418.60. Forecast: $3,905.00. Top services: EC2 $1,204, RDS $612, S3 $288."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch36",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch34",
+                    "text": "Health",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch35",
+                    "text": "No open issues. 2 scheduled changes: EC2 maintenance for i-0a4c1 on 2026-09-28."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch39",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch37",
+                    "text": "Security",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch38",
+                    "text": "IAM Access Analyzer: 1 finding. Root user MFA: enabled. 3 access keys older than 90 days."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "row",
+            "id": "ch45",
+            "children": [
+              {
+                "kind": "link",
+                "id": "ch41",
+                "text": "Billing and pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "ch42",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              },
+              {
+                "kind": "link",
+                "id": "ch43",
+                "text": "What's new",
+                "url": "http://aws.amazon.com/whats-new"
+              },
+              {
+                "kind": "link",
+                "id": "ch44",
+                "text": "Sign out",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "ch8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "ch5",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "ch6",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/whats-new": {
+        "version": 1,
+        "title": "What's New with AWS",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "wn4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "wn1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "wn2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "wn3",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "wn9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "wn10",
+            "text": "What's New with AWS",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "wn11",
+            "text": "Announcements of new services, features, and Region launches. Filter by service in the console, or subscribe to the RSS feed."
+          },
+          {
+            "kind": "grid",
+            "id": "wn24",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "wn15",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "wn12",
+                    "text": "2026-08-26",
+                    "style": {
+                      "size": 12,
+                      "color": "#545b64"
+                    }
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "wn13",
+                    "text": "Amazon EC2 Graviton5 instances are now generally available",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "wn14",
+                    "text": "The M9g, C9g, and R9g instance families, powered by AWS Graviton5 processors, are available today in US East (N."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/whats-new/graviton5-ga"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "wn19",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "wn16",
+                    "text": "2026-06-30",
+                    "style": {
+                      "size": 12,
+                      "color": "#545b64"
+                    }
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "wn17",
+                    "text": "AWS Lambda increases response streaming duration to 15 minutes",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "wn18",
+                    "text": "Lambda functions using response streaming can now stream for the full 15-minute maximum execution time, up from 5 minutes, with a payload limit of 200 MB."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/whats-new/lambda-streaming-15m"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "wn23",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "wn20",
+                    "text": "2026-05-12",
+                    "style": {
+                      "size": 12,
+                      "color": "#545b64"
+                    }
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "wn21",
+                    "text": "Amazon S3 Express One Zone now available in all commercial AWS Regions",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "wn22",
+                    "text": "S3 Express One Zone, the high-performance single-Availability-Zone storage class with consistent single-digit millisecond latency, is now available in every commercial Region."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/whats-new/s3-express-all-regions"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "row",
+            "id": "wn27",
+            "children": [
+              {
+                "kind": "link",
+                "id": "wn25",
+                "text": "Follow AWS on X",
+                "url": "http://x.com/"
+              },
+              {
+                "kind": "link",
+                "id": "wn26",
+                "text": "Watch re:Invent sessions on YouTube",
+                "url": "http://youtube.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "wn8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "wn5",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "wn6",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/whats-new/graviton5-ga": {
+        "version": 1,
+        "title": "Amazon EC2 Graviton5 instances are now generally available · What's New with AWS",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "n04",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "n01",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "n02",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "n03",
+                "text": "What's New",
+                "url": "http://aws.amazon.com/whats-new"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "n09",
+            "height": 12
+          },
+          {
+            "kind": "styled",
+            "id": "n010",
+            "text": "Posted on 2026-08-26",
+            "style": {
+              "size": 13,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "n011",
+            "text": "Amazon EC2 Graviton5 instances are now generally available",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "divider",
+            "id": "n012"
+          },
+          {
+            "kind": "text",
+            "id": "n013",
+            "text": "The M9g, C9g, and R9g instance families, powered by AWS Graviton5 processors, are available today in US East (N. Virginia), US West (Oregon), and Europe (Frankfurt). Graviton5 delivers up to 40 percent better price-performance than Graviton4 for web servers, containerized microservices, and in-memory caches, with 50 percent more memory bandwidth per vCPU."
+          },
+          {
+            "kind": "text",
+            "id": "n014",
+            "text": "Instances range from medium to 48xlarge and support EBS-only and local NVMe variants. Existing Arm64 AMIs run unchanged."
+          },
+          {
+            "kind": "row",
+            "id": "n017",
+            "children": [
+              {
+                "kind": "link",
+                "id": "n015",
+                "text": "Service page",
+                "url": "http://aws.amazon.com/ec2"
+              },
+              {
+                "kind": "link",
+                "id": "n016",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "n08",
+            "children": [
+              {
+                "kind": "link",
+                "id": "n05",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "n06",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/whats-new/lambda-streaming-15m": {
+        "version": 1,
+        "title": "AWS Lambda increases response streaming duration to 15 minutes · What's New with AWS",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "n14",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "n11",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "n12",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "n13",
+                "text": "What's New",
+                "url": "http://aws.amazon.com/whats-new"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "n19",
+            "height": 12
+          },
+          {
+            "kind": "styled",
+            "id": "n110",
+            "text": "Posted on 2026-06-30",
+            "style": {
+              "size": 13,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "n111",
+            "text": "AWS Lambda increases response streaming duration to 15 minutes",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "divider",
+            "id": "n112"
+          },
+          {
+            "kind": "text",
+            "id": "n113",
+            "text": "Lambda functions using response streaming can now stream for the full 15-minute maximum execution time, up from 5 minutes, with a payload limit of 200 MB. This is useful for generating large reports, long-running model inference, and server-sent events."
+          },
+          {
+            "kind": "text",
+            "id": "n114",
+            "text": "Response streaming is available for Node.js managed runtimes and custom runtimes through the Runtime API. There is no additional charge; standard Lambda pricing applies."
+          },
+          {
+            "kind": "row",
+            "id": "n117",
+            "children": [
+              {
+                "kind": "link",
+                "id": "n115",
+                "text": "Service page",
+                "url": "http://aws.amazon.com/lambda"
+              },
+              {
+                "kind": "link",
+                "id": "n116",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "n18",
+            "children": [
+              {
+                "kind": "link",
+                "id": "n15",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "n16",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      },
+      "/whats-new/s3-express-all-regions": {
+        "version": 1,
+        "title": "Amazon S3 Express One Zone now available in all commercial AWS Regions · What's New with AWS",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "n24",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "n21",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "n22",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "n23",
+                "text": "What's New",
+                "url": "http://aws.amazon.com/whats-new"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "n29",
+            "height": 12
+          },
+          {
+            "kind": "styled",
+            "id": "n210",
+            "text": "Posted on 2026-05-12",
+            "style": {
+              "size": 13,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "n211",
+            "text": "Amazon S3 Express One Zone now available in all commercial AWS Regions",
+            "style": {
+              "size": 26,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "divider",
+            "id": "n212"
+          },
+          {
+            "kind": "text",
+            "id": "n213",
+            "text": "S3 Express One Zone, the high-performance single-Availability-Zone storage class with consistent single-digit millisecond latency, is now available in every commercial Region. Directory buckets can be co-located with compute to reduce request latency by up to 10x compared with S3 Standard."
+          },
+          {
+            "kind": "text",
+            "id": "n214",
+            "text": "The class is designed for request-intensive workloads such as machine learning training, interactive analytics, and media rendering. Data can be moved from S3 Standard with a single import job."
+          },
+          {
+            "kind": "row",
+            "id": "n217",
+            "children": [
+              {
+                "kind": "link",
+                "id": "n215",
+                "text": "Service page",
+                "url": "http://aws.amazon.com/s3"
+              },
+              {
+                "kind": "link",
+                "id": "n216",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "n28",
+            "children": [
+              {
+                "kind": "link",
+                "id": "n25",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "n26",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#0972d3",
+          "background": "#ffffff",
+          "surface": "#f2f3f3",
+          "ink": "#232f3e",
+          "muted": "#545b64"
+        }
+      }
     }
   },
   "search_entries": [

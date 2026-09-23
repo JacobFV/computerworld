@@ -2,7 +2,11 @@
   "id": "zoom",
   "kind": "static-site",
   "node": "zoom",
-  "domains": ["zoom.us","www.zoom.us","zoom.com"],
+  "domains": [
+    "zoom.us",
+    "www.zoom.us",
+    "zoom.com"
+  ],
   "port": 80,
   "initial_state": {
     "pages": {
@@ -14,16 +18,50 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Join","url":"http://zoom.us/j"},
-                  {"kind":"link","id":"nav-2","text":"Pricing","url":"http://zoom.us/pricing"},
-                  {"kind":"link","id":"nav-3","text":"Download","url":"http://zoom.us/download"},
-                  {"kind":"link","id":"nav-4","text":"Support","url":"http://zoom.us/support"},
-                  {"kind":"link","id":"nav-5","text":"Blog","url":"http://zoom.us/blog"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -31,30 +69,69 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
           {
             "kind": "card",
             "id": "hero",
             "children": [
-              {"kind":"heading","id":"h","text":"Meetings, chat, phone and whiteboard in one app","level":1},
-              {"kind":"text","id":"t","text":"Zoom Workplace brings AI Companion to every meeting: summaries, action items, and catch-up when you join late. Free for meetings up to 40 minutes."},
+              {
+                "kind": "heading",
+                "id": "h",
+                "text": "Meetings, chat, phone and whiteboard in one app",
+                "level": 1
+              },
+              {
+                "kind": "text",
+                "id": "t",
+                "text": "Zoom Workplace brings AI Companion to every meeting: summaries, action items, and catch-up when you join late. Free for meetings up to 40 minutes."
+              },
               {
                 "kind": "row",
                 "id": "hero-links",
                 "children": [
-                  {"kind":"link","id":"hero-signup","text":"Sign up free","url":"http://zoom.us/pricing"},
-                  {"kind":"link","id":"hero-join","text":"Join a meeting","url":"http://zoom.us/j"},
-                  {"kind":"link","id":"hero-dl","text":"Download","url":"http://zoom.us/download"}
+                  {
+                    "kind": "link",
+                    "id": "hero-signup",
+                    "text": "Sign up free",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "hero-join",
+                    "text": "Join a meeting",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "hero-dl",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  }
                 ],
                 "gap": 14,
                 "align": "center"
               }
             ],
-            "style": {"background":"#f1f4f9","radius":16,"padding":32}
+            "style": {
+              "background": "#f1f4f9",
+              "radius": 16,
+              "padding": 32
+            }
           },
-          {"kind":"spacer","id":"gap-3","height":14},
+          {
+            "kind": "spacer",
+            "id": "gap-3",
+            "height": 14
+          },
           {
             "kind": "grid",
             "id": "features",
@@ -64,79 +141,209 @@
                 "kind": "card",
                 "id": "feat",
                 "children": [
-                  {"kind":"heading","id":"feat-name","text":"Meetings","level":3},
-                  {"kind":"text","id":"feat-desc","text":"HD video for up to 1,000 participants, breakout rooms, polls, and AI Companion summaries."}
+                  {
+                    "kind": "heading",
+                    "id": "feat-name",
+                    "text": "Meetings",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc",
+                    "text": "HD video for up to 1,000 participants, breakout rooms, polls, and AI Companion summaries."
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "feat-2",
                 "children": [
-                  {"kind":"heading","id":"feat-name-2","text":"Team Chat","level":3},
-                  {"kind":"text","id":"feat-desc-2","text":"Channels and direct messages that carry over into meetings, with files and huddles."}
+                  {
+                    "kind": "heading",
+                    "id": "feat-name-2",
+                    "text": "Team Chat",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc-2",
+                    "text": "Channels and direct messages that carry over into meetings, with files and huddles."
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "feat-3",
                 "children": [
-                  {"kind":"heading","id":"feat-name-3","text":"Phone","level":3},
-                  {"kind":"text","id":"feat-desc-3","text":"A cloud phone system with numbers in 49 countries, voicemail transcription and call queues."}
+                  {
+                    "kind": "heading",
+                    "id": "feat-name-3",
+                    "text": "Phone",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc-3",
+                    "text": "A cloud phone system with numbers in 49 countries, voicemail transcription and call queues."
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "feat-4",
                 "children": [
-                  {"kind":"heading","id":"feat-name-4","text":"Whiteboard","level":3},
-                  {"kind":"text","id":"feat-desc-4","text":"Infinite canvas, templates and sticky notes that persist after the meeting."}
+                  {
+                    "kind": "heading",
+                    "id": "feat-name-4",
+                    "text": "Whiteboard",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc-4",
+                    "text": "Infinite canvas, templates and sticky notes that persist after the meeting."
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "feat-5",
                 "children": [
-                  {"kind":"heading","id":"feat-name-5","text":"Rooms","level":3},
-                  {"kind":"text","id":"feat-desc-5","text":"Conference room hardware certified for Zoom, with one-touch join."}
+                  {
+                    "kind": "heading",
+                    "id": "feat-name-5",
+                    "text": "Rooms",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc-5",
+                    "text": "Conference room hardware certified for Zoom, with one-touch join."
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "feat-6",
                 "children": [
-                  {"kind":"heading","id":"feat-name-6","text":"Events and Webinars","level":3},
-                  {"kind":"text","id":"feat-desc-6","text":"Host up to 100,000 attendees with registration, Q&A and practice sessions."}
+                  {
+                    "kind": "heading",
+                    "id": "feat-name-6",
+                    "text": "Events and Webinars",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "feat-desc-6",
+                    "text": "Host up to 100,000 attendees with registration, Q&A and practice sessions."
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               }
             ],
             "gap": 12
           },
-          {"kind":"spacer","id":"gap-4","height":10},
-          {"kind":"heading","id":"h-2","text":"From the blog","level":2},
-          {"kind":"link","id":"blog-1","text":"AI Companion now takes notes in 30 languages","url":"http://zoom.us/blog/ai-companion-30-languages"},
-          {"kind":"link","id":"blog-2","text":"How the Northstar Workshop team runs a release review on Zoom","url":"http://zoom.us/blog/running-release-reviews"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "spacer",
+            "id": "gap-4",
+            "height": 10
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "From the blog",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "blog-1",
+            "text": "AI Companion now takes notes in 30 languages",
+            "url": "http://zoom.us/blog/ai-companion-30-languages"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/pricing": {
         "version": 1,
@@ -146,16 +353,54 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Join","url":"http://zoom.us/j"},
-                  {"kind":"styled","id":"nav-here","text":"Pricing","style":{"size":13,"weight":"bold","color":"#ffffff"}},
-                  {"kind":"link","id":"nav-2","text":"Download","url":"http://zoom.us/download"},
-                  {"kind":"link","id":"nav-3","text":"Support","url":"http://zoom.us/support"},
-                  {"kind":"link","id":"nav-4","text":"Blog","url":"http://zoom.us/blog"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Pricing",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -163,11 +408,27 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"Plans and pricing","level":1},
-          {"kind":"text","id":"t","text":"Billed annually per user. Monthly billing costs about 20% more. Every paid plan includes AI Companion at no extra charge."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Plans and pricing",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Billed annually per user. Monthly billing costs about 20% more. Every paid plan includes AI Companion at no extra charge."
+          },
           {
             "kind": "grid",
             "id": "plans",
@@ -177,82 +438,264 @@
                 "kind": "card",
                 "id": "plan",
                 "children": [
-                  {"kind":"heading","id":"plan-name","text":"Basic","level":2},
-                  {"kind":"heading","id":"plan-price","text":"Free","level":3},
-                  {"kind":"text","id":"plan-desc","text":"Meetings up to 40 minutes and 100 participants, Team Chat, Whiteboard basics, 3 editable whiteboards."},
-                  {"kind":"link","id":"plan-link","text":"Sign up","url":"http://zoom.us/download"}
+                  {
+                    "kind": "heading",
+                    "id": "plan-name",
+                    "text": "Basic",
+                    "level": 2
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "plan-price",
+                    "text": "Free",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "plan-desc",
+                    "text": "Meetings up to 40 minutes and 100 participants, Team Chat, Whiteboard basics, 3 editable whiteboards."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "plan-link",
+                    "text": "Sign up",
+                    "url": "http://zoom.us/download"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "plan-2",
                 "children": [
-                  {"kind":"heading","id":"plan-name-2","text":"Pro","level":2},
-                  {"kind":"heading","id":"plan-price-2","text":"$13.33 a month","level":3},
-                  {"kind":"text","id":"plan-desc-2","text":"Meetings up to 30 hours, 5GB of cloud recording, AI Companion, Scheduler, Clips."},
-                  {"kind":"link","id":"plan-link-2","text":"Buy now","url":"http://zoom.us/download"}
+                  {
+                    "kind": "heading",
+                    "id": "plan-name-2",
+                    "text": "Pro",
+                    "level": 2
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "plan-price-2",
+                    "text": "$13.33 a month",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "plan-desc-2",
+                    "text": "Meetings up to 30 hours, 5GB of cloud recording, AI Companion, Scheduler, Clips."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "plan-link-2",
+                    "text": "Buy now",
+                    "url": "http://zoom.us/download"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "plan-3",
                 "children": [
-                  {"kind":"heading","id":"plan-name-3","text":"Business","level":2},
-                  {"kind":"heading","id":"plan-price-3","text":"$18.33 a month","level":3},
-                  {"kind":"text","id":"plan-desc-3","text":"Everything in Pro for up to 300 participants, unlimited whiteboards, SSO, managed domains, Workspace Reservation."},
-                  {"kind":"link","id":"plan-link-3","text":"Buy now","url":"http://zoom.us/download"}
+                  {
+                    "kind": "heading",
+                    "id": "plan-name-3",
+                    "text": "Business",
+                    "level": 2
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "plan-price-3",
+                    "text": "$18.33 a month",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "plan-desc-3",
+                    "text": "Everything in Pro for up to 300 participants, unlimited whiteboards, SSO, managed domains, Workspace Reservation."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "plan-link-3",
+                    "text": "Buy now",
+                    "url": "http://zoom.us/download"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "plan-4",
                 "children": [
-                  {"kind":"heading","id":"plan-name-4","text":"Business Plus","level":2},
-                  {"kind":"heading","id":"plan-price-4","text":"$22.49 a month","level":3},
-                  {"kind":"text","id":"plan-desc-4","text":"Business plus Zoom Phone with unlimited regional calling, 10GB of cloud recording, translated captions."},
-                  {"kind":"link","id":"plan-link-4","text":"Buy now","url":"http://zoom.us/download"}
+                  {
+                    "kind": "heading",
+                    "id": "plan-name-4",
+                    "text": "Business Plus",
+                    "level": 2
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "plan-price-4",
+                    "text": "$22.49 a month",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "plan-desc-4",
+                    "text": "Business plus Zoom Phone with unlimited regional calling, 10GB of cloud recording, translated captions."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "plan-link-4",
+                    "text": "Buy now",
+                    "url": "http://zoom.us/download"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               }
             ],
             "gap": 12
           },
-          {"kind":"heading","id":"h-2","text":"Add-ons","level":2},
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Add-ons",
+            "level": 2
+          },
           {
             "kind": "card",
             "id": "addons",
             "children": [
-              {"kind":"styled","id":"addons-head","text":"Add-on | Price | Notes","style":{"size":12,"weight":"bold","color":"#5b6478"}},
-              {"kind":"text","id":"addons-row","text":"Large Meetings | $50 a month | 500 or 1,000 participants"},
-              {"kind":"text","id":"addons-row-2","text":"Cloud Recording storage | From $40 a month | 100GB and up"},
-              {"kind":"text","id":"addons-row-3","text":"Zoom Webinars | From $79 a month | 500 attendees"},
-              {"kind":"text","id":"addons-row-4","text":"Zoom Phone Pro | $10 a month | Metered outbound calling"},
-              {"kind":"text","id":"addons-row-5","text":"Translated captions | $5 a month | Included in Business Plus"}
+              {
+                "kind": "styled",
+                "id": "addons-head",
+                "text": "Add-on | Price | Notes",
+                "style": {
+                  "size": 12,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "addons-row",
+                "text": "Large Meetings | $50 a month | 500 or 1,000 participants"
+              },
+              {
+                "kind": "text",
+                "id": "addons-row-2",
+                "text": "Cloud Recording storage | From $40 a month | 100GB and up"
+              },
+              {
+                "kind": "text",
+                "id": "addons-row-3",
+                "text": "Zoom Webinars | From $79 a month | 500 attendees"
+              },
+              {
+                "kind": "text",
+                "id": "addons-row-4",
+                "text": "Zoom Phone Pro | $10 a month | Metered outbound calling"
+              },
+              {
+                "kind": "text",
+                "id": "addons-row-5",
+                "text": "Translated captions | $5 a month | Included in Business Plus"
+              }
             ],
-            "style": {"background":"#ffffff","border":"#d8dee9","radius":8,"padding":12}
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 8,
+              "padding": 12
+            }
           },
-          {"kind":"text","id":"t-2","text":"Enterprise plans with unlimited cloud storage and a named account manager are quoted by sales."},
-          {"kind":"link","id":"dl","text":"Download Zoom","url":"http://zoom.us/download"},
-          {"kind":"link","id":"support","text":"Support","url":"http://zoom.us/support"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Enterprise plans with unlimited cloud storage and a named account manager are quoted by sales."
+          },
+          {
+            "kind": "link",
+            "id": "dl",
+            "text": "Download Zoom",
+            "url": "http://zoom.us/download"
+          },
+          {
+            "kind": "link",
+            "id": "support",
+            "text": "Support",
+            "url": "http://zoom.us/support"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/download": {
         "version": 1,
@@ -262,16 +705,54 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Join","url":"http://zoom.us/j"},
-                  {"kind":"link","id":"nav-2","text":"Pricing","url":"http://zoom.us/pricing"},
-                  {"kind":"styled","id":"nav-here","text":"Download","style":{"size":13,"weight":"bold","color":"#ffffff"}},
-                  {"kind":"link","id":"nav-3","text":"Support","url":"http://zoom.us/support"},
-                  {"kind":"link","id":"nav-4","text":"Blog","url":"http://zoom.us/blog"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Download",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -279,48 +760,166 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"Download Center","level":1},
-          {"kind":"text","id":"t","text":"Zoom Workplace 7.2 for every platform. The desktop app updates itself; you only need to download it once."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Download Center",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Zoom Workplace 7.2 for every platform. The desktop app updates itself; you only need to download it once."
+          },
           {
             "kind": "card",
             "id": "downloads",
             "children": [
-              {"kind":"styled","id":"downloads-head","text":"Platform | Version | Size","style":{"size":12,"weight":"bold","color":"#5b6478"}},
-              {"kind":"text","id":"downloads-row","text":"Zoom Workplace for Windows | 7.2.1 (64-bit and ARM64) | 148 MB"},
-              {"kind":"text","id":"downloads-row-2","text":"Zoom Workplace for macOS | 7.2.1 (Apple silicon and Intel) | 152 MB"},
-              {"kind":"text","id":"downloads-row-3","text":"Zoom Workplace for Linux | 7.2.1 (deb, rpm) | 131 MB"},
-              {"kind":"text","id":"downloads-row-4","text":"Zoom for iOS | 7.2.0 on the App Store | 260 MB"},
-              {"kind":"text","id":"downloads-row-5","text":"Zoom for Android | 7.2.0 on Google Play | 210 MB"},
-              {"kind":"text","id":"downloads-row-6","text":"Zoom Rooms | 6.5.0 | 190 MB"},
-              {"kind":"text","id":"downloads-row-7","text":"Outlook add-in | In the Microsoft add-in store | "},
-              {"kind":"text","id":"downloads-row-8","text":"Chrome extension | Scheduler for Google Calendar | "}
+              {
+                "kind": "styled",
+                "id": "downloads-head",
+                "text": "Platform | Version | Size",
+                "style": {
+                  "size": 12,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "downloads-row",
+                "text": "Zoom Workplace for Windows | 7.2.1 (64-bit and ARM64) | 148 MB"
+              },
+              {
+                "kind": "text",
+                "id": "downloads-row-2",
+                "text": "Zoom Workplace for macOS | 7.2.1 (Apple silicon and Intel) | 152 MB"
+              },
+              {
+                "kind": "text",
+                "id": "downloads-row-3",
+                "text": "Zoom Workplace for Linux | 7.2.1 (deb, rpm) | 131 MB"
+              },
+              {
+                "kind": "text",
+                "id": "downloads-row-4",
+                "text": "Zoom for iOS | 7.2.0 on the App Store | 260 MB"
+              },
+              {
+                "kind": "text",
+                "id": "downloads-row-5",
+                "text": "Zoom for Android | 7.2.0 on Google Play | 210 MB"
+              },
+              {
+                "kind": "text",
+                "id": "downloads-row-6",
+                "text": "Zoom Rooms | 6.5.0 | 190 MB"
+              },
+              {
+                "kind": "text",
+                "id": "downloads-row-7",
+                "text": "Outlook add-in | In the Microsoft add-in store | "
+              },
+              {
+                "kind": "text",
+                "id": "downloads-row-8",
+                "text": "Chrome extension | Scheduler for Google Calendar | "
+              }
             ],
-            "style": {"background":"#ffffff","border":"#d8dee9","radius":8,"padding":12}
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 8,
+              "padding": 12
+            }
           },
-          {"kind":"heading","id":"h-2","text":"System requirements","level":2},
-          {"kind":"text","id":"t-2","text":"Windows 10 or later, macOS 12 or later, Ubuntu 20.04 or later. 4GB of memory, a dual-core processor, and a camera and microphone. Bandwidth: 1.5 Mbps up and down for HD video."},
-          {"kind":"text","id":"t-3","text":"Do not have the app? Join from the browser instead: every meeting link offers \"Join from your browser\" after the app prompt."},
-          {"kind":"link","id":"join","text":"Join a meeting from the browser","url":"http://zoom.us/j"},
-          {"kind":"link","id":"gh","text":"Zoom on GitHub","url":"http://github.com/"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "System requirements",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Windows 10 or later, macOS 12 or later, Ubuntu 20.04 or later. 4GB of memory, a dual-core processor, and a camera and microphone. Bandwidth: 1.5 Mbps up and down for HD video."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Do not have the app? Join from the browser instead: every meeting link offers \"Join from your browser\" after the app prompt."
+          },
+          {
+            "kind": "link",
+            "id": "join",
+            "text": "Join a meeting from the browser",
+            "url": "http://zoom.us/j"
+          },
+          {
+            "kind": "link",
+            "id": "gh",
+            "text": "Zoom on GitHub",
+            "url": "http://github.com/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/support": {
         "version": 1,
@@ -330,16 +929,54 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Join","url":"http://zoom.us/j"},
-                  {"kind":"link","id":"nav-2","text":"Pricing","url":"http://zoom.us/pricing"},
-                  {"kind":"link","id":"nav-3","text":"Download","url":"http://zoom.us/download"},
-                  {"kind":"styled","id":"nav-here","text":"Support","style":{"size":13,"weight":"bold","color":"#ffffff"}},
-                  {"kind":"link","id":"nav-4","text":"Blog","url":"http://zoom.us/blog"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Support",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -347,11 +984,27 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"Support","level":1},
-          {"kind":"text","id":"t","text":"Help articles, the community and the status of Zoom services. Chat with support from the app under Help, or open a ticket if you are on a paid plan."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Support",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Help articles, the community and the status of Zoom services. Chat with support from the app under Help, or open a ticket if you are on a paid plan."
+          },
           {
             "kind": "grid",
             "id": "articles",
@@ -361,57 +1014,174 @@
                 "kind": "card",
                 "id": "art",
                 "children": [
-                  {"kind":"heading","id":"art-title","text":"Joining a meeting","level":3},
-                  {"kind":"text","id":"art-desc","text":"Join from a link, a meeting ID, a phone or a room system."},
-                  {"kind":"link","id":"art-link","text":"Read article","url":"http://zoom.us/support/join-a-meeting"}
+                  {
+                    "kind": "heading",
+                    "id": "art-title",
+                    "text": "Joining a meeting",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "art-desc",
+                    "text": "Join from a link, a meeting ID, a phone or a room system."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "art-link",
+                    "text": "Read article",
+                    "url": "http://zoom.us/support/join-a-meeting"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "art-2",
                 "children": [
-                  {"kind":"heading","id":"art-title-2","text":"Fixing audio problems","level":3},
-                  {"kind":"text","id":"art-desc-2","text":"Nobody can hear you, you cannot hear them, or there is an echo."},
-                  {"kind":"link","id":"art-link-2","text":"Read article","url":"http://zoom.us/support/audio-troubleshooting"}
+                  {
+                    "kind": "heading",
+                    "id": "art-title-2",
+                    "text": "Fixing audio problems",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "art-desc-2",
+                    "text": "Nobody can hear you, you cannot hear them, or there is an echo."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "art-link-2",
+                    "text": "Read article",
+                    "url": "http://zoom.us/support/audio-troubleshooting"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "art-3",
                 "children": [
-                  {"kind":"heading","id":"art-title-3","text":"Recording a meeting","level":3},
-                  {"kind":"text","id":"art-desc-3","text":"Local and cloud recording, where files go and how to share them."},
-                  {"kind":"link","id":"art-link-3","text":"Read article","url":"http://zoom.us/support/recording"}
+                  {
+                    "kind": "heading",
+                    "id": "art-title-3",
+                    "text": "Recording a meeting",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "art-desc-3",
+                    "text": "Local and cloud recording, where files go and how to share them."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "art-link-3",
+                    "text": "Read article",
+                    "url": "http://zoom.us/support/recording"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               }
             ],
             "gap": 12
           },
-          {"kind":"heading","id":"h-2","text":"Common questions","level":2},
-          {"kind":"text","id":"t-2","text":"Where is my meeting ID? In the invitation, or under Meetings in the app. It is 10 or 11 digits; the passcode is separate."},
-          {"kind":"text","id":"t-3","text":"Why did my meeting end at 40 minutes? Basic (free) accounts have a 40-minute limit on group meetings. The host can start a new meeting immediately."},
-          {"kind":"text","id":"t-4","text":"Can I join without an account? Yes. Only the host needs an account. Enter the meeting ID and your name."},
-          {"kind":"link","id":"join","text":"Join a meeting","url":"http://zoom.us/j"},
-          {"kind":"link","id":"reddit","text":"Ask the community on Reddit","url":"http://reddit.com/"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Common questions",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Where is my meeting ID? In the invitation, or under Meetings in the app. It is 10 or 11 digits; the passcode is separate."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Why did my meeting end at 40 minutes? Basic (free) accounts have a 40-minute limit on group meetings. The host can start a new meeting immediately."
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Can I join without an account? Yes. Only the host needs an account. Enter the meeting ID and your name."
+          },
+          {
+            "kind": "link",
+            "id": "join",
+            "text": "Join a meeting",
+            "url": "http://zoom.us/j"
+          },
+          {
+            "kind": "link",
+            "id": "reddit",
+            "text": "Ask the community on Reddit",
+            "url": "http://reddit.com/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/support/join-a-meeting": {
         "version": 1,
@@ -421,16 +1191,50 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Join","url":"http://zoom.us/j"},
-                  {"kind":"link","id":"nav-2","text":"Pricing","url":"http://zoom.us/pricing"},
-                  {"kind":"link","id":"nav-3","text":"Download","url":"http://zoom.us/download"},
-                  {"kind":"link","id":"nav-4","text":"Support","url":"http://zoom.us/support"},
-                  {"kind":"link","id":"nav-5","text":"Blog","url":"http://zoom.us/blog"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -438,38 +1242,138 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"link","id":"crumb","text":"Support","url":"http://zoom.us/support"},
-          {"kind":"heading","id":"h","text":"Joining a meeting","level":1},
-          {"kind":"text","id":"t","text":"Updated 4 February 2026. Applies to Zoom Workplace 7.x on desktop, mobile and web."},
-          {"kind":"heading","id":"h-2","text":"From a link","level":2},
-          {"kind":"text","id":"t-2","text":"Click the link in your invitation. The app opens if it is installed; otherwise choose \"Join from your browser\". Enter your name and, if asked, the passcode."},
-          {"kind":"heading","id":"h-3","text":"From a meeting ID","level":2},
-          {"kind":"text","id":"t-3","text":"Open the app and choose Join, or go to the join page on zoom.us. Type the 10 or 11 digit meeting ID and your display name. The host may keep you in a waiting room until they admit you."},
-          {"kind":"heading","id":"h-4","text":"By phone","level":2},
-          {"kind":"text","id":"t-4","text":"Dial the number in the invitation, then enter the meeting ID followed by #. Press *6 to mute and *9 to raise your hand."},
-          {"kind":"heading","id":"h-5","text":"From a room system","level":2},
-          {"kind":"text","id":"t-5","text":"On a Zoom Room or an SIP/H.323 system, dial the meeting ID from the controller. Zoom Rooms with one-touch join show the meeting on the calendar."},
-          {"kind":"link","id":"join","text":"Join a meeting now","url":"http://zoom.us/j"},
-          {"kind":"link","id":"next","text":"Next: fixing audio problems","url":"http://zoom.us/support/audio-troubleshooting"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "link",
+            "id": "crumb",
+            "text": "Support",
+            "url": "http://zoom.us/support"
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Joining a meeting",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Updated 4 February 2026. Applies to Zoom Workplace 7.x on desktop, mobile and web."
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "From a link",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Click the link in your invitation. The app opens if it is installed; otherwise choose \"Join from your browser\". Enter your name and, if asked, the passcode."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "From a meeting ID",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Open the app and choose Join, or go to the join page on zoom.us. Type the 10 or 11 digit meeting ID and your display name. The host may keep you in a waiting room until they admit you."
+          },
+          {
+            "kind": "heading",
+            "id": "h-4",
+            "text": "By phone",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Dial the number in the invitation, then enter the meeting ID followed by #. Press *6 to mute and *9 to raise your hand."
+          },
+          {
+            "kind": "heading",
+            "id": "h-5",
+            "text": "From a room system",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "On a Zoom Room or an SIP/H.323 system, dial the meeting ID from the controller. Zoom Rooms with one-touch join show the meeting on the calendar."
+          },
+          {
+            "kind": "link",
+            "id": "join",
+            "text": "Join a meeting now",
+            "url": "http://zoom.us/j"
+          },
+          {
+            "kind": "link",
+            "id": "next",
+            "text": "Next: fixing audio problems",
+            "url": "http://zoom.us/support/audio-troubleshooting"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/support/audio-troubleshooting": {
         "version": 1,
@@ -479,16 +1383,50 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Join","url":"http://zoom.us/j"},
-                  {"kind":"link","id":"nav-2","text":"Pricing","url":"http://zoom.us/pricing"},
-                  {"kind":"link","id":"nav-3","text":"Download","url":"http://zoom.us/download"},
-                  {"kind":"link","id":"nav-4","text":"Support","url":"http://zoom.us/support"},
-                  {"kind":"link","id":"nav-5","text":"Blog","url":"http://zoom.us/blog"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -496,38 +1434,138 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"link","id":"crumb","text":"Support","url":"http://zoom.us/support"},
-          {"kind":"heading","id":"h","text":"Fixing audio problems","level":1},
-          {"kind":"text","id":"t","text":"Updated 21 January 2026."},
-          {"kind":"heading","id":"h-2","text":"Nobody can hear you","level":2},
-          {"kind":"text","id":"t-2","text":"Check that you are not muted (the microphone icon in the bottom left). Click the arrow next to it and pick the right microphone. On macOS and Windows, confirm Zoom has microphone permission in system settings. Try \"Test Speaker and Microphone\"."},
-          {"kind":"heading","id":"h-3","text":"You cannot hear anyone","level":2},
-          {"kind":"text","id":"t-3","text":"Click the arrow next to the microphone icon and choose the right speaker. If you joined from the browser, make sure the tab is not muted. On mobile, tap \"Join Audio\" if the audio icon shows a red line."},
-          {"kind":"heading","id":"h-4","text":"Echo","level":2},
-          {"kind":"text","id":"t-4","text":"Echo means two devices in the same room are both unmuted. Mute one, or use headphones. Turning on \"Suppress background noise: High\" under Audio settings helps with keyboards and fans."},
-          {"kind":"heading","id":"h-5","text":"Choppy audio","level":2},
-          {"kind":"text","id":"t-5","text":"Turn off video, move closer to the Wi-Fi access point or plug in Ethernet. Zoom needs about 80 kbps for audio alone."},
-          {"kind":"link","id":"prev","text":"Previous: joining a meeting","url":"http://zoom.us/support/join-a-meeting"},
-          {"kind":"link","id":"next","text":"Next: recording a meeting","url":"http://zoom.us/support/recording"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "link",
+            "id": "crumb",
+            "text": "Support",
+            "url": "http://zoom.us/support"
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Fixing audio problems",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Updated 21 January 2026."
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Nobody can hear you",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Check that you are not muted (the microphone icon in the bottom left). Click the arrow next to it and pick the right microphone. On macOS and Windows, confirm Zoom has microphone permission in system settings. Try \"Test Speaker and Microphone\"."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "You cannot hear anyone",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Click the arrow next to the microphone icon and choose the right speaker. If you joined from the browser, make sure the tab is not muted. On mobile, tap \"Join Audio\" if the audio icon shows a red line."
+          },
+          {
+            "kind": "heading",
+            "id": "h-4",
+            "text": "Echo",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Echo means two devices in the same room are both unmuted. Mute one, or use headphones. Turning on \"Suppress background noise: High\" under Audio settings helps with keyboards and fans."
+          },
+          {
+            "kind": "heading",
+            "id": "h-5",
+            "text": "Choppy audio",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "Turn off video, move closer to the Wi-Fi access point or plug in Ethernet. Zoom needs about 80 kbps for audio alone."
+          },
+          {
+            "kind": "link",
+            "id": "prev",
+            "text": "Previous: joining a meeting",
+            "url": "http://zoom.us/support/join-a-meeting"
+          },
+          {
+            "kind": "link",
+            "id": "next",
+            "text": "Next: recording a meeting",
+            "url": "http://zoom.us/support/recording"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/support/recording": {
         "version": 1,
@@ -537,16 +1575,50 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Join","url":"http://zoom.us/j"},
-                  {"kind":"link","id":"nav-2","text":"Pricing","url":"http://zoom.us/pricing"},
-                  {"kind":"link","id":"nav-3","text":"Download","url":"http://zoom.us/download"},
-                  {"kind":"link","id":"nav-4","text":"Support","url":"http://zoom.us/support"},
-                  {"kind":"link","id":"nav-5","text":"Blog","url":"http://zoom.us/blog"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -554,38 +1626,138 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"link","id":"crumb","text":"Support","url":"http://zoom.us/support"},
-          {"kind":"heading","id":"h","text":"Recording a meeting","level":1},
-          {"kind":"text","id":"t","text":"Updated 12 February 2026."},
-          {"kind":"heading","id":"h-2","text":"Local recording","level":2},
-          {"kind":"text","id":"t-2","text":"Available on every plan on desktop. Click Record, then \"Record on this Computer\". When the meeting ends, Zoom converts the file to MP4 and M4A in Documents/Zoom. Participants see a recording indicator and hear an announcement."},
-          {"kind":"heading","id":"h-3","text":"Cloud recording","level":2},
-          {"kind":"text","id":"t-3","text":"Available on Pro and above. Click Record, then \"Record to the Cloud\". The recording, the transcript and the AI Companion summary appear under Recordings on the web portal within an hour. Pro plans include 5GB."},
-          {"kind":"heading","id":"h-4","text":"Sharing","level":2},
-          {"kind":"text","id":"t-4","text":"Open the recording in the web portal, click Share, and choose whether viewers need to sign in, whether they can download, and an expiry date. The link and a passcode are copied for you."},
-          {"kind":"heading","id":"h-5","text":"Who can record","level":2},
-          {"kind":"text","id":"t-5","text":"The host, and anyone the host has granted permission to. Account admins can turn recording off for everyone."},
-          {"kind":"link","id":"prev","text":"Previous: fixing audio problems","url":"http://zoom.us/support/audio-troubleshooting"},
-          {"kind":"link","id":"pricing","text":"Pricing","url":"http://zoom.us/pricing"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "link",
+            "id": "crumb",
+            "text": "Support",
+            "url": "http://zoom.us/support"
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Recording a meeting",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Updated 12 February 2026."
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Local recording",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Available on every plan on desktop. Click Record, then \"Record on this Computer\". When the meeting ends, Zoom converts the file to MP4 and M4A in Documents/Zoom. Participants see a recording indicator and hear an announcement."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "Cloud recording",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Available on Pro and above. Click Record, then \"Record to the Cloud\". The recording, the transcript and the AI Companion summary appear under Recordings on the web portal within an hour. Pro plans include 5GB."
+          },
+          {
+            "kind": "heading",
+            "id": "h-4",
+            "text": "Sharing",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Open the recording in the web portal, click Share, and choose whether viewers need to sign in, whether they can download, and an expiry date. The link and a passcode are copied for you."
+          },
+          {
+            "kind": "heading",
+            "id": "h-5",
+            "text": "Who can record",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "The host, and anyone the host has granted permission to. Account admins can turn recording off for everyone."
+          },
+          {
+            "kind": "link",
+            "id": "prev",
+            "text": "Previous: fixing audio problems",
+            "url": "http://zoom.us/support/audio-troubleshooting"
+          },
+          {
+            "kind": "link",
+            "id": "pricing",
+            "text": "Pricing",
+            "url": "http://zoom.us/pricing"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/j": {
         "version": 1,
@@ -595,16 +1767,54 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"styled","id":"nav-here","text":"Join","style":{"size":13,"weight":"bold","color":"#ffffff"}},
-                  {"kind":"link","id":"nav","text":"Pricing","url":"http://zoom.us/pricing"},
-                  {"kind":"link","id":"nav-2","text":"Download","url":"http://zoom.us/download"},
-                  {"kind":"link","id":"nav-3","text":"Support","url":"http://zoom.us/support"},
-                  {"kind":"link","id":"nav-4","text":"Blog","url":"http://zoom.us/blog"}
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Join",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -612,11 +1822,27 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"Join a meeting","level":1},
-          {"kind":"text","id":"t","text":"Enter the meeting ID from your invitation. Your name is shown to the other participants."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Join a meeting",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Enter the meeting ID from your invitation. Your name is shown to the other participants."
+          },
           {
             "kind": "form",
             "id": "join-form",
@@ -626,31 +1852,104 @@
               "fields": {}
             },
             "children": [
-              {"kind":"input","id":"meeting-id","label":"Meeting ID or personal link name","value":"1234567890","placeholder":"123 456 7890"},
-              {"kind":"input","id":"display-name","label":"Your name","value":"","placeholder":"Your name"},
-              {"kind":"button","id":"join-btn","text":"Join","action":{"method":"GET","url":"http://zoom.us/j/1234567890","fields":{}}}
+              {
+                "kind": "input",
+                "id": "meeting-id",
+                "label": "Meeting ID or personal link name",
+                "value": "1234567890",
+                "placeholder": "123 456 7890"
+              },
+              {
+                "kind": "input",
+                "id": "display-name",
+                "label": "Your name",
+                "value": "",
+                "placeholder": "Your name"
+              },
+              {
+                "kind": "button",
+                "id": "join-btn",
+                "text": "Join",
+                "action": {
+                  "method": "GET",
+                  "url": "http://zoom.us/j/1234567890",
+                  "fields": {}
+                }
+              }
             ]
           },
-          {"kind":"text","id":"t-2","text":"By clicking Join, you agree to the Terms of Service and Privacy Statement."},
-          {"kind":"heading","id":"h-2","text":"Do not have the app?","level":3},
-          {"kind":"link","id":"dl","text":"Download it","url":"http://zoom.us/download"},
-          {"kind":"link","id":"help","text":"How joining works","url":"http://zoom.us/support/join-a-meeting"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "By clicking Join, you agree to the Terms of Service and Privacy Statement."
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Do not have the app?",
+            "level": 3
+          },
+          {
+            "kind": "link",
+            "id": "dl",
+            "text": "Download it",
+            "url": "http://zoom.us/download"
+          },
+          {
+            "kind": "link",
+            "id": "help",
+            "text": "How joining works",
+            "url": "http://zoom.us/support/join-a-meeting"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/j/1234567890": {
         "version": 1,
@@ -660,16 +1959,50 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Join","url":"http://zoom.us/j"},
-                  {"kind":"link","id":"nav-2","text":"Pricing","url":"http://zoom.us/pricing"},
-                  {"kind":"link","id":"nav-3","text":"Download","url":"http://zoom.us/download"},
-                  {"kind":"link","id":"nav-4","text":"Support","url":"http://zoom.us/support"},
-                  {"kind":"link","id":"nav-5","text":"Blog","url":"http://zoom.us/blog"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -677,72 +2010,76 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
           {
-            "kind": "card",
-            "id": "room",
-            "children": [
-              {
-                "kind": "row",
-                "id": "room-head",
-                "children": [
-                  {"kind":"badge","id":"live","text":"LIVE","style":{"size":11,"color":"#ffffff","background":"#e02828","radius":8,"padding":4}},
-                  {"kind":"styled","id":"room-title","text":"Northstar release review","style":{"size":16,"weight":"bold","color":"#ffffff"}},
-                  {"kind":"styled","id":"room-id","text":"Meeting ID 123 456 7890","style":{"size":12,"color":"#ffffff"}}
-                ],
-                "gap": 12,
-                "align": "center"
-              },
-              {
-                "kind": "grid",
-                "id": "seats",
-                "columns": 3,
-                "children": [
-                  {"kind":"thumbnail","id":"seat","label":"Priya Raman (Host)","style":{"background":"#2b2b3b","color":"#ffffff","height":110,"radius":8}},
-                  {"kind":"thumbnail","id":"seat-2","label":"Alice Chen","style":{"background":"#2b2b3b","color":"#ffffff","height":110,"radius":8}},
-                  {"kind":"thumbnail","id":"seat-3","label":"Bob Martinez","style":{"background":"#2b2b3b","color":"#ffffff","height":110,"radius":8}},
-                  {"kind":"thumbnail","id":"seat-4","label":"Carol Nguyen","style":{"background":"#2b2b3b","color":"#ffffff","height":110,"radius":8}},
-                  {"kind":"thumbnail","id":"seat-5","label":"Tom Okafor","style":{"background":"#2b2b3b","color":"#ffffff","height":110,"radius":8}},
-                  {"kind":"thumbnail","id":"seat-6","label":"You","style":{"background":"#2b2b3b","color":"#ffffff","height":110,"radius":8}}
-                ],
-                "gap": 10
-              },
-              {
-                "kind": "row",
-                "id": "controls",
-                "children": [
-                  {"kind":"icon","id":"ctl-mic","name":"mic","label":"Mute","style":{"color":"#ffffff","size":20,"padding":8,"background":"#3a3a4d","radius":20}},
-                  {"kind":"icon","id":"ctl-cam","name":"camera","label":"Stop video","style":{"color":"#ffffff","size":20,"padding":8,"background":"#3a3a4d","radius":20}},
-                  {"kind":"icon","id":"ctl-people","name":"person","label":"Participants (6)","style":{"color":"#ffffff","size":20,"padding":8,"background":"#3a3a4d","radius":20}},
-                  {"kind":"icon","id":"ctl-chat","name":"chat","label":"Chat","style":{"color":"#ffffff","size":20,"padding":8,"background":"#3a3a4d","radius":20}},
-                  {"kind":"button","id":"leave","text":"Leave","action":{"method":"GET","url":"http://zoom.us/j","fields":{}}}
-                ],
-                "gap": 10,
-                "align": "center"
-              }
-            ],
-            "style": {"background":"#1b1b28","radius":12,"padding":18}
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
           },
-          {"kind":"text","id":"t","text":"You are in the meeting. Audio is connected through your computer. The host has enabled AI Companion; a summary will be sent to participants afterwards."},
-          {"kind":"link","id":"audio","text":"Audio problems?","url":"http://zoom.us/support/audio-troubleshooting"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "You are in the meeting. Audio is connected through your computer. The host has enabled AI Companion; a summary will be sent to participants afterwards."
+          },
+          {
+            "kind": "link",
+            "id": "audio",
+            "text": "Audio problems?",
+            "url": "http://zoom.us/support/audio-troubleshooting"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/blog": {
         "version": 1,
@@ -752,16 +2089,54 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Join","url":"http://zoom.us/j"},
-                  {"kind":"link","id":"nav-2","text":"Pricing","url":"http://zoom.us/pricing"},
-                  {"kind":"link","id":"nav-3","text":"Download","url":"http://zoom.us/download"},
-                  {"kind":"link","id":"nav-4","text":"Support","url":"http://zoom.us/support"},
-                  {"kind":"styled","id":"nav-here","text":"Blog","style":{"size":13,"weight":"bold","color":"#ffffff"}}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Blog",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -769,48 +2144,111 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"Zoom Blog","level":1},
-          {"kind":"text","id":"t","text":"Product news, customer stories and tips for better meetings."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Zoom Blog",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Product news, customer stories and tips for better meetings."
+          },
           {
             "kind": "card",
             "id": "post",
             "children": [
-              {"kind":"heading","id":"h-2","text":"AI Companion now takes notes in 30 languages","level":2},
-              {"kind":"text","id":"t-2","text":"26 February 2026. Product. Meeting summaries, action items and the \"catch me up\" feature expand beyond English."},
-              {"kind":"link","id":"read","text":"Read","url":"http://zoom.us/blog/ai-companion-30-languages"}
+              {
+                "kind": "heading",
+                "id": "h-2",
+                "text": "AI Companion now takes notes in 30 languages",
+                "level": 2
+              },
+              {
+                "kind": "text",
+                "id": "t-2",
+                "text": "26 February 2026. Product. Meeting summaries, action items and the \"catch me up\" feature expand beyond English."
+              },
+              {
+                "kind": "link",
+                "id": "read",
+                "text": "Read",
+                "url": "http://zoom.us/blog/ai-companion-30-languages"
+              }
             ],
-            "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+            "style": {
+              "background": "#ffffff",
+              "border": "#d9d9de",
+              "radius": 12,
+              "padding": 16
+            }
           },
           {
-            "kind": "card",
-            "id": "post-2",
-            "children": [
-              {"kind":"heading","id":"h-3","text":"How the Northstar Workshop team runs a release review on Zoom","level":2},
-              {"kind":"text","id":"t-3","text":"12 February 2026. Customer story. A sixteen-person software company on a thirty-minute ritual that ships releases."},
-              {"kind":"link","id":"read-2","text":"Read","url":"http://zoom.us/blog/running-release-reviews"}
-            ],
-            "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+            "kind": "link",
+            "id": "li",
+            "text": "Follow Zoom on LinkedIn",
+            "url": "http://linkedin.com/"
           },
-          {"kind":"link","id":"li","text":"Follow Zoom on LinkedIn","url":"http://linkedin.com/"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/blog/ai-companion-30-languages": {
         "version": 1,
@@ -820,16 +2258,50 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Join","url":"http://zoom.us/j"},
-                  {"kind":"link","id":"nav-2","text":"Pricing","url":"http://zoom.us/pricing"},
-                  {"kind":"link","id":"nav-3","text":"Download","url":"http://zoom.us/download"},
-                  {"kind":"link","id":"nav-4","text":"Support","url":"http://zoom.us/support"},
-                  {"kind":"link","id":"nav-5","text":"Blog","url":"http://zoom.us/blog"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -837,52 +2309,161 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"link","id":"crumb","text":"Blog","url":"http://zoom.us/blog"},
-          {"kind":"heading","id":"h","text":"AI Companion now takes notes in 30 languages","level":1},
-          {"kind":"text","id":"t","text":"26 February 2026. By the Zoom product team."},
-          {"kind":"text","id":"t-2","text":"Starting today, AI Companion generates meeting summaries, next steps and in-meeting answers in 30 languages, including Japanese, Portuguese, Hindi, Korean and Arabic. Summaries follow the language spoken in the meeting, and a host can pin the output language for a multilingual team."},
-          {"kind":"text","id":"t-3","text":"Also new: \"Catch me up\" now works for late joiners in any supported language, smart recording chapters are generated for cloud recordings, and the summary can be sent straight to a Team Chat channel."},
-          {"kind":"text","id":"t-4","text":"AI Companion is included in every paid plan at no extra cost. Admins turn it on under Account Settings, AI Companion."},
-          {"kind":"link","id":"pricing","text":"Pricing","url":"http://zoom.us/pricing"},
-          {"kind":"link","id":"recording","text":"Recording a meeting","url":"http://zoom.us/support/recording"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "link",
+            "id": "crumb",
+            "text": "Blog",
+            "url": "http://zoom.us/blog"
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "AI Companion now takes notes in 30 languages",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "26 February 2026. By the Zoom product team."
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Starting today, AI Companion generates meeting summaries, next steps and in-meeting answers in 30 languages, including Japanese, Portuguese, Hindi, Korean and Arabic. Summaries follow the language spoken in the meeting, and a host can pin the output language for a multilingual team."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Also new: \"Catch me up\" now works for late joiners in any supported language, smart recording chapters are generated for cloud recordings, and the summary can be sent straight to a Team Chat channel."
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "AI Companion is included in every paid plan at no extra cost. Admins turn it on under Account Settings, AI Companion."
+          },
+          {
+            "kind": "link",
+            "id": "pricing",
+            "text": "Pricing",
+            "url": "http://zoom.us/pricing"
+          },
+          {
+            "kind": "link",
+            "id": "recording",
+            "text": "Recording a meeting",
+            "url": "http://zoom.us/support/recording"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/blog/running-release-reviews": {
         "version": 1,
-        "title": "How the Northstar Workshop team runs a release review on Zoom - Zoom Blog",
         "elements": [
           {
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Zoom","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Zoom",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Join","url":"http://zoom.us/j"},
-                  {"kind":"link","id":"nav-2","text":"Pricing","url":"http://zoom.us/pricing"},
-                  {"kind":"link","id":"nav-3","text":"Download","url":"http://zoom.us/download"},
-                  {"kind":"link","id":"nav-4","text":"Support","url":"http://zoom.us/support"},
-                  {"kind":"link","id":"nav-5","text":"Blog","url":"http://zoom.us/blog"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Join",
+                    "url": "http://zoom.us/j"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Pricing",
+                    "url": "http://zoom.us/pricing"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "Download",
+                    "url": "http://zoom.us/download"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Support",
+                    "url": "http://zoom.us/support"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Blog",
+                    "url": "http://zoom.us/blog"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -890,34 +2471,93 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#0b5cff","padding":14}
+            "style": {
+              "background": "#0b5cff",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"link","id":"crumb","text":"Blog","url":"http://zoom.us/blog"},
-          {"kind":"heading","id":"h","text":"How the Northstar Workshop team runs a release review on Zoom","level":1},
-          {"kind":"text","id":"t","text":"12 February 2026. Customer story."},
-          {"kind":"text","id":"t-2","text":"Northstar Workshop is a sixteen-person company building Atlas, a deterministic computer simulator. Every release passes through a thirty-minute review on Zoom with the release lead, two engineers and the support lead."},
-          {"kind":"text","id":"t-3","text":"\"The rule is that the checklist is on screen the whole time,\" says engineering manager Priya Raman. \"We share the document, walk the items in order, and the release code only gets written down after everyone in the room has said yes.\""},
-          {"kind":"text","id":"t-4","text":"The team records to the cloud so the postmortem, if there is one, can quote the review. AI Companion writes the action items into the team's chat channel before the call ends."},
-          {"kind":"text","id":"t-5","text":"Their advice for small teams: keep the meeting short, keep the checklist boring, and make one person the owner."},
-          {"kind":"link","id":"northstar","text":"Northstar Workshop","url":"http://northstar.example/"},
-          {"kind":"link","id":"join","text":"Join a meeting","url":"http://zoom.us/j"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "link",
+            "id": "crumb",
+            "text": "Blog",
+            "url": "http://zoom.us/blog"
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "12 February 2026. Customer story."
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "The team records to the cloud so the postmortem, if there is one, can quote the review. AI Companion writes the action items into the team's chat channel before the call ends."
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "Their advice for small teams: keep the meeting short, keep the checklist boring, and make one person the owner."
+          },
+          {
+            "kind": "link",
+            "id": "join",
+            "text": "Join a meeting",
+            "url": "http://zoom.us/j"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Support","url":"http://zoom.us/support"},
-              {"kind":"link","id":"foot-2","text":"Blog","url":"http://zoom.us/blog"},
-              {"kind":"link","id":"foot-3","text":"Zoom on X","url":"http://x.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Support",
+                "url": "http://zoom.us/support"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Blog",
+                "url": "http://zoom.us/blog"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Zoom on X",
+                "url": "http://x.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Zoom Communications, Inc. Prices in US dollars. Simulated site."
+          }
         ],
-        "theme": {"accent":"#0b5cff","background":"#ffffff","surface":"#f1f4f9","ink":"#232333","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0b5cff",
+          "background": "#ffffff",
+          "surface": "#f1f4f9",
+          "ink": "#232333",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        },
+        "title": "Running Effective Release Reviews with Zoom - Zoom Blog"
       }
     },
     "records": {}
@@ -925,7 +2565,10 @@
   "place": {
     "address": "203.0.113.112",
     "zone": "internet",
-    "link": {"from":"pop-east","latency_us":1500}
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1500
+    }
   },
   "search_entries": [
     {
@@ -934,7 +2577,12 @@
       "snippet": "Meetings, Team Chat, Phone and Whiteboard with AI Companion. Free for 40-minute meetings.",
       "vertical": "all",
       "authority": 8,
-      "keywords": ["zoom","video call","meeting","video conferencing"]
+      "keywords": [
+        "zoom",
+        "video call",
+        "meeting",
+        "video conferencing"
+      ]
     },
     {
       "url": "http://zoom.us/j",
@@ -942,7 +2590,11 @@
       "snippet": "Enter a meeting ID to join from the browser.",
       "vertical": "all",
       "authority": 8,
-      "keywords": ["join zoom meeting","meeting id","zoom join"]
+      "keywords": [
+        "join zoom meeting",
+        "meeting id",
+        "zoom join"
+      ]
     },
     {
       "url": "http://zoom.us/pricing",
@@ -950,7 +2602,12 @@
       "snippet": "Basic free; Pro $13.33, Business $18.33 and Business Plus $22.49 a month per user.",
       "vertical": "all",
       "authority": 8,
-      "keywords": ["zoom pricing","zoom pro","zoom plans","cost"]
+      "keywords": [
+        "zoom pricing",
+        "zoom pro",
+        "zoom plans",
+        "cost"
+      ]
     },
     {
       "url": "http://zoom.us/download",
@@ -958,7 +2615,12 @@
       "snippet": "Zoom Workplace 7.2 for Windows, macOS, Linux, iOS and Android.",
       "vertical": "all",
       "authority": 8,
-      "keywords": ["download zoom","zoom app","zoom for mac","zoom for windows"]
+      "keywords": [
+        "download zoom",
+        "zoom app",
+        "zoom for mac",
+        "zoom for windows"
+      ]
     },
     {
       "url": "http://zoom.us/support",
@@ -966,7 +2628,11 @@
       "snippet": "Help articles on joining, audio and recording, plus common questions.",
       "vertical": "all",
       "authority": 7,
-      "keywords": ["zoom support","zoom help","40 minute limit"]
+      "keywords": [
+        "zoom support",
+        "zoom help",
+        "40 minute limit"
+      ]
     },
     {
       "url": "http://zoom.us/support/join-a-meeting",
@@ -974,7 +2640,11 @@
       "snippet": "Join from a link, a meeting ID, a phone or a room system.",
       "vertical": "all",
       "authority": 7,
-      "keywords": ["how to join zoom","zoom link","dial in"]
+      "keywords": [
+        "how to join zoom",
+        "zoom link",
+        "dial in"
+      ]
     },
     {
       "url": "http://zoom.us/support/audio-troubleshooting",
@@ -982,7 +2652,12 @@
       "snippet": "Nobody can hear you, you cannot hear them, echo and choppy audio.",
       "vertical": "all",
       "authority": 7,
-      "keywords": ["zoom audio not working","zoom microphone","echo","cannot hear"]
+      "keywords": [
+        "zoom audio not working",
+        "zoom microphone",
+        "echo",
+        "cannot hear"
+      ]
     },
     {
       "url": "http://zoom.us/support/recording",
@@ -990,23 +2665,11 @@
       "snippet": "Local and cloud recording, where files go and how to share them.",
       "vertical": "all",
       "authority": 6,
-      "keywords": ["zoom recording","record meeting","cloud recording"]
-    },
-    {
-      "url": "http://zoom.us/blog",
-      "title": "Zoom Blog",
-      "snippet": "AI Companion in 30 languages and a customer story from Northstar Workshop.",
-      "vertical": "all",
-      "authority": 6,
-      "keywords": ["zoom blog","ai companion","zoom news"]
-    },
-    {
-      "url": "http://zoom.us/blog/running-release-reviews",
-      "title": "How the Northstar Workshop team runs a release review on Zoom",
-      "snippet": "A sixteen-person software company on the thirty-minute ritual that ships releases.",
-      "vertical": "all",
-      "authority": 5,
-      "keywords": ["northstar workshop","release review","customer story","atlas"]
+      "keywords": [
+        "zoom recording",
+        "record meeting",
+        "cloud recording"
+      ]
     }
   ]
 }

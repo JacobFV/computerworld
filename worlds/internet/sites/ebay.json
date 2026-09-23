@@ -2,9 +2,20 @@
   "id": "ebay",
   "kind": "shop",
   "node": "ebay",
-  "domains": ["ebay.com", "www.ebay.com", "m.ebay.com"],
+  "domains": [
+    "ebay.com",
+    "www.ebay.com",
+    "m.ebay.com"
+  ],
   "port": 80,
-  "place": {"address": "198.51.100.110", "zone": "internet", "link": {"from": "pop-west", "latency_us": 1500}},
+  "place": {
+    "address": "198.51.100.110",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  },
   "initial_state": {
     "mode": "retail",
     "brand": "eBay",
@@ -19,253 +30,557 @@
       "content_width": 1120
     },
     "categories": [
-      {"id": "electronics", "title": "Electronics"},
-      {"id": "collectibles", "title": "Collectibles"},
-      {"id": "fashion", "title": "Fashion"},
-      {"id": "home-garden", "title": "Home & Garden"},
-      {"id": "motors", "title": "Motors (parts)"},
-      {"id": "toys", "title": "Toys"}
+      {
+        "id": "electronics",
+        "title": "Electronics"
+      },
+      {
+        "id": "collectibles",
+        "title": "Collectibles"
+      },
+      {
+        "id": "fashion",
+        "title": "Fashion"
+      },
+      {
+        "id": "home-garden",
+        "title": "Home & Garden"
+      },
+      {
+        "id": "motors",
+        "title": "Motors (parts)"
+      },
+      {
+        "id": "toys",
+        "title": "Toys"
+      }
     ],
     "products": {
       "115402998811": {
-        "id": "115402998811", "category": "electronics",
+        "id": "115402998811",
+        "category": "electronics",
         "title": "Lumen 24-inch 1440p Monitor - Refurbished by seller, 90-day warranty",
         "seller": "portside_refurb (99.4% positive, 12,806)",
-        "price_cents": 15900, "rating_sum": 133, "rating_count": 29, "stock": 6, "fast_shipping": true,
-        "bullets": ["Condition: Seller refurbished", "Buy It Now $159.00 or Best Offer", "Free 3-day shipping from Tacoma, WA", "Returns accepted within 30 days, buyer pays return postage"],
+        "price_cents": 15900,
+        "rating_sum": 133,
+        "rating_count": 29,
+        "stock": 6,
+        "fast_shipping": true,
+        "bullets": [
+          "Condition: Seller refurbished",
+          "Buy It Now $159.00 or Best Offer",
+          "Free 3-day shipping from Tacoma, WA",
+          "Returns accepted within 30 days, buyer pays return postage"
+        ],
         "description": "Ex-lease Lumen 24-inch 2560x1440 IPS panel, tested pixel-perfect, new stand included. Light marks on the rear of the casing photographed in the listing. Ships double-boxed in the original foam.",
-        "reviews": [
-          {"id": "rv-1", "author": "bob", "stars": 5, "title": "Arrived as described, no dead pixels", "body": "The rear scuff is exactly where the photo said. Panel is flawless and the stand is genuinely new. Would buy from this seller again.", "tick": 4}
-        ]
+        "reviews": []
       },
       "225118004402": {
-        "id": "225118004402", "category": "electronics",
+        "id": "225118004402",
+        "category": "electronics",
         "title": "Vintage Meridian MR-7 Cassette Walkman - tested, new belt fitted",
         "seller": "tapedeck_tom (100% positive, 2,311)",
-        "price_cents": 8900, "rating_sum": 0, "rating_count": 0, "stock": 1, "fast_shipping": false,
-        "bullets": ["Condition: Used, fully working", "Auction ends 4 days 6 hours, 11 bids, current bid $89.00", "Shipping $9.40 USPS Ground Advantage", "No returns"],
+        "price_cents": 8900,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 1,
+        "fast_shipping": false,
+        "bullets": [
+          "Condition: Used, fully working",
+          "Auction ends 4 days 6 hours, 11 bids, current bid $89.00",
+          "Shipping $9.40 USPS Ground Advantage",
+          "No returns"
+        ],
         "description": "1987 Meridian MR-7 with the metal shell. New belt, cleaned heads, Dolby switch works. Comes with the original belt clip and a copy of the service sheet. The battery door latch is slightly loose, shown in photo 6.",
         "reviews": []
       },
-      "334876120099": {
-        "id": "334876120099", "category": "electronics",
-        "title": "Meridian 87-key Mechanical Keyboard - hot-swap, boxed, barely used",
-        "seller": "northstar_bob (100% positive, 48)",
-        "price_cents": 9500, "rating_sum": 0, "rating_count": 0, "stock": 1, "fast_shipping": true,
-        "bullets": ["Condition: Used, like new", "Buy It Now $95.00", "Free shipping, ships from Seattle, WA", "30-day returns"],
-        "description": "Bought a second one by mistake. Aluminium case, tactile 55g switches, hot-swap sockets, detachable USB-C cable and the original box. Typed on for about a week.",
-        "reviews": []
-      },
       "185640211037": {
-        "id": "185640211037", "category": "electronics",
+        "id": "185640211037",
+        "category": "electronics",
         "title": "Lot of 4 Lumen 240W USB-C cables, 2 m, braided - new open box",
         "seller": "cable_lot_liquidators (98.7% positive, 40,120)",
-        "price_cents": 3200, "rating_sum": 84, "rating_count": 21, "stock": 40, "fast_shipping": true,
-        "bullets": ["Condition: New, open box", "Buy It Now $32.00 for the lot", "Free economy shipping", "Bulk pricing: buy 3 lots, get 5% off"],
+        "price_cents": 3200,
+        "rating_sum": 84,
+        "rating_count": 21,
+        "stock": 40,
+        "fast_shipping": true,
+        "bullets": [
+          "Condition: New, open box",
+          "Buy It Now $32.00 for the lot",
+          "Free economy shipping",
+          "Bulk pricing: buy 3 lots, get 5% off"
+        ],
         "description": "Retail returns with the seals broken and every cable tested at 240W and 40Gbps on a bench. Four cables per lot, mixed black and grey sleeving.",
         "reviews": []
       },
       "266301877541": {
-        "id": "266301877541", "category": "collectibles",
+        "id": "266301877541",
+        "category": "collectibles",
         "title": "1998 Tidewater Trading Co. Kestrel enamel pin - first run, backing card",
         "seller": "pinfinder_pnw (99.8% positive, 5,904)",
-        "price_cents": 4500, "rating_sum": 0, "rating_count": 0, "stock": 1, "fast_shipping": false,
-        "bullets": ["Condition: Used, very good", "Auction ends 2 days 3 hours, 17 bids, current bid $45.00", "Shipping $4.85 USPS First Class", "Returns not accepted"],
+        "price_cents": 4500,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 1,
+        "fast_shipping": false,
+        "bullets": [
+          "Condition: Used, very good",
+          "Auction ends 2 days 3 hours, 17 bids, current bid $45.00",
+          "Shipping $4.85 USPS First Class",
+          "Returns not accepted"
+        ],
         "description": "First-run Kestrel pin on the original blue backing card, from the 1998 Tidewater catalogue. Single rubber clutch. Enamel is unchipped; the card has a soft corner.",
         "reviews": []
       },
       "395110982204": {
-        "id": "395110982204", "category": "collectibles",
+        "id": "395110982204",
+        "category": "collectibles",
         "title": "Puget Sound FC 2019 Cup Final matchday programme + ticket stub",
         "seller": "terrace_archive (100% positive, 1,177)",
-        "price_cents": 2800, "rating_sum": 0, "rating_count": 0, "stock": 2, "fast_shipping": false,
-        "bullets": ["Condition: Used, good", "Buy It Now $28.00", "Shipping $3.95", "14-day returns"],
+        "price_cents": 2800,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 2,
+        "fast_shipping": false,
+        "bullets": [
+          "Condition: Used, good",
+          "Buy It Now $28.00",
+          "Shipping $3.95",
+          "14-day returns"
+        ],
         "description": "The 2019 Cup Final programme, 48 pages, with a section E ticket stub tucked inside. Spine is tight; some pencil scoring on the team sheet page.",
         "reviews": []
       },
       "155923001118": {
-        "id": "155923001118", "category": "collectibles",
+        "id": "155923001118",
+        "category": "collectibles",
         "title": "Silver Half-Dollar 1964, uncirculated, in capsule",
         "seller": "harbor_coin_exchange (99.9% positive, 22,451)",
-        "price_cents": 2400, "rating_sum": 96, "rating_count": 20, "stock": 8, "fast_shipping": true,
-        "bullets": ["Condition: Uncirculated", "Buy It Now $24.00", "Free shipping, tracked", "Sold in a fitted acrylic capsule"],
+        "price_cents": 2400,
+        "rating_sum": 96,
+        "rating_count": 20,
+        "stock": 8,
+        "fast_shipping": true,
+        "bullets": [
+          "Condition: Uncirculated",
+          "Buy It Now $24.00",
+          "Free shipping, tracked",
+          "Sold in a fitted acrylic capsule"
+        ],
         "description": "1964 90% silver half-dollar, uncirculated, bright fields with light cartwheel lustre. Each coin is photographed individually before it goes out.",
-        "reviews": [
-          {"id": "rv-2", "author": "carol", "stars": 5, "title": "Exactly the coin in the photo", "body": "Capsule was sealed and the coin matched the listing photo down to the toning at the rim.", "tick": 6}
-        ]
+        "reviews": []
       },
       "204955330761": {
-        "id": "204955330761", "category": "fashion",
+        "id": "204955330761",
+        "category": "fashion",
         "title": "Harborline waxed cotton field jacket, men's M, olive - worn twice",
         "seller": "closet_clearout_kate (99.1% positive, 634)",
-        "price_cents": 11500, "rating_sum": 0, "rating_count": 0, "stock": 1, "fast_shipping": false,
-        "bullets": ["Condition: Pre-owned, excellent", "Buy It Now $115.00 or Best Offer", "Shipping $12.00 USPS Priority", "30-day returns"],
+        "price_cents": 11500,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 1,
+        "fast_shipping": false,
+        "bullets": [
+          "Condition: Pre-owned, excellent",
+          "Buy It Now $115.00 or Best Offer",
+          "Shipping $12.00 USPS Priority",
+          "30-day returns"
+        ],
         "description": "Harborline field jacket in olive waxed cotton, size M, corduroy collar, four flap pockets. Worn twice, never re-waxed. Retail was $260.",
         "reviews": []
       },
       "375001284450": {
-        "id": "375001284450", "category": "fashion",
+        "id": "375001284450",
+        "category": "fashion",
         "title": "Marrow Point trail runners, women's US 8, teal - new with tags",
         "seller": "outlet_overstock_nw (98.9% positive, 88,301)",
-        "price_cents": 6400, "rating_sum": 210, "rating_count": 48, "stock": 14, "fast_shipping": true,
-        "bullets": ["Condition: New with tags", "Buy It Now $64.00", "Free shipping", "Returns accepted, 30 days"],
+        "price_cents": 6400,
+        "rating_sum": 210,
+        "rating_count": 48,
+        "stock": 14,
+        "fast_shipping": true,
+        "bullets": [
+          "Condition: New with tags",
+          "Buy It Now $64.00",
+          "Free shipping",
+          "Returns accepted, 30 days"
+        ],
         "description": "Last season's colour of the Marrow Point trail runner, boxed with tags. 6 mm drop, rock plate, lugged outsole. Runs half a size small; most buyers size up.",
-        "reviews": [
-          {"id": "rv-3", "author": "alice", "stars": 4, "title": "Size up", "body": "Good shoe, exactly as pictured, but the listing is right about the sizing and I should have listened.", "tick": 5}
-        ]
+        "reviews": []
       },
       "145118820034": {
-        "id": "145118820034", "category": "fashion",
+        "id": "145118820034",
+        "category": "fashion",
         "title": "Vintage 1970s Tidewater wool fisherman sweater, cream, L",
         "seller": "thrift_and_thread (100% positive, 3,088)",
-        "price_cents": 5200, "rating_sum": 0, "rating_count": 0, "stock": 1, "fast_shipping": false,
-        "bullets": ["Condition: Pre-owned, good", "Auction ends 1 day 12 hours, 6 bids, current bid $52.00", "Shipping $8.50", "No returns"],
+        "price_cents": 5200,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 1,
+        "fast_shipping": false,
+        "bullets": [
+          "Condition: Pre-owned, good",
+          "Auction ends 1 day 12 hours, 6 bids, current bid $52.00",
+          "Shipping $8.50",
+          "No returns"
+        ],
         "description": "Hand-knit cream fisherman sweater with the Tidewater label, chest 44 in. One small darn at the left cuff, done in matching wool and shown in photo 4. Washed cold and dried flat.",
         "reviews": []
       },
       "296004178822": {
-        "id": "296004178822", "category": "home-garden",
+        "id": "296004178822",
+        "category": "home-garden",
         "title": "Cast iron 12-inch skillet, pre-1960, machined smooth - restored",
         "seller": "rustbucket_restorations (99.7% positive, 4,412)",
-        "price_cents": 7800, "rating_sum": 0, "rating_count": 0, "stock": 3, "fast_shipping": false,
-        "bullets": ["Condition: Used, restored", "Buy It Now $78.00", "Shipping $14.20 (heavy)", "30-day returns"],
+        "price_cents": 7800,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 3,
+        "fast_shipping": false,
+        "bullets": [
+          "Condition: Used, restored",
+          "Buy It Now $78.00",
+          "Shipping $14.20 (heavy)",
+          "30-day returns"
+        ],
         "description": "Unmarked pre-1960 12-inch skillet with a smooth machined cooking surface, electrolysis-stripped and seasoned four times in flax oil. Sits flat, heat ring intact.",
         "reviews": []
       },
       "126018403377": {
-        "id": "126018403377", "category": "home-garden",
+        "id": "126018403377",
+        "category": "home-garden",
         "title": "Harborline mesh task chair, black - used office clearance, lot of 1",
         "seller": "office_liquidation_wa (97.8% positive, 9,003)",
-        "price_cents": 12900, "rating_sum": 61, "rating_count": 15, "stock": 11, "fast_shipping": false,
-        "bullets": ["Condition: Used, good", "Buy It Now $129.00", "Local pickup Kent, WA or freight $45.00", "Returns not accepted"],
+        "price_cents": 12900,
+        "rating_sum": 61,
+        "rating_count": 15,
+        "stock": 11,
+        "fast_shipping": false,
+        "bullets": [
+          "Condition: Used, good",
+          "Buy It Now $129.00",
+          "Local pickup Kent, WA or freight $45.00",
+          "Returns not accepted"
+        ],
         "description": "Harborline task chairs from a closed office floor. Mesh back, adjustable lumbar, four-way arms. Gas lifts tested; some arm pads show wear. Freight is on a pallet, curbside.",
         "reviews": []
       },
       "166222009914": {
-        "id": "166222009914", "category": "home-garden",
+        "id": "166222009914",
+        "category": "home-garden",
         "title": "Heirloom tomato seed set, 8 varieties, 2026 harvest - Marrow Point Seed Co.",
         "seller": "marrowpoint_seeds (99.9% positive, 15,687)",
-        "price_cents": 1850, "rating_sum": 372, "rating_count": 80, "stock": 120, "fast_shipping": true,
-        "bullets": ["Condition: New", "Buy It Now $18.50", "Free shipping in a padded envelope", "Germination tested January 2026"],
+        "price_cents": 1850,
+        "rating_sum": 372,
+        "rating_count": 80,
+        "stock": 120,
+        "fast_shipping": true,
+        "bullets": [
+          "Condition: New",
+          "Buy It Now $18.50",
+          "Free shipping in a padded envelope",
+          "Germination tested January 2026"
+        ],
         "description": "Eight packets, twenty seeds each: Puget Gold, Bayfront Black, Rivergate Plum and five more, all open-pollinated and saved on the farm. Sowing guide printed on the back of each packet.",
-        "reviews": [
-          {"id": "rv-4", "author": "carol", "stars": 5, "title": "Everything came up", "body": "Sowed all eight under lights in March, near 100% germination. The Bayfront Black is the one worth growing.", "tick": 7}
-        ]
+        "reviews": []
       },
       "285690011250": {
-        "id": "285690011250", "category": "motors",
+        "id": "285690011250",
+        "category": "motors",
         "title": "OEM alternator, 2012-2018 Cascade Motors Ridgeline 2.4L - remanufactured",
         "seller": "rivergate_auto_parts (99.3% positive, 31,077)",
-        "price_cents": 14200, "rating_sum": 88, "rating_count": 19, "stock": 5, "fast_shipping": true,
-        "bullets": ["Condition: Remanufactured", "Buy It Now $142.00, core charge refunded on return", "Free shipping, 2 days", "1-year warranty"],
+        "price_cents": 14200,
+        "rating_sum": 88,
+        "rating_count": 19,
+        "stock": 5,
+        "fast_shipping": true,
+        "bullets": [
+          "Condition: Remanufactured",
+          "Buy It Now $142.00, core charge refunded on return",
+          "Free shipping, 2 days",
+          "1-year warranty"
+        ],
         "description": "Remanufactured OEM alternator for the 2.4-litre Ridgeline, 130 A, new bearings and regulator, bench tested at load. Ship the old unit back in the same box for the $40 core refund.",
         "reviews": []
       },
       "175330098871": {
-        "id": "175330098871", "category": "motors",
+        "id": "175330098871",
+        "category": "motors",
         "title": "Set of 4 steel wheels 17x7, 5x114.3, fits Ridgeline / Kestrel - winter set",
         "seller": "wheel_swap_pdx (98.4% positive, 2,760)",
-        "price_cents": 18000, "rating_sum": 0, "rating_count": 0, "stock": 1, "fast_shipping": false,
-        "bullets": ["Condition: Used", "Auction ends 5 days 20 hours, 3 bids, current bid $180.00", "Local pickup Portland, OR only", "No returns"],
+        "price_cents": 18000,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 1,
+        "fast_shipping": false,
+        "bullets": [
+          "Condition: Used",
+          "Auction ends 5 days 20 hours, 3 bids, current bid $180.00",
+          "Local pickup Portland, OR only",
+          "No returns"
+        ],
         "description": "Four 17x7 steel wheels, 5x114.3, one winter on them. Surface rust on the inside barrels, no bends. Centre caps included. Tyres are not included.",
         "reviews": []
       },
       "315702214406": {
-        "id": "315702214406", "category": "motors",
+        "id": "315702214406",
+        "category": "motors",
         "title": "LED headlight bulb pair H11, 6000K, fan-cooled - Lumen Auto",
         "seller": "lumen_auto_direct (99.0% positive, 120,411)",
-        "price_cents": 3499, "rating_sum": 1290, "rating_count": 310, "stock": 250, "fast_shipping": true,
-        "bullets": ["Condition: New", "Buy It Now $34.99", "Free shipping", "2-year warranty, 60-day returns"],
+        "price_cents": 3499,
+        "rating_sum": 1290,
+        "rating_count": 310,
+        "stock": 250,
+        "fast_shipping": true,
+        "bullets": [
+          "Condition: New",
+          "Buy It Now $34.99",
+          "Free shipping",
+          "2-year warranty, 60-day returns"
+        ],
         "description": "Plug-in H11 LED pair with a copper heat pipe and a 10,000 rpm fan. Check your housing is a projector type before ordering; reflector housings scatter these.",
-        "reviews": [
-          {"id": "rv-5", "author": "bob", "stars": 3, "title": "Bright, but read the note about reflectors", "body": "Very bright, and in my reflector housing that means everyone flashes me. On a projector car they would be five stars.", "tick": 3}
-        ]
+        "reviews": []
       },
       "235140077903": {
-        "id": "235140077903", "category": "toys",
+        "id": "235140077903",
+        "category": "toys",
         "title": "Tidepool Live! plush set - Pip and the Anemone Twins, 2025 edition",
         "seller": "toybox_treasures (99.6% positive, 7,320)",
-        "price_cents": 3900, "rating_sum": 0, "rating_count": 0, "stock": 4, "fast_shipping": true,
-        "bullets": ["Condition: New", "Buy It Now $39.00", "Free 3-day shipping", "30-day returns"],
+        "price_cents": 3900,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 4,
+        "fast_shipping": true,
+        "bullets": [
+          "Condition: New",
+          "Buy It Now $39.00",
+          "Free 3-day shipping",
+          "30-day returns"
+        ],
         "description": "The three-character plush set from the 2025 Tidepool Live! range, tagged and bagged. Pip is 25 cm, the Twins are 18 cm each.",
         "reviews": []
       },
       "405200144391": {
-        "id": "405200144391", "category": "toys",
+        "id": "405200144391",
+        "category": "toys",
         "title": "Vintage 1994 Meridian Robotics wind-up robot, boxed, working",
         "seller": "tin_toy_tim (100% positive, 890)",
-        "price_cents": 12000, "rating_sum": 0, "rating_count": 0, "stock": 1, "fast_shipping": false,
-        "bullets": ["Condition: Used, boxed", "Auction ends 3 days 1 hour, 22 bids, current bid $120.00", "Shipping $11.00, insured", "No returns"],
+        "price_cents": 12000,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 1,
+        "fast_shipping": false,
+        "bullets": [
+          "Condition: Used, boxed",
+          "Auction ends 3 days 1 hour, 22 bids, current bid $120.00",
+          "Shipping $11.00, insured",
+          "No returns"
+        ],
         "description": "Meridian Robotics MR-1 wind-up, 1994, lithographed tin, sparking eyes work, key included. Box has one taped corner. Walks straight for about forty seconds on a full wind.",
         "reviews": []
       },
       "364119850222": {
-        "id": "364119850222", "category": "toys",
+        "id": "364119850222",
+        "category": "toys",
         "title": "1000-piece jigsaw, Marrow Point Lighthouse at dusk - complete, bagged",
         "seller": "puzzle_pass_along (99.2% positive, 1,502)",
-        "price_cents": 1200, "rating_sum": 0, "rating_count": 0, "stock": 2, "fast_shipping": false,
-        "bullets": ["Condition: Used, complete", "Buy It Now $12.00", "Shipping $6.00", "Returns accepted"],
+        "price_cents": 1200,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 2,
+        "fast_shipping": false,
+        "bullets": [
+          "Condition: Used, complete",
+          "Buy It Now $12.00",
+          "Shipping $6.00",
+          "Returns accepted"
+        ],
         "description": "Assembled once and counted back into the bag: all 1000 pieces present. Box is in good shape. Sold as a pass-along; the seller also accepts puzzles in trade.",
         "reviews": []
       },
       "226700131188": {
-        "id": "226700131188", "category": "electronics",
+        "id": "226700131188",
+        "category": "electronics",
         "title": "Puget Audio PA-40 bookshelf speakers, pair, walnut - one small chip",
         "seller": "hifi_hoarder (99.5% positive, 2,146)",
-        "price_cents": 21000, "rating_sum": 0, "rating_count": 0, "stock": 1, "fast_shipping": false,
-        "bullets": ["Condition: Used, good", "Buy It Now $210.00 or Best Offer", "Shipping $28.00, double-boxed", "14-day returns"],
+        "price_cents": 21000,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 1,
+        "fast_shipping": false,
+        "bullets": [
+          "Condition: Used, good",
+          "Buy It Now $210.00 or Best Offer",
+          "Shipping $28.00, double-boxed",
+          "14-day returns"
+        ],
         "description": "Pair of PA-40 two-way bookshelf speakers in walnut veneer. Drivers and surrounds are perfect; one corner chip on the left cabinet, photographed. Grilles included.",
         "reviews": []
       }
     },
-    "carts": {
-      "alice": {"185640211037": 1, "364119850222": 1},
-      "carol": {"166222009914": 2}
-    },
-    "orders": {
-      "07-12984-33101": {
-        "id": "07-12984-33101", "buyer": "alice", "tick": 4, "date": "2026-03-03",
-        "items": [{"product": "375001284450", "title": "Marrow Point trail runners, women's US 8, teal - new with tags", "qty": 1, "price_cents": 6400}],
-        "total_cents": 6400, "status": "Delivered", "confirmation": "EBY-4KQ7ZD", "seats": [], "venue": ""
-      },
-      "07-12990-58817": {
-        "id": "07-12990-58817", "buyer": "bob", "tick": 3, "date": "2026-03-02",
-        "items": [{"product": "115402998811", "title": "Lumen 24-inch 1440p Monitor - Refurbished by seller, 90-day warranty", "qty": 1, "price_cents": 15900}],
-        "total_cents": 15900, "status": "Delivered", "confirmation": "EBY-M2XR9F", "seats": [], "venue": ""
-      },
-      "07-13004-71206": {
-        "id": "07-13004-71206", "buyer": "carol", "tick": 6, "date": "2026-03-09",
-        "items": [{"product": "155923001118", "title": "Silver Half-Dollar 1964, uncirculated, in capsule", "qty": 2, "price_cents": 2400}],
-        "total_cents": 4800, "status": "Shipped", "confirmation": "EBY-P8VW3L", "seats": [], "venue": ""
-      }
-    },
-    "favorites": {
-      "alice": ["204955330761", "296004178822", "226700131188"],
-      "bob": ["225118004402", "405200144391"],
-      "carol": ["145118820034"]
-    },
-    "messages": [
-      {"id": "msg-1", "from": "alice", "to": "closet_clearout_kate (99.1% positive, 634)", "product": "204955330761", "text": "Would you take $95 for the field jacket? Happy to pay today.", "tick": 8},
-      {"id": "msg-2", "from": "closet_clearout_kate (99.1% positive, 634)", "to": "alice", "product": "204955330761", "text": "I can do $100 with shipping included. Send the offer through the listing and I will accept it tonight.", "tick": 8},
-      {"id": "msg-3", "from": "bob", "to": "tapedeck_tom (100% positive, 2,311)", "product": "225118004402", "text": "Does the MR-7 record, or is it playback only? The photos do not show a record button.", "tick": 9},
-      {"id": "msg-4", "from": "tapedeck_tom (100% positive, 2,311)", "to": "bob", "product": "225118004402", "text": "Playback only, the MR-7 never had a record head. Auto-reverse works both directions.", "tick": 9}
-    ],
+    "carts": {},
+    "orders": {},
+    "favorites": {},
+    "messages": [],
     "next_order": 13005
   },
   "search_entries": [
-    {"url": "http://ebay.com/", "title": "eBay - simulated marketplace of auctions and Buy It Now listings", "snippet": "Electronics, collectibles, fashion, home and garden, motors parts and toys from invented sellers with feedback scores. Bid, buy or make an offer.", "vertical": "all", "authority": 6, "keywords": ["ebay", "auction", "buy it now", "marketplace", "used", "second hand"]},
-    {"url": "http://ebay.com/dp/115402998811", "title": "Lumen 24-inch 1440p Monitor, seller refurbished - $159.00", "snippet": "Ex-lease 2560x1440 IPS panel, pixel-perfect, new stand, 90-day seller warranty. Free 3-day shipping from Tacoma. 99.4% positive seller.", "vertical": "all", "authority": 5, "keywords": ["refurbished monitor", "1440p monitor", "lumen 24 inch", "cheap monitor"]},
-    {"url": "http://ebay.com/dp/225118004402", "title": "Vintage Meridian MR-7 Cassette Walkman - auction, 11 bids", "snippet": "1987 metal-shell MR-7, new belt, cleaned heads. Current bid $89.00, ends in 4 days.", "vertical": "all", "authority": 4, "keywords": ["walkman", "cassette player", "meridian mr-7", "vintage walkman"]},
-    {"url": "http://ebay.com/dp/334876120099", "title": "Meridian 87-key Mechanical Keyboard, like new - $95.00", "snippet": "Hot-swap sockets, aluminium case, boxed, used a week. Free shipping from Seattle, 30-day returns.", "vertical": "all", "authority": 4, "keywords": ["mechanical keyboard", "meridian keyboard", "87 key", "used keyboard"]},
-    {"url": "http://ebay.com/dp/266301877541", "title": "1998 Tidewater Kestrel enamel pin, first run - auction, 17 bids", "snippet": "First-run Kestrel pin on the original backing card. Current bid $45.00, ends in 2 days.", "vertical": "all", "authority": 4, "keywords": ["enamel pin", "tidewater pin", "kestrel pin", "collectible pins"]},
-    {"url": "http://ebay.com/dp/155923001118", "title": "1964 Silver Half-Dollar, uncirculated - $24.00", "snippet": "90% silver half-dollar in a fitted capsule, each coin photographed individually. Free tracked shipping.", "vertical": "all", "authority": 4, "keywords": ["silver half dollar", "1964 half dollar", "silver coins", "coin collecting"]},
-    {"url": "http://ebay.com/dp/204955330761", "title": "Harborline waxed cotton field jacket, men's M - $115.00 or Best Offer", "snippet": "Olive waxed cotton, corduroy collar, worn twice. Retail was $260. 30-day returns.", "vertical": "all", "authority": 4, "keywords": ["waxed jacket", "harborline jacket", "field jacket", "mens jacket medium"]},
-    {"url": "http://ebay.com/dp/375001284450", "title": "Marrow Point trail runners, women's US 8, new with tags - $64.00", "snippet": "Last season's teal colourway, boxed with tags. Runs half a size small. Free shipping.", "vertical": "all", "authority": 4, "keywords": ["trail runners", "marrow point shoes", "womens running shoes", "trail shoes size 8"]},
-    {"url": "http://ebay.com/dp/296004178822", "title": "Restored 12-inch cast iron skillet, pre-1960 - $78.00", "snippet": "Machined-smooth cooking surface, electrolysis-stripped and seasoned four times. Sits flat.", "vertical": "all", "authority": 4, "keywords": ["cast iron skillet", "vintage cast iron", "restored skillet", "12 inch skillet"]},
-    {"url": "http://ebay.com/dp/285690011250", "title": "OEM alternator, 2012-2018 Cascade Motors Ridgeline 2.4L, reman - $142.00", "snippet": "130 A remanufactured alternator, new bearings and regulator, 1-year warranty, $40 core refund.", "vertical": "all", "authority": 4, "keywords": ["ridgeline alternator", "alternator 2.4", "cascade motors parts", "car parts"]},
-    {"url": "http://ebay.com/dp/405200144391", "title": "1994 Meridian Robotics wind-up tin robot, boxed - auction, 22 bids", "snippet": "Lithographed tin MR-1 with sparking eyes and key, box has one taped corner. Current bid $120.00.", "vertical": "all", "authority": 3, "keywords": ["tin robot", "wind up robot", "vintage toy robot", "meridian robotics"]},
-    {"url": "http://ebay.com/s?c=motors", "title": "Motors parts on eBay", "snippet": "Alternators, steel wheels and LED headlight bulbs for Cascade Motors and other invented makes.", "vertical": "all", "authority": 3, "keywords": ["car parts", "auto parts", "ebay motors", "wheels"]},
-    {"url": "http://ebay.com/orders/07-12984-33101", "title": "Order 07-12984-33101 - Marrow Point trail runners", "snippet": "One pair of trail runners for $64.00, delivered. The order the PayPal payment to eBay points back at.", "vertical": "all", "authority": 3, "keywords": ["ebay order", "trail runners order", "order 07-12984-33101"]},
-    {"url": "http://ebay.com/orders", "title": "Purchase history - eBay", "snippet": "Every order placed by the signed-in account, newest first, with tracking status.", "vertical": "all", "authority": 3, "keywords": ["purchase history", "my ebay", "ebay orders"]}
+    {
+      "url": "http://ebay.com/",
+      "title": "eBay - simulated marketplace of auctions and Buy It Now listings",
+      "snippet": "Electronics, collectibles, fashion, home and garden, motors parts and toys from invented sellers with feedback scores. Bid, buy or make an offer.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "ebay",
+        "auction",
+        "buy it now",
+        "marketplace",
+        "used",
+        "second hand"
+      ]
+    },
+    {
+      "url": "http://ebay.com/dp/115402998811",
+      "title": "Lumen 24-inch 1440p Monitor, seller refurbished - $159.00",
+      "snippet": "Ex-lease 2560x1440 IPS panel, pixel-perfect, new stand, 90-day seller warranty. Free 3-day shipping from Tacoma. 99.4% positive seller.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "refurbished monitor",
+        "1440p monitor",
+        "lumen 24 inch",
+        "cheap monitor"
+      ]
+    },
+    {
+      "url": "http://ebay.com/dp/225118004402",
+      "title": "Vintage Meridian MR-7 Cassette Walkman - auction, 11 bids",
+      "snippet": "1987 metal-shell MR-7, new belt, cleaned heads. Current bid $89.00, ends in 4 days.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "walkman",
+        "cassette player",
+        "meridian mr-7",
+        "vintage walkman"
+      ]
+    },
+    {
+      "url": "http://ebay.com/dp/266301877541",
+      "title": "1998 Tidewater Kestrel enamel pin, first run - auction, 17 bids",
+      "snippet": "First-run Kestrel pin on the original backing card. Current bid $45.00, ends in 2 days.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "enamel pin",
+        "tidewater pin",
+        "kestrel pin",
+        "collectible pins"
+      ]
+    },
+    {
+      "url": "http://ebay.com/dp/155923001118",
+      "title": "1964 Silver Half-Dollar, uncirculated - $24.00",
+      "snippet": "90% silver half-dollar in a fitted capsule, each coin photographed individually. Free tracked shipping.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "silver half dollar",
+        "1964 half dollar",
+        "silver coins",
+        "coin collecting"
+      ]
+    },
+    {
+      "url": "http://ebay.com/dp/204955330761",
+      "title": "Harborline waxed cotton field jacket, men's M - $115.00 or Best Offer",
+      "snippet": "Olive waxed cotton, corduroy collar, worn twice. Retail was $260. 30-day returns.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "waxed jacket",
+        "harborline jacket",
+        "field jacket",
+        "mens jacket medium"
+      ]
+    },
+    {
+      "url": "http://ebay.com/dp/375001284450",
+      "title": "Marrow Point trail runners, women's US 8, new with tags - $64.00",
+      "snippet": "Last season's teal colourway, boxed with tags. Runs half a size small. Free shipping.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "trail runners",
+        "marrow point shoes",
+        "womens running shoes",
+        "trail shoes size 8"
+      ]
+    },
+    {
+      "url": "http://ebay.com/dp/296004178822",
+      "title": "Restored 12-inch cast iron skillet, pre-1960 - $78.00",
+      "snippet": "Machined-smooth cooking surface, electrolysis-stripped and seasoned four times. Sits flat.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "cast iron skillet",
+        "vintage cast iron",
+        "restored skillet",
+        "12 inch skillet"
+      ]
+    },
+    {
+      "url": "http://ebay.com/dp/285690011250",
+      "title": "OEM alternator, 2012-2018 Cascade Motors Ridgeline 2.4L, reman - $142.00",
+      "snippet": "130 A remanufactured alternator, new bearings and regulator, 1-year warranty, $40 core refund.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "ridgeline alternator",
+        "alternator 2.4",
+        "cascade motors parts",
+        "car parts"
+      ]
+    },
+    {
+      "url": "http://ebay.com/dp/405200144391",
+      "title": "1994 Meridian Robotics wind-up tin robot, boxed - auction, 22 bids",
+      "snippet": "Lithographed tin MR-1 with sparking eyes and key, box has one taped corner. Current bid $120.00.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "tin robot",
+        "wind up robot",
+        "vintage toy robot",
+        "meridian robotics"
+      ]
+    },
+    {
+      "url": "http://ebay.com/s?c=motors",
+      "title": "Motors parts on eBay",
+      "snippet": "Alternators, steel wheels and LED headlight bulbs for Cascade Motors and other invented makes.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "car parts",
+        "auto parts",
+        "ebay motors",
+        "wheels"
+      ]
+    },
+    {
+      "url": "http://ebay.com/orders",
+      "title": "Purchase history - eBay",
+      "snippet": "Every order placed by the signed-in account, newest first, with tracking status.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "purchase history",
+        "my ebay",
+        "ebay orders"
+      ]
+    }
   ]
 }

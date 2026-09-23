@@ -1,0 +1,281 @@
+{
+  "initial_state": {
+    "members": {
+      "alice-chen": {
+        "handle": "alice-chen",
+        "name": "Alice Chen",
+        "actor": "alice",
+        "reputation": 4210,
+        "flair": "Staff engineer, deterministic systems",
+        "bio": "I build simulators and answer questions about why they are hard.",
+        "site": ""
+      },
+      "bob-martinez": {
+        "handle": "bob-martinez",
+        "name": "Bob Martinez",
+        "actor": "bob",
+        "reputation": 1880,
+        "flair": "Test engineer, 10 years in CI",
+        "bio": "I answer about testing and about the career mistakes I have already made.",
+        "site": ""
+      },
+      "carol-nakamura": {
+        "handle": "carol-nakamura",
+        "name": "Carol Nakamura",
+        "actor": "carol",
+        "reputation": 2640,
+        "flair": "Engineering manager",
+        "bio": "Managed teams at a startup and a large company; answering about both.",
+        "site": ""
+      },
+      "dr-sam-okafor": {
+        "handle": "dr-sam-okafor",
+        "name": "Sam Okafor",
+        "actor": null,
+        "reputation": 27100,
+        "flair": "Astrophysicist, university lecturer",
+        "bio": "Twenty years explaining the sky to first-years. Happy to do it here too.",
+        "site": ""
+      }
+    },
+    "threads": {
+      "t-3000": {
+        "replies": [
+          {
+            "id": "r-300",
+            "author": "raj-mehta",
+            "parent": null,
+            "body": "Day to day it means the boundary between your job and everyone else's is a suggestion. You will be hired as an engineer and spend Tuesday writing the customer FAQ because there is nobody else to write it. That is the good part and the bad part at once: you learn the whole business in a year, and you never get to go deep on the one thing you were hired for.\n\nThe other honest thing: your outcome is tied to decisions you cannot see. A twelve-person company lives or dies on two or three calls the founders make a year, and you will find out about most of them afterward. If that makes you anxious, take the large firm. If it makes you curious, take the startup, negotiate the salary as if the equity is worth zero, and give it two years.",
+            "tick": 2,
+            "score": 890,
+            "comments": [
+              {
+                "id": "c-600",
+                "author": "felix-brandt",
+                "body": "The 'negotiate as if the equity is zero' line is the most useful sentence I have read this month.",
+                "tick": 3
+              }
+            ]
+          },
+          {
+            "id": "r-301",
+            "author": "carol-nakamura",
+            "parent": null,
+            "body": "I have managed at both. The startup will teach you judgement faster because you see consequences within weeks. The large company will teach you how to work with people you did not choose, which is the skill that actually compounds over a career. Neither is wasted. The mistake is staying at either one past the point where you have stopped learning.",
+            "tick": 3,
+            "score": 512,
+            "comments": []
+          }
+        ]
+      },
+      "t-3002": {
+        "replies": [
+          {
+            "id": "r-304",
+            "author": "alice-chen",
+            "parent": null,
+            "body": "The trick is to record inputs, not outputs. An ordinary program takes inputs from everywhere at once - the clock, the network, thread scheduling, the random number generator, the file system - and none of them will be the same the second time. A deterministic simulator puts all of those behind one door: the program cannot read the clock, it is handed a tick; it cannot receive a packet, it is handed one by the scheduler; every random draw comes from a seeded stream. Once every source of nondeterminism goes through that door, the only thing you need to record is the seed and the sequence of external inputs, which is tiny.\n\nReplay is then just running the program again with the same seed and inputs. Because every internal decision - which thread runs next, which packet arrives first - was derived from those, the run is identical byte for byte, and the bug that happened at tick 40,212 happens at tick 40,212 again, with a debugger attached this time. The price is that the whole program has to be written that way; you cannot bolt it on afterwards, because one stray call to the wall clock breaks the guarantee.",
+            "tick": 4,
+            "score": 720,
+            "comments": [
+              {
+                "id": "c-603",
+                "author": "yuki-s",
+                "body": "So the recording is small because everything else is derived. That was the piece I was missing.",
+                "tick": 4
+              },
+              {
+                "id": "c-604",
+                "author": "bob-martinez",
+                "body": "And the test suite becomes a list of seeds. A flaky test is one whose seed you have not written down yet.",
+                "tick": 5
+              }
+            ]
+          }
+        ]
+      },
+      "t-3003": {
+        "replies": [
+          {
+            "id": "r-305",
+            "author": "dr-sam-okafor",
+            "parent": null,
+            "body": "Sunlight is white, meaning all colours. Air molecules scatter short wavelengths - blue and violet - much more strongly than long ones, by roughly the fourth power of the frequency (this is Rayleigh scattering). During the day, blue light from the sun is scattered all over the sky and reaches your eye from every direction, so the sky looks blue. (Not violet, because the sun emits less violet and your eyes are less sensitive to it.)\n\nAt sunset the light reaching you has travelled through far more atmosphere, sideways rather than straight down. By the time it arrives most of the blue has been scattered out of the beam along the way, and what is left is the red and orange that scatter least. Dust and smoke make it redder still, which is why sunsets after a wildfire are so vivid.",
+            "tick": 5,
+            "score": 980,
+            "comments": [
+              {
+                "id": "c-605",
+                "author": "felix-brandt",
+                "body": "The 'blue has already been scattered out along the long path' part is what I needed.",
+                "tick": 5
+              }
+            ]
+          }
+        ]
+      },
+      "t-3005": {
+        "replies": [
+          {
+            "id": "r-307",
+            "author": "tom-adeyemi",
+            "parent": null,
+            "body": "Bring evidence, not feelings. Write down what you were hired to do, what you are doing now, and what that would cost the company to hire externally. Ask for a specific number, and ask for it as a conversation about your scope rather than about your worth: 'my role has grown into X and Y; I would like my compensation to reflect that; here is what I think the number is.' Reasonable managers rarely say no on the spot; they say 'let me see what I can do', and your job is to ask when you should follow up. Do not mention your rent, and do not threaten to leave unless you would.",
+            "tick": 7,
+            "score": 610,
+            "comments": [
+              {
+                "id": "c-607",
+                "author": "felix-brandt",
+                "body": "'Scope rather than worth.' That reframes the whole thing.",
+                "tick": 7
+              }
+            ]
+          },
+          {
+            "id": "r-308",
+            "author": "carol-nakamura",
+            "parent": null,
+            "body": "From the other side of the desk: I want to be asked. It gives me something concrete to take to the compensation review, and it tells me you are paying attention to your own career. The ask that lands worst is the vague one; the one that lands best is a number with a reason attached.",
+            "tick": 8,
+            "score": 344,
+            "comments": []
+          }
+        ]
+      },
+      "t-3006": {
+        "replies": [
+          {
+            "id": "r-309",
+            "author": "hannah-liu",
+            "parent": null,
+            "body": "The honest answer is that we know several things it does and are not sure which one is the reason. Sleep consolidates memory: what you learned during the day is replayed and stabilised at night. It clears metabolic waste from the brain through the glymphatic system, which is far more active during sleep. It regulates hormones, immunity and appetite. And an organism that stays still in the dark uses less energy and is easier to overlook than one blundering about.\n\nThe evolutionary argument cuts the other way from how it sounds: every animal studied sleeps in some form, including ones with no brain to speak of. That means it is very old and very necessary, not an oversight.",
+            "tick": 8,
+            "score": 455,
+            "comments": [
+              {
+                "id": "c-608",
+                "author": "dr-sam-okafor",
+                "body": "The 'even animals with no brain sleep' fact is the one I quote to students who claim they can skip it.",
+                "tick": 9
+              }
+            ]
+          }
+        ]
+      },
+      "t-3008": {
+        "replies": [
+          {
+            "id": "r-311",
+            "author": "alice-chen",
+            "parent": null,
+            "body": "You will not pick wrong; both are good, and the second one is easy once you know the first. Go if you want to be productive in a week and your work is services, tooling and things that talk over a network. Rust if your work touches performance, memory, or correctness in a way where the compiler catching the bug matters more than the day it costs you to satisfy it. I write Rust because the systems I build need to be reproducible and the type system does a lot of that policing for free. My colleagues who write Go ship more features per week. Pick by the work in front of you, not the language.",
+            "tick": 10,
+            "score": 498,
+            "comments": [
+              {
+                "id": "c-610",
+                "author": "yuki-s",
+                "body": "Picking by the work in front of me. Practical.",
+                "tick": 10
+              }
+            ]
+          }
+        ]
+      },
+      "t-3011": {
+        "replies": [
+          {
+            "id": "r-314",
+            "author": "dr-sam-okafor",
+            "parent": null,
+            "body": "The rivers are the source. Rain is slightly acidic and dissolves tiny amounts of mineral salts from rock as it runs to the sea; a river carries so little that it tastes fresh. But the ocean has been receiving that trickle for billions of years, and water leaves the ocean only by evaporation, which takes the water and leaves the salt behind. So salt accumulates. Undersea volcanic vents add more. The ocean is not getting saltier any more, because salt is removed at about the rate it arrives - into sediments and into the clay of the sea floor - but it took a very long time to reach that balance.",
+            "tick": 13,
+            "score": 366,
+            "comments": []
+          }
+        ]
+      },
+      "t-3013": {
+        "replies": [
+          {
+            "id": "r-316",
+            "author": "alice-chen",
+            "parent": null,
+            "body": "What you get is the material you would not choose to learn on your own: the theory of computation, operating systems from the inside, the mathematics under the algorithms. You can learn all of it without a degree, and a few people do, but most self-taught engineers - I was one - have a gap shaped like whatever they never needed for a ticket. The degree fills the gap in a structured way and hands you a credential that some doors still check. Whether that is worth three years depends on which doors you want. For research and for the harder systems jobs, yes. For most product engineering, your five years of work will count for more.",
+            "tick": 16,
+            "score": 470,
+            "comments": []
+          }
+        ]
+      },
+      "t-3015": {
+        "id": "t-3015",
+        "board": "",
+        "author": "carol-nakamura",
+        "title": "How do you give critical feedback to someone more senior than you?",
+        "body": "New manager. One of my reports has fifteen more years of experience than I do, and something needs saying.",
+        "url": null,
+        "tags": [
+          "management",
+          "careers",
+          "communication"
+        ],
+        "tick": 19,
+        "score": 163,
+        "views": 15100,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-319",
+            "author": "tom-adeyemi",
+            "parent": null,
+            "body": "Say it about the work, not the person, privately and soon. Seniority changes the tone, not whether you say it. Most experienced people would rather hear a direct 'the design review was hard to follow, and I think it is because the diagrams came after the decision' than sense you tiptoeing. Ask what they think first; they may be waiting to see whether you will raise it.",
+            "tick": 19,
+            "score": 288,
+            "comments": [
+              {
+                "id": "c-615",
+                "author": "carol-nakamura",
+                "body": "Ask first. Noted.",
+                "tick": 19
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://quora.com/questions/t-3002",
+      "title": "How do deterministic simulators replay bugs? - Quora",
+      "snippet": "Alice Chen: record the inputs, not the outputs. Every source of nondeterminism goes through one door, so the recording is just a seed and the external inputs.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "deterministic simulator",
+        "replay",
+        "debugging",
+        "determinism",
+        "seed",
+        "simulation"
+      ]
+    },
+    {
+      "url": "http://quora.com/questions/t-3008",
+      "title": "Should I learn Rust or Go in 2026? - Quora",
+      "snippet": "Alice Chen: pick by the work in front of you. Go for services and speed of shipping; Rust when the compiler catching the bug matters more.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "rust vs go",
+        "learn rust",
+        "learn go",
+        "programming languages",
+        "2026",
+        "backend"
+      ]
+    }
+  ]
+}

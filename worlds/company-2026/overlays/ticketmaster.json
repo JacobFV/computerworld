@@ -1,0 +1,132 @@
+{
+  "initial_state": {
+    "products": {
+      "rust-meetup": {
+        "id": "rust-meetup",
+        "category": "conference",
+        "title": "Northwest Rust Meetup - Replay Night",
+        "price_cents": 0,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 0,
+        "fast_shipping": false,
+        "bullets": [
+          "Free, but ticketed",
+          "Two talks and a long Q&A",
+          "Pizza from 18:30"
+        ],
+        "reviews": [],
+        "event_tick": 72,
+        "event_date": "2026-04-02",
+        "tiers": [
+          {
+            "id": "rsvp",
+            "title": "RSVP",
+            "price_cents": 0,
+            "section": "R",
+            "row_size": 10,
+            "capacity": 90,
+            "remaining": 17
+          }
+        ],
+        "seller": "Northstar",
+        "description": "Monthly meetup in the Northstar HQ ground-floor commons. This month: snapshot formats, and what breaks when you replay across architectures.",
+        "venue": "northstar-hq",
+        "venue_name": "Northstar HQ"
+      },
+      "okafor-unsorted": {
+        "id": "okafor-unsorted",
+        "category": "comedy",
+        "title": "Nadia Okafor: Unsorted",
+        "seller": "Bayfront Playhouse",
+        "price_cents": 3900,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "stock": 0,
+        "fast_shipping": false,
+        "bullets": [
+          "Doors 19:30, show 20:30, no support",
+          "Runs about 80 minutes",
+          "Phones go in a pouch at the door"
+        ],
+        "description": "The Unsorted tour comes to the Playhouse main stage for one night. An hour and twenty on moving house, tech support for her parents, and the one time she was mistaken for the other Nadia Okafor.",
+        "reviews": [],
+        "venue": "",
+        "venue_name": "Bayfront Playhouse",
+        "event_tick": 199,
+        "event_date": "2026-05-30",
+        "tiers": [
+          {
+            "id": "stalls",
+            "title": "Stalls",
+            "price_cents": 4900,
+            "section": "ST",
+            "row_size": 24,
+            "capacity": 480,
+            "remaining": 47
+          },
+          {
+            "id": "circle",
+            "title": "Circle",
+            "price_cents": 3900,
+            "section": "CI",
+            "row_size": 22,
+            "capacity": 264,
+            "remaining": 12
+          }
+        ]
+      }
+    },
+    "orders": {
+      "TM-2209": {
+        "buyer": "alice"
+      },
+      "TM-2210": {
+        "buyer": "carol"
+      },
+      "TM-2207": {
+        "buyer": "bob"
+      },
+      "TM-2208": {
+        "buyer": "alice",
+        "items": [
+          {
+            "product": "okafor-unsorted",
+            "title": "Nadia Okafor: Unsorted — Stalls",
+            "qty": 2,
+            "price_cents": 4900
+          }
+        ]
+      }
+    },
+    "favorites": {
+      "bob": [
+        "meridian-tour",
+        "kestrels-ironworks"
+      ],
+      "alice": [
+        "tidewater-fest-2026",
+        "harbor-lights-scores"
+      ],
+      "carol": [
+        "twelfth-night-park",
+        "clockwork-musical"
+      ]
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://ticketmaster.com/event/okafor-unsorted",
+      "title": "Nadia Okafor: Unsorted - tickets",
+      "snippet": "30 May at the Bayfront Playhouse. Stalls $49.00, circle $39.00. Twelve circle seats left.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "nadia okafor",
+        "comedy tickets",
+        "stand up seattle",
+        "unsorted tour"
+      ]
+    }
+  ]
+}

@@ -2,7 +2,10 @@
   "id": "apple",
   "kind": "static-site",
   "node": "apple",
-  "domains": ["apple.com","www.apple.com"],
+  "domains": [
+    "apple.com",
+    "www.apple.com"
+  ],
   "port": 80,
   "initial_state": {
     "pages": {
@@ -14,17 +17,56 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Apple","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Apple",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Store","url":"http://apple.com/store"},
-                  {"kind":"link","id":"nav-2","text":"Mac","url":"http://apple.com/mac"},
-                  {"kind":"link","id":"nav-3","text":"iPad","url":"http://apple.com/ipad"},
-                  {"kind":"link","id":"nav-4","text":"iPhone","url":"http://apple.com/iphone"},
-                  {"kind":"link","id":"nav-5","text":"Watch","url":"http://apple.com/watch"},
-                  {"kind":"link","id":"nav-6","text":"Support","url":"http://apple.com/support"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Store",
+                    "url": "http://apple.com/store"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Mac",
+                    "url": "http://apple.com/mac"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "iPad",
+                    "url": "http://apple.com/ipad"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "iPhone",
+                    "url": "http://apple.com/iphone"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Watch",
+                    "url": "http://apple.com/watch"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "Support",
+                    "url": "http://apple.com/support"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -32,29 +74,63 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#1d1d1f","padding":14}
+            "style": {
+              "background": "#1d1d1f",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
           {
             "kind": "card",
             "id": "hero",
             "children": [
-              {"kind":"heading","id":"h","text":"iPhone 18 Pro","level":1},
-              {"kind":"text","id":"t","text":"Titanium, the A20 Pro chip, and a camera system that shoots 8K ProRes. Available in four finishes from 12 September."},
+              {
+                "kind": "heading",
+                "id": "h",
+                "text": "iPhone 18 Pro",
+                "level": 1
+              },
+              {
+                "kind": "text",
+                "id": "t",
+                "text": "Titanium, the A20 Pro chip, and a camera system that shoots 8K ProRes. Available in four finishes from 12 September."
+              },
               {
                 "kind": "row",
                 "id": "hero-links",
                 "children": [
-                  {"kind":"link","id":"hero-more","text":"Learn more","url":"http://apple.com/iphone"},
-                  {"kind":"link","id":"hero-buy","text":"Buy","url":"http://apple.com/store"}
+                  {
+                    "kind": "link",
+                    "id": "hero-more",
+                    "text": "Learn more",
+                    "url": "http://apple.com/iphone"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "hero-buy",
+                    "text": "Buy",
+                    "url": "http://apple.com/store"
+                  }
                 ],
                 "gap": 14,
                 "align": "center"
               }
             ],
-            "style": {"background":"#000000","radius":16,"padding":32}
+            "style": {
+              "background": "#000000",
+              "radius": 16,
+              "padding": 32
+            }
           },
-          {"kind":"spacer","id":"gap-3","height":14},
+          {
+            "kind": "spacer",
+            "id": "gap-3",
+            "height": 14
+          },
           {
             "kind": "grid",
             "id": "promos",
@@ -64,65 +140,189 @@
                 "kind": "card",
                 "id": "promo",
                 "children": [
-                  {"kind":"heading","id":"h-2","text":"MacBook Air","level":2},
-                  {"kind":"text","id":"t-2","text":"The M5 chip. 18 hours of battery. Now in 13 and 15 inches, from $1,099."},
-                  {"kind":"link","id":"promo-mac","text":"Learn more","url":"http://apple.com/mac"}
+                  {
+                    "kind": "heading",
+                    "id": "h-2",
+                    "text": "MacBook Air",
+                    "level": 2
+                  },
+                  {
+                    "kind": "text",
+                    "id": "t-2",
+                    "text": "The M5 chip. 18 hours of battery. Now in 13 and 15 inches, from $1,099."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "promo-mac",
+                    "text": "Learn more",
+                    "url": "http://apple.com/mac"
+                  }
                 ],
-                "style": {"background":"#f5f5f7","radius":16,"padding":28}
+                "style": {
+                  "background": "#f5f5f7",
+                  "radius": 16,
+                  "padding": 28
+                }
               },
               {
                 "kind": "card",
                 "id": "promo-2",
                 "children": [
-                  {"kind":"heading","id":"h-3","text":"Apple Watch Series 12","level":2},
-                  {"kind":"text","id":"t-3","text":"Blood pressure trends, a brighter display, and a week of battery on the Ultra 3."},
-                  {"kind":"link","id":"promo-watch","text":"Learn more","url":"http://apple.com/watch"}
+                  {
+                    "kind": "heading",
+                    "id": "h-3",
+                    "text": "Apple Watch Series 12",
+                    "level": 2
+                  },
+                  {
+                    "kind": "text",
+                    "id": "t-3",
+                    "text": "Blood pressure trends, a brighter display, and a week of battery on the Ultra 3."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "promo-watch",
+                    "text": "Learn more",
+                    "url": "http://apple.com/watch"
+                  }
                 ],
-                "style": {"background":"#f5f5f7","radius":16,"padding":28}
+                "style": {
+                  "background": "#f5f5f7",
+                  "radius": 16,
+                  "padding": 28
+                }
               },
               {
                 "kind": "card",
                 "id": "promo-3",
                 "children": [
-                  {"kind":"heading","id":"h-4","text":"iPad Pro","level":2},
-                  {"kind":"text","id":"t-4","text":"The thinnest Apple product ever made, with the M5 chip and the tandem OLED display."},
-                  {"kind":"link","id":"promo-ipad","text":"Learn more","url":"http://apple.com/ipad"}
+                  {
+                    "kind": "heading",
+                    "id": "h-4",
+                    "text": "iPad Pro",
+                    "level": 2
+                  },
+                  {
+                    "kind": "text",
+                    "id": "t-4",
+                    "text": "The thinnest Apple product ever made, with the M5 chip and the tandem OLED display."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "promo-ipad",
+                    "text": "Learn more",
+                    "url": "http://apple.com/ipad"
+                  }
                 ],
-                "style": {"background":"#f5f5f7","radius":16,"padding":28}
+                "style": {
+                  "background": "#f5f5f7",
+                  "radius": 16,
+                  "padding": 28
+                }
               },
               {
                 "kind": "card",
                 "id": "promo-4",
                 "children": [
-                  {"kind":"heading","id":"h-5","text":"Trade in your old device","level":2},
-                  {"kind":"text","id":"t-5","text":"Get $80 to $700 in credit toward a new one when you trade in an iPhone, iPad, Mac or Apple Watch."},
-                  {"kind":"link","id":"promo-trade","text":"See trade-in values","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "h-5",
+                    "text": "Trade in your old device",
+                    "level": 2
+                  },
+                  {
+                    "kind": "text",
+                    "id": "t-5",
+                    "text": "Get $80 to $700 in credit toward a new one when you trade in an iPhone, iPad, Mac or Apple Watch."
+                  },
+                  {
+                    "kind": "link",
+                    "id": "promo-trade",
+                    "text": "See trade-in values",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#f5f5f7","radius":16,"padding":28}
+                "style": {
+                  "background": "#f5f5f7",
+                  "radius": 16,
+                  "padding": 28
+                }
               }
             ],
             "gap": 14
           },
-          {"kind":"spacer","id":"gap-4","height":14},
-          {"kind":"heading","id":"h-6","text":"From the Newsroom","level":2},
-          {"kind":"link","id":"news-1","text":"Apple introduces iPhone 18 Pro and iPhone 18 Pro Max","url":"http://apple.com/newsroom/iphone-18-pro"},
-          {"kind":"link","id":"news-2","text":"Apple unveils MacBook Air with M5","url":"http://apple.com/newsroom/macbook-air-m5"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "spacer",
+            "id": "gap-4",
+            "height": 14
+          },
+          {
+            "kind": "heading",
+            "id": "h-6",
+            "text": "From the Newsroom",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "news-1",
+            "text": "Apple introduces iPhone 18 Pro and iPhone 18 Pro Max",
+            "url": "http://apple.com/newsroom/iphone-18-pro"
+          },
+          {
+            "kind": "link",
+            "id": "news-2",
+            "text": "Apple unveils MacBook Air with M5",
+            "url": "http://apple.com/newsroom/macbook-air-m5"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Newsroom","url":"http://apple.com/newsroom"},
-              {"kind":"link","id":"foot-2","text":"Privacy","url":"http://apple.com/privacy"},
-              {"kind":"link","id":"foot-3","text":"Apple on YouTube","url":"http://youtube.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Newsroom",
+                "url": "http://apple.com/newsroom"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Privacy",
+                "url": "http://apple.com/privacy"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Apple on YouTube",
+                "url": "http://youtube.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."
+          }
         ],
-        "theme": {"accent":"#0071e3","background":"#ffffff","surface":"#f5f5f7","ink":"#1d1d1f","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0071e3",
+          "background": "#ffffff",
+          "surface": "#f5f5f7",
+          "ink": "#1d1d1f",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/mac": {
         "version": 1,
@@ -132,17 +332,60 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Apple","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Apple",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Store","url":"http://apple.com/store"},
-                  {"kind":"styled","id":"nav-here","text":"Mac","style":{"size":13,"weight":"bold","color":"#ffffff"}},
-                  {"kind":"link","id":"nav-2","text":"iPad","url":"http://apple.com/ipad"},
-                  {"kind":"link","id":"nav-3","text":"iPhone","url":"http://apple.com/iphone"},
-                  {"kind":"link","id":"nav-4","text":"Watch","url":"http://apple.com/watch"},
-                  {"kind":"link","id":"nav-5","text":"Support","url":"http://apple.com/support"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Store",
+                    "url": "http://apple.com/store"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Mac",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "iPad",
+                    "url": "http://apple.com/ipad"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "iPhone",
+                    "url": "http://apple.com/iphone"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Watch",
+                    "url": "http://apple.com/watch"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Support",
+                    "url": "http://apple.com/support"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -150,11 +393,27 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#1d1d1f","padding":14}
+            "style": {
+              "background": "#1d1d1f",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"Mac","level":1},
-          {"kind":"text","id":"t","text":"Every Mac now runs on Apple silicon. The M5 family arrives across the lineup this year, with a neural engine twice as fast as M4 for on-device models."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Mac",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Every Mac now runs on Apple silicon. The M5 family arrives across the lineup this year, with a neural engine twice as fast as M4 for on-device models."
+          },
           {
             "kind": "grid",
             "id": "tiles",
@@ -164,91 +423,281 @@
                 "kind": "card",
                 "id": "tile",
                 "children": [
-                  {"kind":"heading","id":"tile-name","text":"MacBook Air","level":3},
-                  {"kind":"text","id":"tile-desc","text":"M5, 13 or 15 inch Liquid Retina display, 18 hours of battery, fanless."},
-                  {"kind":"text","id":"tile-price","text":"From $1,099"},
-                  {"kind":"link","id":"tile-link","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name",
+                    "text": "MacBook Air",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc",
+                    "text": "M5, 13 or 15 inch Liquid Retina display, 18 hours of battery, fanless."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price",
+                    "text": "From $1,099"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-2",
                 "children": [
-                  {"kind":"heading","id":"tile-name-2","text":"MacBook Pro","level":3},
-                  {"kind":"text","id":"tile-desc-2","text":"M5 Pro or M5 Max, 14 or 16 inch, up to 128GB of unified memory and 24 hours of battery."},
-                  {"kind":"text","id":"tile-price-2","text":"From $1,999"},
-                  {"kind":"link","id":"tile-link-2","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-2",
+                    "text": "MacBook Pro",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-2",
+                    "text": "M5 Pro or M5 Max, 14 or 16 inch, up to 128GB of unified memory and 24 hours of battery."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-2",
+                    "text": "From $1,999"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-2",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-3",
                 "children": [
-                  {"kind":"heading","id":"tile-name-3","text":"iMac","level":3},
-                  {"kind":"text","id":"tile-desc-3","text":"M5, 24 inch 4.5K Retina display, seven colours, a 12MP Center Stage camera."},
-                  {"kind":"text","id":"tile-price-3","text":"From $1,299"},
-                  {"kind":"link","id":"tile-link-3","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-3",
+                    "text": "iMac",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-3",
+                    "text": "M5, 24 inch 4.5K Retina display, seven colours, a 12MP Center Stage camera."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-3",
+                    "text": "From $1,299"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-3",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-4",
                 "children": [
-                  {"kind":"heading","id":"tile-name-4","text":"Mac mini","level":3},
-                  {"kind":"text","id":"tile-desc-4","text":"M5 or M5 Pro in five inches square. Thunderbolt 5, two front USB-C ports."},
-                  {"kind":"text","id":"tile-price-4","text":"From $599"},
-                  {"kind":"link","id":"tile-link-4","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-4",
+                    "text": "Mac mini",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-4",
+                    "text": "M5 or M5 Pro in five inches square. Thunderbolt 5, two front USB-C ports."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-4",
+                    "text": "From $599"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-4",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-5",
                 "children": [
-                  {"kind":"heading","id":"tile-name-5","text":"Mac Studio","level":3},
-                  {"kind":"text","id":"tile-desc-5","text":"M5 Max or M5 Ultra for the heaviest work: video, 3D, and running large models locally."},
-                  {"kind":"text","id":"tile-price-5","text":"From $1,999"},
-                  {"kind":"link","id":"tile-link-5","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-5",
+                    "text": "Mac Studio",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-5",
+                    "text": "M5 Max or M5 Ultra for the heaviest work: video, 3D, and running large models locally."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-5",
+                    "text": "From $1,999"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-5",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-6",
                 "children": [
-                  {"kind":"heading","id":"tile-name-6","text":"Studio Display","level":3},
-                  {"kind":"text","id":"tile-desc-6","text":"27 inch 5K Retina, 600 nits, six-speaker sound, a 12MP camera."},
-                  {"kind":"text","id":"tile-price-6","text":"From $1,599"},
-                  {"kind":"link","id":"tile-link-6","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-6",
+                    "text": "Studio Display",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-6",
+                    "text": "27 inch 5K Retina, 600 nits, six-speaker sound, a 12MP camera."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-6",
+                    "text": "From $1,599"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-6",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               }
             ],
             "gap": 14
           },
-          {"kind":"heading","id":"h-2","text":"Why Mac","level":2},
-          {"kind":"text","id":"t-2","text":"macOS 27 brings Continuity across iPhone and iPad, the redesigned Spotlight, and a Terminal that finally remembers your tabs. Every Mac supports Apple Intelligence features on-device."},
-          {"kind":"link","id":"compare","text":"Compare all Mac models in the store","url":"http://apple.com/store"},
-          {"kind":"link","id":"support","text":"Mac support","url":"http://apple.com/support"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Why Mac",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "macOS 27 brings Continuity across iPhone and iPad, the redesigned Spotlight, and a Terminal that finally remembers your tabs. Every Mac supports Apple Intelligence features on-device."
+          },
+          {
+            "kind": "link",
+            "id": "compare",
+            "text": "Compare all Mac models in the store",
+            "url": "http://apple.com/store"
+          },
+          {
+            "kind": "link",
+            "id": "support",
+            "text": "Mac support",
+            "url": "http://apple.com/support"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Newsroom","url":"http://apple.com/newsroom"},
-              {"kind":"link","id":"foot-2","text":"Privacy","url":"http://apple.com/privacy"},
-              {"kind":"link","id":"foot-3","text":"Apple on YouTube","url":"http://youtube.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Newsroom",
+                "url": "http://apple.com/newsroom"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Privacy",
+                "url": "http://apple.com/privacy"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Apple on YouTube",
+                "url": "http://youtube.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."
+          }
         ],
-        "theme": {"accent":"#0071e3","background":"#ffffff","surface":"#f5f5f7","ink":"#1d1d1f","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0071e3",
+          "background": "#ffffff",
+          "surface": "#f5f5f7",
+          "ink": "#1d1d1f",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/iphone": {
         "version": 1,
@@ -258,17 +707,60 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Apple","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Apple",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Store","url":"http://apple.com/store"},
-                  {"kind":"link","id":"nav-2","text":"Mac","url":"http://apple.com/mac"},
-                  {"kind":"link","id":"nav-3","text":"iPad","url":"http://apple.com/ipad"},
-                  {"kind":"styled","id":"nav-here","text":"iPhone","style":{"size":13,"weight":"bold","color":"#ffffff"}},
-                  {"kind":"link","id":"nav-4","text":"Watch","url":"http://apple.com/watch"},
-                  {"kind":"link","id":"nav-5","text":"Support","url":"http://apple.com/support"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Store",
+                    "url": "http://apple.com/store"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Mac",
+                    "url": "http://apple.com/mac"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "iPad",
+                    "url": "http://apple.com/ipad"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "iPhone",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Watch",
+                    "url": "http://apple.com/watch"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Support",
+                    "url": "http://apple.com/support"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -276,11 +768,27 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#1d1d1f","padding":14}
+            "style": {
+              "background": "#1d1d1f",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"iPhone","level":1},
-          {"kind":"text","id":"t","text":"Four models for 2026: iPhone 18 Pro Max, iPhone 18 Pro, iPhone 18 and iPhone 17e. All of them ship with iOS 27."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "iPhone",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Four models for 2026: iPhone 18 Pro Max, iPhone 18 Pro, iPhone 18 and iPhone 17e. All of them ship with iOS 27."
+          },
           {
             "kind": "grid",
             "id": "tiles",
@@ -290,59 +798,184 @@
                 "kind": "card",
                 "id": "tile",
                 "children": [
-                  {"kind":"heading","id":"tile-name","text":"iPhone 18 Pro","level":3},
-                  {"kind":"text","id":"tile-desc","text":"A20 Pro, 6.3 or 6.9 inch ProMotion display, 48MP triple camera with 8K video, titanium."},
-                  {"kind":"text","id":"tile-price","text":"From $999"},
-                  {"kind":"link","id":"tile-link","text":"Learn more","url":"http://apple.com/newsroom/iphone-18-pro"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name",
+                    "text": "iPhone 18 Pro",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc",
+                    "text": "A20 Pro, 6.3 or 6.9 inch ProMotion display, 48MP triple camera with 8K video, titanium."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price",
+                    "text": "From $999"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link",
+                    "text": "Learn more",
+                    "url": "http://apple.com/newsroom/iphone-18-pro"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-2",
                 "children": [
-                  {"kind":"heading","id":"tile-name-2","text":"iPhone 18","level":3},
-                  {"kind":"text","id":"tile-desc-2","text":"A20, 6.1 or 6.7 inch display, 48MP dual camera, aluminium in six colours."},
-                  {"kind":"text","id":"tile-price-2","text":"From $799"},
-                  {"kind":"link","id":"tile-link-2","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-2",
+                    "text": "iPhone 18",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-2",
+                    "text": "A20, 6.1 or 6.7 inch display, 48MP dual camera, aluminium in six colours."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-2",
+                    "text": "From $799"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-2",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-3",
                 "children": [
-                  {"kind":"heading","id":"tile-name-3","text":"iPhone 17e","level":3},
-                  {"kind":"text","id":"tile-desc-3","text":"A19, 6.1 inch display, Face ID, the same camera as last year's iPhone 17 for less."},
-                  {"kind":"text","id":"tile-price-3","text":"From $599"},
-                  {"kind":"link","id":"tile-link-3","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-3",
+                    "text": "iPhone 17e",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-3",
+                    "text": "A19, 6.1 inch display, Face ID, the same camera as last year's iPhone 17 for less."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-3",
+                    "text": "From $599"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-3",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               }
             ],
             "gap": 14
           },
-          {"kind":"heading","id":"h-2","text":"What is new","level":2},
-          {"kind":"text","id":"t-2","text":"Camera Control now doubles as a shutter with pressure sensitivity. The Pro models add a variable-aperture main camera and a 5x periscope lens. Battery life is up to 33 hours of video on the 18 Pro Max."},
-          {"kind":"text","id":"t-3","text":"iOS 27 introduces a redesigned Messages, live translation on calls, and Passwords with shared vaults."},
-          {"kind":"link","id":"buy","text":"Buy iPhone","url":"http://apple.com/store"},
-          {"kind":"link","id":"support","text":"iPhone support","url":"http://apple.com/support"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "What is new",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Camera Control now doubles as a shutter with pressure sensitivity. The Pro models add a variable-aperture main camera and a 5x periscope lens. Battery life is up to 33 hours of video on the 18 Pro Max."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "iOS 27 introduces a redesigned Messages, live translation on calls, and Passwords with shared vaults."
+          },
+          {
+            "kind": "link",
+            "id": "buy",
+            "text": "Buy iPhone",
+            "url": "http://apple.com/store"
+          },
+          {
+            "kind": "link",
+            "id": "support",
+            "text": "iPhone support",
+            "url": "http://apple.com/support"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Newsroom","url":"http://apple.com/newsroom"},
-              {"kind":"link","id":"foot-2","text":"Privacy","url":"http://apple.com/privacy"},
-              {"kind":"link","id":"foot-3","text":"Apple on YouTube","url":"http://youtube.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Newsroom",
+                "url": "http://apple.com/newsroom"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Privacy",
+                "url": "http://apple.com/privacy"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Apple on YouTube",
+                "url": "http://youtube.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."
+          }
         ],
-        "theme": {"accent":"#0071e3","background":"#ffffff","surface":"#f5f5f7","ink":"#1d1d1f","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0071e3",
+          "background": "#ffffff",
+          "surface": "#f5f5f7",
+          "ink": "#1d1d1f",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/ipad": {
         "version": 1,
@@ -352,17 +985,60 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Apple","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Apple",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Store","url":"http://apple.com/store"},
-                  {"kind":"link","id":"nav-2","text":"Mac","url":"http://apple.com/mac"},
-                  {"kind":"styled","id":"nav-here","text":"iPad","style":{"size":13,"weight":"bold","color":"#ffffff"}},
-                  {"kind":"link","id":"nav-3","text":"iPhone","url":"http://apple.com/iphone"},
-                  {"kind":"link","id":"nav-4","text":"Watch","url":"http://apple.com/watch"},
-                  {"kind":"link","id":"nav-5","text":"Support","url":"http://apple.com/support"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Store",
+                    "url": "http://apple.com/store"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Mac",
+                    "url": "http://apple.com/mac"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "iPad",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "iPhone",
+                    "url": "http://apple.com/iphone"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Watch",
+                    "url": "http://apple.com/watch"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Support",
+                    "url": "http://apple.com/support"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -370,11 +1046,27 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#1d1d1f","padding":14}
+            "style": {
+              "background": "#1d1d1f",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"iPad","level":1},
-          {"kind":"text","id":"t","text":"Four models, one pencil. iPadOS 27 adds windowed multitasking on every model with the M-series chip."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "iPad",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Four models, one pencil. iPadOS 27 adds windowed multitasking on every model with the M-series chip."
+          },
           {
             "kind": "grid",
             "id": "tiles",
@@ -384,68 +1076,207 @@
                 "kind": "card",
                 "id": "tile",
                 "children": [
-                  {"kind":"heading","id":"tile-name","text":"iPad Pro","level":3},
-                  {"kind":"text","id":"tile-desc","text":"M5, 11 or 13 inch tandem OLED, 5.1mm thin, nano-texture glass option."},
-                  {"kind":"text","id":"tile-price","text":"From $999"},
-                  {"kind":"link","id":"tile-link","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name",
+                    "text": "iPad Pro",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc",
+                    "text": "M5, 11 or 13 inch tandem OLED, 5.1mm thin, nano-texture glass option."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price",
+                    "text": "From $999"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-2",
                 "children": [
-                  {"kind":"heading","id":"tile-name-2","text":"iPad Air","level":3},
-                  {"kind":"text","id":"tile-desc-2","text":"M4, 11 or 13 inch Liquid Retina, works with Apple Pencil Pro and the Magic Keyboard."},
-                  {"kind":"text","id":"tile-price-2","text":"From $599"},
-                  {"kind":"link","id":"tile-link-2","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-2",
+                    "text": "iPad Air",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-2",
+                    "text": "M4, 11 or 13 inch Liquid Retina, works with Apple Pencil Pro and the Magic Keyboard."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-2",
+                    "text": "From $599"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-2",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-3",
                 "children": [
-                  {"kind":"heading","id":"tile-name-3","text":"iPad","level":3},
-                  {"kind":"text","id":"tile-desc-3","text":"A18, 11 inch display, the iPad most people buy, in four colours."},
-                  {"kind":"text","id":"tile-price-3","text":"From $349"},
-                  {"kind":"link","id":"tile-link-3","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-3",
+                    "text": "iPad",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-3",
+                    "text": "A18, 11 inch display, the iPad most people buy, in four colours."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-3",
+                    "text": "From $349"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-3",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-4",
                 "children": [
-                  {"kind":"heading","id":"tile-name-4","text":"iPad mini","level":3},
-                  {"kind":"text","id":"tile-desc-4","text":"A18 Pro, 8.3 inches, fits in a jacket pocket. Apple Pencil Pro support."},
-                  {"kind":"text","id":"tile-price-4","text":"From $499"},
-                  {"kind":"link","id":"tile-link-4","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-4",
+                    "text": "iPad mini",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-4",
+                    "text": "A18 Pro, 8.3 inches, fits in a jacket pocket. Apple Pencil Pro support."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-4",
+                    "text": "From $499"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-4",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               }
             ],
             "gap": 14
           },
-          {"kind":"heading","id":"h-2","text":"Accessories","level":2},
-          {"kind":"text","id":"t-2","text":"Apple Pencil Pro ($129) with squeeze, barrel roll and haptic feedback. Magic Keyboard for iPad Pro ($299) with a function row and a larger trackpad. Smart Folio from $79."},
-          {"kind":"link","id":"buy","text":"Buy iPad","url":"http://apple.com/store"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Accessories",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Apple Pencil Pro ($129) with squeeze, barrel roll and haptic feedback. Magic Keyboard for iPad Pro ($299) with a function row and a larger trackpad. Smart Folio from $79."
+          },
+          {
+            "kind": "link",
+            "id": "buy",
+            "text": "Buy iPad",
+            "url": "http://apple.com/store"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Newsroom","url":"http://apple.com/newsroom"},
-              {"kind":"link","id":"foot-2","text":"Privacy","url":"http://apple.com/privacy"},
-              {"kind":"link","id":"foot-3","text":"Apple on YouTube","url":"http://youtube.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Newsroom",
+                "url": "http://apple.com/newsroom"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Privacy",
+                "url": "http://apple.com/privacy"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Apple on YouTube",
+                "url": "http://youtube.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."
+          }
         ],
-        "theme": {"accent":"#0071e3","background":"#ffffff","surface":"#f5f5f7","ink":"#1d1d1f","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0071e3",
+          "background": "#ffffff",
+          "surface": "#f5f5f7",
+          "ink": "#1d1d1f",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/watch": {
         "version": 1,
@@ -455,17 +1286,60 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Apple","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Apple",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Store","url":"http://apple.com/store"},
-                  {"kind":"link","id":"nav-2","text":"Mac","url":"http://apple.com/mac"},
-                  {"kind":"link","id":"nav-3","text":"iPad","url":"http://apple.com/ipad"},
-                  {"kind":"link","id":"nav-4","text":"iPhone","url":"http://apple.com/iphone"},
-                  {"kind":"styled","id":"nav-here","text":"Watch","style":{"size":13,"weight":"bold","color":"#ffffff"}},
-                  {"kind":"link","id":"nav-5","text":"Support","url":"http://apple.com/support"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Store",
+                    "url": "http://apple.com/store"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Mac",
+                    "url": "http://apple.com/mac"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "iPad",
+                    "url": "http://apple.com/ipad"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "iPhone",
+                    "url": "http://apple.com/iphone"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Watch",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Support",
+                    "url": "http://apple.com/support"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -473,11 +1347,27 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#1d1d1f","padding":14}
+            "style": {
+              "background": "#1d1d1f",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"Apple Watch","level":1},
-          {"kind":"text","id":"t","text":"Series 12, Ultra 3 and SE. watchOS 13 adds blood pressure trend notifications and a redesigned Workout app."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Apple Watch",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Series 12, Ultra 3 and SE. watchOS 13 adds blood pressure trend notifications and a redesigned Workout app."
+          },
           {
             "kind": "grid",
             "id": "tiles",
@@ -487,58 +1377,179 @@
                 "kind": "card",
                 "id": "tile",
                 "children": [
-                  {"kind":"heading","id":"tile-name","text":"Apple Watch Series 12","level":3},
-                  {"kind":"text","id":"tile-desc","text":"42 or 46mm, always-on display 40% brighter, sleep apnea and blood pressure trends, 24-hour battery."},
-                  {"kind":"text","id":"tile-price","text":"From $399"},
-                  {"kind":"link","id":"tile-link","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name",
+                    "text": "Apple Watch Series 12",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc",
+                    "text": "42 or 46mm, always-on display 40% brighter, sleep apnea and blood pressure trends, 24-hour battery."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price",
+                    "text": "From $399"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-2",
                 "children": [
-                  {"kind":"heading","id":"tile-name-2","text":"Apple Watch Ultra 3","level":3},
-                  {"kind":"text","id":"tile-desc-2","text":"49mm titanium, 3,000 nits, satellite messaging, 72 hours of battery."},
-                  {"kind":"text","id":"tile-price-2","text":"From $799"},
-                  {"kind":"link","id":"tile-link-2","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-2",
+                    "text": "Apple Watch Ultra 3",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-2",
+                    "text": "49mm titanium, 3,000 nits, satellite messaging, 72 hours of battery."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-2",
+                    "text": "From $799"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-2",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "tile-3",
                 "children": [
-                  {"kind":"heading","id":"tile-name-3","text":"Apple Watch SE","level":3},
-                  {"kind":"text","id":"tile-desc-3","text":"40 or 44mm, crash detection, the essentials for the family."},
-                  {"kind":"text","id":"tile-price-3","text":"From $249"},
-                  {"kind":"link","id":"tile-link-3","text":"Learn more","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "tile-name-3",
+                    "text": "Apple Watch SE",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-desc-3",
+                    "text": "40 or 44mm, crash detection, the essentials for the family."
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tile-price-3",
+                    "text": "From $249"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "tile-link-3",
+                    "text": "Learn more",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               }
             ],
             "gap": 14
           },
-          {"kind":"heading","id":"h-2","text":"Health and fitness","level":2},
-          {"kind":"text","id":"t-2","text":"Heart rate, ECG, blood oxygen, temperature sensing and now blood pressure trends over 30 days. Fitness+ is included for three months with every Apple Watch."},
-          {"kind":"link","id":"buy","text":"Buy Apple Watch","url":"http://apple.com/store"},
-          {"kind":"link","id":"support","text":"Watch support","url":"http://apple.com/support"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Health and fitness",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Heart rate, ECG, blood oxygen, temperature sensing and now blood pressure trends over 30 days. Fitness+ is included for three months with every Apple Watch."
+          },
+          {
+            "kind": "link",
+            "id": "buy",
+            "text": "Buy Apple Watch",
+            "url": "http://apple.com/store"
+          },
+          {
+            "kind": "link",
+            "id": "support",
+            "text": "Watch support",
+            "url": "http://apple.com/support"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Newsroom","url":"http://apple.com/newsroom"},
-              {"kind":"link","id":"foot-2","text":"Privacy","url":"http://apple.com/privacy"},
-              {"kind":"link","id":"foot-3","text":"Apple on YouTube","url":"http://youtube.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Newsroom",
+                "url": "http://apple.com/newsroom"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Privacy",
+                "url": "http://apple.com/privacy"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Apple on YouTube",
+                "url": "http://youtube.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."
+          }
         ],
-        "theme": {"accent":"#0071e3","background":"#ffffff","surface":"#f5f5f7","ink":"#1d1d1f","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0071e3",
+          "background": "#ffffff",
+          "surface": "#f5f5f7",
+          "ink": "#1d1d1f",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/store": {
         "version": 1,
@@ -548,17 +1559,60 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Apple","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Apple",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"styled","id":"nav-here","text":"Store","style":{"size":13,"weight":"bold","color":"#ffffff"}},
-                  {"kind":"link","id":"nav","text":"Mac","url":"http://apple.com/mac"},
-                  {"kind":"link","id":"nav-2","text":"iPad","url":"http://apple.com/ipad"},
-                  {"kind":"link","id":"nav-3","text":"iPhone","url":"http://apple.com/iphone"},
-                  {"kind":"link","id":"nav-4","text":"Watch","url":"http://apple.com/watch"},
-                  {"kind":"link","id":"nav-5","text":"Support","url":"http://apple.com/support"}
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Store",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Mac",
+                    "url": "http://apple.com/mac"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "iPad",
+                    "url": "http://apple.com/ipad"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "iPhone",
+                    "url": "http://apple.com/iphone"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "Watch",
+                    "url": "http://apple.com/watch"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Support",
+                    "url": "http://apple.com/support"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -566,63 +1620,243 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#1d1d1f","padding":14}
+            "style": {
+              "background": "#1d1d1f",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"Store","level":1},
-          {"kind":"text","id":"t","text":"Prices in US dollars before tax. Free delivery, and pick-up at any Apple Store the same day for in-stock items. Financing over 12 months at 0% APR with Apple Card."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Store",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Prices in US dollars before tax. Free delivery, and pick-up at any Apple Store the same day for in-stock items. Financing over 12 months at 0% APR with Apple Card."
+          },
           {
             "kind": "card",
             "id": "prices",
             "children": [
-              {"kind":"styled","id":"prices-head","text":"Product | Configuration | Price","style":{"size":12,"weight":"bold","color":"#5b6478"}},
-              {"kind":"text","id":"prices-row","text":"iPhone 18 Pro Max | 256GB, titanium | $1,199"},
-              {"kind":"text","id":"prices-row-2","text":"iPhone 18 Pro | 256GB, titanium | $999"},
-              {"kind":"text","id":"prices-row-3","text":"iPhone 18 | 128GB | $799"},
-              {"kind":"text","id":"prices-row-4","text":"iPhone 17e | 128GB | $599"},
-              {"kind":"text","id":"prices-row-5","text":"MacBook Air 13 inch | M5, 16GB, 256GB | $1,099"},
-              {"kind":"text","id":"prices-row-6","text":"MacBook Air 15 inch | M5, 16GB, 512GB | $1,499"},
-              {"kind":"text","id":"prices-row-7","text":"MacBook Pro 14 inch | M5 Pro, 24GB, 512GB | $1,999"},
-              {"kind":"text","id":"prices-row-8","text":"MacBook Pro 16 inch | M5 Max, 36GB, 1TB | $3,499"},
-              {"kind":"text","id":"prices-row-9","text":"iMac 24 inch | M5, 16GB, 256GB | $1,299"},
-              {"kind":"text","id":"prices-row-10","text":"Mac mini | M5, 16GB, 256GB | $599"},
-              {"kind":"text","id":"prices-row-11","text":"Mac Studio | M5 Max, 36GB, 512GB | $1,999"},
-              {"kind":"text","id":"prices-row-12","text":"iPad Pro 11 inch | M5, 256GB, Wi-Fi | $999"},
-              {"kind":"text","id":"prices-row-13","text":"iPad Air 11 inch | M4, 128GB, Wi-Fi | $599"},
-              {"kind":"text","id":"prices-row-14","text":"iPad | A18, 128GB, Wi-Fi | $349"},
-              {"kind":"text","id":"prices-row-15","text":"iPad mini | A18 Pro, 128GB, Wi-Fi | $499"},
-              {"kind":"text","id":"prices-row-16","text":"Apple Watch Series 12 | 42mm, aluminium, GPS | $399"},
-              {"kind":"text","id":"prices-row-17","text":"Apple Watch Ultra 3 | 49mm, titanium | $799"},
-              {"kind":"text","id":"prices-row-18","text":"Apple Watch SE | 40mm, GPS | $249"},
-              {"kind":"text","id":"prices-row-19","text":"AirPods Pro 3 | USB-C, hearing health features | $249"},
-              {"kind":"text","id":"prices-row-20","text":"AirPods 4 | With active noise cancellation | $179"},
-              {"kind":"text","id":"prices-row-21","text":"Apple Pencil Pro |  | $129"},
-              {"kind":"text","id":"prices-row-22","text":"Studio Display | 27 inch, standard glass | $1,599"}
+              {
+                "kind": "styled",
+                "id": "prices-head",
+                "text": "Product | Configuration | Price",
+                "style": {
+                  "size": 12,
+                  "weight": "bold",
+                  "color": "#5b6478"
+                }
+              },
+              {
+                "kind": "text",
+                "id": "prices-row",
+                "text": "iPhone 18 Pro Max | 256GB, titanium | $1,199"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-2",
+                "text": "iPhone 18 Pro | 256GB, titanium | $999"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-3",
+                "text": "iPhone 18 | 128GB | $799"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-4",
+                "text": "iPhone 17e | 128GB | $599"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-5",
+                "text": "MacBook Air 13 inch | M5, 16GB, 256GB | $1,099"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-6",
+                "text": "MacBook Air 15 inch | M5, 16GB, 512GB | $1,499"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-7",
+                "text": "MacBook Pro 14 inch | M5 Pro, 24GB, 512GB | $1,999"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-8",
+                "text": "MacBook Pro 16 inch | M5 Max, 36GB, 1TB | $3,499"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-9",
+                "text": "iMac 24 inch | M5, 16GB, 256GB | $1,299"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-10",
+                "text": "Mac mini | M5, 16GB, 256GB | $599"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-11",
+                "text": "Mac Studio | M5 Max, 36GB, 512GB | $1,999"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-12",
+                "text": "iPad Pro 11 inch | M5, 256GB, Wi-Fi | $999"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-13",
+                "text": "iPad Air 11 inch | M4, 128GB, Wi-Fi | $599"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-14",
+                "text": "iPad | A18, 128GB, Wi-Fi | $349"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-15",
+                "text": "iPad mini | A18 Pro, 128GB, Wi-Fi | $499"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-16",
+                "text": "Apple Watch Series 12 | 42mm, aluminium, GPS | $399"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-17",
+                "text": "Apple Watch Ultra 3 | 49mm, titanium | $799"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-18",
+                "text": "Apple Watch SE | 40mm, GPS | $249"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-19",
+                "text": "AirPods Pro 3 | USB-C, hearing health features | $249"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-20",
+                "text": "AirPods 4 | With active noise cancellation | $179"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-21",
+                "text": "Apple Pencil Pro |  | $129"
+              },
+              {
+                "kind": "text",
+                "id": "prices-row-22",
+                "text": "Studio Display | 27 inch, standard glass | $1,599"
+              }
             ],
-            "style": {"background":"#ffffff","border":"#d8dee9","radius":8,"padding":12}
+            "style": {
+              "background": "#ffffff",
+              "border": "#d8dee9",
+              "radius": 8,
+              "padding": 12
+            }
           },
-          {"kind":"heading","id":"h-2","text":"Trade in","level":2},
-          {"kind":"text","id":"t-2","text":"iPhone 15 Pro: up to $400. iPhone 14: up to $220. MacBook Air M2: up to $450. Apple Watch Series 9: up to $120. Values are estimates and depend on condition."},
-          {"kind":"link","id":"to-mac","text":"Mac","url":"http://apple.com/mac"},
-          {"kind":"link","id":"to-iphone","text":"iPhone","url":"http://apple.com/iphone"},
-          {"kind":"link","id":"to-ipad","text":"iPad","url":"http://apple.com/ipad"},
-          {"kind":"link","id":"to-watch","text":"Apple Watch","url":"http://apple.com/watch"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Trade in",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "iPhone 15 Pro: up to $400. iPhone 14: up to $220. MacBook Air M2: up to $450. Apple Watch Series 9: up to $120. Values are estimates and depend on condition."
+          },
+          {
+            "kind": "link",
+            "id": "to-mac",
+            "text": "Mac",
+            "url": "http://apple.com/mac"
+          },
+          {
+            "kind": "link",
+            "id": "to-iphone",
+            "text": "iPhone",
+            "url": "http://apple.com/iphone"
+          },
+          {
+            "kind": "link",
+            "id": "to-ipad",
+            "text": "iPad",
+            "url": "http://apple.com/ipad"
+          },
+          {
+            "kind": "link",
+            "id": "to-watch",
+            "text": "Apple Watch",
+            "url": "http://apple.com/watch"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Newsroom","url":"http://apple.com/newsroom"},
-              {"kind":"link","id":"foot-2","text":"Privacy","url":"http://apple.com/privacy"},
-              {"kind":"link","id":"foot-3","text":"Apple on YouTube","url":"http://youtube.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Newsroom",
+                "url": "http://apple.com/newsroom"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Privacy",
+                "url": "http://apple.com/privacy"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Apple on YouTube",
+                "url": "http://youtube.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."
+          }
         ],
-        "theme": {"accent":"#0071e3","background":"#ffffff","surface":"#f5f5f7","ink":"#1d1d1f","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0071e3",
+          "background": "#ffffff",
+          "surface": "#f5f5f7",
+          "ink": "#1d1d1f",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/support": {
         "version": 1,
@@ -632,17 +1866,60 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Apple","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Apple",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Store","url":"http://apple.com/store"},
-                  {"kind":"link","id":"nav-2","text":"Mac","url":"http://apple.com/mac"},
-                  {"kind":"link","id":"nav-3","text":"iPad","url":"http://apple.com/ipad"},
-                  {"kind":"link","id":"nav-4","text":"iPhone","url":"http://apple.com/iphone"},
-                  {"kind":"link","id":"nav-5","text":"Watch","url":"http://apple.com/watch"},
-                  {"kind":"styled","id":"nav-here","text":"Support","style":{"size":13,"weight":"bold","color":"#ffffff"}}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Store",
+                    "url": "http://apple.com/store"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Mac",
+                    "url": "http://apple.com/mac"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "iPad",
+                    "url": "http://apple.com/ipad"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "iPhone",
+                    "url": "http://apple.com/iphone"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Watch",
+                    "url": "http://apple.com/watch"
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "nav-here",
+                    "text": "Support",
+                    "style": {
+                      "size": 13,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -650,11 +1927,27 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#1d1d1f","padding":14}
+            "style": {
+              "background": "#1d1d1f",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"Apple Support","level":1},
-          {"kind":"text","id":"t","text":"Pick a product to get started, or search the community. Genius Bar appointments are booked from the Support app."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Apple Support",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Pick a product to get started, or search the community. Genius Bar appointments are booked from the Support app."
+          },
           {
             "kind": "grid",
             "id": "products",
@@ -664,83 +1957,241 @@
                 "kind": "card",
                 "id": "sup",
                 "children": [
-                  {"kind":"heading","id":"sup-name","text":"iPhone","level":3},
-                  {"kind":"link","id":"sup-link","text":"Get help","url":"http://apple.com/iphone"}
+                  {
+                    "kind": "heading",
+                    "id": "sup-name",
+                    "text": "iPhone",
+                    "level": 3
+                  },
+                  {
+                    "kind": "link",
+                    "id": "sup-link",
+                    "text": "Get help",
+                    "url": "http://apple.com/iphone"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "sup-2",
                 "children": [
-                  {"kind":"heading","id":"sup-name-2","text":"Mac","level":3},
-                  {"kind":"link","id":"sup-link-2","text":"Get help","url":"http://apple.com/mac"}
+                  {
+                    "kind": "heading",
+                    "id": "sup-name-2",
+                    "text": "Mac",
+                    "level": 3
+                  },
+                  {
+                    "kind": "link",
+                    "id": "sup-link-2",
+                    "text": "Get help",
+                    "url": "http://apple.com/mac"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "sup-3",
                 "children": [
-                  {"kind":"heading","id":"sup-name-3","text":"iPad","level":3},
-                  {"kind":"link","id":"sup-link-3","text":"Get help","url":"http://apple.com/ipad"}
+                  {
+                    "kind": "heading",
+                    "id": "sup-name-3",
+                    "text": "iPad",
+                    "level": 3
+                  },
+                  {
+                    "kind": "link",
+                    "id": "sup-link-3",
+                    "text": "Get help",
+                    "url": "http://apple.com/ipad"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "sup-4",
                 "children": [
-                  {"kind":"heading","id":"sup-name-4","text":"Apple Watch","level":3},
-                  {"kind":"link","id":"sup-link-4","text":"Get help","url":"http://apple.com/watch"}
+                  {
+                    "kind": "heading",
+                    "id": "sup-name-4",
+                    "text": "Apple Watch",
+                    "level": 3
+                  },
+                  {
+                    "kind": "link",
+                    "id": "sup-link-4",
+                    "text": "Get help",
+                    "url": "http://apple.com/watch"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "sup-5",
                 "children": [
-                  {"kind":"heading","id":"sup-name-5","text":"AirPods","level":3},
-                  {"kind":"link","id":"sup-link-5","text":"Get help","url":"http://apple.com/store"}
+                  {
+                    "kind": "heading",
+                    "id": "sup-name-5",
+                    "text": "AirPods",
+                    "level": 3
+                  },
+                  {
+                    "kind": "link",
+                    "id": "sup-link-5",
+                    "text": "Get help",
+                    "url": "http://apple.com/store"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               },
               {
                 "kind": "card",
                 "id": "sup-6",
                 "children": [
-                  {"kind":"heading","id":"sup-name-6","text":"Apple ID and iCloud","level":3},
-                  {"kind":"link","id":"sup-link-6","text":"Get help","url":"http://apple.com/privacy"}
+                  {
+                    "kind": "heading",
+                    "id": "sup-name-6",
+                    "text": "Apple ID and iCloud",
+                    "level": 3
+                  },
+                  {
+                    "kind": "link",
+                    "id": "sup-link-6",
+                    "text": "Get help",
+                    "url": "http://apple.com/privacy"
+                  }
                 ],
-                "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d9de",
+                  "radius": 12,
+                  "padding": 16
+                }
               }
             ],
             "gap": 12
           },
-          {"kind":"heading","id":"h-2","text":"Popular topics","level":2},
-          {"kind":"text","id":"t-2","text":"Forgot your Apple ID password: on a trusted device, open Settings, tap your name, then Sign-In and Security, then Change Password."},
-          {"kind":"text","id":"t-3","text":"Update iOS: Settings, General, Software Update. iOS 27 is available for iPhone 12 and later."},
-          {"kind":"text","id":"t-4","text":"Battery service: iPhone 18 and 17 models, $99 out of warranty. Free with AppleCare+ when capacity is below 80%."},
-          {"kind":"text","id":"t-5","text":"AppleCare+: $9.99 a month for iPhone 18 Pro, covers two incidents of accidental damage a year."},
-          {"kind":"heading","id":"h-3","text":"Contact","level":2},
-          {"kind":"text","id":"t-6","text":"Call 1-800-275-2273, chat in the Support app, or visit an Apple Store. Hours are 7:00 to 21:00 local time, seven days a week."},
-          {"kind":"link","id":"reddit","text":"Community discussions on Reddit","url":"http://reddit.com/"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Popular topics",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Forgot your Apple ID password: on a trusted device, open Settings, tap your name, then Sign-In and Security, then Change Password."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Update iOS: Settings, General, Software Update. iOS 27 is available for iPhone 12 and later."
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Battery service: iPhone 18 and 17 models, $99 out of warranty. Free with AppleCare+ when capacity is below 80%."
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "AppleCare+: $9.99 a month for iPhone 18 Pro, covers two incidents of accidental damage a year."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "Contact",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-6",
+            "text": "Call 1-800-275-2273, chat in the Support app, or visit an Apple Store. Hours are 7:00 to 21:00 local time, seven days a week."
+          },
+          {
+            "kind": "link",
+            "id": "reddit",
+            "text": "Community discussions on Reddit",
+            "url": "http://reddit.com/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Newsroom","url":"http://apple.com/newsroom"},
-              {"kind":"link","id":"foot-2","text":"Privacy","url":"http://apple.com/privacy"},
-              {"kind":"link","id":"foot-3","text":"Apple on YouTube","url":"http://youtube.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Newsroom",
+                "url": "http://apple.com/newsroom"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Privacy",
+                "url": "http://apple.com/privacy"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Apple on YouTube",
+                "url": "http://youtube.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."
+          }
         ],
-        "theme": {"accent":"#0071e3","background":"#ffffff","surface":"#f5f5f7","ink":"#1d1d1f","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0071e3",
+          "background": "#ffffff",
+          "surface": "#f5f5f7",
+          "ink": "#1d1d1f",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/newsroom": {
         "version": 1,
@@ -750,17 +2201,56 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Apple","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Apple",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Store","url":"http://apple.com/store"},
-                  {"kind":"link","id":"nav-2","text":"Mac","url":"http://apple.com/mac"},
-                  {"kind":"link","id":"nav-3","text":"iPad","url":"http://apple.com/ipad"},
-                  {"kind":"link","id":"nav-4","text":"iPhone","url":"http://apple.com/iphone"},
-                  {"kind":"link","id":"nav-5","text":"Watch","url":"http://apple.com/watch"},
-                  {"kind":"link","id":"nav-6","text":"Support","url":"http://apple.com/support"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Store",
+                    "url": "http://apple.com/store"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Mac",
+                    "url": "http://apple.com/mac"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "iPad",
+                    "url": "http://apple.com/ipad"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "iPhone",
+                    "url": "http://apple.com/iphone"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Watch",
+                    "url": "http://apple.com/watch"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "Support",
+                    "url": "http://apple.com/support"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -768,61 +2258,205 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#1d1d1f","padding":14}
+            "style": {
+              "background": "#1d1d1f",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"Newsroom","level":1},
-          {"kind":"text","id":"t","text":"Press releases and updates from Apple. Media contacts: press@apple.com."},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Newsroom",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Press releases and updates from Apple. Media contacts: press@apple.com."
+          },
           {
             "kind": "card",
             "id": "post",
             "children": [
-              {"kind":"badge","id":"tag","text":"PRESS RELEASE","style":{"size":11,"color":"#ffffff","background":"#0071e3","radius":8,"padding":4}},
-              {"kind":"heading","id":"h-2","text":"Apple introduces iPhone 18 Pro and iPhone 18 Pro Max","level":2},
-              {"kind":"text","id":"t-2","text":"9 September 2026. The A20 Pro chip, a variable-aperture camera and 8K ProRes video."},
-              {"kind":"link","id":"read","text":"Read the release","url":"http://apple.com/newsroom/iphone-18-pro"}
+              {
+                "kind": "badge",
+                "id": "tag",
+                "text": "PRESS RELEASE",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#0071e3",
+                  "radius": 8,
+                  "padding": 4
+                }
+              },
+              {
+                "kind": "heading",
+                "id": "h-2",
+                "text": "Apple introduces iPhone 18 Pro and iPhone 18 Pro Max",
+                "level": 2
+              },
+              {
+                "kind": "text",
+                "id": "t-2",
+                "text": "9 September 2026. The A20 Pro chip, a variable-aperture camera and 8K ProRes video."
+              },
+              {
+                "kind": "link",
+                "id": "read",
+                "text": "Read the release",
+                "url": "http://apple.com/newsroom/iphone-18-pro"
+              }
             ],
-            "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+            "style": {
+              "background": "#ffffff",
+              "border": "#d9d9de",
+              "radius": 12,
+              "padding": 16
+            }
           },
           {
             "kind": "card",
             "id": "post-2",
             "children": [
-              {"kind":"badge","id":"tag-2","text":"PRESS RELEASE","style":{"size":11,"color":"#ffffff","background":"#0071e3","radius":8,"padding":4}},
-              {"kind":"heading","id":"h-3","text":"Apple unveils MacBook Air with M5","level":2},
-              {"kind":"text","id":"t-3","text":"3 March 2026. The most popular laptop in the world gets the M5 chip and 18 hours of battery."},
-              {"kind":"link","id":"read-2","text":"Read the release","url":"http://apple.com/newsroom/macbook-air-m5"}
+              {
+                "kind": "badge",
+                "id": "tag-2",
+                "text": "PRESS RELEASE",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#0071e3",
+                  "radius": 8,
+                  "padding": 4
+                }
+              },
+              {
+                "kind": "heading",
+                "id": "h-3",
+                "text": "Apple unveils MacBook Air with M5",
+                "level": 2
+              },
+              {
+                "kind": "text",
+                "id": "t-3",
+                "text": "3 March 2026. The most popular laptop in the world gets the M5 chip and 18 hours of battery."
+              },
+              {
+                "kind": "link",
+                "id": "read-2",
+                "text": "Read the release",
+                "url": "http://apple.com/newsroom/macbook-air-m5"
+              }
             ],
-            "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+            "style": {
+              "background": "#ffffff",
+              "border": "#d9d9de",
+              "radius": 12,
+              "padding": 16
+            }
           },
           {
             "kind": "card",
             "id": "post-3",
             "children": [
-              {"kind":"badge","id":"tag-3","text":"UPDATE","style":{"size":11,"color":"#1d1d1f","background":"#e8e8ed","radius":8,"padding":4}},
-              {"kind":"heading","id":"h-4","text":"Apple Watch blood pressure trends arrive in 40 more countries","level":2},
-              {"kind":"text","id":"t-4","text":"16 February 2026. Regulatory clearance expands the feature introduced with Series 11."},
-              {"kind":"link","id":"read-3","text":"Apple Watch","url":"http://apple.com/watch"}
+              {
+                "kind": "badge",
+                "id": "tag-3",
+                "text": "UPDATE",
+                "style": {
+                  "size": 11,
+                  "color": "#1d1d1f",
+                  "background": "#e8e8ed",
+                  "radius": 8,
+                  "padding": 4
+                }
+              },
+              {
+                "kind": "heading",
+                "id": "h-4",
+                "text": "Apple Watch blood pressure trends arrive in 40 more countries",
+                "level": 2
+              },
+              {
+                "kind": "text",
+                "id": "t-4",
+                "text": "16 February 2026. Regulatory clearance expands the feature introduced with Series 11."
+              },
+              {
+                "kind": "link",
+                "id": "read-3",
+                "text": "Apple Watch",
+                "url": "http://apple.com/watch"
+              }
             ],
-            "style": {"background":"#ffffff","border":"#d9d9de","radius":12,"padding":16}
+            "style": {
+              "background": "#ffffff",
+              "border": "#d9d9de",
+              "radius": 12,
+              "padding": 16
+            }
           },
-          {"kind":"link","id":"x","text":"Follow Apple on X","url":"http://x.com/"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "link",
+            "id": "x",
+            "text": "Follow Apple on X",
+            "url": "http://x.com/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Newsroom","url":"http://apple.com/newsroom"},
-              {"kind":"link","id":"foot-2","text":"Privacy","url":"http://apple.com/privacy"},
-              {"kind":"link","id":"foot-3","text":"Apple on YouTube","url":"http://youtube.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Newsroom",
+                "url": "http://apple.com/newsroom"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Privacy",
+                "url": "http://apple.com/privacy"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Apple on YouTube",
+                "url": "http://youtube.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."
+          }
         ],
-        "theme": {"accent":"#0071e3","background":"#ffffff","surface":"#f5f5f7","ink":"#1d1d1f","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0071e3",
+          "background": "#ffffff",
+          "surface": "#f5f5f7",
+          "ink": "#1d1d1f",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/newsroom/iphone-18-pro": {
         "version": 1,
@@ -832,17 +2466,56 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Apple","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Apple",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Store","url":"http://apple.com/store"},
-                  {"kind":"link","id":"nav-2","text":"Mac","url":"http://apple.com/mac"},
-                  {"kind":"link","id":"nav-3","text":"iPad","url":"http://apple.com/ipad"},
-                  {"kind":"link","id":"nav-4","text":"iPhone","url":"http://apple.com/iphone"},
-                  {"kind":"link","id":"nav-5","text":"Watch","url":"http://apple.com/watch"},
-                  {"kind":"link","id":"nav-6","text":"Support","url":"http://apple.com/support"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Store",
+                    "url": "http://apple.com/store"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Mac",
+                    "url": "http://apple.com/mac"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "iPad",
+                    "url": "http://apple.com/ipad"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "iPhone",
+                    "url": "http://apple.com/iphone"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Watch",
+                    "url": "http://apple.com/watch"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "Support",
+                    "url": "http://apple.com/support"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -850,34 +2523,115 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#1d1d1f","padding":14}
+            "style": {
+              "background": "#1d1d1f",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"link","id":"crumb","text":"Newsroom","url":"http://apple.com/newsroom"},
-          {"kind":"heading","id":"h","text":"Apple introduces iPhone 18 Pro and iPhone 18 Pro Max","level":1},
-          {"kind":"text","id":"t","text":"CUPERTINO, CALIFORNIA. 9 September 2026."},
-          {"kind":"text","id":"t-2","text":"Apple today announced iPhone 18 Pro and iPhone 18 Pro Max, powered by A20 Pro, the first Apple chip built on a 2-nanometre process. The new models introduce a 48MP main camera with a variable aperture, a 5x periscope telephoto, and 8K ProRes recording direct to external storage."},
-          {"kind":"text","id":"t-3","text":"\"iPhone 18 Pro is the most capable camera we have ever put in a phone, and A20 Pro makes it the fastest,\" said a spokesperson for Apple. \"It runs the largest on-device models we have shipped while lasting longer on a charge than any iPhone before it.\""},
-          {"kind":"heading","id":"h-2","text":"Pricing and availability","level":2},
-          {"kind":"text","id":"t-4","text":"iPhone 18 Pro starts at $999 and iPhone 18 Pro Max at $1,199, in Natural, Black, Desert and Blue titanium, with 256GB, 512GB, 1TB and 2TB options. Pre-orders open Friday 11 September with availability Friday 18 September."},
-          {"kind":"link","id":"buy","text":"Buy iPhone 18 Pro","url":"http://apple.com/store"},
-          {"kind":"link","id":"iphone","text":"All iPhone models","url":"http://apple.com/iphone"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "link",
+            "id": "crumb",
+            "text": "Newsroom",
+            "url": "http://apple.com/newsroom"
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Apple introduces iPhone 18 Pro and iPhone 18 Pro Max",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "CUPERTINO, CALIFORNIA. 9 September 2026."
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Apple today announced iPhone 18 Pro and iPhone 18 Pro Max, powered by A20 Pro, the first Apple chip built on a 2-nanometre process. The new models introduce a 48MP main camera with a variable aperture, a 5x periscope telephoto, and 8K ProRes recording direct to external storage."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "\"iPhone 18 Pro is the most capable camera we have ever put in a phone, and A20 Pro makes it the fastest,\" said a spokesperson for Apple. \"It runs the largest on-device models we have shipped while lasting longer on a charge than any iPhone before it.\""
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Pricing and availability",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "iPhone 18 Pro starts at $999 and iPhone 18 Pro Max at $1,199, in Natural, Black, Desert and Blue titanium, with 256GB, 512GB, 1TB and 2TB options. Pre-orders open Friday 11 September with availability Friday 18 September."
+          },
+          {
+            "kind": "link",
+            "id": "buy",
+            "text": "Buy iPhone 18 Pro",
+            "url": "http://apple.com/store"
+          },
+          {
+            "kind": "link",
+            "id": "iphone",
+            "text": "All iPhone models",
+            "url": "http://apple.com/iphone"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Newsroom","url":"http://apple.com/newsroom"},
-              {"kind":"link","id":"foot-2","text":"Privacy","url":"http://apple.com/privacy"},
-              {"kind":"link","id":"foot-3","text":"Apple on YouTube","url":"http://youtube.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Newsroom",
+                "url": "http://apple.com/newsroom"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Privacy",
+                "url": "http://apple.com/privacy"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Apple on YouTube",
+                "url": "http://youtube.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."
+          }
         ],
-        "theme": {"accent":"#0071e3","background":"#ffffff","surface":"#f5f5f7","ink":"#1d1d1f","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0071e3",
+          "background": "#ffffff",
+          "surface": "#f5f5f7",
+          "ink": "#1d1d1f",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/newsroom/macbook-air-m5": {
         "version": 1,
@@ -887,17 +2641,56 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Apple","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Apple",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Store","url":"http://apple.com/store"},
-                  {"kind":"link","id":"nav-2","text":"Mac","url":"http://apple.com/mac"},
-                  {"kind":"link","id":"nav-3","text":"iPad","url":"http://apple.com/ipad"},
-                  {"kind":"link","id":"nav-4","text":"iPhone","url":"http://apple.com/iphone"},
-                  {"kind":"link","id":"nav-5","text":"Watch","url":"http://apple.com/watch"},
-                  {"kind":"link","id":"nav-6","text":"Support","url":"http://apple.com/support"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Store",
+                    "url": "http://apple.com/store"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Mac",
+                    "url": "http://apple.com/mac"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "iPad",
+                    "url": "http://apple.com/ipad"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "iPhone",
+                    "url": "http://apple.com/iphone"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Watch",
+                    "url": "http://apple.com/watch"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "Support",
+                    "url": "http://apple.com/support"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -905,34 +2698,115 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#1d1d1f","padding":14}
+            "style": {
+              "background": "#1d1d1f",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"link","id":"crumb","text":"Newsroom","url":"http://apple.com/newsroom"},
-          {"kind":"heading","id":"h","text":"Apple unveils MacBook Air with M5","level":1},
-          {"kind":"text","id":"t","text":"CUPERTINO, CALIFORNIA. 3 March 2026."},
-          {"kind":"text","id":"t-2","text":"Apple today updated MacBook Air with the M5 chip, bringing a 10-core CPU, a 10-core GPU with hardware ray tracing, and a neural engine twice as fast as M4. The 13-inch and 15-inch models keep the fanless design and now reach 18 hours of battery life."},
-          {"kind":"text","id":"t-3","text":"Both sizes gain a 12MP Center Stage camera, support for two external displays with the lid open, and Wi-Fi 7. The new Sky Blue finish joins Midnight, Starlight and Silver."},
-          {"kind":"heading","id":"h-2","text":"Pricing and availability","level":2},
-          {"kind":"text","id":"t-4","text":"The 13-inch MacBook Air with M5 starts at $1,099 and the 15-inch at $1,299. Both are available to order today and in stores from 12 March."},
-          {"kind":"link","id":"buy","text":"Buy MacBook Air","url":"http://apple.com/store"},
-          {"kind":"link","id":"mac","text":"All Mac models","url":"http://apple.com/mac"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "link",
+            "id": "crumb",
+            "text": "Newsroom",
+            "url": "http://apple.com/newsroom"
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Apple unveils MacBook Air with M5",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "CUPERTINO, CALIFORNIA. 3 March 2026."
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "Apple today updated MacBook Air with the M5 chip, bringing a 10-core CPU, a 10-core GPU with hardware ray tracing, and a neural engine twice as fast as M4. The 13-inch and 15-inch models keep the fanless design and now reach 18 hours of battery life."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "Both sizes gain a 12MP Center Stage camera, support for two external displays with the lid open, and Wi-Fi 7. The new Sky Blue finish joins Midnight, Starlight and Silver."
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "Pricing and availability",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "The 13-inch MacBook Air with M5 starts at $1,099 and the 15-inch at $1,299. Both are available to order today and in stores from 12 March."
+          },
+          {
+            "kind": "link",
+            "id": "buy",
+            "text": "Buy MacBook Air",
+            "url": "http://apple.com/store"
+          },
+          {
+            "kind": "link",
+            "id": "mac",
+            "text": "All Mac models",
+            "url": "http://apple.com/mac"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Newsroom","url":"http://apple.com/newsroom"},
-              {"kind":"link","id":"foot-2","text":"Privacy","url":"http://apple.com/privacy"},
-              {"kind":"link","id":"foot-3","text":"Apple on YouTube","url":"http://youtube.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Newsroom",
+                "url": "http://apple.com/newsroom"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Privacy",
+                "url": "http://apple.com/privacy"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Apple on YouTube",
+                "url": "http://youtube.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."
+          }
         ],
-        "theme": {"accent":"#0071e3","background":"#ffffff","surface":"#f5f5f7","ink":"#1d1d1f","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0071e3",
+          "background": "#ffffff",
+          "surface": "#f5f5f7",
+          "ink": "#1d1d1f",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       },
       "/privacy": {
         "version": 1,
@@ -942,17 +2816,56 @@
             "kind": "row",
             "id": "masthead",
             "children": [
-              {"kind":"styled","id":"mark","text":"Apple","style":{"size":18,"weight":"bold","color":"#ffffff"}},
+              {
+                "kind": "styled",
+                "id": "mark",
+                "text": "Apple",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
               {
                 "kind": "row",
                 "id": "nav-links",
                 "children": [
-                  {"kind":"link","id":"nav","text":"Store","url":"http://apple.com/store"},
-                  {"kind":"link","id":"nav-2","text":"Mac","url":"http://apple.com/mac"},
-                  {"kind":"link","id":"nav-3","text":"iPad","url":"http://apple.com/ipad"},
-                  {"kind":"link","id":"nav-4","text":"iPhone","url":"http://apple.com/iphone"},
-                  {"kind":"link","id":"nav-5","text":"Watch","url":"http://apple.com/watch"},
-                  {"kind":"link","id":"nav-6","text":"Support","url":"http://apple.com/support"}
+                  {
+                    "kind": "link",
+                    "id": "nav",
+                    "text": "Store",
+                    "url": "http://apple.com/store"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-2",
+                    "text": "Mac",
+                    "url": "http://apple.com/mac"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-3",
+                    "text": "iPad",
+                    "url": "http://apple.com/ipad"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-4",
+                    "text": "iPhone",
+                    "url": "http://apple.com/iphone"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-5",
+                    "text": "Watch",
+                    "url": "http://apple.com/watch"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "nav-6",
+                    "text": "Support",
+                    "url": "http://apple.com/support"
+                  }
                 ],
                 "gap": 12,
                 "align": "center"
@@ -960,35 +2873,120 @@
             ],
             "gap": 18,
             "align": "center",
-            "style": {"background":"#1d1d1f","padding":14}
+            "style": {
+              "background": "#1d1d1f",
+              "padding": 14
+            }
           },
-          {"kind":"spacer","id":"gap-2","height":18},
-          {"kind":"heading","id":"h","text":"Privacy. That's Apple.","level":1},
-          {"kind":"text","id":"t","text":"Privacy is a fundamental human right, and one of our core values. Our products are designed to keep your data on your device and to give you control over what is shared."},
-          {"kind":"heading","id":"h-2","text":"How Apple products protect you","level":2},
-          {"kind":"text","id":"t-2","text":"On-device processing: Siri requests, photo analysis and Apple Intelligence features run on the device wherever possible. Requests that need more compute go to Private Cloud Compute, where the data is never stored and never available to Apple."},
-          {"kind":"text","id":"t-3","text":"App Tracking Transparency: apps must ask before tracking you across other companies' apps and websites."},
-          {"kind":"text","id":"t-4","text":"Mail Privacy Protection hides your IP address from senders; Safari blocks cross-site tracking by default; Hide My Email creates unique addresses that forward to your inbox."},
-          {"kind":"heading","id":"h-3","text":"Your data","level":2},
-          {"kind":"text","id":"t-5","text":"Download a copy of your data, correct it, or delete your account at any time from your Apple Account settings. Apple does not sell your data and never has."},
-          {"kind":"link","id":"support","text":"Apple Support","url":"http://apple.com/support"},
-          {"kind":"link","id":"wiki","text":"Privacy on Wikipedia","url":"http://en.wikipedia.org/"},
-          {"kind":"spacer","id":"gap","height":24},
-          {"kind":"divider","id":"rule"},
+          {
+            "kind": "spacer",
+            "id": "gap-2",
+            "height": 18
+          },
+          {
+            "kind": "heading",
+            "id": "h",
+            "text": "Privacy. That's Apple.",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "t",
+            "text": "Privacy is a fundamental human right, and one of our core values. Our products are designed to keep your data on your device and to give you control over what is shared."
+          },
+          {
+            "kind": "heading",
+            "id": "h-2",
+            "text": "How Apple products protect you",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-2",
+            "text": "On-device processing: Siri requests, photo analysis and Apple Intelligence features run on the device wherever possible. Requests that need more compute go to Private Cloud Compute, where the data is never stored and never available to Apple."
+          },
+          {
+            "kind": "text",
+            "id": "t-3",
+            "text": "App Tracking Transparency: apps must ask before tracking you across other companies' apps and websites."
+          },
+          {
+            "kind": "text",
+            "id": "t-4",
+            "text": "Mail Privacy Protection hides your IP address from senders; Safari blocks cross-site tracking by default; Hide My Email creates unique addresses that forward to your inbox."
+          },
+          {
+            "kind": "heading",
+            "id": "h-3",
+            "text": "Your data",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "t-5",
+            "text": "Download a copy of your data, correct it, or delete your account at any time from your Apple Account settings. Apple does not sell your data and never has."
+          },
+          {
+            "kind": "link",
+            "id": "support",
+            "text": "Apple Support",
+            "url": "http://apple.com/support"
+          },
+          {
+            "kind": "link",
+            "id": "wiki",
+            "text": "Privacy on Wikipedia",
+            "url": "http://en.wikipedia.org/"
+          },
+          {
+            "kind": "spacer",
+            "id": "gap",
+            "height": 24
+          },
+          {
+            "kind": "divider",
+            "id": "rule"
+          },
           {
             "kind": "row",
             "id": "footer",
             "children": [
-              {"kind":"link","id":"foot","text":"Newsroom","url":"http://apple.com/newsroom"},
-              {"kind":"link","id":"foot-2","text":"Privacy","url":"http://apple.com/privacy"},
-              {"kind":"link","id":"foot-3","text":"Apple on YouTube","url":"http://youtube.com/"}
+              {
+                "kind": "link",
+                "id": "foot",
+                "text": "Newsroom",
+                "url": "http://apple.com/newsroom"
+              },
+              {
+                "kind": "link",
+                "id": "foot-2",
+                "text": "Privacy",
+                "url": "http://apple.com/privacy"
+              },
+              {
+                "kind": "link",
+                "id": "foot-3",
+                "text": "Apple on YouTube",
+                "url": "http://youtube.com/"
+              }
             ],
             "gap": 12,
             "align": "center"
           },
-          {"kind":"text","id":"foot-note","text":"Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."}
+          {
+            "kind": "text",
+            "id": "foot-note",
+            "text": "Copyright 2026 Apple Inc. Prices in US dollars. Simulated storefront."
+          }
         ],
-        "theme": {"accent":"#0071e3","background":"#ffffff","surface":"#f5f5f7","ink":"#1d1d1f","muted":"#6e6e73","content_width":1000}
+        "theme": {
+          "accent": "#0071e3",
+          "background": "#ffffff",
+          "surface": "#f5f5f7",
+          "ink": "#1d1d1f",
+          "muted": "#6e6e73",
+          "content_width": 1000
+        }
       }
     },
     "records": {}
@@ -996,7 +2994,10 @@
   "place": {
     "address": "203.0.113.110",
     "zone": "internet",
-    "link": {"from":"pop-west","latency_us":1500}
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
   },
   "search_entries": [
     {
@@ -1005,7 +3006,13 @@
       "snippet": "iPhone 18 Pro, MacBook Air with M5, iPad Pro and Apple Watch Series 12.",
       "vertical": "all",
       "authority": 9,
-      "keywords": ["apple","iphone","mac","ipad","watch"]
+      "keywords": [
+        "apple",
+        "iphone",
+        "mac",
+        "ipad",
+        "watch"
+      ]
     },
     {
       "url": "http://apple.com/iphone",
@@ -1013,7 +3020,12 @@
       "snippet": "iPhone 18 Pro, iPhone 18 and iPhone 17e. Compare models, cameras and prices.",
       "vertical": "all",
       "authority": 9,
-      "keywords": ["iphone","iphone 18","iphone 18 pro","apple phone"]
+      "keywords": [
+        "iphone",
+        "iphone 18",
+        "iphone 18 pro",
+        "apple phone"
+      ]
     },
     {
       "url": "http://apple.com/mac",
@@ -1021,7 +3033,13 @@
       "snippet": "MacBook Air, MacBook Pro, iMac, Mac mini and Mac Studio with the M5 family.",
       "vertical": "all",
       "authority": 9,
-      "keywords": ["mac","macbook","macbook air","macbook pro","imac"]
+      "keywords": [
+        "mac",
+        "macbook",
+        "macbook air",
+        "macbook pro",
+        "imac"
+      ]
     },
     {
       "url": "http://apple.com/ipad",
@@ -1029,7 +3047,12 @@
       "snippet": "iPad Pro with M5, iPad Air, iPad and iPad mini.",
       "vertical": "all",
       "authority": 8,
-      "keywords": ["ipad","ipad pro","tablet","apple pencil"]
+      "keywords": [
+        "ipad",
+        "ipad pro",
+        "tablet",
+        "apple pencil"
+      ]
     },
     {
       "url": "http://apple.com/watch",
@@ -1037,7 +3060,12 @@
       "snippet": "Series 12, Ultra 3 and SE with blood pressure trends and longer battery.",
       "vertical": "all",
       "authority": 8,
-      "keywords": ["apple watch","smartwatch","ultra 3","series 12"]
+      "keywords": [
+        "apple watch",
+        "smartwatch",
+        "ultra 3",
+        "series 12"
+      ]
     },
     {
       "url": "http://apple.com/store",
@@ -1045,7 +3073,13 @@
       "snippet": "Every current Apple product with prices, trade-in values and financing.",
       "vertical": "all",
       "authority": 8,
-      "keywords": ["apple store","buy iphone","buy mac","price","trade in"]
+      "keywords": [
+        "apple store",
+        "buy iphone",
+        "buy mac",
+        "price",
+        "trade in"
+      ]
     },
     {
       "url": "http://apple.com/support",
@@ -1053,7 +3087,13 @@
       "snippet": "Help with iPhone, Mac, iPad, Apple Watch, Apple ID and AppleCare.",
       "vertical": "all",
       "authority": 8,
-      "keywords": ["apple support","apple id","forgot password","applecare","ios update"]
+      "keywords": [
+        "apple support",
+        "apple id",
+        "forgot password",
+        "applecare",
+        "ios update"
+      ]
     },
     {
       "url": "http://apple.com/newsroom",
@@ -1061,7 +3101,11 @@
       "snippet": "Press releases: iPhone 18 Pro, MacBook Air with M5 and more.",
       "vertical": "all",
       "authority": 7,
-      "keywords": ["apple news","press release","newsroom"]
+      "keywords": [
+        "apple news",
+        "press release",
+        "newsroom"
+      ]
     },
     {
       "url": "http://apple.com/newsroom/iphone-18-pro",
@@ -1069,7 +3113,11 @@
       "snippet": "A20 Pro, a variable-aperture camera and 8K ProRes video, from $999.",
       "vertical": "all",
       "authority": 7,
-      "keywords": ["iphone 18 pro","a20 pro","iphone announcement"]
+      "keywords": [
+        "iphone 18 pro",
+        "a20 pro",
+        "iphone announcement"
+      ]
     },
     {
       "url": "http://apple.com/privacy",
@@ -1077,7 +3125,11 @@
       "snippet": "On-device processing, App Tracking Transparency and Private Cloud Compute.",
       "vertical": "all",
       "authority": 7,
-      "keywords": ["apple privacy","app tracking transparency","private cloud compute"]
+      "keywords": [
+        "apple privacy",
+        "app tracking transparency",
+        "private cloud compute"
+      ]
     }
   ]
 }

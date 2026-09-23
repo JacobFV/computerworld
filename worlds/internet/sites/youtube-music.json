@@ -1465,47 +1465,6 @@
       }
     },
     "playlists": {
-      "ship-it": {
-        "id": "ship-it",
-        "title": "Ship It",
-        "owner": "carol",
-        "items": [
-          "cold-start",
-          "green-build",
-          "rollback",
-          "fan-out",
-          "mutex",
-          "backpressure",
-          "tail-latency",
-          "p99",
-          "puget",
-          "ferry-terminal",
-          "tiling"
-        ]
-      },
-      "deep-focus": {
-        "id": "deep-focus",
-        "title": "Deep Focus",
-        "owner": "alice",
-        "items": [
-          "cold-start",
-          "p99",
-          "tiling",
-          "seedless"
-        ]
-      },
-      "morning-commute": {
-        "id": "morning-commute",
-        "title": "Morning Commute",
-        "owner": "bob",
-        "items": [
-          "fan-out",
-          "puget",
-          "mark-and-sweep",
-          "stop-the-world",
-          "mutex"
-        ]
-      },
       "lo-fi-desk": {
         "id": "lo-fi-desk",
         "title": "Lo-fi at the desk",
@@ -1519,32 +1478,8 @@
         ]
       }
     },
-    "subscriptions": {
-      "alice": [
-        "tessellate",
-        "cache-miss"
-      ],
-      "carol": [
-        "low-latency"
-      ],
-      "bob": [
-        "byte-order"
-      ]
-    },
-    "likes": {
-      "alice": [
-        "tiling",
-        "cold-reads",
-        "mark-and-sweep"
-      ],
-      "carol": [
-        "backpressure",
-        "fan-out"
-      ],
-      "bob": [
-        "little-endian"
-      ]
-    },
+    "subscriptions": {},
+    "likes": {},
     "now_playing": {},
     "albums": {
       "cold-start": {
@@ -1572,57 +1507,12 @@
         "genre": "Lo-Fi"
       }
     },
-    "library": {
-      "alice": [
-        "tiling",
-        "seedless",
-        "cold-start",
-        "green-build",
-        "rollback",
-        "mark-and-sweep",
-        "puget",
-        "cold-reads",
-        "warm-cache"
-      ],
-      "carol": [
-        "backpressure",
-        "tail-latency",
-        "p99",
-        "fan-out",
-        "mutex",
-        "cold-start"
-      ],
-      "bob": [
-        "fan-out",
-        "mutex",
-        "little-endian"
-      ]
-    },
-    "history": {
-      "alice": [
-        "tiling",
-        "cold-reads",
-        "cold-start",
-        "p99",
-        "puget",
-        "mark-and-sweep"
-      ],
-      "carol": [
-        "cold-start",
-        "backpressure",
-        "fan-out",
-        "little-endian"
-      ],
-      "bob": [
-        "mutex",
-        "big-endian"
-      ]
-    },
+    "library": {},
+    "history": {},
     "devices": {
       "livingroom": {
         "name": "Living Room",
         "kind": "speaker",
-        "url": "http://livingroom.speaker.internal/",
         "protocols": [
           "airplay",
           "cast"
@@ -1631,7 +1521,6 @@
       "kitchen": {
         "name": "Kitchen",
         "kind": "speaker",
-        "url": "http://kitchen.speaker.internal/",
         "protocols": [
           "cast",
           "dlna"
@@ -1640,7 +1529,6 @@
       "office-tv": {
         "name": "Office TV",
         "kind": "tv",
-        "url": "http://office-tv.speaker.internal/",
         "protocols": [
           "airplay",
           "cast",
@@ -1650,7 +1538,6 @@
       "bedroom": {
         "name": "Bedroom",
         "kind": "speaker",
-        "url": "http://bedroom.speaker.internal/",
         "protocols": [
           "airplay",
           "cast"

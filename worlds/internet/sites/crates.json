@@ -2,7 +2,10 @@
   "id": "crates",
   "kind": "static-site",
   "node": "crates",
-  "domains": ["crates.io","www.crates.io"],
+  "domains": [
+    "crates.io",
+    "www.crates.io"
+  ],
   "port": 80,
   "initial_state": {
     "pages": {
@@ -10,344 +13,1761 @@
         "version": 1,
         "title": "crates.io: Rust Package Registry",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"crates.io","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Crates","url":"/crates"},{"kind":"link","id":"nav-1","text":"Categories","url":"/categories"},{"kind":"link","id":"nav-2","text":"Policies","url":"/policies"},{"kind":"link","id":"nav-3","text":"docs.rs","url":"http://docs.rs/"}]},
-          {"kind":"heading","id":"hero","text":"The Rust community's crate registry","level":1},
-          {"kind":"text","id":"hero-sub","text":"Every crate published with cargo lands here, immutable once published, with its README, versions, dependencies and a link to its documentation on docs.rs. 12 crates, 3,370,000 downloads."},
-          {"kind":"heading","id":"dl-title","text":"Most downloaded","level":2},
-          {"kind":"link","id":"dl-0","text":"tinyjson-rs","url":"/crates/tinyjson-rs"},
-          {"kind":"text","id":"dl-0-d","text":"742,000 downloads · v1.2.3. A small JSON parser and canonical serialiser: sorted keys, shortest floats, the same bytes every time."},
-          {"kind":"link","id":"dl-1","text":"fnvmap","url":"/crates/fnvmap"},
-          {"kind":"text","id":"dl-1-d","text":"480,000 downloads · v1.0.4. HashMap and HashSet with the FNV-1a hasher: fast on short keys and deterministic across processes."},
-          {"kind":"link","id":"dl-2","text":"hashseed","url":"/crates/hashseed"},
-          {"kind":"text","id":"dl-2-d","text":"410,000 downloads · v0.2.1. Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform."},
-          {"kind":"link","id":"dl-3","text":"detclock","url":"/crates/detclock"},
-          {"kind":"text","id":"dl-3-d","text":"356,000 downloads · v0.4.0. A logical clock that only moves when advanced. Timers fire in due order, then registration order."},
-          {"kind":"link","id":"dl-4","text":"ordmap","url":"/crates/ordmap"},
-          {"kind":"text","id":"dl-4-d","text":"318,000 downloads · v2.1.0. Insertion-ordered map and set with stable iteration, for outputs that must not depend on hash order."},
-          {"kind":"link","id":"dl-5","text":"serde-lite","url":"/crates/serde-lite"},
-          {"kind":"text","id":"dl-5-d","text":"268,000 downloads · v0.3.5. Derive-free serialisation traits for small no_std targets, compatible with serde data formats."},
-          {"kind":"link","id":"all","text":"All crates","url":"/crates"},
-          {"kind":"link","id":"cats","text":"Browse by category","url":"/categories"},
-          {"kind":"divider","id":"foot-rule"},
-          {"kind":"link","id":"foot-gh","text":"cargo on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Crates",
+                "url": "/crates"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Categories",
+                "url": "/categories"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Policies",
+                "url": "/policies"
+              },
+              {
+                "kind": "link",
+                "id": "nav-3",
+                "text": "docs.rs",
+                "url": "http://docs.rs/"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "hero",
+            "text": "The Rust community's crate registry",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "hero-sub",
+            "text": "Every crate published with cargo lands here, immutable once published, with its README, versions, dependencies and a link to its documentation on docs.rs. 12 crates, 3,370,000 downloads."
+          },
+          {
+            "kind": "heading",
+            "id": "dl-title",
+            "text": "Most downloaded",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dl-0",
+            "text": "tinyjson-rs",
+            "url": "/crates/tinyjson-rs"
+          },
+          {
+            "kind": "text",
+            "id": "dl-0-d",
+            "text": "742,000 downloads · v1.2.3. A small JSON parser and canonical serialiser: sorted keys, shortest floats, the same bytes every time."
+          },
+          {
+            "kind": "link",
+            "id": "dl-1",
+            "text": "fnvmap",
+            "url": "/crates/fnvmap"
+          },
+          {
+            "kind": "text",
+            "id": "dl-1-d",
+            "text": "480,000 downloads · v1.0.4. HashMap and HashSet with the FNV-1a hasher: fast on short keys and deterministic across processes."
+          },
+          {
+            "kind": "link",
+            "id": "dl-2",
+            "text": "hashseed",
+            "url": "/crates/hashseed"
+          },
+          {
+            "kind": "text",
+            "id": "dl-2-d",
+            "text": "410,000 downloads · v0.2.1. Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform."
+          },
+          {
+            "kind": "link",
+            "id": "dl-3",
+            "text": "detclock",
+            "url": "/crates/detclock"
+          },
+          {
+            "kind": "text",
+            "id": "dl-3-d",
+            "text": "356,000 downloads · v0.4.0. A logical clock that only moves when advanced. Timers fire in due order, then registration order."
+          },
+          {
+            "kind": "link",
+            "id": "dl-4",
+            "text": "ordmap",
+            "url": "/crates/ordmap"
+          },
+          {
+            "kind": "text",
+            "id": "dl-4-d",
+            "text": "318,000 downloads · v2.1.0. Insertion-ordered map and set with stable iteration, for outputs that must not depend on hash order."
+          },
+          {
+            "kind": "link",
+            "id": "dl-5",
+            "text": "serde-lite",
+            "url": "/crates/serde-lite"
+          },
+          {
+            "kind": "text",
+            "id": "dl-5-d",
+            "text": "268,000 downloads · v0.3.5. Derive-free serialisation traits for small no_std targets, compatible with serde data formats."
+          },
+          {
+            "kind": "link",
+            "id": "all",
+            "text": "All crates",
+            "url": "/crates"
+          },
+          {
+            "kind": "link",
+            "id": "cats",
+            "text": "Browse by category",
+            "url": "/categories"
+          },
+          {
+            "kind": "divider",
+            "id": "foot-rule"
+          },
+          {
+            "kind": "link",
+            "id": "foot-gh",
+            "text": "cargo on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/crates": {
         "version": 1,
         "title": "All crates — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"crates.io","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Crates","url":"/crates"},{"kind":"link","id":"nav-1","text":"Categories","url":"/categories"},{"kind":"link","id":"nav-2","text":"Policies","url":"/policies"},{"kind":"link","id":"nav-3","text":"docs.rs","url":"http://docs.rs/"}]},
-          {"kind":"heading","id":"title","text":"12 crates","level":1},
-          {"kind":"text","id":"sub","text":"Sorted by all-time downloads."},
-          {"kind":"link","id":"cr-0","text":"tinyjson-rs","url":"/crates/tinyjson-rs"},
-          {"kind":"text","id":"cr-0-d","text":"v1.2.3 · MIT · 742,000 downloads · praman. A small JSON parser and canonical serialiser: sorted keys, shortest floats, the same bytes every time."},
-          {"kind":"link","id":"cr-1","text":"fnvmap","url":"/crates/fnvmap"},
-          {"kind":"text","id":"cr-1-d","text":"v1.0.4 · MIT · 480,000 downloads · hbrandt. HashMap and HashSet with the FNV-1a hasher: fast on short keys and deterministic across processes."},
-          {"kind":"link","id":"cr-2","text":"hashseed","url":"/crates/hashseed"},
-          {"kind":"text","id":"cr-2-d","text":"v0.2.1 · MIT · 410,000 downloads · northstar. Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform."},
-          {"kind":"link","id":"cr-3","text":"detclock","url":"/crates/detclock"},
-          {"kind":"text","id":"cr-3-d","text":"v0.4.0 · MIT · 356,000 downloads · northstar. A logical clock that only moves when advanced. Timers fire in due order, then registration order."},
-          {"kind":"link","id":"cr-4","text":"ordmap","url":"/crates/ordmap"},
-          {"kind":"text","id":"cr-4-d","text":"v2.1.0 · MIT OR Apache-2.0 · 318,000 downloads · praman. Insertion-ordered map and set with stable iteration, for outputs that must not depend on hash order."},
-          {"kind":"link","id":"cr-5","text":"serde-lite","url":"/crates/serde-lite"},
-          {"kind":"text","id":"cr-5-d","text":"v0.3.5 · MIT OR Apache-2.0 · 268,000 downloads · praman. Derive-free serialisation traits for small no_std targets, compatible with serde data formats."},
-          {"kind":"link","id":"cr-6","text":"minihttp","url":"/crates/minihttp"},
-          {"kind":"text","id":"cr-6-d","text":"v0.9.0 · MIT · 205,000 downloads · icarvalho. A minimal HTTP/1.1 client and server on std only. Blocking, typed, one crate."},
-          {"kind":"link","id":"cr-7","text":"cw-protocol","url":"/crates/cw-protocol"},
-          {"kind":"text","id":"cr-7-d","text":"v0.1.1 · MIT OR Apache-2.0 · 184,000 downloads · northstar. Wire types for the computerworld simulator: HTTP messages, native pages, actions and errors."},
-          {"kind":"link","id":"cr-8","text":"tokenbucket-rs","url":"/crates/tokenbucket-rs"},
-          {"kind":"text","id":"cr-8-d","text":"v0.5.2 · MIT · 132,000 downloads · hbrandt. Token-bucket rate limiter with an injectable clock; sync try_take and async wait."},
-          {"kind":"link","id":"cr-9","text":"cw-network","url":"/crates/cw-network"},
-          {"kind":"text","id":"cr-9-d","text":"v0.1.1 · MIT OR Apache-2.0 · 121,000 downloads · northstar. Deterministic packet network: nodes, links with latency and loss, and a total order on delivery."},
-          {"kind":"link","id":"cr-10","text":"atlas-sim","url":"/crates/atlas-sim"},
-          {"kind":"text","id":"cr-10-d","text":"v1.8.0 · Apache-2.0 · 96,000 downloads · northstar. Rust client for the Atlas deterministic simulation runtime: worlds, ticks, machines and replay."},
-          {"kind":"link","id":"cr-11","text":"replaylog","url":"/crates/replaylog"},
-          {"kind":"text","id":"cr-11-d","text":"v0.3.0 · MIT · 58,000 downloads · northstar. Record every input to a system and replay it later, byte for byte, with a diff of what changed."}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Crates",
+                "url": "/crates"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Categories",
+                "url": "/categories"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Policies",
+                "url": "/policies"
+              },
+              {
+                "kind": "link",
+                "id": "nav-3",
+                "text": "docs.rs",
+                "url": "http://docs.rs/"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "title",
+            "text": "12 crates",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "sub",
+            "text": "Sorted by all-time downloads."
+          },
+          {
+            "kind": "link",
+            "id": "cr-0",
+            "text": "tinyjson-rs",
+            "url": "/crates/tinyjson-rs"
+          },
+          {
+            "kind": "link",
+            "id": "cr-1",
+            "text": "fnvmap",
+            "url": "/crates/fnvmap"
+          },
+          {
+            "kind": "text",
+            "id": "cr-1-d",
+            "text": "v1.0.4 · MIT · 480,000 downloads · hbrandt. HashMap and HashSet with the FNV-1a hasher: fast on short keys and deterministic across processes."
+          },
+          {
+            "kind": "link",
+            "id": "cr-2",
+            "text": "hashseed",
+            "url": "/crates/hashseed"
+          },
+          {
+            "kind": "link",
+            "id": "cr-3",
+            "text": "detclock",
+            "url": "/crates/detclock"
+          },
+          {
+            "kind": "link",
+            "id": "cr-4",
+            "text": "ordmap",
+            "url": "/crates/ordmap"
+          },
+          {
+            "kind": "link",
+            "id": "cr-5",
+            "text": "serde-lite",
+            "url": "/crates/serde-lite"
+          },
+          {
+            "kind": "link",
+            "id": "cr-6",
+            "text": "minihttp",
+            "url": "/crates/minihttp"
+          },
+          {
+            "kind": "text",
+            "id": "cr-6-d",
+            "text": "v0.9.0 · MIT · 205,000 downloads · icarvalho. A minimal HTTP/1.1 client and server on std only. Blocking, typed, one crate."
+          },
+          {
+            "kind": "link",
+            "id": "cr-7",
+            "text": "cw-protocol",
+            "url": "/crates/cw-protocol"
+          },
+          {
+            "kind": "link",
+            "id": "cr-8",
+            "text": "tokenbucket-rs",
+            "url": "/crates/tokenbucket-rs"
+          },
+          {
+            "kind": "text",
+            "id": "cr-8-d",
+            "text": "v0.5.2 · MIT · 132,000 downloads · hbrandt. Token-bucket rate limiter with an injectable clock; sync try_take and async wait."
+          },
+          {
+            "kind": "link",
+            "id": "cr-9",
+            "text": "cw-network",
+            "url": "/crates/cw-network"
+          },
+          {
+            "kind": "link",
+            "id": "cr-11",
+            "text": "replaylog",
+            "url": "/crates/replaylog"
+          }
         ]
       },
       "/categories": {
         "version": 1,
         "title": "Categories — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"crates.io","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Crates","url":"/crates"},{"kind":"link","id":"nav-1","text":"Categories","url":"/categories"},{"kind":"link","id":"nav-2","text":"Policies","url":"/policies"},{"kind":"link","id":"nav-3","text":"docs.rs","url":"http://docs.rs/"}]},
-          {"kind":"heading","id":"title","text":"Categories","level":1},
-          {"kind":"text","id":"sub","text":"Every crate declares its categories in Cargo.toml; these are the ones in use."},
-          {"kind":"heading","id":"cat-0","text":"Algorithms","level":2},
-          {"kind":"link","id":"cat-0-0","text":"hashseed","url":"/crates/hashseed"},
-          {"kind":"link","id":"cat-0-1","text":"fnvmap","url":"/crates/fnvmap"},
-          {"kind":"heading","id":"cat-1","text":"Concurrency","level":2},
-          {"kind":"link","id":"cat-1-0","text":"tokenbucket-rs","url":"/crates/tokenbucket-rs"},
-          {"kind":"heading","id":"cat-2","text":"Data structures","level":2},
-          {"kind":"link","id":"cat-2-0","text":"ordmap","url":"/crates/ordmap"},
-          {"kind":"heading","id":"cat-3","text":"Date and time","level":2},
-          {"kind":"link","id":"cat-3-0","text":"detclock","url":"/crates/detclock"},
-          {"kind":"heading","id":"cat-4","text":"Development tools","level":2},
-          {"kind":"link","id":"cat-4-0","text":"replaylog","url":"/crates/replaylog"},
-          {"kind":"heading","id":"cat-5","text":"Network programming","level":2},
-          {"kind":"link","id":"cat-5-0","text":"cw-protocol","url":"/crates/cw-protocol"},
-          {"kind":"link","id":"cat-5-1","text":"minihttp","url":"/crates/minihttp"},
-          {"kind":"heading","id":"cat-6","text":"No standard library","level":2},
-          {"kind":"link","id":"cat-6-0","text":"serde-lite","url":"/crates/serde-lite"},
-          {"kind":"heading","id":"cat-7","text":"Parser implementations","level":2},
-          {"kind":"link","id":"cat-7-0","text":"tinyjson-rs","url":"/crates/tinyjson-rs"},
-          {"kind":"heading","id":"cat-8","text":"Simulation","level":2},
-          {"kind":"link","id":"cat-8-0","text":"cw-network","url":"/crates/cw-network"},
-          {"kind":"link","id":"cat-8-1","text":"atlas-sim","url":"/crates/atlas-sim"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Crates",
+                "url": "/crates"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Categories",
+                "url": "/categories"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Policies",
+                "url": "/policies"
+              },
+              {
+                "kind": "link",
+                "id": "nav-3",
+                "text": "docs.rs",
+                "url": "http://docs.rs/"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "title",
+            "text": "Categories",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "sub",
+            "text": "Every crate declares its categories in Cargo.toml; these are the ones in use."
+          },
+          {
+            "kind": "heading",
+            "id": "cat-0",
+            "text": "Algorithms",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "cat-0-0",
+            "text": "hashseed",
+            "url": "/crates/hashseed"
+          },
+          {
+            "kind": "link",
+            "id": "cat-0-1",
+            "text": "fnvmap",
+            "url": "/crates/fnvmap"
+          },
+          {
+            "kind": "heading",
+            "id": "cat-1",
+            "text": "Concurrency",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "cat-1-0",
+            "text": "tokenbucket-rs",
+            "url": "/crates/tokenbucket-rs"
+          },
+          {
+            "kind": "heading",
+            "id": "cat-2",
+            "text": "Data structures",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "cat-2-0",
+            "text": "ordmap",
+            "url": "/crates/ordmap"
+          },
+          {
+            "kind": "heading",
+            "id": "cat-3",
+            "text": "Date and time",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "cat-3-0",
+            "text": "detclock",
+            "url": "/crates/detclock"
+          },
+          {
+            "kind": "heading",
+            "id": "cat-4",
+            "text": "Development tools",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "cat-4-0",
+            "text": "replaylog",
+            "url": "/crates/replaylog"
+          },
+          {
+            "kind": "heading",
+            "id": "cat-5",
+            "text": "Network programming",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "cat-5-0",
+            "text": "cw-protocol",
+            "url": "/crates/cw-protocol"
+          },
+          {
+            "kind": "link",
+            "id": "cat-5-1",
+            "text": "minihttp",
+            "url": "/crates/minihttp"
+          },
+          {
+            "kind": "heading",
+            "id": "cat-6",
+            "text": "No standard library",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "cat-6-0",
+            "text": "serde-lite",
+            "url": "/crates/serde-lite"
+          },
+          {
+            "kind": "heading",
+            "id": "cat-7",
+            "text": "Parser implementations",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "cat-7-0",
+            "text": "tinyjson-rs",
+            "url": "/crates/tinyjson-rs"
+          },
+          {
+            "kind": "heading",
+            "id": "cat-8",
+            "text": "Simulation",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "cat-8-0",
+            "text": "cw-network",
+            "url": "/crates/cw-network"
+          }
         ]
       },
       "/policies": {
         "version": 1,
         "title": "Policies — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"styled","id":"nav-brand","text":"crates.io","style":{"size":20,"weight":"bold"}},{"kind":"link","id":"nav-0","text":"Crates","url":"/crates"},{"kind":"link","id":"nav-1","text":"Categories","url":"/categories"},{"kind":"link","id":"nav-2","text":"Policies","url":"/policies"},{"kind":"link","id":"nav-3","text":"docs.rs","url":"http://docs.rs/"}]},
-          {"kind":"heading","id":"title","text":"Policies","level":1},
-          {"kind":"heading","id":"h1","text":"Immutability","level":2},
-          {"kind":"text","id":"p1","text":"A published version cannot be changed or deleted. It can be yanked, which stops new Cargo.lock files from selecting it while existing ones keep resolving. This is what makes a lockfile a promise."},
-          {"kind":"heading","id":"h2","text":"Crate names","level":2},
-          {"kind":"text","id":"p2","text":"Names are first come, first served, within reason. A name that is squatted, that impersonates another project or that is confusingly similar to a popular crate can be transferred by the team after contacting the owner. Hyphens and underscores are treated as equivalent."},
-          {"kind":"heading","id":"h3","text":"Security","level":2},
-          {"kind":"text","id":"p3","text":"Publishing needs an API token scoped to the crate or a trusted publisher from CI. Reports of malicious crates go to the security team by email and are acted on within one business day; a confirmed malicious version is yanked and its dependents notified."},
-          {"kind":"heading","id":"h4","text":"Rate limits","level":2},
-          {"kind":"text","id":"p4","text":"The API permits a burst of publishes per crate per day and a steady rate of downloads per address. Mirrors should use the sparse index and honour cache headers."}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "style": {
+                  "size": 20,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "nav-0",
+                "text": "Crates",
+                "url": "/crates"
+              },
+              {
+                "kind": "link",
+                "id": "nav-1",
+                "text": "Categories",
+                "url": "/categories"
+              },
+              {
+                "kind": "link",
+                "id": "nav-2",
+                "text": "Policies",
+                "url": "/policies"
+              },
+              {
+                "kind": "link",
+                "id": "nav-3",
+                "text": "docs.rs",
+                "url": "http://docs.rs/"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "title",
+            "text": "Policies",
+            "level": 1
+          },
+          {
+            "kind": "heading",
+            "id": "h1",
+            "text": "Immutability",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p1",
+            "text": "A published version cannot be changed or deleted. It can be yanked, which stops new Cargo.lock files from selecting it while existing ones keep resolving. This is what makes a lockfile a promise."
+          },
+          {
+            "kind": "heading",
+            "id": "h2",
+            "text": "Crate names",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p2",
+            "text": "Names are first come, first served, within reason. A name that is squatted, that impersonates another project or that is confusingly similar to a popular crate can be transferred by the team after contacting the owner. Hyphens and underscores are treated as equivalent."
+          },
+          {
+            "kind": "heading",
+            "id": "h3",
+            "text": "Security",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p3",
+            "text": "Publishing needs an API token scoped to the crate or a trusted publisher from CI. Reports of malicious crates go to the security team by email and are acted on within one business day; a confirmed malicious version is yanked and its dependents notified."
+          },
+          {
+            "kind": "heading",
+            "id": "h4",
+            "text": "Rate limits",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "p4",
+            "text": "The API permits a burst of publishes per crate per day and a steady rate of downloads per address. Mirrors should use the sparse index and honour cache headers."
+          }
         ]
       },
       "/crates/cw-protocol": {
         "version": 1,
         "title": "cw-protocol — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"cw-protocol 0.1.1","level":1},
-          {"kind":"text","id":"desc","text":"Wire types for the computerworld simulator: HTTP messages, native pages, actions and errors."},
-          {"kind":"styled","id":"install","text":"[dependencies]\ncw-protocol = \"0.1.1\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 0.1.1 (latest, 2026) · MIT OR Apache-2.0 · 184,000 all-time downloads · Owner northstar"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/cw-protocol","url":"http://docs.rs/cw-protocol"},
-          {"kind":"link","id":"cat","text":"Category: Network programming","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"cw-protocol is the shared vocabulary of the computerworld simulator. Every service, machine and client speaks in these types: HttpRequest and HttpResponse, the native Page tree a service renders, PageAction for what a click does, and SimError. Everything is serde-serialisable and validated; a Page that names two elements the same is rejected before it is served."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (1)","level":2},
-          {"kind":"link","id":"dep-0","text":"serde-lite","url":"/crates/serde-lite"},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "All crates",
+                "url": "/crates"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "cw-protocol 0.1.1",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "Wire types for the computerworld simulator: HTTP messages, native pages, actions and errors."
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "[dependencies]\ncw-protocol = \"0.1.1\"",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Documentation on docs.rs/cw-protocol",
+            "url": "http://docs.rs/cw-protocol"
+          },
+          {
+            "kind": "link",
+            "id": "cat",
+            "text": "Category: Network programming",
+            "url": "/categories"
+          },
+          {
+            "kind": "heading",
+            "id": "readme-h",
+            "text": "README",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "readme",
+            "text": "cw-protocol is the shared vocabulary of the computerworld simulator. Every service, machine and client speaks in these types: HttpRequest and HttpResponse, the native Page tree a service renders, PageAction for what a click does, and SimError. Everything is serde-serialisable and validated; a Page that names two elements the same is rejected before it is served."
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Dependencies (1)",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dep-0",
+            "text": "serde-lite",
+            "url": "/crates/serde-lite"
+          },
+          {
+            "kind": "link",
+            "id": "repo",
+            "text": "Repository on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/crates/cw-network": {
         "version": 1,
         "title": "cw-network — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"cw-network 0.1.1","level":1},
-          {"kind":"text","id":"desc","text":"Deterministic packet network: nodes, links with latency and loss, and a total order on delivery."},
-          {"kind":"styled","id":"install","text":"[dependencies]\ncw-network = \"0.1.1\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 0.1.1 (latest, 2026) · MIT OR Apache-2.0 · 121,000 all-time downloads · Owner northstar"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/cw-network","url":"http://docs.rs/cw-network"},
-          {"kind":"link","id":"cat","text":"Category: Simulation","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"cw-network models the links between machines and services as a graph with per-link latency and loss. Delivery is ordered by arrival tick then by a stable sequence number, so two runs of the same world deliver the same packets in the same order. Loss is drawn from a seeded stream via hashseed, never from the host."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (3)","level":2},
-          {"kind":"link","id":"dep-0","text":"cw-protocol","url":"/crates/cw-protocol"},
-          {"kind":"link","id":"dep-1","text":"detclock","url":"/crates/detclock"},
-          {"kind":"link","id":"dep-2","text":"hashseed","url":"/crates/hashseed"},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "All crates",
+                "url": "/crates"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "cw-network 0.1.1",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "Deterministic packet network: nodes, links with latency and loss, and a total order on delivery."
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "[dependencies]\ncw-network = \"0.1.1\"",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Documentation on docs.rs/cw-network",
+            "url": "http://docs.rs/cw-network"
+          },
+          {
+            "kind": "link",
+            "id": "cat",
+            "text": "Category: Simulation",
+            "url": "/categories"
+          },
+          {
+            "kind": "heading",
+            "id": "readme-h",
+            "text": "README",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "readme",
+            "text": "cw-network models the links between machines and services as a graph with per-link latency and loss. Delivery is ordered by arrival tick then by a stable sequence number, so two runs of the same world deliver the same packets in the same order. Loss is drawn from a seeded stream via hashseed, never from the host."
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Dependencies (3)",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dep-0",
+            "text": "cw-protocol",
+            "url": "/crates/cw-protocol"
+          },
+          {
+            "kind": "link",
+            "id": "dep-1",
+            "text": "detclock",
+            "url": "/crates/detclock"
+          },
+          {
+            "kind": "link",
+            "id": "dep-2",
+            "text": "hashseed",
+            "url": "/crates/hashseed"
+          },
+          {
+            "kind": "link",
+            "id": "repo",
+            "text": "Repository on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/crates/detclock": {
         "version": 1,
         "title": "detclock — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"detclock 0.4.0","level":1},
-          {"kind":"text","id":"desc","text":"A logical clock that only moves when advanced. Timers fire in due order, then registration order."},
-          {"kind":"styled","id":"install","text":"[dependencies]\ndetclock = \"0.4.0\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 0.4.0 (latest, 2026) · MIT · 356,000 all-time downloads · Owner northstar"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/detclock","url":"http://docs.rs/detclock"},
-          {"kind":"link","id":"cat","text":"Category: Date and time","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"detclock is a clock for simulations and tests. now() is a tick, advance(n) moves it and fires due timers, and nothing reads the wall clock. Timers with the same due tick fire in the order they were registered, so a run is reproducible. An optional feature provides a tokio-compatible time driver."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"None."},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "All crates",
+                "url": "/crates"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "detclock 0.4.0",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "A logical clock that only moves when advanced. Timers fire in due order, then registration order."
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "[dependencies]\ndetclock = \"0.4.0\"",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Documentation on docs.rs/detclock",
+            "url": "http://docs.rs/detclock"
+          },
+          {
+            "kind": "link",
+            "id": "cat",
+            "text": "Category: Date and time",
+            "url": "/categories"
+          },
+          {
+            "kind": "heading",
+            "id": "readme-h",
+            "text": "README",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "readme",
+            "text": "detclock is a clock for simulations and tests. now() is a tick, advance(n) moves it and fires due timers, and nothing reads the wall clock. Timers with the same due tick fire in the order they were registered, so a run is reproducible. An optional feature provides a tokio-compatible time driver."
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Dependencies (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "None."
+          },
+          {
+            "kind": "link",
+            "id": "repo",
+            "text": "Repository on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/crates/tinyjson-rs": {
         "version": 1,
         "title": "tinyjson-rs — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"tinyjson-rs 1.2.3","level":1},
-          {"kind":"text","id":"desc","text":"A small JSON parser and canonical serialiser: sorted keys, shortest floats, the same bytes every time."},
-          {"kind":"styled","id":"install","text":"[dependencies]\ntinyjson-rs = \"1.2.3\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 1.2.3 (latest, 2026) · MIT · 742,000 all-time downloads · Owner praman"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/tinyjson-rs","url":"http://docs.rs/tinyjson-rs"},
-          {"kind":"link","id":"cat","text":"Category: Parser implementations","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"tinyjson-rs parses JSON into a Value enum and serialises it canonically, with object keys sorted and floats in shortest round-trip form, so that a hash of the output means something. It is a few hundred lines with no dependencies, and it is not a replacement for serde_json when you have structs to map."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"None."},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "All crates",
+                "url": "/crates"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "tinyjson-rs 1.2.3",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "A small JSON parser and canonical serialiser: sorted keys, shortest floats, the same bytes every time."
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "[dependencies]\ntinyjson-rs = \"1.2.3\"",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Documentation on docs.rs/tinyjson-rs",
+            "url": "http://docs.rs/tinyjson-rs"
+          },
+          {
+            "kind": "link",
+            "id": "cat",
+            "text": "Category: Parser implementations",
+            "url": "/categories"
+          },
+          {
+            "kind": "heading",
+            "id": "readme-h",
+            "text": "README",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "readme",
+            "text": "tinyjson-rs parses JSON into a Value enum and serialises it canonically, with object keys sorted and floats in shortest round-trip form, so that a hash of the output means something. It is a few hundred lines with no dependencies, and it is not a replacement for serde_json when you have structs to map."
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Dependencies (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "None."
+          },
+          {
+            "kind": "link",
+            "id": "repo",
+            "text": "Repository on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/crates/serde-lite": {
         "version": 1,
         "title": "serde-lite — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"serde-lite 0.3.5","level":1},
-          {"kind":"text","id":"desc","text":"Derive-free serialisation traits for small no_std targets, compatible with serde data formats."},
-          {"kind":"styled","id":"install","text":"[dependencies]\nserde-lite = \"0.3.5\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 0.3.5 (latest, 2026) · MIT OR Apache-2.0 · 268,000 all-time downloads · Owner praman"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/serde-lite","url":"http://docs.rs/serde-lite"},
-          {"kind":"link","id":"cat","text":"Category: No standard library","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"serde-lite is a pair of traits, Serialize and Deserialize, implemented by hand rather than derived, for environments where proc macros are unwelcome or code size matters. It talks to the serde data model so any serde format works. tinyjson-rs is the reference format and is used in the tests."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (1)","level":2},
-          {"kind":"link","id":"dep-0","text":"tinyjson-rs","url":"/crates/tinyjson-rs"},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
-        ]
-      },
-      "/crates/atlas-sim": {
-        "version": 1,
-        "title": "atlas-sim — crates.io",
-        "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"atlas-sim 1.8.0","level":1},
-          {"kind":"text","id":"desc","text":"Rust client for the Atlas deterministic simulation runtime: worlds, ticks, machines and replay."},
-          {"kind":"styled","id":"install","text":"[dependencies]\natlas-sim = \"1.8.0\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 1.8.0 (latest, 2026) · Apache-2.0 · 96,000 all-time downloads · Owner northstar"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/atlas-sim","url":"http://docs.rs/atlas-sim"},
-          {"kind":"link","id":"cat","text":"Category: Simulation","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"atlas-sim connects to an Atlas server, creates a world from a seed, steps it by ticks and reads any machine's screen, file system or network. Calls are serialised so a run is a function of the seed and the call order. A stub server behind a feature flag runs a world in-process for tests."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (3)","level":2},
-          {"kind":"link","id":"dep-0","text":"cw-protocol","url":"/crates/cw-protocol"},
-          {"kind":"link","id":"dep-1","text":"minihttp","url":"/crates/minihttp"},
-          {"kind":"link","id":"dep-2","text":"detclock","url":"/crates/detclock"},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "All crates",
+                "url": "/crates"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "serde-lite 0.3.5",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "Derive-free serialisation traits for small no_std targets, compatible with serde data formats."
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "[dependencies]\nserde-lite = \"0.3.5\"",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Documentation on docs.rs/serde-lite",
+            "url": "http://docs.rs/serde-lite"
+          },
+          {
+            "kind": "link",
+            "id": "cat",
+            "text": "Category: No standard library",
+            "url": "/categories"
+          },
+          {
+            "kind": "heading",
+            "id": "readme-h",
+            "text": "README",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "readme",
+            "text": "serde-lite is a pair of traits, Serialize and Deserialize, implemented by hand rather than derived, for environments where proc macros are unwelcome or code size matters. It talks to the serde data model so any serde format works. tinyjson-rs is the reference format and is used in the tests."
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Dependencies (1)",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dep-0",
+            "text": "tinyjson-rs",
+            "url": "/crates/tinyjson-rs"
+          },
+          {
+            "kind": "link",
+            "id": "repo",
+            "text": "Repository on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/crates/hashseed": {
         "version": 1,
         "title": "hashseed — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"hashseed 0.2.1","level":1},
-          {"kind":"text","id":"desc","text":"Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform."},
-          {"kind":"styled","id":"install","text":"[dependencies]\nhashseed = \"0.2.1\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 0.2.1 (latest, 2026) · MIT · 410,000 all-time downloads · Owner northstar"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/hashseed","url":"http://docs.rs/hashseed"},
-          {"kind":"link","id":"cat","text":"Category: Algorithms","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"hashseed derives independent random streams from one root seed by hashing a name into a stream id, so a simulation can hand each component its own reproducible generator. The algorithm is PCG-XSH-RR with a fixed increment; the output is stable across versions of this crate, which is a documented promise."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"None."},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "All crates",
+                "url": "/crates"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "hashseed 0.2.1",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform."
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "[dependencies]\nhashseed = \"0.2.1\"",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Documentation on docs.rs/hashseed",
+            "url": "http://docs.rs/hashseed"
+          },
+          {
+            "kind": "link",
+            "id": "cat",
+            "text": "Category: Algorithms",
+            "url": "/categories"
+          },
+          {
+            "kind": "heading",
+            "id": "readme-h",
+            "text": "README",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "readme",
+            "text": "hashseed derives independent random streams from one root seed by hashing a name into a stream id, so a simulation can hand each component its own reproducible generator. The algorithm is PCG-XSH-RR with a fixed increment; the output is stable across versions of this crate, which is a documented promise."
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Dependencies (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "None."
+          },
+          {
+            "kind": "link",
+            "id": "repo",
+            "text": "Repository on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/crates/tokenbucket-rs": {
         "version": 1,
         "title": "tokenbucket-rs — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"tokenbucket-rs 0.5.2","level":1},
-          {"kind":"text","id":"desc","text":"Token-bucket rate limiter with an injectable clock; sync try_take and async wait."},
-          {"kind":"styled","id":"install","text":"[dependencies]\ntokenbucket-rs = \"0.5.2\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 0.5.2 (latest, 2026) · MIT · 132,000 all-time downloads · Owner hbrandt"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/tokenbucket-rs","url":"http://docs.rs/tokenbucket-rs"},
-          {"kind":"link","id":"cat","text":"Category: Concurrency","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"tokenbucket-rs is the classic algorithm: a bucket of capacity N refills at R per second, try_take(k) succeeds when k are available and wait(k) resolves when they will be. The clock is a trait; detclock implements it, so a limiter under test behaves the same every run."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (1)","level":2},
-          {"kind":"link","id":"dep-0","text":"detclock","url":"/crates/detclock"},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "All crates",
+                "url": "/crates"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "tokenbucket-rs 0.5.2",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "Token-bucket rate limiter with an injectable clock; sync try_take and async wait."
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "[dependencies]\ntokenbucket-rs = \"0.5.2\"",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "Version 0.5.2 (latest, 2026) · MIT · 132,000 all-time downloads · Owner hbrandt"
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Documentation on docs.rs/tokenbucket-rs",
+            "url": "http://docs.rs/tokenbucket-rs"
+          },
+          {
+            "kind": "link",
+            "id": "cat",
+            "text": "Category: Concurrency",
+            "url": "/categories"
+          },
+          {
+            "kind": "heading",
+            "id": "readme-h",
+            "text": "README",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "readme",
+            "text": "tokenbucket-rs is the classic algorithm: a bucket of capacity N refills at R per second, try_take(k) succeeds when k are available and wait(k) resolves when they will be. The clock is a trait; detclock implements it, so a limiter under test behaves the same every run."
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Dependencies (1)",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dep-0",
+            "text": "detclock",
+            "url": "/crates/detclock"
+          },
+          {
+            "kind": "link",
+            "id": "repo",
+            "text": "Repository on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/crates/minihttp": {
         "version": 1,
         "title": "minihttp — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"minihttp 0.9.0","level":1},
-          {"kind":"text","id":"desc","text":"A minimal HTTP/1.1 client and server on std only. Blocking, typed, one crate."},
-          {"kind":"styled","id":"install","text":"[dependencies]\nminihttp = \"0.9.0\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 0.9.0 (latest, 2026) · MIT · 205,000 all-time downloads · Owner icarvalho"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/minihttp","url":"http://docs.rs/minihttp"},
-          {"kind":"link","id":"cat","text":"Category: Network programming","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"minihttp is the client for scripts and test fixtures and the server for tiny services: get, post and a request builder, and a server that maps paths to handlers. It uses std::net, has no async runtime and no TLS, and its Response has json() through tinyjson-rs."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (1)","level":2},
-          {"kind":"link","id":"dep-0","text":"tinyjson-rs","url":"/crates/tinyjson-rs"},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "All crates",
+                "url": "/crates"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "minihttp 0.9.0",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "A minimal HTTP/1.1 client and server on std only. Blocking, typed, one crate."
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "[dependencies]\nminihttp = \"0.9.0\"",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "Version 0.9.0 (latest, 2026) · MIT · 205,000 all-time downloads · Owner icarvalho"
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Documentation on docs.rs/minihttp",
+            "url": "http://docs.rs/minihttp"
+          },
+          {
+            "kind": "link",
+            "id": "cat",
+            "text": "Category: Network programming",
+            "url": "/categories"
+          },
+          {
+            "kind": "heading",
+            "id": "readme-h",
+            "text": "README",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "readme",
+            "text": "minihttp is the client for scripts and test fixtures and the server for tiny services: get, post and a request builder, and a server that maps paths to handlers. It uses std::net, has no async runtime and no TLS, and its Response has json() through tinyjson-rs."
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Dependencies (1)",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dep-0",
+            "text": "tinyjson-rs",
+            "url": "/crates/tinyjson-rs"
+          },
+          {
+            "kind": "link",
+            "id": "repo",
+            "text": "Repository on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/crates/ordmap": {
         "version": 1,
         "title": "ordmap — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"ordmap 2.1.0","level":1},
-          {"kind":"text","id":"desc","text":"Insertion-ordered map and set with stable iteration, for outputs that must not depend on hash order."},
-          {"kind":"styled","id":"install","text":"[dependencies]\nordmap = \"2.1.0\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 2.1.0 (latest, 2026) · MIT OR Apache-2.0 · 318,000 all-time downloads · Owner praman"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/ordmap","url":"http://docs.rs/ordmap"},
-          {"kind":"link","id":"cat","text":"Category: Data structures","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"ordmap keeps entries in insertion order and iterates them that way, however they were hashed, so a serialised map or a log line is the same on every platform and every run. Lookup is a hash index over a vector. It is the map to reach for when iteration order can reach an output."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"None."},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "All crates",
+                "url": "/crates"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "ordmap 2.1.0",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "Insertion-ordered map and set with stable iteration, for outputs that must not depend on hash order."
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "[dependencies]\nordmap = \"2.1.0\"",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Documentation on docs.rs/ordmap",
+            "url": "http://docs.rs/ordmap"
+          },
+          {
+            "kind": "link",
+            "id": "cat",
+            "text": "Category: Data structures",
+            "url": "/categories"
+          },
+          {
+            "kind": "heading",
+            "id": "readme-h",
+            "text": "README",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "readme",
+            "text": "ordmap keeps entries in insertion order and iterates them that way, however they were hashed, so a serialised map or a log line is the same on every platform and every run. Lookup is a hash index over a vector. It is the map to reach for when iteration order can reach an output."
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Dependencies (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "None."
+          },
+          {
+            "kind": "link",
+            "id": "repo",
+            "text": "Repository on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/crates/replaylog": {
         "version": 1,
         "title": "replaylog — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"replaylog 0.3.0","level":1},
-          {"kind":"text","id":"desc","text":"Record every input to a system and replay it later, byte for byte, with a diff of what changed."},
-          {"kind":"styled","id":"install","text":"[dependencies]\nreplaylog = \"0.3.0\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 0.3.0 (latest, 2026) · MIT · 58,000 all-time downloads · Owner northstar"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/replaylog","url":"http://docs.rs/replaylog"},
-          {"kind":"link","id":"cat","text":"Category: Development tools","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"replaylog writes every input a system receives to an append-only log with its tick, and reads the log back to drive the system again. A replay that diverges reports the first tick at which the output differed and what the difference was. Logs are canonical JSON lines through tinyjson-rs; the diff uses ordmap to keep its report stable."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (2)","level":2},
-          {"kind":"link","id":"dep-0","text":"tinyjson-rs","url":"/crates/tinyjson-rs"},
-          {"kind":"link","id":"dep-1","text":"ordmap","url":"/crates/ordmap"},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "All crates",
+                "url": "/crates"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "replaylog 0.3.0",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "Record every input to a system and replay it later, byte for byte, with a diff of what changed."
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "[dependencies]\nreplaylog = \"0.3.0\"",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Documentation on docs.rs/replaylog",
+            "url": "http://docs.rs/replaylog"
+          },
+          {
+            "kind": "link",
+            "id": "cat",
+            "text": "Category: Development tools",
+            "url": "/categories"
+          },
+          {
+            "kind": "heading",
+            "id": "readme-h",
+            "text": "README",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "readme",
+            "text": "replaylog writes every input a system receives to an append-only log with its tick, and reads the log back to drive the system again. A replay that diverges reports the first tick at which the output differed and what the difference was. Logs are canonical JSON lines through tinyjson-rs; the diff uses ordmap to keep its report stable."
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Dependencies (2)",
+            "level": 2
+          },
+          {
+            "kind": "link",
+            "id": "dep-0",
+            "text": "tinyjson-rs",
+            "url": "/crates/tinyjson-rs"
+          },
+          {
+            "kind": "link",
+            "id": "dep-1",
+            "text": "ordmap",
+            "url": "/crates/ordmap"
+          },
+          {
+            "kind": "link",
+            "id": "repo",
+            "text": "Repository on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       },
       "/crates/fnvmap": {
         "version": 1,
         "title": "fnvmap — crates.io",
         "elements": [
-          {"kind":"row","id":"nav","gap":16,"align":"center","children":[{"kind":"link","id":"nav-brand","text":"crates.io","url":"/"},{"kind":"link","id":"nav-list","text":"All crates","url":"/crates"}]},
-          {"kind":"heading","id":"name","text":"fnvmap 1.0.4","level":1},
-          {"kind":"text","id":"desc","text":"HashMap and HashSet with the FNV-1a hasher: fast on short keys and deterministic across processes."},
-          {"kind":"styled","id":"install","text":"[dependencies]\nfnvmap = \"1.0.4\"","style":{"mono":true,"size":13,"padding":8,"background":"#f4f4f4","radius":4}},
-          {"kind":"text","id":"meta","text":"Version 1.0.4 (latest, 2026) · MIT · 480,000 all-time downloads · Owner hbrandt"},
-          {"kind":"link","id":"docs","text":"Documentation on docs.rs/fnvmap","url":"http://docs.rs/fnvmap"},
-          {"kind":"link","id":"cat","text":"Category: Algorithms","url":"/categories"},
-          {"kind":"heading","id":"readme-h","text":"README","level":2},
-          {"kind":"text","id":"readme","text":"fnvmap is std's HashMap and HashSet with FNV-1a as the hasher and no random seed, so the same keys hash the same way in every process. That makes iteration order reproducible, which is what a simulation wants and what a network service exposed to untrusted keys does not; the documentation says so at the top."},
-          {"kind":"heading","id":"deps-h","text":"Dependencies (0)","level":2},
-          {"kind":"text","id":"deps-none","text":"None."},
-          {"kind":"link","id":"repo","text":"Repository on GitHub","url":"http://github.com/"}
+          {
+            "kind": "row",
+            "id": "nav",
+            "gap": 16,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "nav-brand",
+                "text": "crates.io",
+                "url": "/"
+              },
+              {
+                "kind": "link",
+                "id": "nav-list",
+                "text": "All crates",
+                "url": "/crates"
+              }
+            ]
+          },
+          {
+            "kind": "heading",
+            "id": "name",
+            "text": "fnvmap 1.0.4",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "desc",
+            "text": "HashMap and HashSet with the FNV-1a hasher: fast on short keys and deterministic across processes."
+          },
+          {
+            "kind": "styled",
+            "id": "install",
+            "text": "[dependencies]\nfnvmap = \"1.0.4\"",
+            "style": {
+              "mono": true,
+              "size": 13,
+              "padding": 8,
+              "background": "#f4f4f4",
+              "radius": 4
+            }
+          },
+          {
+            "kind": "text",
+            "id": "meta",
+            "text": "Version 1.0.4 (latest, 2026) · MIT · 480,000 all-time downloads · Owner hbrandt"
+          },
+          {
+            "kind": "link",
+            "id": "docs",
+            "text": "Documentation on docs.rs/fnvmap",
+            "url": "http://docs.rs/fnvmap"
+          },
+          {
+            "kind": "link",
+            "id": "cat",
+            "text": "Category: Algorithms",
+            "url": "/categories"
+          },
+          {
+            "kind": "heading",
+            "id": "readme-h",
+            "text": "README",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "readme",
+            "text": "fnvmap is std's HashMap and HashSet with FNV-1a as the hasher and no random seed, so the same keys hash the same way in every process. That makes iteration order reproducible, which is what a simulation wants and what a network service exposed to untrusted keys does not; the documentation says so at the top."
+          },
+          {
+            "kind": "heading",
+            "id": "deps-h",
+            "text": "Dependencies (0)",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "deps-none",
+            "text": "None."
+          },
+          {
+            "kind": "link",
+            "id": "repo",
+            "text": "Repository on GitHub",
+            "url": "http://github.com/"
+          }
         ]
       }
     },
     "records": {}
   },
   "search_entries": [
-    {"url":"http://crates.io/","title":"crates.io: Rust Package Registry","snippet":"The Rust community's crate host. Every crate with its README, versions, dependencies and docs.rs link.","vertical": "all","authority":8,"keywords":["crates.io","rust","crates","cargo","registry"]},
-    {"url":"http://crates.io/crates","title":"All crates — crates.io","snippet":"All 12 crates sorted by downloads.","vertical": "all","authority":7,"keywords":["rust crates","browse","search","cargo"]},
-    {"url":"http://crates.io/categories","title":"Categories — crates.io","snippet":"Crates grouped by the categories they declare.","vertical": "all","authority":6,"keywords":["crate categories","rust","simulation","algorithms"]},
-    {"url":"http://crates.io/policies","title":"Policies — crates.io","snippet":"Immutability, crate names, security and rate limits.","vertical": "all","authority":6,"keywords":["crates.io policies","yank","crate name"]},
-    {"url":"http://crates.io/crates/cw-protocol","title":"cw-protocol — crates.io","snippet":"Wire types for the computerworld simulator: HTTP messages, native pages, actions and errors. v0.1.1, MIT OR Apache-2.0.","vertical": "all","authority":7,"keywords":["cw-protocol","rust","crate","cargo","computerworld","simulator","messages"]},
-    {"url":"http://crates.io/crates/cw-network","title":"cw-network — crates.io","snippet":"Deterministic packet network: nodes, links with latency and loss, and a total order on delivery. v0.1.1, MIT OR Apache-2.0.","vertical": "all","authority":7,"keywords":["cw-network","rust","crate","cargo","deterministic","packet","network"]},
-    {"url":"http://crates.io/crates/detclock","title":"detclock — crates.io","snippet":"A logical clock that only moves when advanced. Timers fire in due order, then registration order. v0.4.0, MIT.","vertical": "all","authority":7,"keywords":["detclock","rust","crate","cargo","logical","advanced","timers"]},
-    {"url":"http://crates.io/crates/tinyjson-rs","title":"tinyjson-rs — crates.io","snippet":"A small JSON parser and canonical serialiser: sorted keys, shortest floats, the same bytes every time. v1.2.3, MIT.","vertical": "all","authority":7,"keywords":["tinyjson-rs","rust","crate","cargo","parser","canonical","serialiser"]},
-    {"url":"http://crates.io/crates/serde-lite","title":"serde-lite — crates.io","snippet":"Derive-free serialisation traits for small no_std targets, compatible with serde data formats. v0.3.5, MIT OR Apache-2.0.","vertical": "all","authority":7,"keywords":["serde-lite","rust","crate","cargo","derive","serialisation","traits"]},
-    {"url":"http://crates.io/crates/atlas-sim","title":"atlas-sim — crates.io","snippet":"Rust client for the Atlas deterministic simulation runtime: worlds, ticks, machines and replay. v1.8.0, Apache-2.0.","vertical": "all","authority":7,"keywords":["atlas-sim","rust","crate","cargo","client","deterministic","simulation"]},
-    {"url":"http://crates.io/crates/hashseed","title":"hashseed — crates.io","snippet":"Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform. v0.2.1, MIT.","vertical": "all","authority":7,"keywords":["hashseed","rust","crate","cargo","seeded","splittable","pseudo"]},
-    {"url":"http://crates.io/crates/tokenbucket-rs","title":"tokenbucket-rs — crates.io","snippet":"Token-bucket rate limiter with an injectable clock; sync try_take and async wait. v0.5.2, MIT.","vertical": "all","authority":7,"keywords":["tokenbucket-rs","rust","crate","cargo","bucket","limiter","injectable"]}
+    {
+      "url": "http://crates.io/",
+      "title": "crates.io: Rust Package Registry",
+      "snippet": "The Rust community's crate host. Every crate with its README, versions, dependencies and docs.rs link.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": [
+        "crates.io",
+        "rust",
+        "crates",
+        "cargo",
+        "registry"
+      ]
+    },
+    {
+      "url": "http://crates.io/crates",
+      "title": "All crates — crates.io",
+      "snippet": "All 12 crates sorted by downloads.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "rust crates",
+        "browse",
+        "search",
+        "cargo"
+      ]
+    },
+    {
+      "url": "http://crates.io/categories",
+      "title": "Categories — crates.io",
+      "snippet": "Crates grouped by the categories they declare.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "crate categories",
+        "rust",
+        "simulation",
+        "algorithms"
+      ]
+    },
+    {
+      "url": "http://crates.io/policies",
+      "title": "Policies — crates.io",
+      "snippet": "Immutability, crate names, security and rate limits.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "crates.io policies",
+        "yank",
+        "crate name"
+      ]
+    },
+    {
+      "url": "http://crates.io/crates/cw-protocol",
+      "title": "cw-protocol — crates.io",
+      "snippet": "Wire types for the computerworld simulator: HTTP messages, native pages, actions and errors. v0.1.1, MIT OR Apache-2.0.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "cw-protocol",
+        "rust",
+        "crate",
+        "cargo",
+        "computerworld",
+        "simulator",
+        "messages"
+      ]
+    },
+    {
+      "url": "http://crates.io/crates/cw-network",
+      "title": "cw-network — crates.io",
+      "snippet": "Deterministic packet network: nodes, links with latency and loss, and a total order on delivery. v0.1.1, MIT OR Apache-2.0.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "cw-network",
+        "rust",
+        "crate",
+        "cargo",
+        "deterministic",
+        "packet",
+        "network"
+      ]
+    },
+    {
+      "url": "http://crates.io/crates/detclock",
+      "title": "detclock — crates.io",
+      "snippet": "A logical clock that only moves when advanced. Timers fire in due order, then registration order. v0.4.0, MIT.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "detclock",
+        "rust",
+        "crate",
+        "cargo",
+        "logical",
+        "advanced",
+        "timers"
+      ]
+    },
+    {
+      "url": "http://crates.io/crates/tinyjson-rs",
+      "title": "tinyjson-rs — crates.io",
+      "snippet": "A small JSON parser and canonical serialiser: sorted keys, shortest floats, the same bytes every time. v1.2.3, MIT.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "tinyjson-rs",
+        "rust",
+        "crate",
+        "cargo",
+        "parser",
+        "canonical",
+        "serialiser"
+      ]
+    },
+    {
+      "url": "http://crates.io/crates/serde-lite",
+      "title": "serde-lite — crates.io",
+      "snippet": "Derive-free serialisation traits for small no_std targets, compatible with serde data formats. v0.3.5, MIT OR Apache-2.0.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "serde-lite",
+        "rust",
+        "crate",
+        "cargo",
+        "derive",
+        "serialisation",
+        "traits"
+      ]
+    },
+    {
+      "url": "http://crates.io/crates/hashseed",
+      "title": "hashseed — crates.io",
+      "snippet": "Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform. v0.2.1, MIT.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "hashseed",
+        "rust",
+        "crate",
+        "cargo",
+        "seeded",
+        "splittable",
+        "pseudo"
+      ]
+    },
+    {
+      "url": "http://crates.io/crates/tokenbucket-rs",
+      "title": "tokenbucket-rs — crates.io",
+      "snippet": "Token-bucket rate limiter with an injectable clock; sync try_take and async wait. v0.5.2, MIT.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "tokenbucket-rs",
+        "rust",
+        "crate",
+        "cargo",
+        "bucket",
+        "limiter",
+        "injectable"
+      ]
+    }
   ],
-  "place": {"address":"203.0.113.134","zone":"internet","link":{"from":"pop-west","latency_us":1500}}
+  "place": {
+    "address": "203.0.113.134",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  }
 }

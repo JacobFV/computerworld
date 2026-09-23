@@ -1,0 +1,87 @@
+{
+  "initial_state": {
+    "places": {
+      "bayfront-depot": {
+        "summary": "Light rail and bus interchange two blocks south of the Northstar campus."
+      },
+      "bridgetown-annex": {
+        "name": "Northstar Bridgetown Annex",
+        "website": "http://northstar.example/",
+        "tags": [
+          "office",
+          "northstar"
+        ]
+      },
+      "harborline-coffee": {
+        "summary": "The Northstar standup runs on this. Cardamom bun, flat white, back upstairs."
+      },
+      "northstar-hq": {
+        "id": "northstar-hq",
+        "name": "Northstar HQ",
+        "kind": "office",
+        "address": "410 Bayfront Ave, Seattle WA",
+        "lat": 47572600,
+        "lon": -122348000,
+        "rating": 46,
+        "reviews": 128,
+        "hours": "Mon-Fri 8:00-18:00",
+        "phone": "+1 206 555 0148",
+        "website": "http://northstar.example/",
+        "summary": "Northstar's bayfront campus: engineering on four and five, the lab in the basement.",
+        "tags": [
+          "office",
+          "northstar",
+          "engineering"
+        ]
+      },
+      "southbay-lab": {
+        "name": "Northstar South Bay Lab",
+        "website": "http://northstar.example/",
+        "tags": [
+          "office",
+          "northstar",
+          "lab"
+        ]
+      }
+    },
+    "saved": {
+      "alice": [
+        "seattle"
+      ],
+      "carol": [
+        "seattle",
+        "portland"
+      ],
+      "bob": [
+        "san-jose"
+      ]
+    },
+    "forecasts": {
+      "seattle": {
+        "place": "northstar-hq"
+      }
+    },
+    "alerts": [
+      {
+        "id": "wx-1",
+        "city": "seattle",
+        "severity": "Advisory",
+        "title": "Rain likely through Monday evening",
+        "body": "Steady rain and gusts to 30 mph across the Seattle metro. Allow extra time on the Pike St approach.",
+        "tick": 4,
+        "acked": []
+      },
+      {
+        "id": "wx-2",
+        "city": "portland",
+        "severity": "Watch",
+        "title": "River level watch on the Rivergate reach",
+        "body": "Levels are rising after four days of rain upstream. No action needed yet.",
+        "tick": 5,
+        "acked": [
+          "carol"
+        ]
+      }
+    ]
+  }
+}

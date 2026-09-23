@@ -1,0 +1,402 @@
+{
+  "initial_state": {
+    "in_the_news": [
+      {
+        "label": "Northstar's Atlas bets everything on determinism — The Verge",
+        "url": "http://theverge.com/2026/atlas-determinism"
+      },
+      {
+        "label": "The northstar/atlas reference implementation",
+        "url": "http://github.com/northstar/atlas"
+      }
+    ],
+    "accounts": {
+      "alice": "alicechen",
+      "bob": "bmartinez",
+      "carol": "cnakamura",
+      "admin": "northstar-ops"
+    },
+    "articles": {
+      "Deterministic_simulation": {
+        "sections": [
+          {
+            "id": "overview",
+            "heading": "Overview",
+            "body": "Determinism is a property of the whole system, not of any single component. Three rules do most of the work: no wall clock, no ambient randomness, and a total order on every queue. Anything that reads the host — the clock, the operating system's random source, the iteration order of a hash table, the order in which files come back from a directory listing — has to be replaced by something the simulation itself supplies."
+          },
+          {
+            "id": "history",
+            "heading": "History",
+            "body": "Reproducible execution has been a goal of discrete-event simulation since the field's earliest simulation languages, where a fixed random seed was already the conventional way to repeat an experiment. What changed later was scope: rather than seeding one generator, modern systems remove every source of ambient non-determinism from the runtime, so that reproducibility is a property of the platform instead of a discipline each model author has to keep."
+          },
+          {
+            "id": "techniques",
+            "heading": "Techniques",
+            "body": "A seeded pseudorandom stream replaces the host generator. Logical time replaces the wall clock, so a tick is an integer the scheduler advances rather than a reading. Ordered containers replace hash-ordered ones wherever iteration order can reach an output. Floating-point arithmetic is avoided or pinned, and integer units — cents rather than dollars, micro-degrees rather than degrees — remove rounding as a source of divergence between platforms."
+          },
+          {
+            "id": "applications",
+            "heading": "Applications",
+            "body": "Deterministic simulation is used for distributed-systems testing, where a failing schedule is worth nothing if it cannot be replayed; for agent environments, where an evaluation must be comparable across runs; and for regulated modelling, where a result has to be auditable. Reporting on Northstar's Atlas runtime described the trade the approach makes: serialising every queue buys replay at a measurable cost in throughput."
+          }
+        ],
+        "references": [
+          {
+            "label": "Northstar's Atlas bets everything on determinism — The Verge",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          },
+          {
+            "label": "northstar/atlas — reference implementation",
+            "url": "http://github.com/northstar/atlas"
+          },
+          {
+            "label": "Why does my BFS shortest-path test fail only on Windows? — Stack Overflow",
+            "url": "http://stackoverflow.com/questions/4411"
+          }
+        ],
+        "see_also": [
+          "Discrete-event_simulation",
+          "Reproducible_builds",
+          "Atlas_(software)"
+        ],
+        "revisions": [
+          {
+            "rev": 1,
+            "author": "cnakamura",
+            "tick": 0,
+            "comment": "created",
+            "section": null
+          },
+          {
+            "rev": 2,
+            "author": "alicechen",
+            "tick": 2,
+            "comment": "expand History",
+            "section": "history"
+          },
+          {
+            "rev": 3,
+            "author": "bmartinez",
+            "tick": 4,
+            "comment": "add Criticism section",
+            "section": "criticism"
+          },
+          {
+            "rev": 4,
+            "author": "198.51.100.42",
+            "tick": 5,
+            "comment": "rv: unsourced, see Talk",
+            "section": "criticism"
+          },
+          {
+            "rev": 5,
+            "author": "praman",
+            "tick": 6,
+            "comment": "cite The Verge in Applications",
+            "section": "applications"
+          }
+        ],
+        "talk": [
+          {
+            "author": "bmartinez",
+            "text": "I added a Criticism section because the article reads like a brochure. Determinism costs throughput, and that belongs in the body rather than in a footnote.",
+            "tick": 4
+          },
+          {
+            "author": "198.51.100.42",
+            "text": "Reverted. The paragraph cited nothing, and the throughput claim appears in neither source. Bring a reference and it can go back in.",
+            "tick": 5
+          },
+          {
+            "author": "bmartinez",
+            "text": "Fine. The Verge piece does say the scheduler serialises every queue, and that is exactly the cost. I will rewrite it with the citation attached rather than revert-war over it.",
+            "tick": 5
+          },
+          {
+            "author": "alicechen",
+            "text": "Put it under Applications with the source attached and nobody will object. I have added the Verge reference to the article in the meantime.",
+            "tick": 6
+          }
+        ]
+      },
+      "Atlas_(software)": {
+        "id": "Atlas_(software)",
+        "title": "Atlas (software)",
+        "summary": "Atlas is a deterministic simulation runtime developed by Northstar. It executes a world of services, machines and network links under logical time, so that a whole run can be checkpointed, replayed and compared. Atlas is written in Rust and its reference implementation is public.",
+        "infobox": [
+          [
+            "Developer",
+            "Northstar"
+          ],
+          [
+            "Initial release",
+            "2026"
+          ],
+          [
+            "Written in",
+            "Rust"
+          ],
+          [
+            "Type",
+            "Simulation runtime"
+          ],
+          [
+            "Repository",
+            "github.com/northstar/atlas"
+          ]
+        ],
+        "sections": [
+          {
+            "id": "overview",
+            "heading": "Overview",
+            "body": "Atlas models a computer network as a graph of nodes and links, and each service on it as a pure function from state and request to state and response. Nothing in the runtime reads the host: time is a tick counter, randomness comes from a seeded stream, and every queue is totally ordered."
+          },
+          {
+            "id": "architecture",
+            "heading": "Architecture",
+            "body": "The runtime is split into a protocol crate that defines the wire and page types, a scheduler that advances logical time, a network layer that routes requests between nodes, and a service registry that services register themselves with at start-up. Checkpoints serialise the entire world, so a run can be resumed or diffed against another run of the same seed."
+          },
+          {
+            "id": "reception",
+            "heading": "Reception",
+            "body": "Coverage of the project focused on the reproducibility claim rather than on performance, and noted that the team treats a non-reproducible run as a bug in the runtime rather than as a flaky test."
+          }
+        ],
+        "references": [
+          {
+            "label": "Northstar's Atlas bets everything on determinism — The Verge",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          },
+          {
+            "label": "northstar/atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          }
+        ],
+        "see_also": [
+          "Deterministic_simulation",
+          "Northstar_(company)"
+        ],
+        "categories": [
+          "Simulation software",
+          "Rust (programming language)"
+        ],
+        "revisions": [
+          {
+            "rev": 6,
+            "author": "cnakamura",
+            "tick": 1,
+            "comment": "created",
+            "section": null
+          },
+          {
+            "rev": 7,
+            "author": "alicechen",
+            "tick": 3,
+            "comment": "describe the scheduler and the registry",
+            "section": "architecture"
+          },
+          {
+            "rev": 8,
+            "author": "tweber",
+            "tick": 7,
+            "comment": "add Reception, citing The Verge",
+            "section": "reception"
+          }
+        ],
+        "talk": [
+          {
+            "author": "praman",
+            "text": "The Architecture section should say whether the scheduler is single-threaded. It matters for anyone reading the replay guarantee literally.",
+            "tick": 7
+          }
+        ]
+      },
+      "Discrete-event_simulation": {
+        "references": [
+          {
+            "label": "northstar/atlas — reference implementation",
+            "url": "http://github.com/northstar/atlas"
+          }
+        ],
+        "revisions": [
+          {
+            "rev": 9,
+            "author": "praman",
+            "tick": 0,
+            "comment": "created",
+            "section": null
+          },
+          {
+            "rev": 10,
+            "author": "alicechen",
+            "tick": 2,
+            "comment": "add Event ordering",
+            "section": "ordering"
+          }
+        ]
+      },
+      "Reproducible_builds": {
+        "references": [
+          {
+            "label": "northstar/atlas — reference implementation",
+            "url": "http://github.com/northstar/atlas"
+          }
+        ],
+        "revisions": [
+          {
+            "rev": 11,
+            "author": "bmartinez",
+            "tick": 1,
+            "comment": "created",
+            "section": null
+          },
+          {
+            "rev": 12,
+            "author": "praman",
+            "tick": 4,
+            "comment": "add Relationship to deterministic simulation",
+            "section": "relationship"
+          }
+        ]
+      },
+      "Northstar_(company)": {
+        "id": "Northstar_(company)",
+        "title": "Northstar (company)",
+        "summary": "Northstar is a software company whose engineering group builds Atlas, a deterministic simulation runtime. The company publishes the runtime's reference implementation and writes about its release process on its engineering blog.",
+        "infobox": [
+          [
+            "Type",
+            "Private"
+          ],
+          [
+            "Industry",
+            "Software"
+          ],
+          [
+            "Products",
+            "Atlas"
+          ],
+          [
+            "Repository",
+            "github.com/northstar/atlas"
+          ]
+        ],
+        "sections": [
+          {
+            "id": "overview",
+            "heading": "Overview",
+            "body": "Northstar's engineering organisation is small and organised around the Atlas runtime. Its release process is public enough that outside contributors file issues against the repository and occasionally land fixes in it."
+          },
+          {
+            "id": "products",
+            "heading": "Products",
+            "body": "Atlas is the company's only published product. It is developed in the open, and the engineering blog documents the decisions behind it, including the choice to treat a non-reproducible run as a defect in the runtime."
+          }
+        ],
+        "references": [
+          {
+            "label": "Northstar's Atlas bets everything on determinism — The Verge",
+            "url": "http://theverge.com/2026/atlas-determinism"
+          },
+          {
+            "label": "northstar/atlas on GitHub",
+            "url": "http://github.com/northstar/atlas"
+          }
+        ],
+        "see_also": [
+          "Atlas_(software)"
+        ],
+        "categories": [
+          "Software companies"
+        ],
+        "revisions": [
+          {
+            "rev": 13,
+            "author": "tweber",
+            "tick": 2,
+            "comment": "created",
+            "section": null
+          },
+          {
+            "rev": 14,
+            "author": "northstar-ops",
+            "tick": 6,
+            "comment": "correct the product list",
+            "section": "products"
+          }
+        ],
+        "talk": []
+      },
+      "Breadth-first_search": {
+        "revisions": [
+          {
+            "rev": 15,
+            "author": "praman",
+            "tick": 0,
+            "comment": "created",
+            "section": null
+          },
+          {
+            "rev": 16,
+            "author": "bmartinez",
+            "tick": 5,
+            "comment": "add Shortest paths and ties",
+            "section": "ties"
+          }
+        ]
+      }
+    },
+    "redirects": {
+      "Atlas_(Northstar)": "Atlas_(software)",
+      "Northstar": "Northstar_(company)"
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://en.wikipedia.org/wiki/Deterministic_simulation",
+      "title": "Deterministic simulation — Wikipedia",
+      "snippet": "A deterministic simulation is a computational model whose output is fully determined by its initial state and its ordered sequence of inputs. Re-running one with the same seed and…",
+      "site": "en.wikipedia.org",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "determinism",
+        "deterministic",
+        "simulation",
+        "reproducible",
+        "replay",
+        "seed",
+        "atlas"
+      ]
+    },
+    {
+      "url": "http://en.wikipedia.org/wiki/Atlas_(software)",
+      "title": "Atlas (software) — Wikipedia",
+      "snippet": "Atlas is a deterministic simulation runtime developed by Northstar. It executes a world of services, machines and network links under logical time, so that a whole run can be…",
+      "site": "en.wikipedia.org",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "atlas",
+        "northstar",
+        "runtime",
+        "rust",
+        "simulation"
+      ]
+    },
+    {
+      "url": "http://en.wikipedia.org/wiki/Northstar_(company)",
+      "title": "Northstar (company) — Wikipedia",
+      "snippet": "Northstar is a software company whose engineering group builds Atlas, a deterministic simulation runtime. The company publishes the runtime's reference implementation and writes…",
+      "site": "en.wikipedia.org",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "northstar",
+        "company",
+        "atlas",
+        "engineering"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,611 @@
+{
+  "initial_state": {
+    "pages": {
+      "/docs/s3-bucket-basics": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "ds34",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "ds31",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "ds32",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "ds33",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "ds39",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "ds310",
+            "text": "Amazon S3 bucket basics",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "ds311",
+            "text": "Create a bucket, upload an object, and read it back with the CLI.",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "ds312",
+            "text": "1. Bucket names are globally unique and DNS-compatible: lowercase letters, numbers, and hyphens, 3 to 63 characters. Choose the Region closest to the application that will read the data."
+          },
+          {
+            "kind": "text",
+            "id": "ds313",
+            "text": "2. Block Public Access is enabled by default. Leave it on and grant access with IAM policies or presigned URLs; only turn it off for a bucket that serves a public website."
+          },
+          {
+            "kind": "text",
+            "id": "ds314",
+            "text": "3. Enable versioning before you need it. It protects against accidental overwrites and deletes, and lifecycle rules can expire old versions to control cost."
+          },
+          {
+            "kind": "card",
+            "id": "ds316",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "ds315",
+                "text": "$ aws s3 mb s3://northstar-build-artifacts --region us-west-2\n$ aws s3 cp ./atlas-0.1.1.tar.gz s3://northstar-build-artifacts/releases/\nupload: ./atlas-0.1.1.tar.gz to s3://northstar-build-artifacts/releases/atlas-0.1.1.tar.gz\n$ aws s3 ls s3://northstar-build-artifacts/releases/\n2026-09-12 09:41:07   18432011 atlas-0.1.1.tar.gz",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "row",
+            "id": "ds319",
+            "children": [
+              {
+                "kind": "link",
+                "id": "ds317",
+                "text": "Service page",
+                "url": "http://aws.amazon.com/s3"
+              },
+              {
+                "kind": "link",
+                "id": "ds318",
+                "text": "Open the console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "ds38",
+            "children": [
+              {
+                "kind": "link",
+                "id": "ds35",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "ds36",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/docs/iam-users": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "dia4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "dia1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "dia2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "dia3",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "dia9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "dia10",
+            "text": "IAM users, groups, and roles",
+            "level": 1
+          },
+          {
+            "kind": "styled",
+            "id": "dia11",
+            "text": "How identities and permissions work, and what to create for people versus workloads.",
+            "style": {
+              "size": 16,
+              "color": "#545b64"
+            }
+          },
+          {
+            "kind": "text",
+            "id": "dia12",
+            "text": "1. An IAM user is a long-term identity with a password for the console or access keys for the CLI and API. Put users in groups and attach policies to the groups, not to the users. Require MFA for everyone."
+          },
+          {
+            "kind": "text",
+            "id": "dia13",
+            "text": "2. A role is an identity that is assumed, not signed into. EC2 instances, Lambda functions, and people federating from an identity provider assume roles and receive temporary credentials. Prefer roles over access keys for anything that runs on AWS."
+          },
+          {
+            "kind": "text",
+            "id": "dia14",
+            "text": "3. Policies are JSON documents that allow or deny actions on resources. Start from least privilege: grant the specific actions a task needs on the specific resources, and use IAM Access Analyzer to find unused permissions."
+          },
+          {
+            "kind": "card",
+            "id": "dia16",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "dia15",
+                "text": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [{\n    \"Effect\": \"Allow\",\n    \"Action\": [\"s3:GetObject\", \"s3:PutObject\"],\n    \"Resource\": \"arn:aws:s3:::northstar-build-artifacts/releases/*\"\n  }]\n}",
+                "style": {
+                  "size": 13,
+                  "color": "#e2e8f0"
+                }
+              }
+            ],
+            "style": {
+              "background": "#0f172a",
+              "radius": 8,
+              "padding": 14
+            }
+          },
+          {
+            "kind": "row",
+            "id": "dia19",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dia17",
+                "text": "Service page",
+                "url": "http://aws.amazon.com/docs"
+              },
+              {
+                "kind": "link",
+                "id": "dia18",
+                "text": "Open the console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "dia8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "dia5",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "dia6",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/console/home": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "ch4",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "ch1",
+                "text": "aws",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "ch2",
+                "text": "Home",
+                "url": "http://aws.amazon.com/"
+              },
+              {
+                "kind": "link",
+                "id": "ch3",
+                "text": "Console",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#232f3e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "ch9",
+            "height": 12
+          },
+          {
+            "kind": "row",
+            "id": "ch13",
+            "children": [
+              {
+                "kind": "heading",
+                "id": "ch10",
+                "text": "Console Home",
+                "level": 1
+              },
+              {
+                "kind": "badge",
+                "id": "ch11",
+                "text": "us-west-2",
+                "style": {
+                  "size": 11,
+                  "color": "#232f3e",
+                  "background": "#e9ebed",
+                  "radius": 10,
+                  "padding": 5
+                }
+              },
+              {
+                "kind": "styled",
+                "id": "ch12",
+                "text": "northstar-prod · 4102-2871-9930",
+                "style": {
+                  "size": 13,
+                  "color": "#545b64"
+                }
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "text",
+            "id": "ch14",
+            "text": "Recently visited"
+          },
+          {
+            "kind": "grid",
+            "id": "ch30",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "ch17",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch15",
+                    "text": "Amazon EC2",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch16",
+                    "text": "Secure and resizable virtual servers in the cloud"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/ec2"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch20",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch18",
+                    "text": "Amazon S3",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch19",
+                    "text": "Object storage built to retrieve any amount of data from anywhere"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/s3"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch23",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch21",
+                    "text": "AWS Lambda",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch22",
+                    "text": "Run code without thinking about servers"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/lambda"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch26",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch24",
+                    "text": "Amazon RDS",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch25",
+                    "text": "Managed relational databases in the cloud"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/rds"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch29",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch27",
+                    "text": "Amazon DynamoDB",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch28",
+                    "text": "Serverless key-value database at any scale"
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://aws.amazon.com/dynamodb"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "grid",
+            "id": "ch40",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "ch33",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch31",
+                    "text": "Cost and usage",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch32",
+                    "text": "Month-to-date: $2,418.60. Forecast: $3,905.00. Top services: EC2 $1,204, RDS $612, S3 $288."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch36",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch34",
+                    "text": "Health",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch35",
+                    "text": "No open issues. 2 scheduled changes: EC2 maintenance for i-0a4c1 on 2026-09-28."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              },
+              {
+                "kind": "card",
+                "id": "ch39",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "ch37",
+                    "text": "Security",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "ch38",
+                    "text": "IAM Access Analyzer: 1 finding. Root user MFA: enabled. 3 access keys older than 90 days."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "row",
+            "id": "ch45",
+            "children": [
+              {
+                "kind": "link",
+                "id": "ch41",
+                "text": "Billing and pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "ch42",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              },
+              {
+                "kind": "link",
+                "id": "ch43",
+                "text": "What's new",
+                "url": "http://aws.amazon.com/whats-new"
+              },
+              {
+                "kind": "link",
+                "id": "ch44",
+                "text": "Sign out",
+                "url": "http://aws.amazon.com/console"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "ch8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "ch5",
+                "text": "Pricing",
+                "url": "http://aws.amazon.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "ch6",
+                "text": "Documentation",
+                "url": "http://aws.amazon.com/docs"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      }
+    }
+  }
+}

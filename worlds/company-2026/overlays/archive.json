@@ -1,0 +1,95 @@
+{
+  "initial_state": {
+    "accounts": {
+      "alice": "alice_c",
+      "bob": "bmartinez",
+      "carol": "cnakamura"
+    },
+    "articles": {
+      "Wayback_Machine": {
+        "summary": "The Wayback Machine is the Internet Archive's collection of saved web pages. It holds more than a trillion captures made since 1996, each one a copy of a page as it stood at a recorded moment, and lets a reader open any of them by URL and date. The item Snapshot of northstar.example (2026) is an example of a single capture.",
+        "see_also": [
+          "Snapshot_of_northstar.example_(2026)",
+          "About",
+          "Terms"
+        ]
+      },
+      "Snapshot_of_northstar.example_(2026)": {
+        "id": "Snapshot_of_northstar.example_(2026)",
+        "title": "Snapshot of northstar.example (2026)",
+        "summary": "This item is a Wayback Machine capture of the home page of northstar.example, made on 4 February 2026 at 09:14 UTC. The capture is recorded here as an item because it was submitted through Save Page Now with a note, and notes are kept with the item rather than the capture.",
+        "infobox": [
+          [
+            "Collection",
+            "Wayback Machine"
+          ],
+          [
+            "URL",
+            "http://northstar.example/"
+          ],
+          [
+            "Captured",
+            "4 February 2026, 09:14 UTC"
+          ],
+          [
+            "Size",
+            "31 KB"
+          ],
+          [
+            "Status",
+            "200 OK"
+          ]
+        ],
+        "sections": [
+          {
+            "id": "note",
+            "heading": "Submitter's note",
+            "body": "Saved before the redesign announced for the following week. The page carries the original product description and the pricing table that was later changed. Kept for reference; nothing on the page is unusual."
+          },
+          {
+            "id": "contents",
+            "heading": "What the capture holds",
+            "body": "The HTML of the home page and the stylesheet it referenced. Images were fetched and stored. A script that loaded the pricing table from a separate endpoint was not executed, so the table appears as it was in the page source."
+          }
+        ],
+        "references": [],
+        "see_also": [
+          "Wayback_Machine"
+        ],
+        "categories": [
+          "Web captures",
+          "2026"
+        ],
+        "revisions": [
+          {
+            "rev": 10,
+            "author": "archive-librarian",
+            "tick": 3,
+            "comment": "created",
+            "section": null
+          }
+        ],
+        "talk": []
+      }
+    },
+    "redirects": {
+      "northstar.example": "Snapshot_of_northstar.example_(2026)"
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://archive.org/wiki/Snapshot_of_northstar.example_(2026)",
+      "title": "Snapshot of northstar.example, 4 February 2026 — Internet Archive",
+      "snippet": "A Wayback Machine capture of the northstar.example home page, saved before its redesign, with the submitter's note.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "northstar.example",
+        "snapshot",
+        "wayback",
+        "northstar",
+        "capture"
+      ]
+    }
+  ]
+}

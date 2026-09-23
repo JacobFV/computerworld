@@ -1,0 +1,218 @@
+{
+  "initial_state": {
+    "channels": {
+      "the-standup-podcast": {
+        "id": "the-standup-podcast",
+        "name": "The Standup",
+        "handle": "@thestandup",
+        "subscribers": 43900,
+        "owner": "carol",
+        "about": "A weekly podcast about building and shipping software, hosted by Carol Nakamura. New episodes Thursdays."
+      },
+      "alice-remixes": {
+        "id": "alice-remixes",
+        "name": "Alice Remixes",
+        "handle": "@aliceremixes",
+        "owner": "alice",
+        "subscribers": 2100,
+        "about": "Occasional remixes and a field recording or two. Strictly a hobby."
+      }
+    },
+    "items": {
+      "standup-ep-42": {
+        "title": "The Standup #42: Deterministic replay with Alice Chen"
+      },
+      "night-bus-alice-remix": {
+        "id": "night-bus-alice-remix",
+        "channel": "alice-remixes",
+        "title": "Night Bus (Alice replay remix)",
+        "album": "Night Bus (Alice replay remix)",
+        "track": 1,
+        "duration_s": 240,
+        "published": "Apr 2, 2026",
+        "published_tick": 9,
+        "plays": 12800,
+        "likes": 940,
+        "tags": [
+          "remix",
+          "pop",
+          "electronic"
+        ]
+      },
+      "ferry-terminal-field": {
+        "channel": "alice-remixes"
+      }
+    },
+    "albums": {
+      "night-bus-alice-replay-remix": {
+        "genre": "Remix",
+        "year": "2026"
+      }
+    },
+    "playlists": {
+      "fresh-pressed": {
+        "items": [
+          "night-bus",
+          "hotfix",
+          "low-field",
+          "tape-hiss",
+          "segfault",
+          "sunday-demo",
+          "orbit-decay",
+          "night-bus-alice-remix"
+        ]
+      },
+      "ship-it-loud": {
+        "id": "ship-it-loud",
+        "title": "Ship It Loud",
+        "items": [
+          "hotfix",
+          "p99",
+          "friday-deploy",
+          "stack-overflow",
+          "segfault",
+          "night-bus"
+        ],
+        "owner": "carol"
+      },
+      "late-night-listening": {
+        "id": "late-night-listening",
+        "title": "Late Night Listening",
+        "items": [
+          "last-train-home",
+          "call-me-back",
+          "heliopause",
+          "first-frost",
+          "ferry-terminal-field"
+        ],
+        "owner": "alice"
+      },
+      "podcast-queue": {
+        "id": "podcast-queue",
+        "title": "Podcast queue",
+        "items": [
+          "standup-ep-42",
+          "after-hours-baker",
+          "standup-ep-41",
+          "after-hours-lighthouse"
+        ],
+        "owner": "bob"
+      }
+    },
+    "subscriptions": {
+      "alice": [
+        "nova-reyes",
+        "deep-field",
+        "the-standup-podcast"
+      ],
+      "bob": [
+        "kernel-panic",
+        "mc-latency",
+        "after-hours-radio"
+      ],
+      "carol": [
+        "driftwood-collective",
+        "sable-and-oak",
+        "alice-remixes"
+      ]
+    },
+    "likes": {
+      "alice": [
+        "night-bus",
+        "heliopause",
+        "standup-ep-41"
+      ],
+      "bob": [
+        "p99",
+        "segfault",
+        "after-hours-baker"
+      ],
+      "carol": [
+        "low-field",
+        "tape-hiss",
+        "hotfix"
+      ]
+    },
+    "library": {
+      "alice": [
+        "night-bus",
+        "call-me-back",
+        "heliopause",
+        "orbit-decay",
+        "ferry-terminal-field"
+      ],
+      "bob": [
+        "hotfix",
+        "p99",
+        "segfault",
+        "stack-overflow",
+        "after-hours-baker"
+      ],
+      "carol": [
+        "tape-hiss",
+        "rain-on-the-skylight",
+        "low-field",
+        "barn-door",
+        "hotfix",
+        "standup-ep-42"
+      ]
+    },
+    "history": {
+      "alice": [
+        "standup-ep-42",
+        "night-bus",
+        "heliopause"
+      ],
+      "bob": [
+        "p99",
+        "hotfix",
+        "after-hours-lighthouse"
+      ],
+      "carol": [
+        "low-field",
+        "tape-hiss",
+        "standup-ep-43"
+      ]
+    },
+    "devices": {
+      "livingroom": {
+        "url": "http://livingroom.speaker.internal/"
+      },
+      "kitchen": {
+        "url": "http://kitchen.speaker.internal/"
+      },
+      "office-tv": {
+        "url": "http://office-tv.speaker.internal/"
+      },
+      "bedroom": {
+        "url": "http://bedroom.speaker.internal/"
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://soundcloud.com/artist/the-standup-podcast",
+      "title": "The Standup | SoundCloud",
+      "snippet": "A weekly podcast about building and shipping software, hosted by Carol Nakamura.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "the standup podcast",
+        "carol nakamura",
+        "software podcast"
+      ]
+    },
+    {
+      "url": "http://soundcloud.com/track/standup-ep-42",
+      "title": "The Standup #42: Deterministic replay with Alice Chen | SoundCloud",
+      "snippet": "Carol Nakamura interviews Alice Chen about replaying a whole computer from a seed.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "deterministic replay podcast",
+        "alice chen interview",
+        "the standup 42"
+      ]
+    }
+  ]
+}

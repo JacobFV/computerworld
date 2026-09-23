@@ -1,0 +1,1150 @@
+{
+  "initial_state": {
+    "workspace": "Northstar",
+    "projects": {
+      "OPS": {
+        "name": "Operations",
+        "readers": [],
+        "writers": [
+          "admin",
+          "alice",
+          "bob",
+          "carol"
+        ],
+        "issues": {
+          "1": {
+            "id": 1,
+            "title": "Confirm Atlas launch checklist",
+            "body": "Read the release code out of the launch doc, confirm every box, then publish the checklist. Doc: http://docs.google.com/documents/atlas-launch  Repo: http://github.com/northstar/atlas",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "alice",
+            "labels": [
+              "launch"
+            ],
+            "comments": [
+              {
+                "author": "alice",
+                "body": "Doc read, two boxes left: the walkthrough link and the status page copy.",
+                "tick": 35
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "2": {
+            "id": 2,
+            "title": "Windows CI runner is flaky",
+            "body": "Mirrors http://github.com/northstar/atlas/issues/14 - the BFS path test only fails on Windows.",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "bob",
+            "assignee": "bob",
+            "labels": [
+              "ci",
+              "bug"
+            ],
+            "comments": [
+              {
+                "author": "bob",
+                "body": "Root cause is hash-map iteration order. Fix is in pull request 15.",
+                "tick": 34
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "3": {
+            "id": 3,
+            "title": "Publish the Atlas walkthrough video",
+            "body": "http://youtube.com/watch?v=atlas-walkthrough is live and linked from the eng blog.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "carol",
+            "labels": [
+              "launch"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "4": {
+            "id": 4,
+            "title": "Rotate the status page subscriber list",
+            "body": "Everyone who subscribed at http://status.northstar.example/ before the migration needs re-confirming.",
+            "status": "open",
+            "kind": "issue",
+            "author": "admin",
+            "assignee": "admin",
+            "labels": [
+              "ops"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "5": {
+            "id": 5,
+            "title": "Order the 27 inch monitor for alice",
+            "body": "Approved: http://amazon.com/dp/b0monitor27 . Charge lands on the corporate card.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "alice",
+            "assignee": "admin",
+            "labels": [
+              "it"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "6": {
+            "id": 6,
+            "title": "Agree a Slack retention policy",
+            "body": "Blocked on legal. #eng and #incidents are the two channels anyone actually searches.",
+            "status": "blocked",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "carol",
+            "labels": [
+              "policy"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "7": {
+            "id": 7,
+            "title": "Postmortem: INC-4 elevated API latency",
+            "body": "Twelve minutes of elevated latency on 2026-02-19. Incident: http://status.northstar.example/incidents/inc-4  Apology: http://x.com/NorthstarHQ  Thread: http://slack.com/archives/incidents",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "admin",
+            "labels": [
+              "incident",
+              "postmortem"
+            ],
+            "comments": [
+              {
+                "author": "admin",
+                "body": "Timeline is written. Remaining action is the cold-cache warmer on the new pop.",
+                "tick": 52
+              },
+              {
+                "author": "carol",
+                "body": "Publish it on the status page when it is signed off.",
+                "tick": 53
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          }
+        }
+      },
+      "ATL": {
+        "name": "Atlas",
+        "readers": [],
+        "writers": [
+          "admin",
+          "alice",
+          "bob",
+          "carol",
+          "dmorel",
+          "praman",
+          "mei",
+          "kwame"
+        ],
+        "issues": {
+          "1": {
+            "id": 1,
+            "title": "Sort refs before iterating in BFS",
+            "body": "Swap the HashMap for a BTreeMap so neighbour order is part of the contract. http://github.com/northstar/atlas/pull/15",
+            "status": "in_progress",
+            "kind": "pull_request",
+            "author": "bob",
+            "assignee": "alice",
+            "labels": [
+              "bug"
+            ],
+            "comments": [],
+            "reviews": [
+              {
+                "author": "alice",
+                "decision": "approve",
+                "body": "The map was never the fast path anyway.",
+                "tick": 36
+              }
+            ],
+            "source_ref": "refs/heads/sort-refs",
+            "target_ref": "refs/heads/main"
+          },
+          "2": {
+            "id": 2,
+            "title": "Deterministic replay for the browser",
+            "body": "Page state, history and form fields all have to survive a snapshot round trip.",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "alice",
+            "assignee": "alice",
+            "labels": [
+              "runtime"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "3": {
+            "id": 3,
+            "title": "Document the seeded determinism streams",
+            "body": "Mirrors http://github.com/northstar/atlas/issues/9 , which is closed.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "alice",
+            "assignee": "alice",
+            "labels": [
+              "docs"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "4": {
+            "id": 4,
+            "title": "Windows matrix in CI",
+            "body": "Run every test twenty times on Windows. http://github.com/northstar/atlas-actions",
+            "status": "open",
+            "kind": "issue",
+            "author": "bob",
+            "assignee": "bob",
+            "labels": [
+              "ci"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "5": {
+            "id": 5,
+            "title": "Snapshot round trip drops form field values",
+            "body": "Fill a form, snapshot, restore: the inputs come back empty. History and page state survive. Repro in the behaviors suite, test browser_form_survives_snapshot.",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "alice",
+            "assignee": "alice",
+            "labels": [
+              "bug",
+              "p1",
+              "browser"
+            ],
+            "comments": [
+              {
+                "author": "alice",
+                "body": "The field map is serialised but keyed by element index, which changes after restore. Keying by id fixes it.",
+                "tick": 61
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "6": {
+            "id": 6,
+            "title": "Tick counter overflows in the 500-year soak test",
+            "body": "The u32 tick in the scheduler wraps after 4.2 billion ticks. Nobody runs a world that long, but the soak test does. Make it u64 and add a debug assertion.",
+            "status": "open",
+            "kind": "issue",
+            "author": "bob",
+            "assignee": "praman",
+            "labels": [
+              "bug",
+              "p3",
+              "runtime"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "7": {
+            "id": 7,
+            "title": "Expose the replay seed in the debugger banner",
+            "body": "When a run is attached, the debugger should print the seed and input-log path in its first line so a bug report can be copy-pasted from it.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "bob",
+            "labels": [
+              "enhancement",
+              "p2",
+              "debugger"
+            ],
+            "comments": [
+              {
+                "author": "bob",
+                "body": "Done. The banner now reads: seed 42, inputs run.log, tick 0.",
+                "tick": 55
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "9": {
+            "id": 9,
+            "title": "Behaviour suite takes 14 minutes on the Windows runner",
+            "body": "Linux takes 6. Profile suggests filesystem snapshot writes are the difference. Batch them or use a tmpfs equivalent.",
+            "status": "blocked",
+            "kind": "issue",
+            "author": "bob",
+            "assignee": "bob",
+            "labels": [
+              "ci",
+              "p2",
+              "performance"
+            ],
+            "comments": [
+              {
+                "author": "bob",
+                "body": "Blocked on the runner image change in INF-104.",
+                "tick": 60
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "10": {
+            "id": 10,
+            "title": "Remove the last wall-clock read in the mail service",
+            "body": "services/mail reads SystemTime for the Date header. It should take the tick from the context like everything else.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "praman",
+            "assignee": "praman",
+            "labels": [
+              "bug",
+              "p1",
+              "determinism"
+            ],
+            "comments": [
+              {
+                "author": "praman",
+                "body": "Merged. Golden images for the mail pages regenerated with no diff.",
+                "tick": 49
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          }
+        }
+      },
+      "REN": {
+        "name": "Renderer",
+        "readers": [],
+        "writers": [
+          "admin",
+          "alice",
+          "bob",
+          "carol",
+          "dmorel",
+          "praman",
+          "mei",
+          "kwame"
+        ],
+        "issues": {
+          "101": {
+            "id": 101,
+            "title": "Text layout v2: kerning behind a flag",
+            "body": "Kerning from the font's kern table, applied in the shaping pass. Ship behind renderer.kerning=false until the golden images are regenerated.",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "alice",
+            "assignee": "alice",
+            "labels": [
+              "feature",
+              "p1",
+              "text-layout"
+            ],
+            "comments": [
+              {
+                "author": "alice",
+                "body": "Renders the whole handbook. Kerning pairs for the fallback font are missing; using zero for now.",
+                "tick": 62
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "102": {
+            "id": 102,
+            "title": "Golden images differ by one pixel on macOS",
+            "body": "The rounded-corner rasteriser rounds differently on macOS for radius 3. Integer rounding bug; a half-pixel offset in the arc walker.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "bob",
+            "assignee": "alice",
+            "labels": [
+              "bug",
+              "p1",
+              "golden-images"
+            ],
+            "comments": [
+              {
+                "author": "alice",
+                "body": "Off-by-one in the midpoint step. Fixed and regenerated; diff is zero on all three platforms.",
+                "tick": 57
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "103": {
+            "id": 103,
+            "title": "Hyphenation for the handbook's long German compound words",
+            "body": "The handbook has product names that overflow a 320px column. Add a hyphenation dictionary and a soft-hyphen pass.",
+            "status": "open",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "mei",
+            "labels": [
+              "feature",
+              "p2",
+              "text-layout"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "104": {
+            "id": 104,
+            "title": "Vertical rhythm: line height ignores the font's ascent",
+            "body": "Lines with mixed fonts jitter by 1-2px because the line box uses the first font's metrics. Use the max ascent and descent across runs.",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "mei",
+            "assignee": "mei",
+            "labels": [
+              "bug",
+              "p2",
+              "text-layout"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "105": {
+            "id": 105,
+            "title": "Renderer benchmark on the CI dashboard",
+            "body": "Publish the layout benchmark numbers per commit so a regression shows up as a line going the wrong way rather than a complaint a month later.",
+            "status": "open",
+            "kind": "issue",
+            "author": "bob",
+            "assignee": "bob",
+            "labels": [
+              "ci",
+              "p3"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "106": {
+            "id": 106,
+            "title": "Thumbnail rasteriser uses floating point for the scale",
+            "body": "Scale factors are floats and the ARM runner rounds differently. Use fixed-point 16.16.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "praman",
+            "assignee": "praman",
+            "labels": [
+              "bug",
+              "p1",
+              "determinism"
+            ],
+            "comments": [
+              {
+                "author": "praman",
+                "body": "Fixed-point landed. Same bytes on x86 and ARM.",
+                "tick": 46
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "107": {
+            "id": 107,
+            "title": "Emoji fallback font",
+            "body": "Emoji currently render as boxes. Add a fallback and make the golden images deterministic with it.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "mei",
+            "assignee": "mei",
+            "labels": [
+              "canceled",
+              "p3"
+            ],
+            "comments": [
+              {
+                "author": "carol",
+                "body": "Canceled: the seed content has no emoji by policy, so nothing renders them.",
+                "tick": 51
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          }
+        }
+      },
+      "ONB": {
+        "name": "Onboarding",
+        "readers": [],
+        "writers": [
+          "admin",
+          "alice",
+          "bob",
+          "carol",
+          "dmorel",
+          "praman",
+          "mei",
+          "kwame"
+        ],
+        "issues": {
+          "101": {
+            "id": 101,
+            "title": "Onboarding checklist: one day from clone to merged PR",
+            "body": "Track the two September hires against the checklist in the wiki. Anything that took more than an hour becomes an issue here.",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "carol",
+            "labels": [
+              "p1",
+              "process"
+            ],
+            "comments": [
+              {
+                "author": "carol",
+                "body": "Hire one: merged a docs fix at 15:40 on day one. Hire two starts Monday.",
+                "tick": 63
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "102": {
+            "id": 102,
+            "title": "cargo run --example company fails on a fresh macOS without Xcode tools",
+            "body": "The error is cryptic. Detect the missing linker in the setup script and print the one command that fixes it.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "bob",
+            "assignee": "bob",
+            "labels": [
+              "bug",
+              "p2",
+              "setup"
+            ],
+            "comments": [
+              {
+                "author": "bob",
+                "body": "Setup script now checks for cc and prints the xcode-select line.",
+                "tick": 54
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "103": {
+            "id": 103,
+            "title": "Starter issues label",
+            "body": "Tag five issues across projects as good-first-issue and keep the list at five. Onboarding checklist day 4 points here.",
+            "status": "open",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "alice",
+            "labels": [
+              "p2",
+              "process"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "104": {
+            "id": 104,
+            "title": "Pairing schedule for week one",
+            "body": "One hour with Alice on the renderer, one with Bob on CI, one with the on-call on the debugger. Put it in the calendar template.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "carol",
+            "labels": [
+              "p2",
+              "process"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "105": {
+            "id": 105,
+            "title": "Wiki home is out of date",
+            "body": "The wiki home lists pages that were archived in Q2. Prune it and add the Lisbon page.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "alice",
+            "assignee": "alice",
+            "labels": [
+              "docs",
+              "p3"
+            ],
+            "comments": [
+              {
+                "author": "alice",
+                "body": "Pruned and added.",
+                "tick": 59
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "106": {
+            "id": 106,
+            "title": "New-hire feedback form",
+            "body": "Three questions at the end of week one: what confused you, what was missing, what should we delete. Answers become edits to the checklist.",
+            "status": "open",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "carol",
+            "labels": [
+              "p3",
+              "process"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "107": {
+            "id": 107,
+            "title": "Interview loop: train two more debugging-session interviewers",
+            "body": "Kwame and Mei shadow two loops each, then lead one with Carol shadowing.",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "kwame",
+            "labels": [
+              "p2",
+              "hiring"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          }
+        }
+      },
+      "WEB": {
+        "name": "Website",
+        "readers": [],
+        "writers": [
+          "admin",
+          "alice",
+          "bob",
+          "carol",
+          "dmorel",
+          "praman",
+          "mei",
+          "kwame"
+        ],
+        "issues": {
+          "101": {
+            "id": 101,
+            "title": "Docs page: the sidebar collapses on tablets",
+            "body": "Between 768 and 1024px the sidebar overlays the content. Grid template needs a middle breakpoint.",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "mei",
+            "assignee": "mei",
+            "labels": [
+              "bug",
+              "p2",
+              "css"
+            ],
+            "comments": [
+              {
+                "author": "mei",
+                "body": "It was auto instead of 1fr on the content track. Fix is up.",
+                "tick": 64
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "102": {
+            "id": 102,
+            "title": "Release notes for 0.4.2 on the site",
+            "body": "Mirror the changelog on the website's releases page, with the Windows-matrix note in plain language.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "bob",
+            "labels": [
+              "docs",
+              "p2"
+            ],
+            "comments": [
+              {
+                "author": "bob",
+                "body": "Live. Support already quoted it back to us, so someone reads it.",
+                "tick": 56
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "103": {
+            "id": 103,
+            "title": "Support address on the status page",
+            "body": "The status page has no way to reach an engineer. Add a support address that goes to the on-call rotation, not a shared inbox nobody reads.",
+            "status": "open",
+            "kind": "issue",
+            "author": "alice",
+            "assignee": "admin",
+            "labels": [
+              "p1",
+              "status-page"
+            ],
+            "comments": [
+              {
+                "author": "alice",
+                "body": "Came out of the 09-11 retro. We found out about a customer replay issue from a forum post.",
+                "tick": 60
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "104": {
+            "id": 104,
+            "title": "Product page copy refresh",
+            "body": "The product page still says 'coming soon' about replay. It shipped in 0.3.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "carol",
+            "labels": [
+              "copy",
+              "p3"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "105": {
+            "id": 105,
+            "title": "Lighthouse score dropped to 71 on the home page",
+            "body": "A 1.4 MB hero image. Resize, serve WebP, lazy-load everything below the fold.",
+            "status": "open",
+            "kind": "issue",
+            "author": "bob",
+            "assignee": "mei",
+            "labels": [
+              "performance",
+              "p2"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "106": {
+            "id": 106,
+            "title": "Engineering blog: replay-tools 0.2 post",
+            "body": "Praman drafts, Alice edits. Publish after the Lisbon offsite writing day.",
+            "status": "open",
+            "kind": "issue",
+            "author": "carol",
+            "assignee": "praman",
+            "labels": [
+              "blog",
+              "p3"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "107": {
+            "id": 107,
+            "title": "Newsletter signup form posts to a dead endpoint",
+            "body": "Form submits to the old provider. Either point it at the new one or remove the form; a silent 404 is the worst option.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "admin",
+            "assignee": "admin",
+            "labels": [
+              "bug",
+              "p1"
+            ],
+            "comments": [
+              {
+                "author": "admin",
+                "body": "Removed the form. We were not sending a newsletter anyway.",
+                "tick": 48
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          }
+        }
+      },
+      "INF": {
+        "name": "Infra",
+        "readers": [],
+        "writers": [
+          "admin",
+          "alice",
+          "bob",
+          "carol",
+          "dmorel",
+          "praman",
+          "mei",
+          "kwame"
+        ],
+        "issues": {
+          "101": {
+            "id": 101,
+            "title": "Pin the font cache in the CI image",
+            "body": "Golden images regenerated three times last week because one runner had a stale font cache. Bake the fonts into the image and fail if the hash differs.",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "bob",
+            "assignee": "bob",
+            "labels": [
+              "ci",
+              "p1"
+            ],
+            "comments": [
+              {
+                "author": "bob",
+                "body": "Image builds with a fonts.sha256 check. Rolling out to the Linux runners first.",
+                "tick": 63
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "102": {
+            "id": 102,
+            "title": "Windows runner: 20 consecutive green runs",
+            "body": "The acceptance bar for closing the flaky-runner saga. Count is at 20 as of 09-14.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "bob",
+            "assignee": "bob",
+            "labels": [
+              "ci",
+              "windows",
+              "p1"
+            ],
+            "comments": [
+              {
+                "author": "bob",
+                "body": "Twenty. Closing, and leaving the roadmap line until it has been a month.",
+                "tick": 61
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "103": {
+            "id": 103,
+            "title": "Cold-cache warmer on the new pop",
+            "body": "INC-4 follow-up: the new point of presence served cold caches for twelve minutes after deploy. Warm the cache before it takes traffic.",
+            "status": "in_progress",
+            "kind": "issue",
+            "author": "admin",
+            "assignee": "admin",
+            "labels": [
+              "incident",
+              "p1",
+              "postmortem"
+            ],
+            "comments": [
+              {
+                "author": "admin",
+                "body": "Warmer runs from the deploy hook. Needs a canary before the pop joins the pool.",
+                "tick": 58
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "104": {
+            "id": 104,
+            "title": "Runner image: tmpfs for snapshot scratch space",
+            "body": "The behaviour suite writes thousands of small snapshot files. A tmpfs mount on the runners cuts Windows from 14 minutes to about 7 in a local experiment.",
+            "status": "open",
+            "kind": "issue",
+            "author": "bob",
+            "assignee": "kwame",
+            "labels": [
+              "ci",
+              "performance",
+              "p2"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "105": {
+            "id": 105,
+            "title": "Rotate the deploy key for the docs site",
+            "body": "Key is from 2024 and shared with the old provider. Rotate, and store the new one only in the CI secret store.",
+            "status": "closed",
+            "kind": "issue",
+            "author": "admin",
+            "assignee": "admin",
+            "labels": [
+              "security",
+              "p1"
+            ],
+            "comments": [
+              {
+                "author": "admin",
+                "body": "Rotated 09-08. Old key revoked.",
+                "tick": 53
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "106": {
+            "id": 106,
+            "title": "Alerting: page on golden-image diff, not on test failure count",
+            "body": "A single golden-image diff is a renderer regression and should page; ten unrelated unit failures usually means a broken runner and should not.",
+            "status": "open",
+            "kind": "issue",
+            "author": "alice",
+            "assignee": "admin",
+            "labels": [
+              "alerting",
+              "p2"
+            ],
+            "comments": [],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          },
+          "107": {
+            "id": 107,
+            "title": "Postgres 16 upgrade for the issue tracker",
+            "body": "Staging first. The expression index on lower(email) needs recreating after the upgrade.",
+            "status": "blocked",
+            "kind": "issue",
+            "author": "admin",
+            "assignee": "kwame",
+            "labels": [
+              "database",
+              "p2"
+            ],
+            "comments": [
+              {
+                "author": "kwame",
+                "body": "Blocked on a maintenance window; proposing Sunday 09-27 02:00.",
+                "tick": 62
+              }
+            ],
+            "reviews": [],
+            "source_ref": "",
+            "target_ref": ""
+          }
+        }
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://linear.app/",
+      "title": "Linear",
+      "snippet": "The Northstar workspace: Operations and Atlas boards.",
+      "authority": 7,
+      "keywords": [
+        "linear",
+        "issues",
+        "board",
+        "project",
+        "tracker"
+      ]
+    },
+    {
+      "url": "http://linear.app/projects/OPS",
+      "title": "Operations · Linear",
+      "snippet": "Launch checklist, flaky CI, the monitor order and the INC-4 postmortem.",
+      "authority": 6,
+      "keywords": [
+        "operations",
+        "ops",
+        "board",
+        "linear",
+        "northstar"
+      ]
+    },
+    {
+      "url": "http://linear.app/projects/OPS/issues/1",
+      "title": "OPS-1 Confirm Atlas launch checklist",
+      "snippet": "Assigned to alice. Read the release code out of the launch doc, confirm every box, then publish.",
+      "authority": 6,
+      "keywords": [
+        "ops-1",
+        "launch",
+        "checklist",
+        "atlas",
+        "alice"
+      ]
+    },
+    {
+      "url": "http://linear.app/projects/OPS/issues/7",
+      "title": "OPS-7 Postmortem: INC-4 elevated API latency",
+      "snippet": "Twelve minutes of elevated latency. Owned by admin, linked to the status page incident.",
+      "authority": 6,
+      "keywords": [
+        "ops-7",
+        "postmortem",
+        "inc-4",
+        "incident",
+        "latency"
+      ]
+    },
+    {
+      "url": "http://linear.app/projects/ATL",
+      "title": "Atlas · Linear",
+      "snippet": "The Atlas runtime board: BFS ordering, deterministic browser replay, the Windows matrix.",
+      "authority": 5,
+      "keywords": [
+        "atlas",
+        "board",
+        "linear",
+        "runtime"
+      ]
+    },
+    {
+      "url": "http://linear.app/projects/REN",
+      "title": "Renderer - Linear",
+      "snippet": "Text layout v2, kerning behind a flag, golden-image diffs and the fixed-point rasteriser.",
+      "authority": 5,
+      "keywords": [
+        "renderer",
+        "text layout",
+        "kerning",
+        "golden images",
+        "linear",
+        "board"
+      ]
+    },
+    {
+      "url": "http://linear.app/projects/REN/issues/101",
+      "title": "REN-101 Text layout v2: kerning behind a flag",
+      "snippet": "Kerning from the font's kern table, shipped behind renderer.kerning until the golden images are regenerated. Assigned to alice.",
+      "authority": 5,
+      "keywords": [
+        "ren-101",
+        "kerning",
+        "text layout v2",
+        "renderer",
+        "alice"
+      ]
+    },
+    {
+      "url": "http://linear.app/projects/ONB",
+      "title": "Onboarding - Linear",
+      "snippet": "One day from clone to merged PR: the checklist, starter issues, pairing schedule and interviewer training.",
+      "authority": 4,
+      "keywords": [
+        "onboarding",
+        "new hire",
+        "checklist",
+        "linear",
+        "board"
+      ]
+    },
+    {
+      "url": "http://linear.app/projects/WEB",
+      "title": "Website - Linear",
+      "snippet": "Docs sidebar breakpoint, release notes, the status-page support address and the Lighthouse score.",
+      "authority": 4,
+      "keywords": [
+        "website",
+        "docs site",
+        "status page",
+        "linear",
+        "board"
+      ]
+    },
+    {
+      "url": "http://linear.app/projects/INF",
+      "title": "Infra - Linear",
+      "snippet": "CI images, the Windows runner, the cold-cache warmer from INC-4 and the Postgres upgrade.",
+      "authority": 5,
+      "keywords": [
+        "infra",
+        "ci",
+        "runners",
+        "postgres",
+        "linear",
+        "board"
+      ]
+    },
+    {
+      "url": "http://linear.app/projects/INF/issues/103",
+      "title": "INF-103 Cold-cache warmer on the new pop",
+      "snippet": "INC-4 follow-up owned by admin: warm the cache before a point of presence takes traffic.",
+      "authority": 5,
+      "keywords": [
+        "inf-103",
+        "cold cache",
+        "inc-4",
+        "pop",
+        "deploy",
+        "incident"
+      ]
+    }
+  ]
+}

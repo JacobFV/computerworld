@@ -22,71 +22,6 @@
       "content_width": 900
     },
     "accounts": {
-      "alicechen.bsky.social": {
-        "handle": "alicechen.bsky.social",
-        "name": "Alice Chen",
-        "actor": "alice",
-        "bio": "Systems at Northstar. Renderer, determinism, and the belief that sleep(100) is a confession. Blog: http://alicechen.dev/",
-        "location": "Seattle, WA",
-        "followers": 3960,
-        "following": 410,
-        "site": "http://alicechen.dev/",
-        "domain": "",
-        "headline": "",
-        "verified": false
-      },
-      "bmartinez.bsky.social": {
-        "handle": "bmartinez.bsky.social",
-        "name": "Bob Martinez",
-        "actor": "bob",
-        "bio": "CI and test infrastructure at Northstar. Flake hunter. It passed on your machine, which one?",
-        "location": "Seattle, WA",
-        "followers": 1780,
-        "following": 520,
-        "site": "http://bmartinez.net/",
-        "domain": "",
-        "headline": "",
-        "verified": false
-      },
-      "carolnk.bsky.social": {
-        "handle": "carolnk.bsky.social",
-        "name": "Carol Nakamura",
-        "actor": "carol",
-        "bio": "Engineering manager, Northstar. Shipped Atlas. Reposts are a to-read list I will never finish.",
-        "location": "Seattle, WA",
-        "followers": 5210,
-        "following": 302,
-        "domain": "",
-        "headline": "",
-        "verified": false,
-        "site": ""
-      },
-      "northstar.bsky.social": {
-        "handle": "northstar.bsky.social",
-        "name": "Northstar",
-        "actor": "admin",
-        "bio": "Deterministic simulation. Atlas 1.0 is out. http://northstar.example/",
-        "location": "Seattle, WA",
-        "followers": 12400,
-        "following": 60,
-        "verified": true,
-        "site": "http://northstar.example/",
-        "domain": "",
-        "headline": ""
-      },
-      "praman.bsky.social": {
-        "handle": "praman.bsky.social",
-        "name": "Priya Raman",
-        "bio": "Rust internals. Allocator archaeology. I will answer your hash map question but you will not like the answer.",
-        "followers": 31800,
-        "following": 610,
-        "verified": true,
-        "actor": null,
-        "domain": "",
-        "headline": "",
-        "location": "",
-        "site": ""
-      },
       "quarks.bsky.social": {
         "handle": "quarks.bsky.social",
         "name": "Dana Quarks",
@@ -169,19 +104,10 @@
     "posts": {
       "p-6101": {
         "author": "mira.bsky.social",
-        "text": "Starter pack: Rust and systems folks who are actually here and actually post. Alice Chen, Bob Martinez, Priya Raman, Dana Quarks, Kojo Mensah, Sam Ortega, Yuki Tanaka. Follow all of them and your timeline will get worse in the good way.",
         "tick": 2,
         "likes": 840,
         "reposts": 410,
         "id": "p-6101"
-      },
-      "p-6102": {
-        "author": "praman.bsky.social",
-        "text": "New site, same reminder: hash map iteration order is not a promise. It has never been a promise. Stop building on it.",
-        "tick": 2,
-        "likes": 2210,
-        "reposts": 760,
-        "id": "p-6102"
       },
       "p-6103": {
         "author": "kojo.bsky.social",
@@ -199,94 +125,15 @@
         "reposts": 920,
         "id": "p-6104"
       },
-      "p-6105": {
-        "author": "alicechen.bsky.social",
-        "text": "Thread: what deterministic simulation actually means in practice, from the two years we spent building Atlas at Northstar. 1/ Same inputs, same outputs, on every machine, every time. Sounds obvious. Nothing about it is obvious.",
-        "tick": 4,
-        "likes": 1920,
-        "reposts": 610,
-        "id": "p-6105"
-      },
-      "p-6106": {
-        "author": "alicechen.bsky.social",
-        "text": "2/ The first thing you lose is wall clock time. Not as a value, as a concept. Every sleep, every timeout, every now() becomes a tick from the simulation. sleep(100) in a test is a confession that you never tried.",
-        "tick": 4,
-        "likes": 1180,
-        "reposts": 290,
-        "reply_to": "p-6105",
-        "id": "p-6106"
-      },
-      "p-6107": {
-        "author": "alicechen.bsky.social",
-        "text": "3/ The second thing you lose is iteration order. Every hash map that touches output gets sorted or replaced. Priya has been saying this for years and she is right every time.",
-        "tick": 4,
-        "likes": 960,
-        "reposts": 210,
-        "reply_to": "p-6106",
-        "id": "p-6107"
-      },
-      "p-6108": {
-        "author": "alicechen.bsky.social",
-        "text": "4/ The third is the network. Atlas simulates the whole one: latency, loss, ordering, all from a seed. The payoff is a bug report that is a checkpoint and a seed, and it reproduces on the first try. Every time. http://northstar.example/",
-        "tick": 4,
-        "likes": 1410,
-        "reposts": 470,
-        "reply_to": "p-6107",
-        "id": "p-6108"
-      },
-      "p-6109": {
-        "author": "praman.bsky.social",
-        "text": "Right every time is a strong claim but I will allow it.",
-        "tick": 4,
-        "likes": 820,
-        "reposts": 44,
-        "reply_to": "p-6107",
-        "id": "p-6109"
-      },
-      "p-6110": {
-        "author": "kojo.bsky.social",
-        "text": "This is game netcode with the serial numbers filed off and I mean that as the highest compliment. Lockstep people have known this pain for twenty years. Nice to see it get a product.",
-        "tick": 5,
-        "likes": 690,
-        "reposts": 130,
-        "reply_to": "p-6108",
-        "id": "p-6110"
-      },
       "p-6111": {
         "author": "quarks.bsky.social",
-        "text": "I said on the fediverse that every replay debugger in production is a shell script that greps a log. Atlas made me eat that in about four minutes. Still true everywhere else though.",
         "tick": 5,
         "likes": 1130,
         "reposts": 260,
         "id": "p-6111"
       },
-      "p-6112": {
-        "author": "bmartinez.bsky.social",
-        "text": "The flaky test that ate my month: Windows-only, one CI runner, hash order. Nine line fix. Wrote it up on my blog, http://bmartinez.net/ - the shirt is in production.",
-        "tick": 5,
-        "likes": 740,
-        "reposts": 180,
-        "id": "p-6112"
-      },
-      "p-6113": {
-        "author": "northstar.bsky.social",
-        "text": "Atlas 1.0 is live. Deterministic simulation for the whole stack, including the network. Launch notes and the walkthrough video are linked from http://northstar.example/",
-        "tick": 6,
-        "likes": 1560,
-        "reposts": 540,
-        "id": "p-6113"
-      },
-      "p-6114": {
-        "author": "carolnk.bsky.social",
-        "text": "Shipping Atlas was three people saying no to good ideas for eighteen months. I would like to thank the ideas for their service and the people for their patience.",
-        "tick": 6,
-        "likes": 1290,
-        "reposts": 210,
-        "id": "p-6114"
-      },
       "p-6115": {
         "author": "tweber.bsky.social",
-        "text": "New from me: Northstar's Atlas bets everything on determinism. A startup that treats an unreproducible run as a bug report. Full piece at http://theverge.com/",
         "tick": 7,
         "likes": 4800,
         "reposts": 1900,
@@ -294,7 +141,6 @@
       },
       "p-6116": {
         "author": "yuki.bsky.social",
-        "text": "Reading the Atlas piece and quietly noting that deterministic replay is the precondition for every verification technique I care about. You cannot prove things about a program that does something different each run. This is bigger than debugging.",
         "tick": 7,
         "likes": 980,
         "reposts": 310,
@@ -312,7 +158,6 @@
       },
       "p-6118": {
         "author": "mira.bsky.social",
-        "text": "Added the Atlas thread to the Rustaceans feed. Also, unrelated, the bridges feed passed 10k subscribers today and I have no explanation for that. People like bridges.",
         "tick": 8,
         "likes": 720,
         "reposts": 95,
@@ -326,15 +171,6 @@
         "reposts": 1100,
         "id": "p-6119"
       },
-      "p-6120": {
-        "author": "bmartinez.bsky.social",
-        "text": "This is the plot of a horror movie for CI people.",
-        "tick": 8,
-        "likes": 410,
-        "reposts": 20,
-        "reply_to": "p-6119",
-        "id": "p-6120"
-      },
       "p-6121": {
         "author": "kojo.bsky.social",
         "text": "A joke for the frame pacing people: why did the render thread break up with the physics thread? It could not keep up, and it kept trying to interpolate what was said.",
@@ -343,46 +179,12 @@
         "reposts": 640,
         "id": "p-6121"
       },
-      "p-6122": {
-        "author": "alicechen.bsky.social",
-        "text": "I own the renderer and I am wounded by this.",
-        "tick": 9,
-        "likes": 560,
-        "reposts": 12,
-        "reply_to": "p-6121",
-        "id": "p-6122"
-      },
-      "p-6123": {
-        "author": "praman.bsky.social",
-        "text": "Reading the standard library's hash map implementation again for a talk. Every year I find a comment that is more honest than anything in my own code. Slides eventually on http://github.com/",
-        "tick": 10,
-        "likes": 1340,
-        "reposts": 220,
-        "id": "p-6123"
-      },
-      "p-6124": {
-        "author": "carolnk.bsky.social",
-        "text": "Manager tip that took me a decade: the review that says 'this is fine, ship it' is a gift, not laziness. Save the paragraphs for the change that needs them.",
-        "tick": 10,
-        "likes": 2410,
-        "reposts": 580,
-        "id": "p-6124"
-      },
       "p-6125": {
         "author": "yuki.bsky.social",
-        "text": "Defended my thesis proposal. Committee's first question was about determinism of the model checker across machines. I said 'we sort the hash maps' and Priya Raman's post flashed before my eyes.",
         "tick": 11,
         "likes": 1120,
         "reposts": 140,
         "id": "p-6125"
-      },
-      "p-6126": {
-        "author": "northstar.bsky.social",
-        "text": "We are hiring for the simulation kernel and the renderer team. Seattle or remote in the US. If you have opinions about fixed timesteps, this is your sign. http://northstar.example/",
-        "tick": 12,
-        "likes": 610,
-        "reposts": 230,
-        "id": "p-6126"
       },
       "p-6127": {
         "author": "ops.bsky.social",
@@ -394,83 +196,23 @@
       },
       "p-6128": {
         "author": "mira.bsky.social",
-        "text": "Starter pack, autumn edition: everyone from the first one plus Carol Nakamura, Tom Weber for the journalism, and Northstar because apparently we all work there now.",
         "tick": 13,
         "likes": 530,
         "reposts": 190,
         "id": "p-6128"
-      },
-      "p-6129": {
-        "author": "bmartinez.bsky.social",
-        "text": "Saved a penalty Sunday. Tests are green Monday. Both of these are luck and I will take both.",
-        "tick": 13,
-        "likes": 380,
-        "reposts": 11,
-        "id": "p-6129"
       }
     },
-    "follows": {
-      "alice": [
-        "bmartinez.bsky.social",
-        "carolnk.bsky.social",
-        "northstar.bsky.social",
-        "praman.bsky.social",
-        "quarks.bsky.social",
-        "mira.bsky.social",
-        "kojo.bsky.social",
-        "tweber.bsky.social"
-      ],
-      "bob": [
-        "alicechen.bsky.social",
-        "carolnk.bsky.social",
-        "northstar.bsky.social",
-        "praman.bsky.social",
-        "ops.bsky.social",
-        "mira.bsky.social"
-      ],
-      "carol": [
-        "alicechen.bsky.social",
-        "bmartinez.bsky.social",
-        "northstar.bsky.social",
-        "tweber.bsky.social",
-        "yuki.bsky.social",
-        "ops.bsky.social"
-      ],
-      "admin": [
-        "alicechen.bsky.social",
-        "bmartinez.bsky.social",
-        "carolnk.bsky.social",
-        "tweber.bsky.social"
-      ]
-    },
+    "follows": {},
     "likes": {
-      "p-6102": [
-        "alice",
-        "bob"
-      ],
-      "p-6115": [
-        "alice",
-        "bob",
-        "carol"
-      ],
-      "p-6104": [
-        "bob"
-      ],
-      "p-6124": [
-        "alice"
-      ],
-      "p-6119": [
-        "carol"
-      ]
+      "p-6102": [],
+      "p-6115": [],
+      "p-6104": [],
+      "p-6124": [],
+      "p-6119": []
     },
     "reposts": {
-      "p-6115": [
-        "carol"
-      ],
-      "p-6105": [
-        "bob",
-        "carol"
-      ]
+      "p-6115": [],
+      "p-6105": []
     },
     "connections": {},
     "messages": {
@@ -478,22 +220,9 @@
         "id": "c-feed",
         "title": "Rustaceans feed",
         "members": [
-          "mira.bsky.social",
-          "alicechen.bsky.social"
+          "mira.bsky.social"
         ],
         "messages": [
-          {
-            "id": "dm-1",
-            "from": "mira.bsky.social",
-            "text": "Hi Alice, ok to pin the Atlas thread at the top of the Rustaceans feed for a week? It is the most replied thing on the feed this month.",
-            "tick": 8
-          },
-          {
-            "id": "dm-2",
-            "from": "alicechen.bsky.social",
-            "text": "Of course. Pin the first post, the rest reads from there. And add Bob's flaky test one, it is the practical half.",
-            "tick": 8
-          },
           {
             "id": "dm-3",
             "from": "mira.bsky.social",
@@ -536,80 +265,6 @@
       ]
     },
     {
-      "url": "http://bsky.app/alicechen.bsky.social",
-      "title": "Alice Chen (@alicechen.bsky.social) on Bluesky",
-      "snippet": "Systems at Northstar. Renderer, determinism, and the belief that sleep(100) is a confession.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "alice chen",
-        "alicechen",
-        "bluesky",
-        "northstar",
-        "determinism",
-        "profile"
-      ]
-    },
-    {
-      "url": "http://bsky.app/bmartinez.bsky.social",
-      "title": "Bob Martinez (@bmartinez.bsky.social) on Bluesky",
-      "snippet": "CI and test infrastructure at Northstar. Flake hunter.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": [
-        "bob martinez",
-        "bmartinez",
-        "bluesky",
-        "ci",
-        "flaky tests",
-        "profile"
-      ]
-    },
-    {
-      "url": "http://bsky.app/carolnk.bsky.social",
-      "title": "Carol Nakamura (@carolnk.bsky.social) on Bluesky",
-      "snippet": "Engineering manager, Northstar. Shipped Atlas. Reposts are a to-read list.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": [
-        "carol nakamura",
-        "carolnk",
-        "bluesky",
-        "engineering manager",
-        "profile"
-      ]
-    },
-    {
-      "url": "http://bsky.app/northstar.bsky.social",
-      "title": "Northstar (@northstar.bsky.social) on Bluesky",
-      "snippet": "Deterministic simulation. Atlas 1.0 is out. Launch notes and hiring.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "northstar",
-        "bluesky",
-        "atlas",
-        "company",
-        "hiring",
-        "profile"
-      ]
-    },
-    {
-      "url": "http://bsky.app/praman.bsky.social",
-      "title": "Priya Raman (@praman.bsky.social) on Bluesky",
-      "snippet": "Rust internals. Allocator archaeology. Hash map iteration order is not a promise.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": [
-        "priya raman",
-        "praman",
-        "bluesky",
-        "rust",
-        "hash map",
-        "profile"
-      ]
-    },
-    {
       "url": "http://bsky.app/mira.bsky.social",
       "title": "Mira Haddad (@mira.bsky.social) on Bluesky",
       "snippet": "Compilers by day, custom feeds by night. Maintains the Rustaceans feed and the starter packs.",
@@ -640,21 +295,6 @@
       ]
     },
     {
-      "url": "http://bsky.app/alicechen.bsky.social/status/p-6105",
-      "title": "Alice Chen: what deterministic simulation actually means",
-      "snippet": "A four-post thread on building Atlas at Northstar: losing wall clock time, iteration order, and the network.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "deterministic simulation",
-        "atlas",
-        "thread",
-        "alice chen",
-        "northstar",
-        "determinism"
-      ]
-    },
-    {
       "url": "http://bsky.app/mira.bsky.social/status/p-6101",
       "title": "Starter pack: Rust and systems folks on Bluesky",
       "snippet": "Mira Haddad's starter pack of systems people who actually post.",
@@ -666,20 +306,6 @@
         "rust",
         "systems",
         "follow"
-      ]
-    },
-    {
-      "url": "http://bsky.app/tweber.bsky.social/status/p-6115",
-      "title": "Tom Weber: Northstar's Atlas bets everything on determinism",
-      "snippet": "The Verge story on Bluesky, with replies from Yuki Tanaka and Sam Ortega.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "the verge",
-        "atlas",
-        "determinism",
-        "tom weber",
-        "northstar"
       ]
     },
     {

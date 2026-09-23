@@ -549,7 +549,8 @@ impl Service for WikiService {
 mod tests {
     use super::*;
     use serde_json::json;
-    const SITE: &str = include_str!("../../../../worlds/internet/sites/wikipedia.json");
+    static SITE: std::sync::LazyLock<&'static str> =
+        std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("wikipedia"));
     const ARTICLE: &str = "Deterministic_simulation";
     fn ctx() -> ServiceContext {
         ServiceContext {
@@ -561,7 +562,7 @@ mod tests {
         }
     }
     fn site() -> Value {
-        serde_json::from_str::<Value>(SITE).unwrap()
+        serde_json::from_str::<Value>(*SITE).unwrap()
     }
     fn raw() -> Value {
         WikiService
@@ -938,27 +939,30 @@ mod tests {
             .is_err());
         assert!(WikiService.initialize(Value::Null, &ctx()).is_ok());
     }
-    const SKINNED: [(&str, &str, &str); 3] = [
-        (
-            "vector",
-            "wikipedia.org",
-            include_str!("../../../../worlds/internet/sites/wikipedia.json"),
-        ),
-        (
-            "imdb",
-            "imdb.com",
-            include_str!("../../../../worlds/internet/sites/imdb.json"),
-        ),
-        (
-            "archive",
-            "archive.org",
-            include_str!("../../../../worlds/internet/sites/archive.json"),
-        ),
-    ];
+    static SKINNED: std::sync::LazyLock<[(&'static str, &'static str, &'static str); 3]> =
+        std::sync::LazyLock::new(|| {
+            [
+                (
+                    "vector",
+                    "wikipedia.org",
+                    cw_service_common::reference::reference_site_json("wikipedia"),
+                ),
+                (
+                    "imdb",
+                    "imdb.com",
+                    cw_service_common::reference::reference_site_json("imdb"),
+                ),
+                (
+                    "archive",
+                    "archive.org",
+                    cw_service_common::reference::reference_site_json("archive"),
+                ),
+            ]
+        });
     /// Every page of every site: strict HTML and CSS, in the skin its seed names.
     #[test]
     fn every_page_of_every_skin_validates_strictly() {
-        for (skin, host, seed) in SKINNED {
+        for (skin, host, seed) in *SKINNED {
             let site: Value = serde_json::from_str(seed).unwrap();
             let mut state = WikiService
                 .initialize(site["initial_state"].clone(), &ctx())

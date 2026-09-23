@@ -26,57 +26,10 @@
       "muted": "#5b6b7b",
       "content_width": 1000
     },
-    "accounts": {
-      "pp-alice": {
-        "id": "pp-alice",
-        "owner": "alice",
-        "kind": "balance",
-        "name": "PayPal Balance (linked: Horizon Card ...3310, Northwind Checking ...4417)",
-        "balance_cents": 48312,
-        "available_cents": 48312,
-        "limit_cents": 0
-      },
-      "ppc-alice": {
-        "id": "ppc-alice",
-        "owner": "alice",
-        "kind": "credit",
-        "name": "PayPal Credit (...7702)",
-        "balance_cents": -33600,
-        "available_cents": 216400,
-        "limit_cents": 250000
-      },
-      "pp-bob": {
-        "id": "pp-bob",
-        "owner": "bob",
-        "kind": "balance",
-        "name": "PayPal Balance (linked: Puget Federal Debit ...5518)",
-        "balance_cents": 21745,
-        "available_cents": 21745,
-        "limit_cents": 0
-      },
-      "pp-carol": {
-        "id": "pp-carol",
-        "owner": "carol",
-        "kind": "balance",
-        "name": "PayPal Balance (linked: Cascade Credit Union Visa ...9084)",
-        "balance_cents": 130580,
-        "available_cents": 130580,
-        "limit_cents": 0
-      },
-      "pps-carol": {
-        "id": "pps-carol",
-        "owner": "carol",
-        "kind": "savings",
-        "name": "PayPal Savings (4.10% APY)",
-        "balance_cents": 620000,
-        "available_cents": 620000,
-        "limit_cents": 0
-      }
-    },
+    "accounts": {},
     "transactions": {
       "tx-1": {
         "id": "tx-1",
-        "account": "pp-alice",
         "tick": 0,
         "date": "2026-02-27",
         "merchant": "ADD MONEY FROM NORTHWIND CHECKING ...4417",
@@ -88,7 +41,6 @@
       },
       "tx-2": {
         "id": "tx-2",
-        "account": "pp-alice",
         "tick": 1,
         "date": "2026-02-28",
         "merchant": "AIRBNB",
@@ -100,7 +52,6 @@
       },
       "tx-3": {
         "id": "tx-3",
-        "account": "pp-alice",
         "tick": 2,
         "date": "2026-03-01",
         "merchant": "BOOKING.COM",
@@ -112,7 +63,6 @@
       },
       "tx-4": {
         "id": "tx-4",
-        "account": "pp-alice",
         "tick": 3,
         "date": "2026-03-02",
         "merchant": "UBER TRIP",
@@ -124,7 +74,6 @@
       },
       "tx-5": {
         "id": "tx-5",
-        "account": "pp-alice",
         "tick": 4,
         "date": "2026-03-03",
         "merchant": "EBAY - OUTLET_OVERSTOCK_NW",
@@ -136,7 +85,6 @@
       },
       "tx-6": {
         "id": "tx-6",
-        "account": "pp-alice",
         "tick": 4,
         "date": "2026-03-03",
         "merchant": "DOORDASH",
@@ -148,7 +96,6 @@
       },
       "tx-7": {
         "id": "tx-7",
-        "account": "pp-alice",
         "tick": 5,
         "date": "2026-03-04",
         "merchant": "SPOTIFY PREMIUM",
@@ -160,10 +107,8 @@
       },
       "tx-8": {
         "id": "tx-8",
-        "account": "pp-alice",
         "tick": 6,
         "date": "2026-03-08",
-        "merchant": "SENT TO BOB TANAKA",
         "category": "Friends",
         "amount_cents": -23250,
         "memo": "Half of the Skykomish A-frame, 24-26 April",
@@ -172,10 +117,8 @@
       },
       "tx-9": {
         "id": "tx-9",
-        "account": "pp-bob",
         "tick": 6,
         "date": "2026-03-08",
-        "merchant": "RECEIVED FROM ALICE NAKAMURA",
         "category": "Friends",
         "amount_cents": 23250,
         "memo": "Half of the Skykomish A-frame, 24-26 April",
@@ -184,7 +127,6 @@
       },
       "tx-10": {
         "id": "tx-10",
-        "account": "pp-alice",
         "tick": 7,
         "date": "2026-03-10",
         "merchant": "REFUND FROM EBAY - CABLE_LOT_LIQUIDATORS",
@@ -196,7 +138,6 @@
       },
       "tx-11": {
         "id": "tx-11",
-        "account": "pp-alice",
         "tick": 9,
         "date": "2026-03-13",
         "merchant": "DOORDASH",
@@ -208,10 +149,8 @@
       },
       "tx-12": {
         "id": "tx-12",
-        "account": "pp-alice",
         "tick": 10,
         "date": "2026-03-14",
-        "merchant": "RECEIVED FROM CAROL NDIAYE",
         "category": "Friends",
         "amount_cents": 1800,
         "memo": "Lunch at Siam Corner, thanks",
@@ -220,7 +159,6 @@
       },
       "tx-13": {
         "id": "tx-13",
-        "account": "pp-alice",
         "tick": 11,
         "date": "2026-03-15",
         "merchant": "MARROWPOINT_SEEDS ON EBAY",
@@ -232,7 +170,6 @@
       },
       "tx-14": {
         "id": "tx-14",
-        "account": "ppc-alice",
         "tick": 2,
         "date": "2026-03-01",
         "merchant": "BOOKING.COM",
@@ -244,7 +181,6 @@
       },
       "tx-15": {
         "id": "tx-15",
-        "account": "pp-alice",
         "tick": 2,
         "date": "2026-03-01",
         "merchant": "REVERSAL - MOVED TO PAYPAL CREDIT",
@@ -256,7 +192,6 @@
       },
       "tx-16": {
         "id": "tx-16",
-        "account": "pp-bob",
         "tick": 1,
         "date": "2026-02-28",
         "merchant": "ADD MONEY FROM PUGET FEDERAL ...5518",
@@ -268,7 +203,6 @@
       },
       "tx-17": {
         "id": "tx-17",
-        "account": "pp-bob",
         "tick": 3,
         "date": "2026-03-02",
         "merchant": "EBAY - PORTSIDE_REFURB",
@@ -280,7 +214,6 @@
       },
       "tx-18": {
         "id": "tx-18",
-        "account": "pp-bob",
         "tick": 5,
         "date": "2026-03-08",
         "merchant": "AIRBNB",
@@ -292,7 +225,6 @@
       },
       "tx-19": {
         "id": "tx-19",
-        "account": "pp-bob",
         "tick": 6,
         "date": "2026-03-09",
         "merchant": "TICKETMASTER",
@@ -304,7 +236,6 @@
       },
       "tx-20": {
         "id": "tx-20",
-        "account": "pp-bob",
         "tick": 8,
         "date": "2026-03-12",
         "merchant": "UBER TRIP",
@@ -316,7 +247,6 @@
       },
       "tx-21": {
         "id": "tx-21",
-        "account": "pp-bob",
         "tick": 9,
         "date": "2026-03-13",
         "merchant": "MERIDIAN CLOUD STORAGE",
@@ -328,10 +258,8 @@
       },
       "tx-22": {
         "id": "tx-22",
-        "account": "pp-bob",
         "tick": 10,
         "date": "2026-03-14",
-        "merchant": "SENT TO CAROL NDIAYE",
         "category": "Friends",
         "amount_cents": -4244,
         "memo": "Massaman and pad thai, your half of the order",
@@ -340,10 +268,8 @@
       },
       "tx-23": {
         "id": "tx-23",
-        "account": "pp-carol",
         "tick": 10,
         "date": "2026-03-14",
-        "merchant": "RECEIVED FROM BOB TANAKA",
         "category": "Friends",
         "amount_cents": 4244,
         "memo": "Massaman and pad thai, your half of the order",
@@ -352,7 +278,6 @@
       },
       "tx-24": {
         "id": "tx-24",
-        "account": "pp-carol",
         "tick": 0,
         "date": "2026-02-27",
         "merchant": "ADD MONEY FROM CASCADE CU VISA ...9084",
@@ -364,7 +289,6 @@
       },
       "tx-25": {
         "id": "tx-25",
-        "account": "pp-carol",
         "tick": 4,
         "date": "2026-03-03",
         "merchant": "ETSY - HANDMADE ROW",
@@ -376,7 +300,6 @@
       },
       "tx-26": {
         "id": "tx-26",
-        "account": "pp-carol",
         "tick": 6,
         "date": "2026-03-09",
         "merchant": "EBAY - HARBOR_COIN_EXCHANGE",
@@ -388,7 +311,6 @@
       },
       "tx-27": {
         "id": "tx-27",
-        "account": "pp-carol",
         "tick": 7,
         "date": "2026-03-11",
         "merchant": "BOOKING.COM",
@@ -400,10 +322,8 @@
       },
       "tx-28": {
         "id": "tx-28",
-        "account": "pp-carol",
         "tick": 10,
         "date": "2026-03-14",
-        "merchant": "SENT TO ALICE NAKAMURA",
         "category": "Friends",
         "amount_cents": -1800,
         "memo": "Lunch at Siam Corner, thanks",
@@ -412,7 +332,6 @@
       },
       "tx-29": {
         "id": "tx-29",
-        "account": "pp-carol",
         "tick": 11,
         "date": "2026-03-15",
         "merchant": "AMAZON",
@@ -424,7 +343,6 @@
       },
       "tx-30": {
         "id": "tx-30",
-        "account": "pp-carol",
         "tick": 3,
         "date": "2026-03-02",
         "merchant": "TRANSFER TO PAYPAL SAVINGS",
@@ -436,7 +354,6 @@
       },
       "tx-31": {
         "id": "tx-31",
-        "account": "pps-carol",
         "tick": 3,
         "date": "2026-03-02",
         "merchant": "TRANSFER FROM PAYPAL BALANCE",
@@ -448,7 +365,6 @@
       },
       "tx-32": {
         "id": "tx-32",
-        "account": "pps-carol",
         "tick": 8,
         "date": "2026-03-12",
         "merchant": "INTEREST PAID",
@@ -460,7 +376,6 @@
       },
       "tx-33": {
         "id": "tx-33",
-        "account": "pp-alice",
         "tick": 8,
         "date": "2026-03-12",
         "merchant": "HAWTHORNE BURGER CO. ON UBER EATS",
@@ -474,19 +389,16 @@
         "id": "tx-34",
         "pending": false,
         "link": "",
-        "account": "pp-alice",
         "tick": 12,
         "date": "2026-03-16",
         "merchant": "ETSY - QUILL & KETTLE PRESS",
         "category": "Shopping",
-        "amount_cents": -2450,
-        "memo": "Letterpress notebook, gift for Carol"
+        "amount_cents": -2450
       },
       "tx-35": {
         "id": "tx-35",
         "pending": false,
         "link": "http://uber.com/orders/trip-8f3a1c",
-        "account": "pp-alice",
         "tick": 12,
         "date": "2026-03-16",
         "merchant": "UBER TRIP",
@@ -498,7 +410,6 @@
         "id": "tx-36",
         "pending": false,
         "link": "",
-        "account": "pp-alice",
         "tick": 13,
         "date": "2026-03-17",
         "merchant": "MERIDIAN WIRELESS",
@@ -510,7 +421,6 @@
         "id": "tx-37",
         "pending": true,
         "link": "",
-        "account": "pp-alice",
         "tick": 13,
         "date": "2026-03-17",
         "merchant": "WITHDRAW TO NORTHWIND CHECKING ...4417",
@@ -522,7 +432,6 @@
         "id": "tx-38",
         "pending": false,
         "link": "",
-        "account": "pp-bob",
         "tick": 11,
         "date": "2026-03-15",
         "merchant": "DOORDASH",
@@ -534,7 +443,6 @@
         "id": "tx-39",
         "pending": false,
         "link": "",
-        "account": "pp-bob",
         "tick": 12,
         "date": "2026-03-16",
         "merchant": "REFUND FROM TICKETMASTER",
@@ -546,7 +454,6 @@
         "id": "tx-40",
         "pending": true,
         "link": "",
-        "account": "pp-carol",
         "tick": 12,
         "date": "2026-03-16",
         "merchant": "AIRBNB",
@@ -558,7 +465,6 @@
         "id": "tx-41",
         "pending": false,
         "link": "",
-        "account": "pp-carol",
         "tick": 9,
         "date": "2026-03-13",
         "merchant": "SPOTIFY PREMIUM DUO",
@@ -568,21 +474,6 @@
       }
     },
     "payees": {
-      "bob-tanaka": {
-        "id": "bob-tanaka",
-        "name": "Bob Tanaka",
-        "account_hint": "@bobtanaka"
-      },
-      "carol-ndiaye": {
-        "id": "carol-ndiaye",
-        "name": "Carol Ndiaye",
-        "account_hint": "@carolndiaye"
-      },
-      "alice-nakamura": {
-        "id": "alice-nakamura",
-        "name": "Alice Nakamura",
-        "account_hint": "@alicenakamura"
-      },
       "ebay": {
         "id": "ebay",
         "name": "eBay",
@@ -644,71 +535,6 @@
         "paypal balance",
         "pay online",
         "wallet"
-      ]
-    },
-    {
-      "url": "http://paypal.com/accounts/pp-alice",
-      "title": "PayPal Balance - activity",
-      "snippet": "Payments to Airbnb, Booking.com, Uber, eBay, DoorDash and Etsy, Spotify and Meridian Wireless bills, a refund, a pending withdrawal, and money sent to and received from friends.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "paypal activity",
-        "paypal transactions",
-        "recent payments",
-        "paypal history"
-      ]
-    },
-    {
-      "url": "http://paypal.com/accounts/pp-alice/transactions/tx-5",
-      "title": "eBay - outlet_overstock_nw -$64.00 - payment detail",
-      "snippet": "Order 07-12984-33101, trail runners, paid from PayPal Balance. The detail links back to the eBay order.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "ebay payment",
-        "paypal ebay",
-        "trail runners payment",
-        "order 07-12984-33101"
-      ]
-    },
-    {
-      "url": "http://paypal.com/accounts/ppc-alice",
-      "title": "PayPal Credit (...7702) - activity",
-      "snippet": "A $2,500 line with the Reykjavik stay on a 0% Pay in 4 plan. $2,164.00 available.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": [
-        "paypal credit",
-        "pay in 4",
-        "buy now pay later",
-        "paypal credit limit"
-      ]
-    },
-    {
-      "url": "http://paypal.com/transfers",
-      "title": "Send money and pay merchants - PayPal",
-      "snippet": "Send to Bob, Carol or Alice by handle, pay a saved merchant, or move balance to PayPal Savings. Both legs are written together.",
-      "vertical": "all",
-      "authority": 4,
-      "keywords": [
-        "send money",
-        "paypal send",
-        "pay a friend",
-        "transfer to savings",
-        "split a bill"
-      ]
-    },
-    {
-      "url": "http://paypal.com/statements/pp-alice/2026-03",
-      "title": "PayPal Balance statement - March 2026",
-      "snippet": "A month of wallet activity with the opening and closing balance.",
-      "vertical": "all",
-      "authority": 3,
-      "keywords": [
-        "paypal statement",
-        "monthly statement",
-        "march statement paypal"
       ]
     }
   ]

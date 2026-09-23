@@ -1,0 +1,1042 @@
+{
+  "initial_state": {
+    "pages": {
+      "/": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "h9",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "h1",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "h2",
+                "text": "Design",
+                "url": "http://figma.com/design"
+              },
+              {
+                "kind": "link",
+                "id": "h3",
+                "text": "FigJam",
+                "url": "http://figma.com/figjam"
+              },
+              {
+                "kind": "link",
+                "id": "h4",
+                "text": "Dev Mode",
+                "url": "http://figma.com/dev-mode"
+              },
+              {
+                "kind": "link",
+                "id": "h5",
+                "text": "Community",
+                "url": "http://figma.com/community"
+              },
+              {
+                "kind": "link",
+                "id": "h6",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "h7",
+                "text": "Blog",
+                "url": "http://figma.com/blog"
+              },
+              {
+                "kind": "link",
+                "id": "h8",
+                "text": "Help",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "h14",
+            "height": 12
+          },
+          {
+            "kind": "styled",
+            "id": "h15",
+            "text": "Think bigger. Build faster.",
+            "style": {
+              "size": 36,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "h16",
+            "text": "Figma is the collaborative platform where teams design, prototype, and ship products together, from the first whiteboard sketch to the last handoff comment.",
+            "style": {
+              "size": 16,
+              "color": "#6b6b6b"
+            }
+          },
+          {
+            "kind": "row",
+            "id": "h20",
+            "children": [
+              {
+                "kind": "card",
+                "id": "h17",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "h18",
+                    "text": "Get started for free",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#a259ff",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/pricing"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "h19",
+                "text": "Watch the Config 2026 keynote",
+                "url": "http://youtube.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "grid",
+            "id": "h30",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "h23",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h21",
+                    "text": "Figma Design",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h22",
+                    "text": "Multiplayer editing, auto layout, variables with modes, and prototyping that runs in the browser."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/design"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "h26",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h24",
+                    "text": "FigJam",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h25",
+                    "text": "An online whiteboard for brainstorms, retros, and diagrams. Sticky notes, stamps, and timers included."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/figjam"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "h29",
+                "children": [
+                  {
+                    "kind": "heading",
+                    "id": "h27",
+                    "text": "Dev Mode",
+                    "level": 3
+                  },
+                  {
+                    "kind": "text",
+                    "id": "h28",
+                    "text": "A workspace for developers with measured specs, generated code snippets, and Ready-for-dev status."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/dev-mode"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "heading",
+            "id": "h31",
+            "text": "Trusted by product teams everywhere",
+            "level": 2
+          },
+          {
+            "kind": "text",
+            "id": "h32",
+            "text": "Northstar, Meridian Health, Lumen Bank, and Orbit Labs design in Figma. Thousands of free files, plugins, and widgets published by their designers live in the Community, one click from your drafts."
+          },
+          {
+            "kind": "row",
+            "id": "h35",
+            "children": [
+              {
+                "kind": "link",
+                "id": "h33",
+                "text": "Latest from the blog: Variables and modes, one year on",
+                "url": "http://figma.com/blog/variables-and-modes-one-year-on"
+              },
+              {
+                "kind": "link",
+                "id": "h34",
+                "text": "Help: Share a file",
+                "url": "http://figma.com/help/share-a-file"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "h13",
+            "children": [
+              {
+                "kind": "link",
+                "id": "h10",
+                "text": "Figma on X",
+                "url": "http://x.com/"
+              },
+              {
+                "kind": "link",
+                "id": "h11",
+                "text": "Figma on YouTube",
+                "url": "http://youtube.com/"
+              },
+              {
+                "kind": "text",
+                "id": "h12",
+                "text": "Figma, Inc. San Francisco."
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/community": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "c5",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "c1",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "c2",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "c3",
+                "text": "Design",
+                "url": "http://figma.com/design"
+              },
+              {
+                "kind": "link",
+                "id": "c4",
+                "text": "Help",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "c9",
+            "height": 12
+          },
+          {
+            "kind": "heading",
+            "id": "c25",
+            "text": "Community",
+            "level": 1
+          },
+          {
+            "kind": "text",
+            "id": "c26",
+            "text": "Files, plugins, and widgets published by designers and developers. Everything here is free to duplicate."
+          },
+          {
+            "kind": "grid",
+            "id": "c27",
+            "columns": 3,
+            "children": [
+              {
+                "kind": "card",
+                "id": "c14",
+                "children": [
+                  {
+                    "kind": "thumbnail",
+                    "id": "c10",
+                    "label": "Atlas Design System",
+                    "style": {
+                      "size": 16,
+                      "color": "#ffffff",
+                      "background": "#a259ff",
+                      "radius": 10,
+                      "align": "center",
+                      "width": 200,
+                      "height": 80
+                    }
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "c11",
+                    "text": "Atlas Design System",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "c12",
+                    "text": "by Northstar Design · 12.4k duplicates",
+                    "style": {
+                      "size": 12,
+                      "color": "#6b6b6b"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "c13",
+                    "text": "Foundations, 84 components, and light and dark modes wired to variables. The system behind northstar.example."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/community/atlas-design-system"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "c19",
+                "children": [
+                  {
+                    "kind": "thumbnail",
+                    "id": "c15",
+                    "label": "Wireframe Kit 2026",
+                    "style": {
+                      "size": 16,
+                      "color": "#ffffff",
+                      "background": "#a259ff",
+                      "radius": 10,
+                      "align": "center",
+                      "width": 200,
+                      "height": 80
+                    }
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "c16",
+                    "text": "Wireframe Kit 2026",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "c17",
+                    "text": "by Priya Raman · 8.9k duplicates",
+                    "style": {
+                      "size": 12,
+                      "color": "#6b6b6b"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "c18",
+                    "text": "Low-fidelity blocks for web and mobile: navigation, forms, tables, and empty states. Made for FigJam and Design."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/community/wireframe-kit-2026"
+                }
+              },
+              {
+                "kind": "card",
+                "id": "c24",
+                "children": [
+                  {
+                    "kind": "thumbnail",
+                    "id": "c20",
+                    "label": "Linear Icons 240",
+                    "style": {
+                      "size": 16,
+                      "color": "#ffffff",
+                      "background": "#a259ff",
+                      "radius": 10,
+                      "align": "center",
+                      "width": 200,
+                      "height": 80
+                    }
+                  },
+                  {
+                    "kind": "heading",
+                    "id": "c21",
+                    "text": "Linear Icons 240",
+                    "level": 3
+                  },
+                  {
+                    "kind": "styled",
+                    "id": "c22",
+                    "text": "by Tomas Vieira · 21.1k duplicates",
+                    "style": {
+                      "size": 12,
+                      "color": "#6b6b6b"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "c23",
+                    "text": "240 line icons on a 24px grid with 1.5px strokes, exported as components with a color variable on every path."
+                  }
+                ],
+                "style": {
+                  "radius": 10,
+                  "padding": 16
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/community/iconset-linear-240"
+                }
+              }
+            ],
+            "gap": 12
+          },
+          {
+            "kind": "text",
+            "id": "c28",
+            "text": "Want to publish? Open any file, choose Share, then Publish to Community. Files are reviewed within a day and can be updated at any time."
+          },
+          {
+            "kind": "link",
+            "id": "c29",
+            "text": "How to share a file",
+            "url": "http://figma.com/help/share-a-file"
+          },
+          {
+            "kind": "row",
+            "id": "c8",
+            "children": [
+              {
+                "kind": "link",
+                "id": "c6",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "c7",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/community/atlas-design-system": {
+        "version": 1,
+        "title": "Atlas Design System · Figma Community",
+        "elements": [
+          {
+            "kind": "row",
+            "id": "c04",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "c01",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "c02",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "c03",
+                "text": "Community",
+                "url": "http://figma.com/community"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "c08",
+            "height": 12
+          },
+          {
+            "kind": "thumbnail",
+            "id": "c09",
+            "label": "Atlas Design System",
+            "style": {
+              "size": 16,
+              "color": "#ffffff",
+              "background": "#a259ff",
+              "radius": 10,
+              "align": "center",
+              "width": 720,
+              "height": 200
+            }
+          },
+          {
+            "kind": "row",
+            "id": "c012",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "c010",
+                "text": "Atlas Design System",
+                "style": {
+                  "size": 26,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "badge",
+                "id": "c011",
+                "text": "Design system",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#a259ff",
+                  "radius": 10,
+                  "padding": 5
+                }
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "styled",
+            "id": "c013",
+            "text": "Published by Northstar Design · 12.4k duplicates · Updated 2026-08-14 · Free, CC BY 4.0",
+            "style": {
+              "size": 13,
+              "color": "#6b6b6b"
+            }
+          },
+          {
+            "kind": "row",
+            "id": "c017",
+            "children": [
+              {
+                "kind": "card",
+                "id": "c014",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "c015",
+                    "text": "Open in Figma",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#a259ff",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/design"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "c016",
+                "text": "Report a problem",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "text",
+            "id": "c018",
+            "text": "Foundations, 84 components, and light and dark modes wired to variables. The system behind northstar.example."
+          },
+          {
+            "kind": "text",
+            "id": "c019",
+            "text": "Atlas is the design system used by Northstar's product team. Colors, spacing, radii, and type ramps are variables in four collections, and every component reads from them, so switching a whole screen to dark mode is one mode change. Includes buttons, inputs, tables, toasts, navigation, and data cards, each with a documentation page in the file."
+          },
+          {
+            "kind": "heading",
+            "id": "c020",
+            "text": "Comments",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "c021",
+            "text": "Daniela Ferreira: Duplicated this for a hackathon and it saved us the whole first day. Kwame Mensah: The variables collections are named cleanly, thank you for the docs page inside the file."
+          },
+          {
+            "kind": "link",
+            "id": "c022",
+            "text": "Author on LinkedIn",
+            "url": "http://linkedin.com/"
+          },
+          {
+            "kind": "row",
+            "id": "c07",
+            "children": [
+              {
+                "kind": "link",
+                "id": "c05",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "c06",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ],
+        "theme": {
+          "accent": "#a259ff",
+          "background": "#ffffff",
+          "surface": "#f5f5f5",
+          "ink": "#1e1e1e",
+          "muted": "#6b6b6b"
+        }
+      },
+      "/community/wireframe-kit-2026": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "c14",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "c11",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "c12",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "c13",
+                "text": "Community",
+                "url": "http://figma.com/community"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "c18",
+            "height": 12
+          },
+          {
+            "kind": "thumbnail",
+            "id": "c19",
+            "label": "Wireframe Kit 2026",
+            "style": {
+              "size": 16,
+              "color": "#ffffff",
+              "background": "#a259ff",
+              "radius": 10,
+              "align": "center",
+              "width": 720,
+              "height": 200
+            }
+          },
+          {
+            "kind": "row",
+            "id": "c112",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "c110",
+                "text": "Wireframe Kit 2026",
+                "style": {
+                  "size": 26,
+                  "weight": "bold"
+                }
+              },
+              {
+                "kind": "badge",
+                "id": "c111",
+                "text": "Wireframes",
+                "style": {
+                  "size": 11,
+                  "color": "#ffffff",
+                  "background": "#a259ff",
+                  "radius": 10,
+                  "padding": 5
+                }
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "styled",
+            "id": "c113",
+            "text": "Published by Priya Raman · 8.9k duplicates · Updated 2026-08-14 · Free, CC BY 4.0",
+            "style": {
+              "size": 13,
+              "color": "#6b6b6b"
+            }
+          },
+          {
+            "kind": "row",
+            "id": "c117",
+            "children": [
+              {
+                "kind": "card",
+                "id": "c114",
+                "children": [
+                  {
+                    "kind": "styled",
+                    "id": "c115",
+                    "text": "Open in Figma",
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "color": "#ffffff"
+                    }
+                  }
+                ],
+                "style": {
+                  "background": "#a259ff",
+                  "radius": 8,
+                  "padding": 12
+                },
+                "action": {
+                  "method": "GET",
+                  "url": "http://figma.com/design"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "c116",
+                "text": "Report a problem",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "text",
+            "id": "c118",
+            "text": "Low-fidelity blocks for web and mobile: navigation, forms, tables, and empty states. Made for FigJam and Design."
+          },
+          {
+            "kind": "text",
+            "id": "c119",
+            "text": "The kit is deliberately gray. Every block is an auto layout frame that resizes cleanly, so you can drop a table into a sidebar and it will fit. A FigJam version ships alongside for flows and quick reviews."
+          },
+          {
+            "kind": "heading",
+            "id": "c120",
+            "text": "Comments",
+            "level": 3
+          },
+          {
+            "kind": "text",
+            "id": "c121",
+            "text": "Daniela Ferreira: Duplicated this for a hackathon and it saved us the whole first day. Kwame Mensah: The variables collections are named cleanly, thank you for the docs page inside the file."
+          },
+          {
+            "kind": "link",
+            "id": "c122",
+            "text": "Author on LinkedIn",
+            "url": "http://linkedin.com/"
+          },
+          {
+            "kind": "row",
+            "id": "c17",
+            "children": [
+              {
+                "kind": "link",
+                "id": "c15",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "c16",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      },
+      "/blog/variables-and-modes-one-year-on": {
+        "elements": [
+          {
+            "kind": "row",
+            "id": "b04",
+            "children": [
+              {
+                "kind": "styled",
+                "id": "b01",
+                "text": "Figma",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "color": "#ffffff"
+                }
+              },
+              {
+                "kind": "link",
+                "id": "b02",
+                "text": "Home",
+                "url": "http://figma.com/"
+              },
+              {
+                "kind": "link",
+                "id": "b03",
+                "text": "Blog",
+                "url": "http://figma.com/blog"
+              }
+            ],
+            "gap": 16,
+            "align": "center",
+            "style": {
+              "background": "#1e1e1e",
+              "padding": 14
+            }
+          },
+          {
+            "kind": "spacer",
+            "id": "b08",
+            "height": 12
+          },
+          {
+            "kind": "badge",
+            "id": "b09",
+            "text": "Design systems",
+            "style": {
+              "size": 11,
+              "color": "#ffffff",
+              "background": "#a259ff",
+              "radius": 10,
+              "padding": 5
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "b010",
+            "text": "Variables and modes, one year on",
+            "style": {
+              "size": 30,
+              "weight": "bold"
+            }
+          },
+          {
+            "kind": "styled",
+            "id": "b011",
+            "text": "By Mei-Lin Tsao · 2026-06-11",
+            "style": {
+              "size": 13,
+              "color": "#6b6b6b"
+            }
+          },
+          {
+            "kind": "divider",
+            "id": "b012"
+          },
+          {
+            "kind": "text",
+            "id": "b013",
+            "text": "When variables shipped, the question we heard most was whether a design tool needed a type system. A year later the answer from the teams we talked to is a clear yes, and mostly for a reason we did not predict: modes made the cost of a theme visible."
+          },
+          {
+            "kind": "text",
+            "id": "b014",
+            "text": "Before variables, a dark theme was a second copy of every screen. It drifted within a sprint. Now a dark theme is a column in a collection, and the diff between light and dark is a list you can read in one sitting. Teams told us they were finally able to delete the second copy."
+          },
+          {
+            "kind": "text",
+            "id": "b015",
+            "text": "The other shift was the export path. Typed collections can be exported as tokens JSON, which means the same file that designers edit is the source the build reads. The Atlas Design System on the community is a good example: the variables in the file are the variables in the CSS."
+          },
+          {
+            "kind": "text",
+            "id": "b016",
+            "text": "What is next: expressions in prototypes can now read and write variables, and Grid auto layout uses variables for track sizes. We are working on collection-level permissions so a platform team can own the primitives while product teams own their aliases."
+          },
+          {
+            "kind": "row",
+            "id": "b019",
+            "children": [
+              {
+                "kind": "link",
+                "id": "b017",
+                "text": "Try Dev Mode",
+                "url": "http://figma.com/dev-mode"
+              },
+              {
+                "kind": "link",
+                "id": "b018",
+                "text": "Share this post on X",
+                "url": "http://x.com/"
+              }
+            ],
+            "gap": 12,
+            "align": "center"
+          },
+          {
+            "kind": "row",
+            "id": "b07",
+            "children": [
+              {
+                "kind": "link",
+                "id": "b05",
+                "text": "Pricing",
+                "url": "http://figma.com/pricing"
+              },
+              {
+                "kind": "link",
+                "id": "b06",
+                "text": "Help center",
+                "url": "http://figma.com/help"
+              }
+            ],
+            "gap": 14,
+            "align": "center"
+          }
+        ]
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://figma.com/community/atlas-design-system",
+      "title": "Atlas Design System · Figma Community",
+      "snippet": "Foundations, 84 components, light and dark modes wired to variables.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "atlas",
+        "design system",
+        "figma",
+        "northstar",
+        "variables"
+      ]
+    }
+  ]
+}

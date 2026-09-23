@@ -1,0 +1,36 @@
+{
+  "initial_state": {
+    "footer": [
+      {
+        "text": "Wikipedia",
+        "url": "http://wikipedia.org/"
+      },
+      {
+        "text": "YouTube",
+        "url": "http://youtube.com/"
+      },
+      {
+        "text": "Northstar",
+        "url": "http://northstar.example/"
+      }
+    ],
+    "history": {
+      "alice": [
+        "27 inch 4k usb-c monitor",
+        "shipping atlas",
+        "deterministic simulation"
+      ],
+      "carol": [
+        "devcon seattle tickets",
+        "atlas launch checklist"
+      ]
+    },
+    "authority_overrides": {
+      "alicechen.dev": 4,
+      "bmartinez.net": 3,
+      "eng.northstar.example": 4,
+      "northstar.example": 5,
+      "status.northstar.example": 3
+    }
+  }
+}

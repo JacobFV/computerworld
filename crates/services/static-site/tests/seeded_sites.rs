@@ -10,72 +10,75 @@ use cw_service_common::html::{validate_strict, HTML_MEDIA_TYPE};
 use cw_service_static_site::StaticSite;
 use serde_json::Value;
 
-const SITES: &[(&str, &str)] = &[
-    (
-        "apple",
-        include_str!("../../../../worlds/internet/sites/apple.json"),
-    ),
-    (
-        "aws",
-        include_str!("../../../../worlds/internet/sites/aws.json"),
-    ),
-    (
-        "cloudflare",
-        include_str!("../../../../worlds/internet/sites/cloudflare.json"),
-    ),
-    (
-        "crates",
-        include_str!("../../../../worlds/internet/sites/crates.json"),
-    ),
-    (
-        "docsrs",
-        include_str!("../../../../worlds/internet/sites/docsrs.json"),
-    ),
-    (
-        "figma",
-        include_str!("../../../../worlds/internet/sites/figma.json"),
-    ),
-    (
-        "guide",
-        include_str!("../../../../worlds/company-2026/sites/guide.json"),
-    ),
-    (
-        "intranet",
-        include_str!("../../../../worlds/company-2026/sites/intranet.json"),
-    ),
-    (
-        "microsoft",
-        include_str!("../../../../worlds/internet/sites/microsoft.json"),
-    ),
-    (
-        "northstar-status",
-        include_str!("../../../../worlds/company-2026/sites/northstar-status.json"),
-    ),
-    (
-        "northstar-www",
-        include_str!("../../../../worlds/company-2026/sites/northstar-www.json"),
-    ),
-    (
-        "npmjs",
-        include_str!("../../../../worlds/internet/sites/npmjs.json"),
-    ),
-    (
-        "pypi",
-        include_str!("../../../../worlds/internet/sites/pypi.json"),
-    ),
-    (
-        "stripe",
-        include_str!("../../../../worlds/internet/sites/stripe.json"),
-    ),
-    (
-        "whatsapp",
-        include_str!("../../../../worlds/internet/sites/whatsapp.json"),
-    ),
-    (
-        "zoom",
-        include_str!("../../../../worlds/internet/sites/zoom.json"),
-    ),
-];
+static SITES: std::sync::LazyLock<Vec<(&'static str, &'static str)>> =
+    std::sync::LazyLock::new(|| {
+        vec![
+            (
+                "apple",
+                cw_service_common::reference::reference_site_json("apple"),
+            ),
+            (
+                "aws",
+                cw_service_common::reference::reference_site_json("aws"),
+            ),
+            (
+                "cloudflare",
+                cw_service_common::reference::reference_site_json("cloudflare"),
+            ),
+            (
+                "crates",
+                cw_service_common::reference::reference_site_json("crates"),
+            ),
+            (
+                "docsrs",
+                cw_service_common::reference::reference_site_json("docsrs"),
+            ),
+            (
+                "figma",
+                cw_service_common::reference::reference_site_json("figma"),
+            ),
+            (
+                "guide",
+                include_str!("../../../../worlds/company-2026/sites/guide.json"),
+            ),
+            (
+                "intranet",
+                include_str!("../../../../worlds/company-2026/sites/intranet.json"),
+            ),
+            (
+                "microsoft",
+                cw_service_common::reference::reference_site_json("microsoft"),
+            ),
+            (
+                "northstar-status",
+                include_str!("../../../../worlds/company-2026/sites/northstar-status.json"),
+            ),
+            (
+                "northstar-www",
+                include_str!("../../../../worlds/company-2026/sites/northstar-www.json"),
+            ),
+            (
+                "npmjs",
+                cw_service_common::reference::reference_site_json("npmjs"),
+            ),
+            (
+                "pypi",
+                cw_service_common::reference::reference_site_json("pypi"),
+            ),
+            (
+                "stripe",
+                cw_service_common::reference::reference_site_json("stripe"),
+            ),
+            (
+                "whatsapp",
+                cw_service_common::reference::reference_site_json("whatsapp"),
+            ),
+            (
+                "zoom",
+                cw_service_common::reference::reference_site_json("zoom"),
+            ),
+        ]
+    });
 
 fn ctx() -> ServiceContext {
     ServiceContext {
@@ -131,7 +134,7 @@ fn page_ids(element: &Value, out: &mut Vec<String>) {
 /// no shipped site asks for it.
 #[test]
 fn every_seeded_page_is_strict_html_that_keeps_its_ids() {
-    for (name, source) in SITES {
+    for &(name, source) in SITES.iter() {
         let (mut state, origin, entries) = site(source);
         assert!(
             state.get("format").is_none(),
@@ -209,7 +212,7 @@ fn every_seeded_page_is_strict_html_that_keeps_its_ids() {
 /// The shared record list is a page of its own, and it is HTML like everything else.
 #[test]
 fn the_records_page_is_strict_html_on_every_site() {
-    for (name, source) in SITES {
+    for &(name, source) in SITES.iter() {
         let (mut state, origin, _) = site(source);
         let response = get(&mut state, &format!("{origin}/records"));
         assert_eq!(response.status, 200, "{name}/records");

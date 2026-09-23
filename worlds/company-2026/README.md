@@ -40,17 +40,21 @@ encyclopedias, forums, shops, an AI assistant and so on. `app-server` uplinks to
 `edge-router`, and the company's own public sites — `northstar.example`,
 `status.northstar.example`, `eng.northstar.example`, `guide.example` and the two staff
 blogs — hang off its points of presence. Those, the `.internal` services and the home
-speakers are the only sites under `sites/` here.
+speakers are the only sites under `sites/` here. The company's people and content on the
+shared sites — Alice's inbox on `mail.google.com`, Northstar's repositories on `github.com`,
+the team's posts, orders and videos — are its overlays under `overlays/`, one file per
+site, named in `world.yml`'s `internet_overlays`.
 
 ## The directories
 
 `world.yml` is the blueprint and `world.json` beside it is what it resolves to; the other
-four directories are what the blueprint and the site build read.
+five directories are what the blueprint and the site build read.
 
 | Directory | Read by | Becomes |
 |---|---|---|
 | `home/` | `world.yml`'s `copy:` blocks | The files the three desktops start with. `home/all` is overlaid with `home/macos`, `home/windows` or `home/ubuntu` per machine. |
 | `sites/` | `world.yml`'s `include:` list | The company's own services, one per file, each placing its own node, link and DNS records. |
+| `overlays/` | `world.yml`'s `internet_overlays:` | The company's own content on the internet's shared sites, merged into each as the internet joins. |
 | `network/` | `world.yml`'s `include:` list | Topology with no service behind it — currently just the unplugged bedroom speaker. |
 | `samples/` | `scripts/content/build-live-world.mjs` | The documents and media the live site's machines start with. |
 

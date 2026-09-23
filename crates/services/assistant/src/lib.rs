@@ -399,8 +399,10 @@ mod tests {
     use cw_web::dom::Document as Dom;
     use serde_json::json;
     /// The two shipped seeds; the crate tests hold them to the same standard the plan sets.
-    const OPENAI: &str = include_str!("../../../../worlds/internet/sites/openai.json");
-    const ANTHROPIC: &str = include_str!("../../../../worlds/internet/sites/anthropic.json");
+    static OPENAI: std::sync::LazyLock<&'static str> =
+        std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("openai"));
+    static ANTHROPIC: std::sync::LazyLock<&'static str> =
+        std::sync::LazyLock::new(|| cw_service_common::reference::reference_site_json("anthropic"));
     fn ctx() -> ServiceContext {
         ServiceContext {
             actor: "alice".into(),
@@ -458,7 +460,7 @@ mod tests {
     }
     #[test]
     fn every_fact_citation_url_is_non_empty() {
-        for source in [OPENAI, ANTHROPIC] {
+        for source in [*OPENAI, *ANTHROPIC] {
             let s = seeded(source);
             assert!(!s.facts.is_empty(), "a seed with no facts cites nothing");
             for fact in &s.facts {
@@ -481,7 +483,7 @@ mod tests {
     }
     #[test]
     fn both_assistants_agree_on_shared_facts() {
-        let (a, b) = (seeded(OPENAI), seeded(ANTHROPIC));
+        let (a, b) = (seeded(*OPENAI), seeded(*ANTHROPIC));
         let shared: Vec<_> = a
             .facts
             .iter()
@@ -510,7 +512,7 @@ mod tests {
     }
     #[test]
     fn the_same_prompt_at_the_same_attempt_always_replies_the_same() {
-        let s = seeded(OPENAI);
+        let s = seeded(*OPENAI);
         for prompt in [
             "Explain deterministic simulation",
             "what is the atlas release code",
@@ -531,7 +533,7 @@ mod tests {
     }
     #[test]
     fn seeded_transcripts_are_what_the_engine_would_say() {
-        for source in [OPENAI, ANTHROPIC] {
+        for source in [*OPENAI, *ANTHROPIC] {
             let s = seeded(source);
             for c in s.conversations.values() {
                 assert!(!c.messages.is_empty(), "{} is an empty transcript", c.id);
@@ -546,7 +548,7 @@ mod tests {
     }
     #[test]
     fn facts_outrank_intents_and_carry_their_citations() {
-        let s = seeded(ANTHROPIC);
+        let s = seeded(*ANTHROPIC);
         let m = s.reply("what is the atlas release code", 0, 0);
         assert!(m.text.contains("ATLAS-2026"));
         assert_eq!(m.intent_id, "atlas-release-code");
@@ -560,7 +562,7 @@ mod tests {
     }
     #[test]
     fn conversations_mutate_are_private_and_round_trip() {
-        let mut s = seeded(OPENAI);
+        let mut s = seeded(*OPENAI);
         let started = s
             .start("bob", "", "What is the Atlas release code?", 4)
             .unwrap();
@@ -591,7 +593,7 @@ mod tests {
     }
     #[test]
     fn regenerate_walks_an_intent_and_leaves_a_fact_alone() {
-        let mut s = seeded(OPENAI);
+        let mut s = seeded(*OPENAI);
         let c = s
             .start("alice", "", "Explain deterministic simulation", 0)
             .unwrap();
@@ -615,7 +617,7 @@ mod tests {
     }
     #[test]
     fn routes_render_mutate_and_refuse() {
-        let site: Value = serde_json::from_str(OPENAI).unwrap();
+        let site: Value = serde_json::from_str(*OPENAI).unwrap();
         let mut state = AssistantService
             .initialize(site["initial_state"].clone(), &ctx())
             .unwrap();
@@ -769,7 +771,7 @@ mod tests {
         let id = "conv-1".to_owned();
         let view = HttpRequest::get(format!("http://chatgpt.com/c/{id}"));
         // Every seeded conversation renders too, which is where duplicate ids would surface.
-        for source in [OPENAI, ANTHROPIC] {
+        for source in [*OPENAI, *ANTHROPIC] {
             let seed: Value = serde_json::from_str(source).unwrap();
             let mut s = AssistantService
                 .initialize(seed["initial_state"].clone(), &ctx())

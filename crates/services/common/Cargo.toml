@@ -9,11 +9,13 @@ serde.workspace = true
 serde_json.workspace = true
 url.workspace = true
 cw-web = { path = "../../web/engine", optional = true }
+cw-internet = { path = "../../internet", optional = true }
 
 [features]
-# `html::validate_strict`: runs a page through the engine strictly. Meant for a
-# service's tests: enable it from `[dev-dependencies]`, not from `[dependencies]`.
-validate = ["dep:cw-web"]
+# `html::validate_strict`: runs a page through the engine strictly, and `reference`
+# reads a site as the reference world has it. Meant for a service's tests: enable it
+# from `[dev-dependencies]`, not from `[dependencies]`.
+validate = ["dep:cw-web", "dep:cw-internet"]
 
 [dev-dependencies]
 cw-web = { path = "../../web/engine" }
