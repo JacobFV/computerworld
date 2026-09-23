@@ -4,12 +4,12 @@
 #
 #     cargo run -p cw-blueprint --bin cw-world -- build worlds/company-2026/world.yml
 #
-# Each machine is a directory under `computers/`, every service but the six below
-# comes from its own `services/<id>/service.json`, and each of those places its own node,
-# link and DNS records through the `place:` block and the defaults here. The
-# public web is not declared here: the world joins the built-in internet
-# (worlds/internet) at boot, uplinks to it from app-server through edge-router,
-# and hangs its own public sites off the internet's points of presence.
+# Each machine is a directory under `computers/` and each service one under
+# `services/`; a service that states a `place:` block gets its node, link and DNS
+# records from it and the defaults here. The public web is not declared here:
+# the world joins the built-in internet (worlds/internet) at boot, uplinks to it
+# from app-server through edge-router, and hangs its own public sites off the
+# internet's points of presence.
 schema_version: 1
 id: "northstar-company-2026"
 defaults:
@@ -50,6 +50,8 @@ network:
     - {id: "chat-node", address: "10.0.1.12", zone: "local"}
     - {id: "calendar-node", address: "10.0.1.13", zone: "local"}
     - {id: "issues-node", address: "10.0.1.15", zone: "local"}
+    # The bedroom speaker is unplugged: its node and link are here, and nothing listens.
+    - {id: "bedroom-speaker", address: "10.0.2.23", zone: "local"}
     - {id: "guide-node", address: "203.0.113.10", zone: "internet"}
     - {id: "alice-blog", address: "198.51.100.70", zone: "internet"}
     - {id: "bob-blog", address: "198.51.100.71", zone: "internet"}
@@ -66,6 +68,7 @@ network:
     - {from: "app-server", to: "chat-node", bidirectional: true, latency_us: 10, loss_per_million: 0}
     - {from: "app-server", to: "calendar-node", bidirectional: true, latency_us: 10, loss_per_million: 0}
     - {from: "app-server", to: "issues-node", bidirectional: true, latency_us: 10, loss_per_million: 0}
+    - {from: "app-server", to: "bedroom-speaker", bidirectional: true, latency_us: 10, loss_per_million: 0}
     - {from: "app-server", to: "guide-node", bidirectional: true, latency_us: 10, loss_per_million: 0}
     - {from: "app-server", to: "edge-router", bidirectional: true, latency_us: 3000, loss_per_million: 0}
     - {from: "pop-west", to: "alice-blog", bidirectional: true, latency_us: 2600, loss_per_million: 0}
@@ -127,143 +130,6 @@ network:
     allow_host: false
     host_allowlist: []
     denied_pairs: []
-services:
-  - id: "mail"
-    kind: "mail"
-    node: "mail-node"
-    domains: ["mail.internal"]
-    port: 80
-    initial_state:
-      users: ["alice", "bob", "carol", "admin"]
-      next_id: 1
-      messages:
-        "mail-1":
-          id: "mail-1"
-          sender: "carol"
-          to: ["alice"]
-          cc: ["bob"]
-          subject: "Atlas launch checklist"
-          body: "Review document launch at http://docs.internal/documents/launch. The release code is ATLAS-2026. Update the document after validating launch.txt, then tell #general. Follow OPS-1 at http://issues.internal/."
-          time: 0
-          mailboxes:
-            alice:
-              folders: ["inbox"]
-              labels: []
-              read: false
-            bob:
-              folders: ["inbox"]
-              labels: []
-              read: false
-            carol:
-              folders: ["sent"]
-              labels: []
-              read: true
-  - id: "docs"
-    kind: "docs"
-    node: "docs-node"
-    domains: ["docs.internal"]
-    port: 80
-    initial_state:
-      next_id: 0
-      documents:
-        launch:
-          id: "launch"
-          title: "Atlas launch checklist"
-          owner: "carol"
-          readers: ["alice", "bob"]
-          writers: ["alice", "bob"]
-          body: |
-            Atlas release checklist
-            Status: pending
-            Release code: awaiting confirmation
-            Owner: Carol
-            Related issue: OPS-1
-            Repository: http://git.internal/repos/onboarding
-          revision: 1
-          history: []
-          comments: []
-        handbook:
-          id: "handbook"
-          title: "Northstar handbook"
-          owner: "admin"
-          readers: ["alice", "bob", "carol"]
-          writers: ["carol"]
-          body: "Find launch instructions in mail.internal. Project chat is general at chat.internal. Team calendar is calendar.internal. Public documentation: http://guide.example/."
-          revision: 1
-          history: []
-          comments: []
-          body_variants:
-            - "Northstar release review rotation: Alice leads this episode. Find launch instructions in mail.internal. Team chat is general at chat.internal. Public guide: http://guide.example/."
-            - "Northstar release review rotation: Bob leads this episode. Find launch instructions in mail.internal. Team chat is general at chat.internal. Public guide: http://guide.example/."
-            - "Northstar release review rotation: Carol leads this episode. Find launch instructions in mail.internal. Team chat is general at chat.internal. Public guide: http://guide.example/."
-  - id: "chat"
-    kind: "chat"
-    node: "chat-node"
-    domains: ["chat.internal"]
-    port: 80
-    initial_state:
-      next_id: 0
-      channels:
-        general:
-          title: "General"
-          members: ["alice", "bob", "carol", "admin"]
-          messages: []
-  - id: "calendar"
-    kind: "calendar"
-    node: "calendar-node"
-    domains: ["calendar.internal"]
-    port: 80
-    initial_state:
-      next_id: 1
-      events:
-        "event-1":
-          id: "event-1"
-          owner: "carol"
-          title: "Atlas launch review"
-          start: 3600000000
-          end: 5400000000
-          created: 0
-          attendees: {alice: "pending", bob: "pending"}
-  - id: "git"
-    kind: "git"
-    node: "git-server"
-    domains: ["git.internal"]
-    port: 80
-    initial_state:
-      repositories:
-        onboarding:
-          files:
-            "README.md": |
-              # Atlas onboarding
-              Use http://intranet.internal/ to find the launch checklist.
-            "checklist.txt": |
-              mail read: pending
-              document updated: pending
-          readers: ["alice", "bob", "carol"]
-          writers: ["alice", "bob", "carol"]
-  - id: "issues"
-    kind: "issues"
-    node: "issues-node"
-    domains: ["issues.internal"]
-    port: 80
-    initial_state:
-      projects:
-        OPS:
-          name: "Operations"
-          issues:
-            "1":
-              id: 1
-              title: "Confirm Atlas launch checklist"
-              body: "Read the release code from mail, update document launch, and publish checklist.txt to onboarding."
-              status: "open"
-              author: "carol"
-              assignee: "alice"
-              comments: []
-              reviews: []
-              kind: "issue"
-# The company's own people and content on the internet's shared sites: Alice's inbox,
-# Northstar's repositories, the team's posts. Each file is merged into that site as the
-# internet joins, as a JSON merge patch: objects key by key, anything else restated.
 metadata:
   description: "Fictional small company ecosystem"
   users: ["alice", "bob", "carol", "admin"]
@@ -280,6 +146,12 @@ metadata:
 # content on the internet's service of that name. Machines and the company's own
 # services are listed in the order the world file keeps them in.
 include:
+  - "services/mail/service.json"
+  - "services/docs/service.json"
+  - "services/chat/service.json"
+  - "services/calendar/service.json"
+  - "services/git/service.json"
+  - "services/issues/service.json"
   - "computers/alice-mac/computer.json"
   - "computers/bob-windows/computer.json"
   - "computers/carol-ubuntu/computer.json"
@@ -295,6 +167,5 @@ include:
   - "services/kitchen-speaker/service.json"
   - "services/livingroom-speaker/service.json"
   - "services/office-tv-speaker/service.json"
-  - "sites/bedroom-speaker.json"
   - "services/messages/service.json"
   - "services/*/overlay.json"

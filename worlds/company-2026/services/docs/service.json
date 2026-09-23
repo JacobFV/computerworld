@@ -1,0 +1,53 @@
+{
+  "id": "docs",
+  "kind": "docs",
+  "node": "docs-node",
+  "domains": [
+    "docs.internal"
+  ],
+  "port": 80,
+  "initial_state": {
+    "next_id": 0,
+    "documents": {
+      "launch": {
+        "id": "launch",
+        "title": "Atlas launch checklist",
+        "owner": "carol",
+        "readers": [
+          "alice",
+          "bob"
+        ],
+        "writers": [
+          "alice",
+          "bob"
+        ],
+        "body": "Atlas release checklist\nStatus: pending\nRelease code: awaiting confirmation\nOwner: Carol\nRelated issue: OPS-1\nRepository: http://git.internal/repos/onboarding\n",
+        "revision": 1,
+        "history": [],
+        "comments": []
+      },
+      "handbook": {
+        "id": "handbook",
+        "title": "Northstar handbook",
+        "owner": "admin",
+        "readers": [
+          "alice",
+          "bob",
+          "carol"
+        ],
+        "writers": [
+          "carol"
+        ],
+        "body": "Find launch instructions in mail.internal. Project chat is general at chat.internal. Team calendar is calendar.internal. Public documentation: http://guide.example/.",
+        "revision": 1,
+        "history": [],
+        "comments": [],
+        "body_variants": [
+          "Northstar release review rotation: Alice leads this episode. Find launch instructions in mail.internal. Team chat is general at chat.internal. Public guide: http://guide.example/.",
+          "Northstar release review rotation: Bob leads this episode. Find launch instructions in mail.internal. Team chat is general at chat.internal. Public guide: http://guide.example/.",
+          "Northstar release review rotation: Carol leads this episode. Find launch instructions in mail.internal. Team chat is general at chat.internal. Public guide: http://guide.example/."
+        ]
+      }
+    }
+  }
+}

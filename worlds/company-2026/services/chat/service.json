@@ -1,0 +1,24 @@
+{
+  "id": "chat",
+  "kind": "chat",
+  "node": "chat-node",
+  "domains": [
+    "chat.internal"
+  ],
+  "port": 80,
+  "initial_state": {
+    "next_id": 0,
+    "channels": {
+      "general": {
+        "title": "General",
+        "members": [
+          "alice",
+          "bob",
+          "carol",
+          "admin"
+        ],
+        "messages": []
+      }
+    }
+  }
+}

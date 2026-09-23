@@ -1,0 +1,26 @@
+{
+  "id": "calendar",
+  "kind": "calendar",
+  "node": "calendar-node",
+  "domains": [
+    "calendar.internal"
+  ],
+  "port": 80,
+  "initial_state": {
+    "next_id": 1,
+    "events": {
+      "event-1": {
+        "id": "event-1",
+        "owner": "carol",
+        "title": "Atlas launch review",
+        "start": 3600000000,
+        "end": 5400000000,
+        "created": 0,
+        "attendees": {
+          "alice": "pending",
+          "bob": "pending"
+        }
+      }
+    }
+  }
+}

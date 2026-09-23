@@ -1,0 +1,29 @@
+{
+  "id": "git",
+  "kind": "git",
+  "node": "git-server",
+  "domains": [
+    "git.internal"
+  ],
+  "port": 80,
+  "initial_state": {
+    "repositories": {
+      "onboarding": {
+        "files": {
+          "README.md": "# Atlas onboarding\nUse http://intranet.internal/ to find the launch checklist.\n",
+          "checklist.txt": "mail read: pending\ndocument updated: pending\n"
+        },
+        "readers": [
+          "alice",
+          "bob",
+          "carol"
+        ],
+        "writers": [
+          "alice",
+          "bob",
+          "carol"
+        ]
+      }
+    }
+  }
+}

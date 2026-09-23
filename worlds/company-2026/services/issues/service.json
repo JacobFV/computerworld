@@ -1,0 +1,29 @@
+{
+  "id": "issues",
+  "kind": "issues",
+  "node": "issues-node",
+  "domains": [
+    "issues.internal"
+  ],
+  "port": 80,
+  "initial_state": {
+    "projects": {
+      "OPS": {
+        "name": "Operations",
+        "issues": {
+          "1": {
+            "id": 1,
+            "title": "Confirm Atlas launch checklist",
+            "body": "Read the release code from mail, update document launch, and publish checklist.txt to onboarding.",
+            "status": "open",
+            "author": "carol",
+            "assignee": "alice",
+            "comments": [],
+            "reviews": [],
+            "kind": "issue"
+          }
+        }
+      }
+    }
+  }
+}

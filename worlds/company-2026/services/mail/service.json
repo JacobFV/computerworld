@@ -1,0 +1,56 @@
+{
+  "id": "mail",
+  "kind": "mail",
+  "node": "mail-node",
+  "domains": [
+    "mail.internal"
+  ],
+  "port": 80,
+  "initial_state": {
+    "users": [
+      "alice",
+      "bob",
+      "carol",
+      "admin"
+    ],
+    "next_id": 1,
+    "messages": {
+      "mail-1": {
+        "id": "mail-1",
+        "sender": "carol",
+        "to": [
+          "alice"
+        ],
+        "cc": [
+          "bob"
+        ],
+        "subject": "Atlas launch checklist",
+        "body": "Review document launch at http://docs.internal/documents/launch. The release code is ATLAS-2026. Update the document after validating launch.txt, then tell #general. Follow OPS-1 at http://issues.internal/.",
+        "time": 0,
+        "mailboxes": {
+          "alice": {
+            "folders": [
+              "inbox"
+            ],
+            "labels": [],
+            "read": false
+          },
+          "bob": {
+            "folders": [
+              "inbox"
+            ],
+            "labels": [],
+            "read": false
+          },
+          "carol": {
+            "folders": [
+              "sent"
+            ],
+            "labels": [],
+            "read": true
+          }
+        }
+      }
+    }
+  }
+}

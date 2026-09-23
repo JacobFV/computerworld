@@ -523,6 +523,11 @@ export default {
         "zone": "local"
       },
       {
+        "id": "bedroom-speaker",
+        "address": "10.0.2.23",
+        "zone": "local"
+      },
+      {
         "id": "guide-node",
         "address": "203.0.113.10",
         "zone": "internet"
@@ -565,11 +570,6 @@ export default {
       {
         "id": "office-tv-speaker",
         "address": "10.0.2.22",
-        "zone": "local"
-      },
-      {
-        "id": "bedroom-speaker",
-        "address": "10.0.2.23",
         "zone": "local"
       },
       {
@@ -654,6 +654,13 @@ export default {
       },
       {
         "from": "app-server",
+        "to": "bedroom-speaker",
+        "bidirectional": true,
+        "latency_us": 10,
+        "loss_per_million": 0
+      },
+      {
+        "from": "app-server",
         "to": "guide-node",
         "bidirectional": true,
         "latency_us": 10,
@@ -725,13 +732,6 @@ export default {
       {
         "from": "app-server",
         "to": "office-tv-speaker",
-        "bidirectional": true,
-        "latency_us": 10,
-        "loss_per_million": 0
-      },
-      {
-        "from": "app-server",
-        "to": "bedroom-speaker",
         "bidirectional": true,
         "latency_us": 10,
         "loss_per_million": 0

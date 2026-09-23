@@ -48,13 +48,12 @@ directory named for the site: `services/google-mail/overlay.json`, `services/git
 ## The directories
 
 `world.yml` is the blueprint and `world.json` beside it is what it resolves to; the other
-four directories are what the blueprint and the site build read.
+three directories are what the blueprint and the site build read.
 
 | Directory | Read by | Becomes |
 |---|---|---|
 | `computers/` | `world.yml`'s `include:` list | One directory per machine: `computer.json` is its definition, and `root/` holds the files it starts with at the paths they have on it — `alice-mac/root/Users/alice`, `bob-windows/root/C/Users/bob` (the top directory is the drive), `carol-ubuntu/root/home/carol`. |
 | `services/` | `world.yml`'s `include:` list | One directory per service. `service.json` is a service the company runs, placing its own node, link and DNS records; `overlay.json` is the company's content on the internet's service of that name, merged into it as the internet joins. |
-| `sites/` | `world.yml`'s `include:` list | The bedroom speaker's node and link: it is unplugged, so no service answers there. |
 | `samples/` | `scripts/content/build-live-world.mjs` | The documents and media the live site's machines start with. |
 
 `samples/` is the one that does not reach `world.json`. Its eight files are written by the
