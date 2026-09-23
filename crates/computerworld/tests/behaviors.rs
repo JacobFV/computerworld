@@ -645,6 +645,7 @@ fn native_image_is_fetched_over_network_and_survives_portable_checkpoint() {
     });
     definition.services.push(cw_protocol::ServiceDefinition {
         id: "images".into(),
+        search_entries: Vec::new(),
         kind: "test.image-site".into(),
         node: "image-node".into(),
         domains: vec!["images.internal".into()],

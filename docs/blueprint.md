@@ -149,11 +149,7 @@ Anywhere a value belongs, `{from_file: <path>}` becomes that file's contents:
     initial_state: {from_file: wiki/state.json}
 ```
 
-This is how generated content stays data rather than becoming a pipeline stage.
-The reference company's search index is built by `scripts/content/build-search-index.mjs`
-into `worlds/company-2026/index/*.json`, and each engine pulls its own in — so the
-index generator never has to reach into a built world and edit it. Substitution
-does not reach inside a loaded file: data is data.
+Substitution does not reach inside a loaded file: data is data.
 
 ## `place:` — a service's node, link and records
 

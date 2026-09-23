@@ -86,6 +86,15 @@ determinism corpus passes without regeneration.
 - `Tab::history` is a `History` rather than a `Vec<HistoryEntry>`. It derefs to a slice;
   it deliberately has no `DerefMut`, because handing out a `&mut HistoryEntry` is what
   would let the resumed hash go stale.
+- **A search engine indexes the world it boots in.** `ServiceDefinition` carries a site's
+  `search_entries`, and `Service::initialize_in` (defaulting to `initialize`) hands a
+  service every definition in the world at boot. An engine seeded without `documents`
+  indexes them there, so `scripts/content/build-search-index.mjs` and
+  `worlds/company-2026/index/` are gone, and `authority_overrides` moves into each engine's
+  `initial_state`. The index holds the same 939 documents per engine, now sorted by byte
+  rather than by locale. `site/generated/world-definition.js` shrinks from 7,750,810 to
+  6,724,131 bytes. The company scenarios' state hashes in the determinism corpus are
+  regenerated; their steps, events and projections are unchanged.
 
 ### Known
 

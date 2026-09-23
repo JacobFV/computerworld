@@ -64,7 +64,6 @@ fn a_blueprint_says_which_files_it_was_built_from() {
     let resolved = cw_blueprint::resolve("world.yml", &files, &BTreeMap::new()).unwrap();
     assert!(resolved.read.contains("world.yml"));
     assert!(resolved.read.contains("sites/airbnb.json"));
-    assert!(resolved.read.contains("index/google-search.json"));
     assert!(resolved.read.contains("home/ubuntu/notes.txt"));
     assert!(resolved
         .read

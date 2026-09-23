@@ -304,7 +304,11 @@ impl Runtime {
                 seed: instance_seed,
                 instance: service.id.clone(),
             };
-            let state = implementation.initialize(service.initial_state.clone(), &context)?;
+            let state = implementation.initialize_in(
+                service.initial_state.clone(),
+                &context,
+                &definition.services,
+            )?;
             services.insert(
                 service.id.clone(),
                 ServiceInstance {

@@ -250,6 +250,10 @@ pub struct ServiceDefinition {
     pub tls: bool,
     #[serde(default)]
     pub initial_state: Value,
+    /// The pages this site offers the world's search engines, as a sitemap would. An engine
+    /// seeded without `documents` indexes every service's entries when the world boots.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub search_entries: Vec<Value>,
 }
 /// The port a service answers `https://` on when `tls` is set.
 pub const TLS_PORT: u16 = 443;

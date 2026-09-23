@@ -305,8 +305,8 @@ fn every_link_a_page_paints_leads_somewhere_real() {
 #[test]
 fn every_search_result_resolves_to_the_page_it_promises() {
     let (mut world, session) = world();
-    // The index is spliced from each site's own seed data, so a stale entry is a real
-    // risk: a result that 404s teaches an agent the wrong thing about the web.
+    // Each engine indexes the sites' own `search_entries` at boot, so a stale entry is a
+    // real risk: a result that 404s teaches an agent the wrong thing about the web.
     let engines: Vec<String> = world
         .definition()
         .services
@@ -318,14 +318,7 @@ fn every_search_result_resolves_to_the_page_it_promises() {
     let mut broken = Vec::new();
     let mut checked = 0;
     for engine in &engines {
-        let service = world
-            .definition()
-            .services
-            .iter()
-            .find(|s| &s.id == engine)
-            .unwrap()
-            .clone();
-        let documents = service.initial_state["documents"].clone();
+        let documents = world.runtime().service_state(engine).unwrap()["documents"].clone();
         let entries: Vec<&Value> = match &documents {
             Value::Array(a) => a.iter().collect(),
             Value::Object(o) => o.values().collect(),

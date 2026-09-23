@@ -1567,6 +1567,7 @@ mod tests {
     fn a_service_answers_https_on_443_unless_it_opts_out() {
         let service = |id: &str, tls: bool| cw_protocol::ServiceDefinition {
             id: id.into(),
+            search_entries: Vec::new(),
             kind: "site".into(),
             node: "b".into(),
             domains: vec![],

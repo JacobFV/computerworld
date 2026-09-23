@@ -32,6 +32,7 @@ const SERVICE: &[&str] = &[
     "port",
     "tls",
     "initial_state",
+    "search_entries",
 ];
 const NETWORK: &[&str] = &["implicit_lan", "nodes", "links", "dns", "routes", "gateway"];
 const NODE: &[&str] = &["id", "address", "zone"];

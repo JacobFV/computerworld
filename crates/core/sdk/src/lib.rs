@@ -1,5 +1,5 @@
 //! Pure service and application extension points; executable registry code is never serialized.
-use cw_protocol::{HttpRequest, HttpResponse, Page, Result, SimError};
+use cw_protocol::{HttpRequest, HttpResponse, Page, Result, ServiceDefinition, SimError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::BTreeMap, sync::Arc};
@@ -19,6 +19,17 @@ pub trait Service: Send + Sync {
     }
     fn initialize(&self, initial: Value, _context: &ServiceContext) -> Result<Value> {
         Ok(initial)
+    }
+    /// What the kernel calls at boot, with every service the world declares, itself included.
+    /// A service whose default state depends on its neighbours — a search engine indexing the
+    /// sites beside it — reads them here; every other service is [`Service::initialize`].
+    fn initialize_in(
+        &self,
+        initial: Value,
+        context: &ServiceContext,
+        _world: &[ServiceDefinition],
+    ) -> Result<Value> {
+        self.initialize(initial, context)
     }
     fn handle(
         &self,

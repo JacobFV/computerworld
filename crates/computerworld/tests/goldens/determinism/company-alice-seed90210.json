@@ -2,7 +2,7 @@
   "corpus_version": 1,
   "scenario": "company-alice-seed90210",
   "world": "worlds/company-2026/world.json",
-  "world_definition_sha256": "ea44cac907209082ead2cbf3ab5533f82f4789c94978b5dded995f140e726bd3",
+  "world_definition_sha256": "231d84a30354f0d27b2576b634ab18c0fe45d78bcc8e6bd371f2be769b96f5f8",
   "seed": 90210,
   "actor": "alice",
   "machines": [
@@ -24,82 +24,82 @@
   "step_state_hashes": [
     {
       "step": 19,
-      "hash": "fb781057ee395555713faccb6326f7ee66556e798c56a1f66f0968187c683eaa",
+      "hash": "29218e38abb37ffe60080cedb5b4c4aa0b85057b62a9d29b48e2d6c9824b6b00",
       "scene": "f63baea651042fca"
     },
     {
       "step": 39,
-      "hash": "38ec91a4ee6d8ddf1d3740c41416b106e07358864aa17e5054346fd4625ba3c9",
+      "hash": "2b6fc24298749a2d0f4882a0b4558c2699650570a2ffa066464bcbdec77dc51f",
       "scene": "253fe09c0e53fb39"
     },
     {
       "step": 59,
-      "hash": "882798ec0b7626d596eb038f8884f8bc16d7b9a00d16dbede347c4ed17b7d6bf",
+      "hash": "8b4137331f4ebd4b1f12f418577a29605ea524c5e25a1c7a178dab4217b9b2ff",
       "scene": "71e8f14144a1e299"
     },
     {
       "step": 79,
-      "hash": "8ca76ddee34b2e433334c746ec6e5e47b68f701f745a7da437c1ca2cd4570dd4",
+      "hash": "9191aca521898ae442b8904d4455d501c925a96025633da6009fb5aea103f84f",
       "scene": "c557eb741922d3ca"
     },
     {
       "step": 99,
-      "hash": "782e6bb3753d92b14ea27b1787e4e390e3b9cf6f7ea9a412971e51255d23408b",
+      "hash": "557cfbff16a10f41a839b7c27016d6c94a326dc03751a8bd993a7c6d60e96b5b",
       "scene": "f656a854b40c949e"
     },
     {
       "step": 119,
-      "hash": "257fc8890b4565d9e8035bb6da5979b137fbae370d2f3bce8b492e9dbaf89d5e",
+      "hash": "0d1dab2699727f6c871eafffda2c608151bca414c604dde33d5cb78e9d2647b1",
       "scene": "89f0c840984cd718"
     },
     {
       "step": 139,
-      "hash": "25aa9c72296fa2a1b5df02d90308e0dc550f2224e4b2c1a4a2f2138e63b4aa7c",
+      "hash": "b031ad5903eabbf9a85c3058d9c67bd5b4ac12bce05147d4dde68c8ea20d8252",
       "scene": "89f0c840984cd718"
     },
     {
       "step": 159,
-      "hash": "db4bc32704b7b435903f2a8b3118505c0c4e6440f3fa3f649ecbffccbe745c25",
+      "hash": "17b207f03af9dc781a0ff40b9e3f44b062c7e1c64bcd9d1abd0f805b798a1aa1",
       "scene": "f04ad34adec02e16"
     },
     {
       "step": 179,
-      "hash": "1ed084105698e49391363ece4b0d455e1f5d07b273763aa0dabe4500de187e7b",
+      "hash": "89c78f29a369d7b5f8259110cee8ffd4646cc97b184cea00d54e5cd59a766ef9",
       "scene": "f63baea651042fca"
     },
     {
       "step": 199,
-      "hash": "cf18ef6bcff106bf21dab9fc44cdc7ff2b6c2597dd87b8b7d017c31fde2ce87f",
+      "hash": "18ce0dc29f0311069d1919d21bd86aaf501f828d52fc33578700b1fbc1552e72",
       "scene": "253fe09c0e53fb39"
     },
     {
       "step": 219,
-      "hash": "54b0b2ecae5035b473bf8bbf2fca8142fa4ded47fd7425807c0c808a9601fdcb",
+      "hash": "baa31afa0c3f8c1670bb35bbf2f5a3f3dc92b810d0693149e915d2048ef3ed60",
       "scene": "253fe09c0e53fb39"
     },
     {
       "step": 239,
-      "hash": "d21940ef67d6a948fcbdfbbd49a2d80c0c5c6040047ab4cf2dbfee9cf32f6566",
+      "hash": "54acd186d77dea76c067ffdaad11e7826057eeca15d935b7988040b86920fcc8",
       "scene": "085d0a370c2457aa"
     },
     {
       "step": 259,
-      "hash": "fd4377a0412957ddc86a4dbae26c45ab2a88ff45f7e05c030c37275d4491f83b",
+      "hash": "f519768955252da447d774a6bca0fde5409b0751580252b1211d9683e057d4a8",
       "scene": "9aa526ad3e729544"
     },
     {
       "step": 279,
-      "hash": "10164dc854d3b45b8fc8cfcd96ac7bc00c292593b01052e9dd84d382838bc0d0",
+      "hash": "0e9dba7b75dc080103a08dc7328cf5dba9d8d7cf9019d607a279fafbcaf5b579",
       "scene": "3ddbb20aa7732a5f"
     },
     {
       "step": 299,
-      "hash": "bf29a941118f2847196bb5e93334644ff28e9cfea16c8b013d9ca2cc8cc53178",
+      "hash": "8554f12af82bc5be2eb4ac5baf3ac1a2ac05b9ac1254e4ab63fd17fc358fc942",
       "scene": "9ac6377d728addfc"
     },
     {
       "step": 319,
-      "hash": "6b84236efba58b3f779d47490884022e16a3b7a0e997863564c7bbc1caddd06a",
+      "hash": "63aee4d98dca54254367a4d8104d26c011aa45988df23c5db0aca2223a3fdd25",
       "scene": "412e41b8dc34f43a"
     }
   ],
@@ -1892,35 +1892,35 @@
   },
   "checkpoint": {
     "at_step": 160,
-    "state_hash": "db4bc32704b7b435903f2a8b3118505c0c4e6440f3fa3f649ecbffccbe745c25",
-    "export_sha256": "f98cabd0316e33d389de659486dc51cacf306ee31649eea4d467ceab66f6fe30",
-    "export_bytes": 15345037,
+    "state_hash": "17b207f03af9dc781a0ff40b9e3f44b062c7e1c64bcd9d1abd0f805b798a1aa1",
+    "export_sha256": "8cbf65a85b7f51ef53bf07c8c69b77d10dbdb2aa805daecd403c1d5e8eb84ddb",
+    "export_bytes": 14118637,
     "branch_a": [
       {
         "step": 339,
-        "hash": "91e7fc416a3be5cf81765501a05738ea7c4d0e9844389252a463e008a03daaaf",
+        "hash": "107de74424358588595b4819227414502ea1b7930590f668b429546fa16e847a",
         "scene": "253fe09c0e53fb39"
       },
       {
         "step": 359,
-        "hash": "6aa7f3bb5e9c245617469d860cfae8eb28bb3af4b6bd8026ae83029e55f23e7d",
+        "hash": "dd8dd2189a6c9d540e605e879f6ccb774a3d32e49a5a5aa3838ef6c8aba9727e",
         "scene": "12ea52cdd1756ca3"
       }
     ],
     "branch_b": [
       {
         "step": 339,
-        "hash": "a7e98fe21768270f8764564d46d48fcff4ce1f0199c71c55d5d2c697e58bf852",
+        "hash": "544ff2cd083f0a9c1fca705e4205d451b8d3796ef2563225a7f7679d963b4bbe",
         "scene": "86bed86a78b917ce"
       },
       {
         "step": 359,
-        "hash": "51975cd34fc5ed1907b0c3f35c607b3eca8e7954e24fe138e2900b96631d13a3",
+        "hash": "e83773b9ce3c525ca959de62366a4232d805614088b190ce8fca0e6fc443eef1",
         "scene": "253fe09c0e53fb39"
       }
     ],
     "replayed_event_chain_sha256": "9c38d0e0fe4c27849ff54343784fa56645c6236c68c2733c7b7ffe19c53b2607",
-    "replayed_state_hash": "6b84236efba58b3f779d47490884022e16a3b7a0e997863564c7bbc1caddd06a",
+    "replayed_state_hash": "63aee4d98dca54254367a4d8104d26c011aa45988df23c5db0aca2223a3fdd25",
     "final_scene_390x844": "4990d97b7d52993d"
   }
 }

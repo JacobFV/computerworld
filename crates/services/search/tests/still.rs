@@ -1,7 +1,7 @@
 //! Renders the Google home page through the engine to `research/studies/google-ceiling/engine.png`,
 //! the companion of `mock.html` (Chromium) in that directory. Ignored by default: it is a
 //! picture for the record, not a gate. `cargo test -p cw-service-search --test still -- --ignored`.
-use cw_protocol::HttpRequest;
+use cw_protocol::{HttpRequest, ServiceDefinition};
 use cw_sdk::{Service, ServiceContext};
 use cw_service_search::SearchService;
 use cw_web::css::{parse_stylesheet, MatchContext, Media, Origin};
@@ -60,12 +60,9 @@ fn render(html: &str, path: &str, viewport: Viewport) {
 #[ignore]
 fn google_home_and_results_stills() {
     let world: Value = serde_json::from_str(WORLD).unwrap();
-    let service = world["services"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|s| s["id"] == "google-search")
-        .unwrap();
+    let services: Vec<ServiceDefinition> =
+        serde_json::from_value(world["services"].clone()).unwrap();
+    let service = services.iter().find(|s| s.id == "google-search").unwrap();
     let ctx = ServiceContext {
         actor: "alice".into(),
         source: "alice-mac".into(),
@@ -74,7 +71,7 @@ fn google_home_and_results_stills() {
         instance: "google-search".into(),
     };
     let mut state = SearchService
-        .initialize(service["initial_state"].clone(), &ctx)
+        .initialize_in(service.initial_state.clone(), &ctx, &services)
         .unwrap();
     // The still matches the mock: a first visit, no history of alice's under the box.
     state["history"] = Value::Object(Default::default());

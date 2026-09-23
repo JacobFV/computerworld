@@ -1,12 +1,13 @@
 //! Web search: google.com, bing.com and duckduckgo.com are three instances of one engine over
 //! one index, differing by skin, ranking weights, bangs and whether history is retained.
 //!
-//! The index is static and generated — `scripts/content/build-search-index.mjs` splices every other
-//! site's `search_entries` into `documents` — because `Service::initialize` has no network
-//! handle to crawl with. Every engine therefore has to work with an index of any size, empty
-//! included, and a seeded entry is a promise that the link resolves, gated at load below.
+//! An engine seeded without `documents` indexes the world it boots in: every service's
+//! `search_entries`, read once at initialisation. That is a static index rather than a crawl,
+//! because a crawl would be a lazy HTTP fan-out whose first result set is empty and whose
+//! contents depend on scheduler interleaving. Every engine still has to work with an index of
+//! any size, empty included, and an entry is a promise that the link resolves, gated at load.
 mod view;
-use cw_protocol::{HttpRequest, HttpResponse, Result, SimError};
+use cw_protocol::{HttpRequest, HttpResponse, Result, ServiceDefinition, SimError};
 use cw_sdk::{Registry, Service, ServiceContext};
 use cw_service_common as web;
 use serde::{Deserialize, Serialize};
@@ -16,7 +17,13 @@ pub fn register(registry: &mut Registry) -> Result<()> {
     registry.register(SearchService)
 }
 /// Documented seed keys, checked by container type only — the seed owns the rest.
-const OBJECTS: &[&str] = &["theme", "rank_weights", "bangs", "history"];
+const OBJECTS: &[&str] = &[
+    "theme",
+    "rank_weights",
+    "bangs",
+    "history",
+    "authority_overrides",
+];
 const ARRAYS: &[&str] = &["verticals", "documents", "footer", "trending"];
 /// `skin` is the documented discriminant; an unlisted value is a seed typo, not a fallback.
 const SKINS: &[&str] = &["plain", "google", "bing", "ddg"];
@@ -122,6 +129,42 @@ fn verticals(state: &Value) -> Vec<String> {
         v if v.is_empty() => VERTICALS.iter().map(|v| (*v).to_owned()).collect(),
         v => v,
     }
+}
+/// The index an engine builds from the world's sites when its seed brings none.
+///
+/// Each entry is filed under its site's first domain, defaults to the `all` vertical with no
+/// authority, and takes the engine's `authority_overrides` for its site — which is what makes
+/// two engines over the same sites disagree on ranking. An entry in a vertical the engine does
+/// not carry is left out rather than refused, since a site writes its entries for every engine.
+/// Sorted by `(site, url)`, so the index is the same whatever order the world lists its sites.
+pub fn index(state: &Value, world: &[ServiceDefinition]) -> Vec<Value> {
+    let verticals = verticals(state);
+    let overrides = state.get("authority_overrides");
+    let mut documents: Vec<Value> = world
+        .iter()
+        .flat_map(|service| {
+            let site = service.domains.first().unwrap_or(&service.id).clone();
+            service.search_entries.iter().map(move |entry| {
+                let mut document = json!({
+                    "site": site, "vertical": VERTICALS[0], "authority": 0, "keywords": [],
+                });
+                if let (Some(document), Some(entry)) = (document.as_object_mut(), entry.as_object())
+                {
+                    document.extend(entry.clone());
+                }
+                document
+            })
+        })
+        .filter(|d| verticals.contains(&web::text(d, "vertical")))
+        .map(|mut d| {
+            if let Some(authority) = overrides.and_then(|o| o.get(web::text(&d, "site"))) {
+                d["authority"] = authority.clone();
+            }
+            d
+        })
+        .collect();
+    documents.sort_by_key(|d| (web::text(d, "site"), web::text(d, "url")));
+    documents
 }
 /// Ranked hits. Sorting by `(-score, url)` is a total order, so two runs never disagree.
 pub fn rank(state: &Value, query: &str, vertical: &str) -> Vec<Hit> {
@@ -306,6 +349,18 @@ impl Service for SearchService {
     fn kind(&self) -> &str {
         "search"
     }
+    fn initialize_in(
+        &self,
+        initial: Value,
+        context: &ServiceContext,
+        world: &[ServiceDefinition],
+    ) -> Result<Value> {
+        let mut state = web::shape(initial, OBJECTS, ARRAYS)?;
+        if state.get("documents").is_none() {
+            state["documents"] = index(&state, world).into();
+        }
+        self.initialize(state, context)
+    }
     fn initialize(&self, initial: Value, _: &ServiceContext) -> Result<Value> {
         let state = web::shape(initial, OBJECTS, ARRAYS)?;
         web::variant(&state, "skin", SKINS)?;
@@ -439,39 +494,46 @@ mod tests {
     fn start(initial: Value) -> Value {
         SearchService.initialize(initial, &ctx("alice")).unwrap()
     }
-    /// The engine as `world.json` carries it, index and all.
+    /// The engine as the reference world boots it, indexing the sites beside it.
     fn engine(id: &str) -> Value {
         let world: Value = serde_json::from_str(WORLD).unwrap();
-        let service = world["services"]
-            .as_array()
-            .unwrap()
+        let services: Vec<ServiceDefinition> =
+            serde_json::from_value(world["services"].clone()).unwrap();
+        let service = services
             .iter()
-            .find(|s| s["id"] == json!(id))
+            .find(|s| s.id == id)
             .unwrap_or_else(|| panic!("{id} is not in world.json"));
-        start(service["initial_state"].clone())
+        SearchService
+            .initialize_in(service.initial_state.clone(), &ctx("alice"), &services)
+            .unwrap()
     }
     fn site(id: &str) -> Value {
         let raw = SITES.iter().find(|(name, _)| *name == id).unwrap().1;
         serde_json::from_str::<Value>(raw).unwrap()["initial_state"].clone()
     }
-    /// What `scripts/content/build-search-index.mjs` does, over an index the test controls: one shared
-    /// document set, each engine's own `authority_overrides` applied.
+    /// What an engine boots with, over sites the test controls: one shared document set, each
+    /// engine's own `authority_overrides` applied.
     fn seeded(id: &str, documents: &[Value]) -> Value {
-        let file: Value =
-            serde_json::from_str(SITES.iter().find(|(n, _)| *n == id).unwrap().1).unwrap();
-        let overrides = file["authority_overrides"].clone();
-        let mut state = site(id);
-        state["documents"] = documents
-            .iter()
-            .map(|d| {
-                let mut d = d.clone();
-                if let Some(authority) = overrides.get(web::text(&d, "site")) {
-                    d["authority"] = authority.clone();
-                }
-                d
-            })
-            .collect();
-        start(state)
+        let mut sites: Vec<ServiceDefinition> = Vec::new();
+        for d in documents {
+            let from = web::text(d, "site");
+            match sites.iter_mut().find(|s| s.id == from) {
+                Some(site) => site.search_entries.push(d.clone()),
+                None => sites.push(ServiceDefinition {
+                    id: from.clone(),
+                    kind: "static-site".into(),
+                    node: from.clone(),
+                    domains: vec![from],
+                    port: 80,
+                    tls: false,
+                    initial_state: Value::Null,
+                    search_entries: vec![d.clone()],
+                }),
+            }
+        }
+        SearchService
+            .initialize_in(site(id), &ctx("alice"), &sites)
+            .unwrap()
     }
     /// The fourth skin ships no seed file, so the tests build one.
     const PLAIN: &str = "plain";
@@ -1268,6 +1330,55 @@ mod tests {
     }
 
     /// Seed mistakes are build bugs and belong at load, where the message names the file.
+    /// A seed without `documents` indexes the world; one that brings its own keeps them.
+    #[test]
+    fn a_seedless_engine_indexes_the_sites_it_boots_beside() {
+        let site = |id: &str, domains: &[&str], entries: Value| ServiceDefinition {
+            id: id.into(),
+            kind: "static-site".into(),
+            node: id.into(),
+            domains: domains.iter().map(|d| (*d).into()).collect(),
+            port: 80,
+            tls: false,
+            initial_state: Value::Null,
+            search_entries: serde_json::from_value(entries).unwrap(),
+        };
+        let world = [
+            site(
+                "zeta",
+                &["zeta.test", "www.zeta.test"],
+                json!([
+                    {"url": "http://zeta.test/b", "title": "B"},
+                    {"url": "http://zeta.test/a", "title": "A", "vertical": "podcasts"},
+                ]),
+            ),
+            site(
+                "alpha",
+                &[],
+                json!([{"url": "http://alpha.test/", "title": "Alpha"}]),
+            ),
+        ];
+        let seed = json!({"verticals": ["all"], "authority_overrides": {"zeta.test": 7}});
+        let state = SearchService
+            .initialize_in(seed.clone(), &ctx("alice"), &world)
+            .unwrap();
+        assert_eq!(
+            state["documents"],
+            json!([
+                {"url": "http://alpha.test/", "title": "Alpha", "site": "alpha",
+                 "vertical": "all", "authority": 0, "keywords": []},
+                {"url": "http://zeta.test/b", "title": "B", "site": "zeta.test",
+                 "vertical": "all", "authority": 7, "keywords": []},
+            ]),
+            "filed under the first domain or the id, overridden, the unknown vertical left out"
+        );
+        let mut own = seed;
+        own["documents"] = json!([]);
+        let state = SearchService
+            .initialize_in(own, &ctx("alice"), &world)
+            .unwrap();
+        assert_eq!(state["documents"], json!([]));
+    }
     #[test]
     fn initialize_refuses_a_broken_seed() {
         let good = |documents: Value| json!({"skin": "google", "documents": documents});

@@ -57,6 +57,7 @@ fn main() -> Result<()> {
     });
     definition.services.push(cw_protocol::ServiceDefinition {
         id: "counter".into(),
+        search_entries: Vec::new(),
         kind: "example.counter".into(),
         node: "counter-node".into(),
         domains: vec!["counter.internal".into()],

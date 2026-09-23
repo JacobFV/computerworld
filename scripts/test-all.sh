@@ -17,9 +17,6 @@ cargo build -p cw-wasm --target wasm32-unknown-unknown --release
 generated=$(mktemp -d)
 trap 'rm -rf "$generated"' EXIT
 generated_files=(worlds/company-2026/world.json
-                 worlds/company-2026/index/google-search.json
-                 worlds/company-2026/index/bing-search.json
-                 worlds/company-2026/index/ddg-search.json
                  worlds/agent-desktop/world.json
                  site/generated/world-definition.js)
 for file in "${generated_files[@]}"; do

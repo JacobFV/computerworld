@@ -12,6 +12,7 @@ fn world() -> (World, String) {
     let mut definition = reference_world();
     definition.services.push(ServiceDefinition {
         id: "html-site".into(),
+        search_entries: Vec::new(),
         kind: "static-site".into(),
         node: "app-server".into(),
         domains: vec!["html.example".into()],

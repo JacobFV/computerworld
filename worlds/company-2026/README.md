@@ -103,10 +103,10 @@ never directly in `world.json`. The basename must equal the `id`.
 }
 ```
 
-`search_entries` is build-only: `scripts/content/build-search-index.mjs` harvests it into
-`index/<engine>.json`, which each engine pulls in with `{"from_file": ...}`, and
-`defaults.build_only` in `world.yml` strips it before the service reaches the world. That
-is what makes a search result a link that really resolves. Its `vertical` is one of the
+`search_entries` is the site's sitemap: every search engine seeded without `documents`
+indexes all of them when the world boots, filing each under the site's first domain and
+applying its own `authority_overrides`. That is what makes a search result a link that
+really resolves. Its `vertical` is one of the
 engines' `all`, `news`, `videos` or `images`. `place` lets a site bring its own host on a
 documentation-range address, and derives the node, the link and a DNS A record for every
 domain the site declares, so no name depends on the runtime's auto-add — see
@@ -119,13 +119,12 @@ regeneration, and is idempotent.
 ## The directories
 
 `world.yml` is the blueprint and `world.json` beside it is what it resolves to; the other
-five directories are what the blueprint and the site build read.
+four directories are what the blueprint and the site build read.
 
 | Directory | Read by | Becomes |
 |---|---|---|
 | `home/` | `world.yml`'s `copy:` blocks | The files the three desktops start with. `home/all` is overlaid with `home/macos`, `home/windows` or `home/ubuntu` per machine. |
 | `sites/` | `world.yml`'s `include:` list | One service per file, each placing its own node, link and DNS records. |
-| `index/` | each search engine's `from_file:` | The harvested search index, written by `scripts/content/build-search-index.mjs`. |
 | `network/` | `world.yml`'s `include:` list | Topology with no service behind it — currently just the unplugged bedroom speaker. |
 | `samples/` | `scripts/content/build-live-world.mjs` | The documents and media the live site's machines start with. |
 

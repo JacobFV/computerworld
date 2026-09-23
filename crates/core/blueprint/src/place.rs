@@ -228,10 +228,10 @@ pub fn sort_dns(document: &mut Node) {
 
 /// Drop the keys a blueprint declares as its own working notes.
 ///
-/// A fragment often carries more than the world needs: the reference company's
-/// site files hold the search entries an index is generated from, which belong to
-/// the file and not to the service. Naming them once, in `defaults.build_only`,
-/// keeps the stripping declarative instead of a list baked into this crate.
+/// A fragment often carries more than the world needs — notes, or keys a generator
+/// reads — which belong to the file and not to the service. Naming them once, in
+/// `defaults.build_only`, keeps the stripping declarative instead of a list baked
+/// into this crate.
 fn strip_build_only(document: &mut Node, defaults: &Node) -> Result<(), Error> {
     let keys: Vec<String> = defaults
         .get("build_only")

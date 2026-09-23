@@ -10,7 +10,6 @@
 schema_version: 1
 id: "northstar-company-2026"
 defaults:
-  build_only: ["search_entries", "authority_overrides"]
   place:
     zone: "internet"
     link: {latency_us: 1500}

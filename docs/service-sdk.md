@@ -17,7 +17,12 @@ fn handle(&self, state: &mut serde_json::Value,
 ```
 
 `ServiceContext` contains actor identity, source machine, logical tick, seed and
-instance ID. It provides no global world inspector. `HttpRequest` contains method,
+instance ID. It provides no global world inspector. The one exception is boot: the
+kernel calls `initialize_in(initial, context, services)`, which defaults to
+`initialize`, with every `ServiceDefinition` the world declares. That lets a service
+derive its default state from its neighbours' definitions (never their live state).
+A search engine seeded without `documents` indexes every service's `search_entries`
+there. `HttpRequest` contains method,
 URL, headers and bytes. `HttpResponse` carries status, headers and bytes; `text`,
 `json` and `page` constructors produce common content types. Header lookup is
 case-insensitive.
