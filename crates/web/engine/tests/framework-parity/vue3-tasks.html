@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tasks (Vue 3)</title>
+<!-- Layout parity for a page Vue renders: the same task tracker as react18-tasks.html,
+     from a template Vue 3's global build compiles at runtime. Steps in
+     vue3-tasks.steps.json drive it; see tests/framework_parity.rs. -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { font: 14px/20px 'DejaVu Sans', sans-serif; color: rgb(29, 28, 36); background-color: rgb(246, 246, 249); }
+  #app { height: 100%; }
+  .shell { display: flex; flex-direction: column; height: 100%; }
+  .top { display: flex; align-items: center; gap: 24px; height: 56px; padding: 0 24px; background-color: rgb(34, 30, 64); color: rgb(255, 255, 255); }
+  .brand { font-weight: 700; font-size: 18px; }
+  .tabs { display: flex; gap: 4px; }
+  .tab { border: 0; padding: 6px 14px; border-radius: 6px; font: inherit; color: rgb(200, 198, 230); background-color: transparent; }
+  .tab.active { background-color: rgb(84, 72, 180); color: rgb(255, 255, 255); }
+  .spacer { flex: 1; }
+  .who { display: flex; align-items: center; gap: 8px; }
+  .avatar { display: inline-block; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-size: 12px; font-weight: 700; color: rgb(255, 255, 255); }
+  .body { flex: 1; display: flex; min-height: 0; }
+  .side { width: 220px; padding: 20px 12px; background-color: rgb(255, 255, 255); border-right: 1px solid rgb(226, 225, 234); }
+  .side h2 { margin: 0 0 8px 8px; font-size: 11px; line-height: 16px; letter-spacing: 0; text-transform: uppercase; color: rgb(120, 118, 140); }
+  .filter { display: flex; justify-content: space-between; width: 100%; border: 0; padding: 6px 8px; border-radius: 6px; font: inherit; text-align: left; color: inherit; background-color: transparent; }
+  .filter.active { background-color: rgb(236, 234, 250); color: rgb(84, 72, 180); font-weight: 700; }
+  .count { min-width: 22px; padding: 0 6px; border-radius: 10px; font-size: 12px; text-align: center; background-color: rgb(236, 236, 242); }
+  .main { flex: 1; padding: 24px; min-width: 0; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+  .stat { padding: 14px 16px; border-radius: 10px; background-color: rgb(255, 255, 255); border: 1px solid rgb(226, 225, 234); }
+  .stat .label { font-size: 12px; color: rgb(120, 118, 140); }
+  .stat .value { font-size: 26px; line-height: 32px; font-weight: 700; }
+  .bar { height: 6px; margin-top: 8px; border-radius: 3px; background-color: rgb(236, 236, 242); }
+  .bar > div { height: 100%; border-radius: 3px; background-color: rgb(60, 170, 110); }
+  .add { display: flex; gap: 8px; margin-bottom: 12px; }
+  .add input { flex: 1; height: 36px; padding: 0 12px; border: 1px solid rgb(206, 204, 220); border-radius: 8px; font: inherit; background-color: rgb(255, 255, 255); }
+  .add button { height: 36px; padding: 0 16px; border: 0; border-radius: 8px; font: inherit; font-weight: 700; color: rgb(255, 255, 255); background-color: rgb(84, 72, 180); }
+  .list { margin: 0; padding: 0; list-style: none; border-radius: 10px; background-color: rgb(255, 255, 255); border: 1px solid rgb(226, 225, 234); }
+  .task { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid rgb(236, 236, 242); }
+  .task:first-child { border-top: 0; }
+  .check { width: 18px; height: 18px; padding: 0; border: 2px solid rgb(180, 178, 200); border-radius: 4px; background-color: rgb(255, 255, 255); }
+  .task.done .check { border-color: rgb(60, 170, 110); background-color: rgb(60, 170, 110); }
+  .title { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .task.done .title { color: rgb(150, 148, 165); text-decoration: line-through; }
+  .tag { padding: 2px 8px; border-radius: 10px; font-size: 12px; line-height: 16px; }
+  .tag.bug { background-color: rgb(252, 228, 228); color: rgb(170, 40, 40); }
+  .tag.feature { background-color: rgb(226, 240, 252); color: rgb(30, 90, 160); }
+  .tag.chore { background-color: rgb(238, 238, 238); color: rgb(90, 90, 90); }
+  .due { width: 64px; font-family: 'DejaVu Sans Mono', monospace; font-size: 12px; text-align: right; color: rgb(120, 118, 140); }
+  .empty { padding: 24px; text-align: center; color: rgb(120, 118, 140); }
+  .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .column { padding: 12px; border-radius: 10px; background-color: rgb(236, 236, 242); }
+  .column h3 { display: flex; justify-content: space-between; margin: 0 0 10px; font-size: 13px; }
+  .card { margin-bottom: 8px; padding: 10px 12px; border-radius: 8px; background-color: rgb(255, 255, 255); border: 1px solid rgb(226, 225, 234); }
+  .card .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+</style>
+<script src="/vendor/vue-3.4.38.global.prod.js"></script>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+const PEOPLE = { ada: ['AL', 'rgb(200, 90, 60)'], bo: ['BK', 'rgb(60, 120, 190)'], cy: ['CN', 'rgb(120, 90, 170)'] };
+const INITIAL = [
+  { id: 1, title: 'Checkout fails when the basket holds a gift card', tag: 'bug', who: 'ada', due: 'Sep 24', status: 'doing' },
+  { id: 2, title: 'Export invoices as CSV', tag: 'feature', who: 'bo', due: 'Sep 26', status: 'todo' },
+  { id: 3, title: 'Rotate the staging certificates', tag: 'chore', who: 'cy', due: 'Sep 22', status: 'done' },
+  { id: 4, title: 'Search results lose their filters after paging back', tag: 'bug', who: 'bo', due: 'Sep 25', status: 'todo' },
+  { id: 5, title: 'Dark mode for the settings pages', tag: 'feature', who: 'ada', due: 'Oct 02', status: 'todo' },
+  { id: 6, title: 'Upgrade the build image', tag: 'chore', who: 'cy', due: 'Sep 20', status: 'done' },
+];
+const COLUMNS = [['todo', 'To do'], ['doing', 'In progress'], ['done', 'Done']];
+const { createApp, ref, computed } = Vue;
+
+const Avatar = {
+  props: ['who'],
+  template: `<span class="avatar" :style="{ backgroundColor: PEOPLE[who][1] }">{{ PEOPLE[who][0] }}</span>`,
+  setup() { return { PEOPLE }; },
+};
+
+const Tag = {
+  props: ['tag'],
+  template: `<span :class="'tag ' + tag">{{ tag }}</span>`,
+};
+
+createApp({
+  components: { Avatar, Tag },
+  template: `
+<div class="shell">
+  <header class="top">
+    <span class="brand">Tracker</span>
+    <nav class="tabs">
+      <button :class="['tab', { active: view === 'list' }]" id="tab-list" @click="view = 'list'">List</button>
+      <button :class="['tab', { active: view === 'board' }]" id="tab-board" @click="view = 'board'">Board</button>
+    </nav>
+    <span class="spacer"></span>
+    <span class="who"><span>Cy Nakamura</span><Avatar who="cy" /></span>
+  </header>
+  <div class="body">
+    <aside class="side">
+      <h2>Filters</h2>
+      <button v-for="[name, label] in FILTERS" :key="name" :class="['filter', { active: filter === name }]"
+        :id="'filter-' + name" @click="filter = name"><span>{{ label }}</span><span class="count">{{ counts[name] }}</span></button>
+    </aside>
+    <main class="main">
+      <section class="stats">
+        <div class="stat" id="stat-total"><div class="label">Total</div><div class="value">{{ tasks.length }}</div></div>
+        <div class="stat" id="stat-open"><div class="label">Open</div><div class="value">{{ counts.open }}</div></div>
+        <div class="stat" id="stat-done"><div class="label">Done</div><div class="value">{{ pct }}%</div>
+          <div class="bar"><div :style="{ width: pct + '%' }"></div></div></div>
+      </section>
+      <template v-if="view === 'list'">
+        <form class="add" @submit.prevent="add">
+          <input id="new-task" placeholder="Add a task" v-model="draft">
+          <button type="submit" id="add-task">Add</button>
+        </form>
+        <ul v-if="visible.length" class="list" id="list">
+          <li v-for="t in visible" :key="t.id" :class="['task', { done: t.status === 'done' }]" :id="'task-' + t.id">
+            <button class="check" :id="'check-' + t.id" aria-label="toggle" @click="toggle(t.id)"></button>
+            <span class="title">{{ t.title }}</span>
+            <Tag :tag="t.tag" />
+            <Avatar :who="t.who" />
+            <span class="due">{{ t.due }}</span>
+          </li>
+        </ul>
+        <div v-else class="list empty">Nothing here</div>
+      </template>
+      <section v-else class="board">
+        <div v-for="[status, name] in COLUMNS" :key="status" class="column" :id="'column-' + status">
+          <h3><span>{{ name }}</span><span class="count">{{ tasks.filter((t) => t.status === status).length }}</span></h3>
+          <div v-for="t in tasks.filter((t) => t.status === status)" :key="t.id" class="card">
+            <div>{{ t.title }}</div>
+            <div class="meta"><Tag :tag="t.tag" /><Avatar :who="t.who" /></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>`,
+  setup() {
+    const tasks = ref(INITIAL.map((t) => ({ ...t })));
+    const view = ref('list');
+    const filter = ref('all');
+    const draft = ref('');
+    const counts = computed(() => ({
+      all: tasks.value.length,
+      open: tasks.value.filter((t) => t.status !== 'done').length,
+      done: tasks.value.filter((t) => t.status === 'done').length,
+    }));
+    const pct = computed(() => (tasks.value.length ? Math.round((counts.value.done * 100) / tasks.value.length) : 0));
+    const visible = computed(() => tasks.value.filter((t) =>
+      filter.value === 'all' || (filter.value === 'open' ? t.status !== 'done' : t.status === 'done')));
+    const toggle = (id) => {
+      const t = tasks.value.find((x) => x.id === id);
+      t.status = t.status === 'done' ? 'todo' : 'done';
+    };
+    const add = () => {
+      const title = draft.value.trim();
+      if (!title) return;
+      tasks.value.push({ id: tasks.value.length + 1, title, tag: 'feature', who: 'cy', due: 'Oct 09', status: 'todo' });
+      draft.value = '';
+    };
+    const FILTERS = [['all', 'All tasks'], ['open', 'Open'], ['done', 'Done']];
+    return { tasks, view, filter, draft, counts, pct, visible, toggle, add, FILTERS, COLUMNS };
+  },
+}).mount('#app');
+</script>
+</body>
+</html>

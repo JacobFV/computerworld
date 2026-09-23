@@ -1,0 +1,17 @@
+[
+ {
+  "family": "\"Times New Roman\"",
+  "first": "html",
+  "chromium": []
+ },
+ {
+  "family": "\"DejaVu Sans\", sans-serif",
+  "first": "html>body>div:nth-child(1)>div:nth-child(1)>header:nth-child(1)>span:nth-child(1)",
+  "chromium": [
+   {
+    "family": "DejaVu Sans",
+    "glyphs": 7
+   }
+  ]
+ }
+]

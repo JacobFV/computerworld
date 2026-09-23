@@ -1,0 +1,17 @@
+{
+ "initial": [],
+ "added": [
+  {"action": "click", "selector": "#new-task"},
+  {"action": "type", "text": "Write the release notes"},
+  {"action": "press", "key": "Enter"},
+  {"action": "click", "selector": "#check-2"}
+ ],
+ "filtered": [
+  {"action": "click", "selector": "#check-4"},
+  {"action": "click", "selector": "#filter-open"}
+ ],
+ "board": [
+  {"action": "click", "selector": "#check-1"},
+  {"action": "click", "selector": "#tab-board"}
+ ]
+}

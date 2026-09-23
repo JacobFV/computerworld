@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tasks (React 18)</title>
+<!-- Layout parity for a page React renders: the same task tracker as vue3-tasks.html,
+     drawn by React 18's production build from createElement calls (no build step).
+     Steps in react18-tasks.steps.json drive it; see tests/framework_parity.rs. -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { font: 14px/20px 'DejaVu Sans', sans-serif; color: rgb(29, 28, 36); background-color: rgb(246, 246, 249); }
+  #app { height: 100%; }
+  .shell { display: flex; flex-direction: column; height: 100%; }
+  .top { display: flex; align-items: center; gap: 24px; height: 56px; padding: 0 24px; background-color: rgb(34, 30, 64); color: rgb(255, 255, 255); }
+  .brand { font-weight: 700; font-size: 18px; }
+  .tabs { display: flex; gap: 4px; }
+  .tab { border: 0; padding: 6px 14px; border-radius: 6px; font: inherit; color: rgb(200, 198, 230); background-color: transparent; }
+  .tab.active { background-color: rgb(84, 72, 180); color: rgb(255, 255, 255); }
+  .spacer { flex: 1; }
+  .who { display: flex; align-items: center; gap: 8px; }
+  .avatar { display: inline-block; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-size: 12px; font-weight: 700; color: rgb(255, 255, 255); }
+  .body { flex: 1; display: flex; min-height: 0; }
+  .side { width: 220px; padding: 20px 12px; background-color: rgb(255, 255, 255); border-right: 1px solid rgb(226, 225, 234); }
+  .side h2 { margin: 0 0 8px 8px; font-size: 11px; line-height: 16px; letter-spacing: 0; text-transform: uppercase; color: rgb(120, 118, 140); }
+  .filter { display: flex; justify-content: space-between; width: 100%; border: 0; padding: 6px 8px; border-radius: 6px; font: inherit; text-align: left; color: inherit; background-color: transparent; }
+  .filter.active { background-color: rgb(236, 234, 250); color: rgb(84, 72, 180); font-weight: 700; }
+  .count { min-width: 22px; padding: 0 6px; border-radius: 10px; font-size: 12px; text-align: center; background-color: rgb(236, 236, 242); }
+  .main { flex: 1; padding: 24px; min-width: 0; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+  .stat { padding: 14px 16px; border-radius: 10px; background-color: rgb(255, 255, 255); border: 1px solid rgb(226, 225, 234); }
+  .stat .label { font-size: 12px; color: rgb(120, 118, 140); }
+  .stat .value { font-size: 26px; line-height: 32px; font-weight: 700; }
+  .bar { height: 6px; margin-top: 8px; border-radius: 3px; background-color: rgb(236, 236, 242); }
+  .bar > div { height: 100%; border-radius: 3px; background-color: rgb(60, 170, 110); }
+  .add { display: flex; gap: 8px; margin-bottom: 12px; }
+  .add input { flex: 1; height: 36px; padding: 0 12px; border: 1px solid rgb(206, 204, 220); border-radius: 8px; font: inherit; background-color: rgb(255, 255, 255); }
+  .add button { height: 36px; padding: 0 16px; border: 0; border-radius: 8px; font: inherit; font-weight: 700; color: rgb(255, 255, 255); background-color: rgb(84, 72, 180); }
+  .list { margin: 0; padding: 0; list-style: none; border-radius: 10px; background-color: rgb(255, 255, 255); border: 1px solid rgb(226, 225, 234); }
+  .task { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid rgb(236, 236, 242); }
+  .task:first-child { border-top: 0; }
+  .check { width: 18px; height: 18px; padding: 0; border: 2px solid rgb(180, 178, 200); border-radius: 4px; background-color: rgb(255, 255, 255); }
+  .task.done .check { border-color: rgb(60, 170, 110); background-color: rgb(60, 170, 110); }
+  .title { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .task.done .title { color: rgb(150, 148, 165); text-decoration: line-through; }
+  .tag { padding: 2px 8px; border-radius: 10px; font-size: 12px; line-height: 16px; }
+  .tag.bug { background-color: rgb(252, 228, 228); color: rgb(170, 40, 40); }
+  .tag.feature { background-color: rgb(226, 240, 252); color: rgb(30, 90, 160); }
+  .tag.chore { background-color: rgb(238, 238, 238); color: rgb(90, 90, 90); }
+  .due { width: 64px; font-family: 'DejaVu Sans Mono', monospace; font-size: 12px; text-align: right; color: rgb(120, 118, 140); }
+  .empty { padding: 24px; text-align: center; color: rgb(120, 118, 140); }
+  .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .column { padding: 12px; border-radius: 10px; background-color: rgb(236, 236, 242); }
+  .column h3 { display: flex; justify-content: space-between; margin: 0 0 10px; font-size: 13px; }
+  .card { margin-bottom: 8px; padding: 10px 12px; border-radius: 8px; background-color: rgb(255, 255, 255); border: 1px solid rgb(226, 225, 234); }
+  .card .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+</style>
+<script src="/vendor/react-18.3.1.production.min.js"></script>
+<script src="/vendor/react-dom-18.3.1.production.min.js"></script>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+const PEOPLE = { ada: ['AL', 'rgb(200, 90, 60)'], bo: ['BK', 'rgb(60, 120, 190)'], cy: ['CN', 'rgb(120, 90, 170)'] };
+const INITIAL = [
+  { id: 1, title: 'Checkout fails when the basket holds a gift card', tag: 'bug', who: 'ada', due: 'Sep 24', status: 'doing' },
+  { id: 2, title: 'Export invoices as CSV', tag: 'feature', who: 'bo', due: 'Sep 26', status: 'todo' },
+  { id: 3, title: 'Rotate the staging certificates', tag: 'chore', who: 'cy', due: 'Sep 22', status: 'done' },
+  { id: 4, title: 'Search results lose their filters after paging back', tag: 'bug', who: 'bo', due: 'Sep 25', status: 'todo' },
+  { id: 5, title: 'Dark mode for the settings pages', tag: 'feature', who: 'ada', due: 'Oct 02', status: 'todo' },
+  { id: 6, title: 'Upgrade the build image', tag: 'chore', who: 'cy', due: 'Sep 20', status: 'done' },
+];
+const COLUMNS = [['todo', 'To do'], ['doing', 'In progress'], ['done', 'Done']];
+const h = React.createElement;
+const { useState, useMemo } = React;
+
+function Avatar({ who }) {
+  const [initials, colour] = PEOPLE[who];
+  return h('span', { className: 'avatar', style: { backgroundColor: colour } }, initials);
+}
+
+function Tag({ tag }) {
+  return h('span', { className: 'tag ' + tag }, tag);
+}
+
+function Stats({ tasks }) {
+  const done = tasks.filter((t) => t.status === 'done').length;
+  const pct = tasks.length ? Math.round((done * 100) / tasks.length) : 0;
+  return h('section', { className: 'stats' },
+    h('div', { className: 'stat', id: 'stat-total' }, h('div', { className: 'label' }, 'Total'), h('div', { className: 'value' }, tasks.length)),
+    h('div', { className: 'stat', id: 'stat-open' }, h('div', { className: 'label' }, 'Open'), h('div', { className: 'value' }, tasks.length - done)),
+    h('div', { className: 'stat', id: 'stat-done' }, h('div', { className: 'label' }, 'Done'), h('div', { className: 'value' }, pct + '%'),
+      h('div', { className: 'bar' }, h('div', { style: { width: pct + '%' } }))));
+}
+
+function Row({ task, onToggle }) {
+  return h('li', { className: 'task' + (task.status === 'done' ? ' done' : ''), id: 'task-' + task.id },
+    h('button', { className: 'check', id: 'check-' + task.id, 'aria-label': 'toggle', onClick: () => onToggle(task.id) }),
+    h('span', { className: 'title' }, task.title),
+    h(Tag, { tag: task.tag }),
+    h(Avatar, { who: task.who }),
+    h('span', { className: 'due' }, task.due));
+}
+
+function Board({ tasks }) {
+  return h('section', { className: 'board' }, COLUMNS.map(([status, name]) => {
+    const cards = tasks.filter((t) => t.status === status);
+    return h('div', { className: 'column', key: status, id: 'column-' + status },
+      h('h3', null, h('span', null, name), h('span', { className: 'count' }, cards.length)),
+      cards.map((t) => h('div', { className: 'card', key: t.id },
+        h('div', null, t.title),
+        h('div', { className: 'meta' }, h(Tag, { tag: t.tag }), h(Avatar, { who: t.who })))));
+  }));
+}
+
+function App() {
+  const [tasks, setTasks] = useState(INITIAL);
+  const [view, setView] = useState('list');
+  const [filter, setFilter] = useState('all');
+  const [draft, setDraft] = useState('');
+  const visible = useMemo(() => tasks.filter((t) =>
+    filter === 'all' || (filter === 'open' ? t.status !== 'done' : t.status === 'done')), [tasks, filter]);
+  const counts = {
+    all: tasks.length,
+    open: tasks.filter((t) => t.status !== 'done').length,
+    done: tasks.filter((t) => t.status === 'done').length,
+  };
+  const toggle = (id) => setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status: t.status === 'done' ? 'todo' : 'done' } : t)));
+  const add = (e) => {
+    e.preventDefault();
+    const title = draft.trim();
+    if (!title) return;
+    setTasks((ts) => [...ts, { id: ts.length + 1, title, tag: 'feature', who: 'cy', due: 'Oct 09', status: 'todo' }]);
+    setDraft('');
+  };
+  const tab = (name, label) => h('button', { className: 'tab' + (view === name ? ' active' : ''), id: 'tab-' + name, onClick: () => setView(name) }, label);
+  const filterButton = (name, label) => h('button', { className: 'filter' + (filter === name ? ' active' : ''), id: 'filter-' + name, onClick: () => setFilter(name) },
+    h('span', null, label), h('span', { className: 'count' }, counts[name]));
+  return h('div', { className: 'shell' },
+    h('header', { className: 'top' },
+      h('span', { className: 'brand' }, 'Tracker'),
+      h('nav', { className: 'tabs' }, tab('list', 'List'), tab('board', 'Board')),
+      h('span', { className: 'spacer' }),
+      h('span', { className: 'who' }, h('span', null, 'Cy Nakamura'), h(Avatar, { who: 'cy' }))),
+    h('div', { className: 'body' },
+      h('aside', { className: 'side' },
+        h('h2', null, 'Filters'),
+        filterButton('all', 'All tasks'), filterButton('open', 'Open'), filterButton('done', 'Done')),
+      h('main', { className: 'main' },
+        h(Stats, { tasks }),
+        view === 'list'
+          ? h(React.Fragment, null,
+            h('form', { className: 'add', onSubmit: add },
+              h('input', { id: 'new-task', placeholder: 'Add a task', value: draft, onChange: (e) => setDraft(e.target.value) }),
+              h('button', { type: 'submit', id: 'add-task' }, 'Add')),
+            visible.length
+              ? h('ul', { className: 'list', id: 'list' }, visible.map((t) => h(Row, { key: t.id, task: t, onToggle: toggle })))
+              : h('div', { className: 'list empty' }, 'Nothing here'))
+          : h(Board, { tasks }))));
+}
+
+ReactDOM.createRoot(document.getElementById('app')).render(h(App));
+</script>
+</body>
+</html>

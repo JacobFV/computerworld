@@ -197,3 +197,42 @@ entry to just under the achieved count once it holds).
 | `amazon-grid` | A search results page: dark flex header with a growing search bar and an absolutely positioned cart badge, a nav strip, a 240px filter sidebar (star rows, checkboxes, a price form), a `repeat(auto-fill, minmax(220px, 1fr))` grid of twelve cards (`aspect-ratio` thumbnails, line-clamped titles, `<sup>` cents, chips, corner ribbons, `margin-top: auto` buttons), pagination, a footer |
 | `slack-shell` | An app shell: `100vh` flex column with `overflow: hidden`, a top bar, a rail, a purple sidebar with sections and unread pill badges, a main column with a `position: sticky` channel header, a `flex: 1; overflow: auto` message list with grouped messages, a blockquote, an attachment card and code in JetBrains Mono, a composer pinned at the bottom, and a right details panel that also scrolls |
 | `acid2` | The Second Acid Test from web-platform-tests' `acid/acid2/` (WPT licence), with its subresources under `parity/acid2/` and a README on how it is viewed and where its `data:` images, `<object>` fallback, painting order and negative clearance are implemented; also the reftest pair `ref/acid2` against the pixel-for-pixel reference, compared at `#top` |
+
+## Pages a framework renders
+
+`crates/web/engine/tests/framework-parity/` holds apps drawn by the unmodified production
+framework builds in `tests/vendor/`: `react18-tasks` (React 18, `createElement`, no build
+step) and `vue3-tasks` (Vue 3's global build compiling a template at runtime). Both render
+the same task tracker (a header with tabs, a filter sidebar, stat cards, an add form, a
+list with badges and avatars, and a three-column board), and Chromium lays the two out
+identically node for node. `<name>.steps.json` names states and the steps that reach
+each one from a fresh load: `click` (a selector), `type` (text to the focused element),
+`press` (a key).
+
+The Chromium side is `dump.mjs` driven through those steps, one state at a time:
+
+```sh
+D=crates/web/engine/tests/framework-parity
+for f in react18-tasks vue3-tasks; do for s in initial added filtered board; do
+  node scripts/web-parity/dump.mjs $D/$f.html --state $D/$f.steps.json --state-name $s \
+    --out $D/$f.$s.chromium.json
+done; done
+```
+
+The engine side, `crates/web/engine/tests/framework_parity.rs`, runs the page on the
+script layer (`Realm`) with the same bundles served at `/vendor/`, dispatches each step as
+Playwright performs it (a click moves the pointer onto the element's centre and clicks
+there), and dumps the realm's live document, styles and fragment tree. It writes
+`target-parity/<name>.<state>.{engine.json,engine.png,report.md}` and fails when a
+state's pass rate is below its entry in `framework-parity/thresholds.json`:
+
+```sh
+cargo test -p cw-web --features pipeline --test framework_parity -- --nocapture
+```
+
+Every state builds the DOM Chromium builds (no node missing). What does not match is
+text measurement, not the frameworks: the engine lays DejaVu out unkerned where Chromium
+kerns pairs such as `Tr` and `To`, so "Tracker", "Total" and "To do" come out about
+2 px wide and move what follows them; and a page that names `DejaVu Sans Mono` gets the
+terminal's grid (`ceil(0.6 × size)` px per character, 8 px at 12 px where Chromium's
+advance is 7.23).

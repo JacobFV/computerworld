@@ -7,7 +7,7 @@
 //   CHROME_BIN=/usr/bin/google-chrome \
 //     node scripts/web-parity/dump.mjs crates/web/engine/tests/parity/google-1998.html \
 //       [--width 1280] [--height 800] [--dpr 1] [--out <name>.chromium.json] [--full] \
-//       [--props extra-a,extra-b] [--state states.json]
+//       [--props extra-a,extra-b] [--state states.json [--state-name <name>]]
 //
 // Writes <name>.chromium.json, <name>.chromium.png (the viewport, or the whole page with
 // --full) and <name>.fonts.json (each distinct `font-family` list the page asked for and
@@ -20,7 +20,13 @@
 // they show up in the output's `properties` array alongside the shared ones, so a reader
 // can see exactly what was asked for. --state points at a JSON file of
 // `[{"selector": "...", "action": "hover" | "focus"}, ...]`, each applied through
-// Playwright before collecting, so :hover/:focus(-visible) variants are captured.
+// Playwright before collecting, so :hover/:focus(-visible) variants are captured. The
+// steps may also be `{"action": "click", "selector"}`, `{"action": "type", "text"}` (to
+// the focused element) and `{"action": "press", "key"}`, which is how a page a framework
+// renders is driven into a state (tests/framework-parity/*.steps.json); there the file
+// is an object of named step lists and --state-name picks one. The page is let settle
+// (two animation frames and a task) after loading and after every step, so a framework
+// that commits asynchronously has committed before anything is read.
 import {readFile, writeFile} from 'node:fs/promises';
 import {basename, dirname, extname, join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
@@ -56,7 +62,13 @@ const outStem = out.replace(/\.json$/, '');
 const extraProps = (flag('--props', '') || '').split(',').map(p => p.trim()).filter(Boolean);
 const properties = extraProps.length ? [...PROPERTIES, ...extraProps.filter(p => !PROPERTIES.includes(p))] : PROPERTIES;
 const statePath = flag('--state', null);
-const states = statePath ? JSON.parse(await readFile(resolve(statePath), 'utf8')) : [];
+const stateName = flag('--state-name', null);
+const stateFile = statePath ? JSON.parse(await readFile(resolve(statePath), 'utf8')) : [];
+const states = stateName ? stateFile[stateName] : stateFile;
+if (!Array.isArray(states)) {
+  console.error(`--state: ${statePath} has no step list${stateName ? ` named "${stateName}"` : ''}`);
+  process.exit(2);
+}
 
 
 // Runs inside the page. Everything it returns is plain JSON.
@@ -133,10 +145,17 @@ try {
   });
   await page.goto(url, {waitUntil: 'load'});
   await page.evaluate(() => document.fonts.ready);
-  for (const {selector, action} of states) {
+  const settle = () => page.evaluate(() => new Promise(done =>
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 0)))));
+  await settle();
+  for (const {selector, action, text, key} of states) {
     if (action === 'hover') await page.hover(selector);
     else if (action === 'focus') await page.focus(selector);
+    else if (action === 'click') await page.click(selector);
+    else if (action === 'type') await page.keyboard.type(text);
+    else if (action === 'press') await page.keyboard.press(key);
     else throw new Error(`--state: unknown action "${action}" for ${selector}`);
+    await settle();
   }
   const dump = await page.evaluate(collect, properties);
 
