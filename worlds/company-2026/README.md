@@ -48,14 +48,13 @@ site, named in `world.yml`'s `internet_overlays`.
 ## The directories
 
 `world.yml` is the blueprint and `world.json` beside it is what it resolves to; the other
-five directories are what the blueprint and the site build read.
+four directories are what the blueprint and the site build read.
 
 | Directory | Read by | Becomes |
 |---|---|---|
 | `computers/` | `world.yml`'s `include:` list | One directory per machine: `computer.json` is its definition, and `root/` holds the files it starts with at the paths they have on it — `alice-mac/root/Users/alice`, `bob-windows/root/C/Users/bob` (the top directory is the drive), `carol-ubuntu/root/home/carol`. |
-| `sites/` | `world.yml`'s `include:` list | The company's own services, one per file, each placing its own node, link and DNS records. |
+| `sites/` | `world.yml`'s `include:` list | The company's own services, one per file, each placing its own node, link and DNS records — and the bedroom speaker, which is unplugged, so its file is only the node and link a running speaker would place. |
 | `overlays/` | `world.yml`'s `internet_overlays:` | The company's own content on the internet's shared sites, merged into each as the internet joins. |
-| `network/` | `world.yml`'s `include:` list | Topology with no service behind it — currently just the unplugged bedroom speaker. |
 | `samples/` | `scripts/content/build-live-world.mjs` | The documents and media the live site's machines start with. |
 
 `samples/` is the one that does not reach `world.json`. Its eight files are written by the

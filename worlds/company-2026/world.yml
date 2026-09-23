@@ -368,5 +368,5 @@ include:
   - "sites/kitchen-speaker.json"
   - "sites/livingroom-speaker.json"
   - "sites/office-tv-speaker.json"
-  - "network/bedroom-speaker.json"
+  - "sites/bedroom-speaker.json"
   - "sites/messages.json"
