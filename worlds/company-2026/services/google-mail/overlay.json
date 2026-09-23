@@ -47,6 +47,10 @@
         ],
         "subject": "Atlas launch checklist",
         "body": "Alice — the launch checklist is written up and ready for a second pair of eyes. Everything we agreed in the review is in there, including the release code and the rollback plan.\n\nDoc: http://docs.google.com/documents/atlas-launch\n\nWalk it top to bottom before Thursday and tick the boxes you own. Bob, you are on the CI section.",
+        "attachments": {
+          "from_dir": "attachments/mail-1",
+          "as": "base64"
+        },
         "mailboxes": {
           "alice": {
             "folders": [

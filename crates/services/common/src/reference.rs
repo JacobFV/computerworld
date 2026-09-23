@@ -1,7 +1,8 @@
 //! A site as the reference world has it, for a service's tests.
 //!
 //! The internet's sites are neutral; the reference company's people and content on them are
-//! its overlay, in `worlds/company-2026/services/<id>/overlay.json`. A test that pins that content reads the
+//! its overlay, from `worlds/company-2026/services/<id>/overlay.json` by way of the built
+//! `worlds/company-2026/world.json`. A test that pins that content reads the
 //! site through here and gets both, merged exactly as the internet joins the world. One of
 //! the company's own sites (its intranet, its blogs) is read as it is.
 use serde_json::Value;
@@ -16,6 +17,20 @@ fn read(path: PathBuf) -> Option<Value> {
     Some(serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
 }
 
+/// The reference company's overlays as its world file holds them: resolved, so an overlay
+/// that reads its attachments `from_dir` arrives with the files' bytes and not the directive.
+fn overlays() -> &'static serde_json::Map<String, Value> {
+    static OVERLAYS: std::sync::OnceLock<serde_json::Map<String, Value>> =
+        std::sync::OnceLock::new();
+    OVERLAYS.get_or_init(|| {
+        let world = read(worlds().join("company-2026/world.json")).expect("the reference world");
+        world["internet_overlays"]
+            .as_object()
+            .cloned()
+            .unwrap_or_default()
+    })
+}
+
 /// The site file with this id, with the reference company's overlay applied if it has one.
 pub fn reference_site(id: &str) -> Value {
     let worlds = worlds();
@@ -24,7 +39,7 @@ pub fn reference_site(id: &str) -> Value {
     }
     let base = read(worlds.join(format!("internet/services/{id}/service.json")))
         .unwrap_or_else(|| panic!("no site {id} in the internet or the reference company"));
-    let Some(overlay) = read(worlds.join(format!("company-2026/services/{id}/overlay.json"))) else {
+    let Some(overlay) = overlays().get(id).cloned() else {
         return base;
     };
     let site: cw_protocol::ServiceDefinition =

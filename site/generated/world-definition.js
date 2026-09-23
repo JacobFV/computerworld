@@ -20106,6 +20106,10 @@ export default {
             ],
             "subject": "Atlas launch checklist",
             "body": "Alice — the launch checklist is written up and ready for a second pair of eyes. Everything we agreed in the review is in there, including the release code and the rollback plan.\n\nDoc: http://docs.google.com/documents/atlas-launch\n\nWalk it top to bottom before Thursday and tick the boxes you own. Bob, you are on the CI section.",
+            "attachments": {
+              "launch-owners.csv": "c2VjdGlvbixvd25lcixkdWUKUmVsZWFzZSBub3RlcyxBbGljZSBDaGVuLFRodXJzZGF5CkNJIGFuZCBidWlsZCxCb2IgTWFydGluZXosVGh1cnNkYXkKUm9sbGJhY2sgcGxhbixDYXJvbCBOYWthbXVyYSxXZWRuZXNkYXkKU3RhdHVzIHBhZ2UsQ2Fyb2wgTmFrYW11cmEsVGh1cnNkYXkK",
+              "rollback-plan.md": "IyBBdGxhcyByb2xsYmFjayBwbGFuCgpPd25lcjogQ2Fyb2wgTmFrYW11cmEuIFVzZSB0aGlzIGlmIHRoZSByZWxlYXNlIGhhcyB0byBjb21lIGJhY2sgb3V0LgoKMS4gQW5ub3VuY2UgdGhlIHJvbGxiYWNrIGluICNnZW5lcmFsIGJlZm9yZSB0b3VjaGluZyBhbnl0aGluZy4KMi4gU3RvcCB0aGUgcm9sbG91dDogcGF1c2UgdGhlIGRlcGxveSBqb2IgZm9yIHJlbGVhc2UgQVRMQVMtMjAyNi4KMy4gUmV2ZXJ0IHRoZSByZWxlYXNlIHRhZyBvbiB0aGUgb25ib2FyZGluZyByZXBvc2l0b3J5IGFuZCBwdXNoIHRoZSByZXZlcnQuCjQuIFJlZGVwbG95IHRoZSBwcmV2aW91cyB0YWcgdG8gYXBwLXNlcnZlciBhbmQgY29uZmlybSB0aGUgaW50cmFuZXQgYW5zd2Vycy4KNS4gUmVvcGVuIE9QUy0xIHdpdGggd2hhdCBmYWlsZWQsIGFuZCBsaW5rIHRoaXMgcGxhbiBmcm9tIHRoZSB0aWNrZXQuCgpSb2xsYmFjayBpcyBkb25lIHdoZW4gdGhlIHN0YXR1cyBwYWdlIHNob3dzIHRoZSBwcmV2aW91cyB2ZXJzaW9uIGFuZApub2JvZHkgaGFzIGFuIG9wZW4gcXVlc3Rpb24gaW4gdGhlIHRocmVhZC4K"
+            },
             "mailboxes": {
               "alice": {
                 "folders": [
@@ -23033,6 +23037,9 @@ export default {
               "carol.nakamura@mail.com"
             ],
             "body": "Hi Carol,\n\nThanks for confirming your talk, \"Twelve minutes: what INC-4 taught us about replay\". Speaker check-in is at the Pike St entrance from 08:00 on day one. Please bring your laptop with HDMI or USB-C; we have clickers but not adapters.\n\nSlides are due 48 hours ahead so we can load them on the backup machine. The room seats 320 and is usually full for the reproducibility track.\n\nHelena Marsh\nProgramme, DevCon Seattle",
+            "attachments": {
+              "speaker-pack.zip": "UEsDBBQAAAAAAABIIV1YJzfdNwEAADcBAAAQAAAAYXYtY2hlY2tsaXN0LnR4dERldkNvbiBTZWF0dGxlIDIwMjYgLSBzcGVha2VyIEFWIGNoZWNrbGlzdAoKLSBMYXB0b3Agd2l0aCBIRE1JIG9yIFVTQi1DIChubyBhZGFwdGVycyBvbiBzaXRlKQotIFNsaWRlcyBpbiAxNjo5LCBsb2FkZWQgb24gdGhlIGJhY2t1cCBtYWNoaW5lIDQ4IGhvdXJzIGFoZWFkCi0gQ2xpY2tlciBwcm92aWRlZCBhdCB0aGUgbGVjdGVybgotIExhcGVsIG1pY3JvcGhvbmUgZml0dGVkIGF0IHRoZSBzaWRlIGRvb3IsIDEwIG1pbnV0ZXMgYmVmb3JlIHlvdXIgc2xvdAotIE5vIGF1ZGlvIHBsYXliYWNrIG9uIHRoZSByZXByb2R1Y2liaWxpdHkgdHJhY2sKUEsDBBQAAAAAAABIIV1YVzVVuwAAALsAAAAMAAAAc2NoZWR1bGUuY3N2dGltZSxyb29tLHNlc3Npb24sc3BlYWtlcgowODowMCxQaWtlIFN0IGVudHJhbmNlLFNwZWFrZXIgY2hlY2staW4sCjEwOjMwLEhhbGwgQixUd2VsdmUgbWludXRlczogd2hhdCBJTkMtNCB0YXVnaHQgdXMgYWJvdXQgcmVwbGF5LENhcm9sIE5ha2FtdXJhCjEyOjAwLEhhbGwgQixSZXByb2R1Y2liaWxpdHkgdHJhY2sgbHVuY2gsClBLAQIUAxQAAAAAAABIIV1YJzfdNwEAADcBAAAQAAAAAAAAAAAAAACkAQAAAABhdi1jaGVja2xpc3QudHh0UEsBAhQDFAAAAAAAAEghXVhXNVW7AAAAuwAAAAwAAAAAAAAAAAAAAKQBZQEAAHNjaGVkdWxlLmNzdlBLBQYAAAAAAgACAHgAAABKAgAAAAA="
+            },
             "mailboxes": {
               "carol": {
                 "folders": [

@@ -57,6 +57,10 @@
           "carol.nakamura@mail.com"
         ],
         "body": "Hi Carol,\n\nThanks for confirming your talk, \"Twelve minutes: what INC-4 taught us about replay\". Speaker check-in is at the Pike St entrance from 08:00 on day one. Please bring your laptop with HDMI or USB-C; we have clickers but not adapters.\n\nSlides are due 48 hours ahead so we can load them on the backup machine. The room seats 320 and is usually full for the reproducibility track.\n\nHelena Marsh\nProgramme, DevCon Seattle",
+        "attachments": {
+          "from_dir": "attachments/mail-2",
+          "as": "base64"
+        },
         "mailboxes": {
           "carol": {
             "folders": [
