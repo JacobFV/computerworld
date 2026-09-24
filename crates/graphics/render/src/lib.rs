@@ -493,7 +493,20 @@ impl Renderer {
                         }
                         _ => continue,
                     };
-                    let x = (placed.x + 32).div_euclid(64) + g.metrics.xmin as i64;
+                    // Web text is positioned to a quarter pixel, as Chromium's Skia
+                    // does at any scale; native text snaps each glyph to a pixel.
+                    let (pixel, phase) = if style.web {
+                        let quarter = (placed.x + 8).div_euclid(16);
+                        (quarter.div_euclid(4), quarter.rem_euclid(4) as u8)
+                    } else {
+                        ((placed.x + 32).div_euclid(64), 0)
+                    };
+                    let g = if phase == 0 {
+                        g
+                    } else {
+                        Arc::new(shifted(&g, phase))
+                    };
+                    let x = pixel + g.metrics.xmin as i64;
                     let y = baseline
                         - (placed.y + 32).div_euclid(64)
                         - g.metrics.height as i64
@@ -1325,6 +1338,25 @@ fn normalize_damage(input: &[Rect], viewport: Rect) -> Vec<Rect> {
 }
 fn mul_alpha(a: u8, b: u8) -> u8 {
     ((a as u32 * b as u32 + 127) / 255) as u8
+}
+/// `g` moved right by `phase` quarters of a pixel: each column's coverage is the
+/// area-weighted mix of its own and its left neighbour's, which is exact for the
+/// vertical edges that dominate a glyph's horizontal placement. One column wider.
+fn shifted(g: &Glyph, phase: u8) -> Glyph {
+    let p = u32::from(phase);
+    let (w, h) = (g.metrics.width, g.metrics.height);
+    let mut alpha = vec![0u8; (w + 1) * h];
+    for y in 0..h {
+        let row = &g.alpha[y * w..(y + 1) * w];
+        for x in 0..=w {
+            let here = row.get(x).map_or(0, |a| u32::from(*a));
+            let left = x.checked_sub(1).map_or(0, |i| u32::from(row[i]));
+            alpha[y * (w + 1) + x] = ((here * (4 - p) + left * p + 2) / 4) as u8;
+        }
+    }
+    let mut metrics = g.metrics;
+    metrics.width = w + 1;
+    Glyph { metrics, alpha }
 }
 /// Max-composite a glyph's coverage into a text mask with its top-left at (x, y).
 fn blit(mask: &mut Mask, g: &Glyph, x: i64, y: i64) {
