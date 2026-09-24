@@ -19,22 +19,56 @@ use crate::Diagnostic;
 
 /// Lowers `source` to a module, or the reasons it is outside the subset.
 pub fn lower(source: &str, file_name: &str) -> Result<Module, Vec<Diagnostic>> {
+    lower_modules(&[crate::Source::single(source, file_name)])
+}
+
+/// Lowers an app of several modules, in dependency order (each after the modules it
+/// imports, the entry last; see `crate::load`), to one IR module.
+pub fn lower_modules(sources: &[crate::Source]) -> Result<Module, Vec<Diagnostic>> {
     let allocator = Allocator::default();
-    let ret = Parser::new(&allocator, source, SourceType::tsx()).parse();
-    if !ret.diagnostics.is_empty() {
-        return Err(ret
-            .diagnostics
-            .iter()
-            .map(|d| Diagnostic::from_oxc(source, d))
-            .collect());
+    let mut programs = Vec::with_capacity(sources.len());
+    let mut errors = Vec::new();
+    for src in sources {
+        let ret = Parser::new(&allocator, &src.text, SourceType::tsx()).parse();
+        for d in &ret.diagnostics {
+            let mut d = Diagnostic::from_oxc(&src.text, d);
+            d.file = src.display_file(sources.len());
+            errors.push(d);
+        }
+        programs.push(ret.program);
     }
-    let program = ret.program;
-    let mut l = Lowerer::new(source);
-    l.module(&program.body);
+    if !errors.is_empty() {
+        return Err(errors);
+    }
+    let mut l = Lowerer::new("");
+    l.mods = sources
+        .iter()
+        .map(|s| ModNames {
+            src: &s.text,
+            file: s.display_file(sources.len()),
+            ..ModNames::default()
+        })
+        .collect();
+    l.swap_current(0);
+    let mut decls = Vec::with_capacity(programs.len());
+    for (i, program) in programs.iter().enumerate() {
+        l.enter_module(i);
+        decls.push(l.declare(&program.body, &sources[i].imports));
+    }
+    // Reassigned module `let`s make identity tracking unsafe across calls.
+    l.mutable_globals = l.ginfo.iter().any(|g| g.reassigned);
+    for (i, d) in decls.iter().enumerate() {
+        l.enter_module(i);
+        for stmt in d {
+            l.module_statement(stmt);
+        }
+    }
+    l.finish();
+    let file_name = sources.last().map(|s| s.file.clone()).unwrap_or_default();
     if l.diags.is_empty() {
         Ok(Module {
             version: IR_VERSION,
-            source: file_name.to_owned(),
+            source: file_name,
             globals: l.globals,
             functions: l
                 .functions
@@ -47,7 +81,7 @@ pub fn lower(source: &str, file_name: &str) -> Result<Module, Vec<Diagnostic>> {
         })
     } else {
         let mut d = l.diags;
-        d.sort_by_key(|d| (d.line, d.col));
+        d.sort_by(|a, b| (&a.file, a.line, a.col).cmp(&(&b.file, b.line, b.col)));
         d.dedup();
         Err(d)
     }
@@ -172,6 +206,10 @@ struct GlobalInfo {
 /// A module function's declaration, lowered on demand.
 struct PendingFn<'a> {
     name: String,
+    type_params: Option<&'a ast::TSTypeParameterDeclaration<'a>>,
+    /// The module it belongs to, and its global slot when it is a module function.
+    module: usize,
+    slot: Option<u32>,
     params: &'a ast::FormalParameters<'a>,
     body: FnBody<'a>,
     return_type: Option<&'a ast::TSTypeAnnotation<'a>>,
@@ -197,15 +235,42 @@ struct TemplateBuilder {
     meta: Vec<Hole>,
 }
 
+/// The names one module sees. The lowerer works on one module at a time; the others'
+/// tables wait in `Lowerer::mods` (see `enter_module`).
+#[derive(Default)]
+struct ModNames<'a> {
+    src: &'a str,
+    file: String,
+    type_decls: BTreeMap<String, TypeDecl<'a>>,
+    type_cache: BTreeMap<String, Ty>,
+    react: BTreeMap<String, ReactName>,
+    /// Module-level names (its own and the ones it imports) to global slots.
+    global_names: BTreeMap<String, u32>,
+    /// Imported type names: local name to (module, exported name).
+    type_imports: BTreeMap<String, (usize, String)>,
+    /// Exported names to the local names they export.
+    exports: BTreeMap<String, String>,
+}
+
 struct Lowerer<'a> {
     src: &'a str,
+    file: String,
     diags: Vec<Diagnostic>,
     type_decls: BTreeMap<String, TypeDecl<'a>>,
     type_cache: BTreeMap<String, Ty>,
-    type_busy: BTreeSet<String>,
+    type_busy: BTreeSet<(usize, String)>,
     react: BTreeMap<String, ReactName>,
     globals: Vec<Global>,
-    global_names: BTreeMap<String, GlobalInfo>,
+    global_names: BTreeMap<String, u32>,
+    type_imports: BTreeMap<String, (usize, String)>,
+    exports: BTreeMap<String, String>,
+    /// Per global slot.
+    ginfo: Vec<GlobalInfo>,
+    /// Every module's tables; the current module's are in the fields above.
+    mods: Vec<ModNames<'a>>,
+    /// Generic parameters in scope: each stands for its constraint.
+    type_params: Vec<BTreeMap<String, Ty>>,
+    cur_mod: usize,
     functions: Vec<Option<Function>>,
     pending: BTreeMap<u32, PendingFn<'a>>,
     busy_fns: BTreeSet<u32>,
@@ -250,6 +315,7 @@ impl<'a> Lowerer<'a> {
     fn new(src: &'a str) -> Lowerer<'a> {
         Lowerer {
             src,
+            file: String::new(),
             diags: Vec::new(),
             type_decls: BTreeMap::new(),
             type_cache: BTreeMap::new(),
@@ -257,6 +323,12 @@ impl<'a> Lowerer<'a> {
             react: BTreeMap::new(),
             globals: Vec::new(),
             global_names: BTreeMap::new(),
+            type_imports: BTreeMap::new(),
+            exports: BTreeMap::new(),
+            ginfo: Vec::new(),
+            mods: Vec::new(),
+            type_params: Vec::new(),
+            cur_mod: 0,
             functions: Vec::new(),
             pending: BTreeMap::new(),
             busy_fns: BTreeSet::new(),
@@ -270,8 +342,72 @@ impl<'a> Lowerer<'a> {
     }
 
     fn err(&mut self, span: Span, msg: impl Into<String>) {
-        self.diags
-            .push(Diagnostic::at(self.src, span.start, msg.into()));
+        let mut d = Diagnostic::at(self.src, span.start, msg.into());
+        d.file = self.file.clone();
+        self.diags.push(d);
+    }
+
+    /// Makes module `m` the current one; returns the module that was.
+    fn enter_module(&mut self, m: usize) -> usize {
+        let prev = self.cur_mod;
+        if m == prev {
+            return prev;
+        }
+        self.swap_current(prev);
+        self.swap_current(m);
+        self.cur_mod = m;
+        prev
+    }
+
+    /// Exchanges the current-module fields with `mods[m]`.
+    fn swap_current(&mut self, m: usize) {
+        let t = &mut self.mods[m];
+        std::mem::swap(&mut self.src, &mut t.src);
+        std::mem::swap(&mut self.file, &mut t.file);
+        std::mem::swap(&mut self.type_decls, &mut t.type_decls);
+        std::mem::swap(&mut self.type_cache, &mut t.type_cache);
+        std::mem::swap(&mut self.react, &mut t.react);
+        std::mem::swap(&mut self.global_names, &mut t.global_names);
+        std::mem::swap(&mut self.type_imports, &mut t.type_imports);
+        std::mem::swap(&mut self.exports, &mut t.exports);
+    }
+
+    /// Brings a function's generic parameters into scope (each as its constraint).
+    fn push_type_params(&mut self, tp: Option<&'a ast::TSTypeParameterDeclaration<'a>>) {
+        let mut scope = BTreeMap::new();
+        self.type_params.push(BTreeMap::new());
+        if let Some(tp) = tp {
+            for p in &tp.params {
+                let t = match &p.constraint {
+                    Some(c) => self.ts_type(c),
+                    None => Ty::Unknown,
+                };
+                scope.insert(p.name.name.to_string(), t.clone());
+                self.type_params
+                    .last_mut()
+                    .unwrap()
+                    .insert(p.name.name.to_string(), t);
+            }
+        }
+        let _ = scope;
+    }
+
+    fn gname(&self, name: &str) -> Option<&GlobalInfo> {
+        self.global_names
+            .get(name)
+            .map(|s| &self.ginfo[*s as usize])
+    }
+
+    fn gname_mut(&mut self, name: &str) -> Option<&mut GlobalInfo> {
+        let s = *self.global_names.get(name)?;
+        Some(&mut self.ginfo[s as usize])
+    }
+
+    fn add_global_name(&mut self, name: &str, info: GlobalInfo) {
+        let slot = info.slot;
+        debug_assert_eq!(slot as usize, self.ginfo.len());
+        self.ginfo.push(info);
+        self.global_names.insert(name.to_owned(), slot);
     }
 
     fn unsupported(&mut self, span: Span, what: &str) -> Lowered {
@@ -289,12 +425,19 @@ impl<'a> Lowerer<'a> {
 
     // ------------------------------------------------------------------ module
 
-    fn module(&mut self, body: &'a oxc_allocator::Vec<'a, S<'a>>) {
+    /// Passes 1 and 2 over the current module: its imports, type declarations and
+    /// exports, then every global it declares. Returns the statements to lower.
+    fn declare(
+        &mut self,
+        body: &'a oxc_allocator::Vec<'a, S<'a>>,
+        imports: &BTreeMap<String, usize>,
+    ) -> Vec<&'a S<'a>> {
+        self.collect_exports(body);
         // Pass 1: imports and type declarations; module declarations to lower.
         let mut decls: Vec<&'a S<'a>> = Vec::new();
         for stmt in body.iter() {
             match stmt {
-                S::ImportDeclaration(import) => self.import(import),
+                S::ImportDeclaration(import) => self.import(import, imports),
                 S::TSTypeAliasDeclaration(t) => {
                     self.type_decls
                         .insert(t.id.name.to_string(), TypeDecl::Alias(&t.type_annotation));
@@ -328,24 +471,78 @@ impl<'a> Lowerer<'a> {
         for stmt in &decls {
             self.declare_statement_globals(stmt);
         }
-        // Reassigned module `let`s make identity tracking unsafe across calls.
-        self.mutable_globals = self.global_names.values().any(|g| g.reassigned);
-        // Pass 3: lower in order.
-        for stmt in &decls {
-            self.module_statement(stmt);
+        decls
+    }
+
+    /// What the current module exports, by exported name to local name.
+    fn collect_exports(&mut self, body: &'a oxc_allocator::Vec<'a, S<'a>>) {
+        for stmt in body.iter() {
+            match stmt {
+                S::ExportDeclaration(e) => {
+                    let mut names = Vec::new();
+                    match &e.declaration {
+                        ast::Declaration::FunctionDeclaration(f) => {
+                            names.extend(f.id.as_ref().map(|i| i.name.to_string()))
+                        }
+                        ast::Declaration::VariableDeclaration(v) => {
+                            for d in &v.declarations {
+                                let mut b = Vec::new();
+                                binding_names(&d.id, &mut b);
+                                names.extend(b.into_iter().map(|(n, _)| n));
+                            }
+                        }
+                        ast::Declaration::TSTypeAliasDeclaration(t) => {
+                            names.push(t.id.name.to_string())
+                        }
+                        ast::Declaration::TSInterfaceDeclaration(i) => {
+                            names.push(i.id.name.to_string())
+                        }
+                        _ => {}
+                    }
+                    for n in names {
+                        self.exports.insert(n.clone(), n);
+                    }
+                }
+                S::ExportDefaultDeclaration(e) => match &e.declaration {
+                    ast::ExportDefaultDeclarationKind::FunctionDeclaration(f) => {
+                        if let Some(id) = &f.id {
+                            self.exports.insert("default".into(), id.name.to_string());
+                        }
+                    }
+                    ast::ExportDefaultDeclarationKind::Identifier(id) => {
+                        self.exports.insert("default".into(), id.name.to_string());
+                    }
+                    _ => {}
+                },
+                S::ExportNamedDeclaration(e) => {
+                    for spec in &e.specifiers {
+                        self.exports.insert(
+                            spec.exported.name().to_string(),
+                            spec.local.name().to_string(),
+                        );
+                    }
+                }
+                S::ExportFromDeclaration(e) => {
+                    self.err(e.span, "re-exporting from another module is outside the compiled subset (import, then export)");
+                }
+                S::ExportAllDeclaration(e) => {
+                    self.err(e.span, "`export *` is outside the compiled subset");
+                }
+                _ => {}
+            }
         }
+    }
+
+    /// After every module: functions nobody called, and the render root.
+    fn finish(&mut self) {
         // Functions nobody called yet.
         let rest: Vec<u32> = self.pending.keys().copied().collect();
         for f in rest {
             self.ensure_function(f);
         }
-        for g in self.global_names.values() {
-            if g.func.is_none() && g.reassigned && matches!(g.ty, Ty::Unknown) {
-                // Nothing: typed at declaration.
-            }
-        }
         if self.root.is_none() {
             self.diags.push(Diagnostic {
+                file: String::new(),
                 line: 1,
                 col: 1,
                 message: "the module never renders: expected `createRoot(document.getElementById(id)).render(<App />)`".into(),
@@ -353,11 +550,19 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    fn import(&mut self, import: &'a ast::ImportDeclaration<'a>) {
+    fn import(
+        &mut self,
+        import: &'a ast::ImportDeclaration<'a>,
+        imports: &BTreeMap<String, usize>,
+    ) {
+        let module = import.source.value.as_str();
+        if let Some(&m) = imports.get(module) {
+            self.local_import(import, m);
+            return;
+        }
         if import.import_kind.is_type() {
             return;
         }
-        let module = import.source.value.as_str();
         let is_dom = matches!(module, "react-dom" | "react-dom/client");
         if module != "react" && !is_dom {
             self.err(
@@ -402,6 +607,50 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// An import from another module of the app: its values become names for the
+    /// same global slots, its types names that resolve there.
+    fn local_import(&mut self, import: &'a ast::ImportDeclaration<'a>, m: usize) {
+        let whole_type = import.import_kind.is_type();
+        for spec in import.specifiers.iter().flatten() {
+            let (local, exported, only_type) = match spec {
+                ast::ImportDeclarationSpecifier::ImportSpecifier(s) => (
+                    s.local.name.to_string(),
+                    s.imported.name().to_string(),
+                    whole_type || s.import_kind.is_type(),
+                ),
+                ast::ImportDeclarationSpecifier::ImportDefaultSpecifier(s) => {
+                    (s.local.name.to_string(), "default".to_string(), whole_type)
+                }
+                ast::ImportDeclarationSpecifier::ImportNamespaceSpecifier(s) => {
+                    self.err(s.span, "`import * as` from a module of the app is outside the compiled subset (import names)");
+                    continue;
+                }
+            };
+            let theirs = &self.mods[m];
+            let Some(their_local) = theirs.exports.get(&exported).cloned() else {
+                self.err(
+                    import.span,
+                    format!("`{exported}` is not exported by `{}`", import.source.value),
+                );
+                continue;
+            };
+            let value = theirs.global_names.get(&their_local).copied();
+            let is_type = theirs.type_decls.contains_key(&their_local)
+                || theirs.type_imports.contains_key(&their_local);
+            if let (Some(slot), false) = (value, only_type) {
+                self.global_names.insert(local.clone(), slot);
+            }
+            if is_type {
+                self.type_imports.insert(local, (m, exported));
+            } else if value.is_none() {
+                self.err(
+                    import.span,
+                    format!("`{exported}` from `{}` is neither a value nor a type the compiled subset knows", import.source.value),
+                );
+            }
+        }
+    }
+
     fn function_decl_of(&self, stmt: &'a S<'a>) -> Option<&'a ast::Function<'a>> {
         match stmt {
             S::FunctionDeclaration(f) => Some(f),
@@ -429,6 +678,9 @@ impl<'a> Lowerer<'a> {
         self.add_function_global(
             &name,
             PendingFn {
+                module: self.cur_mod,
+                type_params: f.type_parameters.as_deref(),
+                slot: None,
                 name: name.clone(),
                 params: &f.params,
                 body: FnBody::Block(body),
@@ -452,8 +704,8 @@ impl<'a> Lowerer<'a> {
             init: GlobalInit::Function(fidx),
             ty: ty.clone(),
         });
-        self.global_names.insert(
-            name.to_owned(),
+        self.add_global_name(
+            name,
             GlobalInfo {
                 slot,
                 ty,
@@ -462,12 +714,21 @@ impl<'a> Lowerer<'a> {
                 reassigned: false,
             },
         );
+        let mut p = p;
+        p.slot = Some(slot);
         self.pending.insert(fidx, p);
     }
 
     /// A function's type from its annotations (return type `Unknown` until lowered
     /// when not annotated).
     fn signature(&mut self, p: &PendingFn<'a>) -> Ty {
+        self.push_type_params(p.type_params);
+        let t = self.signature_inner(p);
+        self.type_params.pop();
+        t
+    }
+
+    fn signature_inner(&mut self, p: &PendingFn<'a>) -> Ty {
         let params: Vec<Ty> = p
             .params
             .items
@@ -512,8 +773,8 @@ impl<'a> Lowerer<'a> {
                     init: GlobalInit::Undefined,
                     ty: Ty::Unknown,
                 });
-                self.global_names.insert(
-                    name,
+                self.add_global_name(
+                    &name,
                     GlobalInfo {
                         slot,
                         ty: Ty::Unknown,
@@ -535,6 +796,9 @@ impl<'a> Lowerer<'a> {
     fn function_value(&self, name: &str, init: &'a E<'a>) -> Option<PendingFn<'a>> {
         match strip(init) {
             E::ArrowFunctionExpression(a) => Some(PendingFn {
+                module: self.cur_mod,
+                type_params: a.type_parameters.as_deref(),
+                slot: None,
                 name: name.to_owned(),
                 params: &a.params,
                 body: match &a.body {
@@ -548,6 +812,9 @@ impl<'a> Lowerer<'a> {
                 kind: fn_kind(name),
             }),
             E::FunctionExpression(f) => Some(PendingFn {
+                module: self.cur_mod,
+                type_params: f.type_parameters.as_deref(),
+                slot: None,
                 name: name.to_owned(),
                 params: &f.params,
                 body: FnBody::Block(f.body.as_ref()?),
@@ -632,11 +899,7 @@ impl<'a> Lowerer<'a> {
         for decl in &d.declarations {
             if let (ast::BindingPattern::BindingIdentifier(id), Some(_)) = (&decl.id, &decl.init) {
                 let name = id.name.to_string();
-                if self
-                    .global_names
-                    .get(&name)
-                    .is_some_and(|g| g.func.is_some())
-                {
+                if self.gname(&name).is_some_and(|g| g.func.is_some()) {
                     continue;
                 }
             }
@@ -653,7 +916,7 @@ impl<'a> Lowerer<'a> {
                         self.fns.pop();
                         if let ast::BindingPattern::BindingIdentifier(id) = &decl.id {
                             let name = id.name.to_string();
-                            let g = self.global_names.get_mut(&name).expect("declared");
+                            let g = self.gname_mut(&name).expect("declared");
                             g.ty = t.clone();
                             let slot = g.slot as usize;
                             self.globals[slot].init = GlobalInit::Context(def);
@@ -686,7 +949,7 @@ impl<'a> Lowerer<'a> {
             let mut names = Vec::new();
             binding_names(&decl.id, &mut names);
             for (name, path) in names {
-                let g = self.global_names.get(&name).expect("declared").clone();
+                let g = self.gname(&name).expect("declared").clone();
                 let mut value = init.clone();
                 let mut t = ty.clone();
                 for step in path {
@@ -704,7 +967,7 @@ impl<'a> Lowerer<'a> {
                 }
                 self.globals[g.slot as usize].init = GlobalInit::Expr(value);
                 self.globals[g.slot as usize].ty = t.clone();
-                self.global_names.get_mut(&name).unwrap().ty = t;
+                self.gname_mut(&name).unwrap().ty = t;
             }
         }
     }
@@ -889,7 +1152,34 @@ impl<'a> Lowerer<'a> {
                 let r = self.ts_type(&f.return_type.type_annotation);
                 Ty::Function(ps, Box::new(r))
             }
-            T::TSTypeOperatorType(op) => self.ts_type(&op.type_annotation),
+            T::TSTypeOperatorType(op) => {
+                let inner = self.ts_type(&op.type_annotation);
+                match op.operator {
+                    ast::TSTypeOperatorOperator::Keyof => types::keys_of(&inner),
+                    _ => inner,
+                }
+            }
+            T::TSIntersectionType(i) => {
+                let mut out = Ty::Unknown;
+                for t in &i.types {
+                    let t = self.ts_type(t);
+                    out = types::intersect(out, t);
+                }
+                out
+            }
+            T::TSTypeQuery(q) => {
+                let name = match &q.expr_name {
+                    ast::TSTypeQueryExprName::IdentifierReference(id) => Some(id.name.to_string()),
+                    _ => None,
+                };
+                match name.and_then(|n| self.value_type_of(&n)) {
+                    Some(t) => t,
+                    None => {
+                        self.err(q.span, "this `typeof` type is outside the compiled subset");
+                        Ty::Unknown
+                    }
+                }
+            }
             T::TSIndexedAccessType(ia) => {
                 let o = self.ts_type(&ia.object_type);
                 let k = self.ts_type(&ia.index_type);
@@ -998,6 +1288,35 @@ impl<'a> Lowerer<'a> {
                 t => t,
             },
             "Readonly" | "NonNullable" => non_null(&arg(0)),
+            "Pick" | "Omit" => {
+                let keys = types::literal_names(&arg(1));
+                match arg(0) {
+                    Ty::Object(fs) => Ty::Object(
+                        fs.into_iter()
+                            .filter(|(n, _, _)| keys.contains(n) == (name == "Pick"))
+                            .collect(),
+                    ),
+                    t => t,
+                }
+            }
+            "Exclude" | "Extract" => {
+                let drop = arg(1);
+                let keep = |t: &Ty| {
+                    let hit = match &drop {
+                        Ty::Union(ds) => ds.contains(t),
+                        d => d == t,
+                    };
+                    hit == (name == "Extract")
+                };
+                match arg(0) {
+                    Ty::Union(ts) => union_all(ts.into_iter().filter(|t| keep(t))),
+                    t if keep(&t) => t,
+                    _ => Ty::Unknown,
+                }
+            }
+            "Set" | "ReadonlySet" => Ty::Set(Box::new(arg(0))),
+            "Map" | "ReadonlyMap" => Ty::Map(Box::new(arg(0)), Box::new(arg(1))),
+            "RegExp" => Ty::Regex,
             "ReactNode" | "ReactElement" | "Element" | "ReactChild" | "ReactPortal" => Ty::Node,
             "PropsWithChildren" => match arg(0) {
                 Ty::Object(mut fs) => {
@@ -1035,13 +1354,33 @@ impl<'a> Lowerer<'a> {
     }
 
     fn named_type(&mut self, name: &str, span: Span) -> Option<Ty> {
+        for scope in self.type_params.iter().rev() {
+            if let Some(t) = scope.get(name) {
+                return Some(t.clone());
+            }
+        }
         if let Some(t) = self.type_cache.get(name) {
             return Some(t.clone());
         }
         if !self.type_decls.contains_key(name) {
-            return None;
+            // A type imported from another module of the app: resolved there.
+            let (m, exported) = self.type_imports.get(name).cloned()?;
+            let prev = self.enter_module(m);
+            let local = self.exports.get(&exported).cloned();
+            let t = match local {
+                Some(local) => self.named_type(&local, span),
+                None => None,
+            };
+            self.enter_module(prev);
+            if t.is_none() {
+                self.err(
+                    span,
+                    format!("`{name}` is not a type the imported module exports"),
+                );
+            }
+            return t;
         }
-        if !self.type_busy.insert(name.to_owned()) {
+        if !self.type_busy.insert((self.cur_mod, name.to_owned())) {
             self.err(
                 span,
                 format!("recursive type `{name}` is outside the compiled subset"),
@@ -1072,7 +1411,7 @@ impl<'a> Lowerer<'a> {
             }
             None => Ty::Unknown,
         };
-        self.type_busy.remove(name);
+        self.type_busy.remove(&(self.cur_mod, name.to_owned()));
         self.type_cache.insert(name.to_owned(), t.clone());
         Some(t)
     }
@@ -1090,10 +1429,10 @@ impl<'a> Lowerer<'a> {
         self.busy_fns.insert(fidx);
         let saved_fns = std::mem::take(&mut self.fns);
         let saved_holes = std::mem::take(&mut self.hole_always);
-        let sig = self
-            .global_names
-            .get(&p.name)
-            .map(|g| g.ty.clone())
+        let prev_mod = self.enter_module(p.module);
+        let sig = p
+            .slot
+            .map(|s| self.ginfo[s as usize].ty.clone())
             .unwrap_or(Ty::Unknown);
         let (params, declared_ret) = match &sig {
             Ty::Function(ps, r) => (ps.clone(), (**r).clone()),
@@ -1103,7 +1442,8 @@ impl<'a> Lowerer<'a> {
         let ret = f.ret.clone();
         self.fns = saved_fns;
         self.hole_always = saved_holes;
-        if let Some(g) = self.global_names.get_mut(&p.name) {
+        self.enter_module(prev_mod);
+        if let Some(g) = p.slot.map(|s| &mut self.ginfo[s as usize]) {
             if let Ty::Function(_, r) = &mut g.ty {
                 if matches!(**r, Ty::Unknown) {
                     **r = ret;
@@ -1121,6 +1461,19 @@ impl<'a> Lowerer<'a> {
     /// context (a callback's), `declared_ret` is the annotated return type (or
     /// `Unknown`).
     fn function(
+        &mut self,
+        p: &PendingFn<'a>,
+        param_hint: &[Ty],
+        declared_ret: Ty,
+        outer: Option<()>,
+    ) -> Function {
+        self.push_type_params(p.type_params);
+        let f = self.function_inner(p, param_hint, declared_ret, outer);
+        self.type_params.pop();
+        f
+    }
+
+    fn function_inner(
         &mut self,
         p: &PendingFn<'a>,
         param_hint: &[Ty],
@@ -1313,17 +1666,34 @@ impl<'a> Lowerer<'a> {
                 return Some((Expr::Undefined, Ty::Unknown));
             }
         }
-        if let Some(g) = self.global_names.get(name).cloned() {
+        if let Some(g) = self.gname(name).cloned() {
             if let Some(f) = g.func {
                 self.ensure_function(f);
             }
-            let g = self.global_names.get(name).cloned().unwrap();
+            let g = self.gname(name).cloned().unwrap();
             if g.reassigned {
                 self.mark_always();
             }
             return Some((Expr::Global(g.slot), g.ty));
         }
         None
+    }
+
+    /// The static type of a variable, for `typeof x` in a type.
+    fn value_type_of(&mut self, name: &str) -> Option<Ty> {
+        for f in self.fns.iter().rev() {
+            if let Some(slot) = f.lookup(name) {
+                return Some(f.locals[slot as usize].ty.clone());
+            }
+            if let Some((_, t)) = f.capture_names.iter().find(|(n, _)| n == name) {
+                return Some(t.clone());
+            }
+        }
+        let g = self.gname(name)?.clone();
+        if let Some(f) = g.func {
+            self.ensure_function(f);
+        }
+        self.gname(name).map(|g| g.ty.clone())
     }
 
     fn mark_always(&mut self) {
@@ -1494,6 +1864,9 @@ impl<'a> Lowerer<'a> {
                 let Some(body) = &f.body else { return };
                 let name = id.name.to_string();
                 let p = PendingFn {
+                    module: self.cur_mod,
+                    type_params: f.type_parameters.as_deref(),
+                    slot: None,
                     name: name.clone(),
                     params: &f.params,
                     body: FnBody::Block(body),
@@ -1773,6 +2146,9 @@ impl<'a> Lowerer<'a> {
             E::ObjectExpression(o) => self.object(o, want),
             E::ArrowFunctionExpression(a) => {
                 let p = PendingFn {
+                    module: self.cur_mod,
+                    type_params: a.type_parameters.as_deref(),
+                    slot: None,
                     name: "<arrow>".into(),
                     params: &a.params,
                     body: match &a.body {
@@ -1792,6 +2168,9 @@ impl<'a> Lowerer<'a> {
                     return self.unsupported(f.span, "a function without a body");
                 };
                 let p = PendingFn {
+                    module: self.cur_mod,
+                    type_params: f.type_parameters.as_deref(),
+                    slot: None,
                     name: f
                         .id
                         .as_ref()
@@ -1809,6 +2188,14 @@ impl<'a> Lowerer<'a> {
             }
             E::ParenthesizedExpression(p) => self.expr(&p.expression, want),
             E::TSAsExpression(a) => {
+                if let ast::TSType::TSTypeReference(r) = &a.type_annotation {
+                    if matches!(&r.type_name, ast::TSTypeName::IdentifierReference(id) if id.name == "const")
+                    {
+                        // `as const`: the value's literal types, arrays as tuples.
+                        let (x, t) = self.expr(&a.expression, None);
+                        return (x, const_type(&a.expression).unwrap_or(t));
+                    }
+                }
                 let t = self.ts_type(&a.type_annotation);
                 let (x, _) = self.expr(&a.expression, Some(&t));
                 (x, t)
@@ -1926,6 +2313,47 @@ impl<'a> Lowerer<'a> {
             }
             E::NewExpression(n) => {
                 if let E::Identifier(id) = strip(&n.callee) {
+                    if matches!(id.name.as_str(), "Set" | "Map")
+                        && self.resolve_is_free(id.name.as_str())
+                    {
+                        let targs: Vec<Ty> = match &n.type_arguments {
+                            Some(t) => t.params.iter().map(|t| self.ts_type(t)).collect(),
+                            None => Vec::new(),
+                        };
+                        let (args, tys) = self.exprs_args(&n.arguments, &[]);
+                        let wanted = want.map(non_null);
+                        let is_set = id.name == "Set";
+                        let t = if is_set {
+                            let e = targs
+                                .first()
+                                .cloned()
+                                .or_else(|| match &wanted {
+                                    Some(Ty::Set(e)) => Some((**e).clone()),
+                                    _ => None,
+                                })
+                                .or_else(|| tys.first().and_then(element))
+                                .unwrap_or(Ty::Unknown);
+                            Ty::Set(Box::new(e))
+                        } else {
+                            let (k, v) = match (targs.first(), targs.get(1), &wanted) {
+                                (Some(k), Some(v), _) => (k.clone(), v.clone()),
+                                (_, _, Some(Ty::Map(k, v))) => ((**k).clone(), (**v).clone()),
+                                _ => match tys.first().and_then(element) {
+                                    Some(Ty::Tuple(kv)) if kv.len() == 2 => {
+                                        (kv[0].clone(), kv[1].clone())
+                                    }
+                                    _ => (Ty::Unknown, Ty::Unknown),
+                                },
+                            };
+                            Ty::Map(Box::new(k), Box::new(v))
+                        };
+                        let b = if is_set {
+                            Builtin::NewSet
+                        } else {
+                            Builtin::NewMap
+                        };
+                        return (Expr::Builtin(b, args), t);
+                    }
                     if id.name == "Error" {
                         let (args, _) = self.exprs_args(&n.arguments, &[Ty::String]);
                         return (Expr::Builtin(Builtin::Error, args), Ty::String);
@@ -1936,7 +2364,10 @@ impl<'a> Lowerer<'a> {
             E::AwaitExpression(a) => self.unsupported(a.span, "`await`"),
             E::ThisExpression(t) => self.unsupported(t.span, "`this`"),
             E::ClassExpression(c) => self.unsupported(c.span, "a class"),
-            E::RegExpLiteral(r) => self.unsupported(r.span, "a regular expression"),
+            E::RegExpLiteral(r) => (
+                Expr::Regex(r.regex.pattern.text.to_string(), r.regex.flags.to_string()),
+                Ty::Regex,
+            ),
             E::BigIntLiteral(b) => self.unsupported(b.span, "a BigInt"),
             E::TaggedTemplateExpression(t) => self.unsupported(t.span, "a tagged template"),
             other => self.unsupported(other.span(), "this expression"),
@@ -2171,14 +2602,14 @@ impl<'a> Lowerer<'a> {
                 return None;
             }
         }
-        if let Some(g) = self.global_names.get_mut(name) {
+        if let Some(g) = self.gname(name).cloned() {
             if g.func.is_some() {
                 self.err(span, format!("assigning to function `{name}`"));
                 return None;
             }
-            g.reassigned = true;
+            self.ginfo[g.slot as usize].reassigned = true;
             self.mutable_globals = true;
-            return Some((LValue::Global(g.slot), g.ty.clone()));
+            return Some((LValue::Global(g.slot), g.ty));
         }
         self.err(span, format!("unknown name `{name}`"));
         None
@@ -2398,7 +2829,7 @@ impl<'a> Lowerer<'a> {
                 }
                 // A custom hook: same placement rules as React's.
                 if is_hook_name(name) {
-                    if let Some(g) = self.global_names.get(name) {
+                    if let Some(g) = self.gname(name) {
                         if g.kind == FunctionKind::Hook {
                             self.check_hook_position(c.span, name);
                         }
@@ -2532,8 +2963,24 @@ impl<'a> Lowerer<'a> {
             ("Number", "parseFloat") => (Builtin::ParseFloat, vec![], num),
             ("Array", "isArray") => (Builtin::ArrayIsArray, vec![], Ty::Boolean),
             ("Array", "from") => {
-                let (args, tys) = self.exprs_args(&c.arguments, &[]);
-                let t = tys.first().and_then(element).unwrap_or(Ty::Unknown);
+                // The source first (an iterable or `{ length }`), then the mapper,
+                // typed by the source's elements.
+                let src = c.arguments.first().and_then(|a| a.as_expression());
+                let (sx, st) = match src {
+                    Some(e) => self.expr(e, None),
+                    None => (Expr::Undefined, Ty::Undefined),
+                };
+                let elem = element(&st).unwrap_or(Ty::Undefined);
+                let mut args = vec![ArrayItem::Item(sx)];
+                let mut t = elem.clone();
+                if let Some(f) = c.arguments.get(1).and_then(|a| a.as_expression()) {
+                    let fw = Ty::Function(vec![elem, Ty::Number], Box::new(Ty::Unknown));
+                    let (fx, ft) = self.expr(f, Some(&fw));
+                    if let Ty::Function(_, r) = ft {
+                        t = *r;
+                    }
+                    args.push(ArrayItem::Item(fx));
+                }
                 return Some((
                     Expr::Builtin(Builtin::ArrayFrom, args),
                     Ty::Array(Box::new(t)),
@@ -3006,8 +3453,22 @@ impl<'a> Lowerer<'a> {
                 "slice" => (M::StrSlice, vec![num.clone(), num], s),
                 "substring" => (M::StrSubstring, vec![num.clone(), num], s),
                 "split" => (M::StrSplit, vec![s], Ty::Array(Box::new(Ty::String))),
-                "replace" => (M::StrReplace, vec![s.clone(), s.clone()], s),
-                "replaceAll" => (M::StrReplaceAll, vec![s.clone(), s.clone()], s),
+                "replace" | "replaceAll" => {
+                    // The replacement: a string or a replacer (match first).
+                    let replacer = union(
+                        s.clone(),
+                        Ty::Function(vec![s.clone()], Box::new(s.clone())),
+                    );
+                    (
+                        if name == "replace" {
+                            M::StrReplace
+                        } else {
+                            M::StrReplaceAll
+                        },
+                        vec![union(s.clone(), Ty::Regex), replacer],
+                        s,
+                    )
+                }
                 "repeat" => (M::StrRepeat, vec![num], s),
                 "padStart" => (M::StrPadStart, vec![num, s.clone()], s),
                 "padEnd" => (M::StrPadEnd, vec![num, s.clone()], s),
@@ -3016,6 +3477,15 @@ impl<'a> Lowerer<'a> {
                 "at" => (M::StrAt, vec![num], union(s, Ty::Undefined)),
                 "localeCompare" => (M::StrLocaleCompare, vec![s], num),
                 "concat" => (M::StrConcat, vec![], s),
+                "match" => (
+                    M::StrMatch,
+                    vec![Ty::Regex],
+                    union(
+                        Ty::Array(Box::new(union(Ty::String, Ty::Undefined))),
+                        Ty::Null,
+                    ),
+                ),
+                "search" => (M::StrSearch, vec![Ty::Regex], num),
                 "toString" => (M::ToString, vec![], s),
                 _ => {
                     self.err(
@@ -3068,6 +3538,75 @@ impl<'a> Lowerer<'a> {
                 }
                 (Ty::Response, "text") => {
                     (M::ResponseText, vec![], Ty::Promise(Box::new(Ty::String)))
+                }
+                (Ty::Regex, "test") => (M::RegexTest, vec![s.clone()], Ty::Boolean),
+                (Ty::Regex, "exec") => (
+                    M::RegexExec,
+                    vec![s.clone()],
+                    union(
+                        Ty::Array(Box::new(union(Ty::String, Ty::Undefined))),
+                        Ty::Null,
+                    ),
+                ),
+                (
+                    Ty::Set(e),
+                    m @ ("has" | "add" | "delete" | "clear" | "forEach" | "values" | "keys"
+                    | "entries"),
+                ) => {
+                    if matches!(m, "add" | "delete" | "clear") {
+                        self.note_mutation(&recv);
+                    }
+                    let e = (**e).clone();
+                    match m {
+                        "has" => (M::SetHas, vec![e], Ty::Boolean),
+                        "add" => (M::SetAdd, vec![e.clone()], Ty::Set(Box::new(e))),
+                        "delete" => (M::SetDelete, vec![e], Ty::Boolean),
+                        "clear" => (M::SetClear, vec![], Ty::Void),
+                        "forEach" => (
+                            M::CollectionForEach,
+                            vec![Ty::Function(vec![e.clone(), e], Box::new(Ty::Void))],
+                            Ty::Void,
+                        ),
+                        "entries" => (
+                            M::CollectionEntries,
+                            vec![],
+                            Ty::Array(Box::new(Ty::Tuple(vec![e.clone(), e]))),
+                        ),
+                        _ => (M::CollectionValues, vec![], Ty::Array(Box::new(e))),
+                    }
+                }
+                (
+                    Ty::Map(k, v),
+                    m @ ("get" | "set" | "has" | "delete" | "clear" | "forEach" | "values" | "keys"
+                    | "entries"),
+                ) => {
+                    if matches!(m, "set" | "delete" | "clear") {
+                        self.note_mutation(&recv);
+                    }
+                    let (k, v) = ((**k).clone(), (**v).clone());
+                    match m {
+                        "get" => (M::MapGet, vec![k], union(v, Ty::Undefined)),
+                        "set" => (
+                            M::MapSet,
+                            vec![k.clone(), v.clone()],
+                            Ty::Map(Box::new(k), Box::new(v)),
+                        ),
+                        "has" => (M::SetHas, vec![k], Ty::Boolean),
+                        "delete" => (M::SetDelete, vec![k], Ty::Boolean),
+                        "clear" => (M::SetClear, vec![], Ty::Void),
+                        "forEach" => (
+                            M::CollectionForEach,
+                            vec![Ty::Function(vec![v, k], Box::new(Ty::Void))],
+                            Ty::Void,
+                        ),
+                        "keys" => (M::CollectionKeys, vec![], Ty::Array(Box::new(k))),
+                        "values" => (M::CollectionValues, vec![], Ty::Array(Box::new(v))),
+                        _ => (
+                            M::CollectionEntries,
+                            vec![],
+                            Ty::Array(Box::new(Ty::Tuple(vec![k, v]))),
+                        ),
+                    }
                 }
                 (Ty::DomNode, "focus") => (M::NodeFocus, vec![], Ty::Void),
                 (Ty::DomNode, "blur") => (M::NodeBlur, vec![], Ty::Void),
@@ -3687,7 +4226,7 @@ fn strip<'b, 'a>(e: &'b E<'a>) -> &'b E<'a> {
 /// Whether an initialiser creates a new array or object this frame owns.
 fn is_fresh_init(e: &E<'_>) -> bool {
     match strip(e) {
-        E::ArrayExpression(_) | E::ObjectExpression(_) => true,
+        E::ArrayExpression(_) | E::ObjectExpression(_) | E::NewExpression(_) => true,
         E::CallExpression(c) => match strip(&c.callee) {
             E::StaticMemberExpression(m) => matches!(
                 m.property.name.as_str(),
@@ -4005,5 +4544,43 @@ fn walk_lvalue(lv: &LValue, f: &mut impl FnMut(&Expr)) {
             walk_expr(o, f);
             walk_expr(k, f);
         }
+    }
+}
+
+/// The type an `as const` gives a literal expression: literal types, arrays as
+/// tuples, objects member by member; `None` for anything else.
+fn const_type(e: &E<'_>) -> Option<Ty> {
+    match strip(e) {
+        E::StringLiteral(s) => Some(Ty::Lit(s.value.to_string())),
+        E::NumericLiteral(n) => Some(Ty::NumLit(n.value)),
+        E::BooleanLiteral(_) => Some(Ty::Boolean),
+        E::NullLiteral(_) => Some(Ty::Null),
+        E::UnaryExpression(u) if u.operator == ast::UnaryOperator::UnaryNegation => {
+            match strip(&u.argument) {
+                E::NumericLiteral(n) => Some(Ty::NumLit(-n.value)),
+                _ => None,
+            }
+        }
+        E::ArrayExpression(a) => {
+            let mut out = Vec::new();
+            for el in &a.elements {
+                out.push(const_type(el.as_expression()?)?);
+            }
+            Some(Ty::Tuple(out))
+        }
+        E::ObjectExpression(o) => {
+            let mut fields = Vec::new();
+            for p in &o.properties {
+                let ast::ObjectPropertyKind::ObjectProperty(p) = p else {
+                    return None;
+                };
+                if p.computed {
+                    return None;
+                }
+                fields.push((property_key_name(&p.key)?, const_type(&p.value)?, false));
+            }
+            Some(Ty::Object(fields))
+        }
+        _ => None,
     }
 }

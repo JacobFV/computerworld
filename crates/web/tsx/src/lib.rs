@@ -19,11 +19,17 @@ pub mod emit_js;
 pub mod lower;
 mod types;
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 /// Something the compiler could not accept, at a 1-based line and column.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Diagnostic {
+    /// The module it is in, relative to the entry's directory; empty for the entry
+    /// of a single-file build.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub file: String,
     pub line: u32,
     pub col: u32,
     pub message: String,
@@ -31,6 +37,9 @@ pub struct Diagnostic {
 
 impl std::fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if !self.file.is_empty() {
+            write!(f, "{}: ", self.file)?;
+        }
         write!(f, "line {}:{}: {}", self.line, self.col, self.message)
     }
 }
@@ -39,7 +48,12 @@ impl Diagnostic {
     /// A diagnostic at byte offset `offset` of `source`.
     pub fn at(source: &str, offset: u32, message: String) -> Diagnostic {
         let (line, col) = line_col(source, offset);
-        Diagnostic { line, col, message }
+        Diagnostic {
+            file: String::new(),
+            line,
+            col,
+            message,
+        }
     }
 
     pub(crate) fn from_oxc(source: &str, d: &oxc_diagnostics::OxcDiagnostic) -> Diagnostic {
@@ -62,6 +76,214 @@ pub fn line_col(source: &str, offset: u32) -> (u32, u32) {
     (line, col)
 }
 
+/// One module of an app: its path (relative to the entry's directory), its text and
+/// where its relative imports resolved (specifier to index in the module list).
+#[derive(Clone, Debug, Default)]
+pub struct Source {
+    pub file: String,
+    pub text: String,
+    pub imports: BTreeMap<String, usize>,
+}
+
+impl Source {
+    /// A one-module app.
+    pub fn single(text: &str, file: &str) -> Source {
+        Source {
+            file: file.to_owned(),
+            text: text.to_owned(),
+            imports: BTreeMap::new(),
+        }
+    }
+
+    /// The file name diagnostics carry: empty for a one-module app.
+    pub(crate) fn display_file(&self, modules: usize) -> String {
+        if modules > 1 {
+            self.file.clone()
+        } else {
+            String::new()
+        }
+    }
+}
+
+/// Whether an import specifier names a module of the app (not a package).
+fn is_relative(spec: &str) -> bool {
+    spec.starts_with("./") || spec.starts_with("../")
+}
+
+/// `dir/./a/../b` → `dir/b`.
+fn normalize(path: &str) -> String {
+    let mut parts: Vec<&str> = Vec::new();
+    for p in path.split('/') {
+        match p {
+            "" | "." => {}
+            ".." => {
+                if parts.last().is_some_and(|l| *l != "..") {
+                    parts.pop();
+                } else {
+                    parts.push("..");
+                }
+            }
+            p => parts.push(p),
+        }
+    }
+    parts.join("/")
+}
+
+/// The module specifiers a source imports or re-exports from.
+fn specifiers(text: &str) -> Vec<(String, u32)> {
+    use oxc_ast::ast::Statement as S;
+    let allocator = oxc_allocator::Allocator::default();
+    let ret = oxc_parser::Parser::new(&allocator, text, oxc_span::SourceType::tsx()).parse();
+    let mut out = Vec::new();
+    for stmt in &ret.program.body {
+        match stmt {
+            S::ImportDeclaration(i) => out.push((i.source.value.to_string(), i.span.start)),
+            S::ExportFromDeclaration(e) => out.push((e.source.value.to_string(), e.span.start)),
+            S::ExportAllDeclaration(e) => out.push((e.source.value.to_string(), e.span.start)),
+            _ => {}
+        }
+    }
+    out
+}
+
+/// Loads the app whose entry is `entry` (a path relative to the app's root, e.g.
+/// `main.tsx`): the entry and every module it reaches through relative imports,
+/// resolved as a bundler does (`./x` is `x`, `x.tsx`, `x.ts`, `x/index.tsx` or
+/// `x/index.ts`), read with `read`. The list is in dependency order, the entry last.
+pub fn load(
+    entry: &str,
+    read: &mut dyn FnMut(&str) -> Option<String>,
+) -> Result<Vec<Source>, Vec<Diagnostic>> {
+    fn visit(
+        file: &str,
+        read: &mut dyn FnMut(&str) -> Option<String>,
+        out: &mut Vec<Source>,
+        index: &mut BTreeMap<String, usize>,
+        stack: &mut Vec<String>,
+        errors: &mut Vec<Diagnostic>,
+    ) -> Option<usize> {
+        if let Some(i) = index.get(file) {
+            return Some(*i);
+        }
+        if let Some(pos) = stack.iter().position(|f| f == file) {
+            let cycle: Vec<&str> = stack[pos..]
+                .iter()
+                .map(String::as_str)
+                .chain([file])
+                .collect();
+            errors.push(Diagnostic {
+                file: file.to_owned(),
+                line: 1,
+                col: 1,
+                message: format!("import cycle: {}", cycle.join(" → ")),
+            });
+            return None;
+        }
+        let text = read(file)?;
+        stack.push(file.to_owned());
+        let dir = match file.rfind('/') {
+            Some(i) => &file[..i],
+            None => "",
+        };
+        let mut imports = BTreeMap::new();
+        for (spec, at) in specifiers(&text) {
+            if !is_relative(&spec) {
+                continue;
+            }
+            let base = normalize(&format!("{dir}/{spec}"));
+            let candidates = [
+                base.clone(),
+                format!("{base}.tsx"),
+                format!("{base}.ts"),
+                format!("{base}/index.tsx"),
+                format!("{base}/index.ts"),
+            ];
+            let found = candidates.iter().find_map(|c| {
+                if let Some(i) = index.get(c) {
+                    return Some(*i);
+                }
+                if c.ends_with(".tsx") || c.ends_with(".ts") {
+                    let probe = read(c)?;
+                    drop(probe);
+                    visit(c, read, out, index, stack, errors)
+                } else {
+                    None
+                }
+            });
+            match found {
+                Some(i) => {
+                    imports.insert(spec, i);
+                }
+                None => {
+                    let mut d = Diagnostic::at(&text, at, format!("cannot find module `{spec}`"));
+                    d.file = file.to_owned();
+                    errors.push(d);
+                }
+            }
+        }
+        stack.pop();
+        let i = out.len();
+        out.push(Source {
+            file: file.to_owned(),
+            text,
+            imports,
+        });
+        index.insert(file.to_owned(), i);
+        Some(i)
+    }
+    let mut out = Vec::new();
+    let mut index = BTreeMap::new();
+    let mut errors = Vec::new();
+    let entry = normalize(entry);
+    if visit(
+        &entry,
+        read,
+        &mut out,
+        &mut index,
+        &mut Vec::new(),
+        &mut errors,
+    )
+    .is_none()
+        && errors.is_empty()
+    {
+        errors.push(Diagnostic {
+            file: entry.clone(),
+            line: 1,
+            col: 1,
+            message: "cannot read the entry module".into(),
+        });
+    }
+    if errors.is_empty() {
+        Ok(out)
+    } else {
+        Err(errors)
+    }
+}
+
+/// Compiles an app of several modules (from `load`) both ways.
+pub fn build_modules(sources: &[Source]) -> Build {
+    let (js, js_errors) = match emit_js::emit_modules(sources) {
+        Ok(js) => (Some(js), Vec::new()),
+        Err(e) => (None, e),
+    };
+    let (ir, mut diagnostics) = match lower::lower_modules(sources) {
+        Ok(m) => (Some(m), Vec::new()),
+        Err(d) => (None, d),
+    };
+    for e in &js_errors {
+        if !diagnostics.contains(e) {
+            diagnostics.push(e.clone());
+        }
+    }
+    diagnostics.sort_by(|a, b| (&a.file, a.line, a.col).cmp(&(&b.file, b.line, b.col)));
+    Build {
+        ir,
+        js,
+        diagnostics,
+        js_errors,
+    }
+}
+
 /// What `build` produced for one module.
 #[derive(Clone, Debug)]
 pub struct Build {
@@ -75,26 +297,7 @@ pub struct Build {
     pub js_errors: Vec<Diagnostic>,
 }
 
-/// Compiles `source` both ways.
+/// Compiles a one-module app both ways.
 pub fn build(source: &str, file_name: &str) -> Build {
-    let (js, js_errors) = match emit_js::emit(source, file_name) {
-        Ok(js) => (Some(js), Vec::new()),
-        Err(e) => (None, e),
-    };
-    let (ir, mut diagnostics) = match lower::lower(source, file_name) {
-        Ok(m) => (Some(m), Vec::new()),
-        Err(d) => (None, d),
-    };
-    for e in &js_errors {
-        if !diagnostics.contains(e) {
-            diagnostics.push(e.clone());
-        }
-    }
-    diagnostics.sort_by_key(|d| (d.line, d.col));
-    Build {
-        ir,
-        js,
-        diagnostics,
-        js_errors,
-    }
+    build_modules(&[Source::single(source, file_name)])
 }

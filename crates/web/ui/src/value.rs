@@ -39,6 +39,30 @@ pub enum Value {
     Response(Rc<FetchResponse>),
     /// A context object (`createContext`): its id.
     Context(u32),
+    Regex(Rc<RegexObj>),
+    /// A `Set`: its members in insertion order.
+    Set(Arr),
+    /// A `Map`: its entries in insertion order.
+    Map(Rc<RefCell<Vec<(Value, Value)>>>),
+}
+
+/// A `RegExp` object.
+#[derive(Debug)]
+pub struct RegexObj {
+    pub source: Str,
+    pub flags: Str,
+    pub re: Rc<cw_regex::Regex>,
+    /// `lastIndex`, in UTF-16 units (used by `g` and `y` regexes).
+    pub last_index: Cell<usize>,
+}
+
+impl RegexObj {
+    pub fn global(&self) -> bool {
+        self.flags.contains('g')
+    }
+    pub fn sticky(&self) -> bool {
+        self.flags.contains('y')
+    }
 }
 
 #[derive(Debug)]
@@ -217,6 +241,9 @@ impl Value {
                 "function () { [native code] }".into()
             }
             Value::Promise(_) => "[object Promise]".into(),
+            Value::Regex(r) => format!("/{}/{}", r.source, r.flags),
+            Value::Set(_) => "[object Set]".into(),
+            Value::Map(_) => "[object Map]".into(),
             Value::Response(_) => "[object Response]".into(),
             _ => "[object Object]".into(),
         }
@@ -270,6 +297,9 @@ fn strict_equals_ref(a: &Value, b: &Value) -> bool {
         (Value::Promise(x), Value::Promise(y)) => Rc::ptr_eq(x, y),
         (Value::Response(x), Value::Response(y)) => Rc::ptr_eq(x, y),
         (Value::Context(x), Value::Context(y)) => x == y,
+        (Value::Regex(x), Value::Regex(y)) => Rc::ptr_eq(x, y),
+        (Value::Set(x), Value::Set(y)) => Rc::ptr_eq(x, y),
+        (Value::Map(x), Value::Map(y)) => Rc::ptr_eq(x, y),
         _ => false,
     }
 }

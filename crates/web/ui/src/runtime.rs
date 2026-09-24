@@ -257,6 +257,8 @@ pub(crate) struct Runtime {
     pub booted: bool,
     /// A render threw: React unmounted the root.
     pub crashed: bool,
+    /// Compiled regular expressions by (pattern, flags).
+    pub regex_cache: BTreeMap<(String, String), Rc<cw_regex::Regex>>,
     /// Counters for timing and tests.
     pub stats: Stats,
     /// Nesting of `fire` (script time is counted at the outermost).
@@ -316,6 +318,7 @@ impl Runtime {
             pure_render,
             booted: false,
             crashed: false,
+            regex_cache: BTreeMap::new(),
             stats: Stats::default(),
             fire_depth: 0,
         }

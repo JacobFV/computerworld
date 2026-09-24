@@ -444,6 +444,12 @@ impl Runtime {
         match v {
             Value::Array(a) => Ok(a.borrow().clone()),
             Value::Str(s) => Ok(s.chars().map(|c| Value::str(&c.to_string())).collect()),
+            Value::Set(a) => Ok(a.borrow().clone()),
+            Value::Map(m) => Ok(m
+                .borrow()
+                .iter()
+                .map(|(k, v)| Value::array(vec![k.clone(), v.clone()]))
+                .collect()),
             other => type_error(format!("{} is not iterable", inspect(other))),
         }
     }
@@ -704,6 +710,7 @@ impl Runtime {
                 }
                 last
             }
+            Expr::Regex(pattern, flags) => self.new_regex(pattern, flags)?,
             Expr::Chain(x) => match self.eval(frame, x) {
                 Err(Throw::Short) => Value::Undefined,
                 other => other?,
@@ -876,6 +883,21 @@ impl Runtime {
                 "deltaY" => Value::Num(e.delta_y),
                 _ => Value::Undefined,
             },
+            Value::Set(a) => match name {
+                "size" => Value::Num(a.borrow().len() as f64),
+                _ => Value::Undefined,
+            },
+            Value::Map(m) => match name {
+                "size" => Value::Num(m.borrow().len() as f64),
+                _ => Value::Undefined,
+            },
+            Value::Regex(r) => match name {
+                "source" => Value::Str(r.source.clone()),
+                "flags" => Value::Str(r.flags.clone()),
+                "global" => Value::Bool(r.global()),
+                "lastIndex" => Value::Num(r.last_index.get() as f64),
+                _ => Value::Undefined,
+            },
             Value::Response(r) => match name {
                 "ok" => Value::Bool((200..300).contains(&r.status)),
                 "status" => Value::Num(r.status as f64),
@@ -922,6 +944,9 @@ impl Runtime {
         match o {
             Value::Object(obj) => obj_set(&mut obj.borrow_mut(), Rc::from(name), v),
             Value::Ref(r) if name == "current" => *r.borrow_mut() = v,
+            Value::Regex(r) if name == "lastIndex" => {
+                r.last_index.set(v.to_number().max(0.0) as usize)
+            }
             Value::Array(a) if name == "length" => {
                 let n = v.to_number().max(0.0) as usize;
                 a.borrow_mut().resize(n, Value::Undefined);
@@ -1231,6 +1256,33 @@ impl Runtime {
             }
             B::DocumentTitle => Value::str(&self.inner.title()),
             B::Error => Value::str(&format!("Error: {}", arg(&args, 0).to_js_string())),
+            B::NewSet => {
+                let mut out: Vec<Value> = Vec::new();
+                let src = arg(&args, 0);
+                if !src.is_nullish() {
+                    for v in self.iterate(&src)? {
+                        if !out.iter().any(|x| same_value_zero(x, &v)) {
+                            out.push(v);
+                        }
+                    }
+                }
+                Value::Set(Rc::new(RefCell::new(out)))
+            }
+            B::NewMap => {
+                let mut out: Vec<(Value, Value)> = Vec::new();
+                let src = arg(&args, 0);
+                if !src.is_nullish() {
+                    for e in self.iterate(&src)? {
+                        let k = self.get_index(&e, &Value::Num(0.0))?;
+                        let v = self.get_index(&e, &Value::Num(1.0))?;
+                        match out.iter_mut().find(|(x, _)| same_value_zero(x, &k)) {
+                            Some(slot) => slot.1 = v,
+                            None => out.push((k, v)),
+                        }
+                    }
+                }
+                Value::Map(Rc::new(RefCell::new(out)))
+            }
         })
     }
 
@@ -1277,6 +1329,12 @@ impl Runtime {
         match r {
             Value::Array(a) => return self.array_method(a, r, m, args),
             Value::Str(s) => return self.string_method(s, m, args),
+            Value::Set(set) => return self.set_method(set, r, m, args),
+            Value::Map(map) => return self.map_method(map, r, m, args),
+            Value::Regex(re) => {
+                let re = re.clone();
+                return self.regex_method(&re, m, args);
+            }
             _ => {}
         }
         Ok(match (m, r) {
@@ -1719,6 +1777,12 @@ impl Runtime {
                 };
                 Value::str(&from_utf16(&u[st..en]))
             }
+            M::StrSplit if matches!(arg(&args, 0), Value::Regex(_)) => {
+                let Value::Regex(re) = arg(&args, 0) else {
+                    unreachable!()
+                };
+                self.regex_split(&re, s)?
+            }
             M::StrSplit => {
                 let sep = arg(&args, 0);
                 let parts: Vec<Value> = match sep {
@@ -1737,6 +1801,33 @@ impl Runtime {
                 };
                 Value::array(parts)
             }
+            M::StrReplace | M::StrReplaceAll if matches!(arg(&args, 0), Value::Regex(_)) => {
+                let Value::Regex(re) = arg(&args, 0) else {
+                    unreachable!()
+                };
+                self.regex_replace(&re, s, &arg(&args, 1))?
+            }
+            M::StrMatch => match arg(&args, 0) {
+                Value::Regex(re) => self.regex_match(&re, s)?,
+                other => {
+                    let re = self.new_regex_obj(&escape_regex(&other.to_js_string()), "")?;
+                    self.regex_match(&re, s)?
+                }
+            },
+            M::StrSearch => match arg(&args, 0) {
+                Value::Regex(re) => {
+                    let text: Vec<char> = s.chars().collect();
+                    match self.exec_at(&re, &text, 0, false)? {
+                        Some(slots) => Value::Num(utf16_len(&text[..slots[0].unwrap().0]) as f64),
+                        None => Value::Num(-1.0),
+                    }
+                }
+                other => Value::Num(
+                    s.find(other.to_js_string().as_str())
+                        .map(|b| s[..b].encode_utf16().count() as f64)
+                        .unwrap_or(-1.0),
+                ),
+            },
             M::StrReplace | M::StrReplaceAll => {
                 let pat = sarg(0);
                 let rep = arg(&args, 1);
@@ -1858,6 +1949,364 @@ impl Runtime {
             }
             M::ToString => Value::Str(s.clone()),
             other => return type_error(format!("{other:?} is not a string method")),
+        })
+    }
+}
+
+/// A regex match: `(start, end)` in chars per group, group 0 the whole match.
+type Slots = Vec<Option<(usize, usize)>>;
+
+/// `SameValueZero`: what `Set` and `Map` compare keys with.
+fn same_value_zero(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Num(x), Value::Num(y)) => x == y || (x.is_nan() && y.is_nan()),
+        _ => strict_equals(a, b),
+    }
+}
+
+fn utf16_len(chars: &[char]) -> usize {
+    chars.iter().map(|c| c.len_utf16()).sum()
+}
+
+/// The char index at a UTF-16 index.
+fn char_index(chars: &[char], utf16: usize) -> usize {
+    let mut n = 0;
+    for (i, c) in chars.iter().enumerate() {
+        if n >= utf16 {
+            return i;
+        }
+        n += c.len_utf16();
+    }
+    chars.len()
+}
+
+fn escape_regex(s: &str) -> String {
+    let mut out = String::new();
+    for c in s.chars() {
+        if "\\^$.*+?()[]{}|/".contains(c) {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out
+}
+
+impl Runtime {
+    fn new_regex_obj(&mut self, pattern: &str, flags: &str) -> R<Rc<RegexObj>> {
+        let key = (pattern.to_owned(), flags.to_owned());
+        let re = match self.regex_cache.get(&key) {
+            Some(r) => r.clone(),
+            None => {
+                let mut fl = cw_regex::Flags::default();
+                for c in flags.chars() {
+                    match c {
+                        'i' => fl.ignore_case = true,
+                        'm' => fl.multiline = true,
+                        's' => fl.dot_all = true,
+                        'u' | 'v' => fl.unicode = true,
+                        'g' | 'y' | 'd' => {}
+                        _ => {
+                            return throw(Value::str(&format!(
+                                "SyntaxError: Invalid regular expression flags '{flags}'"
+                            )))
+                        }
+                    }
+                }
+                let re = match cw_regex::Regex::new(pattern, cw_regex::Flavor::JavaScript, fl) {
+                    Ok(r) => Rc::new(r),
+                    Err(e) => return throw(Value::str(&format!("SyntaxError: {}", e.message))),
+                };
+                self.regex_cache.insert(key, re.clone());
+                re
+            }
+        };
+        Ok(Rc::new(RegexObj {
+            source: Rc::from(pattern),
+            flags: Rc::from(flags),
+            re,
+            last_index: std::cell::Cell::new(0),
+        }))
+    }
+
+    fn new_regex(&mut self, pattern: &str, flags: &str) -> R<Value> {
+        Ok(Value::Regex(self.new_regex_obj(pattern, flags)?))
+    }
+
+    /// One match at or after char index `start` (at exactly `start` when `sticky`).
+    fn exec_at(
+        &mut self,
+        re: &RegexObj,
+        text: &[char],
+        start: usize,
+        sticky: bool,
+    ) -> R<Option<Slots>> {
+        match re.re.exec(text, start, sticky, false) {
+            Ok(m) => Ok(m),
+            Err(_) => throw(Value::str("RangeError: regular expression too complex")),
+        }
+    }
+
+    /// `exec` honouring `lastIndex` for `g`/`y` regexes.
+    fn exec_stateful(
+        &mut self,
+        re: &RegexObj,
+        text: &[char],
+    ) -> R<Option<Slots>> {
+        let stateful = re.global() || re.sticky();
+        let start = if stateful {
+            char_index(text, re.last_index.get())
+        } else {
+            0
+        };
+        if start > text.len() {
+            re.last_index.set(0);
+            return Ok(None);
+        }
+        let m = self.exec_at(re, text, start, re.sticky())?;
+        if stateful {
+            match &m {
+                Some(slots) => re.last_index.set(utf16_len(&text[..slots[0].unwrap().1])),
+                None => re.last_index.set(0),
+            }
+        }
+        Ok(m)
+    }
+
+    fn groups(text: &[char], slots: &[Option<(usize, usize)>]) -> Vec<Value> {
+        slots
+            .iter()
+            .map(|g| match g {
+                Some((a, b)) => Value::str(&text[*a..*b].iter().collect::<String>()),
+                None => Value::Undefined,
+            })
+            .collect()
+    }
+
+    fn regex_method(&mut self, re: &Rc<RegexObj>, m: Method, args: Vec<Value>) -> R<Value> {
+        let s = arg(&args, 0).to_js_string();
+        let text: Vec<char> = s.chars().collect();
+        Ok(match m {
+            Method::RegexTest => Value::Bool(self.exec_stateful(re, &text)?.is_some()),
+            Method::RegexExec => match self.exec_stateful(re, &text)? {
+                Some(slots) => Value::array(Self::groups(&text, &slots)),
+                None => Value::Null,
+            },
+            Method::ToString => Value::str(&format!("/{}/{}", re.source, re.flags)),
+            other => return type_error(format!("{other:?} is not a RegExp method")),
+        })
+    }
+
+    fn regex_match(&mut self, re: &Rc<RegexObj>, s: &str) -> R<Value> {
+        let text: Vec<char> = s.chars().collect();
+        if !re.global() {
+            return Ok(match self.exec_stateful(re, &text)? {
+                Some(slots) => Value::array(Self::groups(&text, &slots)),
+                None => Value::Null,
+            });
+        }
+        let mut out = Vec::new();
+        let mut pos = 0;
+        while pos <= text.len() {
+            let Some(slots) = self.exec_at(re, &text, pos, false)? else {
+                break;
+            };
+            let (a, b) = slots[0].unwrap();
+            out.push(Value::str(&text[a..b].iter().collect::<String>()));
+            pos = if b == a { b + 1 } else { b };
+        }
+        re.last_index.set(0);
+        Ok(if out.is_empty() {
+            Value::Null
+        } else {
+            Value::array(out)
+        })
+    }
+
+    fn regex_replace(&mut self, re: &Rc<RegexObj>, s: &str, rep: &Value) -> R<Value> {
+        let text: Vec<char> = s.chars().collect();
+        let mut out = String::new();
+        let mut last = 0;
+        let mut pos = if re.sticky() {
+            char_index(&text, re.last_index.get())
+        } else {
+            0
+        };
+        while pos <= text.len() {
+            let Some(slots) = self.exec_at(re, &text, pos, re.sticky())? else {
+                break;
+            };
+            let (a, b) = slots[0].unwrap();
+            out.extend(&text[last..a]);
+            let matched: String = text[a..b].iter().collect();
+            let groups: Vec<Option<String>> = slots[1..]
+                .iter()
+                .map(|g| g.map(|(x, y)| text[x..y].iter().collect()))
+                .collect();
+            let r = if matches!(rep, Value::Func(_)) {
+                let mut call = vec![Value::str(&matched)];
+                call.extend(
+                    groups
+                        .iter()
+                        .map(|g| g.as_deref().map(Value::str).unwrap_or_default()),
+                );
+                call.push(Value::Num(utf16_len(&text[..a]) as f64));
+                call.push(Value::str(s));
+                self.call_value(rep, call)?.to_js_string()
+            } else {
+                let before: String = text[..a].iter().collect();
+                let after: String = text[b..].iter().collect();
+                cw_regex::expand_js_replacement(
+                    &rep.to_js_string(),
+                    &matched,
+                    &before,
+                    &after,
+                    &groups,
+                    re.re.group_names(),
+                )
+            };
+            out.push_str(&r);
+            last = b;
+            if !re.global() {
+                break;
+            }
+            pos = if b == a { b + 1 } else { b };
+        }
+        if last < text.len() {
+            out.extend(&text[last..]);
+        }
+        if re.global() {
+            re.last_index.set(0);
+        }
+        Ok(Value::str(&out))
+    }
+
+    fn regex_split(&mut self, re: &Rc<RegexObj>, s: &str) -> R<Value> {
+        let text: Vec<char> = s.chars().collect();
+        let piece = |a: usize, b: usize| Value::str(&text[a..b].iter().collect::<String>());
+        if text.is_empty() {
+            return Ok(if self.exec_at(re, &text, 0, true)?.is_some() {
+                Value::array(vec![])
+            } else {
+                Value::array(vec![Value::str("")])
+            });
+        }
+        let mut out = Vec::new();
+        let (mut p, mut q) = (0usize, 0usize);
+        while q < text.len() {
+            let Some(slots) = self.exec_at(re, &text, q, false)? else {
+                break;
+            };
+            let (ms, me) = slots[0].unwrap();
+            if ms >= text.len() {
+                break;
+            }
+            if me == p || (me == ms && ms == p) {
+                q = ms + 1;
+                continue;
+            }
+            out.push(piece(p, ms));
+            out.extend(Self::groups(&text, &slots[1..]));
+            p = me;
+            q = if me == ms { me + 1 } else { me };
+        }
+        out.push(piece(p, text.len()));
+        Ok(Value::array(out))
+    }
+
+    fn set_method(&mut self, set: &Arr, whole: &Value, m: Method, args: Vec<Value>) -> R<Value> {
+        let x = arg(&args, 0);
+        Ok(match m {
+            Method::SetHas => Value::Bool(set.borrow().iter().any(|v| same_value_zero(v, &x))),
+            Method::SetAdd => {
+                let present = set.borrow().iter().any(|v| same_value_zero(v, &x));
+                if !present {
+                    set.borrow_mut().push(x);
+                }
+                whole.clone()
+            }
+            Method::SetDelete => {
+                let mut v = set.borrow_mut();
+                let before = v.len();
+                v.retain(|y| !same_value_zero(y, &x));
+                Value::Bool(v.len() != before)
+            }
+            Method::SetClear => {
+                set.borrow_mut().clear();
+                Value::Undefined
+            }
+            Method::CollectionForEach => {
+                let items = set.borrow().clone();
+                for v in items {
+                    self.call_value(&x, vec![v.clone(), v, whole.clone()])?;
+                }
+                Value::Undefined
+            }
+            Method::CollectionKeys | Method::CollectionValues => Value::array(set.borrow().clone()),
+            Method::CollectionEntries => Value::array(
+                set.borrow()
+                    .iter()
+                    .map(|v| Value::array(vec![v.clone(), v.clone()]))
+                    .collect(),
+            ),
+            other => return type_error(format!("{other:?} is not a Set method")),
+        })
+    }
+
+    fn map_method(
+        &mut self,
+        map: &Rc<RefCell<Vec<(Value, Value)>>>,
+        whole: &Value,
+        m: Method,
+        args: Vec<Value>,
+    ) -> R<Value> {
+        let k = arg(&args, 0);
+        Ok(match m {
+            Method::MapGet => map
+                .borrow()
+                .iter()
+                .find(|(x, _)| same_value_zero(x, &k))
+                .map(|(_, v)| v.clone())
+                .unwrap_or_default(),
+            Method::SetHas => Value::Bool(map.borrow().iter().any(|(x, _)| same_value_zero(x, &k))),
+            Method::MapSet => {
+                let v = arg(&args, 1);
+                let mut e = map.borrow_mut();
+                match e.iter_mut().find(|(x, _)| same_value_zero(x, &k)) {
+                    Some(slot) => slot.1 = v,
+                    None => e.push((k, v)),
+                }
+                whole.clone()
+            }
+            Method::SetDelete => {
+                let mut e = map.borrow_mut();
+                let before = e.len();
+                e.retain(|(x, _)| !same_value_zero(x, &k));
+                Value::Bool(e.len() != before)
+            }
+            Method::SetClear => {
+                map.borrow_mut().clear();
+                Value::Undefined
+            }
+            Method::CollectionForEach => {
+                let items = map.borrow().clone();
+                for (key, v) in items {
+                    self.call_value(&k, vec![v, key, whole.clone()])?;
+                }
+                Value::Undefined
+            }
+            Method::CollectionKeys => {
+                Value::array(map.borrow().iter().map(|(k, _)| k.clone()).collect())
+            }
+            Method::CollectionValues => {
+                Value::array(map.borrow().iter().map(|(_, v)| v.clone()).collect())
+            }
+            Method::CollectionEntries => Value::array(
+                map.borrow()
+                    .iter()
+                    .map(|(k, v)| Value::array(vec![k.clone(), v.clone()]))
+                    .collect(),
+            ),
+            other => return type_error(format!("{other:?} is not a Map method")),
         })
     }
 }

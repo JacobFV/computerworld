@@ -207,6 +207,9 @@ pub enum Expr {
     /// The boundary of an optional chain: an optional link (`?.`) that meets
     /// `null`/`undefined` makes the whole chain `undefined`.
     Chain(Box<Expr>),
+    /// A regular expression literal: pattern and flags (JavaScript syntax). Each
+    /// evaluation is a new `RegExp` object, as in JavaScript.
+    Regex(String, String),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -371,6 +374,22 @@ pub enum Method {
     // An event.
     EventPreventDefault,
     EventStopPropagation,
+    // A `RegExp`, and strings searched with one.
+    RegexTest,
+    RegexExec,
+    StrMatch,
+    StrSearch,
+    // `Set` and `Map`.
+    SetHas,
+    SetAdd,
+    SetDelete,
+    SetClear,
+    MapGet,
+    MapSet,
+    CollectionForEach,
+    CollectionKeys,
+    CollectionValues,
+    CollectionEntries,
     // Maps of `Object.*`: none; they are builtins.
 }
 
@@ -425,6 +444,10 @@ pub enum Builtin {
     DocumentTitle,
     /// `new Error(msg)`: evaluates to the message.
     Error,
+    /// `new Set(iterable?)`.
+    NewSet,
+    /// `new Map(entries?)`.
+    NewMap,
 }
 
 /// A JSX element expression.
@@ -528,6 +551,9 @@ pub enum Ty {
     DomNode,
     Promise(Box<Ty>),
     Response,
+    Regex,
+    Set(Box<Ty>),
+    Map(Box<Ty>, Box<Ty>),
     /// A string literal type (unions of them are how TS spells enums of names).
     Lit(String),
     NumLit(f64),

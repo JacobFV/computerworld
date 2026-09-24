@@ -144,3 +144,70 @@ fn jsx_text_is_cleaned_as_babel_cleans_it() {
     );
     assert_eq!(clean_jsx_text(" lead"), Some(" lead".into()));
 }
+
+fn load_virtual(
+    files: &[(&str, &str)],
+    entry: &str,
+) -> Result<Vec<cw_tsx::Source>, Vec<cw_tsx::Diagnostic>> {
+    let map: std::collections::BTreeMap<String, String> = files
+        .iter()
+        .map(|(p, t)| (p.to_string(), t.to_string()))
+        .collect();
+    let mut read = |p: &str| map.get(p).cloned();
+    cw_tsx::load(entry, &mut read)
+}
+
+#[test]
+fn an_app_of_several_modules_compiles_into_one() {
+    let files = [
+        ("main.tsx", "import { createRoot } from 'react-dom/client';\nimport App from './App';\ncreateRoot(document.getElementById('root')!).render(<App />);\n"),
+        ("App.tsx", "import { useState } from 'react';\nimport { greet, type Name } from './lib/greet';\nimport { Badge } from '../shared/badge';\nexport default function App() { const [n] = useState<Name>('Ada'); return <Badge text={greet(n)} />; }\n"),
+        ("lib/greet.ts", "export type Name = 'Ada' | 'Bo';\nexport function greet(n: Name): string { return 'hi ' + n; }\n"),
+        ("../shared/badge.tsx", "export const Badge = ({ text }: { text: string }) => <b>{text}</b>;\n"),
+    ];
+    let sources = load_virtual(&files, "main.tsx").unwrap();
+    let order: Vec<&str> = sources.iter().map(|s| s.file.as_str()).collect();
+    assert_eq!(
+        order,
+        ["lib/greet.ts", "../shared/badge.tsx", "App.tsx", "main.tsx"]
+    );
+    let b = cw_tsx::build_modules(&sources);
+    assert!(b.diagnostics.is_empty(), "{:?}", b.diagnostics);
+    assert!(b.ir.is_some());
+    let js = b.js.unwrap();
+    assert!(js.contains("const __cw_mod_0 = (() => {"), "{js}");
+    assert!(js.contains("return { greet };"), "{js}");
+    assert!(js.contains("const App = __cw_mod_2.default;"), "{js}");
+}
+
+#[test]
+fn module_errors_name_their_file() {
+    let files = [
+        ("main.tsx", "import { createRoot } from 'react-dom/client';\nimport { Missing } from './a';\nimport './nowhere';\ncreateRoot(document.getElementById('root')!).render(<Missing />);\n"),
+        ("a.tsx", "export function Other() { const x: any = 1; return <p>{x}</p>; }\n"),
+    ];
+    let err = load_virtual(&files, "main.tsx").unwrap_err();
+    assert!(
+        err.iter()
+            .any(|d| d.file == "main.tsx" && d.line == 3 && d.message.contains("./nowhere")),
+        "{err:?}"
+    );
+    let files = [files[0], files[1]];
+    let fixed = [
+        (files[0].0, files[0].1.replace("import './nowhere';\n", "")),
+        (files[1].0, files[1].1.to_string()),
+    ];
+    let fixed: Vec<(&str, &str)> = fixed.iter().map(|(p, t)| (*p, t.as_str())).collect();
+    let b = cw_tsx::build_modules(&load_virtual(&fixed, "main.tsx").unwrap());
+    let shown: Vec<String> = b.diagnostics.iter().map(|d| d.to_string()).collect();
+    assert!(
+        shown.iter().any(|d| d.starts_with("a.tsx: line 1:")),
+        "{shown:?}"
+    );
+    assert!(
+        shown
+            .iter()
+            .any(|d| d.contains("`Missing` is not exported")),
+        "{shown:?}"
+    );
+}

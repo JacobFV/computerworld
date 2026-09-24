@@ -128,6 +128,8 @@ pub fn is_array(t: &Ty) -> bool {
 pub fn element(t: &Ty) -> Option<Ty> {
     match non_null(t) {
         Ty::Array(e) => Some(*e),
+        Ty::Set(e) => Some(*e),
+        Ty::Map(k, v) => Some(Ty::Tuple(vec![*k, *v])),
         Ty::Tuple(ts) => Some(union_all(ts)),
         Ty::Union(ts) => {
             let mut out = Ty::Unknown;
@@ -169,7 +171,15 @@ pub fn property(t: &Ty, name: &str) -> Option<Ty> {
             }
             "checked" | "disabled" => Some(Ty::Boolean),
             "offsetWidth" | "offsetHeight" | "scrollTop" | "scrollLeft" | "selectionStart"
-            | "selectionEnd" | "valueAsNumber" => Some(Ty::Number),
+            | "selectionEnd" | "valueAsNumber" | "scrollHeight" | "scrollWidth"
+            | "clientHeight" | "clientWidth" => Some(Ty::Number),
+            _ => None,
+        },
+        Ty::Set(_) | Ty::Map(..) if name == "size" => Some(Ty::Number),
+        Ty::Regex => match name {
+            "source" | "flags" => Some(Ty::String),
+            "global" => Some(Ty::Boolean),
+            "lastIndex" => Some(Ty::Number),
             _ => None,
         },
         Ty::Response => match name {
@@ -199,6 +209,13 @@ pub fn property(t: &Ty, name: &str) -> Option<Ty> {
 /// The type of `t[k]` for a key of type `k`.
 pub fn index(t: &Ty, k: &Ty) -> Option<Ty> {
     match non_null(t) {
+        Ty::Union(ts) => {
+            let mut out = Ty::Unknown;
+            for t in &ts {
+                out = union(out, index(t, k)?);
+            }
+            Some(out)
+        }
         Ty::Array(e) => Some(union(*e, Ty::Undefined)),
         Ty::Tuple(ts) => match k {
             Ty::NumLit(n) if *n >= 0.0 && (*n as usize) < ts.len() => Some(ts[*n as usize].clone()),
@@ -276,8 +293,47 @@ pub fn show(t: &Ty) -> String {
         Ty::DomNode => "HTMLElement".into(),
         Ty::Promise(t) => format!("Promise<{}>", show(t)),
         Ty::Response => "Response".into(),
+        Ty::Regex => "RegExp".into(),
+        Ty::Set(t) => format!("Set<{}>", show(t)),
+        Ty::Map(k, v) => format!("Map<{}, {}>", show(k), show(v)),
         Ty::Lit(s) => format!("{s:?}"),
         Ty::NumLit(n) => format!("{n}"),
         Ty::Unknown => "unknown".into(),
+    }
+}
+
+/// `keyof t`: the names of an object type's members.
+pub fn keys_of(t: &Ty) -> Ty {
+    match non_null(t) {
+        Ty::Object(fs) => union_all(fs.into_iter().map(|(n, _, _)| Ty::Lit(n))),
+        Ty::Dict(_) => Ty::String,
+        Ty::Array(_) | Ty::Tuple(_) => Ty::Number,
+        _ => Ty::Unknown,
+    }
+}
+
+/// `a & b`: the members of both.
+pub fn intersect(a: Ty, b: Ty) -> Ty {
+    match (a, b) {
+        (Ty::Object(mut fa), Ty::Object(fb)) => {
+            for (n, t, o) in fb {
+                match fa.iter_mut().find(|(m, _, _)| *m == n) {
+                    Some(f) => f.2 = f.2 && o,
+                    None => fa.push((n, t, o)),
+                }
+            }
+            Ty::Object(fa)
+        }
+        (Ty::Unknown, b) => b,
+        (a, _) => a,
+    }
+}
+
+/// The names a type of literal keys lists (`'a' | 'b'`).
+pub fn literal_names(t: &Ty) -> Vec<String> {
+    match t {
+        Ty::Lit(s) => vec![s.clone()],
+        Ty::Union(ts) => ts.iter().flat_map(literal_names).collect(),
+        _ => Vec::new(),
     }
 }

@@ -987,6 +987,7 @@ name = "cw-ui"
 version = "0.2.0"
 dependencies = [
  "cw-jsvm",
+ "cw-regex",
  "cw-render",
  "cw-scene",
  "cw-tsx",

@@ -1,8 +1,11 @@
 //! `cw-tsx`: the command-line compiler.
 //!
-//!     cw-tsx build app.tsx [-o out/]   writes out/app.ui.json (when the module is in
-//!                                      the subset), out/app.js (the React fallback)
-//!                                      and out/app.diagnostics.json
+//!     cw-tsx build app.tsx [-o out/] [--name app]
+//!                                      writes out/app.ui.json (when the app is in the
+//!                                      subset), out/app.js (the React fallback) and
+//!                                      out/app.diagnostics.json. `app.tsx` is the
+//!                                      entry: the modules it imports (`./x`) are
+//!                                      compiled with it into one IR and one script.
 //!     cw-tsx check app.tsx             prints the diagnostics; exit 1 if any
 //!
 //! Exit status of `build`: 0 when both outputs were written, 3 when only the fallback
@@ -12,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 fn usage() -> ExitCode {
-    eprintln!("usage: cw-tsx build <file.tsx> [-o <dir>]\n       cw-tsx check <file.tsx>");
+    eprintln!("usage: cw-tsx build <entry.tsx> [-o <dir>] [--name <stem>]\n       cw-tsx check <entry.tsx>");
     ExitCode::from(2)
 }
 
@@ -24,29 +27,39 @@ fn main() -> ExitCode {
     };
     let mut input: Option<PathBuf> = None;
     let mut out: Option<PathBuf> = None;
+    let mut name: Option<String> = None;
     let mut it = rest.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "-o" | "--out" => out = it.next().map(PathBuf::from),
+            "--name" => name = it.next().cloned(),
             s if input.is_none() => input = Some(PathBuf::from(s)),
             _ => return usage(),
         }
     }
     let Some(input) = input else { return usage() };
-    let source = match std::fs::read_to_string(&input) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("cw-tsx: {}: {e}", input.display());
-            return ExitCode::from(1);
-        }
-    };
+    let root = input.parent().map(Path::to_path_buf).unwrap_or_default();
     let file_name = input
         .file_name()
         .map(|f| f.to_string_lossy().into_owned())
         .unwrap_or_else(|| "app.tsx".into());
-    let build = cw_tsx::build(&source, &file_name);
+    let mut read = |rel: &str| std::fs::read_to_string(root.join(rel)).ok();
+    let sources = match cw_tsx::load(&file_name, &mut read) {
+        Ok(s) => s,
+        Err(diags) => {
+            for d in &diags {
+                eprintln!("{}: {d}", root.display());
+            }
+            return ExitCode::from(1);
+        }
+    };
+    let build = cw_tsx::build_modules(&sources);
     for d in &build.diagnostics {
-        eprintln!("{}:{d}", input.display());
+        if d.file.is_empty() {
+            eprintln!("{}: {d}", input.display());
+        } else {
+            eprintln!("{}/{d}", root.display());
+        }
     }
     match cmd {
         "check" => {
@@ -64,10 +77,13 @@ fn main() -> ExitCode {
                 eprintln!("cw-tsx: {}: {e}", dir.display());
                 return ExitCode::from(1);
             }
-            let stem = file_name
-                .strip_suffix(".tsx")
-                .unwrap_or(&file_name)
-                .to_owned();
+            let stem = name.clone().unwrap_or_else(|| {
+                file_name
+                    .strip_suffix(".tsx")
+                    .or_else(|| file_name.strip_suffix(".ts"))
+                    .unwrap_or(&file_name)
+                    .to_owned()
+            });
             let write = |name: String, body: &str| -> bool {
                 let p = dir.join(name);
                 match std::fs::write(&p, body) {

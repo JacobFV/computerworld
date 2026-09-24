@@ -61,11 +61,14 @@ fn dom_text(
         out: &mut String,
     ) {
         match doc.kind(n) {
-            NodeKind::Element { tag, attrs, .. } => {
+            NodeKind::Element { tag, attrs, ns } => {
                 if tag == "script" {
                     return;
                 }
                 out.push('<');
+                if *ns != cw_web::dom::Namespace::Html {
+                    out.push_str(&format!("{ns:?}:"));
+                }
                 out.push_str(tag);
                 for a in attrs {
                     out.push_str(&format!(" {}={:?}", a.name, a.value));
@@ -695,5 +698,49 @@ function App() {
 createRoot(document.getElementById('root')!).render(<App />);
 "#,
         &[Step::Wait(50)],
+    );
+}
+
+#[test]
+fn sets_maps_regexes_and_type_level_code() {
+    same_as_react(
+        r#"
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+const TABS = [{ id: 'a', label: 'Alpha' }, { id: 'b', label: 'Beta' }] as const;
+type TabId = (typeof TABS)[number]['id'];
+interface Profile { name: string; email: string }
+type Errors = Partial<Record<keyof Profile, string>>;
+function check(p: Profile): Errors {
+  const e: Errors = {};
+  if (!/^[a-z ]+$/i.test(p.name)) e.name = 'letters only';
+  if (!/^[^\s@]+@[^\s@]+$/.test(p.email)) e.email = 'bad email';
+  return e;
+}
+function App() {
+  const [picked, setPicked] = useState<Set<number>>(new Set([2]));
+  const [tab, setTab] = useState<TabId>('a');
+  const [counts] = useState(() => new Map<string, number>([['x', 1], ['y', 2]]));
+  const toggle = (n: number) => setPicked((s) => { const next = new Set(s); if (next.has(n)) next.delete(n); else next.add(n); return next; });
+  function update<K extends keyof Profile>(key: K, value: Profile[K]): Profile { return { name: 'Ann', email: 'a@b', [key]: value } as Profile; }
+  const errors = check(update('email', 'nope'));
+  const words = 'one, two;three'.split(/[,;]\s*/);
+  const shout = 'a-b-c'.replace(/-/g, (m) => m + m);
+  return (
+    <div>
+      {[1, 2, 3].map((n) => <button key={n} id={'n' + n} className={picked.has(n) ? 'on' : 'off'} onClick={() => toggle(n)}>{n}</button>)}
+      {TABS.map((t) => <a key={t.id} id={'tab-' + t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</a>)}
+      <p>{picked.size} {[...picked].join('+')} {counts.get('y')} {Array.from(counts.keys()).join('')}</p>
+      <p>{errors.email ?? 'ok'} {errors.name ?? 'ok'} {words.join('|')} {shout} {'x1y22'.match(/\d+/g)?.join(',')}</p>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[
+            Step::Click("#n1"),
+            Step::Click("#n2"),
+            Step::Click("#tab-b"),
+        ],
     );
 }

@@ -48,6 +48,10 @@ pub enum HeapObj {
     Fragment(Vec<V>, Option<String>),
     Provider(u32, V, Vec<V>, Option<String>),
     Response(FetchResponse),
+    Set(Vec<V>),
+    Map(Vec<(V, V)>),
+    /// Pattern, flags, `lastIndex`.
+    Regex(String, String, usize),
     /// Promises and events do not outlive the entry that created them; a pending
     /// promise restores as one that never settles.
     Opaque,
@@ -272,6 +276,37 @@ impl Enc {
                 Err(i) => V::H(i),
                 Ok(i) => {
                     self.heap[i as usize] = HeapObj::Response((**r).clone());
+                    V::H(i)
+                }
+            },
+            Value::Set(a) => match self.reserve(Rc::as_ptr(a) as *const u8 as usize) {
+                Err(i) => V::H(i),
+                Ok(i) => {
+                    let items = a.borrow().iter().map(|x| self.v(x)).collect();
+                    self.heap[i as usize] = HeapObj::Set(items);
+                    V::H(i)
+                }
+            },
+            Value::Map(m) => match self.reserve(Rc::as_ptr(m) as *const u8 as usize) {
+                Err(i) => V::H(i),
+                Ok(i) => {
+                    let items = m
+                        .borrow()
+                        .iter()
+                        .map(|(k, x)| (self.v(k), self.v(x)))
+                        .collect();
+                    self.heap[i as usize] = HeapObj::Map(items);
+                    V::H(i)
+                }
+            },
+            Value::Regex(r) => match self.reserve(Rc::as_ptr(r) as *const u8 as usize) {
+                Err(i) => V::H(i),
+                Ok(i) => {
+                    self.heap[i as usize] = HeapObj::Regex(
+                        r.source.to_string(),
+                        r.flags.to_string(),
+                        r.last_index.get(),
+                    );
                     V::H(i)
                 }
             },
@@ -608,6 +643,46 @@ impl Dec<'_> {
                 }))
             }
             HeapObj::Response(r) => Value::Response(Rc::new(r.clone())),
+            HeapObj::Set(items) => {
+                let a: Arr = Rc::new(RefCell::new(Vec::new()));
+                self.done[idx] = Some(Value::Set(a.clone()));
+                let mut out = Vec::with_capacity(items.len());
+                for x in items {
+                    out.push(self.v(x)?);
+                }
+                *a.borrow_mut() = out;
+                return Ok(Value::Set(a));
+            }
+            HeapObj::Map(items) => {
+                let m = Rc::new(RefCell::new(Vec::new()));
+                self.done[idx] = Some(Value::Map(m.clone()));
+                let mut out = Vec::with_capacity(items.len());
+                for (k, x) in items {
+                    out.push((self.v(k)?, self.v(x)?));
+                }
+                *m.borrow_mut() = out;
+                return Ok(Value::Map(m));
+            }
+            HeapObj::Regex(source, flags, last) => {
+                let mut fl = cw_regex::Flags::default();
+                for c in flags.chars() {
+                    match c {
+                        'i' => fl.ignore_case = true,
+                        'm' => fl.multiline = true,
+                        's' => fl.dot_all = true,
+                        'u' | 'v' => fl.unicode = true,
+                        _ => {}
+                    }
+                }
+                let re = cw_regex::Regex::new(source, cw_regex::Flavor::JavaScript, fl)
+                    .map_err(|e| e.message)?;
+                Value::Regex(Rc::new(RegexObj {
+                    source: Rc::from(source.as_str()),
+                    flags: Rc::from(flags.as_str()),
+                    re: Rc::new(re),
+                    last_index: Cell::new(*last),
+                }))
+            }
             HeapObj::Opaque => Value::Promise(crate::interp::new_promise()),
         };
         self.done[idx] = Some(v.clone());
