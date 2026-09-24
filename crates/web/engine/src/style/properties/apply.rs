@@ -774,6 +774,15 @@ pub fn opacity(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
     true
 }
 
+pub fn backdrop_filter(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
+    let Specified::Lp(l) = v else { return false };
+    let Some(x) = l.compute_length(&c.lengths) else {
+        return false;
+    };
+    s.backdrop_blur = x.max(Au::ZERO);
+    true
+}
+
 pub fn transform(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
     let Specified::Transform(ops) = v else {
         return false;

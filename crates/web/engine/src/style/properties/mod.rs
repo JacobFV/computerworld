@@ -392,6 +392,7 @@ longhands! {
     BackgroundAttachment, "background-attachment", false, 2, p::background_attachment, a::background_attachment, |d, s| a::copy_layers(d, s, a::LayerField::Attachment);
     BoxShadow, "box-shadow", false, 2, p::box_shadow, a::box_shadow, |d, s| d.box_shadow = s.box_shadow.clone();
     Opacity, "opacity", false, 2, p::opacity, a::opacity, |d, s| d.opacity = s.opacity;
+    BackdropFilter, "backdrop-filter", false, 2, p::backdrop_filter, a::backdrop_filter, |d, s| d.backdrop_blur = s.backdrop_blur;
     Transform, "transform", false, 2, p::transform, a::transform, |d, s| d.transform = s.transform.clone();
     TransformOrigin, "transform-origin", false, 2, p::transform_origin, a::transform_origin, |d, s| d.transform_origin = s.transform_origin;
     OutlineWidth, "outline-width", false, 2, p::border_width, a::outline_width, |d, s| d.outline.width = s.outline.width;

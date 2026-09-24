@@ -332,6 +332,7 @@ pub(crate) mod parts {
     pub const CONTENT: u32 = 13;
     pub const CONTENT_TEXT: u32 = 14;
     pub const CONTENT_GLYPH: u32 = 15;
+    pub const BACKDROP: u32 = 16;
     pub const DYNAMIC: u32 = 64;
 }
 

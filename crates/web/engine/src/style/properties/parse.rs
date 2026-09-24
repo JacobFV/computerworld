@@ -968,6 +968,28 @@ pub fn opacity(p: &mut Parser) -> Option<Specified> {
     }))
 }
 
+/// `backdrop-filter`: the blur radius of its `blur()`, `none` as zero. The other
+/// filter functions (brightness, saturate, ...) parse and are not applied.
+pub fn backdrop_filter(p: &mut Parser) -> Option<Specified> {
+    if p.expect_ident_matching("none").is_some() {
+        return Some(Specified::Lp(LpSpec::ZERO));
+    }
+    let mut blur = None;
+    let mut any = false;
+    while let Some((name, args)) = p.expect_function() {
+        any = true;
+        if name.eq_ignore_ascii_case("blur") {
+            let mut a = Parser::new(args);
+            blur = if a.is_done() {
+                Some(LpSpec::ZERO)
+            } else {
+                Some(parse_length_spec(&mut a, false)?)
+            };
+        }
+    }
+    (any && p.is_done()).then(|| Specified::Lp(blur.unwrap_or(LpSpec::ZERO)))
+}
+
 // --- Transforms ------------------------------------------------------------------
 
 pub fn transform(p: &mut Parser) -> Option<Specified> {

@@ -882,6 +882,21 @@ pub(crate) fn paint_own(p: &mut Painter, f: &Fragment, state: &State) {
         return;
     }
     let content_box = padding.inset(border.inset(rect));
+    if style.backdrop_blur > Au::ZERO && srect.width > 0 && srect.height > 0 {
+        // `backdrop-filter: blur(σ)` blurs what is already painted under the border
+        // box; the renderer runs three box blurs of radius r, whose variance
+        // r(r + 1) matches the Gaussian's σ² at r = round(√(σ² + ¼) - ½).
+        let sigma = style.backdrop_blur.0 as f64 / 64.0;
+        let r = ((sigma * sigma + 0.25).sqrt() - 0.5).round().max(1.0) as u32;
+        let radius = border::uniform_radius(&border::radii_px(&style, srect)).unwrap_or(0);
+        let id = p.id(key, super::parts::BACKDROP);
+        p.emit(
+            state,
+            id,
+            srect,
+            cw_scene::Primitive::Backdrop { radius, blur: r },
+        );
+    }
     border::paint_box_shadows(p, key, state, &style, srect, false);
     background::paint_background(
         p,

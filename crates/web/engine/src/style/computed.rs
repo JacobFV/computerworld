@@ -1083,6 +1083,8 @@ pub struct ComputedStyle {
     pub transform_origin: (LengthPercentage, LengthPercentage),
     pub outline: BorderSide,
     pub outline_offset: Au,
+    /// `backdrop-filter`'s blur radius; zero for none.
+    pub backdrop_blur: Au,
 
     // Flex
     pub flex_direction: FlexDirection,
@@ -1210,6 +1212,7 @@ impl ComputedStyle {
             ),
             outline: BorderSide::default(),
             outline_offset: Au::ZERO,
+            backdrop_blur: Au::ZERO,
             flex_direction: FlexDirection::Row,
             flex_wrap: FlexWrap::NoWrap,
             justify_content: JustifyContent::FlexStart,
@@ -1304,6 +1307,7 @@ impl ComputedStyle {
             || matches!(self.position, Position::Fixed | Position::Sticky)
             || self.opacity < 255
             || !self.transform.is_empty()
+            || self.backdrop_blur > Au::ZERO
             || (is_flex_or_grid_item && !matches!(self.z_index, ZIndex::Auto))
     }
     pub fn used_border_widths(&self) -> crate::geom::Edges {

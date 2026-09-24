@@ -865,6 +865,13 @@ impl ComputedStyle {
             }
             // Opacity is stored in 1/255; two decimals reproduce the common authored values.
             L::Opacity => milli_to_string((s.opacity as i64 * 100 + 127) / 255, 100),
+            L::BackdropFilter => {
+                if s.backdrop_blur == Au::ZERO {
+                    "none".into()
+                } else {
+                    format!("blur({})", px(s.backdrop_blur))
+                }
+            }
             L::Transform => transform(&s.transform),
             L::TransformOrigin => {
                 format!("{} {}", lp(s.transform_origin.0), lp(s.transform_origin.1))

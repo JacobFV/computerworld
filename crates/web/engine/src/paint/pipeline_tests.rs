@@ -891,3 +891,27 @@ fn inline_svg_draws_its_shapes_instead_of_a_placeholder() {
     assert!(left.0 > 240 && left.1 < 15, "red end {left:?}");
     assert!(right.1 > 240 && right.0 < 15, "green end {right:?}");
 }
+
+#[test]
+fn backdrop_filter_blurs_what_is_behind_the_box() {
+    // A black half and a white half under a transparent overlay with
+    // `backdrop-filter: blur(4px)` (Tailwind's backdrop-blur-sm): the hard edge
+    // at x = 100 softens into greys; without the filter it stays hard.
+    let page = |filter: &str| {
+        pixels(&render(&format!(
+            "<!doctype html><style>body{{margin:0;background:#fff}}</style>\
+             <div style='width:100px;height:100px;background:#000'></div>\
+             <div style='position:absolute;inset:0;{filter}'></div>"
+        )))
+    };
+    let blurred = page("backdrop-filter: blur(4px)");
+    let grey = blurred.at(100, 50);
+    assert!(grey.0 > 40 && grey.0 < 215, "the edge is soft: {grey:?}");
+    assert_eq!(
+        blurred.at(50, 50),
+        Color(0, 0, 0, 255),
+        "far inside stays black"
+    );
+    let sharp = page("");
+    assert_eq!(sharp.at(100, 50), Color(255, 255, 255, 255));
+}
