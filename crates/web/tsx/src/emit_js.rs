@@ -34,14 +34,18 @@ pub fn emit(source: &str, file_name: &str) -> Result<String, Vec<Diagnostic>> {
 
 /// Compiles an app's modules (in dependency order, entry last) to one script.
 pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
-    let bundled = sources.len() > 1;
+    let code_modules = crate::code_modules(sources);
+    let bundled = code_modules > 1;
     let entry = sources.last().map(|s| s.file.as_str()).unwrap_or("app.tsx");
     let mut out = format!(
         "// Compiled by cw-tsx from {entry}: types stripped, JSX as React.createElement.\n'use strict';\n"
     );
     let mut errors = Vec::new();
     for (i, src) in sources.iter().enumerate() {
-        match emit_one(src, sources.len()) {
+        if src.is_ambient() {
+            continue;
+        }
+        match emit_one(src, code_modules) {
             Ok((code, exports)) => {
                 if !bundled {
                     out.push_str(&code);

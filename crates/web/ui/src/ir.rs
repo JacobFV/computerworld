@@ -395,6 +395,8 @@ pub enum Method {
     NodeFocus,
     NodeBlur,
     NodeSelect,
+    /// `el.setSelectionRange(start, end)`.
+    NodeSetSelectionRange,
     // An event.
     EventPreventDefault,
     EventStopPropagation,
@@ -498,6 +500,32 @@ pub enum Builtin {
     /// `window.innerWidth` / `window.innerHeight`.
     InnerWidth,
     InnerHeight,
+    /// The `cw` global of a computerworld desktop web app (see `crate::cw`).
+    /// `cw.kind`, `cw.argument`, `cw.env`.
+    CwKind,
+    CwArgument,
+    CwEnv,
+    /// `cw.onEnv(listener)`: returns the function that removes it.
+    CwOnEnv,
+    /// `cw.now()`.
+    CwNow,
+    /// `cw.state.get()`, `cw.state.set(value)`.
+    CwStateGet,
+    CwStateSet,
+    /// `cw.fs.readFile(path)`, `writeFile(path, content)`, `list(path)`, `mkdir(path)`.
+    CwReadFile,
+    CwWriteFile,
+    CwList,
+    CwMkdir,
+    /// `cw.fetch(url, init?)`.
+    CwFetch,
+    /// `cw.launch(kind, argument?)`, `cw.emit(name, data?)`.
+    CwLaunch,
+    CwEmit,
+    /// `cw.refuse(message)`.
+    CwRefuse,
+    /// `cw.window.set(facts)`.
+    CwWindowSet,
     /// `new Set(iterable?)`.
     NewSet,
     /// `new Map(entries?)`.
@@ -613,4 +641,7 @@ pub enum Ty {
     Lit(String),
     NumLit(f64),
     Unknown,
+    /// A generic function's type parameter, in the signature its callers
+    /// instantiate (never in a lowered value's type).
+    Param(String),
 }

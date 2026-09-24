@@ -50,6 +50,8 @@ pub enum NativeFn {
         inst: u32,
         hook: u32,
     },
+    /// Removes the `cw.onEnv` listener with this id.
+    CwOffEnv(u32),
     /// An async function resumed after an `await` (with the value, or throwing it).
     Resume {
         task: Rc<RefCell<Option<crate::asyncfn::Task>>>,
@@ -307,6 +309,8 @@ pub(crate) struct Runtime {
     pub start_micros: i64,
     pub microtasks: VecDeque<Microtask>,
     pub id_counter: u32,
+    /// The `cw` global's bridge to a computerworld desktop host.
+    pub(crate) cw: crate::cw::CwBridge,
     /// Hole skipping and element reuse are sound for this module.
     pub pure_render: bool,
     pub booted: bool,
@@ -374,6 +378,7 @@ impl Runtime {
             start_micros: 0,
             microtasks: VecDeque::new(),
             id_counter: 0,
+            cw: Default::default(),
             pure_render,
             booted: false,
             crashed: false,

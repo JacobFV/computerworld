@@ -635,7 +635,7 @@ impl Runtime {
         }
         let kids: Vec<NodeId> = self.inner.doc.children(n).collect();
         for k in kids {
-            self.inner.doc.detach(k);
+            self.detach(k);
         }
         if !s.is_empty() {
             let t = self.inner.doc.create_text(s);

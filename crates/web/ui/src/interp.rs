@@ -1147,7 +1147,7 @@ impl Runtime {
             "textContent" => {
                 let kids: Vec<NodeId> = self.inner.doc.children(n).collect();
                 for k in kids {
-                    self.inner.doc.detach(k);
+                    self.detach(k);
                 }
                 let s = v.to_js_string();
                 if !s.is_empty() {
@@ -1479,6 +1479,22 @@ impl Runtime {
                 .unwrap_or(Value::Null),
             B::InnerWidth => Value::Num(self.inner.viewport.width as f64),
             B::InnerHeight => Value::Num(self.inner.viewport.height as f64),
+            B::CwKind
+            | B::CwArgument
+            | B::CwEnv
+            | B::CwOnEnv
+            | B::CwNow
+            | B::CwStateGet
+            | B::CwStateSet
+            | B::CwReadFile
+            | B::CwWriteFile
+            | B::CwList
+            | B::CwMkdir
+            | B::CwFetch
+            | B::CwLaunch
+            | B::CwEmit
+            | B::CwRefuse
+            | B::CwWindowSet => self.cw_builtin(b, &args),
             B::PromiseReject => {
                 let p = new_promise();
                 self.reject_promise(&p, arg(&args, 0));
@@ -1656,6 +1672,21 @@ impl Runtime {
             (M::NodeSelect, Value::Node(n)) => {
                 let len = self.inner.control_value(*n).encode_utf16().count();
                 self.inner.form.selection.insert(*n, (0, len));
+                Value::Undefined
+            }
+            (M::NodeSetSelectionRange, Value::Node(n)) => {
+                let len = self.inner.control_value(*n).encode_utf16().count();
+                let clamp = |v: &Value| {
+                    let x = v.to_number();
+                    if x.is_nan() || x < 0.0 {
+                        0
+                    } else {
+                        (x as usize).min(len)
+                    }
+                };
+                let end = clamp(&arg(&args, 1));
+                let start = clamp(&arg(&args, 0)).min(end);
+                self.inner.form.selection.insert(*n, (start, end));
                 Value::Undefined
             }
             (M::EventPreventDefault, Value::Event(e)) => {
@@ -2742,6 +2773,7 @@ impl Runtime {
                 crate::asyncfn::resume(self, task, v, *throw);
             }
             NativeFn::StoreChanged { inst, hook } => self.store_changed(*inst, *hook)?,
+            NativeFn::CwOffEnv(id) => self.cw_off_env(*id),
         }
         Ok(Value::Undefined)
     }

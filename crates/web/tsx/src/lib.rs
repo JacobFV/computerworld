@@ -95,14 +95,25 @@ impl Source {
         }
     }
 
+    /// A declaration file (`.d.ts`): types and ambient declarations only, visible to
+    /// every module of the app, and no code.
+    pub fn is_ambient(&self) -> bool {
+        self.file.ends_with(".d.ts")
+    }
+
     /// The file name diagnostics carry: empty for a one-module app.
     pub(crate) fn display_file(&self, modules: usize) -> String {
-        if modules > 1 {
+        if modules > 1 || self.is_ambient() {
             self.file.clone()
         } else {
             String::new()
         }
     }
+}
+
+/// How many modules of an app hold code (not declaration files).
+pub(crate) fn code_modules(sources: &[Source]) -> usize {
+    sources.iter().filter(|s| !s.is_ambient()).count()
 }
 
 /// Whether an import specifier names a module of the app (not a package).
@@ -146,6 +157,29 @@ fn specifiers(text: &str) -> Vec<(String, u32)> {
     out
 }
 
+/// The paths of a source's `/// <reference path="…" />` directives.
+fn references(text: &str) -> Vec<(String, u32)> {
+    let mut out = Vec::new();
+    let mut offset = 0u32;
+    for line in text.split_inclusive('\n') {
+        let t = line.trim();
+        if let Some(rest) = t.strip_prefix("///") {
+            let rest = rest.trim_start();
+            if let Some(rest) = rest.strip_prefix("<reference") {
+                if let Some(i) = rest.find("path=") {
+                    let rest = &rest[i + 5..];
+                    let q = rest.chars().next().unwrap_or('"');
+                    if let Some(end) = rest[1..].find(q) {
+                        out.push((rest[1..1 + end].to_owned(), offset));
+                    }
+                }
+            }
+        }
+        offset += line.len() as u32;
+    }
+    out
+}
+
 /// Loads the app whose entry is `entry` (a path relative to the app's root, e.g.
 /// `main.tsx`): the entry and every module it reaches through relative imports,
 /// resolved as a bundler does (`./x` is `x`, `x.tsx`, `x.ts`, `x/index.tsx` or
@@ -185,6 +219,15 @@ pub fn load(
             Some(i) => &file[..i],
             None => "",
         };
+        // Declaration files a module references come before it, like its imports.
+        for (path, at) in references(&text) {
+            let target = normalize(&format!("{dir}/{path}"));
+            if visit(&target, read, out, index, stack, errors).is_none() {
+                let mut d = Diagnostic::at(&text, at, format!("cannot find `{path}`"));
+                d.file = file.to_owned();
+                errors.push(d);
+            }
+        }
         let mut imports = BTreeMap::new();
         for (spec, at) in specifiers(&text) {
             if !is_relative(&spec) {

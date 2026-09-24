@@ -32,7 +32,7 @@ pub fn lower_modules(sources: &[crate::Source]) -> Result<Module, Vec<Diagnostic
         let ret = Parser::new(&allocator, &src.text, SourceType::tsx()).parse();
         for d in &ret.diagnostics {
             let mut d = Diagnostic::from_oxc(&src.text, d);
-            d.file = src.display_file(sources.len());
+            d.file = src.display_file(crate::code_modules(sources));
             errors.push(d);
         }
         programs.push(ret.program);
@@ -45,9 +45,12 @@ pub fn lower_modules(sources: &[crate::Source]) -> Result<Module, Vec<Diagnostic
         .iter()
         .map(|s| ModNames {
             src: &s.text,
-            file: s.display_file(sources.len()),
+            file: s.display_file(crate::code_modules(sources)),
             ..ModNames::default()
         })
+        .collect();
+    l.ambient_mods = (0..sources.len())
+        .filter(|i| sources[*i].is_ambient())
         .collect();
     l.swap_current(0);
     let mut decls = Vec::with_capacity(programs.len());
@@ -202,6 +205,9 @@ struct GlobalInfo {
     func: Option<u32>,
     kind: FunctionKind,
     reassigned: bool,
+    /// For a generic function: its type parameters and its signature over them
+    /// (`Ty::Param`), which each call instantiates.
+    generic: Option<(Vec<String>, Ty)>,
 }
 
 /// A module function's declaration, lowered on demand.
@@ -227,7 +233,10 @@ enum FnBody<'a> {
 }
 
 enum TypeDecl<'a> {
-    Alias(&'a ast::TSType<'a>),
+    Alias(
+        &'a ast::TSType<'a>,
+        Option<&'a ast::TSTypeParameterDeclaration<'a>>,
+    ),
     Interface(&'a ast::TSInterfaceDeclaration<'a>),
 }
 
@@ -287,6 +296,10 @@ struct Lowerer<'a> {
     /// Whether some module `let` is reassigned (then functions may read state that
     /// changes behind the frame's back).
     mutable_globals: bool,
+    /// Declaration files (`.d.ts`): their types are visible to every module.
+    ambient_mods: Vec<usize>,
+    /// Constants they `declare` (the host's globals), to the module declaring them.
+    ambient_values: BTreeMap<String, usize>,
 }
 
 type Lowered = (Expr, Ty);
@@ -342,6 +355,8 @@ impl<'a> Lowerer<'a> {
             fns: Vec::new(),
             hole_always: Vec::new(),
             mutable_globals: false,
+            ambient_mods: Vec::new(),
+            ambient_values: BTreeMap::new(),
         }
     }
 
@@ -443,8 +458,10 @@ impl<'a> Lowerer<'a> {
             match stmt {
                 S::ImportDeclaration(import) => self.import(import, imports),
                 S::TSTypeAliasDeclaration(t) => {
-                    self.type_decls
-                        .insert(t.id.name.to_string(), TypeDecl::Alias(&t.type_annotation));
+                    self.type_decls.insert(
+                        t.id.name.to_string(),
+                        TypeDecl::Alias(&t.type_annotation, t.type_parameters.as_deref()),
+                    );
                 }
                 S::TSInterfaceDeclaration(i) => {
                     self.type_decls
@@ -452,8 +469,10 @@ impl<'a> Lowerer<'a> {
                 }
                 S::ExportDeclaration(e) => match &e.declaration {
                     ast::Declaration::TSTypeAliasDeclaration(t) => {
-                        self.type_decls
-                            .insert(t.id.name.to_string(), TypeDecl::Alias(&t.type_annotation));
+                        self.type_decls.insert(
+                            t.id.name.to_string(),
+                            TypeDecl::Alias(&t.type_annotation, t.type_parameters.as_deref()),
+                        );
                     }
                     ast::Declaration::TSInterfaceDeclaration(i) => {
                         self.type_decls
@@ -462,6 +481,20 @@ impl<'a> Lowerer<'a> {
                     _ => decls.push(stmt),
                 },
                 S::ExportNamedDeclaration(_) => {}
+                _ if self.ambient_mods.contains(&self.cur_mod) => match stmt {
+                    S::VariableDeclaration(v) if v.declare => {
+                        for d in &v.declarations {
+                            if let ast::BindingPattern::BindingIdentifier(id) = &d.id {
+                                self.ambient_values
+                                    .insert(id.name.to_string(), self.cur_mod);
+                            }
+                        }
+                    }
+                    other => self.err(
+                        other.span(),
+                        "a declaration file for the compiled subset declares types and constants only",
+                    ),
+                },
                 _ => decls.push(stmt),
             }
         }
@@ -703,6 +736,18 @@ impl<'a> Lowerer<'a> {
         let slot = self.globals.len() as u32;
         let kind = p.kind;
         let ty = self.signature(&p);
+        let generic = p.type_params.map(|tp| {
+            let names: Vec<String> = tp.params.iter().map(|t| t.name.name.to_string()).collect();
+            self.type_params.push(
+                names
+                    .iter()
+                    .map(|n| (n.clone(), Ty::Param(n.clone())))
+                    .collect(),
+            );
+            let sig = self.signature_inner(&p);
+            self.type_params.pop();
+            (names, sig)
+        });
         self.globals.push(Global {
             name: name.to_owned(),
             init: GlobalInit::Function(fidx),
@@ -716,6 +761,7 @@ impl<'a> Lowerer<'a> {
                 func: Some(fidx),
                 kind,
                 reassigned: false,
+                generic,
             },
         );
         let mut p = p;
@@ -785,6 +831,7 @@ impl<'a> Lowerer<'a> {
                         func: None,
                         kind: FunctionKind::Plain,
                         reassigned: false,
+                        generic: None,
                     },
                 );
             }
@@ -1244,6 +1291,7 @@ impl<'a> Lowerer<'a> {
                     let Some(name) = property_key_name(&ms.key) else {
                         continue;
                     };
+                    self.push_type_params(ms.type_parameters.as_deref());
                     let ps = ms
                         .params
                         .items
@@ -1257,6 +1305,7 @@ impl<'a> Lowerer<'a> {
                         Some(t) => self.ts_type(&t.type_annotation),
                         None => Ty::Void,
                     };
+                    self.type_params.pop();
                     fields.push((name, Ty::Function(ps, Box::new(r)), ms.optional));
                 }
                 other => {
@@ -1278,6 +1327,9 @@ impl<'a> Lowerer<'a> {
         let full = type_name(&r.type_name);
         let name = full.rsplit('.').next().unwrap_or(&full).to_owned();
         if !full.contains('.') {
+            if let Some(t) = self.generic_instance(&name, r) {
+                return t;
+            }
             if let Some(t) = self.named_type(&name, r.span) {
                 return t;
             }
@@ -1360,6 +1412,94 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    fn interface_type(&mut self, i: &'a ast::TSInterfaceDeclaration<'a>) -> Ty {
+        let mut base = Vec::new();
+        for h in &i.extends {
+            let n = type_name(&h.type_name);
+            if let Some(Ty::Object(fs)) = self.named_type(&n, h.span) {
+                base.extend(fs);
+            }
+        }
+        match self.members(&i.body.body) {
+            Ty::Object(fs) => {
+                base.extend(fs);
+                Ty::Object(base)
+            }
+            t => t,
+        }
+    }
+
+    /// The declaration file declaring type `name`, if one does.
+    fn ambient_decl(&self, name: &str) -> Option<usize> {
+        self.ambient_mods
+            .iter()
+            .copied()
+            .find(|m| *m != self.cur_mod && self.mods[*m].type_decls.contains_key(name))
+    }
+
+    /// Where the type declaration `name` refers to is: its module and local name.
+    fn find_type_decl(&self, name: &str) -> Option<(usize, String)> {
+        if self.type_decls.contains_key(name) {
+            return Some((self.cur_mod, name.to_owned()));
+        }
+        if let Some((m, exported)) = self.type_imports.get(name) {
+            let theirs = &self.mods[*m];
+            let local = theirs.exports.get(exported)?;
+            return theirs
+                .type_decls
+                .contains_key(local)
+                .then(|| (*m, local.clone()));
+        }
+        self.ambient_decl(name).map(|m| (m, name.to_owned()))
+    }
+
+    /// A reference to a generic alias or interface: its declaration resolved with
+    /// the parameters bound to the arguments (to their defaults or constraints when
+    /// left out). `None` when `name` is not a generic declaration.
+    fn generic_instance(&mut self, name: &str, r: &'a ast::TSTypeReference<'a>) -> Option<Ty> {
+        if self.type_params.iter().any(|s| s.contains_key(name)) {
+            return None;
+        }
+        let (m, local) = self.find_type_decl(name)?;
+        let decls = if m == self.cur_mod {
+            &self.type_decls
+        } else {
+            &self.mods[m].type_decls
+        };
+        let (params, decl) = match decls.get(&local)? {
+            TypeDecl::Alias(t, Some(tp)) => (*tp, TypeDecl::Alias(t, Some(tp))),
+            TypeDecl::Interface(i) => (i.type_parameters.as_deref()?, TypeDecl::Interface(i)),
+            TypeDecl::Alias(_, None) => return None,
+        };
+        let args = self.type_args(r);
+        if !self.type_busy.insert((m, local.clone())) {
+            self.err(
+                r.span,
+                format!("recursive type `{name}` is outside the compiled subset"),
+            );
+            return Some(Ty::Unknown);
+        }
+        let prev = self.enter_module(m);
+        let saved = std::mem::replace(&mut self.type_params, vec![BTreeMap::new()]);
+        for (i, p) in params.params.iter().enumerate() {
+            let t = match (args.get(i), &p.default, &p.constraint) {
+                (Some(a), _, _) => a.clone(),
+                (None, Some(d), _) => self.ts_type(d),
+                (None, None, Some(c)) => self.ts_type(c),
+                (None, None, None) => Ty::Unknown,
+            };
+            self.type_params[0].insert(p.name.name.to_string(), t);
+        }
+        let t = match decl {
+            TypeDecl::Alias(t, _) => self.ts_type(t),
+            TypeDecl::Interface(i) => self.interface_type(i),
+        };
+        self.type_params = saved;
+        self.enter_module(prev);
+        self.type_busy.remove(&(m, local));
+        Some(t)
+    }
+
     fn named_type(&mut self, name: &str, span: Span) -> Option<Ty> {
         for scope in self.type_params.iter().rev() {
             if let Some(t) = scope.get(name) {
@@ -1371,7 +1511,14 @@ impl<'a> Lowerer<'a> {
         }
         if !self.type_decls.contains_key(name) {
             // A type imported from another module of the app: resolved there.
-            let (m, exported) = self.type_imports.get(name).cloned()?;
+            let Some((m, exported)) = self.type_imports.get(name).cloned() else {
+                // Or one a declaration file declares.
+                let m = self.ambient_decl(name)?;
+                let prev = self.enter_module(m);
+                let t = self.named_type(name, span);
+                self.enter_module(prev);
+                return t;
+            };
             let prev = self.enter_module(m);
             let local = self.exports.get(&exported).cloned();
             let t = match local {
@@ -1395,26 +1542,13 @@ impl<'a> Lowerer<'a> {
             return Some(Ty::Unknown);
         }
         let t = match self.type_decls.get(name) {
-            Some(TypeDecl::Alias(t)) => {
+            Some(TypeDecl::Alias(t, _)) => {
                 let t: &'a ast::TSType<'a> = t;
                 self.ts_type(t)
             }
             Some(TypeDecl::Interface(i)) => {
                 let i: &'a ast::TSInterfaceDeclaration<'a> = i;
-                let mut base = Vec::new();
-                for h in &i.extends {
-                    let n = type_name(&h.type_name);
-                    if let Some(Ty::Object(fs)) = self.named_type(&n, h.span) {
-                        base.extend(fs);
-                    }
-                }
-                match self.members(&i.body.body) {
-                    Ty::Object(fs) => {
-                        base.extend(fs);
-                        Ty::Object(base)
-                    }
-                    t => t,
-                }
+                self.interface_type(i)
             }
             None => Ty::Unknown,
         };
@@ -1445,6 +1579,15 @@ impl<'a> Lowerer<'a> {
             Ty::Function(ps, r) => (ps.clone(), (**r).clone()),
             _ => (Vec::new(), Ty::Unknown),
         };
+        // A module function's own annotations are not a context: an unannotated
+        // parameter there is implicitly `any`.
+        let params: Vec<Ty> = params
+            .into_iter()
+            .map(|t| match t {
+                Ty::Unknown => Ty::Param(String::new()),
+                t => t,
+            })
+            .collect();
         let f = self.function(&p, &params, declared_ret, None);
         let ret = f.ret.clone();
         self.fns = saved_fns;
@@ -1510,7 +1653,8 @@ impl<'a> Lowerer<'a> {
             let ty = match annotated {
                 Some(t) => t,
                 None => match param_hint.get(i) {
-                    Some(t) if !matches!(t, Ty::Unknown) => t.clone(),
+                    // Typed by context, if only as `unknown` (a rejection reason).
+                    Some(t) if !matches!(t, Ty::Param(n) if n.is_empty()) => t.clone(),
                     _ => {
                         // A parameter nobody reads needs no type.
                         if !self.pattern_is_unused(&param.pattern) {
@@ -2911,6 +3055,9 @@ impl<'a> Lowerer<'a> {
 
     /// `Math.PI`, `Number.MAX_SAFE_INTEGER`, `document.title`, ...
     fn namespace_member(&mut self, ns: &str, name: &str, span: Span) -> Option<Lowered> {
+        if ns == "cw" && self.ambient_values.contains_key("cw") {
+            return Some(self.cw_member(name, span));
+        }
         let r = match (ns, name) {
             ("Math", "PI") => (Expr::Builtin(Builtin::MathPi, vec![]), Ty::Number),
             ("Number", "MAX_SAFE_INTEGER") => (Expr::Num(9007199254740991.0), Ty::Number),
@@ -2978,11 +3125,30 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
+                let generic = if self.fns.iter().any(|f| f.lookup(name).is_some()) {
+                    None
+                } else {
+                    self.gname(name).and_then(|g| g.generic.clone())
+                };
                 let (f, ft) = self.identifier(name, id.span);
-                self.value_call(f, ft, c, want)
+                match generic {
+                    Some((params, sig)) => self.generic_call(f, ft, &params, &sig, c),
+                    None => self.value_call(f, ft, c, want),
+                }
             }
             E::StaticMemberExpression(m) => {
                 let prop = m.property.name.as_str();
+                if let E::StaticMemberExpression(inner) = strip(&m.object) {
+                    if let E::Identifier(root) = strip(&inner.object) {
+                        if root.name == "cw"
+                            && matches!(inner.property.name.as_str(), "state" | "fs" | "window")
+                            && self.ambient_values.contains_key("cw")
+                            && self.resolve_is_free("cw")
+                        {
+                            return self.cw_call(inner.property.name.as_str(), prop, c);
+                        }
+                    }
+                }
                 if let E::Identifier(ns) = strip(&m.object) {
                     let nsn = ns.name.as_str();
                     if self.resolve_is_free(nsn) {
@@ -3002,6 +3168,45 @@ impl<'a> Lowerer<'a> {
                 self.value_call(f, ft, c, want)
             }
         }
+    }
+
+    /// A call of a generic module function: its type parameters bound from the
+    /// explicit type arguments, then from the arguments' types.
+    fn generic_call(
+        &mut self,
+        f: Expr,
+        ft: Ty,
+        params: &[String],
+        sig: &Ty,
+        c: &'a ast::CallExpression<'a>,
+    ) -> Lowered {
+        let Ty::Function(ps, ret) = sig else {
+            return self.value_call(f, ft, c, None);
+        };
+        let mut bound = BTreeMap::new();
+        if let Some(ta) = &c.type_arguments {
+            for (i, t) in ta.params.iter().enumerate() {
+                if let Some(n) = params.get(i) {
+                    let t = self.ts_type(t);
+                    bound.insert(n.clone(), t);
+                }
+            }
+        }
+        let wants: Vec<Ty> = ps.iter().map(|p| types::subst(p, &bound)).collect();
+        let (args, tys) = self.exprs_args(&c.arguments, &wants);
+        for (p, a) in ps.iter().zip(&tys) {
+            types::unify(p, a, &mut bound);
+        }
+        let mut t = types::subst(ret, &bound);
+        if matches!(t, Ty::Unknown) {
+            if let Ty::Function(_, r) = non_null(&ft) {
+                t = *r;
+            }
+        }
+        if self.mutable_globals && matches!(f, Expr::Global(_)) {
+            self.mark_always();
+        }
+        (Expr::Call(Box::new(f), args, c.optional), t)
     }
 
     fn value_call(
@@ -3083,6 +3288,9 @@ impl<'a> Lowerer<'a> {
         name: &str,
         c: &'a ast::CallExpression<'a>,
     ) -> Option<Lowered> {
+        if ns == "cw" && self.ambient_values.contains_key("cw") {
+            return Some(self.cw_call("", name, c));
+        }
         let num = Ty::Number;
         let (b, want, ret): (Builtin, Vec<Ty>, Ty) = match (ns, name) {
             ("Math", "max") => (Builtin::MathMax, vec![], num),
@@ -3113,7 +3321,11 @@ impl<'a> Lowerer<'a> {
                     Some(e) => self.expr(e, None),
                     None => (Expr::Undefined, Ty::Undefined),
                 };
-                let elem = element(&st).unwrap_or(Ty::Undefined);
+                let elem = if types::is_stringy(&st) {
+                    Ty::String
+                } else {
+                    element(&st).unwrap_or(Ty::Undefined)
+                };
                 let mut args = vec![ArrayItem::Item(sx)];
                 let mut t = elem.clone();
                 if let Some(f) = c.arguments.get(1).and_then(|a| a.as_expression()) {
@@ -3286,6 +3498,87 @@ impl<'a> Lowerer<'a> {
         };
         let (args, _) = self.exprs_args(&c.arguments, &want);
         Some((Expr::Builtin(b, args), ret))
+    }
+
+    /// A type a declaration file declares, or `unknown`.
+    fn ambient_type(&mut self, name: &str, span: Span) -> Ty {
+        self.named_type(name, span).unwrap_or(Ty::Unknown)
+    }
+
+    /// `cw.kind`, `cw.argument`, `cw.env`: the desktop host's global (see `cw_ui::cw`).
+    fn cw_member(&mut self, name: &str, span: Span) -> Lowered {
+        self.mark_always();
+        match name {
+            "kind" => (Expr::Builtin(Builtin::CwKind, vec![]), Ty::String),
+            "argument" => (Expr::Builtin(Builtin::CwArgument, vec![]), Ty::String),
+            "env" => (
+                Expr::Builtin(Builtin::CwEnv, vec![]),
+                self.ambient_type("CwEnv", span),
+            ),
+            _ => {
+                self.err(
+                    span,
+                    format!("`cw.{name}` is outside the compiled subset (call its methods)"),
+                );
+                (Expr::Undefined, Ty::Unknown)
+            }
+        }
+    }
+
+    /// A call of one of `cw`'s methods: `cw.now()`, `cw.fs.readFile(path)`, ...
+    fn cw_call(&mut self, group: &str, name: &str, c: &'a ast::CallExpression<'a>) -> Lowered {
+        self.mark_always();
+        let promise = |t: Ty| Ty::Promise(Box::new(t));
+        let s = Ty::String;
+        let (b, want, ret) = match (group, name) {
+            ("", "onEnv") => {
+                let env = self.ambient_type("CwEnv", c.span);
+                (
+                    Builtin::CwOnEnv,
+                    vec![Ty::Function(vec![env], Box::new(Ty::Void))],
+                    Ty::Function(vec![], Box::new(Ty::Void)),
+                )
+            }
+            ("", "now") => (Builtin::CwNow, vec![], Ty::Number),
+            ("", "fetch") => {
+                let init = self.ambient_type("CwFetchInit", c.span);
+                (Builtin::CwFetch, vec![s, init], promise(Ty::Response))
+            }
+            ("", "launch") => (Builtin::CwLaunch, vec![s.clone(), s], promise(Ty::Void)),
+            ("", "emit") => (Builtin::CwEmit, vec![s, Ty::Unknown], promise(Ty::Void)),
+            ("", "refuse") => (Builtin::CwRefuse, vec![s], Ty::Void),
+            ("state", "get") => {
+                let t = match c.type_arguments.as_ref().and_then(|a| a.params.first()) {
+                    Some(t) => self.ts_type(t),
+                    None => Ty::Unknown,
+                };
+                (Builtin::CwStateGet, vec![], union(t, Ty::Null))
+            }
+            ("state", "set") => (Builtin::CwStateSet, vec![Ty::Unknown], Ty::Void),
+            ("fs", "readFile") => (Builtin::CwReadFile, vec![s.clone()], promise(s)),
+            ("fs", "writeFile") => (Builtin::CwWriteFile, vec![s.clone(), s], promise(Ty::Void)),
+            ("fs", "list") => (
+                Builtin::CwList,
+                vec![s.clone()],
+                promise(Ty::Array(Box::new(s))),
+            ),
+            ("fs", "mkdir") => (Builtin::CwMkdir, vec![s], promise(Ty::Void)),
+            ("window", "set") => {
+                let facts = self.ambient_type("CwWindowFacts", c.span);
+                (Builtin::CwWindowSet, vec![facts], Ty::Void)
+            }
+            _ => {
+                let path = if group.is_empty() {
+                    format!("cw.{name}")
+                } else {
+                    format!("cw.{group}.{name}")
+                };
+                self.err(c.span, format!("`{path}` is outside the compiled subset"));
+                return (Expr::Undefined, Ty::Unknown);
+            }
+        };
+        let (args, _) = self.exprs_args(&c.arguments, &want);
+        (Expr::Builtin(b, args), ret)
     }
 
     fn check_hook_position(&mut self, span: Span, name: &str) {
@@ -3722,7 +4015,10 @@ impl<'a> Lowerer<'a> {
                 (Ty::Promise(t), "then") => {
                     let args = self.arg_exprs(
                         &c.arguments,
-                        &[Ty::Function(vec![(**t).clone()], Box::new(Ty::Unknown))],
+                        &[
+                            Ty::Function(vec![(**t).clone()], Box::new(Ty::Unknown)),
+                            Ty::Function(vec![Ty::Unknown], Box::new(Ty::Unknown)),
+                        ],
                     );
                     let r = match args.first().map(|a| &a.1) {
                         Some(Ty::Function(_, r)) => match &**r {
@@ -3830,6 +4126,11 @@ impl<'a> Lowerer<'a> {
                 (Ty::DomNode, "focus") => (M::NodeFocus, vec![], Ty::Void),
                 (Ty::DomNode, "blur") => (M::NodeBlur, vec![], Ty::Void),
                 (Ty::DomNode, "select") => (M::NodeSelect, vec![], Ty::Void),
+                (Ty::DomNode, "setSelectionRange") => (
+                    M::NodeSetSelectionRange,
+                    vec![Ty::Number, Ty::Number],
+                    Ty::Void,
+                ),
                 (Ty::Event, "preventDefault") => (M::EventPreventDefault, vec![], Ty::Void),
                 (Ty::Event, "stopPropagation") => (M::EventStopPropagation, vec![], Ty::Void),
                 (Ty::Unknown, _) => {

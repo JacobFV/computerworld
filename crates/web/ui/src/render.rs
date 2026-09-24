@@ -1596,12 +1596,27 @@ impl Runtime {
         }
     }
 
+    /// Takes `n` out of the document. Focus and hover inside it are dropped, with
+    /// no events, as the document's own removal steps do.
+    pub(crate) fn detach(&mut self, n: NodeId) {
+        let inside = |f: Option<NodeId>, doc: &cw_web::dom::Document| {
+            f.is_some_and(|f| f == n || doc.ancestors(f).any(|a| a == n))
+        };
+        if inside(self.inner.focused, &self.inner.doc) {
+            self.inner.focused = None;
+        }
+        if inside(self.inner.hovered, &self.inner.doc) {
+            self.inner.hovered = None;
+        }
+        self.inner.doc.detach(n);
+    }
+
     pub(crate) fn unmount(&mut self, n: MNode, remove: bool) {
         match n {
             MNode::Empty => {}
             MNode::Text { node, .. } => {
                 if remove {
-                    self.inner.doc.detach(node);
+                    self.detach(node);
                 }
             }
             MNode::Template(t) => {
@@ -1621,7 +1636,7 @@ impl Runtime {
                     }
                 }
                 if remove {
-                    self.inner.doc.detach(t.root);
+                    self.detach(t.root);
                 }
             }
             MNode::Component { inst } => {
@@ -1903,7 +1918,7 @@ impl Runtime {
         let container = self.container;
         let kids: Vec<NodeId> = self.inner.doc.children(container).collect();
         for k in kids {
-            self.inner.doc.detach(k);
+            self.detach(k);
         }
         let root = self.mount_value(&element, container, None);
         self.root = root;

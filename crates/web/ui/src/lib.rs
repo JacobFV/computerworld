@@ -27,6 +27,7 @@ pub mod ir;
 pub mod value;
 
 mod asyncfn;
+mod cw;
 mod dom;
 mod events;
 mod interp;
@@ -322,6 +323,31 @@ impl UiApp {
                 (r.origin.y - sy + r.size.height.scale(1, 2)).to_px_round(),
             )
         })
+    }
+
+    /// Replies to the app's `cw` requests, as the JSON array bridge.js's
+    /// `__cw_deliver` takes (`[{"id": 1, "value": …} | {"id": 2, "error": "…"}]`);
+    /// the app then settles. See `crate::cw`.
+    pub fn cw_deliver(&mut self, replies: &str) -> Result<(), UiError> {
+        let r = self.rt.cw_deliver(replies).map_err(UiError::State);
+        self.rt.trim_journal();
+        r
+    }
+
+    /// The app's environment changed (bridge.js's `__cw_env`): `cw.env` becomes
+    /// `env` (JSON) and every `cw.onEnv` listener runs; the app then settles. The host
+    /// applies the theme to the document itself.
+    pub fn cw_env(&mut self, env: &str) -> Result<(), UiError> {
+        let r = self.rt.cw_env(env).map_err(UiError::State);
+        self.rt.trim_journal();
+        r
+    }
+
+    /// Whether the app declared its state through `cw.state.set`: then that state
+    /// is what a host keeps for it, and booting it again with that state restores
+    /// it, as on the JS backend.
+    pub fn declares_state(&self) -> bool {
+        self.rt.cw.declared
     }
 
     /// Whether a render threw and React's semantics unmounted the app.

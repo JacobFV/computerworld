@@ -56,6 +56,8 @@ pub enum HeapObj {
     Cell(V),
     /// A `useSyncExternalStore` subscription callback: instance and hook.
     StoreChanged(u32, u32),
+    /// The function removing the `cw.onEnv` listener with this id.
+    CwOffEnv(u32),
     /// Promises and events do not outlive the entry that created them; a pending
     /// promise restores as one that never settles.
     Opaque,
@@ -165,6 +167,24 @@ pub struct UiState {
     /// `window`/`document` listeners: window?, type, listener, capture.
     #[serde(default)]
     pub listeners: Vec<(bool, String, V, bool)>,
+    /// The `cw` bridge, once the app used it. Requests awaiting a reply are not
+    /// kept: a restored app is never answered them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cw: Option<CwS>,
+}
+
+/// The `cw` bridge's state (see `crate::cw`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CwS {
+    pub kind: String,
+    pub argument: String,
+    pub env: V,
+    pub state: V,
+    pub listeners: Vec<(u32, V)>,
+    pub next_listener: u32,
+    pub next_request: u64,
+    #[serde(default)]
+    pub declared: bool,
 }
 
 // ------------------------------------------------------------------ encoding
@@ -334,13 +354,19 @@ impl Enc {
                     V::H(i)
                 }
             },
-            Value::Native(n) if matches!(**n, NativeFn::StoreChanged { .. }) => {
+            Value::Native(n)
+                if matches!(**n, NativeFn::StoreChanged { .. } | NativeFn::CwOffEnv(_)) =>
+            {
                 match self.reserve(Rc::as_ptr(n) as *const u8 as usize) {
                     Err(i) => V::H(i),
                     Ok(i) => {
-                        if let NativeFn::StoreChanged { inst, hook } = **n {
-                            self.heap[i as usize] = HeapObj::StoreChanged(inst, hook);
-                        }
+                        self.heap[i as usize] = match **n {
+                            NativeFn::StoreChanged { inst, hook } => {
+                                HeapObj::StoreChanged(inst, hook)
+                            }
+                            NativeFn::CwOffEnv(id) => HeapObj::CwOffEnv(id),
+                            _ => HeapObj::Opaque,
+                        };
                         V::H(i)
                     }
                 }
@@ -520,6 +546,16 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         })
         .collect();
     let i = &rt.inner;
+    let cw = rt.cw.loaded.then(|| CwS {
+        kind: rt.cw.kind.clone(),
+        argument: rt.cw.argument.clone(),
+        env: e.v(&rt.cw.env),
+        state: e.v(&rt.cw.state),
+        listeners: rt.cw.listeners.iter().map(|(i, l)| (*i, e.v(l))).collect(),
+        next_listener: rt.cw.next_listener,
+        next_request: rt.cw.next_request,
+        declared: rt.cw.declared,
+    });
     let listeners = rt
         .global_listeners
         .iter()
@@ -574,6 +610,7 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         booted: rt.booted,
         crashed: rt.crashed,
         listeners,
+        cw,
     }
 }
 
@@ -748,6 +785,7 @@ impl Dec<'_> {
                 inst: *inst,
                 hook: *hook,
             })),
+            HeapObj::CwOffEnv(id) => Value::Native(Rc::new(NativeFn::CwOffEnv(*id))),
             HeapObj::Opaque => Value::Promise(crate::interp::new_promise()),
         };
         self.done[idx] = Some(v.clone());
@@ -980,6 +1018,24 @@ pub(crate) fn load(s: &UiState, host: Box<dyn ScriptHostDocument>) -> Result<Run
     rt.id_counter = s.id_counter;
     rt.booted = s.booted;
     rt.crashed = s.crashed;
+    if let Some(c) = &s.cw {
+        rt.cw = crate::cw::CwBridge {
+            loaded: true,
+            kind: c.kind.clone(),
+            argument: c.argument.clone(),
+            env: d.v(&c.env)?,
+            state: d.v(&c.state)?,
+            listeners: c
+                .listeners
+                .iter()
+                .map(|(i, l)| Ok((*i, d.v(l)?)))
+                .collect::<Result<_, String>>()?,
+            next_listener: c.next_listener,
+            next_request: c.next_request,
+            declared: c.declared,
+            pending: Default::default(),
+        };
+    }
     for (window, ty, f, capture) in &s.listeners {
         rt.global_listeners.push(GlobalListener {
             window: *window,

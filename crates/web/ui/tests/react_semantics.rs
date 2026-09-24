@@ -1027,3 +1027,58 @@ createRoot(document.getElementById('root')!).render(<App />);
     assert_eq!(text(&restored), "2:ab:1");
     assert_eq!(app.snapshot().to_json(), restored.snapshot().to_json());
 }
+
+#[test]
+fn generics_selection_ranges_and_focus_leaving_with_its_element() {
+    same_as_react(
+        r#"
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+interface Box<T> { value: T; label: string; map<U>(f: (v: T) => U): U }
+type Pair<A, B = string> = { first: A; second: B };
+function box<T>(value: T, label: string): Box<T> {
+  return { value, label, map: <U,>(f: (v: T) => U) => f(value) };
+}
+function firstOf<T>(items: T[], fallback: T): T {
+  return items.length > 0 ? items[0] : fallback;
+}
+function pair<A>(first: A): Pair<A> {
+  return { first, second: 'two' };
+}
+function App() {
+  const [editing, setEditing] = useState(true);
+  const [text, setText] = useState('hello world');
+  const field = useRef<HTMLInputElement | null>(null);
+  const numbers = box<number[]>([3, 1, 2], 'nums');
+  const word = firstOf(['alpha', 'beta'], 'none');
+  const p = pair(42);
+  useLayoutEffect(() => {
+    const el = field.current;
+    if (el) {
+      el.focus();
+      el.setSelectionRange(2, 5);
+      console.log('selected', el.selectionStart, el.selectionEnd);
+    }
+  }, [editing]);
+  useEffect(() => {
+    console.log('active is body', document.activeElement === document.body, editing);
+  });
+  return (
+    <div>
+      <p id="info">{numbers.label}:{numbers.value.join('+')}={numbers.map((v) => v.reduce((a, b) => a + b, 0))} {word.toUpperCase()} {p.first + 1} {p.second.length}</p>
+      {editing ? <input id="field" ref={field} value={text} onChange={(e) => setText(e.target.value)} /> : <span>{text}</span>}
+      <button id="toggle" onMouseDown={(e) => e.preventDefault()} onClick={() => setEditing((v) => !v)}>toggle</button>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[
+            Step::Type("X"),
+            Step::Click("#toggle"),
+            Step::Type("Y"),
+            Step::Click("#toggle"),
+            Step::Type("Z"),
+        ],
+    );
+}

@@ -304,6 +304,7 @@ pub fn show(t: &Ty) -> String {
         Ty::Lit(s) => format!("{s:?}"),
         Ty::NumLit(n) => format!("{n}"),
         Ty::Unknown => "unknown".into(),
+        Ty::Param(n) => n.clone(),
     }
 }
 
@@ -340,5 +341,104 @@ pub fn literal_names(t: &Ty) -> Vec<String> {
         Ty::Lit(s) => vec![s.clone()],
         Ty::Union(ts) => ts.iter().flat_map(literal_names).collect(),
         _ => Vec::new(),
+    }
+}
+
+/// `t` with each type parameter replaced by its binding (`unknown` when unbound).
+pub fn subst(t: &Ty, b: &std::collections::BTreeMap<String, Ty>) -> Ty {
+    let s = |t: &Ty| subst(t, b);
+    let bx = |t: &Ty| Box::new(subst(t, b));
+    match t {
+        Ty::Param(n) => b.get(n).cloned().unwrap_or(Ty::Unknown),
+        Ty::Array(e) => Ty::Array(bx(e)),
+        Ty::Tuple(ts) => Ty::Tuple(ts.iter().map(s).collect()),
+        Ty::Object(fs) => Ty::Object(fs.iter().map(|(n, t, o)| (n.clone(), s(t), *o)).collect()),
+        Ty::Dict(v) => Ty::Dict(bx(v)),
+        Ty::Union(ts) => union_all(ts.iter().map(s)),
+        Ty::Function(ps, r) => Ty::Function(ps.iter().map(s).collect(), bx(r)),
+        Ty::Ref(t) => Ty::Ref(bx(t)),
+        Ty::Setter(t) => Ty::Setter(bx(t)),
+        Ty::Dispatch(t) => Ty::Dispatch(bx(t)),
+        Ty::Context(t) => Ty::Context(bx(t)),
+        Ty::Promise(t) => Ty::Promise(bx(t)),
+        Ty::Set(t) => Ty::Set(bx(t)),
+        Ty::Map(k, v) => Ty::Map(bx(k), bx(v)),
+        t => t.clone(),
+    }
+}
+
+/// Binds the type parameters in `p` (a parameter's declared type) from `a` (the
+/// argument's type), structurally; a parameter keeps its first binding.
+pub fn unify(p: &Ty, a: &Ty, b: &mut std::collections::BTreeMap<String, Ty>) {
+    match (p, a) {
+        (Ty::Param(n), a) => {
+            if !matches!(a, Ty::Unknown) && !b.contains_key(n) {
+                b.insert(n.clone(), a.clone());
+            }
+        }
+        (Ty::Union(ps), a) => {
+            // `T | null` against `X | null`: T is what is left of the argument.
+            let params: Vec<&Ty> = ps.iter().filter(|t| mentions_param(t)).collect();
+            if params.len() == 1 {
+                let rest = match a {
+                    Ty::Union(xs) => union_all(xs.iter().filter(|x| !ps.contains(x)).cloned()),
+                    x if ps.contains(x) => return,
+                    x => x.clone(),
+                };
+                unify(params[0], &rest, b);
+            }
+        }
+        (Ty::Array(p), Ty::Array(a))
+        | (Ty::Dict(p), Ty::Dict(a))
+        | (Ty::Ref(p), Ty::Ref(a))
+        | (Ty::Setter(p), Ty::Setter(a))
+        | (Ty::Dispatch(p), Ty::Dispatch(a))
+        | (Ty::Context(p), Ty::Context(a))
+        | (Ty::Promise(p), Ty::Promise(a))
+        | (Ty::Set(p), Ty::Set(a)) => unify(p, a, b),
+        (Ty::Array(p), Ty::Tuple(xs)) => unify(p, &union_all(xs.iter().cloned()), b),
+        (Ty::Map(pk, pv), Ty::Map(ak, av)) => {
+            unify(pk, ak, b);
+            unify(pv, av, b);
+        }
+        (Ty::Tuple(ps), Ty::Tuple(xs)) => {
+            for (p, x) in ps.iter().zip(xs) {
+                unify(p, x, b);
+            }
+        }
+        (Ty::Object(ps), Ty::Object(xs)) => {
+            for (n, p, _) in ps {
+                if let Some((_, x, _)) = xs.iter().find(|(m, _, _)| m == n) {
+                    unify(p, x, b);
+                }
+            }
+        }
+        (Ty::Function(ps, pr), Ty::Function(xs, xr)) => {
+            for (p, x) in ps.iter().zip(xs) {
+                unify(p, x, b);
+            }
+            unify(pr, xr, b);
+        }
+        _ => {}
+    }
+}
+
+/// Whether `t` mentions a type parameter.
+pub fn mentions_param(t: &Ty) -> bool {
+    match t {
+        Ty::Param(_) => true,
+        Ty::Array(e)
+        | Ty::Dict(e)
+        | Ty::Ref(e)
+        | Ty::Setter(e)
+        | Ty::Dispatch(e)
+        | Ty::Context(e)
+        | Ty::Promise(e)
+        | Ty::Set(e) => mentions_param(e),
+        Ty::Map(k, v) => mentions_param(k) || mentions_param(v),
+        Ty::Tuple(ts) | Ty::Union(ts) => ts.iter().any(mentions_param),
+        Ty::Object(fs) => fs.iter().any(|(_, t, _)| mentions_param(t)),
+        Ty::Function(ps, r) => ps.iter().any(mentions_param) || mentions_param(r),
+        _ => false,
     }
 }
