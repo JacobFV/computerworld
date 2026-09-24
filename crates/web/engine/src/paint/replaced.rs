@@ -175,7 +175,10 @@ fn paint_svg(p: &mut Painter, key: (NodeId, u32), state: &State, content: Rect, 
         f(content.size.height),
         origin,
     );
-    let clipped = state.clipped(r);
+    // The raster is exactly the content box, which is the clip an inline svg's
+    // `overflow: hidden` asks for. A clip rect here would be in untransformed
+    // coordinates and cut a transformed svg (Tailwind's `-translate-y-1/2` icons).
+    let clipped = state.clone();
     for layer in crate::svg::layers(&built, r.width as usize, r.height as usize) {
         let part = p.next_part(key);
         let id = p.id(key, part);

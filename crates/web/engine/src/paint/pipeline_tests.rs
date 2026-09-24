@@ -915,3 +915,20 @@ fn backdrop_filter_blurs_what_is_behind_the_box() {
     let sharp = page("");
     assert_eq!(sharp.at(100, 50), Color(255, 255, 255, 255));
 }
+
+#[test]
+fn a_transformed_inline_svg_is_drawn_whole() {
+    // A search icon centred with `top: 50%; transform: translateY(-50%)`: the whole
+    // ring shows, top half included.
+    let html = r##"<!doctype html><style>body{margin:0;background:#fff;color:#00f}</style>
+        <div style="position:relative;height:200px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:96px;height:96px;display:block"><circle cx="12" cy="12" r="8"/></svg></div>"##;
+    let f = pixels(&render(html));
+    // The box sits at y 52..148; the ring's top is 16 px into it.
+    assert_eq!(f.at(48, 68), Color(0, 0, 255, 255), "the top of the ring");
+    assert_eq!(
+        f.at(48, 132),
+        Color(0, 0, 255, 255),
+        "the bottom of the ring"
+    );
+}
