@@ -326,7 +326,14 @@ impl<'a> Compiler<'a> {
         if let Some(&i) = f.str_consts.get(s) {
             return i;
         }
-        f.consts.push(Value::Str(JsStr::new(s)));
+        // Short strings (property names among them) are canonical, so the
+        // property lookups that use them compare addresses.
+        let js = if s.len() <= 64 {
+            JsStr::intern(s)
+        } else {
+            JsStr::new(s)
+        };
+        f.consts.push(Value::Str(js));
         let i = (f.consts.len() - 1) as u32;
         f.str_consts.insert(s.to_string(), i);
         i

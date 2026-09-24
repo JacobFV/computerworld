@@ -30,12 +30,65 @@ impl Hasher for Fnv {
 }
 pub type FnvMap<K, V> = HashMap<K, V, BuildHasherDefault<Fnv>>;
 
+/// A fast word-at-a-time hash for lookup tables that are never iterated
+/// (pointer-keyed property indexes, the string interner), so their order
+/// cannot leak into behaviour.
+#[derive(Default)]
+pub struct FastHash(u64);
+impl Hasher for FastHash {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+    #[inline]
+    fn write(&mut self, bytes: &[u8]) {
+        let mut h = self.0 ^ 0x9e37_79b9_7f4a_7c15;
+        let (chunks, rest) = bytes.as_chunks::<8>();
+        for c in chunks {
+            let w = u64::from_le_bytes(*c);
+            h = (h ^ w).wrapping_mul(0x5851_f42d_4c95_7f2d).rotate_left(29);
+        }
+        if !rest.is_empty() {
+            let mut buf = [0u8; 8];
+            buf[..rest.len()].copy_from_slice(rest);
+            h = (h ^ u64::from_le_bytes(buf)).wrapping_mul(0x5851_f42d_4c95_7f2d);
+        }
+        self.0 = h ^ (h >> 31);
+    }
+    #[inline]
+    fn write_usize(&mut self, n: usize) {
+        let h = (self.0 ^ n as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+        self.0 = h ^ (h >> 29);
+    }
+    #[inline]
+    fn write_u64(&mut self, n: u64) {
+        self.write_usize(n as usize)
+    }
+}
+pub type FastMap<K, V> = HashMap<K, V, BuildHasherDefault<FastHash>>;
+
 // ---------------------------------------------------------------- strings
 
 pub struct StrInner {
     pub s: String,
     pub ascii: bool,
     pub len16: usize,
+    /// The one live string with this content that property maps key on (see
+    /// `JsStr::intern`): two canonical strings are equal iff they are the same
+    /// allocation, which makes property lookup a pointer comparison.
+    canon: std::cell::Cell<bool>,
+}
+
+/// The canonical strings, by content. Entries are weak: a property name no
+/// object or code holds any more is dropped, and the table is swept as it
+/// grows.
+#[derive(Default)]
+struct Interner {
+    map: FastMap<Box<str>, std::rc::Weak<StrInner>>,
+    swept_at: usize,
+}
+
+thread_local! {
+    static INTERNER: RefCell<Interner> = RefCell::new(Interner::default());
 }
 
 #[derive(Clone)]
@@ -50,7 +103,49 @@ impl JsStr {
         } else {
             s.encode_utf16().count()
         };
-        JsStr(Rc::new(StrInner { s, ascii, len16 }))
+        JsStr(Rc::new(StrInner {
+            s,
+            ascii,
+            len16,
+            canon: std::cell::Cell::new(false),
+        }))
+    }
+    /// Whether this is the canonical string for its content.
+    #[inline]
+    pub fn is_canon(&self) -> bool {
+        self.0.canon.get()
+    }
+    /// The canonical string with this content, if one is live.
+    pub fn lookup_canon(s: &str) -> Option<JsStr> {
+        INTERNER.with(|i| i.borrow().map.get(s).and_then(|w| w.upgrade()).map(JsStr))
+    }
+    /// The canonical string with this content (making `self` it when there is
+    /// none).
+    pub fn canonical(&self) -> JsStr {
+        if self.is_canon() {
+            return self.clone();
+        }
+        INTERNER.with(|i| {
+            let mut i = i.borrow_mut();
+            if let Some(c) = i.map.get(self.as_str()).and_then(|w| w.upgrade()) {
+                return JsStr(c);
+            }
+            let me = self.clone();
+            me.0.canon.set(true);
+            i.map.insert(me.as_str().into(), Rc::downgrade(&me.0));
+            if i.map.len() > 4096 && i.map.len() > 2 * i.swept_at {
+                i.map.retain(|_, w| w.strong_count() > 0);
+                i.swept_at = i.map.len();
+            }
+            me
+        })
+    }
+    /// The canonical string for `s`.
+    pub fn intern(s: &str) -> JsStr {
+        if let Some(c) = Self::lookup_canon(s) {
+            return c;
+        }
+        JsStr::new(s).canonical()
     }
     pub fn as_str(&self) -> &str {
         &self.0.s
@@ -299,8 +394,33 @@ pub enum Key {
 }
 
 impl Key {
+    /// A string key (canonical, so it is found by pointer).
     pub fn str(s: &str) -> Key {
-        Key::Str(JsStr::new(s))
+        Key::Str(JsStr::intern(s))
+    }
+    /// The key's identity in property maps: the address of its canonical
+    /// string or of its symbol. `None` when no canonical string with this
+    /// content is live, so no map can hold it.
+    #[inline]
+    pub fn ident(&self) -> Option<usize> {
+        match self {
+            Key::Str(s) => {
+                if s.is_canon() {
+                    Some(Rc::as_ptr(&s.0) as *const u8 as usize)
+                } else {
+                    JsStr::lookup_canon(s).map(|c| Rc::as_ptr(&c.0) as *const u8 as usize)
+                }
+            }
+            Key::Sym(s) => Some(Rc::as_ptr(s) as *const u8 as usize),
+        }
+    }
+    /// This key with its string made canonical (what property maps store).
+    #[inline]
+    pub fn canonical(self) -> Key {
+        match self {
+            Key::Str(s) if !s.is_canon() => Key::Str(s.canonical()),
+            k => k,
+        }
     }
     pub fn as_str(&self) -> Option<&str> {
         match self {
@@ -366,13 +486,24 @@ impl Prop {
     }
 }
 
+/// An object's own properties in insertion order. Keys are canonical
+/// (`Key::canonical`), so a key is found by comparing addresses: a scan for a
+/// few properties, a pointer-keyed index beyond that.
 #[derive(Default)]
 pub struct PropMap {
     pub entries: Vec<(Key, Prop)>,
-    index: Option<FnvMap<JsStr, usize>>,
+    index: Option<FastMap<usize, usize>>,
 }
 
-const INDEX_AT: usize = 10;
+const INDEX_AT: usize = 12;
+
+#[inline]
+fn key_addr(k: &Key) -> usize {
+    match k {
+        Key::Str(s) => Rc::as_ptr(&s.0) as *const u8 as usize,
+        Key::Sym(s) => Rc::as_ptr(s) as *const u8 as usize,
+    }
+}
 
 impl PropMap {
     pub fn len(&self) -> usize {
@@ -381,22 +512,24 @@ impl PropMap {
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
-    pub fn find_str(&self, k: &str) -> Option<usize> {
+    /// The position of the key with identity `id` (see `Key::ident`).
+    #[inline]
+    pub fn find_ident(&self, id: usize) -> Option<usize> {
         if let Some(ix) = &self.index {
-            return ix.get(k).copied();
+            return ix.get(&id).copied();
         }
-        self.entries
-            .iter()
-            .position(|(key, _)| matches!(key, Key::Str(s) if s.as_str() == k))
+        self.entries.iter().position(|(k, _)| key_addr(k) == id)
     }
+    pub fn find_str(&self, k: &str) -> Option<usize> {
+        let c = JsStr::lookup_canon(k)?;
+        self.find_ident(Rc::as_ptr(&c.0) as *const u8 as usize)
+    }
+    #[inline]
     pub fn find(&self, k: &Key) -> Option<usize> {
-        match k {
-            Key::Str(s) => self.find_str(s),
-            Key::Sym(sym) => self
-                .entries
-                .iter()
-                .position(|(key, _)| matches!(key, Key::Sym(x) if Rc::ptr_eq(x, sym))),
+        if self.entries.is_empty() {
+            return None;
         }
+        self.find_ident(k.ident()?)
     }
     pub fn get(&self, k: &Key) -> Option<&Prop> {
         self.find(k).map(|i| &self.entries[i].1)
@@ -408,12 +541,14 @@ impl PropMap {
         self.find(k).map(move |i| &mut self.entries[i].1)
     }
     pub fn insert(&mut self, k: Key, p: Prop) {
-        if let Some(i) = self.find(&k) {
+        let k = k.canonical();
+        let id = key_addr(&k);
+        if let Some(i) = self.find_ident(id) {
             self.entries[i].1 = p;
             return;
         }
-        if let (Some(ix), Key::Str(s)) = (&mut self.index, &k) {
-            ix.insert(s.clone(), self.entries.len());
+        if let Some(ix) = &mut self.index {
+            ix.insert(id, self.entries.len());
         }
         self.entries.push((k, p));
         if self.index.is_none() && self.entries.len() > INDEX_AT {
@@ -421,11 +556,10 @@ impl PropMap {
         }
     }
     fn rebuild(&mut self) {
-        let mut ix = FnvMap::default();
+        let mut ix = FastMap::default();
+        ix.reserve(self.entries.len() * 2);
         for (i, (k, _)) in self.entries.iter().enumerate() {
-            if let Key::Str(s) = k {
-                ix.insert(s.clone(), i);
-            }
+            ix.insert(key_addr(k), i);
         }
         self.index = Some(ix);
     }
