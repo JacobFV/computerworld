@@ -13,85 +13,49 @@
   },
   {
     "file": "../sdk/cw.ts",
-    "line": 23,
-    "col": 23,
+    "line": 24,
+    "col": 14,
     "message": "unknown name `cw`"
   },
   {
     "file": "../sdk/cw.ts",
-    "line": 23,
-    "col": 23,
+    "line": 24,
+    "col": 14,
     "message": "calling `.set` on a value of type unknown"
-  },
-  {
-    "file": "../sdk/cw.ts",
-    "line": 28,
-    "col": 9,
-    "message": "parameter `next` has implicit type any: annotate it"
   },
   {
     "file": "../sdk/cw.ts",
     "line": 29,
-    "col": 11,
-    "message": "`Object.is` is outside the compiled subset"
-  },
-  {
-    "file": "../sdk/cw.ts",
-    "line": 30,
-    "col": 7,
-    "message": "assigning `current` from inside a closure is outside the compiled subset (keep it in state or a ref)"
-  },
-  {
-    "file": "../sdk/cw.ts",
-    "line": 31,
-    "col": 7,
+    "col": 5,
     "message": "unknown name `cw`"
   },
   {
     "file": "../sdk/cw.ts",
-    "line": 31,
-    "col": 7,
+    "line": 29,
+    "col": 5,
     "message": "calling `.set` on a value of type unknown"
   },
   {
     "file": "../sdk/cw.ts",
-    "line": 35,
-    "col": 7,
-    "message": "`store` is used before its declaration (declare it above this use)"
-  },
-  {
-    "file": "../sdk/cw.ts",
-    "line": 35,
-    "col": 7,
-    "message": "calling `.set` on a value of type unknown"
-  },
-  {
-    "file": "../sdk/cw.ts",
-    "line": 49,
-    "col": 10,
-    "message": "this React API is outside the compiled subset"
-  },
-  {
-    "file": "../sdk/cw.ts",
-    "line": 53,
+    "line": 52,
     "col": 27,
     "message": "type `CwEnv` is outside the compiled subset"
   },
   {
     "file": "../sdk/cw.ts",
-    "line": 54,
+    "line": 53,
     "col": 34,
     "message": "unknown name `cw`"
   },
   {
     "file": "../sdk/cw.ts",
-    "line": 55,
+    "line": 54,
     "col": 19,
     "message": "unknown name `cw`"
   },
   {
     "file": "../sdk/cw.ts",
-    "line": 55,
+    "line": 54,
     "col": 19,
     "message": "calling `.onEnv` on a value of type unknown"
   },
@@ -124,18 +88,6 @@
     "line": 43,
     "col": 45,
     "message": "method `codePointAt` on type undefined is outside the compiled subset"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 50,
-    "col": 10,
-    "message": "`instanceof` is outside the compiled subset"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 50,
-    "col": 27,
-    "message": "unknown name `Error`"
   },
   {
     "file": "Notes.tsx",
@@ -217,24 +169,6 @@
   },
   {
     "file": "Notes.tsx",
-    "line": 83,
-    "col": 17,
-    "message": "parameter `s` has implicit type any: annotate it"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 84,
-    "col": 5,
-    "message": "cannot spread a value of type unknown"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 89,
-    "col": 14,
-    "message": "calling `.includes` on a value of type unknown"
-  },
-  {
-    "file": "Notes.tsx",
     "line": 95,
     "col": 8,
     "message": "calling `.includes` on a value of type unknown"
@@ -277,30 +211,6 @@
   },
   {
     "file": "Notes.tsx",
-    "line": 111,
-    "col": 17,
-    "message": "parameter `s` has implicit type any: annotate it"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 111,
-    "col": 26,
-    "message": "cannot spread a value of type unknown"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 115,
-    "col": 17,
-    "message": "parameter `s` has implicit type any: annotate it"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 115,
-    "col": 26,
-    "message": "cannot spread a value of type unknown"
-  },
-  {
-    "file": "Notes.tsx",
     "line": 145,
     "col": 5,
     "message": "unknown name `cw`"
@@ -310,12 +220,6 @@
     "line": 145,
     "col": 5,
     "message": "calling `.refuse` on a value of type unknown"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 152,
-    "col": 52,
-    "message": "property `id` does not exist on type ReactNode | null"
   },
   {
     "file": "Notes.tsx",
@@ -355,18 +259,6 @@
   },
   {
     "file": "Notes.tsx",
-    "line": 269,
-    "col": 38,
-    "message": "parameter `now` has implicit type any: annotate it"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 269,
-    "col": 69,
-    "message": "cannot spread a value of type unknown"
-  },
-  {
-    "file": "Notes.tsx",
     "line": 286,
     "col": 22,
     "message": "property `mobile` does not exist on type void"
@@ -385,104 +277,44 @@
   },
   {
     "file": "Notes.tsx",
-    "line": 292,
+    "line": 293,
     "col": 24,
     "message": "property `open` does not exist on type void"
   },
   {
     "file": "Notes.tsx",
-    "line": 292,
+    "line": 293,
     "col": 44,
     "message": "property `editing` does not exist on type void"
   },
   {
     "file": "Notes.tsx",
-    "line": 292,
+    "line": 293,
     "col": 60,
     "message": "property `mobile` does not exist on type void"
   },
   {
     "file": "Notes.tsx",
-    "line": 294,
-    "col": 19,
-    "message": "`document.getElementById` is outside the compiled subset"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 296,
-    "col": 32,
-    "message": "`document.activeElement` is outside the compiled subset"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 299,
+    "line": 300,
     "col": 7,
     "message": "method `setSelectionRange` on type HTMLElement is outside the compiled subset"
   },
   {
     "file": "Notes.tsx",
-    "line": 305,
-    "col": 34,
-    "message": "`document.activeElement` is outside the compiled subset"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 307,
-    "col": 5,
-    "message": "`document.addEventListener` is outside the compiled subset"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 308,
-    "col": 18,
-    "message": "`document.removeEventListener` is outside the compiled subset"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 311,
-    "col": 5,
-    "message": "`document.addEventListener` is outside the compiled subset"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 312,
-    "col": 18,
-    "message": "`document.removeEventListener` is outside the compiled subset"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 315,
+    "line": 323,
     "col": 5,
     "message": "unknown name `cw`"
   },
   {
     "file": "Notes.tsx",
-    "line": 315,
+    "line": 323,
     "col": 5,
     "message": "calling `.set` on a value of type unknown"
   },
   {
     "file": "Notes.tsx",
-    "line": 320,
+    "line": 328,
     "col": 9,
-    "message": "property `folder` does not exist on type void"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 320,
-    "col": 19,
-    "message": "property `open` does not exist on type void"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 320,
-    "col": 27,
-    "message": "property `dirty` does not exist on type void"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 324,
-    "col": 10,
     "message": "property `folder` does not exist on type void"
   },
   {
@@ -493,50 +325,62 @@
   },
   {
     "file": "Notes.tsx",
+    "line": 328,
+    "col": 27,
+    "message": "property `dirty` does not exist on type void"
+  },
+  {
+    "file": "Notes.tsx",
+    "line": 332,
+    "col": 10,
+    "message": "property `folder` does not exist on type void"
+  },
+  {
+    "file": "Notes.tsx",
     "line": 336,
+    "col": 19,
+    "message": "property `open` does not exist on type void"
+  },
+  {
+    "file": "Notes.tsx",
+    "line": 344,
     "col": 11,
     "message": "property `mobile` does not exist on type void"
   },
   {
     "file": "Notes.tsx",
-    "line": 338,
+    "line": 346,
     "col": 41,
     "message": "property `platform` does not exist on type void"
   },
   {
     "file": "Notes.tsx",
-    "line": 340,
+    "line": 348,
     "col": 14,
     "message": "property `platform` does not exist on type void"
   },
   {
     "file": "Notes.tsx",
-    "line": 348,
+    "line": 356,
     "col": 36,
     "message": "property `platform` does not exist on type void"
   },
   {
     "file": "Notes.tsx",
-    "line": 349,
+    "line": 357,
     "col": 43,
     "message": "property `platform` does not exist on type void"
   },
   {
     "file": "Notes.tsx",
-    "line": 351,
+    "line": 359,
     "col": 16,
     "message": "property `platform` does not exist on type void"
   },
   {
     "file": "Notes.tsx",
-    "line": 378,
+    "line": 386,
     "col": 14,
     "message": "property `open` does not exist on type void"
-  },
-  {
-    "file": "Notes.tsx",
-    "line": 389,
-    "col": 1,
-    "message": "this module-level statement is outside the compiled subset"
   }
 ]

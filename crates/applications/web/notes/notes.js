@@ -5,29 +5,28 @@ const __cw_mod_0 = (() => {
 const { useEffect, useState, useSyncExternalStore } = React;
 function declaredStore(init) {
 	const saved = cw.state.get();
-	let current = saved ?? init();
-	if (saved === null) cw.state.set(current);
+	const first = saved === null;
+	const holder = { current: saved === null ? init() : saved };
+	if (first) cw.state.set(holder.current);
 	const listeners = new Set();
-	const store = {
-		restored: saved !== null,
-		get: () => current,
-		set(next) {
-			if (Object.is(next, current)) return;
-			current = next;
-			cw.state.set(next);
-			for (const listener of Array.from(listeners)) listener();
-		},
-		update(change) {
-			store.set(change(current));
-		},
-		subscribe(listener) {
+	const set = (next) => {
+		if (Object.is(next, holder.current)) return;
+		holder.current = next;
+		cw.state.set(next);
+		for (const listener of Array.from(listeners)) listener();
+	};
+	return {
+		restored: !first,
+		get: () => holder.current,
+		set,
+		update: (change) => set(change(holder.current)),
+		subscribe: (listener) => {
 			listeners.add(listener);
 			return () => {
 				listeners.delete(listener);
 			};
 		}
 	};
-	return store;
 }
 function useStore(store) {
 	return useSyncExternalStore(store.subscribe, store.get);
@@ -177,7 +176,7 @@ function onKey(event) {
 		cw.refuse(event.key === 'Backspace' || event.key === 'Enter' ? 'no note is open' : `unsupported notes key ${event.key}`);
 		return;
 	}
-	const inBody = event.target?.id === 'notes:body';
+	const inBody = event.target === document.getElementById('notes:body');
 	if (!inBody) {
 		// The note is open but its body does not have the focus (a phone before the
 		// body is tapped): the keys that edit still edit it.
@@ -307,7 +306,8 @@ function Notes() {
 	const heading = title(env.platform);
 	const body = useRef(null);
 	// The body has the keyboard whenever a note is open on a desktop, and on a phone
-	// once it was tapped: after every render, and whenever something else took it.
+	// once it was tapped (and only then): after every render, and whenever something
+	// else took it.
 	const wantsFocus = s.open !== null && (s.editing || !env.mobile);
 	useLayoutEffect(() => {
 		const field = document.getElementById('notes:body');
@@ -316,6 +316,9 @@ function Notes() {
 			field.focus();
 			const end = field.value.length;
 			field.setSelectionRange(end, end);
+		} else if (!wantsFocus && field && document.activeElement === field) {
+			// Focus is a function of the state and the platform, whatever came before.
+			field.blur();
 		}
 	});
 	useEffect(() => {
@@ -326,6 +329,10 @@ function Notes() {
 		document.addEventListener('focusin', refocus);
 		return () => document.removeEventListener('focusin', refocus);
 	}, [wantsFocus]);
+	// A first launch lists the folder; a restored window already holds its listing.
+	useEffect(() => {
+		if (!store.restored) list();
+	}, []);
 	useEffect(() => {
 		document.addEventListener('keydown', onKey);
 		return () => document.removeEventListener('keydown', onKey);
@@ -370,6 +377,5 @@ function Notes() {
 		heading
 	}) : React.createElement('p', { className: 'notice' }, 'Select a note')));
 }
-if (!store.restored) list();
 createRoot(document.getElementById('root')).render(React.createElement(Notes, null));
 })();

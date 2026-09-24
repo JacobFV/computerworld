@@ -19,29 +19,28 @@ export interface Store<T> {
 
 export function declaredStore<T>(init: () => T): Store<T> {
   const saved = cw.state.get<T>();
-  let current: T = saved ?? init();
-  if (saved === null) cw.state.set(current);
+  const first = saved === null;
+  const holder = { current: saved === null ? init() : saved };
+  if (first) cw.state.set(holder.current);
   const listeners = new Set<() => void>();
-  const store: Store<T> = {
-    restored: saved !== null,
-    get: () => current,
-    set(next) {
-      if (Object.is(next, current)) return;
-      current = next;
-      cw.state.set(next);
-      for (const listener of Array.from(listeners)) listener();
-    },
-    update(change) {
-      store.set(change(current));
-    },
-    subscribe(listener) {
+  const set = (next: T): void => {
+    if (Object.is(next, holder.current)) return;
+    holder.current = next;
+    cw.state.set(next);
+    for (const listener of Array.from(listeners)) listener();
+  };
+  return {
+    restored: !first,
+    get: () => holder.current,
+    set,
+    update: (change: (current: T) => T) => set(change(holder.current)),
+    subscribe: (listener: () => void) => {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
       };
     },
   };
-  return store;
 }
 
 /** The store's current value, re-rendering when it changes. */

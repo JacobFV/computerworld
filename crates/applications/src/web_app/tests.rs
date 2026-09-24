@@ -585,3 +585,25 @@ fn a_compiled_app_runs_on_cw_ui_and_restores_exactly() {
     assert_eq!(text_of(&restored, "counter-value"), "3");
     assert_eq!(text_of(&app, "counter-value"), "2");
 }
+
+/// A restored window boots before it knows the platform it is on; once painted
+/// there it has the focus the live window has, which on a phone means the body of a
+/// note that was opened but not tapped does not take the keyboard.
+#[test]
+fn a_restored_phone_window_takes_the_focus_the_live_one_has() {
+    let mut disk = disk_with(&["a.txt"]);
+    let mut app = web_notes(&mut disk, DesktopTheme::Ios);
+    let e = env(DesktopTheme::Ios, 390, 760);
+    let mut p = Painter::themed(DesktopTheme::Ios, 390, 760, 1 << 52);
+    app.render(&mut p, &e);
+    let effects = app.click(1, "notes:open:a.txt", 0).unwrap();
+    disk.web(&mut app, effects).unwrap();
+    assert_eq!(app.text_field(), None, "not tapped yet");
+    let restored: WebApp = serde_json::from_str(&serde_json::to_string(&app).unwrap()).unwrap();
+    let mut p = Painter::themed(DesktopTheme::Ios, 390, 760, 1 << 52);
+    restored.render(&mut p, &e);
+    assert_eq!(restored.text_field(), None);
+    let mut restored = restored;
+    restored.click(1, "notes:body", 0).unwrap();
+    assert_eq!(restored.text_field().as_deref(), Some("notes:body"));
+}

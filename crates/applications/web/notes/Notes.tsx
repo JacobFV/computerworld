@@ -54,12 +54,12 @@ function list(): void {
   const { folder } = store.get();
   cw.fs.list(folder).then(
     (names) =>
-      store.update((s) => ({
+      store.update((s: NotesState) => ({
         ...s,
         entries: names.filter((n) => !n.endsWith("/")),
         problem: null,
       })),
-    (error) => store.update((s) => ({ ...s, problem: describe(error) })),
+    (error) => store.update((s: NotesState) => ({ ...s, problem: describe(error) })),
   );
 }
 
@@ -80,7 +80,7 @@ function save(): boolean {
 function newNote(): void {
   // A new note is named from the world clock, so two machines agree.
   const name = `note-${Math.floor(cw.now() / 1_000_000)}.txt`;
-  store.update((s) => ({
+  store.update((s: NotesState) => ({
     ...s,
     open: name,
     editing: true,
@@ -99,7 +99,7 @@ function open(name: string): void {
   store.set({ ...s, open: name, editing: false, text: "", dirty: false });
   cw.fs.readFile(`${s.folder}/${name}`).then(
     (content) =>
-      store.update((now) => (now.open === name ? { ...now, text: content, dirty: false } : now)),
+      store.update((now: NotesState) => (now.open === name ? { ...now, text: content, dirty: false } : now)),
     // A note that cannot be read fails the click that opened it.
     (error) => cw.refuse(describe(error)),
   );
@@ -108,11 +108,11 @@ function open(name: string): void {
 /** A phone's back button: the list again, and the keyboard goes down. Unsaved text is written first. */
 function close(): void {
   if (store.get().dirty) save();
-  store.update((s) => ({ ...s, open: null, editing: false, text: "", dirty: false }));
+  store.update((s: NotesState) => ({ ...s, open: null, editing: false, text: "", dirty: false }));
 }
 
 function edit(text: string): void {
-  store.update((s) => ({ ...s, text: text.slice(0, TEXT_LIMIT), dirty: true }));
+  store.update((s: NotesState) => ({ ...s, text: text.slice(0, TEXT_LIMIT), dirty: true }));
 }
 
 /** Keys a note's text takes; any other key is refused, as the native Notes refused it. */
@@ -149,7 +149,7 @@ function onKey(event: KeyboardEvent): void {
     );
     return;
   }
-  const inBody = (event.target as Element | null)?.id === "notes:body";
+  const inBody = event.target === document.getElementById("notes:body");
   if (!inBody) {
     // The note is open but its body does not have the focus (a phone before the
     // body is tapped): the keys that edit still edit it.
@@ -266,7 +266,7 @@ function Note(props: { s: NotesState; phone: boolean; heading: string }) {
         maxLength={TEXT_LIMIT}
         spellCheck={false}
         onChange={(e) => edit(e.currentTarget.value)}
-        onClick={() => store.update((now) => (now.editing ? now : { ...now, editing: true }))}
+        onClick={() => store.update((now: NotesState) => (now.editing ? now : { ...now, editing: true }))}
       />
       {s.text === "" && (
         <span className="empty" aria-hidden="true">
@@ -288,7 +288,8 @@ function Notes() {
   const body = useRef<HTMLTextAreaElement | null>(null);
 
   // The body has the keyboard whenever a note is open on a desktop, and on a phone
-  // once it was tapped: after every render, and whenever something else took it.
+  // once it was tapped (and only then): after every render, and whenever something
+  // else took it.
   const wantsFocus = s.open !== null && (s.editing || !env.mobile);
   useLayoutEffect(() => {
     const field = document.getElementById("notes:body") as HTMLTextAreaElement | null;
@@ -297,6 +298,9 @@ function Notes() {
       field.focus();
       const end = field.value.length;
       field.setSelectionRange(end, end);
+    } else if (!wantsFocus && field && document.activeElement === field) {
+      // Focus is a function of the state and the platform, whatever came before.
+      field.blur();
     }
   });
   useEffect(() => {
@@ -307,6 +311,10 @@ function Notes() {
     document.addEventListener("focusin", refocus);
     return () => document.removeEventListener("focusin", refocus);
   }, [wantsFocus]);
+  // A first launch lists the folder; a restored window already holds its listing.
+  useEffect(() => {
+    if (!store.restored) list();
+  }, []);
   useEffect(() => {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -386,5 +394,4 @@ function Notes() {
   );
 }
 
-if (!store.restored) list();
 createRoot(document.getElementById("root")!).render(<Notes />);
