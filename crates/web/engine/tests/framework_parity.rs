@@ -190,7 +190,16 @@ mod cases {
     /// parity runner's `Rendered`.
     fn render(name: &str, html: &str, list: &[Value]) -> (Rendered, Timing) {
         let t = Instant::now();
-        let mut r = Realm::new(html, &format!("{BASE}{name}.html"), Box::new(host()));
+        // Playwright launches Chromium with `--hide-scrollbars`, so a scroll container
+        // there gives no space to its bars. A realm has no host setting for overlay
+        // scrollbars, so the page's elements get `scrollbar-width: none`, which takes
+        // the same (none); the rule sits in <head>, which neither dump includes.
+        let html = html.replacen(
+            "<head>",
+            "<head><style>* { scrollbar-width: none }</style>",
+            1,
+        );
+        let mut r = Realm::new(&html, &format!("{BASE}{name}.html"), Box::new(host()));
         r.run_document();
         r.run_until_idle(50);
         let boot = t.elapsed();
@@ -299,5 +308,30 @@ mod cases {
     #[test]
     fn app_analytics() {
         run_fixture("app-analytics");
+    }
+
+    #[test]
+    fn app_chat() {
+        run_fixture("app-chat");
+    }
+
+    #[test]
+    fn app_datatable() {
+        run_fixture("app-datatable");
+    }
+
+    #[test]
+    fn app_kanban() {
+        run_fixture("app-kanban");
+    }
+
+    #[test]
+    fn app_settings() {
+        run_fixture("app-settings");
+    }
+
+    #[test]
+    fn app_shop() {
+        run_fixture("app-shop");
     }
 }

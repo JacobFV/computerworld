@@ -1,0 +1,20 @@
+{
+ "initial": [],
+ "size-error": [
+  {"action": "click", "selector": "#add"}
+ ],
+ "options": [
+  {"action": "click", "selector": "button[data-colour=\"sage\"]"},
+  {"action": "click", "selector": "button[data-size=\"L\"]"}
+ ],
+ "cart": [
+  {"action": "click", "selector": "button[data-size=\"M\"]"},
+  {"action": "click", "selector": "#add"}
+ ],
+ "quantity": [
+  {"action": "click", "selector": "button[data-colour=\"navy\"]"},
+  {"action": "click", "selector": "button[data-size=\"M\"]"},
+  {"action": "click", "selector": "#add"},
+  {"action": "click", "selector": "button[data-qty=\"plus\"]"}
+ ]
+}

@@ -1,0 +1,23 @@
+{
+ "initial": [],
+ "modal": [
+  {"action": "click", "selector": "#new-task"}
+ ],
+ "invalid": [
+  {"action": "click", "selector": "#new-task"},
+  {"action": "click", "selector": "#task-title"},
+  {"action": "type", "text": "Hi"},
+  {"action": "click", "selector": "#create-task"}
+ ],
+ "created": [
+  {"action": "click", "selector": "#new-task"},
+  {"action": "click", "selector": "#task-title"},
+  {"action": "type", "text": "Write the launch announcement"},
+  {"action": "click", "selector": "button[data-priority=\"High\"]"},
+  {"action": "click", "selector": "#create-task"}
+ ],
+ "moved": [
+  {"action": "click", "selector": "button[data-card=\"3\"]"},
+  {"action": "click", "selector": "button[data-card=\"4\"]"}
+ ]
+}

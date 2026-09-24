@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages</title>
+<!-- A messaging UI as a coding agent writes one in React: TSX, Tailwind, a
+     conversation list and a message thread that each scroll inside a full-height
+     layout, the thread kept scrolled to its end by an effect, avatars with presence
+     dots, chat bubbles, and a composer whose send button is disabled while empty.
+     Sources in app-src/chat/, built by app-src/build.sh into /vendor/app-chat.{js,css}.
+     Steps in app-chat.steps.json. -->
+<link rel="stylesheet" href="/vendor/app-chat.css">
+</head>
+<body>
+<div id="root"></div>
+<script src="/vendor/react-18.3.1.production.min.js"></script>
+<script src="/vendor/react-dom-18.3.1.production.min.js"></script>
+<script src="/vendor/app-chat.js"></script>
+</body>
+</html>

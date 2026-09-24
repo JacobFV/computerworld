@@ -1,0 +1,15 @@
+{
+ "initial": [],
+ "typed": [
+  {"action": "click", "selector": "#composer"},
+  {"action": "type", "text": "Looks great, the new step is much clearer"}
+ ],
+ "sent": [
+  {"action": "click", "selector": "#composer"},
+  {"action": "type", "text": "Looks great, the new step is much clearer"},
+  {"action": "press", "key": "Enter"}
+ ],
+ "switched": [
+  {"action": "click", "selector": "button[data-conversation=\"lucas\"]"}
+ ]
+}

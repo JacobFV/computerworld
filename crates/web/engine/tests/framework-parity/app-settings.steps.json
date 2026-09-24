@@ -1,0 +1,21 @@
+{
+ "initial": [],
+ "errors": [
+  {"action": "click", "selector": "#website"},
+  {"action": "type", "text": "portfolio.site"},
+  {"action": "click", "selector": "#username"},
+  {"action": "press", "key": "End"},
+  {"action": "type", "text": "!"},
+  {"action": "click", "selector": "#save"}
+ ],
+ "saved": [
+  {"action": "click", "selector": "#website"},
+  {"action": "type", "text": "https://maya.design"},
+  {"action": "click", "selector": "#save"}
+ ],
+ "notifications": [
+  {"action": "click", "selector": "#tab-notifications"},
+  {"action": "click", "selector": "#toggle-digest"},
+  {"action": "click", "selector": "#toggle-comments"}
+ ]
+}
