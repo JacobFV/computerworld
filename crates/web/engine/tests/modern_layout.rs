@@ -460,4 +460,23 @@ mod cases {
         let (a, b) = (p.rect("a"), p.rect("b"));
         close(a.width + b.width, 500.0, "columns fill it");
     }
+
+    /// A block-level box made absolute after inline content takes its static
+    /// position below the line, where it would have started as a block; an inline
+    /// one stays beside its line's content (a dropdown menu under its button).
+    #[test]
+    fn a_blocklike_absolute_box_after_a_line_starts_below_it() {
+        let p = page(
+            "<!DOCTYPE html><style>body { margin: 0; font: 16px/20px Arimo }</style>\
+             <div style='position: relative; width: 300px'>\
+             <button id=b style='display: inline-block; width: 100px; height: 30px; border: 0; padding: 0; vertical-align: top'></button>\
+             <div id=menu style='position: absolute; right: 0; margin-top: 8px; width: 50px; height: 10px'></div>\
+             <span id=tip style='position: absolute; width: 20px; height: 10px'></span></div>",
+        );
+        rect_is(&p, "b", 0.0, 0.0, 100.0, 30.0);
+        rect_is(&p, "menu", 250.0, 38.0, 50.0, 10.0);
+        let tip = p.rect("tip");
+        close(tip.y, 0.0, "inline absolute stays on the line");
+        close(tip.x, 100.0, "after the button");
+    }
 }

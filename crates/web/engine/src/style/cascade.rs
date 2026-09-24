@@ -660,6 +660,7 @@ impl<'a> Engine<'a> {
         } else if (s.is_out_of_flow() || parent_is_flex_or_grid)
             && !matches!(s.display, Display::Contents | Display::None)
         {
+            s.inline_origin = s.display.is_inline_level();
             s.display = s.display.blockify();
         }
         // Blink's `AdjustStyleForDisplay`: a table does not inherit the legacy

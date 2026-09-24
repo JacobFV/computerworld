@@ -1011,6 +1011,9 @@ impl Font {
 pub struct ComputedStyle {
     // Box generation
     pub display: Display,
+    /// `display` was inline-level before an absolute position blockified it: the
+    /// box's static position is where it would sit in its line, not below it.
+    pub inline_origin: bool,
     pub position: Position,
     pub float: Float,
     pub clear: Clear,
@@ -1141,6 +1144,7 @@ impl ComputedStyle {
     pub fn initial() -> ComputedStyle {
         ComputedStyle {
             display: Display::Inline,
+            inline_origin: false,
             position: Position::Static,
             float: Float::None,
             clear: Clear::None,

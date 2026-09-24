@@ -497,6 +497,7 @@ impl<'a> Builder<'a> {
             Rc::new(s)
         } else if style.is_out_of_flow() && style.display.is_inline_level() {
             let mut s = (*style).clone();
+            s.inline_origin = true;
             s.display = s.display.blockify();
             Rc::new(s)
         } else {

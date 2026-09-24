@@ -1509,15 +1509,27 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
         }
         self.last_baseline = Some(baseline_y);
         for (aid, ax) in abs_here {
-            let sx = if self.rtl {
-                line_x + (total - ax)
+            let s = ctx.style(aid);
+            // An absolutely positioned box that was block-level, met after some of
+            // the line's content, would have started a new line: its static
+            // position is below this one, at the start edge (CSS 2.1 §10.3.7's
+            // hypothetical box, as Blink places it).
+            let (sx, sy) = if !s.inline_origin && ax > Au::ZERO {
+                let start = if self.rtl {
+                    line_left + avail + indent
+                } else {
+                    line_left
+                };
+                (start, self.y + line_height)
+            } else if self.rtl {
+                (line_x + (total - ax), self.y)
             } else {
-                line_x + ax
+                (line_x + ax, self.y)
             };
             self.abs.push(AbsRequest {
                 id: aid,
-                static_pos: Point { x: sx, y: self.y },
-                fixed: ctx.style(aid).position == Position::Fixed,
+                static_pos: Point { x: sx, y: sy },
+                fixed: s.position == Position::Fixed,
             });
         }
         self.y += line_height;
