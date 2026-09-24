@@ -138,7 +138,8 @@ function onKey(event: KeyboardEvent): void {
     save();
     return;
   }
-  const printable = event.key.length === 1 && !command && !event.altKey;
+  // One character, which may be outside the BMP (an emoji is two UTF-16 units).
+  const printable = Array.from(event.key).length === 1 && !command && !event.altKey;
   if (s.open === null) {
     event.preventDefault();
     cw.refuse(

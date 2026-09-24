@@ -708,7 +708,9 @@ impl WebApp {
     ) -> Result<Vec<AppEffect>, String> {
         self.click_detail(window, target, clock_us, 1)
     }
-    /// A double click: two clicks, the second with `detail` 2, then `dblclick`.
+    /// What the desktop calls opening a control: on a phone a tap, which is one click;
+    /// on a desktop a double click, two clicks (the second with `detail` 2, then
+    /// `dblclick`), the second only if the first left the control in the document.
     pub fn activate(
         &mut self,
         window: u64,
@@ -716,7 +718,18 @@ impl WebApp {
         clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
         let mut effects = self.click_detail(window, target, clock_us, 1)?;
-        effects.extend(self.click_detail(window, target, clock_us, 2)?);
+        let (mobile, still) = self
+            .read(|cell| {
+                let mut still = false;
+                if let Some(runtime) = cell.runtime.as_mut() {
+                    runtime.view(&mut |v| still = node_for(v.doc, target).is_some());
+                }
+                (cell.env.mobile, still)
+            })
+            .unwrap_or((true, false));
+        if !mobile && still {
+            effects.extend(self.click_detail(window, target, clock_us, 2)?);
+        }
         Ok(effects)
     }
     fn click_detail(

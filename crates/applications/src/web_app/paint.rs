@@ -115,7 +115,8 @@ fn paint_with(v: &View<'_>, width: u32, height: u32, offsets: &BTreeMap<String, 
 }
 
 /// Paints `v` into `p`, with the window's pane offsets clamped to what each pane can
-/// scroll.
+/// scroll, and a pane a finger pulls past an end displaced by the pull, as
+/// `Painter::end_pane` does for a native application.
 pub fn paint(v: &View<'_>, p: &mut Painter, env: &crate::AppEnv<'_>) {
     let (width, height) = (env.width.max(1), env.height.max(1));
     let mut offsets: BTreeMap<String, i32> = p
@@ -125,32 +126,57 @@ pub fn paint(v: &View<'_>, p: &mut Painter, env: &crate::AppEnv<'_>) {
         .map(|(k, v)| (k.clone(), (*v).max(0)))
         .collect();
     let mut scene = paint_with(v, width, height, &offsets);
-    // An offset the content has shrunk under is pulled back, as `end_pane` does.
-    let mut clamped = false;
+    let mut changed = false;
+    let mut stretched = vec![];
     for area in scene.scrolls.iter().filter(|a| !a.horizontal) {
         let Some(name) = pane_of(v.doc, &area.target) else {
             continue;
         };
-        let max = area.extent.saturating_sub(area.bounds.height) as i32;
+        let span = area.bounds.height;
+        let max = area.extent.saturating_sub(span) as i32;
+        // An offset the content has shrunk under is pulled back.
         if let Some(offset) = offsets.get_mut(&name) {
             if *offset > max {
                 *offset = max;
-                clamped = true;
+                changed = true;
             }
         }
+        let offset = offsets.get(&name).copied().unwrap_or(0);
+        let stretch = match p.scroll.stretch_of(&name) {
+            s if s > 0 && offset == 0 => s,
+            s if s < 0 && offset == max => s,
+            _ => 0,
+        }
+        .clamp(-(span as i32), span as i32);
+        if stretch != 0 {
+            stretched.push((name, offset - stretch));
+            changed = true;
+        }
     }
-    if clamped {
-        scene = paint_with(v, width, height, &offsets);
+    if changed {
+        let mut painted = offsets.clone();
+        painted.extend(stretched);
+        scene = paint_with(v, width, height, &painted);
     }
     let l = look(env.theme);
     p.scene.background = l.surface;
     let z = p.z;
+    let mut top = z;
     for mut n in scene.nodes {
+        // What a pane scrolled wholly out of view paints nothing, and is dropped.
+        if let Some(clip) = n.clip {
+            if clip.intersection(n.transform.bounds(n.bounds)).is_none() {
+                continue;
+            }
+        }
         n.id = p.next;
         p.next += 1;
         n.z += z;
+        top = top.max(n.z);
         p.scene.nodes.push(n);
     }
+    // The platform's scroll bars sit over the document, as over any application.
+    p.z = top + 1;
     for mut area in scene.scrolls {
         let Some(name) = pane_of(v.doc, &area.target) else {
             continue;
@@ -171,6 +197,7 @@ pub fn paint(v: &View<'_>, p: &mut Painter, env: &crate::AppEnv<'_>) {
         }
         p.scene.scrolls.push(area);
     }
+    p.z = z;
 }
 
 /// A scroll container that opens with a large title (iOS) says so with

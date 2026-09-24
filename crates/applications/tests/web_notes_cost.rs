@@ -1,5 +1,6 @@
-//! What Notes costs as a web application against the Painter one it replaced:
-//! launch, one interaction, one paint, the heap a window holds and its snapshot.
+//! What Notes costs as a web application: launch, one interaction, one paint, the
+//! heap a window holds and its snapshot. (Against the Painter Notes it replaced, see
+//! the commit that introduced the web-app host.)
 //! Measured, not asserted; run in release:
 //!
 //!     cargo test --release -p cw-applications --test web_notes_cost -- --ignored --nocapture
@@ -8,7 +9,6 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 use std::time::{Duration, Instant};
 
 use cw_applications::desktop_scene::{app_content_with, DesktopTheme};
-use cw_applications::web_app::WebApp;
 use cw_applications::{AppEffect, AppEnv, AppState, NativeApp, SystemSettings};
 
 struct Counting;
@@ -52,20 +52,11 @@ fn names() -> Vec<String> {
     NAMES.iter().map(|n| (*n).to_owned()).collect()
 }
 
-fn native() -> NativeApp {
-    let (mut app, _) = NativeApp::launch("notes", FOLDER, 1, 0).unwrap();
-    let NativeApp::Notes(notes) = &mut app else {
-        unreachable!("notes is Notes")
-    };
-    notes.listed(names());
-    app
-}
-
 fn web() -> NativeApp {
-    let (mut app, effects) = WebApp::launch("notes", FOLDER, 1, 0, DesktopTheme::Macos).unwrap();
+    let (mut app, effects) = NativeApp::launch("notes", FOLDER, 1, 0).unwrap();
     assert!(matches!(effects[..], [AppEffect::ListTree { .. }]));
     app.tree_listed(1, FOLDER, Ok(names())).unwrap();
-    NativeApp::Web(app)
+    app
 }
 
 /// Opens a note, types into it and saves it: the effects answered as the machine would.
@@ -74,11 +65,6 @@ fn interact(app: &mut NativeApp, round: u64) {
     let effects = app.click(1, &format!("notes:open:{name}"), 0).unwrap();
     for effect in effects {
         match effect {
-            AppEffect::ReadFile { .. } => {
-                if let NativeApp::Notes(n) = app {
-                    n.loaded("text".into());
-                }
-            }
             AppEffect::ReadFiles { tag, paths, .. } => {
                 app.files_read(1, &tag, vec![(paths[0].clone(), Ok("text".into()))])
                     .unwrap();
@@ -89,7 +75,7 @@ fn interact(app: &mut NativeApp, round: u64) {
     app.text_effects(1, "abc").unwrap();
     let effects = app.click(1, "notes:save", 0).unwrap();
     for effect in effects {
-        if let (AppEffect::WriteFile { path, .. }, NativeApp::Web(w)) = (&effect, &mut *app) {
+        if let (AppEffect::WriteFile { path, .. }, Some(w)) = (&effect, app.web_mut()) {
             for more in w.written(1, path).unwrap() {
                 assert!(matches!(more, AppEffect::ListTree { .. }));
                 w.tree_listed(1, FOLDER, Ok(names())).unwrap();
@@ -157,8 +143,7 @@ fn measure(label: &str, make: fn() -> NativeApp) {
 
 #[test]
 #[ignore]
-fn web_notes_against_painter_notes() {
-    measure("painter", native);
+fn web_notes_costs() {
     measure("web", web);
 }
 

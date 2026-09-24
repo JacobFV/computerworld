@@ -155,7 +155,7 @@
       save();
       return;
     }
-    const printable = event.key.length === 1 && !command && !event.altKey;
+    const printable = Array.from(event.key).length === 1 && !command && !event.altKey;
     if (s.open === null) {
       event.preventDefault();
       cw.refuse(

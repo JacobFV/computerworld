@@ -1342,9 +1342,10 @@ impl DesktopState {
         path: &str,
         content: &str,
     ) -> Result<Vec<AppEffect>, String> {
-        if let Some(AppState::Native(NativeApp::Web(app))) =
-            self.windows.get_mut(&id).map(|w| &mut w.state)
-        {
+        if let Some(app) = self.windows.get_mut(&id).and_then(|w| match &mut w.state {
+            AppState::Native(app) => app.web_mut(),
+            _ => None,
+        }) {
             return app.written(id, path);
         }
         if let Ok(code) = self.code_mut(id) {
@@ -1400,10 +1401,6 @@ impl DesktopState {
     /// Deliver successful effect results. A failed save must not mark an editor clean.
     pub fn file_loaded(&mut self, id: u64, content: String) -> Result<(), String> {
         match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
-            AppState::Native(NativeApp::Notes(notes)) => {
-                notes.loaded(content);
-                Ok(())
-            }
             AppState::Editor {
                 text,
                 cursor,
@@ -1426,7 +1423,7 @@ impl DesktopState {
                 }
                 Ok(())
             }
-            AppState::Native(NativeApp::Notes(_) | NativeApp::Code(_)) => Ok(()),
+            AppState::Native(NativeApp::Code(_)) => Ok(()),
             _ => Err("window is not an editor".into()),
         }
     }
@@ -1855,10 +1852,6 @@ impl DesktopState {
                 tab.selected = None;
                 // The entry being renamed may not have survived the refresh.
                 tab.rename = None;
-                Ok(())
-            }
-            AppState::Native(NativeApp::Notes(notes)) => {
-                notes.listed(values);
                 Ok(())
             }
             AppState::Native(NativeApp::Photos(photos)) => {

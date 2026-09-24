@@ -35,8 +35,8 @@ fn write_png(path: &std::path::Path, scene: &cw_scene::Scene) {
         .unwrap();
 }
 
-/// Content stills of the native and the web Notes side by side, per platform, for a
-/// person to compare: `CW_STILLS_DIR=/tmp/x cargo test -p cw-applications stills -- --ignored`.
+/// Content stills of Notes on every platform, for a person to look at:
+/// `CW_STILLS_DIR=/tmp/x cargo test -p cw-applications stills -- --ignored`.
 #[test]
 #[ignore]
 fn stills() {
@@ -60,30 +60,18 @@ fn stills() {
             (760, 480)
         };
         let e = env(theme, w, h);
-        let (mut native, _) = crate::apps::notes::Notes::launch("/home/alice/Notes", 1, 0);
-        native.listed(names.clone());
         let (mut web, _) = WebApp::launch("notes", "/home/alice/Notes", 1, 0, theme).unwrap();
         web.tree_listed(1, "/home/alice/Notes", Ok(names.clone()))
             .unwrap();
-        let shoot = |label: &str, native: &crate::apps::notes::Notes, web: &WebApp| {
-            for (which, state) in [
-                (
-                    "native",
-                    crate::AppState::Native(crate::NativeApp::Notes(native.clone())),
-                ),
-                (
-                    "web",
-                    crate::AppState::Native(crate::NativeApp::Web(web.clone())),
-                ),
-            ] {
-                let scene = crate::desktop_scene::app_content_with(&state, &e);
-                let name = format!("{}-{label}-{which}.png", theme.platform());
-                write_png(&dir.join(name), &scene);
-            }
+        let shoot = |label: &str, web: &WebApp| {
+            let state = crate::AppState::Native(crate::NativeApp::Web(web.clone()));
+            let scene = crate::desktop_scene::app_content_with(&state, &e);
+            write_png(
+                &dir.join(format!("{}-{label}.png", theme.platform())),
+                &scene,
+            );
         };
-        shoot("list", &native, &web);
-        native.click(1, "notes:open:ideas.txt", 0).unwrap();
-        native.loaded("Buy a lamp for the desk.\nCall the landlord about the heating.".into());
+        shoot("list", &web);
         web.click(1, "notes:open:ideas.txt", 0).unwrap();
         web.files_read(
             1,
@@ -94,11 +82,9 @@ fn stills() {
             )],
         )
         .unwrap();
-        shoot("open", &native, &web);
-        native.text(" More").unwrap();
+        shoot("open", &web);
         web.text_effects(1, " More").unwrap();
-        shoot("dirty", &native, &web);
-        eprintln!("{} console {:?}", theme.platform(), web.console());
+        shoot("dirty", &web);
     }
 }
 
@@ -124,32 +110,6 @@ impl Disk {
             .collect();
         names.sort();
         Ok(names)
-    }
-    /// Runs `effects` for the native Notes, delivering what they answer.
-    fn native(
-        &mut self,
-        app: &mut crate::apps::notes::Notes,
-        effects: Vec<AppEffect>,
-    ) -> Result<(), String> {
-        for effect in effects {
-            match effect {
-                AppEffect::ListDirectory { path, .. } => match self.listing(&path) {
-                    Ok(names) => app.listed(names),
-                    Err(reason) => app.offline("listing", &reason),
-                },
-                AppEffect::ReadFile { path, .. } => {
-                    app.loaded(self.files.get(&path).cloned().ok_or("file not found")?)
-                }
-                AppEffect::WriteFile { path, content, .. } => {
-                    self.files.insert(path, content);
-                }
-                AppEffect::CreateDirectory { path, .. } => {
-                    self.folders.insert(path);
-                }
-                other => panic!("native Notes asked for {other:?}"),
-            }
-        }
-        Ok(())
     }
     /// Runs `effects` for the web Notes, delivering what they answer, until none are left.
     fn web(&mut self, app: &mut WebApp, effects: Vec<AppEffect>) -> Result<(), String> {
@@ -296,116 +256,6 @@ fn controls(scene: &cw_scene::Scene) -> std::collections::BTreeSet<String> {
         .collect()
 }
 
-/// The web Notes and the native one it replaces, driven by the same inputs against
-/// the same disk, offer the same controls, declare the same state and accept and
-/// refuse the same inputs.
-#[test]
-fn the_web_notes_behaves_as_the_native_notes() {
-    for (seed, theme) in [
-        (1_u64, DesktopTheme::Macos),
-        (2, DesktopTheme::Ios),
-        (3, DesktopTheme::Windows),
-        (4, DesktopTheme::Android),
-        (5, DesktopTheme::Ubuntu),
-    ] {
-        let (w, h) = if theme.mobile() {
-            (390, 760)
-        } else {
-            (900, 600)
-        };
-        let e = env(theme, w, h);
-        let mut native_disk = disk_with(&["a.txt", "b.txt"]);
-        let mut web_disk = disk_with(&["a.txt", "b.txt"]);
-        let (mut native, effects) = crate::apps::notes::Notes::launch(FOLDER, 1, 0);
-        native_disk.native(&mut native, effects).unwrap();
-        let mut web = web_notes(&mut web_disk, theme);
-        let mut x = seed;
-        let mut next = move |n: u64| {
-            x ^= x << 13;
-            x ^= x >> 7;
-            x ^= x << 17;
-            x % n
-        };
-        let mut log: Vec<String> = vec![];
-        for step in 0..150 {
-            let clock = step * 1_500_000;
-            let native_scene = crate::desktop_scene::app_content_with(
-                &crate::AppState::Native(crate::NativeApp::Notes(native.clone())),
-                &e,
-            );
-            let web_scene = crate::desktop_scene::app_content_with(
-                &crate::AppState::Native(crate::NativeApp::Web(web.clone())),
-                &e,
-            );
-            let offered = controls(&native_scene);
-            assert_eq!(
-                offered,
-                controls(&web_scene),
-                "{theme:?} step {step}; log {log:?}"
-            );
-            let (native_ok, web_ok, what) = match next(8) {
-                0..=3 => {
-                    let targets: Vec<&String> = offered.iter().collect();
-                    let target = targets[next(targets.len() as u64) as usize].clone();
-                    (
-                        native
-                            .click(1, &target, clock)
-                            .and_then(|e| native_disk.native(&mut native, e))
-                            .is_ok(),
-                        web.click(1, &target, clock)
-                            .and_then(|e| web_disk.web(&mut web, e))
-                            .is_ok(),
-                        target,
-                    )
-                }
-                4 | 5 => {
-                    let text = ["hi", " there", "x", "Ünïcode ✓"][next(4) as usize];
-                    (
-                        native.text(text).is_ok(),
-                        web.text_effects(1, text)
-                            .and_then(|e| web_disk.web(&mut web, e))
-                            .is_ok(),
-                        format!("type {text:?}"),
-                    )
-                }
-                _ => {
-                    let key = ["Backspace", "Enter", "Ctrl+s", "Meta+s", "Tab"][next(5) as usize];
-                    (
-                        native
-                            .key(1, key, clock)
-                            .and_then(|e| native_disk.native(&mut native, e))
-                            .is_ok(),
-                        web.key(1, key, clock)
-                            .and_then(|e| web_disk.web(&mut web, e))
-                            .is_ok(),
-                        key.into(),
-                    )
-                }
-            };
-            log.push(format!("{step}:{what}:{native_ok}/{web_ok}"));
-            let native_state = serde_json::to_value(&native).unwrap();
-            let mut native_state = native_state.as_object().unwrap().clone();
-            native_state.remove("app");
-            assert_eq!(
-                (native_ok, serde_json::Value::Object(native_state)),
-                (web_ok, web.state().clone()),
-                "{theme:?} step {step}: {what}; console {:?}; log {log:?}",
-                web.console()
-            );
-            assert_eq!(
-                native_disk.files, web_disk.files,
-                "{theme:?} step {step}: {what}"
-            );
-            let native_field = crate::NativeApp::Notes(native.clone()).text_field(theme.mobile());
-            assert_eq!(
-                native_field,
-                web.text_field(),
-                "{theme:?} step {step}: {what}"
-            );
-        }
-    }
-}
-
 /// A snapshot keeps the declared state; a restored window boots the same code with it
 /// and shows and announces what the live one does.
 #[test]
@@ -524,4 +374,142 @@ fn a_long_list_is_a_pane_of_the_window() {
         .expect("the last row is painted");
     let b = last.transform.bounds(last.bounds);
     assert!(b.bottom() <= 600, "{b:?}");
+}
+
+/// One recorded input to Notes and what the native Notes did with it.
+#[derive(serde::Serialize, serde::Deserialize)]
+struct TraceStep {
+    /// `click <id>`, `type <text>` or `key <key>`.
+    input: String,
+    clock: u64,
+    ok: bool,
+    state: serde_json::Value,
+    files: std::collections::BTreeMap<String, String>,
+    controls: std::collections::BTreeSet<String>,
+    field: Option<String>,
+}
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Trace {
+    platform: String,
+    steps: Vec<TraceStep>,
+}
+
+/// The platforms `painter-trace.json` was recorded on.
+const TRACE_THEMES: [DesktopTheme; 5] = [
+    DesktopTheme::Macos,
+    DesktopTheme::Ios,
+    DesktopTheme::Windows,
+    DesktopTheme::Android,
+    DesktopTheme::Ubuntu,
+];
+
+fn theme_named(platform: &str) -> DesktopTheme {
+    TRACE_THEMES
+        .into_iter()
+        .find(|t| t.platform() == platform)
+        .unwrap()
+}
+
+/// The web Notes does with every recorded input what the Painter Notes it replaced
+/// did: the same controls on screen, the same outcome, declared state, files on disk
+/// and text focus. `painter-trace.json` was recorded from the Painter Notes (80 random
+/// inputs on each platform, against a disk holding `a.txt` and `b.txt`) by a recorder
+/// removed with it; see the commit that made Notes a web application.
+#[test]
+fn the_web_notes_does_what_the_painter_notes_did() {
+    let traces: Vec<Trace> =
+        serde_json::from_str(include_str!("../../web/notes/painter-trace.json")).unwrap();
+    assert_eq!(traces.len(), TRACE_THEMES.len());
+    for trace in traces {
+        let theme = theme_named(&trace.platform);
+        let (w, h) = if theme.mobile() {
+            (390, 760)
+        } else {
+            (900, 600)
+        };
+        let e = env(theme, w, h);
+        let mut disk = disk_with(&["a.txt", "b.txt"]);
+        let mut web = web_notes(&mut disk, theme);
+        for (index, step) in trace.steps.iter().enumerate() {
+            let scene = crate::desktop_scene::app_content_with(
+                &crate::AppState::Native(crate::NativeApp::Web(web.clone())),
+                &e,
+            );
+            let before = controls(&scene);
+            let expected_before = match index {
+                0 => None,
+                i => Some(&trace.steps[i - 1].controls),
+            };
+            if let Some(expected) = expected_before {
+                assert_eq!(&before, expected, "{} step {index}", trace.platform);
+            }
+            let (kind, arg) = step.input.split_once(' ').unwrap();
+            let ok = match kind {
+                "click" => web
+                    .click(1, arg, step.clock)
+                    .and_then(|e| disk.web(&mut web, e))
+                    .is_ok(),
+                "type" => web
+                    .text_effects(1, arg)
+                    .and_then(|e| disk.web(&mut web, e))
+                    .is_ok(),
+                _ => web
+                    .key(1, arg, step.clock)
+                    .and_then(|e| disk.web(&mut web, e))
+                    .is_ok(),
+            };
+            let at = format!("{} step {index}: {}", trace.platform, step.input);
+            assert_eq!(ok, step.ok, "{at}; console {:?}", web.console());
+            assert_eq!(web.state(), &step.state, "{at}");
+            assert_eq!(disk.files, step.files, "{at}");
+            assert_eq!(web.text_field(), step.field, "{at}");
+        }
+    }
+}
+
+/// The desktop launches Notes for its own platform and routes what Notes asks for,
+/// and the answers, through the window.
+#[test]
+fn the_desktop_runs_notes_as_a_web_application() {
+    let mut d = crate::DesktopState {
+        theme: Some(DesktopTheme::Ios),
+        ..Default::default()
+    };
+    let (id, effects) = d.launch("notes", "/Users/alice/Notes").unwrap();
+    assert_eq!(
+        effects,
+        vec![AppEffect::ListTree {
+            window: id,
+            path: "/Users/alice/Notes".into(),
+            depth: 1
+        }]
+    );
+    d.tree_listed(id, "/Users/alice/Notes", 1, Err("folder not found".into()))
+        .unwrap();
+    // A tap on a phone is one click, whatever it changes.
+    d.activate("notes:new").unwrap();
+    let crate::AppState::Native(app) = &d.windows[&id].state else {
+        panic!("Notes is an application window");
+    };
+    let state = app.web().unwrap().state();
+    assert_eq!(state["open"], "note-0.txt");
+    assert_eq!(state["problem"], "folder not found");
+    assert_eq!(
+        app.phone_back(DesktopTheme::Ios).as_deref(),
+        Some("notes:close")
+    );
+    // The body is not focused on a phone until it is tapped.
+    assert_eq!(
+        app.text_field(true),
+        Some("notes:body".into()),
+        "a new note is being edited"
+    );
+    let effects = d.key("Ctrl+s").unwrap();
+    assert!(
+        matches!(&effects[1], AppEffect::WriteFile { path, .. } if path == "/Users/alice/Notes/note-0.txt")
+    );
+    let more = d
+        .file_written(id, "/Users/alice/Notes/note-0.txt", "")
+        .unwrap();
+    assert!(matches!(&more[..], [AppEffect::ListTree { .. }]));
 }

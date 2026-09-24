@@ -275,7 +275,9 @@ macro_rules! native_apps {
                 clock_us: u64,
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
-                    Self::Web(a) => a.activate(window, target, clock_us),
+                    Self::Web(_) | Self::Notes(_) => {
+                        self.web_mut().expect("a web application").activate(window, target, clock_us)
+                    }
                     Self::Code(a) => a.activate(window, target, clock_us),
                     Self::Freecad(a) => a.activate(window, target, clock_us),
                     Self::Spreadsheet(a) => a.activate(window, target, clock_us),
@@ -288,7 +290,9 @@ macro_rules! native_apps {
             /// Typed text that may need work done, such as a search as you type.
             pub fn text_effects(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
                 match self {
-                    Self::Web(a) => a.text_effects(window, text),
+                    Self::Web(_) | Self::Notes(_) => {
+                        self.web_mut().expect("a web application").text_effects(window, text)
+                    }
                     Self::Code(a) => a.text_effects(window, text),
                     Self::Kicad(a) => a.text_effects(window, text),
                     other if other.video().is_some() => {
@@ -300,7 +304,9 @@ macro_rules! native_apps {
             /// Text from the machine's clipboard, pasted where the application's focus is.
             pub fn paste(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
                 match self {
-                    Self::Web(a) => a.text_effects(window, text),
+                    Self::Web(_) | Self::Notes(_) => {
+                        self.web_mut().expect("a web application").text_effects(window, text)
+                    }
                     Self::Code(a) => a.paste(window, text),
                     Self::Spreadsheet(a) => a.paste(text).map(|()| vec![]),
                     Self::Excel(a) => a.paste(text).map(|()| vec![]),
@@ -357,6 +363,13 @@ macro_rules! native_apps {
                 clock_us: u64,
                 theme: DesktopTheme,
             ) -> Option<Result<(Self, Vec<AppEffect>), String>> {
+                // Notes is a web application, which boots for the platform it runs on.
+                if kind == notes::Notes::KIND {
+                    return Some(
+                        notes::Notes::launch_on(argument, window, clock_us, theme)
+                            .map(|(app, effects)| (Self::Notes(app), effects)),
+                    );
+                }
                 $(if kind == $module::$variant::KIND {
                     let (app, effects) = $module::$variant::launch(argument, window, clock_us);
                     return Some(Ok((Self::$variant(app), effects)));
@@ -407,6 +420,21 @@ native_apps! {
 /// Hooks only image applications have: drag surfaces, rasterised text, finished saves
 /// and folder listings for their file sheets.
 impl NativeApp {
+    /// The web application behind the window, for the applications that are one.
+    pub fn web(&self) -> Option<&crate::web_app::WebApp> {
+        match self {
+            Self::Web(a) => Some(a),
+            Self::Notes(a) => Some(&a.0),
+            _ => None,
+        }
+    }
+    pub fn web_mut(&mut self) -> Option<&mut crate::web_app::WebApp> {
+        match self {
+            Self::Web(a) => Some(a),
+            Self::Notes(a) => Some(&mut a.0),
+            _ => None,
+        }
+    }
     fn studio(&self) -> Option<&imaging::Studio> {
         match self {
             Self::Paint(a) => Some(a.0.as_ref()),
@@ -435,7 +463,7 @@ impl NativeApp {
     /// tool or a file name is being typed, so a phone shows no keyboard over a canvas.
     pub fn accepts_text(&self) -> bool {
         match self {
-            Self::Web(a) => a.text_field().is_some(),
+            Self::Web(_) | Self::Notes(_) => self.web().is_some_and(|a| a.text_field().is_some()),
             Self::Photos(a) => a.editing.as_ref().is_some_and(|e| e.accepts_text()),
             Self::Spreadsheet(a) => a.accepts_text(),
             Self::Excel(a) => a.accepts_text(),
@@ -756,7 +784,7 @@ impl NativeApp {
         match self {
             Self::Mail(a) => a.phone_back(theme).map(str::to_owned),
             Self::Messages(a) => a.phone_back().map(str::to_owned),
-            Self::Notes(a) => a.open.is_some().then(|| "notes:close".to_owned()),
+            Self::Notes(a) => a.state().open.is_some().then(|| "notes:close".to_owned()),
             Self::Web(a) => a.marked("back"),
             Self::Docs(a) => (a.open.is_some() && !a.dirty).then(|| "docs:close".to_owned()),
             Self::Contacts(a) => a.selected.is_some().then(|| "contacts:back".to_owned()),
@@ -805,7 +833,6 @@ impl NativeApp {
                 "messages:compose",
             ),
             Self::Docs(a) => field(a.open.is_some() && (a.editing || !mobile), "docs:body"),
-            Self::Notes(a) => field(a.open.is_some() && (a.editing || !mobile), "notes:body"),
             Self::Maps(a) => field(a.typing, "maps:search-field"),
             Self::Music(a) => field(a.takes_text(), "music:search"),
             // Visual Studio Code types into whatever has its focus, bar the Explorer
@@ -825,7 +852,7 @@ impl NativeApp {
             },
             Self::Freecad(a) => field(a.0.field.is_some(), "freecad:field"),
             // What has the document's focus, when it takes text.
-            Self::Web(a) => a.text_field(),
+            Self::Web(_) | Self::Notes(_) => self.web().and_then(|a| a.text_field()),
             // No field anywhere: typed digits on a desktop are the calculator's keys,
             // not text, and the rest have nothing to type into.
             Self::Contacts(_)
@@ -890,7 +917,10 @@ impl NativeApp {
         files: Vec<(String, Result<String, String>)>,
     ) -> Result<Vec<AppEffect>, String> {
         match self {
-            Self::Web(a) => a.files_read(window, tag, files),
+            Self::Web(_) | Self::Notes(_) => self
+                .web_mut()
+                .expect("a web application")
+                .files_read(window, tag, files),
             Self::Kicad(a) => Ok(a.files_read(window, tag, files)),
             _ => Err("this application reads no files".into()),
         }
@@ -903,7 +933,10 @@ impl NativeApp {
         result: Result<Vec<String>, String>,
     ) -> Result<Vec<AppEffect>, String> {
         match self {
-            Self::Web(a) => a.tree_listed(window, path, result),
+            Self::Web(_) | Self::Notes(_) => self
+                .web_mut()
+                .expect("a web application")
+                .tree_listed(window, path, result),
             Self::Kicad(a) => Ok(a.tree_listed(window, path, result)),
             _ => Err("this application lists no folder trees".into()),
         }

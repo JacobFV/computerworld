@@ -1,14 +1,18 @@
-//! Notes kept as real files on the machine's own filesystem under the user's Notes folder.
-//! Nothing is cached that the filesystem does not actually hold.
-use super::look::{action, look, notice, screen, FAINT, INK, LINE, MUTED};
-use super::push_bounded;
+//! Notes kept as real files on the machine's own filesystem under the user's Notes
+//! folder. Nothing is cached that the filesystem does not actually hold.
+//!
+//! Notes is a web application: its interface is `web/notes/Notes.tsx`, a React app
+//! the web-app host (`crate::web_app`) runs in the window. This type is the window's
+//! handle on it, saved as the state the app declares (`NotesState`), which is the
+//! shape Notes has always been saved in.
 use crate::desktop_scene::{DesktopTheme, Painter};
+use crate::web_app::WebApp;
 use crate::AppEffect;
-use cw_scene::{Color, Rect};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Notes {
+/// What Notes declares, and so what a snapshot of a Notes window holds.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotesState {
     /// Folder the notes live in, resolved by the shell against the machine's filesystem.
     pub folder: String,
     pub entries: Vec<String>,
@@ -22,108 +26,64 @@ pub struct Notes {
     #[serde(default)]
     pub editing: bool,
 }
+
+#[derive(Clone, Debug)]
+pub struct Notes(pub WebApp);
+
 impl Notes {
     pub const KIND: &'static str = "notes";
-    pub fn launch(argument: &str, window: u64, _clock_us: u64) -> (Self, Vec<AppEffect>) {
-        let folder = if argument.is_empty() {
-            "Notes".into()
-        } else {
-            argument.trim_end_matches('/').to_owned()
-        };
-        let app = Self {
-            folder: folder.clone(),
-            entries: vec![],
-            open: None,
-            text: String::new(),
-            dirty: false,
-            problem: None,
-            editing: false,
-        };
-        (
-            app,
-            vec![AppEffect::ListDirectory {
-                window,
-                tab: 0,
-                path: folder,
-            }],
-        )
+    pub fn launch(argument: &str, window: u64, clock_us: u64) -> (Self, Vec<AppEffect>) {
+        Self::launch_on(argument, window, clock_us, DesktopTheme::Macos)
+            .expect("the built-in Notes boots")
+    }
+    pub fn launch_on(
+        argument: &str,
+        window: u64,
+        clock_us: u64,
+        theme: DesktopTheme,
+    ) -> Result<(Self, Vec<AppEffect>), String> {
+        WebApp::launch(Self::KIND, argument, window, clock_us, theme)
+            .map(|(app, effects)| (Self(app), effects))
+    }
+    /// The declared state; a default one when the application declared none.
+    pub fn state(&self) -> NotesState {
+        serde_json::from_value(self.0.state().clone()).unwrap_or_default()
     }
     pub fn kind(&self) -> &'static str {
         Self::KIND
     }
     pub fn title(&self, theme: DesktopTheme) -> String {
-        match theme {
-            DesktopTheme::Windows => "Sticky Notes",
-            DesktopTheme::Android => "Keep",
-            _ => "Notes",
-        }
-        .into()
+        self.0.title(theme)
     }
     pub fn document(&self) -> String {
-        self.open
-            .as_ref()
-            .map(|name| format!("{}/{name}", self.folder))
+        let s = self.state();
+        s.open
+            .map(|name| format!("{}/{name}", s.folder))
             .unwrap_or_default()
     }
     pub fn caption(&self) -> String {
-        self.open.clone().unwrap_or_default()
+        self.state().open.unwrap_or_default()
     }
     pub fn modified(&self) -> bool {
-        self.dirty
+        self.state().dirty
     }
-    pub fn offline(&mut self, _tag: &str, reason: &str) {
-        self.problem = Some(reason.to_owned());
+    pub fn offline(&mut self, tag: &str, reason: &str) {
+        self.0.offline(tag, reason)
     }
     pub fn http(
         &mut self,
-        _window: u64,
-        _tag: &str,
-        _status: u16,
-        _body: &str,
+        window: u64,
+        tag: &str,
+        status: u16,
+        body: &str,
     ) -> Result<Vec<AppEffect>, String> {
-        Err("notes are local files and make no requests".into())
-    }
-    /// The shell delivers a listing of the notes folder here.
-    pub fn listed(&mut self, entries: Vec<String>) {
-        self.entries = entries.into_iter().filter(|e| !e.ends_with('/')).collect();
-        self.problem = None;
-    }
-    pub fn loaded(&mut self, content: String) {
-        self.text = content;
-        self.dirty = false;
-    }
-    pub fn text_input(&mut self, text: &str) -> Result<(), String> {
-        if self.open.is_none() {
-            return Err("no note is open".into());
-        }
-        push_bounded(&mut self.text, text, 64 * 1024);
-        self.dirty = true;
-        Ok(())
+        self.0.http(window, tag, status, body)
     }
     pub fn text(&mut self, text: &str) -> Result<(), String> {
-        self.text_input(text)
+        self.0.text(text)
     }
     pub fn key(&mut self, window: u64, key: &str, clock_us: u64) -> Result<Vec<AppEffect>, String> {
-        match key {
-            "Backspace" => {
-                if self.open.is_none() {
-                    return Err("no note is open".into());
-                }
-                self.text.pop();
-                self.dirty = true;
-                Ok(vec![])
-            }
-            "Enter" => {
-                if self.open.is_none() {
-                    return Err("no note is open".into());
-                }
-                self.text.push('\n');
-                self.dirty = true;
-                Ok(vec![])
-            }
-            "Ctrl+s" | "Meta+s" => self.click(window, "notes:save", clock_us),
-            other => Err(format!("unsupported notes key {other}")),
-        }
+        self.0.key(window, key, clock_us)
     }
     pub fn click(
         &mut self,
@@ -131,349 +91,36 @@ impl Notes {
         target: &str,
         clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
-        let command = target
-            .strip_prefix("notes:")
-            .ok_or("interaction does not belong to notes")?;
-        match command {
-            "reload" => Ok(vec![AppEffect::ListDirectory {
-                window,
-                tab: 0,
-                path: self.folder.clone(),
-            }]),
-            "new" => {
-                // A new note is named from the world clock, so two machines agree.
-                let name = format!("note-{}.txt", clock_us / 1_000_000);
-                self.open = Some(name.clone());
-                self.editing = true;
-                self.text.clear();
-                self.dirty = true;
-                if !self.entries.contains(&name) {
-                    self.entries.push(name);
-                    self.entries.sort();
-                }
-                Ok(vec![])
-            }
-            "save" => {
-                let name = self.open.clone().ok_or("no note is open")?;
-                self.dirty = false;
-                Ok(vec![
-                    // The folder may not exist yet on a machine that has never taken a note.
-                    AppEffect::CreateDirectory {
-                        window,
-                        path: self.folder.clone(),
-                    },
-                    AppEffect::WriteFile {
-                        window,
-                        path: format!("{}/{name}", self.folder),
-                        content: self.text.clone(),
-                    },
-                    AppEffect::ListDirectory {
-                        window,
-                        tab: 0,
-                        path: self.folder.clone(),
-                    },
-                ])
-            }
-            "body" => {
-                if self.open.is_none() {
-                    return Err("no note is open".into());
-                }
-                self.editing = true;
-                Ok(vec![])
-            }
-            // A phone's back button: the list again, and the keyboard goes down. The
-            // phones' Notes keep what was typed, so unsaved text is written first.
-            "close" => {
-                let effects = if self.dirty {
-                    self.click(window, "notes:save", clock_us)?
-                } else {
-                    vec![]
-                };
-                self.open = None;
-                self.editing = false;
-                self.text.clear();
-                self.dirty = false;
-                Ok(effects)
-            }
-            rest => {
-                let name = rest
-                    .strip_prefix("open:")
-                    .ok_or_else(|| format!("unknown notes command {command}"))?;
-                if !self.entries.iter().any(|e| e == name) {
-                    return Err("note not found".into());
-                }
-                self.open = Some(name.to_owned());
-                self.editing = false;
-                self.text.clear();
-                self.dirty = false;
-                Ok(vec![AppEffect::ReadFile {
-                    window,
-                    path: format!("{}/{name}", self.folder),
-                }])
-            }
-        }
+        self.0.click(window, target, clock_us)
     }
     pub fn page(&self, page: &mut cw_protocol::Page) {
-        use cw_protocol::PageElement as E;
-        let act = |url: &str| cw_protocol::PageAction {
-            method: "APP".into(),
-            url: url.into(),
-            fields: Default::default(),
-        };
-        page.elements.push(E::Heading {
-            id: "notes-folder".into(),
-            text: self.folder.clone(),
-            level: 2,
-        });
-        if let Some(problem) = &self.problem {
-            page.elements.push(E::Text {
-                id: "notes-problem".into(),
-                text: problem.clone(),
-            });
-        }
-        for (id, label) in [("notes:new", "New note"), ("notes:reload", "Reload")] {
-            page.elements.push(E::Button {
-                id: id.into(),
-                text: label.into(),
-                action: act(id),
-                style: None,
-            });
-        }
-        for name in &self.entries {
-            page.elements.push(E::Button {
-                id: format!("notes:open:{name}"),
-                text: name.clone(),
-                action: act(&format!("notes:open:{name}")),
-                style: None,
-            });
-        }
-        if self.open.is_some() {
-            page.elements.push(E::Input {
-                id: "notes-body".into(),
-                label: "Note".into(),
-                value: self.text.clone(),
-                placeholder: String::new(),
-            });
-            page.elements.push(E::Button {
-                id: "notes:save".into(),
-                text: "Save".into(),
-                action: act("notes:save"),
-                style: None,
-            });
-        }
+        self.0.page(page)
     }
     pub fn render(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
-        let (theme, width, height) = (env.theme, env.width, env.height);
-        let l = look(theme);
-        p.scene.background = l.surface;
-        let narrow = theme.mobile() || width < 480;
-        // A phone shows one thing at a time: the note that is open, or the list.
-        if narrow {
-            if let Some(name) = &self.open {
-                self.note(p, &l, theme, width, height, name, 0, 0);
-                return;
-            }
-        }
-        let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
-        let top = screen.top;
-        let list_w = if narrow { width } else { 200 };
-        if !screen.scrolls() {
-            p.box_(Rect::new(0, top, list_w, height), l.chrome, 0);
-        }
-        action(
-            p,
-            &l,
-            Rect::new(8, top + 8, list_w.saturating_sub(84), 28),
-            "New note",
-            "notes:new",
-            true,
-        );
-        action(
-            p,
-            &l,
-            Rect::new(list_w as i32 - 70, top + 8, 62, 28),
-            "Reload",
-            "notes:reload",
-            false,
-        );
-        if let Some(problem) = &self.problem {
-            notice(p, list_w, top + 48, problem);
-        } else if self.entries.is_empty() {
-            notice(p, list_w, top + 48, "No notes yet");
-        }
-        let list = screen.column(
-            p,
-            "list",
-            Rect::new(
-                0,
-                top + 42,
-                list_w,
-                (height as i32 - top - 42).max(1) as u32,
-            ),
-        );
-        for (index, name) in self.entries.iter().enumerate() {
-            let r = Rect::new(
-                4,
-                list.top + 2 + index as i32 * 30,
-                list_w.saturating_sub(8),
-                28,
-            );
-            let on = self.open.as_deref() == Some(name.as_str());
-            p.button(
-                r,
-                if on { l.selection } else { Color::TRANSPARENT },
-                l.radius,
-                &format!("notes:open:{name}"),
-                name,
-            );
-            p.left(
-                r.x + 10,
-                r.y + 5,
-                r.width.saturating_sub(18),
-                name.trim_end_matches(".txt"),
-                13,
-                if on { l.accent } else { INK },
-            );
-        }
-        list.end(p);
-        screen.end(p);
-        if narrow {
-            return;
-        }
-        let x = list_w as i32;
-        p.vline(x, top, height, LINE);
-        match &self.open {
-            Some(name) => self.note(p, &l, theme, width, height, name, x, top),
-            None => notice(p, width.saturating_sub(list_w), top + 40, "Select a note"),
-        }
-        let _ = MUTED;
-    }
-    /// The open note from `x` rightwards and `top` down: its name, Save, and the body,
-    /// which scrolls when it is longer than the window. On a phone it fills the screen
-    /// and a back button returns to the list.
-    #[allow(clippy::too_many_arguments)]
-    fn note(
-        &self,
-        p: &mut Painter,
-        l: &super::look::Look,
-        theme: DesktopTheme,
-        width: u32,
-        height: u32,
-        name: &str,
-        x: i32,
-        top: i32,
-    ) {
-        let mut left = x + 16;
-        if x == 0 {
-            // The phone's navigation: back to the list of notes.
-            let back = Rect::new(4, top + 6, 96, 30);
-            p.button(
-                back,
-                Color::TRANSPARENT,
-                l.radius,
-                "notes:close",
-                "Back to notes",
-            );
-            p.symbol("chevron-left", back.x + 2, back.y + 5, 20, l.accent);
-            p.left(
-                back.x + 24,
-                back.y + 6,
-                70,
-                &self.title(theme),
-                15,
-                l.accent,
-            );
-            left = back.x + back.width as i32 + 8;
-        }
-        p.strong(
-            left,
-            top + 10,
-            (width as i32 - left - 96).max(0) as u32,
-            name.trim_end_matches(".txt"),
-            14,
-            INK,
-        );
-        action(
-            p,
-            l,
-            Rect::new(width as i32 - 86, top + 8, 76, 26),
-            if self.dirty { "Save •" } else { "Save" },
-            "notes:save",
-            self.dirty,
-        );
-        let body = Rect::new(
-            x + 12,
-            top + 42,
-            width.saturating_sub(x as u32 + 24),
-            (height as i32 - top - 54).max(1) as u32,
-        );
-        p.region(body, "notes:body", "Note text");
-        let pane = p.pane("note", body);
-        p.paragraph(
-            body.x + 4,
-            pane.top() + 4,
-            body.width.saturating_sub(18),
-            &self.text,
-            13,
-            INK,
-        );
-        if self.text.is_empty() {
-            p.left(
-                body.x + 4,
-                pane.top() + 4,
-                body.width,
-                "Empty note",
-                13,
-                FAINT,
-            );
-        }
-        p.end_pane(pane, None);
+        self.0.render(p, env)
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn notes_are_real_files_read_and_written_through_the_filesystem() {
-        let (mut app, effects) = Notes::launch("/home/alice/Notes", 1, 0);
-        assert!(
-            matches!(&effects[0], AppEffect::ListDirectory { path, .. } if path == "/home/alice/Notes")
-        );
-        app.listed(vec!["ideas.txt".into(), "drafts/".into()]);
-        assert_eq!(app.entries, vec!["ideas.txt"]);
-        let effects = app.click(1, "notes:open:ideas.txt", 0).unwrap();
-        assert!(
-            matches!(&effects[0], AppEffect::ReadFile { path, .. } if path == "/home/alice/Notes/ideas.txt")
-        );
-        app.loaded("first line".into());
-        assert!(!app.dirty);
-        app.text(" more").unwrap();
-        assert!(app.dirty);
-        let effects = app.click(1, "notes:save", 0).unwrap();
-        // The folder is created first: a machine that has never taken a note has none.
-        assert!(
-            matches!(&effects[0], AppEffect::CreateDirectory { path, .. } if path == "/home/alice/Notes")
-        );
-        let AppEffect::WriteFile { path, content, .. } = &effects[1] else {
-            panic!("expected a write");
-        };
-        assert_eq!(path, "/home/alice/Notes/ideas.txt");
-        assert_eq!(content, "first line more");
-        assert!(!app.dirty);
+/// Two Notes windows are equal when they hold the same notes: the state is all a
+/// snapshot keeps.
+impl PartialEq for Notes {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.state() == other.0.state()
     }
-    #[test]
-    fn editing_without_an_open_note_is_refused() {
-        let (mut app, _) = Notes::launch("", 1, 0);
-        assert!(app.text("x").is_err());
-        assert!(app.click(1, "notes:save", 0).is_err());
-        assert!(app.click(1, "notes:open:missing.txt", 0).is_err());
-        assert!(app.click(1, "not-mine", 0).is_err());
+}
+impl Eq for Notes {}
+
+impl Serialize for Notes {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        self.state().serialize(s)
     }
-    #[test]
-    fn a_new_note_is_named_from_simulation_time() {
-        let (mut app, _) = Notes::launch("", 1, 0);
-        app.click(1, "notes:new", 90_000_000).unwrap();
-        assert_eq!(app.open.as_deref(), Some("note-90.txt"));
+}
+impl<'de> Deserialize<'de> for Notes {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let state = NotesState::deserialize(d)?;
+        let value = serde_json::to_value(&state).map_err(serde::de::Error::custom)?;
+        WebApp::restored(Self::KIND, 1, String::new(), value, Default::default())
+            .map(Self)
+            .map_err(serde::de::Error::custom)
     }
 }
