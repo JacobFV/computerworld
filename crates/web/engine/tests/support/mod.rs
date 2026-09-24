@@ -491,6 +491,7 @@ fn index_fragments(doc: &Document, styles: &StyleSet, tree: &FragmentTree) -> Fr
         boxes: BTreeMap::new(),
         texts: BTreeMap::new(),
     };
+    #[allow(clippy::too_many_arguments)]
     fn visit(
         doc: &Document,
         styles: &StyleSet,
@@ -499,6 +500,7 @@ fn index_fragments(doc: &Document, styles: &StyleSet, tree: &FragmentTree) -> Fr
         container: Option<Rect>,
         m: Option<Affine>,
         ix: &mut FragIndex,
+        is_root: bool,
     ) {
         let abs = f.rect.translate(origin.x, origin.y);
         let mut inner = container;
@@ -614,8 +616,20 @@ fn index_fragments(doc: &Document, styles: &StyleSet, tree: &FragmentTree) -> Fr
             }
             _ => {}
         }
+        // A scroll container's contents are where its scroll offset puts them, as
+        // client rects report them (the root's offset is the document's scroll).
+        let mut child_origin = abs.origin;
+        if let FragmentKind::Box {
+            scroll: Some(info), ..
+        } = &f.kind
+        {
+            if !is_root {
+                child_origin.x -= info.scroll_x;
+                child_origin.y -= info.scroll_y;
+            }
+        }
         for c in &f.children {
-            visit(doc, styles, c, abs.origin, inner, m, ix);
+            visit(doc, styles, c, child_origin, inner, m, ix, false);
         }
     }
     visit(
@@ -626,6 +640,7 @@ fn index_fragments(doc: &Document, styles: &StyleSet, tree: &FragmentTree) -> Fr
         None,
         None,
         &mut ix,
+        true,
     );
     ix
 }

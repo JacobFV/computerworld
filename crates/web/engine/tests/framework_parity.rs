@@ -162,6 +162,18 @@ mod cases {
         (it.next().unwrap(), it.next().unwrap())
     }
 
+    /// Runs the event loop until a pass finds nothing to run, as Chromium's settle
+    /// (two frames and a task) lets every queued task run. One pass can leave work
+    /// behind: React's scheduler yields after a few milliseconds and posts itself a
+    /// message to continue, which is where a first render's `useEffect`s run.
+    fn settle(r: &mut Realm, advance_ms: u32) {
+        for _ in 0..16 {
+            if !r.run_until_idle(advance_ms) {
+                break;
+            }
+        }
+    }
+
     /// One step as Playwright performs it: a click moves the pointer onto the
     /// element's centre and clicks there (so hit testing picks the target), typing
     /// goes to the focused element, a key press is a key press.
@@ -194,7 +206,7 @@ mod cases {
             }
             other => panic!("unknown action {other:?}"),
         }
-        r.run_until_idle(20);
+        settle(r, 20);
     }
 
     struct Timing {
@@ -218,7 +230,7 @@ mod cases {
         );
         let mut r = Realm::new(&html, &format!("{BASE}{name}.html"), Box::new(host()));
         r.run_document();
-        r.run_until_idle(50);
+        settle(&mut r, 50);
         let boot = t.elapsed();
         let t = Instant::now();
         for step in list {
