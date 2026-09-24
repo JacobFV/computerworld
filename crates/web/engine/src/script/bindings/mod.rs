@@ -171,10 +171,30 @@ pub fn install(vm: &mut Vm) {
     misc::install(vm, &w);
     vm.method(&w, "registerProtos", 1, register_protos);
     vm.global.set_hidden("%web", Value::Obj(w));
+    let g = vm.global.clone();
+    vm.method(&g, "__cw_host", 2, host_call);
     // The browser realm has no Node process surface.
     for name in ["process", "require", "module", "Buffer", "global"] {
         let key = Key::str(name);
         vm.global.borrow_mut().props.remove(&key);
+    }
+}
+
+/// `__cw_host(name, payload)`: the page's call to its embedder
+/// (`ScriptHostDocument::host_call`); returns the answer, throws its refusal.
+fn host_call(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    let name = arg_str(vm, a, 0)?;
+    let payload = match a.arg(1) {
+        Value::Undefined => String::new(),
+        v => vm.to_string(&v)?.to_string(),
+    };
+    let r = inner(vm).borrow_mut().host_call(&name, &payload);
+    match r {
+        Ok(v) => Ok(Value::string(v)),
+        Err(e) => {
+            let err = vm.make_error(cw_jsvm::vm::ErrKind::Error, &e);
+            Err(cw_jsvm::value::Ctl::Throw(Value::Obj(err)))
+        }
     }
 }
 

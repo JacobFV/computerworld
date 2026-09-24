@@ -17,6 +17,8 @@ pub enum JournalEntry {
     StorageGet(Option<String>),
     StorageKeys(Vec<String>),
     Cookie(String),
+    /// The embedder's answer to a `__cw_host` call.
+    HostCall(Result<String, String>),
     /// A write the host performed (recorded so replay skips it): `navigate`,
     /// `storage_set`, `storage_remove`, `storage_clear`, `cookie_set`.
     Write,
@@ -30,17 +32,28 @@ pub struct Journal {
     pub replay_pos: usize,
     #[serde(skip)]
     pub replaying: bool,
+    /// Whether answers are recorded (see `Realm::set_journaling`).
+    #[serde(skip, default = "on")]
+    pub recording: bool,
+}
+
+fn on() -> bool {
+    true
 }
 
 impl Journal {
     pub fn recording() -> Journal {
-        Journal::default()
+        Journal {
+            recording: true,
+            ..Journal::default()
+        }
     }
     pub fn replay(entries: Vec<JournalEntry>) -> Journal {
         Journal {
             entries,
             replay_pos: 0,
             replaying: true,
+            recording: true,
         }
     }
     /// True while a restore is still answering calls from the record.
@@ -59,7 +72,9 @@ impl Journal {
         }
     }
     pub fn record(&mut self, e: JournalEntry) {
-        self.entries.push(e);
+        if self.recording {
+            self.entries.push(e);
+        }
     }
 }
 

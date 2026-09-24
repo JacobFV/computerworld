@@ -121,3 +121,75 @@ fn a_chain_of_posted_messages_drains_in_one_run() {
     r.run_until_idle(5);
     assert_eq!(r.eval("String(window.hops)").unwrap(), "200");
 }
+
+/// An embedder that answers `__cw_host` calls: `echo` returns its payload.
+struct EchoHost;
+impl crate::script::ScriptHostDocument for EchoHost {
+    fn host_call(&mut self, name: &str, payload: &str) -> Result<String, String> {
+        match name {
+            "echo" => Ok(format!("echo:{payload}")),
+            _ => Err(format!("no such call: {name}")),
+        }
+    }
+}
+
+const HOST_CALL_PAGE: &str = r#"<!DOCTYPE html><html><body><script>
+  window.answers = [__cw_host('echo', 'hi'), __cw_host('echo', JSON.stringify({ n: 1 }))];
+  try { __cw_host('nope', ''); } catch (e) { answers.push(e.message); }
+</script></body></html>"#;
+
+#[test]
+fn a_page_calls_its_embedder_synchronously() {
+    let mut r = Realm::new(
+        HOST_CALL_PAGE,
+        "https://example.test/page.html",
+        Box::new(EchoHost),
+    );
+    r.run_document();
+    assert_eq!(
+        r.eval("answers.join('|')").unwrap(),
+        "echo:hi|echo:{\"n\":1}|no such call: nope"
+    );
+    // A restore replays the answers from the journal, whatever the new host says.
+    let snap = r.snapshot();
+    let mut back = Realm::restore(&snap, Box::new(default_host()));
+    assert_eq!(
+        back.eval("answers.join('|')").unwrap(),
+        "echo:hi|echo:{\"n\":1}|no such call: nope"
+    );
+    // `__cw_host` is not an enumerable global.
+    assert_eq!(
+        r.eval("String(Object.keys(window).includes('__cw_host'))")
+            .unwrap(),
+        "false"
+    );
+}
+
+#[test]
+fn journaling_can_be_turned_off() {
+    let page = "<!DOCTYPE html><html><body><script>setTimeout(() => { window.t = Date.now(); }, 5); localStorage.getItem('k');</script></body></html>";
+    let mut on = Realm::new(
+        page,
+        "https://example.test/page.html",
+        Box::new(default_host()),
+    );
+    on.run_document();
+    on.run_until_idle(20);
+    let mut off = Realm::new(
+        page,
+        "https://example.test/page.html",
+        Box::new(default_host()),
+    );
+    off.set_journaling(false);
+    off.run_document();
+    off.run_until_idle(20);
+    assert!(on.journal_len() > 2, "{}", on.journal_len());
+    let before = off.journal_len();
+    for _ in 0..10 {
+        off.run_until_idle(20);
+        off.eval("localStorage.getItem('k')").unwrap();
+    }
+    assert_eq!(off.journal_len(), before);
+    // The page runs the same either way.
+    assert_eq!(on.eval("typeof t").unwrap(), off.eval("typeof t").unwrap());
+}

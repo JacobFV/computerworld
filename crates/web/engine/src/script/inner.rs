@@ -435,6 +435,16 @@ impl Inner {
         v
     }
 
+    /// A call to the embedder (`__cw_host`), journaled.
+    pub fn host_call(&mut self, name: &str, payload: &str) -> Result<String, String> {
+        if let Some(JournalEntry::HostCall(r)) = self.journal.next_replayed() {
+            return r.clone();
+        }
+        let r = self.host.host_call(name, payload);
+        self.journal.record(JournalEntry::HostCall(r.clone()));
+        r
+    }
+
     /// A host write: skipped during replay (the host already did it).
     fn host_write(&mut self, f: impl FnOnce(&mut dyn ScriptHostDocument)) {
         if self.journal.next_replayed().is_some() {

@@ -192,6 +192,16 @@ pub trait ScriptHostDocument {
     fn log(&mut self, level: LogLevel, text: &str) {
         let _ = (level, text);
     }
+    /// A call from the page to its embedder: script calls
+    /// `__cw_host(name, payload)` (both strings) and gets the `Ok` string back
+    /// synchronously, or an `Error` with the `Err` message thrown. What names and
+    /// payloads mean is the embedder's (a web application's host, for one); a host
+    /// that does not implement it refuses every call. Answers are journaled like
+    /// the other host calls, so a restore replays them.
+    fn host_call(&mut self, name: &str, payload: &str) -> Result<String, String> {
+        let _ = (name, payload);
+        Err(format!("the host does not answer `{name}`"))
+    }
 }
 
 /// `application/x-www-form-urlencoded` encoding of one value.
@@ -658,6 +668,29 @@ impl Realm {
         }
     }
 
+    /// Records an entry-point call for `snapshot`/`restore`, unless journaling is
+    /// off.
+    fn record_input(&mut self, input: Input) {
+        if self.inner.borrow().journal.recording {
+            self.state.inputs.push(input);
+        }
+    }
+
+    /// Turns the input journal on or off (it is on from creation). An embedder
+    /// that restores its realms from state of its own, rather than with
+    /// `Realm::restore`, turns it off so the realm's memory does not grow with
+    /// every input and host answer; a snapshot taken while it is off does not
+    /// restore the realm.
+    pub fn set_journaling(&mut self, on: bool) {
+        self.inner.borrow_mut().journal.recording = on;
+    }
+
+    /// How many entries the journal holds: the entry-point calls recorded plus the
+    /// host answers recorded (what `snapshot` carries and `restore` replays).
+    pub fn journal_len(&self) -> usize {
+        self.state.inputs.len() + self.inner.borrow().journal.entries.len()
+    }
+
     /// Re-arms the VM's step limit for one entry-point call.
     fn arm(&mut self) {
         if self.state.step_budget > 0 {
@@ -668,7 +701,7 @@ impl Realm {
     /// Tells layout the intrinsic sizes of pictures the browser fetched, keyed by
     /// the `src` as written. Recorded as an input, so a restore sees the same layout.
     pub fn set_image_sizes(&mut self, sizes: Vec<(String, u32, u32)>) {
-        self.state.inputs.push(Input::ImageSizes(sizes.clone()));
+        self.record_input(Input::ImageSizes(sizes.clone()));
         let mut inner = self.inner.borrow_mut();
         for (src, w, h) in sizes {
             inner.images.0.insert(src, (w, h));
@@ -787,7 +820,7 @@ impl Realm {
     /// after the parse, `async` after that, modules through the VM's loader), then
     /// fires `DOMContentLoaded` and `load`.
     pub fn run_document(&mut self) {
-        self.state.inputs.push(Input::RunDocument);
+        self.record_input(Input::RunDocument);
         self.arm();
         let html = self.state.html.clone();
         let placeholder = Document::new();
@@ -967,7 +1000,7 @@ impl Realm {
 
     /// Evaluates a classic script in the realm's global scope.
     pub fn eval(&mut self, source: &str) -> Result<String, String> {
-        self.state.inputs.push(Input::Eval(source.to_owned()));
+        self.record_input(Input::Eval(source.to_owned()));
         self.arm();
         let r = self.vm.eval_source_with(source, "eval", false, true);
         let out = match r {
@@ -1101,7 +1134,7 @@ impl Realm {
     /// the clock to the next timer and fires it (`requestAnimationFrame` callbacks
     /// run once per 16ms of advancement). Returns true when work ran.
     pub fn run_until_idle(&mut self, advance_ms: u32) -> bool {
-        self.state.inputs.push(Input::RunUntilIdle { advance_ms });
+        self.record_input(Input::RunUntilIdle { advance_ms });
         self.arm();
         self.sync_clock();
         let mut ran = false;
@@ -1265,7 +1298,7 @@ impl Realm {
     /// Runs the `requestAnimationFrame` callbacks for one painted frame, then drains
     /// microtasks. The browser calls this once per frame it paints.
     pub fn animation_frame(&mut self) {
-        self.state.inputs.push(Input::AnimationFrame);
+        self.record_input(Input::AnimationFrame);
         self.arm();
         self.sync_clock();
         self.animation_frame_inner();
@@ -1284,7 +1317,7 @@ impl Realm {
     /// Delivers `ResizeObserver` and `IntersectionObserver` records against the
     /// current layout. The browser calls this after it laid out and painted.
     pub fn after_layout(&mut self) {
-        self.state.inputs.push(Input::AfterLayout);
+        self.record_input(Input::AfterLayout);
         self.arm();
         {
             let mut i = self.inner.borrow_mut();
@@ -1298,7 +1331,7 @@ impl Realm {
 
     /// Dispatches a browser action as DOM events and reports the default action.
     pub fn dispatch(&mut self, event: UiEvent) -> DefaultAction {
-        self.state.inputs.push(Input::Dispatch(event.clone()));
+        self.record_input(Input::Dispatch(event.clone()));
         self.arm();
         self.sync_clock();
         let action = bindings::events::dispatch(self, event);
