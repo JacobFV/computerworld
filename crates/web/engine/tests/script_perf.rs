@@ -73,13 +73,15 @@ mod perf {
             modifiers,
             detail: 1,
         });
-        r.run_until_idle(20);
+        // `black_box` keeps each phase a real call that returns, so a profiler
+        // that toggles on entry and exit sees exactly the phase (no tail call).
+        std::hint::black_box(r.run_until_idle(20));
     }
 
     #[inline(never)]
     fn key(r: &mut Realm) {
         r.dispatch(UiEvent::TypeText { text: "x".into() });
-        r.run_until_idle(20);
+        std::hint::black_box(r.run_until_idle(20));
     }
 
     fn load(name: &str, html: &str) -> Realm {
@@ -93,13 +95,13 @@ mod perf {
     #[inline(never)]
     fn first_boot(name: &str, html: &str) -> Realm {
         cw_jsvm::codecache::clear();
-        load(name, html)
+        std::hint::black_box(load(name, html))
     }
 
     /// A later load of the same page.
     #[inline(never)]
     fn boot(name: &str, html: &str) -> Realm {
-        load(name, html)
+        std::hint::black_box(load(name, html))
     }
 
     fn median(mut v: Vec<f64>) -> f64 {
