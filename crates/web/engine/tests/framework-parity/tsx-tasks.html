@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tasks (TSX)</title>
+<!-- The task tracker of react18-tasks.html written in TSX (tsx-tasks.tsx). `cw-tsx build`
+     compiled it to tsx-tasks.ui.json, which the engine's browser runs natively (cw-ui),
+     and to tsx-tasks.js, which React 18 runs everywhere else. The `data-cw-ui`
+     attribute is how a page declares the compiled app; see docs/tsx-apps.md. -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { font: 14px/20px 'DejaVu Sans', sans-serif; color: rgb(29, 28, 36); background-color: rgb(246, 246, 249); }
+  #app { height: 100%; }
+  .shell { display: flex; flex-direction: column; height: 100%; }
+  .top { display: flex; align-items: center; gap: 24px; height: 56px; padding: 0 24px; background-color: rgb(34, 30, 64); color: rgb(255, 255, 255); }
+  .brand { font-weight: 700; font-size: 18px; }
+  .tabs { display: flex; gap: 4px; }
+  .tab { border: 0; padding: 6px 14px; border-radius: 6px; font: inherit; color: rgb(200, 198, 230); background-color: transparent; }
+  .tab.active { background-color: rgb(84, 72, 180); color: rgb(255, 255, 255); }
+  .spacer { flex: 1; }
+  .who { display: flex; align-items: center; gap: 8px; }
+  .avatar { display: inline-block; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-size: 12px; font-weight: 700; color: rgb(255, 255, 255); }
+  .body { flex: 1; display: flex; min-height: 0; }
+  .side { width: 220px; padding: 20px 12px; background-color: rgb(255, 255, 255); border-right: 1px solid rgb(226, 225, 234); }
+  .side h2 { margin: 0 0 8px 8px; font-size: 11px; line-height: 16px; letter-spacing: 0; text-transform: uppercase; color: rgb(120, 118, 140); }
+  .filter { display: flex; justify-content: space-between; width: 100%; border: 0; padding: 6px 8px; border-radius: 6px; font: inherit; text-align: left; color: inherit; background-color: transparent; }
+  .filter.active { background-color: rgb(236, 234, 250); color: rgb(84, 72, 180); font-weight: 700; }
+  .count { min-width: 22px; padding: 0 6px; border-radius: 10px; font-size: 12px; text-align: center; background-color: rgb(236, 236, 242); }
+  .main { flex: 1; padding: 24px; min-width: 0; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+  .stat { padding: 14px 16px; border-radius: 10px; background-color: rgb(255, 255, 255); border: 1px solid rgb(226, 225, 234); }
+  .stat .label { font-size: 12px; color: rgb(120, 118, 140); }
+  .stat .value { font-size: 26px; line-height: 32px; font-weight: 700; }
+  .bar { height: 6px; margin-top: 8px; border-radius: 3px; background-color: rgb(236, 236, 242); }
+  .bar > div { height: 100%; border-radius: 3px; background-color: rgb(60, 170, 110); }
+  .add { display: flex; gap: 8px; margin-bottom: 12px; }
+  .add input { flex: 1; height: 36px; padding: 0 12px; border: 1px solid rgb(206, 204, 220); border-radius: 8px; font: inherit; background-color: rgb(255, 255, 255); }
+  .add button { height: 36px; padding: 0 16px; border: 0; border-radius: 8px; font: inherit; font-weight: 700; color: rgb(255, 255, 255); background-color: rgb(84, 72, 180); }
+  .list { margin: 0; padding: 0; list-style: none; border-radius: 10px; background-color: rgb(255, 255, 255); border: 1px solid rgb(226, 225, 234); }
+  .task { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid rgb(236, 236, 242); }
+  .task:first-child { border-top: 0; }
+  .check { width: 18px; height: 18px; padding: 0; border: 2px solid rgb(180, 178, 200); border-radius: 4px; background-color: rgb(255, 255, 255); }
+  .task.done .check { border-color: rgb(60, 170, 110); background-color: rgb(60, 170, 110); }
+  .title { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .task.done .title { color: rgb(150, 148, 165); text-decoration: line-through; }
+  .tag { padding: 2px 8px; border-radius: 10px; font-size: 12px; line-height: 16px; }
+  .tag.bug { background-color: rgb(252, 228, 228); color: rgb(170, 40, 40); }
+  .tag.feature { background-color: rgb(226, 240, 252); color: rgb(30, 90, 160); }
+  .tag.chore { background-color: rgb(238, 238, 238); color: rgb(90, 90, 90); }
+  .due { width: 64px; font-family: 'DejaVu Sans Mono', monospace; font-size: 12px; text-align: right; color: rgb(120, 118, 140); }
+  .empty { padding: 24px; text-align: center; color: rgb(120, 118, 140); }
+  .board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .column { padding: 12px; border-radius: 10px; background-color: rgb(236, 236, 242); }
+  .column h3 { display: flex; justify-content: space-between; margin: 0 0 10px; font-size: 13px; }
+  .card { margin-bottom: 8px; padding: 10px 12px; border-radius: 8px; background-color: rgb(255, 255, 255); border: 1px solid rgb(226, 225, 234); }
+  .card .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+</style>
+<script src="/vendor/react-18.3.1.production.min.js"></script>
+<script src="/vendor/react-dom-18.3.1.production.min.js"></script>
+</head>
+<body>
+<div id="app"></div>
+<script src="tsx-tasks.js" data-cw-ui="tsx-tasks.ui.json"></script>
+</body>
+</html>

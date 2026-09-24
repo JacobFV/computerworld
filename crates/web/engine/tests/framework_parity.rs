@@ -13,6 +13,11 @@
 //! framework built there. The two fixtures render the same tracker, and Chromium lays
 //! them out identically node for node, so they also check each other.
 //!
+//! A `tsx-*` fixture is a React app written in TSX (`<name>.tsx`); its page loads the
+//! React fallback `cw-tsx` emits (`<name>.js`). Here that fallback runs on the Realm;
+//! `crates/web/ui/tests/tsx_parity.rs` runs the same module compiled (`cw-ui`) and
+//! requires the two documents to be identical after every state.
+//!
 //!     cargo test -p cw-web --features pipeline --test framework_parity -- --nocapture
 
 mod support;
@@ -109,7 +114,8 @@ mod cases {
     const BASE: &str = "https://example.test/";
 
     /// Every file of `tests/vendor/` served under `/vendor/`, as `dump.mjs` serves them
-    /// to Chromium.
+    /// to Chromium, and the fixtures' own scripts (a TSX fixture's compiled fallback,
+    /// `tsx-*.js`) beside the page, as Chromium loads them from the fixture's directory.
     fn host() -> MemoryHost {
         let dir = crate_dir().join("tests/vendor");
         let mut entries: Vec<_> = std::fs::read_dir(&dir)
@@ -130,6 +136,17 @@ mod cases {
                 "text/javascript"
             };
             h = h.with_response(&format!("{BASE}vendor/{name}"), ty, &body);
+        }
+        let mut scripts: Vec<_> = std::fs::read_dir(fixture_dir())
+            .expect("tests/framework-parity")
+            .map(|e| e.unwrap().path())
+            .filter(|p| p.extension().is_some_and(|x| x == "js"))
+            .collect();
+        scripts.sort();
+        for p in scripts {
+            let name = p.file_name().unwrap().to_string_lossy().into_owned();
+            let body = std::fs::read_to_string(&p).expect("fixture script");
+            h = h.with_response(&format!("{BASE}{name}"), "text/javascript", &body);
         }
         h
     }
@@ -303,6 +320,14 @@ mod cases {
     #[test]
     fn vue3_tasks() {
         run_fixture("vue3-tasks");
+    }
+
+    /// The tracker written in TSX, here as its compiled React fallback (`tsx-tasks.js`)
+    /// on the Realm. The compiled app itself, and the check that both render the same
+    /// document, are in `crates/web/ui/tests/tsx_parity.rs`.
+    #[test]
+    fn tsx_tasks() {
+        run_fixture("tsx-tasks");
     }
 
     #[test]

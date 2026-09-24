@@ -9,3 +9,9 @@ description = "The reactive UI runtime for compiled TSX apps: mounts cw-tsx IR o
 cw-web = { path = "../engine" }
 serde.workspace = true
 serde_json.workspace = true
+
+[dev-dependencies]
+cw-tsx = { path = "../tsx" }
+cw-scene = { path = "../../graphics/scene" }
+cw-render = { path = "../../graphics/render" }
+cw-jsvm = { path = "../../languages/jsvm" }

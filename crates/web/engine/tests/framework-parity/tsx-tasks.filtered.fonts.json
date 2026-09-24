@@ -1,0 +1,32 @@
+[
+ {
+  "family": "\"Times New Roman\"",
+  "first": "html",
+  "chromium": []
+ },
+ {
+  "family": "\"DejaVu Sans\", sans-serif",
+  "first": "html>body>div:nth-child(1)>div:nth-child(1)>header:nth-child(1)>span:nth-child(1)",
+  "chromium": [
+   {
+    "family": "DejaVu Sans",
+    "glyphs": 7
+   }
+  ]
+ },
+ {
+  "family": "Arial",
+  "first": "html>body>div:nth-child(1)>div:nth-child(1)>div:nth-child(2)>main:nth-child(2)>ul:nth-child(3)>li:nth-child(1)>button:nth-child(1)",
+  "chromium": []
+ },
+ {
+  "family": "\"DejaVu Sans Mono\", monospace",
+  "first": "html>body>div:nth-child(1)>div:nth-child(1)>div:nth-child(2)>main:nth-child(2)>ul:nth-child(3)>li:nth-child(1)>span:nth-child(5)",
+  "chromium": [
+   {
+    "family": "DejaVu Sans Mono",
+    "glyphs": 6
+   }
+  ]
+ }
+]

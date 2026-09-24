@@ -985,6 +985,7 @@ version = "0.2.0"
 name = "cw-ui"
 version = "0.2.0"
 dependencies = [
+ "cw-jsvm",
  "cw-render",
  "cw-scene",
  "cw-tsx",
