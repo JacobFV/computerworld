@@ -457,11 +457,11 @@ fn sticky_shift(s: &ComputedStyle, rect: Rect, port: Rect, cb: Rect) -> Point {
     }
     if let Some(b) = inset(s.inset.bottom, port.size.height) {
         let max_y = port.bottom() - b;
-        if rect.bottom() + dy > max_y {
+        // Pulled up to keep its bottom inside the port, no further than its
+        // containing block's top allows; a `top` that already pushed it down wins.
+        if rect.bottom() + dy > max_y && dy <= Au::ZERO {
             let max_shift = (rect.origin.y - cb.origin.y).max(Au::ZERO);
-            dy = dy
-                .min(Au::ZERO)
-                .max(-(rect.bottom() - max_y).min(max_shift));
+            dy = (max_y - rect.bottom()).max(-max_shift);
         }
     }
     if let Some(l) = inset(s.inset.left, port.size.width) {
@@ -473,9 +473,9 @@ fn sticky_shift(s: &ComputedStyle, rect: Rect, port: Rect, cb: Rect) -> Point {
     }
     if let Some(r) = inset(s.inset.right, port.size.width) {
         let max_x = port.right() - r;
-        if rect.right() + dx > max_x {
+        if rect.right() + dx > max_x && dx <= Au::ZERO {
             let max_shift = (rect.origin.x - cb.origin.x).max(Au::ZERO);
-            dx = dx.min(Au::ZERO).max(-(rect.right() - max_x).min(max_shift));
+            dx = (max_x - rect.right()).max(-max_shift);
         }
     }
     Point { x: dx, y: dy }

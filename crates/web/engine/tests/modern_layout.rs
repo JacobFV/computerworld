@@ -480,6 +480,26 @@ mod cases {
         close(tip.x, 100.0, "after the button");
     }
 
+    /// A `bottom: 0` sticky box below the fold is pulled up to the viewport's bottom
+    /// edge (a form's sticky action bar), and a `right: 0` one to its right edge;
+    /// neither leaves its containing block.
+    #[test]
+    fn sticky_bottom_and_right_pull_the_box_into_the_port() {
+        let p = page(
+            "<!DOCTYPE html><style>body { margin: 0 }</style>\
+             <form id=f style='display: block; margin-top: 100px'><div style='height: 700px'></div>\
+             <div id=foot style='position: sticky; bottom: 0; height: 69px'></div></form>\
+             <div style='display: flex; width: 2000px'><div style='width: 1400px'></div>\
+             <div id=side style='position: sticky; right: 0; width: 100px; height: 10px'></div></div>\
+             <div id=box style='height: 300px; margin-top: 600px'><div style='height: 280px'></div>\
+             <div id=kept style='position: sticky; bottom: 0; height: 10px'></div></div>",
+        );
+        // Chromium's dump of this page.
+        rect_is(&p, "foot", 0.0, 731.0, 1280.0, 69.0);
+        rect_is(&p, "side", 1180.0, 869.0, 100.0, 10.0);
+        rect_is(&p, "kept", 0.0, 1479.0, 1280.0, 10.0);
+    }
+
     /// A textarea's rows size its content box whatever its `box-sizing`, and a menu
     /// list select is one line of rounded ascent and descent plus Blink's internal
     /// pixel above and below, at `line-height: normal` whatever the page says; the
