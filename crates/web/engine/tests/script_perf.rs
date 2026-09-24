@@ -11,7 +11,10 @@
 //! `SCRIPT_PERF_RUNS` sets the timed runs (default 7), `SCRIPT_PERF_TOP` the rows per
 //! profile table (default 25), `SCRIPT_PERF_OP_TIME=1` times every instruction,
 //! `SCRIPT_PERF_PROPS=1` counts property reads by key, `SCRIPT_PERF_FIXTURE` limits
-//! the run to one fixture and `SCRIPT_PERF_PHASE` prints only one phase's profile.
+//! the run to one fixture, `SCRIPT_PERF_PHASE` prints only one phase's profile and
+//! `SCRIPT_PERF_NO_PROFILE=1` only times (for an external profiler such as
+//! callgrind with `--toggle-collect=script_perf::perf::click_at`; the phases are
+//! the functions `first_boot`, `boot`, `click_at` (two clicks) and `key`).
 
 #[cfg(feature = "pipeline")]
 mod perf {
@@ -59,6 +62,7 @@ mod perf {
         (it.next().unwrap(), it.next().unwrap())
     }
 
+    #[inline(never)]
     fn click_at(r: &mut Realm, (x, y): (i32, i32)) {
         let modifiers = Modifiers::default();
         r.dispatch(UiEvent::PointerMove { x, y, modifiers });
@@ -72,16 +76,30 @@ mod perf {
         r.run_until_idle(20);
     }
 
+    #[inline(never)]
     fn key(r: &mut Realm) {
         r.dispatch(UiEvent::TypeText { text: "x".into() });
         r.run_until_idle(20);
     }
 
-    fn boot(name: &str, html: &str) -> Realm {
+    fn load(name: &str, html: &str) -> Realm {
         let mut r = Realm::new(html, &format!("{BASE}{name}.html"), Box::new(host()));
         r.run_document();
         r.run_until_idle(50);
         r
+    }
+
+    /// A load with nothing compiled yet on the thread.
+    #[inline(never)]
+    fn first_boot(name: &str, html: &str) -> Realm {
+        cw_jsvm::codecache::clear();
+        load(name, html)
+    }
+
+    /// A later load of the same page.
+    #[inline(never)]
+    fn boot(name: &str, html: &str) -> Realm {
+        load(name, html)
     }
 
     fn median(mut v: Vec<f64>) -> f64 {
@@ -109,10 +127,8 @@ mod perf {
         let (mut news, mut boots, mut clicks, mut keys) = (vec![], vec![], vec![], vec![]);
         let mut colds = vec![];
         for _ in 0..runs {
-            // A first load: nothing compiled yet on this thread.
-            cw_jsvm::codecache::clear();
             let t = Instant::now();
-            drop(boot(name, &html));
+            drop(first_boot(name, &html));
             colds.push(t.elapsed().as_secs_f64() * 1000.0);
             // Later loads reuse the compiled prelude and bundles.
             let t = Instant::now();
@@ -142,6 +158,9 @@ mod perf {
             boots.iter().cloned().fold(f64::MAX, f64::min),
         );
 
+        if env_flag("SCRIPT_PERF_NO_PROFILE") {
+            return;
+        }
         let opts = ProfileOptions {
             op_time: env_flag("SCRIPT_PERF_OP_TIME"),
             prop_names: env_flag("SCRIPT_PERF_PROPS"),
