@@ -651,7 +651,9 @@ hooks.pointer = (kind, target, x, y, button, mods, detail) => {
   if (kind === 'move') { init.buttons = 0; }
   return !fire(target, me);
 };
-hooks.hover = (oldT, newT, x, y, mods) => {
+// `fake`: the content moved under a still pointer, so only the boundary events
+// fire (no `pointermove`/`mousemove`).
+hooks.hover = (oldT, newT, x, y, mods, fake) => {
   const init = mouseInit(x, y, 0, mods, 0);
   init.buttons = 0;
   if (oldT) {
@@ -668,8 +670,10 @@ hooks.hover = (oldT, newT, x, y, mods) => {
     let n = newT;
     while (n && n !== document) { if (!(oldT && n.contains(oldT))) chain.push(n); n = n.parentNode; }
     for (let i = chain.length - 1; i >= 0; i--) { fire(chain[i], new C.PointerEvent('pointerenter', Object.assign({}, init, { bubbles: false, relatedTarget: oldT }))); fire(chain[i], new C.MouseEvent('mouseenter', Object.assign({}, init, { bubbles: false, relatedTarget: oldT }))); }
-    fire(newT, new C.PointerEvent('pointermove', init));
-    fire(newT, new C.MouseEvent('mousemove', init));
+    if (!fake) {
+      fire(newT, new C.PointerEvent('pointermove', init));
+      fire(newT, new C.MouseEvent('mousemove', init));
+    }
   }
 };
 hooks.focusChange = (oldT, newT) => {

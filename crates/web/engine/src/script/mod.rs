@@ -1135,6 +1135,15 @@ impl Realm {
                 ran = true;
             }
         }
+        // Content that moved under a still pointer takes `:hover` with it (and
+        // whatever its boundary events set off runs too).
+        for _ in 0..4 {
+            if !bindings::events::refresh_hover(self) {
+                break;
+            }
+            self.run_due();
+            ran = true;
+        }
         self.flush_console();
         ran
     }
@@ -1267,6 +1276,9 @@ impl Realm {
         let t = self.vm.perf_now();
         self.call_hook("animationFrame", vec![Value::Num(t)]);
         self.drain_microtasks();
+        if bindings::events::refresh_hover(self) {
+            self.drain_microtasks();
+        }
     }
 
     /// Delivers `ResizeObserver` and `IntersectionObserver` records against the

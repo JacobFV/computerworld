@@ -49,6 +49,7 @@ fn target_at(realm: &mut Realm, x: i32, y: i32) -> Option<NodeId> {
 
 /// Updates `:hover` and fires the mouse transition events.
 fn update_hover(realm: &mut Realm, target: Option<NodeId>, x: i32, y: i32, m: Modifiers) {
+    realm.inner.borrow_mut().pointer = Some((x, y));
     let old = realm.inner.borrow().hovered;
     if old != target {
         {
@@ -72,7 +73,14 @@ fn update_hover(realm: &mut Realm, target: Option<NodeId>, x: i32, y: i32, m: Mo
         let mv = mods_value(realm, m);
         realm.call_hook(
             "hover",
-            vec![ov, nv, Value::Num(x as f64), Value::Num(y as f64), mv],
+            vec![
+                ov,
+                nv,
+                Value::Num(x as f64),
+                Value::Num(y as f64),
+                mv,
+                Value::Bool(false),
+            ],
         );
     } else if let Some(t) = target {
         let tv = wrap(realm, Some(t));
@@ -90,6 +98,57 @@ fn update_hover(realm: &mut Realm, target: Option<NodeId>, x: i32, y: i32, m: Mo
             ],
         );
     }
+}
+
+/// Re-hit-tests the pointer where it last was, after the content under it may
+/// have changed (a click that opens an overlay over the button, a list that
+/// re-renders): when another element is now under it, `:hover` moves and the
+/// boundary events fire (`pointerout`/`mouseout`/`…leave`, then `…over`/
+/// `…enter`) with no move events, as Chromium updates hover after a layout.
+/// Returns whether the hovered element changed.
+pub fn refresh_hover(realm: &mut Realm) -> bool {
+    let Some((x, y)) = realm.inner.borrow().pointer else {
+        return false;
+    };
+    if realm.inner.borrow().doc.document_element().is_none() {
+        return false;
+    }
+    let target = target_at(realm, x, y);
+    let old = realm.inner.borrow().hovered;
+    if old == target {
+        return false;
+    }
+    {
+        let mut i = realm.inner.borrow_mut();
+        let mut changed: Vec<NodeId> = Vec::new();
+        if let Some(o) = old {
+            changed.push(o);
+            changed.extend(i.doc.ancestors(o).filter(|a| i.doc.is_element(*a)));
+        }
+        if let Some(t) = target {
+            changed.push(t);
+            changed.extend(i.doc.ancestors(t).filter(|a| i.doc.is_element(*a)));
+        }
+        i.hovered = target;
+        for c in changed {
+            i.touch_state(c);
+        }
+    }
+    let ov = wrap(realm, old);
+    let nv = wrap(realm, target);
+    let mv = mods_value(realm, Modifiers::default());
+    realm.call_hook(
+        "hover",
+        vec![
+            ov,
+            nv,
+            Value::Num(x as f64),
+            Value::Num(y as f64),
+            mv,
+            Value::Bool(true),
+        ],
+    );
+    true
 }
 
 /// Moves focus (with the events), returning whether it changed.
@@ -938,6 +997,7 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
             let Some(t) = target_at(realm, x, y) else {
                 return DefaultAction::None;
             };
+            realm.inner.borrow_mut().pointer = Some((x, y));
             let was_active = realm.inner.borrow().active;
             {
                 let mut i = realm.inner.borrow_mut();

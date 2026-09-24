@@ -159,6 +159,9 @@ pub struct Inner {
     pub images: ImageSizeMap,
     pub scroll: ScrollState,
     pub hovered: Option<NodeId>,
+    /// Where the pointer last was (viewport CSS pixels), so `:hover` can follow
+    /// content that moves under a pointer that stays still.
+    pub pointer: Option<(i32, i32)>,
     pub active: Option<NodeId>,
     pub focused: Option<NodeId>,
     pub focus_visible: bool,
@@ -310,6 +313,7 @@ impl Inner {
             images: ImageSizeMap::default(),
             scroll: ScrollState::new(),
             hovered: None,
+            pointer: None,
             active: None,
             focused: None,
             focus_visible: false,
