@@ -1354,11 +1354,15 @@ fn form_controls_have_intrinsic_sizes() {
             height: lh() * 3
         }
     );
+    // A menu list is a line of the font's rounded ascent and descent and Blink's
+    // internal pixel above and below.
+    let m = text::font_metrics(&font());
+    let round = |a: Au| px((a.0 + 32).div_euclid(64));
     assert_eq!(
         t.rect(&tree, sel).size,
         Size {
             width: ch * 20,
-            height: lh()
+            height: round(m.ascent) + round(m.descent) + px(2)
         }
     );
     assert_eq!(

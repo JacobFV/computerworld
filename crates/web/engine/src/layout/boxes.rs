@@ -1445,7 +1445,19 @@ impl<'a> Builder<'a> {
                 replaced: Replaced::Control(ControlKind::Select),
                 intrinsic: Some(Size {
                     width: ch * 20,
-                    height: lh,
+                    // Blink's menu list is one line of the font's rounded ascent and
+                    // descent plus a pixel of internal padding above and below,
+                    // whatever `line-height` says (measured in Chromium: 17 px for
+                    // 13.33px Arimo, 24 for 20px Arimo, 19 for 14px Inter).
+                    height: if doc.has_attr(node, "multiple")
+                        || attr_u32(doc, node, "size", 1) > 1
+                    {
+                        lh
+                    } else {
+                        let m = text::font_metrics(font);
+                        let round = |a: Au| Au::from_px_i32((a.0 + 32).div_euclid(64));
+                        round(m.ascent) + round(m.descent) + Au::from_px_i32(2)
+                    },
                 }),
                 attr_width: None,
                 attr_height: None,

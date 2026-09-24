@@ -531,24 +531,9 @@ pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
             }
         }
         "textarea" => {
-            if let Some(cols) = attr("cols")
-                .and_then(parse_non_negative_integer)
-                .filter(|n| *n > 0)
-            {
-                out.push(decl(
-                    "width",
-                    vec![tok_dimension(Number::from_i64(cols), "ch")],
-                ));
-            }
-            if let Some(rows) = attr("rows")
-                .and_then(parse_non_negative_integer)
-                .filter(|n| *n > 0)
-            {
-                out.push(decl(
-                    "height",
-                    vec![tok_dimension(Number::from_i64(rows), "lh")],
-                ));
-            }
+            // `cols` and `rows` size the control's natural size (layout::boxes), not
+            // its CSS `width`/`height`: as hints they would count the padding in
+            // under `box-sizing: border-box` and show in getComputedStyle.
             if let Some(w) = attr("wrap") {
                 if w.trim().eq_ignore_ascii_case("off") {
                     out.push(kw("white-space", "pre"));
@@ -824,9 +809,7 @@ mod tests {
         let (d, n) = el("input", &[("size", "20"), ("type", "checkbox")]);
         assert!(!names(&d, n).iter().any(|(k, _)| k == "width"));
         let (d, n) = el("textarea", &[("cols", "40"), ("rows", "5")]);
-        let h = names(&d, n);
-        assert!(h.contains(&("width".into(), "40ch".into())));
-        assert!(h.contains(&("height".into(), "5lh".into())));
+        assert!(names(&d, n).is_empty(), "rows and cols are not hints");
         let (d, n) = el("span", &[("dir", "rtl")]);
         assert_eq!(
             names(&d, n),

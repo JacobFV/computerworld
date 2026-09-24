@@ -479,4 +479,28 @@ mod cases {
         close(tip.y, 0.0, "inline absolute stays on the line");
         close(tip.x, 100.0, "after the button");
     }
+
+    /// A textarea's rows size its content box whatever its `box-sizing`, and a menu
+    /// list select is one line of rounded ascent and descent plus Blink's internal
+    /// pixel above and below, at `line-height: normal` whatever the page says; the
+    /// computed values are Chromium's (its dump of this page).
+    #[test]
+    fn textarea_rows_and_menu_list_heights_follow_blink() {
+        let p = page(
+            "<!DOCTYPE html><style>body { margin: 0 } * { box-sizing: border-box }</style>\
+             <textarea id=t rows=3 style='display: block; width: 300px; padding: 8px 12px; border: 0; font: 14px/20px Arimo'></textarea>\
+             <select id=s style='font: 14px Arimo; padding: 8px 12px; border: 0; line-height: 20px; display: block'><option id=o>One</option></select>",
+        );
+        rect_is(&p, "t", 0.0, 0.0, 300.0, 76.0);
+        assert_eq!(p.computed("t", "vertical-align"), "baseline");
+        let s = p.rect("s");
+        close(s.y, 76.0, "select top");
+        close(s.height, 34.0, "select height");
+        assert_eq!(p.computed("s", "line-height"), "normal");
+        assert_eq!(p.computed("s", "background-color"), "rgb(239, 239, 239)");
+        assert_eq!(p.computed("s", "overflow-x"), "clip");
+        assert_eq!(p.computed("o", "display"), "block");
+        assert_eq!(p.computed("o", "white-space"), "nowrap");
+        assert_eq!(p.computed("o", "padding-left"), "2px");
+    }
 }
