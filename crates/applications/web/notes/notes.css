@@ -1,0 +1,293 @@
+/* Notes, in the platform's palette (the host sets the --cw-* properties per OS skin).
+   Geometry follows the platform's own Notes layout: a toolbar and a 200 px list
+   beside the open note on a desktop, one screen at a time on a phone. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--cw-ink);
+  background: var(--cw-surface);
+}
+#root,
+.app {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+button,
+textarea {
+  font-family: inherit;
+  font-size: 13px;
+  color: inherit;
+  margin: 0;
+}
+strong {
+  font-weight: 700;
+}
+
+/* The desktop toolbar, and a phone's top app bar on Android. */
+.toolbar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 40px;
+  background: var(--cw-chrome);
+  border-bottom: 1px solid var(--cw-line);
+}
+.toolbar strong {
+  position: absolute;
+  left: 14px;
+  top: 11px;
+  font-size: 14px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.appbar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 62px;
+  border-bottom: 1px solid var(--cw-line);
+}
+.appbar strong {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  font-size: var(--cw-title);
+  line-height: 30px;
+  white-space: nowrap;
+}
+
+/* Buttons that really dispatch: the accent pill, or an outlined one. */
+.action {
+  position: absolute;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--cw-line);
+  border-radius: var(--cw-radius);
+  background: transparent;
+  color: var(--cw-accent);
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.action.primary {
+  border-color: var(--cw-accent);
+  background: var(--cw-accent);
+  color: #fff;
+}
+
+/* The list column. */
+.sidebar {
+  position: absolute;
+  left: 0;
+  top: 41px;
+  width: 200px;
+  bottom: 0;
+  background: var(--cw-chrome);
+}
+.narrow .sidebar {
+  width: auto;
+  right: 0;
+}
+.buttons {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 8px;
+  height: 28px;
+}
+.action.new {
+  left: 0;
+  right: 68px;
+  top: 0;
+}
+.action.reload {
+  right: 0;
+  width: 62px;
+  top: 0;
+}
+.notice {
+  margin: 0;
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--cw-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+.notice.listed {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 48px;
+}
+.list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 42px;
+  bottom: 0;
+  overflow-y: auto;
+}
+.row {
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - 8px);
+  height: 28px;
+  margin: 2px 4px 0;
+  padding: 0 8px 0 10px;
+  border: 0;
+  border-radius: var(--cw-radius);
+  background: transparent;
+  color: var(--cw-ink);
+  line-height: 28px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row.on {
+  background: var(--cw-selection);
+  color: var(--cw-accent);
+}
+.rows {
+  padding-bottom: 12px;
+}
+
+/* The note beside the list, or filling a phone. */
+.pane {
+  position: absolute;
+  left: 200px;
+  top: 41px;
+  right: 0;
+  bottom: 0;
+  border-left: 1px solid var(--cw-line);
+}
+.pane > .notice {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 40px;
+}
+.note {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+}
+.note .name {
+  position: absolute;
+  left: 15px;
+  top: 10px;
+  right: 96px;
+  font-size: 14px;
+  line-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.note.phone .name {
+  left: 108px;
+}
+.note .save {
+  right: 10px;
+  top: 8px;
+  width: 76px;
+  height: 26px;
+}
+.note .body {
+  position: absolute;
+  box-sizing: border-box;
+  left: 11px;
+  top: 42px;
+  /* A text area sizes itself from rows and columns unless told otherwise. */
+  width: calc(100% - 23px);
+  height: calc(100% - 54px);
+  padding: 4px 14px 4px 4px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  line-height: 18px;
+  resize: none;
+  overflow-y: auto;
+}
+.note.phone .body {
+  left: 12px;
+  width: calc(100% - 24px);
+}
+.note .empty {
+  position: absolute;
+  left: 15px;
+  top: 46px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--cw-faint);
+  pointer-events: none;
+}
+.note.phone .empty {
+  left: 16px;
+}
+.back {
+  position: absolute;
+  left: 4px;
+  top: 6px;
+  width: 96px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cw-accent);
+  text-align: left;
+}
+.chevron {
+  position: absolute;
+  left: 4px;
+  top: 0;
+  font-size: 28px;
+  line-height: 28px;
+}
+.back-title {
+  position: absolute;
+  left: 24px;
+  top: 6px;
+  font-size: 15px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+/* A phone's list screen: one pane the whole screen scrolls in. */
+.main {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+}
+.android .main {
+  top: 63px;
+}
+.large-title {
+  display: block;
+  height: 44px;
+  margin: 8px 16px 0;
+  font-size: 34px;
+  line-height: 44px;
+  white-space: nowrap;
+}
+.sheet {
+  position: relative;
+  padding-top: 42px;
+}
+.ios .sheet {
+  margin-top: 6px;
+}

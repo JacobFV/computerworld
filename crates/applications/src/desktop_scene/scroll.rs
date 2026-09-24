@@ -377,7 +377,7 @@ impl Painter {
     /// The platform's scroll bar along the right edge of `view`. Desktops get a thumb
     /// that can be dragged and a track that jumps; a phone shows none at rest (its
     /// panes scroll under the finger), which is what the platforms do.
-    fn scroll_bar(&mut self, pane: &str, view: Rect, offset: i32, extent: u32) {
+    pub(crate) fn scroll_bar(&mut self, pane: &str, view: Rect, offset: i32, extent: u32) {
         if self.theme.mobile() || view.height < 24 || view.width < 24 {
             return;
         }

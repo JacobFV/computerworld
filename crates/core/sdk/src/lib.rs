@@ -91,12 +91,14 @@ pub enum ServiceEffectResult {
 pub struct Registry {
     services: BTreeMap<String, Arc<dyn Service>>,
     applications: BTreeMap<String, Arc<dyn Application>>,
+    web_applications: BTreeMap<String, Arc<WebApplication>>,
 }
 impl std::fmt::Debug for Registry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Registry")
             .field("services", &self.services.keys())
             .field("applications", &self.applications.keys())
+            .field("web_applications", &self.web_applications.keys())
             .finish()
     }
 }
@@ -127,7 +129,10 @@ impl Registry {
     }
     pub fn register_application<A: Application + 'static>(&mut self, app: A) -> Result<()> {
         let kind = app.kind().to_owned();
-        if kind.is_empty() || self.applications.contains_key(&kind) {
+        if kind.is_empty()
+            || self.applications.contains_key(&kind)
+            || self.web_applications.contains_key(&kind)
+        {
             return Err(SimError::invalid(format!(
                 "empty or duplicate application kind {kind}"
             )));
@@ -143,6 +148,29 @@ impl Registry {
             )
         })
     }
+    /// Register an application written as a web app: it opens in a desktop window
+    /// whose content is its document. See [`WebApplication`].
+    pub fn register_web_application(&mut self, app: WebApplication) -> Result<()> {
+        let kind = app.kind.clone();
+        if kind.is_empty()
+            || self.applications.contains_key(&kind)
+            || self.web_applications.contains_key(&kind)
+        {
+            return Err(SimError::invalid(format!(
+                "empty or duplicate application kind {kind}"
+            )));
+        }
+        self.web_applications.insert(kind, Arc::new(app));
+        Ok(())
+    }
+    pub fn web_application(&self, kind: &str) -> Result<&Arc<WebApplication>> {
+        self.web_applications.get(kind).ok_or_else(|| {
+            SimError::new(
+                "unknown_application",
+                format!("unregistered web application {kind}"),
+            )
+        })
+    }
     pub fn module_versions(&self) -> BTreeMap<String, u32> {
         self.services
             .iter()
@@ -151,6 +179,11 @@ impl Registry {
                 self.applications
                     .iter()
                     .map(|(k, v)| (format!("app:{k}"), v.version())),
+            )
+            .chain(
+                self.web_applications
+                    .iter()
+                    .map(|(k, v)| (format!("web:{k}"), v.version)),
             )
             .collect()
     }
@@ -179,6 +212,44 @@ pub enum AppEffect {
     WriteFile { path: String, bytes: Vec<u8> },
     Launch { application: String },
     Emit { name: String, data: Value },
+}
+/// An application written as a web app. Its window's frame is the platform's own;
+/// its content is a document the host lays out and paints with the web engine, driven
+/// by the application's script, which reaches the machine only through the `cw`
+/// global (files, services, launching, named data, declared state) and so through
+/// the same mediation as any native application's effects.
+///
+/// Across a snapshot the application is its declared state (`cw.state.set`): a
+/// restored window boots the same code with that state, so the document must be a
+/// function of it. The code itself is never serialised; `kind` and `version` name it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WebApplication {
+    pub kind: String,
+    #[serde(default = "first_version")]
+    pub version: u32,
+    /// Window title by platform (`macos`, `windows`, `ubuntu`, `ios`, `android`);
+    /// `*` is every other platform. Empty uses the kind.
+    #[serde(default)]
+    pub titles: BTreeMap<String, String>,
+    pub source: WebSource,
+}
+fn first_version() -> u32 {
+    1
+}
+/// What a web application is made of.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "format", rename_all = "snake_case")]
+pub enum WebSource {
+    /// JavaScript that renders into `#root`, typically compiled from TSX ahead of
+    /// time, with its stylesheet. With `react`, React 18's production build is loaded
+    /// first and the script finds it as the globals `React` and `ReactDOM`.
+    Script {
+        script: String,
+        #[serde(default)]
+        style: String,
+        #[serde(default)]
+        react: bool,
+    },
 }
 pub trait Application: Send + Sync {
     fn kind(&self) -> &str;

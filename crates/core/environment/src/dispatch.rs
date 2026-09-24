@@ -2395,6 +2395,16 @@ impl Environment {
                         ),
                     )?;
                 }
+                // Named data a web application emits goes to the world's event log,
+                // as a registered application's does.
+                Emit {
+                    window: _,
+                    name,
+                    data,
+                } => {
+                    self.runtime
+                        .record_event(&name, Some(machine), Some(actor), data);
+                }
             }
         }
         Ok(())

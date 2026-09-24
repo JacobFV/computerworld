@@ -9,6 +9,7 @@ mod input;
 mod registered;
 mod state;
 mod terminal;
+pub mod web_app;
 pub use apps::{AppEnv, FilesEnv, NativeApp};
 pub use cursor::CursorKind;
 pub use desktop_scene::scroll::{Scroll, ScrollBar};

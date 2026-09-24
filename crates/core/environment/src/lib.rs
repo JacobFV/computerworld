@@ -238,6 +238,17 @@ impl Environment {
     pub fn register_application<A: cw_sdk::Application + 'static>(&mut self, app: A) -> Result<()> {
         self.app_registry.register_application(app)
     }
+    /// Register an application written as a web app (`cw_sdk::WebApplication`). It
+    /// opens in a desktop window whose content is its document, on machines that
+    /// install it (`installed_apps`), and its snapshots name it by kind and version.
+    pub fn register_web_application(&mut self, app: cw_sdk::WebApplication) -> Result<()> {
+        // The registry refuses a duplicate before the code is made runnable.
+        let mut registry = self.app_registry.clone();
+        registry.register_web_application(app.clone())?;
+        cw_applications::web_app::define(app).map_err(SimError::invalid)?;
+        self.app_registry = registry;
+        Ok(())
+    }
     pub fn register_action_family(&mut self, family: Arc<dyn ActionFamily>) -> Result<()> {
         let name = family.family().to_owned();
         if BUILTIN_FAMILIES.contains(&name.as_str()) || self.extensions.contains_key(&name) {

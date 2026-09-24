@@ -151,25 +151,27 @@ macro_rules! native_apps {
         #[serde(tag = "app", rename_all = "snake_case")]
         pub enum NativeApp {
             $($variant($module::$variant),)+
+            /// An application written as a web app (see `crate::web_app`).
+            Web(crate::web_app::WebApp),
         }
         impl NativeApp {
             pub fn kind(&self) -> &'static str {
-                match self { $(Self::$variant(a) => a.kind(),)+ }
+                match self { $(Self::$variant(a) => a.kind(),)+ Self::Web(a) => a.kind() }
             }
             pub fn title(&self, theme: DesktopTheme) -> String {
-                match self { $(Self::$variant(a) => a.title(theme),)+ }
+                match self { $(Self::$variant(a) => a.title(theme),)+ Self::Web(a) => a.title(theme) }
             }
             pub fn document(&self) -> String {
-                match self { $(Self::$variant(a) => a.document(),)+ }
+                match self { $(Self::$variant(a) => a.document(),)+ Self::Web(a) => a.document() }
             }
             pub fn caption(&self) -> String {
-                match self { $(Self::$variant(a) => a.caption(),)+ }
+                match self { $(Self::$variant(a) => a.caption(),)+ Self::Web(a) => a.caption() }
             }
             pub fn modified(&self) -> bool {
-                match self { $(Self::$variant(a) => a.modified(),)+ }
+                match self { $(Self::$variant(a) => a.modified(),)+ Self::Web(a) => a.modified() }
             }
             pub fn text(&mut self, text: &str) -> Result<(), String> {
-                match self { $(Self::$variant(a) => a.text(text),)+ }
+                match self { $(Self::$variant(a) => a.text(text),)+ Self::Web(a) => a.text(text) }
             }
             pub fn key(
                 &mut self,
@@ -177,7 +179,10 @@ macro_rules! native_apps {
                 key: &str,
                 clock_us: u64,
             ) -> Result<Vec<AppEffect>, String> {
-                match self { $(Self::$variant(a) => a.key(window, key, clock_us),)+ }
+                match self {
+                    $(Self::$variant(a) => a.key(window, key, clock_us),)+
+                    Self::Web(a) => a.key(window, key, clock_us),
+                }
             }
             pub fn click(
                 &mut self,
@@ -185,7 +190,10 @@ macro_rules! native_apps {
                 target: &str,
                 clock_us: u64,
             ) -> Result<Vec<AppEffect>, String> {
-                match self { $(Self::$variant(a) => a.click(window, target, clock_us),)+ }
+                match self {
+                    $(Self::$variant(a) => a.click(window, target, clock_us),)+
+                    Self::Web(a) => a.click(window, target, clock_us),
+                }
             }
             pub fn http(
                 &mut self,
@@ -194,10 +202,13 @@ macro_rules! native_apps {
                 status: u16,
                 body: &str,
             ) -> Result<Vec<AppEffect>, String> {
-                match self { $(Self::$variant(a) => a.http(window, tag, status, body),)+ }
+                match self {
+                    $(Self::$variant(a) => a.http(window, tag, status, body),)+
+                    Self::Web(a) => a.http(window, tag, status, body),
+                }
             }
             pub fn offline(&mut self, tag: &str, reason: &str) {
-                match self { $(Self::$variant(a) => a.offline(tag, reason),)+ }
+                match self { $(Self::$variant(a) => a.offline(tag, reason),)+ Self::Web(a) => a.offline(tag, reason) }
             }
             /// Decoded pixels for a file this application asked to see.
             pub fn image(
@@ -264,6 +275,7 @@ macro_rules! native_apps {
                 clock_us: u64,
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
+                    Self::Web(a) => a.activate(window, target, clock_us),
                     Self::Code(a) => a.activate(window, target, clock_us),
                     Self::Freecad(a) => a.activate(window, target, clock_us),
                     Self::Spreadsheet(a) => a.activate(window, target, clock_us),
@@ -276,6 +288,7 @@ macro_rules! native_apps {
             /// Typed text that may need work done, such as a search as you type.
             pub fn text_effects(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
                 match self {
+                    Self::Web(a) => a.text_effects(window, text),
                     Self::Code(a) => a.text_effects(window, text),
                     Self::Kicad(a) => a.text_effects(window, text),
                     other if other.video().is_some() => {
@@ -287,6 +300,7 @@ macro_rules! native_apps {
             /// Text from the machine's clipboard, pasted where the application's focus is.
             pub fn paste(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
                 match self {
+                    Self::Web(a) => a.text_effects(window, text),
                     Self::Code(a) => a.paste(window, text),
                     Self::Spreadsheet(a) => a.paste(text).map(|()| vec![]),
                     Self::Excel(a) => a.paste(text).map(|()| vec![]),
@@ -319,10 +333,10 @@ macro_rules! native_apps {
             }
             /// Semantic projection, so an agent can drive the app without pixels.
             pub fn page(&self, page: &mut cw_protocol::Page) {
-                match self { $(Self::$variant(a) => a.page(page),)+ }
+                match self { $(Self::$variant(a) => a.page(page),)+ Self::Web(a) => a.page(page) }
             }
             pub fn render(&self, p: &mut Painter, env: &AppEnv<'_>) {
-                match self { $(Self::$variant(a) => a.render(p, env),)+ }
+                match self { $(Self::$variant(a) => a.render(p, env),)+ Self::Web(a) => a.render(p, env) }
             }
             /// Build the application named `kind`, or `None` when it is not a native app.
             pub fn launch(
@@ -331,11 +345,27 @@ macro_rules! native_apps {
                 window: u64,
                 clock_us: u64,
             ) -> Option<(Self, Vec<AppEffect>)> {
+                Self::launch_on(kind, argument, window, clock_us, DesktopTheme::Macos)?.ok()
+            }
+            /// Build the application named `kind` for a machine painted as `theme`:
+            /// `None` when no native or web application has that kind, an error when
+            /// a web application could not boot.
+            pub fn launch_on(
+                kind: &str,
+                argument: &str,
+                window: u64,
+                clock_us: u64,
+                theme: DesktopTheme,
+            ) -> Option<Result<(Self, Vec<AppEffect>), String>> {
                 $(if kind == $module::$variant::KIND {
                     let (app, effects) = $module::$variant::launch(argument, window, clock_us);
-                    return Some((Self::$variant(app), effects));
+                    return Some(Ok((Self::$variant(app), effects)));
                 })+
-                None
+                crate::web_app::definition(kind)?;
+                Some(
+                    crate::web_app::WebApp::launch(kind, argument, window, clock_us, theme)
+                        .map(|(app, effects)| (Self::Web(app), effects)),
+                )
             }
             pub const KINDS: &'static [&'static str] = &[$($module::$variant::KIND,)+];
         }
@@ -405,6 +435,7 @@ impl NativeApp {
     /// tool or a file name is being typed, so a phone shows no keyboard over a canvas.
     pub fn accepts_text(&self) -> bool {
         match self {
+            Self::Web(a) => a.text_field().is_some(),
             Self::Photos(a) => a.editing.as_ref().is_some_and(|e| e.accepts_text()),
             Self::Spreadsheet(a) => a.accepts_text(),
             Self::Excel(a) => a.accepts_text(),
@@ -726,6 +757,7 @@ impl NativeApp {
             Self::Mail(a) => a.phone_back(theme).map(str::to_owned),
             Self::Messages(a) => a.phone_back().map(str::to_owned),
             Self::Notes(a) => a.open.is_some().then(|| "notes:close".to_owned()),
+            Self::Web(a) => a.marked("back"),
             Self::Docs(a) => (a.open.is_some() && !a.dirty).then(|| "docs:close".to_owned()),
             Self::Contacts(a) => a.selected.is_some().then(|| "contacts:back".to_owned()),
             _ => None,
@@ -792,6 +824,8 @@ impl NativeApp {
                 code::Focus::Debug => Some("code:repl-input".into()),
             },
             Self::Freecad(a) => field(a.0.field.is_some(), "freecad:field"),
+            // What has the document's focus, when it takes text.
+            Self::Web(a) => a.text_field(),
             // No field anywhere: typed digits on a desktop are the calculator's keys,
             // not text, and the rest have nothing to type into.
             Self::Contacts(_)
@@ -856,6 +890,7 @@ impl NativeApp {
         files: Vec<(String, Result<String, String>)>,
     ) -> Result<Vec<AppEffect>, String> {
         match self {
+            Self::Web(a) => a.files_read(window, tag, files),
             Self::Kicad(a) => Ok(a.files_read(window, tag, files)),
             _ => Err("this application reads no files".into()),
         }
@@ -868,6 +903,7 @@ impl NativeApp {
         result: Result<Vec<String>, String>,
     ) -> Result<Vec<AppEffect>, String> {
         match self {
+            Self::Web(a) => a.tree_listed(window, path, result),
             Self::Kicad(a) => Ok(a.tree_listed(window, path, result)),
             _ => Err("this application lists no folder trees".into()),
         }

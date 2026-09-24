@@ -13,3 +13,76 @@ for a vision agent.
 Keep OS-specific mechanics in the computer substrate and transport mechanics in
 networking. The application should not directly inspect other machines or service
 stores. See [application-sdk.md](application-sdk.md).
+
+## Web applications
+
+An application can instead be written as a web app: TSX (or any script) that renders
+a document, hosted in a desktop window whose frame stays the platform's own. The web
+engine lays the document out and paints it in the window; the platform keeps what it
+keeps for every native application — its palette and UI font, scrolling, the phone's
+keyboard and Back. The built-in Notes is one (`crates/applications/web/notes/`).
+
+Register it with `World::register_web_application` (or
+`Environment::register_web_application`) and install its kind on a machine
+(`installed_apps`); `application.v1` `launch` then opens it like any application.
+
+```rust
+world.register_web_application(cw_sdk::WebApplication {
+    kind: "counter".into(),
+    version: 1,
+    titles: [("*".into(), "Counter".into())].into(),
+    source: cw_sdk::WebSource::Script {
+        script: include_str!("counter.bundle.js").into(),
+        style: include_str!("counter.css").into(),
+        react: true, // React 18's production build is loaded first
+    },
+})?;
+```
+
+The script renders into `#root`. It reaches the machine only through the `cw` global,
+typed in `crates/applications/web/types/cw.d.ts`; each call becomes an application
+effect the environment mediates exactly as it mediates a native application's:
+
+| `cw.` | does |
+| --- | --- |
+| `fs.readFile(path)`, `fs.writeFile(path, text)`, `fs.list(folder)`, `fs.mkdir(folder)` | the machine's files, with the user's permissions |
+| `fetch(url, { method, body })` | a request to a world service; a transport failure rejects |
+| `launch(kind, argument)` | opens another application's window |
+| `emit(name, data)` | records named data in the world's event log |
+| `state.get()`, `state.set(value)` | the declared state (below) |
+| `now()`, `env`, `onEnv(f)` | the world clock of the input being handled; platform, size and palette |
+| `refuse(message)` | fails the action that delivered the input, as a native refusal does |
+| `window.set({ document, caption, modified })` | what the frame shows about what is open |
+
+`Date.now()` and `Math.random()` are deterministic too (the world clock, a seed fixed
+by the kind), but `Date.now()` may run a few milliseconds ahead of `cw.now()`.
+
+**Agents act by element id.** Every element with an `id` is addressed by it: a click
+on a control is a click on that element, and the scene names each interactive element
+by its id, as a native application names its controls. Typed text goes to the focused
+text control, and that control's id is the window's text focus. The semantic page
+lists every element with an id in document order — headings, buttons, links, text
+controls (with their live values), and `p`/`span`/`label` or `role="status"|"alert"`
+text; `data-page-id` gives an element a page id different from its control id, and an
+`aria-hidden="true"` subtree is left out.
+
+**Platform integration by attribute.** A scroll container with an id (or
+`data-cw-pane="<name>"`) is a pane of the window: its offset is window state, the
+wheel and a phone's swipe move it, and the platform paints its scroll bar.
+`data-cw-large-title="<title>"` on a pane gives it iOS's collapsing large title;
+`data-cw-back` marks where a phone's Back goes.
+
+**Snapshots.** A web application is its declared state. A snapshot keeps what the
+application last passed to `cw.state.set`; a restored window boots the same code with
+`cw.state.get()` returning it, and must show the same document — so everything the
+document depends on belongs in that state. A restore boot must not request anything
+(requests it makes are dropped), and neither may a handler of `cw.onEnv`. Focus and
+caret are the application's to derive from state; scroll offsets are the window's.
+The code itself is never serialised: a snapshot names the kind and version, and the
+world restoring it must have registered the same application.
+
+**Building TSX.** `node crates/applications/web/build.mjs` type-checks the sources
+against `cw.d.ts` and React's types and bundles each app, with `react` and
+`react-dom/client` resolved to the globals the host's React build defines; the bundle
+is checked in beside its source. `crates/applications/web/sdk/cw.ts` has a store for
+declared state (`declaredStore`, `useStore`) and `useEnv`.

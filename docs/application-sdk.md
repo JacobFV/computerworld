@@ -30,3 +30,17 @@ Send op `event` with `{ "instance": "optional-id", "event": { "kind": "activate"
 "target": "control-id", "data": null } }`. Effects return through an `effect_result`
 event whose data identifies the completed operation, such as HTTP or file access.
 Actor observations expose its page, not the private application state.
+
+## Web applications
+
+`cw_sdk::WebApplication` registers an application written as a web app instead
+(`Registry::register_web_application`, `World::register_web_application`): a kind,
+a version, window titles by platform and a `WebSource` — today a script bundle
+(typically compiled from TSX) with its stylesheet, optionally on React 18. It opens in
+a desktop window whose frame is the platform's and whose content is its document,
+laid out and painted by the web engine. Its effects are the same mediated requests —
+file reads and writes, HTTP to world services, launching, named data — made through
+the `cw` global, and its snapshot is the state it declares, keyed by kind and version
+like any module (`module_versions` lists it as `web:<kind>`). See
+[custom application](custom-application.md#web-applications).
+

@@ -793,8 +793,9 @@ impl DesktopState {
                 } else {
                     argument
                 };
-                let (mut app, mut effects) = NativeApp::launch(kind, argument, id, clock)
-                    .ok_or_else(|| format!("unknown application: {kind}"))?;
+                let theme = self.theme.unwrap_or(desktop_scene::DesktopTheme::Macos);
+                let (mut app, mut effects) = NativeApp::launch_on(kind, argument, id, clock, theme)
+                    .ok_or_else(|| format!("unknown application: {kind}"))??;
                 // One editor of each kind per open project: asking again raises it.
                 if let Some(key) = app.instance_key() {
                     let existing = self.windows.values().find_map(|w| match &w.state {
@@ -1341,6 +1342,11 @@ impl DesktopState {
         path: &str,
         content: &str,
     ) -> Result<Vec<AppEffect>, String> {
+        if let Some(AppState::Native(NativeApp::Web(app))) =
+            self.windows.get_mut(&id).map(|w| &mut w.state)
+        {
+            return app.written(id, path);
+        }
         if let Ok(code) = self.code_mut(id) {
             return Ok(code.written(id, path, content));
         }

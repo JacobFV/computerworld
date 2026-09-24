@@ -194,6 +194,13 @@ pub enum AppEffect {
         tag: String,
         request: cw_protocol::debug::Request,
     },
+    /// Record named data in the world's event log, as a registered application's
+    /// `cw_sdk::AppEffect::Emit` does: what a checker or a service may watch for.
+    Emit {
+        window: u64,
+        name: String,
+        data: serde_json::Value,
+    },
 }
 /// What a `ShellRun` produced: the finished command (`None` when only the prompt was
 /// asked for), where the session stands afterwards and the prompt it would print next.

@@ -9,7 +9,7 @@ pub use cw_protocol::*;
 #[cfg(feature = "render")]
 pub use cw_render::Frame;
 pub use cw_scene::Scene;
-pub use cw_sdk::{Application, Registry, Service};
+pub use cw_sdk::{Application, Registry, Service, WebApplication, WebSource};
 #[cfg(feature = "render")]
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
@@ -228,6 +228,10 @@ impl World {
     }
     pub fn register_application<A: cw_sdk::Application + 'static>(&mut self, app: A) -> Result<()> {
         self.environment.register_application(app)
+    }
+    /// Register an application written as a web app; see `cw_sdk::WebApplication`.
+    pub fn register_web_application(&mut self, app: cw_sdk::WebApplication) -> Result<()> {
+        self.environment.register_web_application(app)
     }
     pub fn register_action_family(
         &mut self,
