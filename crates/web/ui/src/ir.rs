@@ -315,6 +315,8 @@ pub enum Hook {
     Context,
     /// `useId()`.
     Id,
+    /// `useSyncExternalStore(subscribe, getSnapshot)`.
+    SyncExternalStore,
 }
 
 /// Methods the runtime implements natively, resolved by the compiler from the
@@ -376,6 +378,7 @@ pub enum Method {
     StrAt,
     StrLocaleCompare,
     StrConcat,
+    StrCodePointAt,
     // Numbers.
     NumToFixed,
     NumToString,
@@ -474,6 +477,27 @@ pub enum Builtin {
     PromiseAll,
     /// `Promise.reject(reason)`.
     PromiseReject,
+    /// `Object.is(a, b)`.
+    ObjectIs,
+    /// `x instanceof Error` (the constructor's name is the second argument).
+    IsError,
+    /// `window.addEventListener(type, listener, options?)`.
+    WindowAddListener,
+    WindowRemoveListener,
+    /// `document.addEventListener(type, listener, options?)`.
+    DocumentAddListener,
+    DocumentRemoveListener,
+    /// `document.getElementById(id)`.
+    GetElementById,
+    /// `document.querySelector(selector)`.
+    QuerySelector,
+    /// `document.activeElement`.
+    ActiveElement,
+    /// `document.body`.
+    DocumentBody,
+    /// `window.innerWidth` / `window.innerHeight`.
+    InnerWidth,
+    InnerHeight,
     /// `new Set(iterable?)`.
     NewSet,
     /// `new Map(entries?)`.

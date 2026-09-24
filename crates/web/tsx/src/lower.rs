@@ -114,6 +114,7 @@ fn react_export(name: &str) -> ReactName {
         "useLayoutEffect" => ReactName::Hook(Hook::LayoutEffect),
         "useContext" => ReactName::Hook(Hook::Context),
         "useId" => ReactName::Hook(Hook::Id),
+        "useSyncExternalStore" => ReactName::Hook(Hook::SyncExternalStore),
         "createContext" => ReactName::CreateContext,
         "Fragment" => ReactName::Fragment,
         "StrictMode" => ReactName::StrictMode,
@@ -2623,6 +2624,23 @@ impl<'a> Lowerer<'a> {
 
     fn binary(&mut self, b: &'a ast::BinaryExpression<'a>) -> Lowered {
         use ast::BinaryOperator as B;
+        if b.operator == B::Instanceof {
+            let ctor = match strip(&b.right) {
+                E::Identifier(id) if self.resolve_is_free(id.name.as_str()) => id.name.as_str(),
+                _ => "",
+            };
+            if !matches!(ctor, "Error" | "TypeError" | "RangeError" | "SyntaxError") {
+                return self.unsupported(b.span, "`instanceof` of anything but an error class");
+            }
+            let (l, _) = self.expr(&b.left, None);
+            return (
+                Expr::Builtin(
+                    Builtin::IsError,
+                    vec![ArrayItem::Item(l), ArrayItem::Item(Expr::Str(ctor.into()))],
+                ),
+                Ty::Boolean,
+            );
+        }
         let (l, lt) = self.expr(&b.left, None);
         let (r, rt) = self.expr(&b.right, None);
         let (op, t) = match b.operator {
@@ -2656,7 +2674,7 @@ impl<'a> Lowerer<'a> {
             B::ShiftRight => (BinaryOp::Shr, Ty::Number),
             B::ShiftRightZeroFill => (BinaryOp::UShr, Ty::Number),
             B::In => (BinaryOp::In, Ty::Boolean),
-            B::Instanceof => return self.unsupported(b.span, "`instanceof`"),
+            B::Instanceof => unreachable!("lowered above"),
         };
         (Expr::Binary(op, Box::new(l), Box::new(r)), t)
     }
@@ -2905,6 +2923,22 @@ impl<'a> Lowerer<'a> {
                 self.mark_always();
                 (Expr::Builtin(Builtin::DocumentTitle, vec![]), Ty::String)
             }
+            ("document", "activeElement") => {
+                self.mark_always();
+                (
+                    Expr::Builtin(Builtin::ActiveElement, vec![]),
+                    union(Ty::DomNode, Ty::Null),
+                )
+            }
+            ("document", "body") => (Expr::Builtin(Builtin::DocumentBody, vec![]), Ty::DomNode),
+            ("window", "innerWidth") => {
+                self.mark_always();
+                (Expr::Builtin(Builtin::InnerWidth, vec![]), Ty::Number)
+            }
+            ("window", "innerHeight") => {
+                self.mark_always();
+                (Expr::Builtin(Builtin::InnerHeight, vec![]), Ty::Number)
+            }
             (
                 "Math" | "Number" | "JSON" | "Object" | "Array" | "console" | "Date" | "window"
                 | "document" | "Promise" | "String",
@@ -3103,6 +3137,37 @@ impl<'a> Lowerer<'a> {
                 ));
             }
             ("Object", "keys") => (Builtin::ObjectKeys, vec![], Ty::Array(Box::new(Ty::String))),
+            ("Object", "is") => (Builtin::ObjectIs, vec![], Ty::Boolean),
+            ("window" | "document", "addEventListener" | "removeEventListener") => {
+                let b = match (ns, name) {
+                    ("window", "addEventListener") => Builtin::WindowAddListener,
+                    ("window", _) => Builtin::WindowRemoveListener,
+                    (_, "addEventListener") => Builtin::DocumentAddListener,
+                    _ => Builtin::DocumentRemoveListener,
+                };
+                let listener = Ty::Function(vec![Ty::Event], Box::new(Ty::Void));
+                let options = union(
+                    Ty::Boolean,
+                    Ty::Object(vec![("capture".into(), Ty::Boolean, true)]),
+                );
+                (b, vec![Ty::String, listener, options], Ty::Void)
+            }
+            ("document", "getElementById") => {
+                self.mark_always();
+                (
+                    Builtin::GetElementById,
+                    vec![Ty::String],
+                    union(Ty::DomNode, Ty::Null),
+                )
+            }
+            ("document", "querySelector") => {
+                self.mark_always();
+                (
+                    Builtin::QuerySelector,
+                    vec![Ty::String],
+                    union(Ty::DomNode, Ty::Null),
+                )
+            }
             ("Object", "values") | ("Object", "entries") => {
                 let (args, tys) = self.exprs_args(&c.arguments, &[]);
                 let v = match tys.first().map(non_null) {
@@ -3370,6 +3435,23 @@ impl<'a> Lowerer<'a> {
                 let _ = want;
                 (Expr::Hook(Hook::Id, vec![]), Ty::String)
             }
+            Hook::SyncExternalStore => {
+                let unsubscribe = Ty::Function(vec![], Box::new(Ty::Void));
+                let subscribe = Ty::Function(
+                    vec![Ty::Function(vec![], Box::new(Ty::Void))],
+                    Box::new(unsubscribe),
+                );
+                let args = self.arg_exprs(&c.arguments, &[subscribe]);
+                let t = match args.get(1).map(|(_, t)| non_null_keep(t)) {
+                    Some(Ty::Function(_, r)) => *r,
+                    _ => {
+                        self.err(c.span, "`useSyncExternalStore` needs a snapshot function");
+                        Ty::Unknown
+                    }
+                };
+                let exprs = args.into_iter().take(2).map(|(e, _)| e).collect();
+                (Expr::Hook(Hook::SyncExternalStore, exprs), t)
+            }
         }
     }
 
@@ -3606,6 +3688,11 @@ impl<'a> Lowerer<'a> {
                 "padEnd" => (M::StrPadEnd, vec![num, s.clone()], s),
                 "charAt" => (M::StrCharAt, vec![num], s),
                 "charCodeAt" => (M::StrCharCodeAt, vec![num.clone()], num),
+                "codePointAt" => (
+                    M::StrCodePointAt,
+                    vec![num.clone()],
+                    union(num, Ty::Undefined),
+                ),
                 "at" => (M::StrAt, vec![num], union(s, Ty::Undefined)),
                 "localeCompare" => (M::StrLocaleCompare, vec![s], num),
                 "concat" => (M::StrConcat, vec![], s),

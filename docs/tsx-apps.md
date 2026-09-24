@@ -57,7 +57,9 @@ Tailwind classes, inline SVG icons, several modules each) that compile unchanged
 **Components and hooks.** Function components (declarations, `const X = (...) =>`,
 `memo(...)`), custom hooks (`useX`), `useState`, `useReducer`, `useMemo`,
 `useCallback`, `useRef`, `useEffect`, `useLayoutEffect`, `useContext` with
-`createContext` and `<Ctx.Provider value>`, `useId`, `Fragment`/`<>`, `StrictMode`
+`createContext` and `<Ctx.Provider value>`, `useId`, `useSyncExternalStore`
+(subscribed after commit, resubscribed when `subscribe` changes, unsubscribed on
+unmount), `Fragment`/`<>`, `StrictMode`
 (renders its children), `key`, `ref` on host elements (object or callback refs).
 Hooks must be called at a component's or hook's top level, not inside conditions,
 loops or closures.
@@ -69,6 +71,12 @@ objects (numbers get `px` as React adds it), boolean and numeric attributes,
 `onFocus`/`onBlur`, `onMouse*`, `onPointer*`, `onWheel`, `onScroll`,
 `onContextMenu`, and their `...Capture` forms. Controlled inputs, textareas and
 selects (`value`, `checked`, `defaultValue`, `defaultChecked`), `autoFocus`.
+`window.addEventListener`/`removeEventListener` and the same on `document` (with
+`capture` as a boolean or `{ capture }`; capture listeners run before React's
+handlers, bubbling ones after, and `stopPropagation` in either stops the rest),
+`resize` on `window`, `document.getElementById`, `document.querySelector`,
+`document.activeElement`, `document.body`, `document.title`,
+`window.innerWidth`/`innerHeight`.
 
 **Modules.** Relative imports resolve as a bundler resolves them (`./x`, `x.tsx`,
 `x.ts`, `x/index.tsx`, `x/index.ts`); named, default and `type` imports; `export`
@@ -87,7 +95,8 @@ state, an event handler's event, a component prop's declared type).
 **Expressions and statements.** Numbers, strings, template literals, booleans,
 `null`/`undefined`, arrays and objects (spread, computed keys), destructuring with
 defaults and rest, optional chaining, `??`, ternaries, all arithmetic, comparison
-and bitwise operators, `typeof`, assignment and update; `if`, `for`, `for...of`,
+and bitwise operators, `typeof`, `instanceof` of `Error`, `TypeError`,
+`RangeError` or `SyntaxError`, `Object.is`, assignment and update; `if`, `for`, `for...of`,
 `while`, `switch`, `break`/`continue`, `return`, `throw`, `try`/`catch`/`finally`
 (thrown values are real `Error`s: `message`, `name`), `async` functions and
 `await` (in a `const`/`let` initialiser, an expression statement, an assignment's
@@ -100,7 +109,7 @@ by an effect's cleanup) is shared between them, as in JavaScript. Array methods 
 `flatMap`, `fill`, `at`, `keys`, `entries`, `with`), string methods (`trim*`,
 case, `includes`, `startsWith`, `endsWith`, `indexOf`, `slice`, `substring`,
 `split`, `replace`/`replaceAll` with strings, `repeat`, `padStart`/`padEnd`,
-`charAt`, `charCodeAt`, `at`, `localeCompare`, `concat`), `toFixed`, `toString`,
+`charAt`, `charCodeAt`, `codePointAt`, `at`, `localeCompare`, `concat`), `toFixed`, `toString`,
 `Math.*`, `Number(…)`, `String(…)`, `parseInt`/`parseFloat`, `Object.keys`/
 `values`/`entries`/`assign`/`fromEntries`, `Array.from`/`of`/`isArray`,
 `JSON.stringify`, `Set` and `Map` (`new`, `has`, `add`, `get`, `set`, `delete`,
@@ -118,8 +127,8 @@ inside a larger expression (`f(await g())`: await into a variable first), `for
 await`, generators, classes and class components, packages other than React
 (an app bundles its own modules only), re-exports (`export … from`), `import * as`
 of a module of the app, `enum`, `delete`, `this`, `new` (except `Set`, `Map`,
-`Error`), a variable that
-is both reassigned and captured by a closure, `dangerouslySetInnerHTML`,
+`Error`, `Promise`), `instanceof` of anything but an error class,
+`dangerouslySetInnerHTML`,
 portals and the React APIs not listed above (`forwardRef`, `useTransition`, …).
 
 Every refusal names its place:

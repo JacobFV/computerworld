@@ -518,6 +518,47 @@ impl Runtime {
                 }
                 Ok(self.context_value(id))
             }
+            Hook::SyncExternalStore => {
+                let subscribe = match args.first() {
+                    Some(e) => self.eval(frame, e)?,
+                    None => Value::Undefined,
+                };
+                let get = match args.get(1) {
+                    Some(e) => self.eval(frame, e)?,
+                    None => Value::Undefined,
+                };
+                let value = self.call_value(&get, vec![])?;
+                if first {
+                    self.instance(inst).hooks.push(HookState::Store {
+                        value: value.clone(),
+                        get,
+                        subscribe,
+                        unsubscribe: None,
+                        needs_subscribe: true,
+                    });
+                } else if let HookState::Store {
+                    value: v,
+                    get: g,
+                    subscribe: s,
+                    needs_subscribe,
+                    ..
+                } = &mut self.instance(inst).hooks[idx]
+                {
+                    if !same_value(s, &subscribe) {
+                        *needs_subscribe = true;
+                        *s = subscribe;
+                    }
+                    *g = get;
+                    let changed = !same_value(v, &value);
+                    *v = value.clone();
+                    if changed {
+                        if let Some(c) = self.render.last_mut() {
+                            c.state_changed = true;
+                        }
+                    }
+                }
+                Ok(value)
+            }
             Hook::Id => {
                 if first {
                     let s: Str = Rc::from(react_id(self.id_counter).as_str());
@@ -540,6 +581,24 @@ impl Runtime {
             }
         }
         self.ctx_defaults.get(&id).cloned().unwrap_or_default()
+    }
+
+    /// A `useSyncExternalStore` subscription's callback: re-render when the
+    /// snapshot changed.
+    pub(crate) fn store_changed(&mut self, inst: u32, hook: u32) -> R<()> {
+        let (get, old) = match self
+            .instances
+            .get(&inst)
+            .and_then(|i| i.hooks.get(hook as usize))
+        {
+            Some(HookState::Store { get, value, .. }) => (get.clone(), value.clone()),
+            _ => return Ok(()),
+        };
+        let now = self.call_value(&get, vec![])?;
+        if !same_value(&now, &old) {
+            self.mark_dirty(inst);
+        }
+        Ok(())
     }
 
     pub(crate) fn instance(&mut self, id: u32) -> &mut Instance {
@@ -1570,17 +1629,23 @@ impl Runtime {
                     return;
                 };
                 for h in &i.hooks {
-                    if let HookState::Effect {
-                        layout,
-                        cleanup: Some(c),
-                        ..
-                    } = h
-                    {
-                        if *layout {
-                            self.deleted_layout.push(c.clone());
-                        } else {
-                            self.deleted_passive.push(c.clone());
+                    match h {
+                        HookState::Effect {
+                            layout,
+                            cleanup: Some(c),
+                            ..
+                        } => {
+                            if *layout {
+                                self.deleted_layout.push(c.clone());
+                            } else {
+                                self.deleted_passive.push(c.clone());
+                            }
                         }
+                        HookState::Store {
+                            unsubscribe: Some(u),
+                            ..
+                        } => self.deleted_passive.push(u.clone()),
+                        _ => {}
                     }
                 }
                 self.unmount(i.rendered, remove);
@@ -1643,6 +1708,61 @@ impl Runtime {
         }
         for inst in &list {
             self.run_creates(*inst, false);
+            self.subscribe_stores(*inst);
+        }
+    }
+
+    /// Subscribes (or resubscribes) an instance's external stores.
+    fn subscribe_stores(&mut self, inst: u32) {
+        let n = match self.instances.get(&inst) {
+            Some(i) => i.hooks.len(),
+            None => return,
+        };
+        for idx in 0..n {
+            let job = match self
+                .instances
+                .get_mut(&inst)
+                .and_then(|i| i.hooks.get_mut(idx))
+            {
+                Some(HookState::Store {
+                    subscribe,
+                    unsubscribe,
+                    needs_subscribe: true,
+                    ..
+                }) => Some((subscribe.clone(), unsubscribe.take())),
+                _ => None,
+            };
+            let Some((subscribe, old)) = job else {
+                continue;
+            };
+            if let Some(u) = old {
+                self.run_cleanup(&u);
+            }
+            let cb = Value::Native(Rc::new(NativeFn::StoreChanged {
+                inst,
+                hook: idx as u32,
+            }));
+            let un = match self.call_value(&subscribe, vec![cb]) {
+                Ok(v) => matches!(v, Value::Func(_) | Value::Native(_)).then_some(v),
+                Err(e) => {
+                    self.report(e);
+                    None
+                }
+            };
+            if let Some(HookState::Store {
+                unsubscribe,
+                needs_subscribe,
+                ..
+            }) = self
+                .instances
+                .get_mut(&inst)
+                .and_then(|i| i.hooks.get_mut(idx))
+            {
+                *unsubscribe = un;
+                *needs_subscribe = false;
+            }
+            // A change between render and subscription is caught up now.
+            let _ = self.store_changed(inst, idx as u32);
         }
     }
 

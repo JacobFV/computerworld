@@ -1402,6 +1402,83 @@ impl Runtime {
                 }
                 Value::Promise(p)
             }
+            B::ObjectIs => Value::Bool(same_value(&arg(&args, 0), &arg(&args, 1))),
+            B::IsError => Value::Bool(match arg(&args, 0) {
+                Value::Error(e) => {
+                    let want = arg(&args, 1).to_js_string();
+                    want == "Error" || *e.name == *want
+                }
+                _ => false,
+            }),
+            B::WindowAddListener
+            | B::DocumentAddListener
+            | B::WindowRemoveListener
+            | B::DocumentRemoveListener => {
+                let window = matches!(b, B::WindowAddListener | B::WindowRemoveListener);
+                let ty: Str = Rc::from(arg(&args, 0).to_js_string().as_str());
+                let f = arg(&args, 1);
+                let capture = match arg(&args, 2) {
+                    Value::Bool(c) => c,
+                    Value::Object(o) => obj_get(&o.borrow(), "capture").is_some_and(|c| c.truthy()),
+                    _ => false,
+                };
+                let same = |l: &GlobalListener| {
+                    l.window == window
+                        && l.ty == ty
+                        && l.capture == capture
+                        && strict_equals(&l.f, &f)
+                };
+                if matches!(b, B::WindowAddListener | B::DocumentAddListener) {
+                    if !f.is_nullish() && !self.global_listeners.iter().any(same) {
+                        self.global_listeners.push(GlobalListener {
+                            window,
+                            ty,
+                            f,
+                            capture,
+                        });
+                    }
+                } else {
+                    self.global_listeners.retain(|l| !same(l));
+                }
+                Value::Undefined
+            }
+            B::GetElementById => {
+                let id = arg(&args, 0).to_js_string();
+                let doc = &self.inner.doc;
+                doc.by_id(&id)
+                    .iter()
+                    .copied()
+                    .find(|n| doc.ancestors(*n).any(|a| a == cw_web::dom::Document::ROOT))
+                    .map(Value::Node)
+                    .unwrap_or(Value::Null)
+            }
+            B::QuerySelector => {
+                let sel = arg(&args, 0).to_js_string();
+                let Ok(list) = cw_web::css::selector::parse_selector_list(&sel) else {
+                    return js_error("SyntaxError", format!("'{sel}' is not a valid selector"));
+                };
+                let ctx = cw_web::css::MatchContext::new();
+                let doc = &self.inner.doc;
+                doc.descendants(cw_web::dom::Document::ROOT)
+                    .find(|n| {
+                        doc.is_element(*n)
+                            && cw_web::css::matching::matches_list(doc, *n, &list, &ctx)
+                    })
+                    .map(Value::Node)
+                    .unwrap_or(Value::Null)
+            }
+            B::ActiveElement => match self.inner.focused.or_else(|| self.inner.doc.body()) {
+                Some(n) => Value::Node(n),
+                None => Value::Null,
+            },
+            B::DocumentBody => self
+                .inner
+                .doc
+                .body()
+                .map(Value::Node)
+                .unwrap_or(Value::Null),
+            B::InnerWidth => Value::Num(self.inner.viewport.width as f64),
+            B::InnerHeight => Value::Num(self.inner.viewport.height as f64),
             B::PromiseReject => {
                 let p = new_promise();
                 self.reject_promise(&p, arg(&args, 0));
@@ -2122,6 +2199,27 @@ impl Runtime {
                     std::cmp::Ordering::Greater => 1.0,
                 })
             }
+            M::StrCodePointAt => {
+                let u = utf16(s);
+                let i = arg(&args, 0).to_number();
+                let i = if i.is_nan() { 0 } else { i.trunc() as i64 };
+                if i < 0 || i as usize >= u.len() {
+                    Value::Undefined
+                } else {
+                    let i = i as usize;
+                    let hi = u[i] as u32;
+                    if (0xD800..0xDC00).contains(&hi)
+                        && i + 1 < u.len()
+                        && (0xDC00..0xE000).contains(&(u[i + 1] as u32))
+                    {
+                        Value::Num(
+                            (((hi - 0xD800) << 10) + (u[i + 1] as u32 - 0xDC00) + 0x10000) as f64,
+                        )
+                    } else {
+                        Value::Num(hi as f64)
+                    }
+                }
+            }
             M::StrConcat => {
                 let mut out = s.to_string();
                 for a in &args {
@@ -2643,6 +2741,7 @@ impl Runtime {
             NativeFn::Resume { task, throw } => {
                 crate::asyncfn::resume(self, task, v, *throw);
             }
+            NativeFn::StoreChanged { inst, hook } => self.store_changed(*inst, *hook)?,
         }
         Ok(Value::Undefined)
     }

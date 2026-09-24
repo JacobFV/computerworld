@@ -37,6 +37,26 @@ pub(crate) struct Init {
     pub repeat: bool,
 }
 
+fn event_obj(ty: &str, target: NodeId, init: &Init) -> EventObj {
+    EventObj {
+        ty: Rc::from(ty),
+        target,
+        current_target: Cell::new(target),
+        key: Rc::from(init.key.as_str()),
+        code: Rc::from(init.code.as_str()),
+        mods: init.mods,
+        client_x: init.x,
+        client_y: init.y,
+        button: init.button,
+        detail: init.detail,
+        delta_x: init.delta_x,
+        delta_y: init.delta_y,
+        repeat: init.repeat,
+        prevented: Cell::new(false),
+        stopped: Cell::new(false),
+    }
+}
+
 /// The React props a native event dispatches, and whether the event bubbles
 /// through React's tree.
 fn react_props(ty: &str) -> (&'static [&'static str], bool) {
@@ -92,7 +112,9 @@ impl Runtime {
 
     /// Calls `prop` handlers along `path` (capture handlers first, root to target,
     /// then bubble handlers, target to root). Returns whether a handler called
-    /// `preventDefault`.
+    /// `preventDefault`, and whether one called `stopPropagation` (which React
+    /// passes on to the native event, so `document` and `window` listeners behind
+    /// the root do not see it).
     fn dispatch_synthetic(
         &mut self,
         ty: &str,
@@ -101,7 +123,7 @@ impl Runtime {
         path: &[NodeId],
         bubbles: bool,
         init: &Init,
-    ) -> bool {
+    ) -> (bool, bool) {
         let capture = format!("{prop}Capture");
         let has_any = path.iter().any(|n| {
             self.handlers
@@ -109,25 +131,9 @@ impl Runtime {
                 .is_some_and(|hs| hs.iter().any(|(k, _)| &**k == prop || **k == *capture))
         });
         if !has_any {
-            return false;
+            return (false, false);
         }
-        let ev = Rc::new(EventObj {
-            ty: Rc::from(ty),
-            target,
-            current_target: Cell::new(target),
-            key: Rc::from(init.key.as_str()),
-            code: Rc::from(init.code.as_str()),
-            mods: init.mods,
-            client_x: init.x,
-            client_y: init.y,
-            button: init.button,
-            detail: init.detail,
-            delta_x: init.delta_x,
-            delta_y: init.delta_y,
-            repeat: init.repeat,
-            prevented: Cell::new(false),
-            stopped: Cell::new(false),
-        });
+        let ev = Rc::new(event_obj(ty, target, init));
         let mut calls: Vec<(NodeId, Value)> = Vec::new();
         let scope: Vec<NodeId> = if bubbles { path.to_vec() } else { vec![target] };
         for n in scope.iter().rev() {
@@ -159,7 +165,38 @@ impl Runtime {
                 self.report(e);
             }
         }
-        ev.prevented.get()
+        (ev.prevented.get(), ev.stopped.get())
+    }
+
+    /// Native listeners `window` and `document` hold for `ty`, in capture (window
+    /// first) or bubble (document first) order. Returns whether one stopped
+    /// propagation.
+    fn fire_global(&mut self, ty: &str, ev: &Rc<EventObj>, capture: bool) -> bool {
+        if self.global_listeners.is_empty() {
+            return false;
+        }
+        let order = if capture {
+            [true, false]
+        } else {
+            [false, true]
+        };
+        for window in order {
+            let calls: Vec<Value> = self
+                .global_listeners
+                .iter()
+                .filter(|l| l.window == window && l.capture == capture && &*l.ty == ty)
+                .map(|l| l.f.clone())
+                .collect();
+            for f in calls {
+                if let Err(e) = self.call_value(&f, vec![Value::Event(ev.clone())]) {
+                    self.report(e);
+                }
+                if ev.stopped.get() {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// Fires a native event at `target`: React's handlers run, updates render, a
@@ -189,9 +226,15 @@ impl Runtime {
                 .filter(|a| self.inner.doc.is_element(*a)),
         );
         let (props, bubbles) = react_props(ty);
-        let mut prevented = false;
-        for p in props {
-            prevented |= self.dispatch_synthetic(ty, p, target, &path, bubbles, init);
+        let native = Rc::new(event_obj(ty, target, init));
+        let mut stopped = self.fire_global(ty, &native, true);
+        let mut prevented = native.prevented.get();
+        if !stopped {
+            for p in props {
+                let (pr, st) = self.dispatch_synthetic(ty, p, target, &path, bubbles, init);
+                prevented |= pr;
+                stopped |= st;
+            }
         }
         // ChangeEventPlugin: `onChange` after the simple event.
         let change = match ty {
@@ -203,9 +246,15 @@ impl Runtime {
             "click" => self.is_check(target),
             _ => false,
         };
-        if change {
-            prevented |= self.dispatch_synthetic(ty, "onChange", target, &path, true, init);
+        if change && !stopped {
+            let (pr, st) = self.dispatch_synthetic(ty, "onChange", target, &path, true, init);
+            prevented |= pr;
+            stopped |= st;
         }
+        if bubbles && !stopped {
+            self.fire_global(ty, &native, false);
+        }
+        prevented |= native.prevented.get();
         self.flush();
         if change {
             self.restore_controlled(target);
@@ -1069,6 +1118,11 @@ impl Runtime {
                 self.inner.viewport.width = width;
                 self.inner.viewport.height = height;
                 self.inner.sheet_changed();
+                let target = self.inner.doc.body().unwrap_or(Document::ROOT);
+                let ev = Rc::new(event_obj("resize", target, &Init::default()));
+                self.fire_global("resize", &ev, false);
+                self.flush();
+                self.settle();
                 DefaultAction::None
             }
             UiEvent::HashChange { hash } => {

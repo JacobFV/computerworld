@@ -54,6 +54,8 @@ pub enum HeapObj {
     Regex(String, String, usize),
     Error(String, String),
     Cell(V),
+    /// A `useSyncExternalStore` subscription callback: instance and hook.
+    StoreChanged(u32, u32),
     /// Promises and events do not outlive the entry that created them; a pending
     /// promise restores as one that never settles.
     Opaque,
@@ -68,6 +70,7 @@ pub enum HookS {
     Effect(bool, Option<Vec<V>>, Option<V>),
     Context(u32),
     Id(String),
+    Store(V, V, V, Option<V>),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -159,6 +162,9 @@ pub struct UiState {
     pub id_counter: u32,
     pub booted: bool,
     pub crashed: bool,
+    /// `window`/`document` listeners: window?, type, listener, capture.
+    #[serde(default)]
+    pub listeners: Vec<(bool, String, V, bool)>,
 }
 
 // ------------------------------------------------------------------ encoding
@@ -328,6 +334,17 @@ impl Enc {
                     V::H(i)
                 }
             },
+            Value::Native(n) if matches!(**n, NativeFn::StoreChanged { .. }) => {
+                match self.reserve(Rc::as_ptr(n) as *const u8 as usize) {
+                    Err(i) => V::H(i),
+                    Ok(i) => {
+                        if let NativeFn::StoreChanged { inst, hook } = **n {
+                            self.heap[i as usize] = HeapObj::StoreChanged(inst, hook);
+                        }
+                        V::H(i)
+                    }
+                }
+            }
             Value::Event(_) | Value::Promise(_) | Value::Native(_) => {
                 let i = self.heap.len() as u32;
                 self.heap.push(HeapObj::Opaque);
@@ -428,6 +445,18 @@ impl Enc {
             ),
             HookState::Context(c) => HookS::Context(*c),
             HookState::Id(s) => HookS::Id(s.to_string()),
+            HookState::Store {
+                value,
+                get,
+                subscribe,
+                unsubscribe,
+                ..
+            } => HookS::Store(
+                self.v(value),
+                self.v(get),
+                self.v(subscribe),
+                unsubscribe.as_ref().map(|u| self.v(u)),
+            ),
         }
     }
 }
@@ -491,6 +520,11 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         })
         .collect();
     let i = &rt.inner;
+    let listeners = rt
+        .global_listeners
+        .iter()
+        .map(|l| (l.window, l.ty.to_string(), e.v(&l.f), l.capture))
+        .collect();
     UiState {
         module: (*rt.module).clone(),
         url: i.url.clone(),
@@ -539,6 +573,7 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         id_counter: rt.id_counter,
         booted: rt.booted,
         crashed: rt.crashed,
+        listeners,
     }
 }
 
@@ -709,6 +744,10 @@ impl Dec<'_> {
                     last_index: Cell::new(*last),
                 }))
             }
+            HeapObj::StoreChanged(inst, hook) => Value::Native(Rc::new(NativeFn::StoreChanged {
+                inst: *inst,
+                hook: *hook,
+            })),
             HeapObj::Opaque => Value::Promise(crate::interp::new_promise()),
         };
         self.done[idx] = Some(v.clone());
@@ -866,6 +905,16 @@ pub(crate) fn load(s: &UiState, host: Box<dyn ScriptHostDocument>) -> Result<Run
                 },
                 HookS::Context(c) => HookState::Context(*c),
                 HookS::Id(s) => HookState::Id(Rc::from(s.as_str())),
+                HookS::Store(v, g, s, u) => HookState::Store {
+                    value: d.v(v)?,
+                    get: d.v(g)?,
+                    subscribe: d.v(s)?,
+                    unsubscribe: match u {
+                        Some(u) => Some(d.v(u)?),
+                        None => None,
+                    },
+                    needs_subscribe: false,
+                },
             });
         }
         let inst = Instance {
@@ -931,6 +980,14 @@ pub(crate) fn load(s: &UiState, host: Box<dyn ScriptHostDocument>) -> Result<Run
     rt.id_counter = s.id_counter;
     rt.booted = s.booted;
     rt.crashed = s.crashed;
+    for (window, ty, f, capture) in &s.listeners {
+        rt.global_listeners.push(GlobalListener {
+            window: *window,
+            ty: Rc::from(ty.as_str()),
+            f: d.v(f)?,
+            capture: *capture,
+        });
+    }
     let i = &mut rt.inner;
     i.doc = s.doc.clone();
     i.url = s.url.clone();

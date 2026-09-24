@@ -180,6 +180,10 @@ fn run_compiled(module: &cw_ui::ir::Module, steps: &[Step]) -> Outcome {
             Step::Wait(ms) => *ms,
             _ => 20,
         });
+        if std::env::var_os("CW_UI_TRACE").is_some() {
+            let d = app.document().clone();
+            eprintln!("{s:?}: {}", dom_text(&d, &Default::default(), &|_| None));
+        }
     }
     let values = app.form_values();
     let doc = app.document().clone();
@@ -886,4 +890,140 @@ createRoot(document.getElementById('root')!).render(<App />);
 "#,
         &[Step::Wait(100), Step::Click("#seq"), Step::Wait(100)],
     );
+}
+
+#[test]
+fn window_listeners_external_stores_and_dom_globals() {
+    same_as_react(
+        r#"
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { createRoot } from 'react-dom/client';
+let count = 0;
+const subscribers = new Set<() => void>();
+const store = {
+  subscribe(cb: () => void) {
+    subscribers.add(cb);
+    console.log('subscribe', subscribers.size);
+    return () => { subscribers.delete(cb); console.log('unsubscribe', subscribers.size); };
+  },
+  get() { return count; },
+  bump() { count++; subscribers.forEach((s) => s()); },
+};
+function Counter({ label }: { label: string }) {
+  const n = useSyncExternalStore(store.subscribe, store.get);
+  console.log('render', label, n);
+  return <span className="count">{label}={n}</span>;
+}
+function App() {
+  const [keys, setKeys] = useState<string[]>([]);
+  const [shown, setShown] = useState(true);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      console.log('window key', e.key, document.activeElement === document.body);
+      if (e.key === 'b') store.bump();
+      else setKeys((k) => [...k, e.key]);
+    };
+    const onCapture = (e: KeyboardEvent) => console.log('document capture', e.key);
+    window.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', onCapture, true);
+    document.addEventListener('keydown', onCapture, { capture: true });
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onCapture, true);
+      console.log('removed');
+    };
+  }, []);
+  useEffect(() => {
+    const el = document.getElementById('status');
+    const first = document.querySelector('ul > li:last-child');
+    console.log('effect', el ? el.textContent : 'none', first ? first.textContent : 'no items', Object.is(NaN, NaN), Object.is(0, -0));
+    console.log('size', window.innerWidth > 0, window.innerHeight > 0, 'a😀'.codePointAt(1), 'x'.codePointAt(3));
+  });
+  function fail() {
+    try {
+      throw new TypeError('bad');
+    } catch (e) {
+      console.log('caught', e instanceof Error, e instanceof TypeError, e instanceof RangeError, e instanceof Error ? e.message : String(e));
+    }
+    console.log('plain', ('s' as unknown) instanceof Error);
+    setShown((s) => !s);
+  }
+  return (
+    <div>
+      <p id="status">{keys.join(',')}</p>
+      <ul>{keys.map((k, i) => <li key={i}>{k}</li>)}</ul>
+      {shown ? <Counter label="a" /> : null}
+      <Counter label="b" />
+      <button id="toggle" onClick={fail}>toggle</button>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[
+            Step::Key("x"),
+            Step::Key("b"),
+            Step::Click("#toggle"),
+            Step::Key("b"),
+            Step::Key("y"),
+            Step::Click("#toggle"),
+            Step::Key("b"),
+        ],
+    );
+}
+
+#[test]
+fn listeners_and_store_subscriptions_survive_restore() {
+    let (module, _) = compile(
+        r#"
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { createRoot } from 'react-dom/client';
+let count = 0;
+const subs = new Set<() => void>();
+const subscribe = (cb: () => void) => { subs.add(cb); return () => { subs.delete(cb); }; };
+const get = () => count;
+function App() {
+  const n = useSyncExternalStore(subscribe, get);
+  const [keys, setKeys] = useState('');
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === '+') { count++; subs.forEach((s) => s()); } else setKeys((k) => k + e.key);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  return <p id="out">{n}:{keys}:{subs.size}</p>;
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+    );
+    let mut app = UiApp::new(
+        module,
+        SHELL,
+        &format!("{BASE}app.html"),
+        Box::new(vendor(MemoryHost::new())),
+    )
+    .unwrap();
+    app.boot();
+    let key = |app: &mut UiApp, k: &str| {
+        app.dispatch(UiEvent::Key {
+            key: k.into(),
+            code: String::new(),
+            modifiers: Modifiers::default(),
+            repeat: false,
+        });
+        app.run_until_idle(20);
+    };
+    key(&mut app, "a");
+    key(&mut app, "+");
+    let state = cw_ui::UiState::from_json(&app.snapshot().to_json()).unwrap();
+    let mut restored = UiApp::restore(&state, Box::new(vendor(MemoryHost::new()))).unwrap();
+    for a in [&mut app, &mut restored] {
+        key(a, "b");
+        key(a, "+");
+    }
+    let text = |a: &UiApp| a.document().text_content(a.query_selector("#out").unwrap());
+    assert_eq!(text(&app), "2:ab:1");
+    assert_eq!(text(&restored), "2:ab:1");
+    assert_eq!(app.snapshot().to_json(), restored.snapshot().to_json());
 }

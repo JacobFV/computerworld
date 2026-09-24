@@ -45,6 +45,11 @@ pub enum NativeFn {
         index: usize,
     },
     AllReject(Rc<RefCell<AllState>>),
+    /// The callback a `useSyncExternalStore` subscription is given.
+    StoreChanged {
+        inst: u32,
+        hook: u32,
+    },
     /// An async function resumed after an `await` (with the value, or throwing it).
     Resume {
         task: Rc<RefCell<Option<crate::asyncfn::Task>>>,
@@ -86,6 +91,24 @@ pub(crate) enum HookState {
     },
     Context(u32),
     Id(Str),
+    /// `useSyncExternalStore`: the snapshot, its getter, the subscribe function
+    /// and what it returned.
+    Store {
+        value: Value,
+        get: Value,
+        subscribe: Value,
+        unsubscribe: Option<Value>,
+        needs_subscribe: bool,
+    },
+}
+
+/// A listener `window.addEventListener` or `document.addEventListener` registered.
+#[derive(Debug, Clone)]
+pub(crate) struct GlobalListener {
+    pub window: bool,
+    pub ty: Str,
+    pub f: Value,
+    pub capture: bool,
 }
 
 #[derive(Debug)]
@@ -289,6 +312,8 @@ pub(crate) struct Runtime {
     pub booted: bool,
     /// A render threw: React unmounted the root.
     pub crashed: bool,
+    /// `window`/`document` event listeners, in registration order.
+    pub global_listeners: Vec<GlobalListener>,
     /// Per function: which frame slots are boxed.
     pub boxed_cache: Vec<Option<Rc<[bool]>>>,
     /// Compiled regular expressions by (pattern, flags).
@@ -354,6 +379,7 @@ impl Runtime {
             crashed: false,
             regex_cache: BTreeMap::new(),
             boxed_cache: Vec::new(),
+            global_listeners: Vec::new(),
             stats: Stats::default(),
             fire_depth: 0,
         }
