@@ -734,6 +734,7 @@ impl Renderer {
                         italic,
                         lang,
                         typeface,
+                        web,
                         ..
                     } => Some(self.text_styled(
                         text,
@@ -741,7 +742,10 @@ impl Renderer {
                         node.bounds.width,
                         node.bounds.height,
                         2,
-                        Style::new(true, *italic, *lang),
+                        Style {
+                            web: *web,
+                            ..Style::new(true, *italic, *lang)
+                        },
                         typeface.unwrap_or(scene.typeface),
                     )),
                     Primitive::UiText {
@@ -750,6 +754,7 @@ impl Renderer {
                         italic,
                         lang,
                         typeface,
+                        web,
                         ..
                     } => Some(self.text_styled(
                         text,
@@ -757,7 +762,10 @@ impl Renderer {
                         node.bounds.width,
                         node.bounds.height,
                         1,
-                        Style::new(false, *italic, *lang),
+                        Style {
+                            web: *web,
+                            ..Style::new(false, *italic, *lang)
+                        },
                         typeface.unwrap_or(scene.typeface),
                     )),
                     _ => None,

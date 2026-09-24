@@ -72,19 +72,15 @@ fn round_px(size: Au, units: i32, upem: i32) -> Au {
 /// exposes advances only, so the vertical metrics come from `face_units`. Each of
 /// the three is rounded to whole pixels first, as Blink does, so `line-height:
 /// normal` is `round(ascent) + round(descent) + round(lineGap)` and a 14 px Arial
-/// line has a 16 px content area. The monospace terminal face reports the terminal
-/// cell height as its normal line height so code lines match the grid.
+/// line has a 16 px content area. DejaVu Sans Mono has DejaVu Sans's vertical
+/// metrics and no line gap, as in Chromium; the terminal's taller grid rows are not
+/// web content's.
 pub fn font_metrics(font: &Font) -> FontMetrics {
     let (upem, asc, desc, gap, xh) = face_units(font.typeface);
     let size = font.size;
     let ascent = round_px(size, asc, upem);
     let descent = round_px(size, desc, upem);
-    let line_gap = if font.typeface == Typeface::Mono {
-        let cell = cw_scene::text_cell(font.size_px()).1 as i32;
-        (Au::from_px_i32(cell) - ascent - descent).max(Au::ZERO)
-    } else {
-        round_px(size, gap, upem)
-    };
+    let line_gap = round_px(size, gap, upem);
     FontMetrics {
         ascent,
         descent,
@@ -107,11 +103,10 @@ const REF_SIZE: u16 = 4096;
 /// Advance of one character in `Au` (1/64 px), without letter spacing, at the font's
 /// exact (fractional) size: the tabulated advance is read at `REF_SIZE` and scaled,
 /// so a 12.5 px face measures at 12.5 px, as Chromium's shaper does, not at 13.
+/// DejaVu Sans Mono is no exception: web content sets it on its own advance
+/// (`1233 / 2048` em, 7.22 px at 12 px), not on the terminal grid's whole-pixel
+/// cells ([`cw_scene::Style::web`]).
 pub fn advance(font: &Font, c: char) -> Au {
-    if font.typeface == Typeface::Mono {
-        let a = metrics::advance(font.typeface, font.scene_style(), c, font.size_px());
-        return Au(a.clamp(0, Au::MAX.0 as i64) as i32);
-    }
     let style = font.scene_style();
     let base = if c == '\t' { ' ' } else { c };
     let fine = match metrics::tabulated_advance(font.typeface, style, base, REF_SIZE) {
@@ -161,8 +156,8 @@ fn fallback_advance(typeface: Typeface, style: cw_scene::Style, c: char) -> i64 
 /// Pair kerning between two adjacent characters in `Au`, at the font's exact
 /// (fractional) size: the face's `kern` adjustment in font units
 /// (`cw_scene::metrics::kern_units`) scaled and rounded to 1/64 px like `advance`.
-/// Zero for unkerned pairs and for the faces that do not kern (the platform and
-/// DejaVu faces, the monospace ones). It applies whatever `letter-spacing` is: see
+/// Zero for unkerned pairs and for the faces that do not kern (the monospace ones);
+/// DejaVu Sans and the platform faces kern here, as web content. It applies whatever `letter-spacing` is: see
 /// `kern_spaced`.
 pub fn kern(font: &Font, left: char, right: char) -> Au {
     let Some((units, upem)) = metrics::kern_units(font.typeface, font.scene_style(), left, right)
@@ -581,11 +576,8 @@ mod tests {
             advance(&s.font, 'a'),
             Au(metrics::advance(Typeface::DejaVu, false, 'a', 16) as i32)
         );
-        assert_eq!(
-            kern(&s.font, 'T', 'a'),
-            Au::ZERO,
-            "DejaVu is laid out unkerned"
-        );
+        // DejaVu Sans kerns, as in Chromium: T-a is -339 units, -2.65 px at 16 px.
+        assert_eq!(kern(&s.font, 'T', 'a'), Au(-169));
         assert_eq!(
             measure(&s.font, "a b", Au(1), Au(2)),
             advance(&s.font, 'a') + advance(&s.font, ' ') + advance(&s.font, 'b') + Au(3) + Au(2)

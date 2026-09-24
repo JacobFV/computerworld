@@ -336,20 +336,23 @@ fn last_ink_column(frame: &Frame) -> i64 {
 
 /// The renderer places a run's glyphs at the kerned pen positions the scene metrics
 /// measure: the last glyph of a kerned run sits exactly where the measured width
-/// (less its own advance) puts it. Web faces kern; the platform faces do not, so
-/// desktop scenes and their golden frames are as they were.
+/// (less its own advance) puts it. Web faces kern, and DejaVu Sans as web content;
+/// the platform faces do not, nor native DejaVu text, so desktop scenes and their
+/// golden frames are as they were.
 #[test]
 fn the_renderer_kerns_a_run_exactly_as_metrics_measure_it() {
     use cw_scene::metrics::{advance, kern};
     let size = 32;
     let text = "AVAVAVAV";
-    for (t, kerned) in [
-        (Typeface::Arimo, true),
-        (Typeface::Tinos, true),
-        (Typeface::Inter, false),
-        (Typeface::DejaVu, false),
+    let web = Style::default().for_web();
+    for (t, style, kerned) in [
+        (Typeface::Arimo, Style::default(), true),
+        (Typeface::Tinos, Style::default(), true),
+        (Typeface::Inter, Style::default(), false),
+        (Typeface::Inter, web, false),
+        (Typeface::DejaVu, Style::default(), false),
+        (Typeface::DejaVu, web, true),
     ] {
-        let style = Style::default();
         let plain: i64 = text.chars().map(|c| advance(t, style, c, size)).sum();
         let pairs: i64 = text
             .chars()
@@ -377,5 +380,34 @@ fn the_renderer_kerns_a_run_exactly_as_metrics_measure_it() {
             let unkerned = (plain - advance(t, style, 'V', size) + 32).div_euclid(64) + lone;
             assert!(run + 8 < unkerned, "{t:?}: {run} vs {unkerned}");
         }
+    }
+}
+
+/// Web content sets DejaVu Sans Mono on its own advance, 1233/2048 em, and the
+/// renderer draws each glyph at that pen; native text keeps the terminal grid's
+/// whole-pixel cells.
+#[test]
+fn web_monospace_is_drawn_on_its_real_advances() {
+    use cw_scene::metrics::advance;
+    let size = 24;
+    let text = "iiiiiiiiii";
+    let lone = last_ink_column(&styled(
+        "i",
+        100,
+        40,
+        size,
+        Style::default(),
+        Typeface::Mono,
+    ));
+    for (style, step) in [
+        (Style::default().for_web(), (1233 * 24 * 64 + 1024) / 2048),
+        (
+            Style::default(),
+            i64::from(cw_scene::text_cell(size).0) * 64,
+        ),
+    ] {
+        assert_eq!(advance(Typeface::Mono, style, 'i', size), step);
+        let run = last_ink_column(&styled(text, 400, 40, size, style, Typeface::Mono));
+        assert_eq!(run, (9 * step + 32).div_euclid(64) + lone, "{style:?}");
     }
 }

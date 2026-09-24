@@ -2801,6 +2801,7 @@ fn paint_notice(scene: &mut Scene, text: &str) {
             italic: false,
             lang: Default::default(),
             typeface: None,
+            web: false,
         },
     );
     label.z = i32::MAX - 1;

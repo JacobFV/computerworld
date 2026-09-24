@@ -2079,8 +2079,10 @@ fn golden_composite_digest() {
 }
 
 // Changed when the rotated box's own background started to carry its transform and
-// the checkbox tick's path points became relative to its bounds (both were bugs).
-const GOLDEN_DIGEST: u64 = 11_624_232_690_043_090_657;
+// the checkbox tick's path points became relative to its bounds (both were bugs),
+// and when text nodes began to carry `web: true` (kerned DejaVu, real monospace
+// advances).
+const GOLDEN_DIGEST: u64 = 5_426_344_557_870_241_865;
 
 #[test]
 fn the_root_scroll_offset_is_applied_once() {

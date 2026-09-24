@@ -710,7 +710,8 @@ impl CanvasState {
                 self.state.font_bold,
                 self.state.font_italic,
                 cw_scene::Lang::default(),
-            ),
+            )
+            .for_web(),
         )
     }
 

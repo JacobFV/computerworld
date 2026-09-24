@@ -8,6 +8,8 @@ pub mod text;
 #[rustfmt::skip]
 mod kerning_data;
 #[rustfmt::skip]
+mod kerning_dejavu;
+#[rustfmt::skip]
 mod metrics_data;
 #[rustfmt::skip]
 mod metrics_italic;
@@ -246,6 +248,10 @@ pub enum Primitive {
         /// [`Scene::typeface`]. Measurement and drawing both use it.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         typeface: Option<Typeface>,
+        /// Web content, laid out and drawn with kerning and real monospace
+        /// advances ([`Style::web`]); omitted from scene JSON when false.
+        #[serde(default, skip_serializing_if = "is_false")]
+        web: bool,
     },
     UiTextBold {
         text: String,
@@ -257,6 +263,8 @@ pub enum Primitive {
         lang: Lang,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         typeface: Option<Typeface>,
+        #[serde(default, skip_serializing_if = "is_false")]
+        web: bool,
     },
     Text {
         text: String,
@@ -315,7 +323,12 @@ impl Primitive {
         typeface: Option<Typeface>,
     ) -> Self {
         let text = text.into();
-        let Style { bold, italic, lang } = style;
+        let Style {
+            bold,
+            italic,
+            lang,
+            web,
+        } = style;
         if bold {
             Self::UiTextBold {
                 text,
@@ -324,6 +337,7 @@ impl Primitive {
                 italic,
                 lang,
                 typeface,
+                web,
             }
         } else {
             Self::UiText {
@@ -333,14 +347,25 @@ impl Primitive {
                 italic,
                 lang,
                 typeface,
+                web,
             }
         }
     }
     /// Weight, slant and language of a UI text primitive; `None` for anything else.
     pub fn text_style(&self) -> Option<Style> {
         match self {
-            Self::UiText { italic, lang, .. } => Some(Style::new(false, *italic, *lang)),
-            Self::UiTextBold { italic, lang, .. } => Some(Style::new(true, *italic, *lang)),
+            Self::UiText {
+                italic, lang, web, ..
+            } => Some(Style {
+                web: *web,
+                ..Style::new(false, *italic, *lang)
+            }),
+            Self::UiTextBold {
+                italic, lang, web, ..
+            } => Some(Style {
+                web: *web,
+                ..Style::new(true, *italic, *lang)
+            }),
             _ => None,
         }
     }

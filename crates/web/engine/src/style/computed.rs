@@ -999,8 +999,10 @@ impl Font {
     pub fn size_px(&self) -> u16 {
         self.size.to_px_round().clamp(1, u16::MAX as i32) as u16
     }
+    /// The run's style for `cw_scene` measurement and drawing, marked as web content
+    /// so it kerns and sets monospace on its real advances, as Chromium does.
     pub fn scene_style(&self) -> cw_scene::Style {
-        cw_scene::Style::new(self.is_bold(), self.is_italic(), self.lang)
+        cw_scene::Style::new(self.is_bold(), self.is_italic(), self.lang).for_web()
     }
 }
 

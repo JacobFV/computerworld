@@ -2,6 +2,7 @@
 //! table generated from the exact font files the renderer embeds, so layout code can
 //! measure, centre, wrap and truncate text without rasterizing or consulting a host.
 use crate::kerning_data as kerning;
+use crate::kerning_dejavu;
 use crate::metrics_data as data;
 use crate::metrics_italic as italic;
 use crate::metrics_web as web;
@@ -101,17 +102,34 @@ impl Lang {
     }
 }
 
-/// How a run of UI text is set: weight, slant and language. `From<bool>` reads the
-/// bool as bold, so every metrics function still takes the plain `bold` flag.
+/// How a run of UI text is set: weight, slant and language, and whether it is web
+/// content. `From<bool>` reads the bool as bold, so every metrics function still
+/// takes the plain `bold` flag.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Style {
     pub bold: bool,
     pub italic: bool,
     pub lang: Lang,
+    /// Text laid out by the web engine, which measures the way Chromium does: every
+    /// family kerns by its own `kern` feature (DejaVu Sans and the platform faces
+    /// too, not only the web faces), and [`Typeface::Mono`] advances by the font's
+    /// own advance, `1233 / 2048` em, instead of the terminal grid. Off for the
+    /// native UI (desktop scenes, the terminal, legacy pages), whose layout and
+    /// golden frames are unkerned and on the grid. [`Style::for_web`] turns it on.
+    pub web: bool,
 }
 impl Style {
     pub const fn new(bold: bool, italic: bool, lang: Lang) -> Self {
-        Self { bold, italic, lang }
+        Self {
+            bold,
+            italic,
+            lang,
+            web: false,
+        }
+    }
+    /// The same style, measured as web content (see [`Style::web`]).
+    pub const fn for_web(self) -> Self {
+        Self { web: true, ..self }
     }
     /// The same weight and language, upright.
     pub const fn upright(self) -> Self {
@@ -221,8 +239,20 @@ impl Typeface {
             _ => return None,
         })
     }
+    /// The family's kern pairs by `bold + 2 * italic`, and whether they are a web
+    /// family's (indexed through [`Typeface::web_face_index`]). DejaVu Sans kerns
+    /// only as web content ([`Style::web`]); the native UI lays it out unkerned.
+    /// The platform faces never kern: the files they are drawn from keep no layout
+    /// tables, and Chromium measures a page serving those files unkerned. Nor do
+    /// the monospace faces.
+    fn kerning(self, style: Style) -> Option<(&'static [kerning::Pairs; 4], bool)> {
+        if let Some(pairs) = self.web_kerning() {
+            return Some((pairs, true));
+        }
+        (style.web && self == Self::DejaVu).then_some((&kerning_dejavu::DEJAVU, false))
+    }
     /// A web family's kern pairs by `bold + 2 * italic`; `None` for the platform and
-    /// DejaVu families, which are laid out unkerned (see [`kern`]).
+    /// DejaVu families (see [`Typeface::kerning`]).
     fn web_kerning(self) -> Option<&'static [kerning::Pairs; 4]> {
         Some(match self {
             Self::Arimo => &kerning::ARIMO,
@@ -363,7 +393,8 @@ pub fn tabulated_advance(
     let (family, slanted) = table_face(typeface, style, c)?;
     // The monospace face is painted on the terminal grid, one cell per character,
     // whichever face supplies the glyph: measure that cell, not the font's advance.
-    if typeface == Typeface::Mono {
+    // Web content advances by the face's own advance, as Chromium does.
+    if typeface == Typeface::Mono && !style.web {
         return Some(i64::from(crate::text_cell(size).0) * 64);
     }
     let (table, upem) = family.table(style.bold, slanted);
@@ -373,12 +404,14 @@ pub fn tabulated_advance(
 }
 /// Advance in 1/64 pixel. Tabs advance four spaces; unknown glyphs use 0.6 em.
 pub fn advance(typeface: Typeface, style: impl Into<Style>, c: char, size: u16) -> i64 {
-    let one =
-        tabulated_advance(typeface, style, c, size).unwrap_or(if typeface == Typeface::Mono {
+    let style = style.into();
+    let one = tabulated_advance(typeface, style, c, size).unwrap_or(
+        if typeface == Typeface::Mono && !style.web {
             i64::from(crate::text_cell(size).0) * 64
         } else {
             i64::from(size) * 64 * 3 / 5
-        });
+        },
+    );
     if c == '\t' {
         one * 4
     } else {
@@ -386,10 +419,11 @@ pub fn advance(typeface: Typeface, style: impl Into<Style>, c: char, size: u16) 
     }
 }
 /// The face's `kern` adjustment between `left` and `right` in font units, with the
-/// face's units per em; `None` when the pair is not kerned. Only the web faces
-/// ([`Typeface::WEB`]) kern, and only between two characters the family's own face
-/// draws (a DejaVu fallback glyph never kerns against its neighbour). The table
-/// covers ASCII, Latin-1 and common punctuation.
+/// face's units per em; `None` when the pair is not kerned. The web faces
+/// ([`Typeface::WEB`]) kern always, DejaVu Sans only as web content
+/// ([`Style::web`]), the platform and monospace faces never; and only between two
+/// characters the family's own face draws (a DejaVu fallback glyph never kerns
+/// against its neighbour). The table covers ASCII, Latin-1 and common punctuation.
 pub fn kern_units(
     typeface: Typeface,
     style: impl Into<Style>,
@@ -397,7 +431,7 @@ pub fn kern_units(
     right: char,
 ) -> Option<(i16, u32)> {
     let style = style.into();
-    let faces = typeface.web_kerning()?;
+    let (faces, web_family) = typeface.kerning(style)?;
     let (l, r) = (
         u16::try_from(left as u32).ok()?,
         u16::try_from(right as u32).ok()?,
@@ -406,7 +440,11 @@ pub fn kern_units(
     if family != typeface || table_face(typeface, style, right) != Some((family, slanted)) {
         return None;
     }
-    let i = typeface.web_face_index(style.bold, slanted)?;
+    let i = if web_family {
+        typeface.web_face_index(style.bold, slanted)?
+    } else {
+        usize::from(style.bold) + 2 * usize::from(slanted)
+    };
     let (lefts, rights, values) = faces[i]?;
     let at = lefts.binary_search_by_key(&l, |e| e.0).ok()?;
     let start = lefts[at].1 as usize;
@@ -415,8 +453,8 @@ pub fn kern_units(
     Some((values[start + k], typeface.table(style.bold, slanted).1))
 }
 /// Pair kerning between `left` and `right` in 1/64 pixel (usually negative), rounded
-/// to nearest like [`advance`]; 0 for an unkerned pair and for every platform and
-/// DejaVu face. Measurement, wrapping, truncation and the renderer's glyph placement
+/// to nearest like [`advance`]; 0 for an unkerned pair, for every platform face, and
+/// for DejaVu outside web content. Measurement, wrapping, truncation and the renderer's glyph placement
 /// all add it between adjacent characters.
 pub fn kern(
     typeface: Typeface,
@@ -654,6 +692,65 @@ mod tests {
                 'o',
                 16
             ) < 0
+        );
+    }
+    #[test]
+    fn web_content_kerns_every_family_and_sets_mono_on_its_advance() {
+        let web = |bold: bool| Style::from(bold).for_web();
+        // Chromium's widths (LayoutUnit, 1/64 px) of DejaVu Sans, which it kerns by
+        // the face's GPOS `kern` feature: "Tracker" bold 18 px, "Total" 12 px and
+        // "To do" bold 13 px. Unkerned they are 77.03, 30.06 and 40.56 px.
+        for (text, bold, size, chromium) in [
+            ("Tracker", true, 18, 74.578125),
+            ("Total", false, 12, 28.03125),
+            ("To do", true, 13, 38.84375),
+        ] {
+            // Within 2/64 px: each advance here is rounded to 1/64 px, where
+            // Chromium sums float advances and rounds the total up.
+            let kerned = width_64(Typeface::DejaVu, web(bold), text, size);
+            assert!(
+                (kerned - (chromium * 64.0) as i64).abs() <= 2,
+                "{text}: {kerned}"
+            );
+            assert!(width_64(Typeface::DejaVu, Style::from(bold), text, size) > kerned + 64);
+        }
+        assert_eq!(
+            kern_units(Typeface::DejaVu, web(false), 'T', 'o'),
+            Some((-348, 2048))
+        );
+        assert_eq!(kern_units(Typeface::DejaVu, false, 'T', 'o'), None);
+        // Each face has its own pairs, the obliques included. The platform faces
+        // stay unkerned: their files have no pairs for Chromium to apply either.
+        let italic = Style::new(false, true, Lang::Auto).for_web();
+        assert!(kern(Typeface::DejaVu, italic, 'T', 'o', 16) < 0);
+        assert_ne!(
+            kern(Typeface::DejaVu, italic, 'T', 'o', 16),
+            kern(Typeface::DejaVu, web(false), 'T', 'o', 16)
+        );
+        for t in [
+            Typeface::Inter,
+            Typeface::OpenSans,
+            Typeface::Ubuntu,
+            Typeface::Roboto,
+        ] {
+            assert_eq!(kern(t, web(false), 'T', 'o', 16), 0, "{t:?}");
+        }
+        // DejaVu Sans Mono advances by 1233/2048 em (7.22 px at 12 px), where the
+        // terminal grid gives it a whole 8 px cell; it has no pairs.
+        assert_eq!(advance(Typeface::Mono, web(false), 'i', 12), 462);
+        assert_eq!(advance(Typeface::Mono, false, 'i', 12), 8 * 64);
+        assert_eq!(text_width(Typeface::Mono, web(false), "npm run", 12), 51);
+        assert_eq!(kern(Typeface::Mono, web(false), 'T', 'o', 12), 0);
+        // Placement follows the same pen, so drawing and measuring agree.
+        let laid = &crate::text::layout(Typeface::DejaVu, web(true), "Tracker", 18, 400)[0];
+        assert_eq!(
+            laid.width,
+            width_64(Typeface::DejaVu, web(true), "Tracker", 18)
+        );
+        assert_eq!(
+            laid.glyphs[1].x,
+            advance(Typeface::DejaVu, true, 'T', 18)
+                + kern(Typeface::DejaVu, web(true), 'T', 'r', 18)
         );
     }
     #[test]
