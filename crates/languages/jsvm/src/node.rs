@@ -1196,11 +1196,11 @@ impl<'h> Vm<'h> {
         let t0 = self.prof.as_ref().map(|_| crate::profile::now_ns());
         let chars: Vec<char> = src.chars().collect();
         let try_module = force_module.unwrap_or(false);
-        let parsed = crate::parser::parse(src, try_module);
+        let parsed = crate::parser::parse_chars(&chars, try_module);
         let (prog, is_module) = match parsed {
             Ok((prog, saw)) => {
                 if saw && !try_module && force_module.is_none() {
-                    match crate::parser::parse(src, true) {
+                    match crate::parser::parse_chars(&chars, true) {
                         Ok((p, _)) => (p, true),
                         Err(e) => return Err(self.syntax_error_from(e, src, file, true)),
                     }
@@ -1211,7 +1211,7 @@ impl<'h> Vm<'h> {
             Err(e) => {
                 // Module syntax errors in script goal: retry as a module.
                 if force_module.is_none() && e.msg.contains("import") {
-                    match crate::parser::parse(src, true) {
+                    match crate::parser::parse_chars(&chars, true) {
                         Ok((p, _)) => (p, true),
                         Err(e2) => return Err(self.syntax_error_from(e2, src, file, false)),
                     }
@@ -1228,6 +1228,7 @@ impl<'h> Vm<'h> {
         self.register_source(fname.clone(), Rc::from(src));
         let t1 = self.prof.as_ref().map(|_| crate::profile::now_ns());
         let mut c = crate::compiler::Compiler::new(fname.clone(), &chars, is_module);
+        c.set_text(src);
         c.completion = file == "[eval]" || file == "[stdin]";
         let params: Vec<&str> = if is_module {
             vec!["%ns", "%import", "%meta"]
@@ -1607,7 +1608,7 @@ impl<'h> Vm<'h> {
         pk: usize,
     ) -> JsResult<Rc<crate::bytecode::Code>> {
         let chars: Vec<char> = src.chars().collect();
-        let prog = match crate::parser::parse(src, false) {
+        let prog = match crate::parser::parse_chars(&chars, false) {
             Ok((p, _)) => p,
             Err(e) => {
                 self.prof_leave(pk);
@@ -1619,6 +1620,7 @@ impl<'h> Vm<'h> {
         self.register_source(fname.clone(), Rc::from(src));
         let t1 = self.prof.as_ref().map(|_| crate::profile::now_ns());
         let mut c = crate::compiler::Compiler::new(fname, &chars, false);
+        c.set_text(src);
         c.global_scope = global_scope;
         let compiled = c.compile_eval(&prog);
         self.prof_source(file, src.len(), t0, t1, false);

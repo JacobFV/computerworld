@@ -126,11 +126,16 @@ impl<'a> Parser<'a> {
     fn tok(&self) -> &Tok {
         &self.toks[self.i].tok
     }
-    fn advance(&mut self) -> Token {
-        let t = self.toks[self.i].clone();
+    /// Moves past the current token.
+    fn advance(&mut self) {
         if self.i < self.toks.len() - 1 {
             self.i += 1;
         }
+    }
+    /// Moves past the current token and returns it.
+    fn take_tok(&mut self) -> Token {
+        let t = self.toks[self.i].clone();
+        self.advance();
         t
     }
     fn pos(&self) -> Pos {
@@ -2103,7 +2108,7 @@ impl<'a> Parser<'a> {
         let mut cooked = vec![];
         let mut raw = vec![];
         let mut exprs = vec![];
-        let t = self.advance();
+        let t = self.take_tok();
         let check = |c: &Option<String>, this: &Self| -> PResult<Option<Rc<str>>> {
             match c {
                 Some(s) => Ok(Some(Rc::from(s.as_str()))),
@@ -2152,7 +2157,7 @@ impl<'a> Parser<'a> {
         let mut e = if self.is_kw("new") {
             self.new_expr()?
         } else if self.is_kw("super") {
-            let t = self.advance();
+            let t = self.take_tok();
             if self.is_punct("(") {
                 if !self.ctx.super_call {
                     return Err(self.err_at(&t, "'super' keyword unexpected here"));
@@ -2186,7 +2191,7 @@ impl<'a> Parser<'a> {
                 return Err(self.err_at(&t, "'super' keyword unexpected here"));
             }
         } else if self.is_kw("import") {
-            let t = self.advance();
+            let t = self.take_tok();
             if self.eat(".") {
                 let n = self.ident_name_any()?;
                 if &*n != "meta" || !self.is_module {
@@ -2342,7 +2347,7 @@ impl<'a> Parser<'a> {
 
     fn new_expr(&mut self) -> PResult<Expr> {
         let pos = self.pos();
-        let t = self.advance(); // new
+        let t = self.take_tok(); // new
         if self.eat(".") {
             let n = self.ident_name_any()?;
             // CommonJS code runs inside a function, so new.target is valid.
@@ -2700,9 +2705,14 @@ fn check_no_cover(e: &Expr) -> Result<(), Pos> {
 /// Parses source text. `module` selects the module goal; with `None`, the
 /// script goal is tried and module syntax is reported via the flag.
 pub fn parse(src: &str, is_module: bool) -> Result<(Program, bool), SyntaxErr> {
-    let toks = crate::lexer::tokenize(src)?;
     let chars: Vec<char> = src.chars().collect();
-    let mut p = Parser::new(toks, &chars, is_module);
+    parse_chars(&chars, is_module)
+}
+
+/// `parse` over the source's characters, already collected.
+pub fn parse_chars(chars: &[char], is_module: bool) -> Result<(Program, bool), SyntaxErr> {
+    let toks = crate::lexer::tokenize_chars(chars)?;
+    let mut p = Parser::new(toks, chars, is_module);
     let prog = p.parse_program()?;
     Ok((prog, p.saw_module_syntax))
 }

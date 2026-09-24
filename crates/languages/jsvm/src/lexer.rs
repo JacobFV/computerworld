@@ -60,8 +60,8 @@ fn is_line_term(c: char) -> bool {
     matches!(c, '\n' | '\r' | '\u{2028}' | '\u{2029}')
 }
 
-pub struct Lexer {
-    c: Vec<char>,
+pub struct Lexer<'a> {
+    c: &'a [char],
     pos: usize,
     line: u32,
     line_start: usize,
@@ -70,10 +70,10 @@ pub struct Lexer {
     braces: Vec<bool>,
 }
 
-impl Lexer {
-    pub fn new(src: &str) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new(c: &'a [char]) -> Self {
         Lexer {
-            c: src.chars().collect(),
+            c,
             pos: 0,
             line: 1,
             line_start: 0,
@@ -159,7 +159,13 @@ impl Lexer {
                     self.pos += 1;
                     self.newline();
                     nl = true;
-                } else if ch.is_whitespace() || ch == '\u{feff}' {
+                } else if ch == ' '
+                    || ch == '\t'
+                    || (!ch.is_ascii() && ch.is_whitespace())
+                    || ch == '\u{feff}'
+                    || ch == '\u{b}'
+                    || ch == '\u{c}'
+                {
                     self.pos += 1;
                 } else if ch == '/' && self.peek(1) == '/' {
                     while self.pos < self.c.len() && !is_line_term(self.c[self.pos]) {
@@ -236,7 +242,7 @@ impl Lexer {
                 self.regex()?
             } else {
                 let mut found = None;
-                for p in PUNCTS {
+                for p in puncts_from(ch) {
                     let n = p.len();
                     if self.pos + n <= self.c.len()
                         && self.c[self.pos..self.pos + n].iter().copied().eq(p.chars())
@@ -281,6 +287,23 @@ impl Lexer {
     }
 
     fn ident(&mut self) -> Result<(String, bool), SyntaxErr> {
+        // The common case, a run of ASCII identifier characters, in one piece.
+        let start = self.pos;
+        let mut end = start;
+        while end < self.c.len() {
+            let ch = self.c[end];
+            if ch.is_ascii_alphanumeric() || ch == '_' || ch == '$' {
+                end += 1;
+            } else {
+                break;
+            }
+        }
+        let next = self.c.get(end).copied().unwrap_or('\0');
+        let first_ok = end > start && !self.c[start].is_ascii_digit();
+        if first_ok && (next.is_ascii() && next != '\\') {
+            self.pos = end;
+            return Ok((self.c[start..end].iter().collect(), false));
+        }
         let mut s = String::new();
         let mut escaped = false;
         loop {
@@ -706,5 +729,31 @@ impl Lexer {
 }
 
 pub fn tokenize(src: &str) -> Result<Vec<Token>, SyntaxErr> {
-    Lexer::new(src).tokenize()
+    let chars: Vec<char> = src.chars().collect();
+    tokenize_chars(&chars)
+}
+
+/// `tokenize` over the source's characters, already collected.
+pub fn tokenize_chars(chars: &[char]) -> Result<Vec<Token>, SyntaxErr> {
+    Lexer::new(chars).tokenize()
+}
+
+/// The punctuators that start with `c`, in `PUNCTS` order (longest first), so
+/// the first that matches is the one a scan of all of them finds.
+fn puncts_from(c: char) -> &'static [&'static str] {
+    use std::sync::OnceLock;
+    static TABLE: OnceLock<Vec<Vec<&'static str>>> = OnceLock::new();
+    let t = TABLE.get_or_init(|| {
+        let mut t = vec![Vec::new(); 128];
+        for p in PUNCTS {
+            let b = p.as_bytes()[0] as usize;
+            t[b].push(*p);
+        }
+        t
+    });
+    if (c as u32) < 128 {
+        &t[c as usize]
+    } else {
+        &[]
+    }
 }

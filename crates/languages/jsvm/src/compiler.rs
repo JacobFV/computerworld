@@ -157,6 +157,9 @@ impl FState {
 pub struct Compiler<'a> {
     file: Rc<str>,
     src: &'a [char],
+    /// The source as text, when every character is one byte (then character
+    /// positions are byte offsets and function sources are sliced from it).
+    ascii_text: Option<&'a str>,
     funcs: Vec<FState>,
     /// Exported bindings of an ES module: (local, exported).
     exports: Vec<(Name, Name)>,
@@ -272,6 +275,7 @@ impl<'a> Compiler<'a> {
         Compiler {
             file,
             src,
+            ascii_text: None,
             funcs: vec![],
             exports: vec![],
             completion: false,
@@ -279,6 +283,14 @@ impl<'a> Compiler<'a> {
             with_count: 0,
             pat_ctx: None,
             global_scope: false,
+        }
+    }
+
+    /// Gives the compiler the source text `src` was collected from, so that
+    /// ASCII sources are sliced rather than re-collected per function.
+    pub fn set_text(&mut self, text: &'a str) {
+        if text.len() == self.src.len() {
+            self.ascii_text = Some(text);
         }
     }
 
@@ -854,8 +866,8 @@ impl<'a> Compiler<'a> {
         }
         self.emit(Op::Return);
         let fs = self.funcs.pop().unwrap();
-        let src: String = self.src.iter().collect();
-        Ok(self.finish(fs, JsStr::new(""), Some(nparams), 0, Rc::from(src.as_str())))
+        let src = self.source_of(0, self.src.len());
+        Ok(self.finish(fs, JsStr::new(""), Some(nparams), 0, src))
     }
 
     /// Indirect eval / `new Function` bodies: global code returning its
@@ -987,6 +999,9 @@ impl<'a> Compiler<'a> {
     fn source_of(&self, start: usize, end: usize) -> Rc<str> {
         let end = end.min(self.src.len());
         let start = start.min(end);
+        if let Some(t) = self.ascii_text {
+            return Rc::from(&t[start..end]);
+        }
         let s: String = self.src[start..end].iter().collect();
         Rc::from(s.as_str())
     }
