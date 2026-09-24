@@ -1449,8 +1449,7 @@ impl<'a> Builder<'a> {
                     // descent plus a pixel of internal padding above and below,
                     // whatever `line-height` says (measured in Chromium: 17 px for
                     // 13.33px Arimo, 24 for 20px Arimo, 19 for 14px Inter).
-                    height: if doc.has_attr(node, "multiple")
-                        || attr_u32(doc, node, "size", 1) > 1
+                    height: if doc.has_attr(node, "multiple") || attr_u32(doc, node, "size", 1) > 1
                     {
                         lh
                     } else {
