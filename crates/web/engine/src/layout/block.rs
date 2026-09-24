@@ -1892,6 +1892,24 @@ pub fn layout_absolute(ctx: &LayoutContext, cbf: &Fragment, req: &AbsRequest) ->
     };
     w = clamped;
 
+    // A non-replaced box with `height: auto` whose `top` and `bottom` are both set has
+    // a definite height (§10.6.4 rule 5): its contents are laid out at that height, so
+    // flex and grid items, percentage heights and its own absolutely positioned
+    // descendants see it rather than the height of the content.
+    let inset_h = match (s.inset.top.resolve(cbh), s.inset.bottom.resolve(cbh)) {
+        (Some(t), Some(bo)) if css_h.is_none() && replaced_size_v.is_none() => {
+            let mt = margin_or_zero(s.margin.top, cbw);
+            let mb = margin_or_zero(s.margin.bottom, cbw);
+            Some(clamp_height(
+                s,
+                (cbh - t - bo - ev - mt - mb).max(Au::ZERO),
+                Some(cbh),
+                ev,
+            ))
+        }
+        _ => None,
+    };
+
     // Lay out the contents with this width to learn the auto height.
     let mut frag = match &b.kind {
         BoxKind::Replaced(rb) => replaced_fragment(
@@ -1920,7 +1938,10 @@ pub fn layout_absolute(ctx: &LayoutContext, cbf: &Fragment, req: &AbsRequest) ->
         }
         _ => {
             let mut empty = Bfc::new();
-            layout_block_box(
+            if let Some(h) = inset_h {
+                ctx.cache.borrow_mut().forced_height.insert(id, Some(h));
+            }
+            let f = layout_block_box(
                 ctx,
                 id,
                 &cb,
@@ -1929,7 +1950,11 @@ pub fn layout_absolute(ctx: &LayoutContext, cbf: &Fragment, req: &AbsRequest) ->
                 Au::ZERO,
                 Some(w),
             )
-            .fragment
+            .fragment;
+            if inset_h.is_some() {
+                ctx.cache.borrow_mut().forced_height.remove(&id);
+            }
+            f
         }
     };
     let content_h = (frag.rect.size.height - ev).max(Au::ZERO);

@@ -351,4 +351,20 @@ mod cases {
         close(lines[0].width, 38.27, "the kept line is whole");
         close(lines[1].y, 24.0, "the long word lays out below the clamp");
     }
+
+    /// A fixed box with all four insets and `height: auto` has a definite height, so
+    /// its flex items centre in the viewport and its absolutely positioned children
+    /// fill it (a Tailwind `fixed inset-0 flex items-center` modal and its backdrop).
+    #[test]
+    fn fixed_inset_box_fills_the_viewport_and_centres_its_flex_items() {
+        let p = page(
+            "<!DOCTYPE html><style>body { margin: 0 }</style>\
+             <div id=o style='position: fixed; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center'>\
+             <div id=bg style='position: absolute; top: 0; right: 0; bottom: 0; left: 0'></div>\
+             <div id=m style='position: relative; width: 200px; height: 100px'></div></div>",
+        );
+        rect_is(&p, "o", 0.0, 0.0, 1280.0, 800.0);
+        rect_is(&p, "bg", 0.0, 0.0, 1280.0, 800.0);
+        rect_is(&p, "m", 540.0, 350.0, 200.0, 100.0);
+    }
 }
