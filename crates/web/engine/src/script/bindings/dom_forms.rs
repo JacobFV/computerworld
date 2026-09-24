@@ -292,6 +292,7 @@ pub static DATASET_HOOKS: HostHooks = HostHooks {
     set: dataset_set,
     delete: dataset_delete,
     keys: dataset_keys,
+    plain: false,
 };
 
 // ---------------------------------------------------------------- token lists
@@ -341,6 +342,7 @@ pub static TOKENS_HOOKS: HostHooks = HostHooks {
     set: no_set,
     delete: no_delete,
     keys: tokens_keys,
+    plain: false,
 };
 
 // ---------------------------------------------------------------- attributes map
@@ -384,6 +386,7 @@ pub static ATTRS_HOOKS: HostHooks = HostHooks {
     set: no_set,
     delete: no_delete,
     keys: attrs_keys,
+    plain: false,
 };
 
 /// `W.elementPart(el, kind, protoName, attr?)`: `dataset`, `tokens`, `attributes`.

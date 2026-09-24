@@ -454,6 +454,7 @@ pub static COLLECTION_HOOKS: HostHooks = HostHooks {
     set: ro_set,
     delete: no_delete,
     keys: collection_keys,
+    plain: false,
 };
 
 /// `W.collection(root, kind, arg, protoName)`: a live collection object.
@@ -516,6 +517,7 @@ pub static STATIC_LIST_HOOKS: HostHooks = HostHooks {
     set: ro_set,
     delete: no_delete,
     keys: static_keys,
+    plain: false,
 };
 
 /// `W.staticList(array, protoName)`.
@@ -1025,6 +1027,7 @@ pub static GLOBAL_HOOKS: HostHooks = HostHooks {
     set: global_set,
     delete: global_delete,
     keys: global_keys,
+    plain: false,
 };
 
 pub fn install(vm: &mut Vm, w: &Obj) {

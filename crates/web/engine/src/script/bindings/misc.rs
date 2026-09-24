@@ -143,6 +143,7 @@ pub static STORAGE_HOOKS: HostHooks = HostHooks {
     set: storage_set,
     delete: storage_delete,
     keys: storage_keys,
+    plain: false,
 };
 
 /// `W.storage(area)`: the `Storage` object (0 local, 1 session).

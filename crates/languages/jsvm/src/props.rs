@@ -68,7 +68,7 @@ impl<'h> Vm<'h> {
                     None
                 }
                 Kind::Proxy { target, handler } => Some((target.clone(), handler.clone())),
-                Kind::Host(h) => {
+                Kind::Host(h) if !h.hooks.plain => {
                     let hooks = h.hooks;
                     drop(d);
                     let pk = self.prof_enter(|| format!("[host get] {}", hooks.class));
@@ -258,8 +258,8 @@ impl<'h> Vm<'h> {
             // Fast path: ordinary own data property.
             let fast = {
                 let d = cur.borrow();
-                match &d.kind {
-                    Kind::Ordinary | Kind::Function(_) => match d.props.get(key) {
+                match d.kind.ordinary_props() {
+                    true => match d.props.get(key) {
                         Some(Prop {
                             slot: Slot::Data(v),
                             ..
@@ -267,7 +267,7 @@ impl<'h> Vm<'h> {
                         Some(_) => None,
                         None => Some(None),
                     },
-                    _ => None,
+                    false => None,
                 }
             };
             let found = match fast {
@@ -447,7 +447,7 @@ impl<'h> Vm<'h> {
                         _ => Ex::No,
                     },
                     Kind::Proxy { target, handler } => Ex::Proxy(target.clone(), handler.clone()),
-                    Kind::Host(h) => Ex::Host(h.hooks),
+                    Kind::Host(h) if !h.hooks.plain => Ex::Host(h.hooks),
                     Kind::String(s) => match &key {
                         Key::Str(k) => {
                             if k.as_str() == "length"
@@ -779,7 +779,7 @@ impl<'h> Vm<'h> {
                 cur = Some(t);
                 continue;
             }
-            let host = c.host_hooks();
+            let host = c.host_hooks().filter(|h| !h.plain);
             if let Some(h) = host {
                 let pk = self.prof_enter(|| format!("[host has] {}", h.class));
                 let r = (h.get)(self, &c, key);
@@ -843,7 +843,7 @@ impl<'h> Vm<'h> {
             }
             return self.delete(&t, key);
         }
-        if let Some(h) = o.host_hooks() {
+        if let Some(h) = o.host_hooks().filter(|h| !h.plain) {
             if let Some(ok) = (h.delete)(self, o, key)? {
                 return Ok(ok);
             }
@@ -898,8 +898,8 @@ impl<'h> Vm<'h> {
             return self.own_keys(&t);
         }
         let host_keys = match o.host_hooks() {
-            Some(h) => (h.keys)(self, o)?,
-            None => vec![],
+            Some(h) if !h.plain => (h.keys)(self, o)?,
+            _ => vec![],
         };
         let d = o.borrow();
         let mut idx: Vec<(u32, Key)> = vec![];

@@ -151,6 +151,7 @@ pub static PLAIN_HOOKS: HostHooks = HostHooks {
     set: plain_set,
     delete: plain_delete,
     keys: plain_keys,
+    plain: true,
 };
 
 /// A host object holding an opaque id (a stylesheet, a canvas context).

@@ -113,6 +113,7 @@ pub static NODE_HOOKS: HostHooks = HostHooks {
     set: none_set,
     delete: none_delete,
     keys: none_keys,
+    plain: true,
 };
 pub static FORM_HOOKS: HostHooks = HostHooks {
     class: "HTMLFormElement",
@@ -120,6 +121,7 @@ pub static FORM_HOOKS: HostHooks = HostHooks {
     set: none_set,
     delete: none_delete,
     keys: none_keys,
+    plain: false,
 };
 pub static SELECT_HOOKS: HostHooks = HostHooks {
     class: "HTMLSelectElement",
@@ -127,6 +129,7 @@ pub static SELECT_HOOKS: HostHooks = HostHooks {
     set: none_set,
     delete: none_delete,
     keys: none_keys,
+    plain: false,
 };
 
 /// The prototype key of a node: the element's local name, or a generic class.

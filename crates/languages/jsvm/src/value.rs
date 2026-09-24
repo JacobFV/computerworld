@@ -933,6 +933,19 @@ pub enum TypedKind {
     BigUint64,
 }
 
+impl Kind {
+    /// Property access on this kind is ordinary: a plain object, a function,
+    /// or a host object whose hooks never answer (`HostHooks::plain`).
+    #[inline]
+    pub fn ordinary_props(&self) -> bool {
+        match self {
+            Kind::Ordinary | Kind::Function(_) => true,
+            Kind::Host(h) => h.hooks.plain,
+            _ => false,
+        }
+    }
+}
+
 pub enum Kind {
     Ordinary,
     Array(Vec<Value>),
@@ -1018,6 +1031,11 @@ pub struct HostHooks {
     pub delete: fn(&mut crate::vm::Vm, &Obj, &Key) -> JsResult<Option<bool>>,
     /// The exotic own keys (listed before the ordinary ones), for enumeration.
     pub keys: fn(&mut crate::vm::Vm, &Obj) -> JsResult<Vec<Key>>,
+    /// The hooks never answer (`get`, `set` and `delete` return `None`, `keys`
+    /// is empty): the object's properties are ordinary and only its class name
+    /// and slots are its own, so property access takes the ordinary paths
+    /// without calling them.
+    pub plain: bool,
 }
 
 pub struct HostData {

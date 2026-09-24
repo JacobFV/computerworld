@@ -114,6 +114,7 @@ pub static COMPUTED_HOOKS: HostHooks = HostHooks {
     set: computed_set,
     delete: computed_delete,
     keys: computed_keys,
+    plain: false,
 };
 
 /// The computed value string of a property, flushing pending style work.
@@ -539,6 +540,7 @@ pub static INLINE_HOOKS: HostHooks = HostHooks {
     set: inline_set,
     delete: inline_delete,
     keys: inline_keys,
+    plain: false,
 };
 
 pub fn set_inline_property(
@@ -985,6 +987,7 @@ pub static RULE_STYLE_HOOKS: HostHooks = HostHooks {
     set: rule_style_set,
     delete: inline_delete,
     keys: rule_style_keys,
+    plain: false,
 };
 
 /// `W.sheetOp(sheetId, op, ...)`.
