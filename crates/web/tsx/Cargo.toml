@@ -1,0 +1,25 @@
+[package]
+name = "cw-tsx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+# oxc needs a newer compiler than the workspace floor.
+rust-version = "1.96"
+description = "Ahead-of-time compiler from React-syntax TSX to cw-ui's reactive UI IR, with plain-JS emission for the React fallback."
+
+[dependencies]
+cw-ui = { path = "../ui" }
+oxc_allocator = "0.151"
+oxc_ast = "0.151"
+oxc_parser = "0.151"
+oxc_span = "0.151"
+oxc_semantic = "0.151"
+oxc_transformer = "0.151"
+oxc_codegen = "0.151"
+oxc_diagnostics = "0.151"
+serde.workspace = true
+serde_json.workspace = true
+
+[[bin]]
+name = "cw-tsx"
+path = "src/main.rs"

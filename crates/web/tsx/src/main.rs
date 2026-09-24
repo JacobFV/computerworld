@@ -1,0 +1,114 @@
+//! `cw-tsx`: the command-line compiler.
+//!
+//!     cw-tsx build app.tsx [-o out/]   writes out/app.ui.json (when the module is in
+//!                                      the subset), out/app.js (the React fallback)
+//!                                      and out/app.diagnostics.json
+//!     cw-tsx check app.tsx             prints the diagnostics; exit 1 if any
+//!
+//! Exit status of `build`: 0 when both outputs were written, 3 when only the fallback
+//! was (the module runs on React), 1 when neither could be.
+
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
+
+fn usage() -> ExitCode {
+    eprintln!("usage: cw-tsx build <file.tsx> [-o <dir>]\n       cw-tsx check <file.tsx>");
+    ExitCode::from(2)
+}
+
+fn main() -> ExitCode {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let (cmd, rest) = match args.split_first() {
+        Some((c, r)) => (c.as_str(), r),
+        None => return usage(),
+    };
+    let mut input: Option<PathBuf> = None;
+    let mut out: Option<PathBuf> = None;
+    let mut it = rest.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "-o" | "--out" => out = it.next().map(PathBuf::from),
+            s if input.is_none() => input = Some(PathBuf::from(s)),
+            _ => return usage(),
+        }
+    }
+    let Some(input) = input else { return usage() };
+    let source = match std::fs::read_to_string(&input) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("cw-tsx: {}: {e}", input.display());
+            return ExitCode::from(1);
+        }
+    };
+    let file_name = input
+        .file_name()
+        .map(|f| f.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "app.tsx".into());
+    let build = cw_tsx::build(&source, &file_name);
+    for d in &build.diagnostics {
+        eprintln!("{}:{d}", input.display());
+    }
+    match cmd {
+        "check" => {
+            if build.diagnostics.is_empty() {
+                eprintln!("{}: compiles to the UI IR", input.display());
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::from(1)
+            }
+        }
+        "build" => {
+            let dir =
+                out.unwrap_or_else(|| input.parent().map(Path::to_path_buf).unwrap_or_default());
+            if let Err(e) = std::fs::create_dir_all(&dir) {
+                eprintln!("cw-tsx: {}: {e}", dir.display());
+                return ExitCode::from(1);
+            }
+            let stem = file_name
+                .strip_suffix(".tsx")
+                .unwrap_or(&file_name)
+                .to_owned();
+            let write = |name: String, body: &str| -> bool {
+                let p = dir.join(name);
+                match std::fs::write(&p, body) {
+                    Ok(()) => true,
+                    Err(e) => {
+                        eprintln!("cw-tsx: {}: {e}", p.display());
+                        false
+                    }
+                }
+            };
+            let diags = serde_json::to_string_pretty(&build.diagnostics).expect("diagnostics");
+            if !write(format!("{stem}.diagnostics.json"), &(diags + "\n")) {
+                return ExitCode::from(1);
+            }
+            let Some(js) = &build.js else {
+                return ExitCode::from(1);
+            };
+            if !write(format!("{stem}.js"), js) {
+                return ExitCode::from(1);
+            }
+            let ir_path = dir.join(format!("{stem}.ui.json"));
+            match &build.ir {
+                Some(ir) => {
+                    let text = serde_json::to_string(ir).expect("ir");
+                    if !write(format!("{stem}.ui.json"), &(text + "\n")) {
+                        return ExitCode::from(1);
+                    }
+                    ExitCode::SUCCESS
+                }
+                None => {
+                    // A stale IR next to a module that left the subset would run the
+                    // old app; remove it so the page falls back.
+                    let _ = std::fs::remove_file(&ir_path);
+                    eprintln!(
+                        "{}: outside the compiled subset; the page will run on React",
+                        input.display()
+                    );
+                    ExitCode::from(3)
+                }
+            }
+        }
+        _ => usage(),
+    }
+}

@@ -1,0 +1,4009 @@
+//! Type-checks a TSX module against the subset and lowers it to the UI IR.
+//!
+//! One pass over the module collects its type declarations, React imports and
+//! function signatures; a second lowers every global in order. Module functions are
+//! lowered on first use as well, so a caller can see the return type a callee infers.
+//! Every construct outside the subset leaves a `Diagnostic` and lowering carries on,
+//! so one build reports every reason at once; any diagnostic means no IR.
+
+use std::collections::{BTreeMap, BTreeSet};
+
+use cw_ui::ir::*;
+use oxc_allocator::Allocator;
+use oxc_ast::ast::{self as ast, Expression as E, Statement as S};
+use oxc_parser::Parser;
+use oxc_span::{GetSpan, SourceType, Span};
+
+use crate::types::{self, element, non_null, property, union, union_all, widen};
+use crate::Diagnostic;
+
+/// Lowers `source` to a module, or the reasons it is outside the subset.
+pub fn lower(source: &str, file_name: &str) -> Result<Module, Vec<Diagnostic>> {
+    let allocator = Allocator::default();
+    let ret = Parser::new(&allocator, source, SourceType::tsx()).parse();
+    if !ret.diagnostics.is_empty() {
+        return Err(ret
+            .diagnostics
+            .iter()
+            .map(|d| Diagnostic::from_oxc(source, d))
+            .collect());
+    }
+    let program = ret.program;
+    let mut l = Lowerer::new(source);
+    l.module(&program.body);
+    if l.diags.is_empty() {
+        Ok(Module {
+            version: IR_VERSION,
+            source: file_name.to_owned(),
+            globals: l.globals,
+            functions: l
+                .functions
+                .into_iter()
+                .map(|f| f.expect("lowered"))
+                .collect(),
+            templates: l.templates,
+            root: l.root,
+            mutates_shared: l.mutates_shared,
+        })
+    } else {
+        let mut d = l.diags;
+        d.sort_by_key(|d| (d.line, d.col));
+        d.dedup();
+        Err(d)
+    }
+}
+
+/// A name imported from `react` / `react-dom`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ReactName {
+    Hook(Hook),
+    CreateContext,
+    Fragment,
+    StrictMode,
+    Memo,
+    CreateRoot,
+    /// `import React from 'react'` / `import * as React`.
+    ReactNs,
+    ReactDomNs,
+    /// Anything else React exports (`useTransition`, `forwardRef`, ...).
+    Other,
+}
+
+fn react_export(name: &str) -> ReactName {
+    match name {
+        "useState" => ReactName::Hook(Hook::State),
+        "useReducer" => ReactName::Hook(Hook::Reducer),
+        "useMemo" => ReactName::Hook(Hook::Memo),
+        "useCallback" => ReactName::Hook(Hook::Callback),
+        "useRef" => ReactName::Hook(Hook::Ref),
+        "useEffect" => ReactName::Hook(Hook::Effect),
+        "useLayoutEffect" => ReactName::Hook(Hook::LayoutEffect),
+        "useContext" => ReactName::Hook(Hook::Context),
+        "useId" => ReactName::Hook(Hook::Id),
+        "createContext" => ReactName::CreateContext,
+        "Fragment" => ReactName::Fragment,
+        "StrictMode" => ReactName::StrictMode,
+        "memo" => ReactName::Memo,
+        "createRoot" => ReactName::CreateRoot,
+        _ => ReactName::Other,
+    }
+}
+
+struct Local {
+    name: String,
+    ty: Ty,
+    captured: bool,
+    /// Offset of an assignment after the declaration.
+    reassigned: Option<u32>,
+    /// Holds a value created in this frame (a literal, a `map` result), which
+    /// mutating cannot affect anything that outlives the frame.
+    fresh: bool,
+}
+
+struct FnCtx {
+    kind: FunctionKind,
+    locals: Vec<Local>,
+    scopes: Vec<Vec<(String, u32)>>,
+    /// Names declared later in each open block, for use-before-declaration.
+    later: Vec<BTreeSet<String>>,
+    captures: Vec<Capture>,
+    capture_names: Vec<(String, Ty)>,
+    /// Nesting inside conditionals and loops (hooks must be at depth 0).
+    cond_depth: u32,
+    has_depless_effect: bool,
+    declared_ret: Option<Ty>,
+    ret: Ty,
+}
+
+impl FnCtx {
+    fn new(kind: FunctionKind) -> FnCtx {
+        FnCtx {
+            kind,
+            locals: Vec::new(),
+            scopes: vec![Vec::new()],
+            later: vec![BTreeSet::new()],
+            captures: Vec::new(),
+            capture_names: Vec::new(),
+            cond_depth: 0,
+            has_depless_effect: false,
+            declared_ret: None,
+            ret: Ty::Unknown,
+        }
+    }
+    fn lookup(&self, name: &str) -> Option<u32> {
+        for scope in self.scopes.iter().rev() {
+            if let Some((_, slot)) = scope.iter().rev().find(|(n, _)| n == name) {
+                return Some(*slot);
+            }
+        }
+        None
+    }
+    fn declare(&mut self, name: &str, ty: Ty) -> u32 {
+        let slot = self.locals.len() as u32;
+        self.locals.push(Local {
+            name: name.to_owned(),
+            ty,
+            captured: false,
+            reassigned: None,
+            fresh: false,
+        });
+        self.scopes
+            .last_mut()
+            .unwrap()
+            .push((name.to_owned(), slot));
+        if let Some(l) = self.later.last_mut() {
+            l.remove(name);
+        }
+        slot
+    }
+}
+
+/// What a module-level name is.
+#[derive(Clone, Debug)]
+struct GlobalInfo {
+    slot: u32,
+    ty: Ty,
+    /// For a function: its index in `functions`.
+    func: Option<u32>,
+    kind: FunctionKind,
+    reassigned: bool,
+}
+
+/// A module function's declaration, lowered on demand.
+struct PendingFn<'a> {
+    name: String,
+    params: &'a ast::FormalParameters<'a>,
+    body: FnBody<'a>,
+    return_type: Option<&'a ast::TSTypeAnnotation<'a>>,
+    span: Span,
+    is_async: bool,
+    generator: bool,
+    kind: FunctionKind,
+}
+
+#[derive(Clone, Copy)]
+enum FnBody<'a> {
+    Block(&'a ast::FunctionBody<'a>),
+    Expr(&'a ast::Expression<'a>),
+}
+
+enum TypeDecl<'a> {
+    Alias(&'a ast::TSType<'a>),
+    Interface(&'a ast::TSInterfaceDeclaration<'a>),
+}
+
+struct TemplateBuilder {
+    holes: Vec<Expr>,
+    meta: Vec<Hole>,
+}
+
+struct Lowerer<'a> {
+    src: &'a str,
+    diags: Vec<Diagnostic>,
+    type_decls: BTreeMap<String, TypeDecl<'a>>,
+    type_cache: BTreeMap<String, Ty>,
+    type_busy: BTreeSet<String>,
+    react: BTreeMap<String, ReactName>,
+    globals: Vec<Global>,
+    global_names: BTreeMap<String, GlobalInfo>,
+    functions: Vec<Option<Function>>,
+    pending: BTreeMap<u32, PendingFn<'a>>,
+    busy_fns: BTreeSet<u32>,
+    templates: Vec<Template>,
+    root: Option<Root>,
+    mutates_shared: bool,
+    fns: Vec<FnCtx>,
+    /// Set while lowering a template hole when it reads something identity
+    /// comparison cannot track.
+    hole_always: Vec<bool>,
+    /// Whether some module `let` is reassigned (then functions may read state that
+    /// changes behind the frame's back).
+    mutable_globals: bool,
+}
+
+type Lowered = (Expr, Ty);
+
+fn is_component_name(name: &str) -> bool {
+    name.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+}
+
+fn is_hook_name(name: &str) -> bool {
+    name.len() > 3
+        && name.starts_with("use")
+        && name[3..]
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_uppercase())
+}
+
+fn fn_kind(name: &str) -> FunctionKind {
+    if is_component_name(name) {
+        FunctionKind::Component
+    } else if is_hook_name(name) {
+        FunctionKind::Hook
+    } else {
+        FunctionKind::Plain
+    }
+}
+
+impl<'a> Lowerer<'a> {
+    fn new(src: &'a str) -> Lowerer<'a> {
+        Lowerer {
+            src,
+            diags: Vec::new(),
+            type_decls: BTreeMap::new(),
+            type_cache: BTreeMap::new(),
+            type_busy: BTreeSet::new(),
+            react: BTreeMap::new(),
+            globals: Vec::new(),
+            global_names: BTreeMap::new(),
+            functions: Vec::new(),
+            pending: BTreeMap::new(),
+            busy_fns: BTreeSet::new(),
+            templates: Vec::new(),
+            root: None,
+            mutates_shared: false,
+            fns: Vec::new(),
+            hole_always: Vec::new(),
+            mutable_globals: false,
+        }
+    }
+
+    fn err(&mut self, span: Span, msg: impl Into<String>) {
+        self.diags
+            .push(Diagnostic::at(self.src, span.start, msg.into()));
+    }
+
+    fn unsupported(&mut self, span: Span, what: &str) -> Lowered {
+        self.err(span, format!("{what} is outside the compiled subset"));
+        (Expr::Undefined, Ty::Unknown)
+    }
+
+    fn line(&self, span: Span) -> u32 {
+        crate::line_col(self.src, span.start).0
+    }
+
+    fn cur(&mut self) -> &mut FnCtx {
+        self.fns.last_mut().expect("inside a function")
+    }
+
+    // ------------------------------------------------------------------ module
+
+    fn module(&mut self, body: &'a oxc_allocator::Vec<'a, S<'a>>) {
+        // Pass 1: imports and type declarations; module declarations to lower.
+        let mut decls: Vec<&'a S<'a>> = Vec::new();
+        for stmt in body.iter() {
+            match stmt {
+                S::ImportDeclaration(import) => self.import(import),
+                S::TSTypeAliasDeclaration(t) => {
+                    self.type_decls
+                        .insert(t.id.name.to_string(), TypeDecl::Alias(&t.type_annotation));
+                }
+                S::TSInterfaceDeclaration(i) => {
+                    self.type_decls
+                        .insert(i.id.name.to_string(), TypeDecl::Interface(i));
+                }
+                S::ExportDeclaration(e) => match &e.declaration {
+                    ast::Declaration::TSTypeAliasDeclaration(t) => {
+                        self.type_decls
+                            .insert(t.id.name.to_string(), TypeDecl::Alias(&t.type_annotation));
+                    }
+                    ast::Declaration::TSInterfaceDeclaration(i) => {
+                        self.type_decls
+                            .insert(i.id.name.to_string(), TypeDecl::Interface(i));
+                    }
+                    _ => decls.push(stmt),
+                },
+                S::ExportNamedDeclaration(_) => {}
+                _ => decls.push(stmt),
+            }
+        }
+        // Pass 2: declare every global (functions hoisted first, then the rest in
+        // order) so functions can refer to globals declared after them.
+        for stmt in &decls {
+            if let Some(f) = self.function_decl_of(stmt) {
+                self.declare_function(f);
+            }
+        }
+        for stmt in &decls {
+            self.declare_statement_globals(stmt);
+        }
+        // Reassigned module `let`s make identity tracking unsafe across calls.
+        self.mutable_globals = self.global_names.values().any(|g| g.reassigned);
+        // Pass 3: lower in order.
+        for stmt in &decls {
+            self.module_statement(stmt);
+        }
+        // Functions nobody called yet.
+        let rest: Vec<u32> = self.pending.keys().copied().collect();
+        for f in rest {
+            self.ensure_function(f);
+        }
+        for g in self.global_names.values() {
+            if g.func.is_none() && g.reassigned && matches!(g.ty, Ty::Unknown) {
+                // Nothing: typed at declaration.
+            }
+        }
+        if self.root.is_none() {
+            self.diags.push(Diagnostic {
+                line: 1,
+                col: 1,
+                message: "the module never renders: expected `createRoot(document.getElementById(id)).render(<App />)`".into(),
+            });
+        }
+    }
+
+    fn import(&mut self, import: &'a ast::ImportDeclaration<'a>) {
+        if import.import_kind.is_type() {
+            return;
+        }
+        let module = import.source.value.as_str();
+        let is_dom = matches!(module, "react-dom" | "react-dom/client");
+        if module != "react" && !is_dom {
+            self.err(
+                import.span,
+                format!(
+                    "import from `{module}`: a compiled app imports only `react` and `react-dom`"
+                ),
+            );
+            return;
+        }
+        for spec in import.specifiers.iter().flatten() {
+            match spec {
+                ast::ImportDeclarationSpecifier::ImportSpecifier(s) => {
+                    if s.import_kind.is_type() {
+                        continue;
+                    }
+                    let name = s.imported.name();
+                    self.react
+                        .insert(s.local.name.to_string(), react_export(name.as_str()));
+                }
+                ast::ImportDeclarationSpecifier::ImportDefaultSpecifier(s) => {
+                    self.react.insert(
+                        s.local.name.to_string(),
+                        if is_dom {
+                            ReactName::ReactDomNs
+                        } else {
+                            ReactName::ReactNs
+                        },
+                    );
+                }
+                ast::ImportDeclarationSpecifier::ImportNamespaceSpecifier(s) => {
+                    self.react.insert(
+                        s.local.name.to_string(),
+                        if is_dom {
+                            ReactName::ReactDomNs
+                        } else {
+                            ReactName::ReactNs
+                        },
+                    );
+                }
+            }
+        }
+    }
+
+    fn function_decl_of(&self, stmt: &'a S<'a>) -> Option<&'a ast::Function<'a>> {
+        match stmt {
+            S::FunctionDeclaration(f) => Some(f),
+            S::ExportDeclaration(e) => match &e.declaration {
+                ast::Declaration::FunctionDeclaration(f) => Some(f),
+                _ => None,
+            },
+            S::ExportDefaultDeclaration(e) => match &e.declaration {
+                ast::ExportDefaultDeclarationKind::FunctionDeclaration(f) => Some(f),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn declare_function(&mut self, f: &'a ast::Function<'a>) {
+        let Some(id) = &f.id else {
+            self.err(f.span, "an anonymous default export needs a name");
+            return;
+        };
+        let name = id.name.to_string();
+        let Some(body) = &f.body else {
+            return;
+        };
+        self.add_function_global(
+            &name,
+            PendingFn {
+                name: name.clone(),
+                params: &f.params,
+                body: FnBody::Block(body),
+                return_type: f.return_type.as_deref(),
+                span: f.span,
+                is_async: f.r#async,
+                generator: f.generator,
+                kind: fn_kind(&name),
+            },
+        );
+    }
+
+    fn add_function_global(&mut self, name: &str, p: PendingFn<'a>) {
+        let fidx = self.functions.len() as u32;
+        self.functions.push(None);
+        let slot = self.globals.len() as u32;
+        let kind = p.kind;
+        let ty = self.signature(&p);
+        self.globals.push(Global {
+            name: name.to_owned(),
+            init: GlobalInit::Function(fidx),
+            ty: ty.clone(),
+        });
+        self.global_names.insert(
+            name.to_owned(),
+            GlobalInfo {
+                slot,
+                ty,
+                func: Some(fidx),
+                kind,
+                reassigned: false,
+            },
+        );
+        self.pending.insert(fidx, p);
+    }
+
+    /// A function's type from its annotations (return type `Unknown` until lowered
+    /// when not annotated).
+    fn signature(&mut self, p: &PendingFn<'a>) -> Ty {
+        let params: Vec<Ty> = p
+            .params
+            .items
+            .iter()
+            .map(|param| match &param.type_annotation {
+                Some(t) => self.ts_type(&t.type_annotation),
+                None => Ty::Unknown,
+            })
+            .collect();
+        let ret = match p.return_type {
+            Some(t) => self.ts_type(&t.type_annotation),
+            None if p.kind == FunctionKind::Component => Ty::Node,
+            None => Ty::Unknown,
+        };
+        Ty::Function(params, Box::new(ret))
+    }
+
+    fn declare_statement_globals(&mut self, stmt: &'a S<'a>) {
+        let decl = match stmt {
+            S::VariableDeclaration(d) => d,
+            S::ExportDeclaration(e) => match &e.declaration {
+                ast::Declaration::VariableDeclaration(d) => d,
+                _ => return,
+            },
+            _ => return,
+        };
+        for d in &decl.declarations {
+            // `const Comp = (props: P) => ...` and `memo(...)` are functions.
+            if let (ast::BindingPattern::BindingIdentifier(id), Some(init)) = (&d.id, &d.init) {
+                let name = id.name.to_string();
+                if let Some(p) = self.function_value(&name, init) {
+                    self.add_function_global(&name, p);
+                    continue;
+                }
+            }
+            let mut names = Vec::new();
+            binding_names(&d.id, &mut names);
+            for (name, _) in names {
+                let slot = self.globals.len() as u32;
+                self.globals.push(Global {
+                    name: name.clone(),
+                    init: GlobalInit::Undefined,
+                    ty: Ty::Unknown,
+                });
+                self.global_names.insert(
+                    name,
+                    GlobalInfo {
+                        slot,
+                        ty: Ty::Unknown,
+                        func: None,
+                        kind: FunctionKind::Plain,
+                        reassigned: false,
+                    },
+                );
+            }
+        }
+        // Module `let`s assigned anywhere after their declaration.
+        if decl.kind == ast::VariableDeclarationKind::Let {
+            // Detected when lowering assignments; see `assign_target`.
+        }
+    }
+
+    /// A module `const` whose value is a function (an arrow, a function expression,
+    /// or one wrapped in `memo`).
+    fn function_value(&self, name: &str, init: &'a E<'a>) -> Option<PendingFn<'a>> {
+        match strip(init) {
+            E::ArrowFunctionExpression(a) => Some(PendingFn {
+                name: name.to_owned(),
+                params: &a.params,
+                body: match &a.body {
+                    ast::ArrowFunctionBody::FunctionBody(b) => FnBody::Block(b),
+                    other => FnBody::Expr(other.as_expression().expect("expression body")),
+                },
+                return_type: a.return_type.as_deref(),
+                span: a.span,
+                is_async: a.r#async,
+                generator: false,
+                kind: fn_kind(name),
+            }),
+            E::FunctionExpression(f) => Some(PendingFn {
+                name: name.to_owned(),
+                params: &f.params,
+                body: FnBody::Block(f.body.as_ref()?),
+                return_type: f.return_type.as_deref(),
+                span: f.span,
+                is_async: f.r#async,
+                generator: f.generator,
+                kind: fn_kind(name),
+            }),
+            E::CallExpression(c) => {
+                let callee = match strip(&c.callee) {
+                    E::Identifier(id) => self.react.get(id.name.as_str()).copied(),
+                    E::StaticMemberExpression(m) => match strip(&m.object) {
+                        E::Identifier(id)
+                            if self.react.get(id.name.as_str()) == Some(&ReactName::ReactNs)
+                                && m.property.name == "memo" =>
+                        {
+                            Some(ReactName::Memo)
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                if callee == Some(ReactName::Memo) && c.arguments.len() == 1 {
+                    return self.function_value(name, c.arguments[0].as_expression()?);
+                }
+                None
+            }
+            _ => None,
+        }
+    }
+
+    fn module_statement(&mut self, stmt: &'a S<'a>) {
+        match stmt {
+            S::ImportDeclaration(_) | S::EmptyStatement(_) => {}
+            S::FunctionDeclaration(_) => {}
+            S::TSTypeAliasDeclaration(_) | S::TSInterfaceDeclaration(_) => {}
+            S::ExportDefaultDeclaration(e) => match &e.declaration {
+                ast::ExportDefaultDeclarationKind::FunctionDeclaration(_) => {}
+                ast::ExportDefaultDeclarationKind::Identifier(_) => {}
+                _ => {
+                    self.err(
+                        e.span,
+                        "`export default` of an expression: export a named function",
+                    );
+                }
+            },
+            S::ExportDeclaration(e) => {
+                if let ast::Declaration::VariableDeclaration(d) = &e.declaration {
+                    self.module_var(d);
+                }
+            }
+            S::ExportNamedDeclaration(_) => {}
+            S::VariableDeclaration(d) => self.module_var(d),
+            S::ExpressionStatement(e) => {
+                if !self.render_call(&e.expression) {
+                    self.err(
+                        e.span,
+                        "a module-level statement other than the render call is outside the compiled subset",
+                    );
+                }
+            }
+            S::TSEnumDeclaration(e) => {
+                self.err(
+                    e.span,
+                    "`enum` is outside the compiled subset (use a union of string literals)",
+                );
+            }
+            S::ClassDeclaration(c) => {
+                self.err(c.span, "class components are outside the compiled subset");
+            }
+            other => {
+                self.err(
+                    other.span(),
+                    "this module-level statement is outside the compiled subset",
+                );
+            }
+        }
+    }
+
+    fn module_var(&mut self, d: &'a ast::VariableDeclaration<'a>) {
+        for decl in &d.declarations {
+            if let (ast::BindingPattern::BindingIdentifier(id), Some(_)) = (&decl.id, &decl.init) {
+                let name = id.name.to_string();
+                if self
+                    .global_names
+                    .get(&name)
+                    .is_some_and(|g| g.func.is_some())
+                {
+                    continue;
+                }
+            }
+            // Module initialisers run in a frame of their own.
+            self.fns.push(FnCtx::new(FunctionKind::Plain));
+            let declared = decl
+                .type_annotation
+                .as_ref()
+                .map(|t| self.ts_type(&t.type_annotation));
+            let (init, ty) = match &decl.init {
+                Some(e) => {
+                    // `createContext<T>(default)`.
+                    if let Some((def, t)) = self.create_context(e, declared.as_ref()) {
+                        self.fns.pop();
+                        if let ast::BindingPattern::BindingIdentifier(id) = &decl.id {
+                            let name = id.name.to_string();
+                            let g = self.global_names.get_mut(&name).expect("declared");
+                            g.ty = t.clone();
+                            let slot = g.slot as usize;
+                            self.globals[slot].init = GlobalInit::Context(def);
+                            self.globals[slot].ty = t;
+                        }
+                        continue;
+                    }
+                    let (x, t) = self.expr(e, declared.as_ref());
+                    (Some(x), declared.clone().unwrap_or(t))
+                }
+                None => (None, declared.clone().unwrap_or(Ty::Undefined)),
+            };
+            let frame = self.fns.pop().unwrap();
+            if !frame.locals.is_empty() || !frame.captures.is_empty() {
+                self.err(
+                    decl.span,
+                    "a module initialiser that declares variables is outside the compiled subset",
+                );
+                continue;
+            }
+            let Some(init) = init else {
+                continue;
+            };
+            let ty = if d.kind == ast::VariableDeclarationKind::Let {
+                widen(&ty)
+            } else {
+                ty
+            };
+            // One global per bound name; destructuring reads a path into the value.
+            let mut names = Vec::new();
+            binding_names(&decl.id, &mut names);
+            for (name, path) in names {
+                let g = self.global_names.get(&name).expect("declared").clone();
+                let mut value = init.clone();
+                let mut t = ty.clone();
+                for step in path {
+                    match step {
+                        PathStep::Key(k) => {
+                            t = property(&t, &k).unwrap_or(Ty::Unknown);
+                            value = Expr::Member(Box::new(value), k, false);
+                        }
+                        PathStep::Index(i) => {
+                            t = types::index(&t, &Ty::NumLit(i as f64)).unwrap_or(Ty::Unknown);
+                            value =
+                                Expr::Index(Box::new(value), Box::new(Expr::Num(i as f64)), false);
+                        }
+                    }
+                }
+                self.globals[g.slot as usize].init = GlobalInit::Expr(value);
+                self.globals[g.slot as usize].ty = t.clone();
+                self.global_names.get_mut(&name).unwrap().ty = t;
+            }
+        }
+    }
+
+    fn create_context(&mut self, e: &'a E<'a>, declared: Option<&Ty>) -> Option<(Expr, Ty)> {
+        let E::CallExpression(c) = strip(e) else {
+            return None;
+        };
+        let is_create = match strip(&c.callee) {
+            E::Identifier(id) => {
+                self.react.get(id.name.as_str()) == Some(&ReactName::CreateContext)
+            }
+            E::StaticMemberExpression(m) => {
+                m.property.name == "createContext"
+                    && matches!(strip(&m.object), E::Identifier(id) if self.react.get(id.name.as_str()) == Some(&ReactName::ReactNs))
+            }
+            _ => false,
+        };
+        if !is_create {
+            return None;
+        }
+        let explicit = c
+            .type_arguments
+            .as_ref()
+            .and_then(|t| t.params.first())
+            .map(|t| self.ts_type(t));
+        let inner = match (explicit, declared) {
+            (Some(t), _) => Some(t),
+            (None, Some(Ty::Context(t))) => Some((**t).clone()),
+            _ => None,
+        };
+        let (def, t) = match c.arguments.first().and_then(|a| a.as_expression()) {
+            Some(a) => self.expr(a, inner.as_ref()),
+            None => (Expr::Undefined, Ty::Undefined),
+        };
+        Some((
+            def,
+            Ty::Context(Box::new(inner.unwrap_or_else(|| widen(&t)))),
+        ))
+    }
+
+    /// `createRoot(document.getElementById('app')).render(<App />)`.
+    fn render_call(&mut self, e: &'a E<'a>) -> bool {
+        let E::CallExpression(render) = strip(e) else {
+            return false;
+        };
+        let E::StaticMemberExpression(m) = strip(&render.callee) else {
+            return false;
+        };
+        if m.property.name != "render" {
+            return false;
+        }
+        let E::CallExpression(create) = strip(&m.object) else {
+            return false;
+        };
+        let is_create = match strip(&create.callee) {
+            E::Identifier(id) => self.react.get(id.name.as_str()) == Some(&ReactName::CreateRoot),
+            E::StaticMemberExpression(cm) => {
+                cm.property.name == "createRoot"
+                    && matches!(strip(&cm.object), E::Identifier(id) if self.react.get(id.name.as_str()) == Some(&ReactName::ReactDomNs))
+            }
+            _ => false,
+        };
+        if !is_create {
+            return false;
+        }
+        let container = create.arguments.first().and_then(|a| a.as_expression());
+        let id = container.and_then(|c| match strip(c) {
+            E::CallExpression(g) => match strip(&g.callee) {
+                E::StaticMemberExpression(gm)
+                    if gm.property.name == "getElementById"
+                        && matches!(strip(&gm.object), E::Identifier(d) if d.name == "document") =>
+                {
+                    match g
+                        .arguments
+                        .first()
+                        .and_then(|a| a.as_expression())
+                        .map(strip)
+                    {
+                        Some(E::StringLiteral(s)) => Some(s.value.to_string()),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            },
+            _ => None,
+        });
+        let Some(container_id) = id else {
+            self.err(
+                create.span,
+                "the render container must be `document.getElementById('<id>')`",
+            );
+            return true;
+        };
+        let Some(element) = render.arguments.first().and_then(|a| a.as_expression()) else {
+            self.err(render.span, "`render` needs an element");
+            return true;
+        };
+        let fidx = self.functions.len() as u32;
+        self.functions.push(None);
+        self.fns.push(FnCtx::new(FunctionKind::Plain));
+        let (x, _) = self.expr(element, Some(&Ty::Node));
+        let ctx = self.fns.pop().unwrap();
+        self.functions[fidx as usize] = Some(Function {
+            name: "<root>".into(),
+            kind: FunctionKind::Plain,
+            params: Vec::new(),
+            n_locals: ctx.locals.len() as u32,
+            captures: Vec::new(),
+            body: vec![Stmt::Return(Some(x))],
+            local_types: ctx.locals.iter().map(|l| l.ty.clone()).collect(),
+            ret: Ty::Node,
+            line: self.line(render.span),
+            has_depless_effect: false,
+        });
+        if self.root.is_some() {
+            self.err(render.span, "the module renders twice");
+        }
+        self.root = Some(Root {
+            container_id,
+            element: fidx,
+        });
+        true
+    }
+
+    // ------------------------------------------------------------------ types
+
+    fn ts_type(&mut self, t: &'a ast::TSType<'a>) -> Ty {
+        use ast::TSType as T;
+        match t {
+            T::TSAnyKeyword(k) => {
+                self.err(
+                    k.span,
+                    "value of type any: the compiled subset needs a concrete type",
+                );
+                Ty::Unknown
+            }
+            T::TSStringKeyword(_) => Ty::String,
+            T::TSNumberKeyword(_) => Ty::Number,
+            T::TSBooleanKeyword(_) => Ty::Boolean,
+            T::TSNullKeyword(_) => Ty::Null,
+            T::TSUndefinedKeyword(_) => Ty::Undefined,
+            T::TSVoidKeyword(_) => Ty::Void,
+            T::TSUnknownKeyword(_) => Ty::Unknown,
+            T::TSNeverKeyword(_) => Ty::Unknown,
+            T::TSArrayType(a) => Ty::Array(Box::new(self.ts_type(&a.element_type))),
+            T::TSTupleType(tt) => Ty::Tuple(
+                tt.element_types
+                    .iter()
+                    .map(|e| self.tuple_element(e))
+                    .collect(),
+            ),
+            T::TSUnionType(u) => {
+                let mut out = Ty::Unknown;
+                for t in &u.types {
+                    let t = self.ts_type(t);
+                    out = union(out, t);
+                }
+                out
+            }
+            T::TSParenthesizedType(p) => self.ts_type(&p.type_annotation),
+            T::TSLiteralType(l) => match &l.literal {
+                ast::TSLiteral::StringLiteral(s) => Ty::Lit(s.value.to_string()),
+                ast::TSLiteral::NumericLiteral(n) => Ty::NumLit(n.value),
+                ast::TSLiteral::BooleanLiteral(_) => Ty::Boolean,
+                _ => {
+                    self.err(l.span, "this literal type is outside the compiled subset");
+                    Ty::Unknown
+                }
+            },
+            T::TSTypeLiteral(lit) => self.members(&lit.members),
+            T::TSFunctionType(f) => {
+                let ps = f
+                    .params
+                    .items
+                    .iter()
+                    .map(|p| match &p.type_annotation {
+                        Some(t) => self.ts_type(&t.type_annotation),
+                        None => Ty::Unknown,
+                    })
+                    .collect();
+                let r = self.ts_type(&f.return_type.type_annotation);
+                Ty::Function(ps, Box::new(r))
+            }
+            T::TSTypeOperatorType(op) => self.ts_type(&op.type_annotation),
+            T::TSIndexedAccessType(ia) => {
+                let o = self.ts_type(&ia.object_type);
+                let k = self.ts_type(&ia.index_type);
+                types::index(&o, &k).unwrap_or(Ty::Unknown)
+            }
+            T::TSTypeReference(r) => self.type_reference(r),
+            other => {
+                self.err(other.span(), "this type is outside the compiled subset");
+                Ty::Unknown
+            }
+        }
+    }
+
+    fn tuple_element(&mut self, e: &'a ast::TSTupleElement<'a>) -> Ty {
+        match e {
+            ast::TSTupleElement::TSOptionalType(o) => {
+                union(self.ts_type(&o.type_annotation), Ty::Undefined)
+            }
+            ast::TSTupleElement::TSRestType(r) => {
+                self.err(
+                    r.span,
+                    "rest elements in tuple types are outside the compiled subset",
+                );
+                Ty::Unknown
+            }
+            other => match other.as_ts_type() {
+                Some(ast::TSType::TSNamedTupleMember(m)) => self.tuple_element(&m.element_type),
+                Some(t) => self.ts_type(t),
+                None => Ty::Unknown,
+            },
+        }
+    }
+
+    fn members(&mut self, members: &'a oxc_allocator::Vec<'a, ast::TSSignature<'a>>) -> Ty {
+        let mut fields = Vec::new();
+        for m in members {
+            match m {
+                ast::TSSignature::TSPropertySignature(p) => {
+                    let Some(name) = property_key_name(&p.key) else {
+                        self.err(
+                            p.span,
+                            "a computed property key in a type is outside the compiled subset",
+                        );
+                        continue;
+                    };
+                    let t = match &p.type_annotation {
+                        Some(t) => self.ts_type(&t.type_annotation),
+                        None => Ty::Unknown,
+                    };
+                    fields.push((name, t, p.optional));
+                }
+                ast::TSSignature::TSIndexSignature(i) => {
+                    return Ty::Dict(Box::new(self.ts_type(&i.type_annotation.type_annotation)));
+                }
+                ast::TSSignature::TSMethodSignature(ms) => {
+                    let Some(name) = property_key_name(&ms.key) else {
+                        continue;
+                    };
+                    let ps = ms
+                        .params
+                        .items
+                        .iter()
+                        .map(|p| match &p.type_annotation {
+                            Some(t) => self.ts_type(&t.type_annotation),
+                            None => Ty::Unknown,
+                        })
+                        .collect();
+                    let r = match &ms.return_type {
+                        Some(t) => self.ts_type(&t.type_annotation),
+                        None => Ty::Void,
+                    };
+                    fields.push((name, Ty::Function(ps, Box::new(r)), ms.optional));
+                }
+                other => {
+                    self.err(other.span(), "this member is outside the compiled subset");
+                }
+            }
+        }
+        Ty::Object(fields)
+    }
+
+    fn type_args(&mut self, r: &'a ast::TSTypeReference<'a>) -> Vec<Ty> {
+        match &r.type_arguments {
+            Some(a) => a.params.iter().map(|t| self.ts_type(t)).collect(),
+            None => Vec::new(),
+        }
+    }
+
+    fn type_reference(&mut self, r: &'a ast::TSTypeReference<'a>) -> Ty {
+        let full = type_name(&r.type_name);
+        let name = full.rsplit('.').next().unwrap_or(&full).to_owned();
+        if !full.contains('.') {
+            if let Some(t) = self.named_type(&name, r.span) {
+                return t;
+            }
+        }
+        let args = self.type_args(r);
+        let arg = |i: usize| args.get(i).cloned().unwrap_or(Ty::Unknown);
+        match name.as_str() {
+            "Array" | "ReadonlyArray" => Ty::Array(Box::new(arg(0))),
+            "Record" => Ty::Dict(Box::new(arg(1))),
+            "Partial" => match arg(0) {
+                Ty::Object(fs) => {
+                    Ty::Object(fs.into_iter().map(|(n, t, _)| (n, t, true)).collect())
+                }
+                t => t,
+            },
+            "Readonly" | "NonNullable" => non_null(&arg(0)),
+            "ReactNode" | "ReactElement" | "Element" | "ReactChild" | "ReactPortal" => Ty::Node,
+            "PropsWithChildren" => match arg(0) {
+                Ty::Object(mut fs) => {
+                    fs.push(("children".into(), Ty::Node, true));
+                    Ty::Object(fs)
+                }
+                t => t,
+            },
+            "FormEvent" | "ChangeEvent" | "MouseEvent" | "KeyboardEvent" | "FocusEvent"
+            | "SyntheticEvent" | "PointerEvent" | "WheelEvent" | "UIEvent" | "Event"
+            | "InputEvent" | "DragEvent" => Ty::Event,
+            "SetStateAction" => union(arg(0), Ty::Function(vec![arg(0)], Box::new(arg(0)))),
+            "Dispatch" => match arg(0) {
+                Ty::Union(ts) if ts.len() == 2 && matches!(ts[1], Ty::Function(..)) => {
+                    Ty::Setter(Box::new(ts[0].clone()))
+                }
+                t => Ty::Dispatch(Box::new(t)),
+            },
+            "RefObject" | "MutableRefObject" => Ty::Ref(Box::new(arg(0))),
+            "Context" => Ty::Context(Box::new(arg(0))),
+            "Promise" => Ty::Promise(Box::new(arg(0))),
+            "Response" => Ty::Response,
+            "CSSProperties" => Ty::Dict(Box::new(union(Ty::String, Ty::Number))),
+            n if n.starts_with("HTML") && n.ends_with("Element") => Ty::DomNode,
+            "Node" | "EventTarget" => Ty::DomNode,
+            "FC" | "FunctionComponent" => Ty::Function(vec![arg(0)], Box::new(Ty::Node)),
+            _ => {
+                self.err(
+                    r.span,
+                    format!("type `{full}` is outside the compiled subset"),
+                );
+                Ty::Unknown
+            }
+        }
+    }
+
+    fn named_type(&mut self, name: &str, span: Span) -> Option<Ty> {
+        if let Some(t) = self.type_cache.get(name) {
+            return Some(t.clone());
+        }
+        if !self.type_decls.contains_key(name) {
+            return None;
+        }
+        if !self.type_busy.insert(name.to_owned()) {
+            self.err(
+                span,
+                format!("recursive type `{name}` is outside the compiled subset"),
+            );
+            return Some(Ty::Unknown);
+        }
+        let t = match self.type_decls.get(name) {
+            Some(TypeDecl::Alias(t)) => {
+                let t: &'a ast::TSType<'a> = t;
+                self.ts_type(t)
+            }
+            Some(TypeDecl::Interface(i)) => {
+                let i: &'a ast::TSInterfaceDeclaration<'a> = i;
+                let mut base = Vec::new();
+                for h in &i.extends {
+                    let n = type_name(&h.type_name);
+                    if let Some(Ty::Object(fs)) = self.named_type(&n, h.span) {
+                        base.extend(fs);
+                    }
+                }
+                match self.members(&i.body.body) {
+                    Ty::Object(fs) => {
+                        base.extend(fs);
+                        Ty::Object(base)
+                    }
+                    t => t,
+                }
+            }
+            None => Ty::Unknown,
+        };
+        self.type_busy.remove(name);
+        self.type_cache.insert(name.to_owned(), t.clone());
+        Some(t)
+    }
+
+    // ------------------------------------------------------------------ functions
+
+    /// Lowers a module function (once).
+    fn ensure_function(&mut self, fidx: u32) {
+        if self.functions[fidx as usize].is_some() || self.busy_fns.contains(&fidx) {
+            return;
+        }
+        let Some(p) = self.pending.remove(&fidx) else {
+            return;
+        };
+        self.busy_fns.insert(fidx);
+        let saved_fns = std::mem::take(&mut self.fns);
+        let saved_holes = std::mem::take(&mut self.hole_always);
+        let sig = self
+            .global_names
+            .get(&p.name)
+            .map(|g| g.ty.clone())
+            .unwrap_or(Ty::Unknown);
+        let (params, declared_ret) = match &sig {
+            Ty::Function(ps, r) => (ps.clone(), (**r).clone()),
+            _ => (Vec::new(), Ty::Unknown),
+        };
+        let f = self.function(&p, &params, declared_ret, None);
+        let ret = f.ret.clone();
+        self.fns = saved_fns;
+        self.hole_always = saved_holes;
+        if let Some(g) = self.global_names.get_mut(&p.name) {
+            if let Ty::Function(_, r) = &mut g.ty {
+                if matches!(**r, Ty::Unknown) {
+                    **r = ret;
+                }
+            }
+            let slot = g.slot as usize;
+            let t = g.ty.clone();
+            self.globals[slot].ty = t;
+        }
+        self.functions[fidx as usize] = Some(f);
+        self.busy_fns.remove(&fidx);
+    }
+
+    /// Lowers a function body. `param_hint` types unannotated parameters from the
+    /// context (a callback's), `declared_ret` is the annotated return type (or
+    /// `Unknown`).
+    fn function(
+        &mut self,
+        p: &PendingFn<'a>,
+        param_hint: &[Ty],
+        declared_ret: Ty,
+        _outer: Option<()>,
+    ) -> Function {
+        if p.is_async {
+            self.err(
+                p.span,
+                "async functions are outside the compiled subset (use promise `.then` chains)",
+            );
+        }
+        if p.generator {
+            self.err(p.span, "generators are outside the compiled subset");
+        }
+        let mut ctx = FnCtx::new(p.kind);
+        if !matches!(declared_ret, Ty::Unknown) {
+            ctx.declared_ret = Some(declared_ret.clone());
+        }
+        self.fns.push(ctx);
+        let mut params = Vec::new();
+        for (i, param) in p.params.items.iter().enumerate() {
+            let annotated = param
+                .type_annotation
+                .as_ref()
+                .map(|t| self.ts_type(&t.type_annotation));
+            let ty = match annotated {
+                Some(t) => t,
+                None => match param_hint.get(i) {
+                    Some(t) if !matches!(t, Ty::Unknown) => t.clone(),
+                    _ => {
+                        // A parameter nobody reads needs no type.
+                        if !self.pattern_is_unused(&param.pattern) {
+                            let name = pattern_display(&param.pattern);
+                            self.err(
+                                param.span,
+                                format!("parameter `{name}` has implicit type any: annotate it"),
+                            );
+                        }
+                        Ty::Unknown
+                    }
+                },
+            };
+            let ty = if param.optional {
+                union(ty, Ty::Undefined)
+            } else {
+                ty
+            };
+            let pat = match &param.initializer {
+                Some(init) => {
+                    let (d, _) = self.expr(init, Some(&ty));
+                    let inner = self.bind_pattern(&param.pattern, &non_null(&ty));
+                    Pattern::Default(Box::new(inner), d)
+                }
+                None => self.bind_pattern(&param.pattern, &ty),
+            };
+            params.push(pat);
+        }
+        if let Some(rest) = &p.params.rest {
+            self.err(rest.span, "rest parameters are outside the compiled subset");
+        }
+        let body = match p.body {
+            FnBody::Block(b) => {
+                for d in &b.directives {
+                    let _ = d;
+                }
+                self.block(&b.statements)
+            }
+            FnBody::Expr(e) => {
+                let want = self.fns.last().unwrap().declared_ret.clone();
+                let (x, t) = self.expr(e, want.as_ref());
+                let c = self.cur();
+                c.ret = union(c.ret.clone(), t);
+                vec![Stmt::Return(Some(x))]
+            }
+        };
+        let ctx = self.fns.pop().unwrap();
+        for l in &ctx.locals {
+            if let (true, Some(at)) = (l.captured, l.reassigned) {
+                self.diags.push(Diagnostic::at(
+                    self.src,
+                    at,
+                    format!(
+                        "`{}` is reassigned and also captured by a closure, which the compiled subset cannot share",
+                        l.name
+                    ),
+                ));
+            }
+        }
+        let ret = match ctx.declared_ret.clone() {
+            Some(t) => t,
+            None if matches!(ctx.ret, Ty::Unknown) => Ty::Void,
+            None => ctx.ret.clone(),
+        };
+        Function {
+            name: p.name.clone(),
+            kind: p.kind,
+            params,
+            n_locals: ctx.locals.len() as u32,
+            captures: ctx.captures.clone(),
+            body,
+            local_types: ctx.locals.iter().map(|l| l.ty.clone()).collect(),
+            ret,
+            line: self.line(p.span),
+            has_depless_effect: ctx.has_depless_effect,
+        }
+    }
+
+    fn pattern_is_unused(&self, p: &ast::BindingPattern<'a>) -> bool {
+        matches!(p, ast::BindingPattern::BindingIdentifier(id) if id.name.starts_with('_'))
+    }
+
+    /// A closure: an arrow or function expression inside a function.
+    fn closure(&mut self, p: PendingFn<'a>, want: Option<&Ty>) -> Lowered {
+        let hint: Vec<Ty> = match want.map(function_member) {
+            Some(Some(Ty::Function(ps, _))) => ps,
+            _ => Vec::new(),
+        };
+        let declared_ret = match p.return_type {
+            Some(t) => self.ts_type(&t.type_annotation),
+            None => Ty::Unknown,
+        };
+        let fidx = self.functions.len() as u32;
+        self.functions.push(None);
+        let f = self.function(&p, &hint, declared_ret, Some(()));
+        let ty = Ty::Function(
+            f.local_types
+                .iter()
+                .take(p.params.items.len())
+                .cloned()
+                .collect(),
+            Box::new(f.ret.clone()),
+        );
+        // Parameter types are the first locals only for plain identifiers; use the
+        // hint or annotations as the function type's parameters instead.
+        let ptys: Vec<Ty> = p
+            .params
+            .items
+            .iter()
+            .enumerate()
+            .map(|(i, param)| match &param.type_annotation {
+                Some(_) => f.local_types.get(i).cloned().unwrap_or(Ty::Unknown),
+                None => hint.get(i).cloned().unwrap_or(Ty::Unknown),
+            })
+            .collect();
+        let ty = match ty {
+            Ty::Function(_, r) => Ty::Function(ptys, r),
+            t => t,
+        };
+        self.functions[fidx as usize] = Some(f);
+        (Expr::Closure(fidx), ty)
+    }
+
+    // ------------------------------------------------------------------ names
+
+    /// Resolves a name to a variable read.
+    fn resolve(&mut self, name: &str, span: Span) -> Option<Lowered> {
+        let depth = self.fns.len();
+        for level in (0..depth).rev() {
+            if let Some(slot) = self.fns[level].lookup(name) {
+                let ty = self.fns[level].locals[slot as usize].ty.clone();
+                if level == depth - 1 {
+                    return Some((Expr::Local(slot), ty));
+                }
+                self.fns[level].locals[slot as usize].captured = true;
+                // Thread a capture through every function between.
+                let mut cap = Capture::Local(slot);
+                for l in level + 1..depth {
+                    let ctx = &mut self.fns[l];
+                    let idx = match ctx.capture_names.iter().position(|(n, _)| n == name) {
+                        Some(i) => i as u32,
+                        None => {
+                            ctx.captures.push(cap);
+                            ctx.capture_names.push((name.to_owned(), ty.clone()));
+                            (ctx.captures.len() - 1) as u32
+                        }
+                    };
+                    cap = Capture::Capture(idx);
+                }
+                let Capture::Capture(idx) = cap else {
+                    unreachable!()
+                };
+                return Some((Expr::Capture(idx), ty));
+            }
+            if self.fns[level].later.iter().any(|l| l.contains(name)) {
+                self.err(
+                    span,
+                    format!("`{name}` is used before its declaration (declare it above this use)"),
+                );
+                return Some((Expr::Undefined, Ty::Unknown));
+            }
+        }
+        if let Some(g) = self.global_names.get(name).cloned() {
+            if let Some(f) = g.func {
+                self.ensure_function(f);
+            }
+            let g = self.global_names.get(name).cloned().unwrap();
+            if g.reassigned {
+                self.mark_always();
+            }
+            return Some((Expr::Global(g.slot), g.ty));
+        }
+        None
+    }
+
+    fn mark_always(&mut self) {
+        if let Some(a) = self.hole_always.last_mut() {
+            *a = true;
+        }
+    }
+
+    // ------------------------------------------------------------------ patterns
+
+    fn bind_pattern(&mut self, p: &'a ast::BindingPattern<'a>, ty: &Ty) -> Pattern {
+        match p {
+            ast::BindingPattern::BindingIdentifier(id) => {
+                let slot = self.cur().declare(id.name.as_str(), ty.clone());
+                Pattern::Local(slot)
+            }
+            ast::BindingPattern::ArrayPattern(a) => {
+                let mut items = Vec::new();
+                for (i, el) in a.elements.iter().enumerate() {
+                    match el {
+                        Some(el) => {
+                            let t = types::index(ty, &Ty::NumLit(i as f64))
+                                .map(|t| match ty {
+                                    Ty::Tuple(_) => t,
+                                    _ => non_null(&t),
+                                })
+                                .unwrap_or_else(|| {
+                                    self.err(
+                                        a.span,
+                                        format!(
+                                            "cannot destructure a value of type {}",
+                                            types::show(ty)
+                                        ),
+                                    );
+                                    Ty::Unknown
+                                });
+                            items.push(Some(self.bind_pattern(el, &t)));
+                        }
+                        None => items.push(None),
+                    }
+                }
+                let rest = a.rest.as_ref().map(|r| {
+                    let t = match ty {
+                        Ty::Tuple(ts) => {
+                            Ty::Array(Box::new(union_all(ts.iter().skip(items.len()).cloned())))
+                        }
+                        t => t.clone(),
+                    };
+                    Box::new(self.bind_pattern(&r.argument, &t))
+                });
+                Pattern::Array { items, rest }
+            }
+            ast::BindingPattern::ObjectPattern(o) => {
+                let mut props = Vec::new();
+                for prop in &o.properties {
+                    let Some(key) = property_key_name(&prop.key).filter(|_| !prop.computed) else {
+                        self.err(prop.span, "a computed key in a destructuring pattern is outside the compiled subset");
+                        continue;
+                    };
+                    let t = match property(ty, &key) {
+                        Some(t) => t,
+                        None => {
+                            if !matches!(ty, Ty::Unknown) {
+                                self.err(
+                                    prop.span,
+                                    format!(
+                                        "property `{key}` does not exist on type {}",
+                                        types::show(ty)
+                                    ),
+                                );
+                            }
+                            Ty::Unknown
+                        }
+                    };
+                    // `{a = 1}` narrows away `undefined`.
+                    let t = if matches!(prop.value, ast::BindingPattern::AssignmentPattern(_)) {
+                        non_null(&t)
+                    } else {
+                        t
+                    };
+                    props.push((key, self.bind_pattern(&prop.value, &t)));
+                }
+                let rest = o.rest.as_ref().map(|r| {
+                    let t = match ty {
+                        Ty::Object(fs) => Ty::Object(
+                            fs.iter()
+                                .filter(|(n, _, _)| !props.iter().any(|(k, _)| k == n))
+                                .cloned()
+                                .collect(),
+                        ),
+                        t => t.clone(),
+                    };
+                    Box::new(self.bind_pattern(&r.argument, &t))
+                });
+                Pattern::Object { props, rest }
+            }
+            ast::BindingPattern::AssignmentPattern(a) => {
+                let (d, _) = self.expr(&a.right, Some(ty));
+                let inner = self.bind_pattern(&a.left, &non_null(ty));
+                Pattern::Default(Box::new(inner), d)
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ statements
+
+    fn block(&mut self, stmts: &'a oxc_allocator::Vec<'a, S<'a>>) -> Vec<Stmt> {
+        let mut later = BTreeSet::new();
+        for s in stmts.iter() {
+            match s {
+                S::VariableDeclaration(d) => {
+                    for decl in &d.declarations {
+                        let mut names = Vec::new();
+                        binding_names(&decl.id, &mut names);
+                        later.extend(names.into_iter().map(|(n, _)| n));
+                    }
+                }
+                S::FunctionDeclaration(f) => {
+                    if let Some(id) = &f.id {
+                        later.insert(id.name.to_string());
+                    }
+                }
+                _ => {}
+            }
+        }
+        {
+            let c = self.cur();
+            c.scopes.push(Vec::new());
+            c.later.push(later);
+        }
+        let mut out = Vec::new();
+        for s in stmts.iter() {
+            self.statement(s, &mut out);
+        }
+        let c = self.cur();
+        c.scopes.pop();
+        c.later.pop();
+        out
+    }
+
+    fn body_of(&mut self, s: &'a S<'a>) -> Vec<Stmt> {
+        match s {
+            S::BlockStatement(b) => self.block(&b.body),
+            other => {
+                let c = self.cur();
+                c.scopes.push(Vec::new());
+                c.later.push(BTreeSet::new());
+                let mut out = Vec::new();
+                self.statement(other, &mut out);
+                let c = self.cur();
+                c.scopes.pop();
+                c.later.pop();
+                out
+            }
+        }
+    }
+
+    fn statement(&mut self, s: &'a S<'a>, out: &mut Vec<Stmt>) {
+        match s {
+            S::EmptyStatement(_) => {}
+            S::ExpressionStatement(e) => {
+                let (x, _) = self.expr(&e.expression, None);
+                out.push(Stmt::Expr(x));
+            }
+            S::VariableDeclaration(d) => self.var_decl(d, out),
+            S::FunctionDeclaration(f) => {
+                let Some(id) = &f.id else { return };
+                let Some(body) = &f.body else { return };
+                let name = id.name.to_string();
+                let p = PendingFn {
+                    name: name.clone(),
+                    params: &f.params,
+                    body: FnBody::Block(body),
+                    return_type: f.return_type.as_deref(),
+                    span: f.span,
+                    is_async: f.r#async,
+                    generator: f.generator,
+                    kind: FunctionKind::Plain,
+                };
+                // Declared before its body is lowered, so it can call itself: the
+                // closure captures its own slot, which is assigned once.
+                let (x, ty) = self.closure(p, None);
+                let slot = self.cur().declare(&name, ty);
+                out.push(Stmt::Let(Pattern::Local(slot), Some(x)));
+            }
+            S::ReturnStatement(r) => {
+                let want = self.fns.last().unwrap().declared_ret.clone();
+                let kind = self.fns.last().unwrap().kind;
+                let want = want.or(if kind == FunctionKind::Component {
+                    Some(Ty::Node)
+                } else {
+                    None
+                });
+                let x = r.argument.as_ref().map(|a| {
+                    let (x, t) = self.expr(a, want.as_ref());
+                    let c = self.cur();
+                    c.ret = union(c.ret.clone(), t);
+                    x
+                });
+                if x.is_none() {
+                    let c = self.cur();
+                    c.ret = union(c.ret.clone(), Ty::Undefined);
+                }
+                out.push(Stmt::Return(x));
+            }
+            S::IfStatement(i) => {
+                let (test, _) = self.expr(&i.test, None);
+                self.cur().cond_depth += 1;
+                let then = self.body_of(&i.consequent);
+                let els = match &i.alternate {
+                    Some(a) => self.body_of(a),
+                    None => Vec::new(),
+                };
+                self.cur().cond_depth -= 1;
+                out.push(Stmt::If(test, then, els));
+            }
+            S::BlockStatement(b) => {
+                let inner = self.block(&b.body);
+                out.push(Stmt::Block(inner));
+            }
+            S::ForOfStatement(f) => {
+                if f.r#await {
+                    self.err(f.span, "`for await` is outside the compiled subset");
+                    return;
+                }
+                let (iter, ity) = self.expr(&f.right, None);
+                let ety = match element(&ity) {
+                    Some(t) => t,
+                    None => {
+                        self.err(
+                            f.right.span(),
+                            format!("cannot iterate a value of type {}", types::show(&ity)),
+                        );
+                        Ty::Unknown
+                    }
+                };
+                self.cur().cond_depth += 1;
+                self.cur().scopes.push(Vec::new());
+                let pat = match &f.left {
+                    ast::ForStatementLeft::VariableDeclaration(d) if d.declarations.len() == 1 => {
+                        self.bind_pattern(&d.declarations[0].id, &ety)
+                    }
+                    other => {
+                        self.err(other.span(), "a `for...of` target must be a declaration");
+                        Pattern::Ignore
+                    }
+                };
+                let body = self.body_of(&f.body);
+                self.cur().scopes.pop();
+                self.cur().cond_depth -= 1;
+                out.push(Stmt::ForOf(pat, iter, body));
+            }
+            S::ForStatement(f) => {
+                self.cur().cond_depth += 1;
+                self.cur().scopes.push(Vec::new());
+                let mut init = Vec::new();
+                match &f.init {
+                    Some(ast::ForStatementInit::VariableDeclaration(d)) => {
+                        self.var_decl(d, &mut init)
+                    }
+                    Some(other) => {
+                        if let Some(e) = other.as_expression() {
+                            let (x, _) = self.expr(e, None);
+                            init.push(Stmt::Expr(x));
+                        }
+                    }
+                    None => {}
+                }
+                let test = f.test.as_ref().map(|t| self.expr(t, None).0);
+                let update = f.update.as_ref().map(|u| self.expr(u, None).0);
+                let body = self.body_of(&f.body);
+                self.cur().scopes.pop();
+                self.cur().cond_depth -= 1;
+                out.push(Stmt::For {
+                    init,
+                    test,
+                    update,
+                    body,
+                });
+            }
+            S::WhileStatement(w) => {
+                self.cur().cond_depth += 1;
+                let (test, _) = self.expr(&w.test, None);
+                let body = self.body_of(&w.body);
+                self.cur().cond_depth -= 1;
+                out.push(Stmt::For {
+                    init: Vec::new(),
+                    test: Some(test),
+                    update: None,
+                    body,
+                });
+            }
+            S::BreakStatement(b) => {
+                if b.label.is_some() {
+                    self.err(b.span, "labelled `break` is outside the compiled subset");
+                }
+                out.push(Stmt::Break);
+            }
+            S::ContinueStatement(c) => {
+                if c.label.is_some() {
+                    self.err(c.span, "labelled `continue` is outside the compiled subset");
+                }
+                out.push(Stmt::Continue);
+            }
+            S::SwitchStatement(sw) => {
+                let (d, dty) = self.expr(&sw.discriminant, None);
+                self.cur().cond_depth += 1;
+                self.cur().scopes.push(Vec::new());
+                let mut cases = Vec::new();
+                for c in &sw.cases {
+                    let test = c.test.as_ref().map(|t| self.expr(t, Some(&dty)).0);
+                    let mut body = Vec::new();
+                    for s in &c.consequent {
+                        self.statement(s, &mut body);
+                    }
+                    cases.push((test, body));
+                }
+                self.cur().scopes.pop();
+                self.cur().cond_depth -= 1;
+                out.push(Stmt::Switch(d, cases));
+            }
+            S::ThrowStatement(t) => {
+                let (x, _) = self.expr(&t.argument, None);
+                out.push(Stmt::Throw(x));
+            }
+            S::TSTypeAliasDeclaration(_) | S::TSInterfaceDeclaration(_) => {}
+            other => {
+                self.err(
+                    other.span(),
+                    "this statement is outside the compiled subset",
+                );
+            }
+        }
+    }
+
+    fn var_decl(&mut self, d: &'a ast::VariableDeclaration<'a>, out: &mut Vec<Stmt>) {
+        if d.kind == ast::VariableDeclarationKind::Var {
+            self.err(
+                d.span,
+                "`var` is outside the compiled subset (use `let` or `const`)",
+            );
+        }
+        for decl in &d.declarations {
+            let declared = decl
+                .type_annotation
+                .as_ref()
+                .map(|t| self.ts_type(&t.type_annotation));
+            let (init, ty) = match &decl.init {
+                Some(e) => {
+                    let fresh = is_fresh_init(e);
+                    let (x, t) = self.expr(e, declared.as_ref());
+                    let t = declared.clone().unwrap_or(t);
+                    let t = if d.kind == ast::VariableDeclarationKind::Let {
+                        widen(&t)
+                    } else {
+                        t
+                    };
+                    let before = self.cur().locals.len();
+                    let pat = self.bind_pattern(&decl.id, &t);
+                    if fresh {
+                        if let Pattern::Local(slot) = pat {
+                            self.cur().locals[slot as usize].fresh = true;
+                        }
+                    }
+                    let _ = before;
+                    out.push(Stmt::Let(pat, Some(x)));
+                    continue;
+                }
+                None => (None::<Expr>, declared.clone().unwrap_or(Ty::Undefined)),
+            };
+            let pat = self.bind_pattern(&decl.id, &ty);
+            out.push(Stmt::Let(pat, init));
+        }
+    }
+
+    // ------------------------------------------------------------------ expressions
+
+    fn exprs_args(
+        &mut self,
+        args: &'a oxc_allocator::Vec<'a, ast::Argument<'a>>,
+        want: &[Ty],
+    ) -> (Vec<ArrayItem>, Vec<Ty>) {
+        let mut items = Vec::new();
+        let mut tys = Vec::new();
+        for (i, a) in args.iter().enumerate() {
+            match a {
+                ast::Argument::SpreadElement(s) => {
+                    let (x, t) = self.expr(&s.argument, None);
+                    items.push(ArrayItem::Spread(x));
+                    tys.push(element(&t).unwrap_or(Ty::Unknown));
+                }
+                other => {
+                    let e = other.as_expression().expect("argument");
+                    let (x, t) = self.expr(e, want.get(i));
+                    items.push(ArrayItem::Item(x));
+                    tys.push(t);
+                }
+            }
+        }
+        (items, tys)
+    }
+
+    fn arg_exprs(
+        &mut self,
+        args: &'a oxc_allocator::Vec<'a, ast::Argument<'a>>,
+        want: &[Ty],
+    ) -> Vec<Lowered> {
+        let mut out = Vec::new();
+        for (i, a) in args.iter().enumerate() {
+            match a.as_expression() {
+                Some(e) => out.push(self.expr(e, want.get(i))),
+                None => {
+                    self.err(
+                        a.span(),
+                        "a spread argument is outside the compiled subset here",
+                    );
+                    out.push((Expr::Undefined, Ty::Unknown));
+                }
+            }
+        }
+        out
+    }
+
+    fn expr(&mut self, e: &'a E<'a>, want: Option<&Ty>) -> Lowered {
+        match e {
+            E::BooleanLiteral(b) => (Expr::Bool(b.value), Ty::Boolean),
+            E::NullLiteral(_) => (Expr::Null, Ty::Null),
+            E::NumericLiteral(n) => (Expr::Num(n.value), Ty::NumLit(n.value)),
+            E::StringLiteral(s) => (Expr::Str(s.value.to_string()), Ty::Lit(s.value.to_string())),
+            E::TemplateLiteral(t) => {
+                let quasis = t
+                    .quasis
+                    .iter()
+                    .map(|q| {
+                        q.value
+                            .cooked
+                            .as_ref()
+                            .map(|c| c.to_string())
+                            .unwrap_or_else(|| q.value.raw.to_string())
+                    })
+                    .collect();
+                let exprs = t.expressions.iter().map(|x| self.expr(x, None).0).collect();
+                (Expr::Template(quasis, exprs), Ty::String)
+            }
+            E::Identifier(id) => self.identifier(id.name.as_str(), id.span),
+            E::ArrayExpression(a) => self.array(a, want),
+            E::ObjectExpression(o) => self.object(o, want),
+            E::ArrowFunctionExpression(a) => {
+                let p = PendingFn {
+                    name: "<arrow>".into(),
+                    params: &a.params,
+                    body: match &a.body {
+                        ast::ArrowFunctionBody::FunctionBody(b) => FnBody::Block(b),
+                        other => FnBody::Expr(other.as_expression().expect("expression body")),
+                    },
+                    return_type: a.return_type.as_deref(),
+                    span: a.span,
+                    is_async: a.r#async,
+                    generator: false,
+                    kind: FunctionKind::Plain,
+                };
+                self.closure(p, want)
+            }
+            E::FunctionExpression(f) => {
+                let Some(body) = &f.body else {
+                    return self.unsupported(f.span, "a function without a body");
+                };
+                let p = PendingFn {
+                    name: f
+                        .id
+                        .as_ref()
+                        .map(|i| i.name.to_string())
+                        .unwrap_or_else(|| "<function>".into()),
+                    params: &f.params,
+                    body: FnBody::Block(body),
+                    return_type: f.return_type.as_deref(),
+                    span: f.span,
+                    is_async: f.r#async,
+                    generator: f.generator,
+                    kind: FunctionKind::Plain,
+                };
+                self.closure(p, want)
+            }
+            E::ParenthesizedExpression(p) => self.expr(&p.expression, want),
+            E::TSAsExpression(a) => {
+                let t = self.ts_type(&a.type_annotation);
+                let (x, _) = self.expr(&a.expression, Some(&t));
+                (x, t)
+            }
+            E::TSSatisfiesExpression(a) => {
+                let t = self.ts_type(&a.type_annotation);
+                self.expr(&a.expression, Some(&t))
+            }
+            E::TSTypeAssertion(a) => {
+                let t = self.ts_type(&a.type_annotation);
+                let (x, _) = self.expr(&a.expression, Some(&t));
+                (x, t)
+            }
+            E::TSNonNullExpression(n) => {
+                let (x, t) = self.expr(&n.expression, want);
+                (x, non_null(&t))
+            }
+            E::TSInstantiationExpression(i) => self.expr(&i.expression, want),
+            E::SequenceExpression(s) => {
+                let mut xs = Vec::new();
+                let mut last = Ty::Undefined;
+                for x in &s.expressions {
+                    let (x, t) = self.expr(x, None);
+                    xs.push(x);
+                    last = t;
+                }
+                (Expr::Seq(xs), last)
+            }
+            E::ConditionalExpression(c) => {
+                let (test, _) = self.expr(&c.test, None);
+                self.cur().cond_depth += 1;
+                let (a, at) = self.expr(&c.consequent, want);
+                let (b, bt) = self.expr(&c.alternate, want);
+                self.cur().cond_depth -= 1;
+                let t = union(at, bt);
+                (Expr::Cond(Box::new(test), Box::new(a), Box::new(b)), t)
+            }
+            E::LogicalExpression(l) => {
+                let (a, at) = self.expr(&l.left, want);
+                self.cur().cond_depth += 1;
+                let (b, bt) = self.expr(&l.right, want);
+                self.cur().cond_depth -= 1;
+                let (op, t) = match l.operator {
+                    ast::LogicalOperator::And => (LogicalOp::And, union(falsy_part(&at), bt)),
+                    ast::LogicalOperator::Or => (LogicalOp::Or, union(non_null(&at), bt)),
+                    ast::LogicalOperator::Coalesce => {
+                        (LogicalOp::Nullish, union(non_null(&at), bt))
+                    }
+                };
+                (Expr::Logical(op, Box::new(a), Box::new(b)), t)
+            }
+            E::BinaryExpression(b) => self.binary(b),
+            E::UnaryExpression(u) => {
+                let (x, t) = self.expr(&u.argument, None);
+                use ast::UnaryOperator as U;
+                match u.operator {
+                    U::LogicalNot => (Expr::Unary(UnaryOp::Not, Box::new(x)), Ty::Boolean),
+                    U::UnaryNegation => match x {
+                        Expr::Num(n) => (Expr::Num(-n), Ty::NumLit(-n)),
+                        x => (Expr::Unary(UnaryOp::Neg, Box::new(x)), Ty::Number),
+                    },
+                    U::UnaryPlus => (Expr::Unary(UnaryOp::Plus, Box::new(x)), Ty::Number),
+                    U::BitwiseNot => (Expr::Unary(UnaryOp::BitNot, Box::new(x)), Ty::Number),
+                    U::Void => (Expr::Unary(UnaryOp::Void, Box::new(x)), Ty::Undefined),
+                    U::Typeof => {
+                        let _ = t;
+                        (Expr::TypeOf(Box::new(x)), Ty::String)
+                    }
+                    U::Delete => self.unsupported(u.span, "`delete`"),
+                }
+            }
+            E::UpdateExpression(u) => {
+                let target = self.simple_target(&u.argument);
+                let delta = match u.operator {
+                    ast::UpdateOperator::Increment => 1.0,
+                    ast::UpdateOperator::Decrement => -1.0,
+                };
+                match target {
+                    Some((lv, _)) => (Expr::Update(Box::new(lv), u.prefix, delta), Ty::Number),
+                    None => (Expr::Undefined, Ty::Unknown),
+                }
+            }
+            E::AssignmentExpression(a) => self.assignment(a),
+            E::CallExpression(c) => self.call(c, want),
+            E::ChainExpression(c) => {
+                let (x, t) = match &c.expression {
+                    ast::ChainElement::CallExpression(call) => self.call(call, want),
+                    ast::ChainElement::TSNonNullExpression(n) => {
+                        let (x, t) = self.expr(&n.expression, want);
+                        (x, non_null(&t))
+                    }
+                    other => match other.as_member_expression() {
+                        Some(m) => self.member(m),
+                        None => self.unsupported(c.span, "this optional chain"),
+                    },
+                };
+                (Expr::Chain(Box::new(x)), union(t, Ty::Undefined))
+            }
+            E::StaticMemberExpression(_)
+            | E::ComputedMemberExpression(_)
+            | E::PrivateFieldExpression(_) => {
+                let m = e.as_member_expression().expect("member");
+                self.member(m)
+            }
+            E::JSXElement(el) => self.jsx_element(el),
+            E::JSXFragment(f) => {
+                let children = self.jsx_children_exprs(&f.children);
+                (
+                    Expr::Element(Box::new(ElementExpr::Fragment {
+                        children,
+                        key: None,
+                    })),
+                    Ty::Node,
+                )
+            }
+            E::NewExpression(n) => {
+                if let E::Identifier(id) = strip(&n.callee) {
+                    if id.name == "Error" {
+                        let (args, _) = self.exprs_args(&n.arguments, &[Ty::String]);
+                        return (Expr::Builtin(Builtin::Error, args), Ty::String);
+                    }
+                }
+                self.unsupported(n.span, "`new`")
+            }
+            E::AwaitExpression(a) => self.unsupported(a.span, "`await`"),
+            E::ThisExpression(t) => self.unsupported(t.span, "`this`"),
+            E::ClassExpression(c) => self.unsupported(c.span, "a class"),
+            E::RegExpLiteral(r) => self.unsupported(r.span, "a regular expression"),
+            E::BigIntLiteral(b) => self.unsupported(b.span, "a BigInt"),
+            E::TaggedTemplateExpression(t) => self.unsupported(t.span, "a tagged template"),
+            other => self.unsupported(other.span(), "this expression"),
+        }
+    }
+
+    fn identifier(&mut self, name: &str, span: Span) -> Lowered {
+        if name == "undefined" {
+            return (Expr::Undefined, Ty::Undefined);
+        }
+        if let Some(r) = self.resolve(name, span) {
+            return r;
+        }
+        match name {
+            "Infinity" => (Expr::Builtin(Builtin::Infinity, vec![]), Ty::Number),
+            "NaN" => (Expr::Builtin(Builtin::NaN, vec![]), Ty::Number),
+            _ => {
+                if self.react.contains_key(name) {
+                    self.err(
+                        span,
+                        format!("`{name}` from React cannot be used as a value here"),
+                    );
+                } else {
+                    self.err(span, format!("unknown name `{name}`"));
+                }
+                (Expr::Undefined, Ty::Unknown)
+            }
+        }
+    }
+
+    fn array(&mut self, a: &'a ast::ArrayExpression<'a>, want: Option<&Ty>) -> Lowered {
+        let want = want.map(non_null);
+        let tuple_want = match &want {
+            Some(Ty::Tuple(ts)) => Some(ts.clone()),
+            Some(Ty::Union(us)) => us.iter().find_map(|u| match u {
+                Ty::Tuple(ts) if ts.len() == a.elements.len() => Some(ts.clone()),
+                _ => None,
+            }),
+            _ => None,
+        };
+        let elem_want = want.as_ref().and_then(element);
+        let mut items = Vec::new();
+        let mut tys = Vec::new();
+        for (i, el) in a.elements.iter().enumerate() {
+            match el {
+                ast::ArrayExpressionElement::SpreadElement(s) => {
+                    let w = want.clone();
+                    let (x, t) = self.expr(&s.argument, w.as_ref());
+                    items.push(ArrayItem::Spread(x));
+                    tys.push(element(&t).unwrap_or(Ty::Unknown));
+                }
+                ast::ArrayExpressionElement::Elision(el) => {
+                    self.err(el.span, "array holes are outside the compiled subset");
+                }
+                other => {
+                    let e = other.as_expression().expect("element");
+                    let w = match &tuple_want {
+                        Some(ts) => ts.get(i).cloned(),
+                        None => elem_want.clone(),
+                    };
+                    let (x, t) = self.expr(e, w.as_ref());
+                    items.push(ArrayItem::Item(x));
+                    tys.push(t);
+                }
+            }
+        }
+        let t = match (tuple_want, &want) {
+            (Some(ts), _) => Ty::Tuple(ts),
+            (None, Some(w)) if types::is_array(w) => w.clone(),
+            _ => Ty::Array(Box::new(match union_all(tys.iter().map(widen)) {
+                Ty::Unknown if tys.is_empty() => Ty::Unknown,
+                t => t,
+            })),
+        };
+        (Expr::Array(items), t)
+    }
+
+    fn object(&mut self, o: &'a ast::ObjectExpression<'a>, want: Option<&Ty>) -> Lowered {
+        let want = want.map(non_null);
+        let mut props = Vec::new();
+        let mut fields: Vec<(String, Ty, bool)> = Vec::new();
+        let mut dict: Option<Ty> = None;
+        for p in &o.properties {
+            match p {
+                ast::ObjectPropertyKind::ObjectProperty(p) => {
+                    if p.kind != ast::PropertyKind::Init {
+                        self.err(
+                            p.span,
+                            "getters and setters are outside the compiled subset",
+                        );
+                        continue;
+                    }
+                    if p.computed {
+                        let key = p.key.as_expression().expect("computed key");
+                        let (k, _) = self.expr(key, None);
+                        let vw = match &want {
+                            Some(Ty::Dict(v)) => Some((**v).clone()),
+                            _ => None,
+                        };
+                        let (v, vt) = self.expr(&p.value, vw.as_ref());
+                        props.push(Prop::Computed(k, v));
+                        dict = Some(union(dict.unwrap_or(Ty::Unknown), vt));
+                        continue;
+                    }
+                    let Some(name) = property_key_name(&p.key) else {
+                        self.err(p.span, "this property key is outside the compiled subset");
+                        continue;
+                    };
+                    let vw = want
+                        .as_ref()
+                        .and_then(|w| property(w, &name))
+                        .map(|t| non_null_keep(&t));
+                    let (v, vt) = self.expr(&p.value, vw.as_ref());
+                    fields.retain(|(n, _, _)| *n != name);
+                    fields.push((name.clone(), vt, false));
+                    props.push(Prop::KeyValue(name, v));
+                }
+                ast::ObjectPropertyKind::SpreadProperty(s) => {
+                    let (x, t) = self.expr(&s.argument, want.as_ref());
+                    match non_null(&t) {
+                        Ty::Object(fs) => {
+                            for (n, t, opt) in fs {
+                                fields.retain(|(m, _, _)| *m != n);
+                                fields.push((n, t, opt));
+                            }
+                        }
+                        Ty::Dict(v) => dict = Some(union(dict.unwrap_or(Ty::Unknown), *v)),
+                        other => {
+                            self.err(
+                                s.span,
+                                format!("cannot spread a value of type {}", types::show(&other)),
+                            );
+                        }
+                    }
+                    props.push(Prop::Spread(x));
+                }
+            }
+        }
+        let t = match (dict, &want) {
+            (_, Some(w @ (Ty::Object(_) | Ty::Dict(_)))) => w.clone(),
+            (Some(v), _) => Ty::Dict(Box::new(union_all(
+                fields.iter().map(|(_, t, _)| t.clone()).chain([v]),
+            ))),
+            (None, _) => Ty::Object(fields),
+        };
+        (Expr::Object(props), t)
+    }
+
+    fn binary(&mut self, b: &'a ast::BinaryExpression<'a>) -> Lowered {
+        use ast::BinaryOperator as B;
+        let (l, lt) = self.expr(&b.left, None);
+        let (r, rt) = self.expr(&b.right, None);
+        let (op, t) = match b.operator {
+            B::Addition => {
+                let t = if types::is_numeric(&lt) && types::is_numeric(&rt) {
+                    Ty::Number
+                } else if types::is_stringy(&lt) || types::is_stringy(&rt) {
+                    Ty::String
+                } else {
+                    union(Ty::String, Ty::Number)
+                };
+                (BinaryOp::Add, t)
+            }
+            B::Subtraction => (BinaryOp::Sub, Ty::Number),
+            B::Multiplication => (BinaryOp::Mul, Ty::Number),
+            B::Division => (BinaryOp::Div, Ty::Number),
+            B::Remainder => (BinaryOp::Rem, Ty::Number),
+            B::Exponential => (BinaryOp::Exp, Ty::Number),
+            B::Equality => (BinaryOp::Eq, Ty::Boolean),
+            B::Inequality => (BinaryOp::NotEq, Ty::Boolean),
+            B::StrictEquality => (BinaryOp::StrictEq, Ty::Boolean),
+            B::StrictInequality => (BinaryOp::StrictNotEq, Ty::Boolean),
+            B::LessThan => (BinaryOp::Lt, Ty::Boolean),
+            B::LessEqualThan => (BinaryOp::LtEq, Ty::Boolean),
+            B::GreaterThan => (BinaryOp::Gt, Ty::Boolean),
+            B::GreaterEqualThan => (BinaryOp::GtEq, Ty::Boolean),
+            B::BitwiseAnd => (BinaryOp::BitAnd, Ty::Number),
+            B::BitwiseOR => (BinaryOp::BitOr, Ty::Number),
+            B::BitwiseXOR => (BinaryOp::BitXor, Ty::Number),
+            B::ShiftLeft => (BinaryOp::Shl, Ty::Number),
+            B::ShiftRight => (BinaryOp::Shr, Ty::Number),
+            B::ShiftRightZeroFill => (BinaryOp::UShr, Ty::Number),
+            B::In => (BinaryOp::In, Ty::Boolean),
+            B::Instanceof => return self.unsupported(b.span, "`instanceof`"),
+        };
+        (Expr::Binary(op, Box::new(l), Box::new(r)), t)
+    }
+
+    /// An assignment target that is a variable or a member.
+    fn simple_target(&mut self, t: &'a ast::SimpleAssignmentTarget<'a>) -> Option<(LValue, Ty)> {
+        match t {
+            ast::SimpleAssignmentTarget::AssignmentTargetIdentifier(id) => {
+                self.assign_name(id.name.as_str(), id.span)
+            }
+            ast::SimpleAssignmentTarget::TSNonNullExpression(n) => match strip(&n.expression) {
+                E::Identifier(id) => self.assign_name(id.name.as_str(), id.span),
+                _ => {
+                    self.err(
+                        n.span,
+                        "this assignment target is outside the compiled subset",
+                    );
+                    None
+                }
+            },
+            other => match other.as_member_expression() {
+                Some(m) => self.member_target(m),
+                None => {
+                    self.err(
+                        other.span(),
+                        "this assignment target is outside the compiled subset",
+                    );
+                    None
+                }
+            },
+        }
+    }
+
+    fn assign_name(&mut self, name: &str, span: Span) -> Option<(LValue, Ty)> {
+        let depth = self.fns.len();
+        if let Some(slot) = self.fns[depth - 1].lookup(name) {
+            let l = &mut self.fns[depth - 1].locals[slot as usize];
+            l.reassigned = Some(span.start);
+            l.fresh = false;
+            return Some((LValue::Local(slot), l.ty.clone()));
+        }
+        for level in (0..depth - 1).rev() {
+            if self.fns[level].lookup(name).is_some() {
+                self.err(
+                    span,
+                    format!("assigning `{name}` from inside a closure is outside the compiled subset (keep it in state or a ref)"),
+                );
+                return None;
+            }
+        }
+        if let Some(g) = self.global_names.get_mut(name) {
+            if g.func.is_some() {
+                self.err(span, format!("assigning to function `{name}`"));
+                return None;
+            }
+            g.reassigned = true;
+            self.mutable_globals = true;
+            return Some((LValue::Global(g.slot), g.ty.clone()));
+        }
+        self.err(span, format!("unknown name `{name}`"));
+        None
+    }
+
+    fn member_target(&mut self, m: &'a ast::MemberExpression<'a>) -> Option<(LValue, Ty)> {
+        match m {
+            ast::MemberExpression::StaticMemberExpression(s) => {
+                let (o, ot) = self.expr(&s.object, None);
+                let name = s.property.name.to_string();
+                self.note_mutation(&o);
+                if let E::Identifier(id) = strip(&s.object) {
+                    if id.name == "document" && name == "title" {
+                        return Some((
+                            LValue::Member(Expr::Builtin(Builtin::DocumentTitle, vec![]), name),
+                            Ty::String,
+                        ));
+                    }
+                }
+                let t = property(&ot, &name).unwrap_or_else(|| {
+                    self.err(
+                        s.span,
+                        format!(
+                            "property `{name}` does not exist on type {}",
+                            types::show(&ot)
+                        ),
+                    );
+                    Ty::Unknown
+                });
+                Some((LValue::Member(o, name), t))
+            }
+            ast::MemberExpression::ComputedMemberExpression(c) => {
+                let (o, ot) = self.expr(&c.object, None);
+                let (k, kt) = self.expr(&c.expression, None);
+                self.note_mutation(&o);
+                let t = types::index(&ot, &kt).unwrap_or(Ty::Unknown);
+                Some((LValue::Index(o, k), t))
+            }
+            ast::MemberExpression::PrivateFieldExpression(p) => {
+                self.err(p.span, "private fields are outside the compiled subset");
+                None
+            }
+        }
+    }
+
+    /// A mutation of the value `recv` evaluates to: fine on a fresh local, otherwise
+    /// the module mutates shared values.
+    fn note_mutation(&mut self, recv: &Expr) {
+        if let Expr::Local(slot) = recv {
+            if self.cur().locals[*slot as usize].fresh {
+                return;
+            }
+        }
+        self.mutates_shared = true;
+    }
+
+    fn assignment(&mut self, a: &'a ast::AssignmentExpression<'a>) -> Lowered {
+        use ast::AssignmentOperator as A;
+        let target = match &a.left {
+            ast::AssignmentTarget::AssignmentTargetIdentifier(id) => {
+                self.assign_name(id.name.as_str(), id.span)
+            }
+            other => match other.as_simple_assignment_target() {
+                Some(t) => self.simple_target(t),
+                None => {
+                    self.err(
+                        a.span,
+                        "destructuring assignment is outside the compiled subset",
+                    );
+                    None
+                }
+            },
+        };
+        let Some((lv, t)) = target else {
+            return (Expr::Undefined, Ty::Unknown);
+        };
+        let (v, vt) = self.expr(&a.right, Some(&t));
+        let op = match a.operator {
+            A::Assign => None,
+            A::Addition => Some(BinaryOp::Add),
+            A::Subtraction => Some(BinaryOp::Sub),
+            A::Multiplication => Some(BinaryOp::Mul),
+            A::Division => Some(BinaryOp::Div),
+            A::Remainder => Some(BinaryOp::Rem),
+            A::Exponential => Some(BinaryOp::Exp),
+            A::BitwiseOR => Some(BinaryOp::BitOr),
+            A::BitwiseAnd => Some(BinaryOp::BitAnd),
+            A::BitwiseXOR => Some(BinaryOp::BitXor),
+            A::ShiftLeft => Some(BinaryOp::Shl),
+            A::ShiftRight => Some(BinaryOp::Shr),
+            A::ShiftRightZeroFill => Some(BinaryOp::UShr),
+            _ => return self.unsupported(a.span, "logical assignment (`&&=`, `||=`, `??=`)"),
+        };
+        (Expr::Assign(Box::new(lv), op, Box::new(v)), vt)
+    }
+
+    fn member(&mut self, m: &'a ast::MemberExpression<'a>) -> Lowered {
+        match m {
+            ast::MemberExpression::StaticMemberExpression(s) => {
+                let name = s.property.name.as_str();
+                if let E::Identifier(id) = strip(&s.object) {
+                    if self.resolve_is_free(id.name.as_str()) {
+                        if let Some(r) = self.namespace_member(id.name.as_str(), name, s.span) {
+                            return r;
+                        }
+                    }
+                }
+                let (o, ot) = self.expr(&s.object, None);
+                if matches!(ot, Ty::Unknown) {
+                    return (
+                        Expr::Member(Box::new(o), name.to_owned(), s.optional),
+                        Ty::Unknown,
+                    );
+                }
+                let base = if s.optional {
+                    non_null(&ot)
+                } else {
+                    ot.clone()
+                };
+                if matches!(non_null(&base), Ty::Ref(_)) && name == "current" {
+                    self.mark_always();
+                }
+                if matches!(non_null(&base), Ty::DomNode) {
+                    self.mark_always();
+                }
+                match property(&base, name) {
+                    Some(t) => (Expr::Member(Box::new(o), name.to_owned(), s.optional), t),
+                    None => {
+                        self.err(
+                            s.property.span,
+                            format!(
+                                "property `{name}` does not exist on type {}",
+                                types::show(&ot)
+                            ),
+                        );
+                        (Expr::Undefined, Ty::Unknown)
+                    }
+                }
+            }
+            ast::MemberExpression::ComputedMemberExpression(c) => {
+                let (o, ot) = self.expr(&c.object, None);
+                let (k, kt) = self.expr(&c.expression, None);
+                let base = if c.optional {
+                    non_null(&ot)
+                } else {
+                    ot.clone()
+                };
+                let t = match types::index(&base, &kt) {
+                    Some(t) => t,
+                    None => {
+                        if !matches!(ot, Ty::Unknown) {
+                            self.err(
+                                c.span,
+                                format!("cannot index a value of type {}", types::show(&ot)),
+                            );
+                        }
+                        Ty::Unknown
+                    }
+                };
+                (Expr::Index(Box::new(o), Box::new(k), c.optional), t)
+            }
+            ast::MemberExpression::PrivateFieldExpression(p) => {
+                self.unsupported(p.span, "a private field")
+            }
+        }
+    }
+
+    /// Whether `name` is not a variable (so `Math` means the built-in).
+    fn resolve_is_free(&self, name: &str) -> bool {
+        !self.fns.iter().any(|f| f.lookup(name).is_some()) && !self.global_names.contains_key(name)
+    }
+
+    /// `Math.PI`, `Number.MAX_SAFE_INTEGER`, `document.title`, ...
+    fn namespace_member(&mut self, ns: &str, name: &str, span: Span) -> Option<Lowered> {
+        let r = match (ns, name) {
+            ("Math", "PI") => (Expr::Builtin(Builtin::MathPi, vec![]), Ty::Number),
+            ("Number", "MAX_SAFE_INTEGER") => (Expr::Num(9007199254740991.0), Ty::Number),
+            ("Number", "MIN_SAFE_INTEGER") => (Expr::Num(-9007199254740991.0), Ty::Number),
+            ("Number", "POSITIVE_INFINITY") => {
+                (Expr::Builtin(Builtin::Infinity, vec![]), Ty::Number)
+            }
+            ("Number", "NaN") => (Expr::Builtin(Builtin::NaN, vec![]), Ty::Number),
+            ("document", "title") => {
+                self.mark_always();
+                (Expr::Builtin(Builtin::DocumentTitle, vec![]), Ty::String)
+            }
+            (
+                "Math" | "Number" | "JSON" | "Object" | "Array" | "console" | "Date" | "window"
+                | "document" | "Promise" | "String",
+                _,
+            ) => {
+                self.err(
+                    span,
+                    format!("`{ns}.{name}` is outside the compiled subset"),
+                );
+                (Expr::Undefined, Ty::Unknown)
+            }
+            _ => return None,
+        };
+        Some(r)
+    }
+
+    // ------------------------------------------------------------------ calls
+
+    fn call(&mut self, c: &'a ast::CallExpression<'a>, want: Option<&Ty>) -> Lowered {
+        let callee = strip(&c.callee);
+        match callee {
+            E::Identifier(id) => {
+                let name = id.name.as_str();
+                if self.resolve_is_free(name) {
+                    if let Some(r) = self.react.get(name).copied() {
+                        return self.react_call(r, c, want);
+                    }
+                    if let Some(r) = self.global_call(name, c) {
+                        return r;
+                    }
+                }
+                // A custom hook: same placement rules as React's.
+                if is_hook_name(name) {
+                    if let Some(g) = self.global_names.get(name) {
+                        if g.kind == FunctionKind::Hook {
+                            self.check_hook_position(c.span, name);
+                        }
+                    }
+                }
+                let (f, ft) = self.identifier(name, id.span);
+                self.value_call(f, ft, c, want)
+            }
+            E::StaticMemberExpression(m) => {
+                let prop = m.property.name.as_str();
+                if let E::Identifier(ns) = strip(&m.object) {
+                    let nsn = ns.name.as_str();
+                    if self.resolve_is_free(nsn) {
+                        if self.react.get(nsn) == Some(&ReactName::ReactNs) {
+                            return self.react_call(react_export(prop), c, want);
+                        }
+                        if let Some(r) = self.namespace_call(nsn, prop, c) {
+                            return r;
+                        }
+                    }
+                }
+                let (recv, rt) = self.expr(&m.object, None);
+                self.method_call(recv, rt, prop, m.optional, c, want)
+            }
+            _ => {
+                let (f, ft) = self.expr(&c.callee, None);
+                self.value_call(f, ft, c, want)
+            }
+        }
+    }
+
+    fn value_call(
+        &mut self,
+        f: Expr,
+        ft: Ty,
+        c: &'a ast::CallExpression<'a>,
+        _want: Option<&Ty>,
+    ) -> Lowered {
+        let fnt = non_null(&ft);
+        let (params, ret) = match &fnt {
+            Ty::Function(ps, r) => (ps.clone(), (**r).clone()),
+            Ty::Setter(t) => (
+                vec![union(
+                    (**t).clone(),
+                    Ty::Function(vec![(**t).clone()], t.clone()),
+                )],
+                Ty::Void,
+            ),
+            Ty::Dispatch(a) => (vec![(**a).clone()], Ty::Void),
+            Ty::Unknown => (Vec::new(), Ty::Unknown),
+            other => {
+                self.err(
+                    c.span,
+                    format!("cannot call a value of type {}", types::show(other)),
+                );
+                (Vec::new(), Ty::Unknown)
+            }
+        };
+        let (args, _) = self.exprs_args(&c.arguments, &params);
+        if self.mutable_globals && matches!(f, Expr::Global(_)) {
+            self.mark_always();
+        }
+        (Expr::Call(Box::new(f), args, c.optional), ret)
+    }
+
+    /// `parseInt(x)`, `setTimeout(f, ms)`, `fetch(url)`, ...
+    fn global_call(&mut self, name: &str, c: &'a ast::CallExpression<'a>) -> Option<Lowered> {
+        let (b, want, ret) = match name {
+            "parseInt" => (Builtin::ParseInt, vec![Ty::String, Ty::Number], Ty::Number),
+            "parseFloat" => (Builtin::ParseFloat, vec![Ty::String], Ty::Number),
+            "isNaN" => (Builtin::IsNaN, vec![Ty::Number], Ty::Boolean),
+            "Number" => (Builtin::Number, vec![Ty::Unknown], Ty::Number),
+            "String" => (Builtin::String, vec![Ty::Unknown], Ty::String),
+            "Boolean" => (Builtin::Boolean, vec![Ty::Unknown], Ty::Boolean),
+            "setTimeout" => (
+                Builtin::SetTimeout,
+                vec![Ty::Function(vec![], Box::new(Ty::Void)), Ty::Number],
+                Ty::Number,
+            ),
+            "setInterval" => (
+                Builtin::SetInterval,
+                vec![Ty::Function(vec![], Box::new(Ty::Void)), Ty::Number],
+                Ty::Number,
+            ),
+            "clearTimeout" => (Builtin::ClearTimeout, vec![Ty::Number], Ty::Void),
+            "clearInterval" => (Builtin::ClearInterval, vec![Ty::Number], Ty::Void),
+            "fetch" => (
+                Builtin::Fetch,
+                vec![Ty::String],
+                Ty::Promise(Box::new(Ty::Response)),
+            ),
+            _ => return None,
+        };
+        let (args, _) = self.exprs_args(&c.arguments, &want);
+        if matches!(
+            b,
+            Builtin::SetTimeout | Builtin::SetInterval | Builtin::Fetch
+        ) {
+            self.mark_always();
+        }
+        Some((Expr::Builtin(b, args), ret))
+    }
+
+    /// `Math.max(...)`, `Object.keys(o)`, `JSON.stringify(v)`, `console.log(...)`.
+    fn namespace_call(
+        &mut self,
+        ns: &str,
+        name: &str,
+        c: &'a ast::CallExpression<'a>,
+    ) -> Option<Lowered> {
+        let num = Ty::Number;
+        let (b, want, ret): (Builtin, Vec<Ty>, Ty) = match (ns, name) {
+            ("Math", "max") => (Builtin::MathMax, vec![], num),
+            ("Math", "min") => (Builtin::MathMin, vec![], num),
+            ("Math", "round") => (Builtin::MathRound, vec![], num),
+            ("Math", "floor") => (Builtin::MathFloor, vec![], num),
+            ("Math", "ceil") => (Builtin::MathCeil, vec![], num),
+            ("Math", "abs") => (Builtin::MathAbs, vec![], num),
+            ("Math", "trunc") => (Builtin::MathTrunc, vec![], num),
+            ("Math", "sign") => (Builtin::MathSign, vec![], num),
+            ("Math", "sqrt") => (Builtin::MathSqrt, vec![], num),
+            ("Math", "pow") => (Builtin::MathPow, vec![], num),
+            ("Math", "random") => {
+                self.mark_always();
+                (Builtin::MathRandom, vec![], num)
+            }
+            ("Number", "isNaN") => (Builtin::NumberIsNaN, vec![], Ty::Boolean),
+            ("Number", "isInteger") => (Builtin::NumberIsInteger, vec![], Ty::Boolean),
+            ("Number", "isFinite") => (Builtin::NumberIsFinite, vec![], Ty::Boolean),
+            ("Number", "parseInt") => (Builtin::ParseInt, vec![], num),
+            ("Number", "parseFloat") => (Builtin::ParseFloat, vec![], num),
+            ("Array", "isArray") => (Builtin::ArrayIsArray, vec![], Ty::Boolean),
+            ("Array", "from") => {
+                let (args, tys) = self.exprs_args(&c.arguments, &[]);
+                let t = tys.first().and_then(element).unwrap_or(Ty::Unknown);
+                return Some((
+                    Expr::Builtin(Builtin::ArrayFrom, args),
+                    Ty::Array(Box::new(t)),
+                ));
+            }
+            ("Array", "of") => {
+                let (args, tys) = self.exprs_args(&c.arguments, &[]);
+                return Some((
+                    Expr::Builtin(Builtin::ArrayOf, args),
+                    Ty::Array(Box::new(union_all(tys))),
+                ));
+            }
+            ("Object", "keys") => (Builtin::ObjectKeys, vec![], Ty::Array(Box::new(Ty::String))),
+            ("Object", "values") | ("Object", "entries") => {
+                let (args, tys) = self.exprs_args(&c.arguments, &[]);
+                let v = match tys.first().map(non_null) {
+                    Some(Ty::Object(fs)) => union_all(fs.into_iter().map(|(_, t, _)| t)),
+                    Some(Ty::Dict(v)) => *v,
+                    Some(Ty::Array(e)) => *e,
+                    _ => Ty::Unknown,
+                };
+                return Some(if name == "values" {
+                    (
+                        Expr::Builtin(Builtin::ObjectValues, args),
+                        Ty::Array(Box::new(v)),
+                    )
+                } else {
+                    (
+                        Expr::Builtin(Builtin::ObjectEntries, args),
+                        Ty::Array(Box::new(Ty::Tuple(vec![Ty::String, v]))),
+                    )
+                });
+            }
+            ("Object", "assign") => {
+                let (args, tys) = self.exprs_args(&c.arguments, &[]);
+                self.mutates_shared = true;
+                return Some((
+                    Expr::Builtin(Builtin::ObjectAssign, args),
+                    tys.into_iter().next().unwrap_or(Ty::Unknown),
+                ));
+            }
+            ("Object", "fromEntries") => {
+                let (args, tys) = self.exprs_args(&c.arguments, &[]);
+                let v = tys
+                    .first()
+                    .and_then(element)
+                    .and_then(|e| types::index(&e, &Ty::NumLit(1.0)))
+                    .unwrap_or(Ty::Unknown);
+                return Some((
+                    Expr::Builtin(Builtin::ObjectFromEntries, args),
+                    Ty::Dict(Box::new(v)),
+                ));
+            }
+            ("JSON", "stringify") => (Builtin::JsonStringify, vec![], Ty::String),
+            ("JSON", "parse") => {
+                self.err(
+                    c.span,
+                    "`JSON.parse` returns any: the compiled subset needs a concrete type",
+                );
+                return Some((Expr::Undefined, Ty::Unknown));
+            }
+            ("Date", "now") => {
+                self.mark_always();
+                (Builtin::DateNow, vec![], num)
+            }
+            ("console", "log") | ("console", "info") | ("console", "debug") => {
+                (Builtin::ConsoleLog, vec![], Ty::Void)
+            }
+            ("console", "warn") => (Builtin::ConsoleWarn, vec![], Ty::Void),
+            ("console", "error") => (Builtin::ConsoleError, vec![], Ty::Void),
+            ("window", "setTimeout") => {
+                let (args, _) = self.exprs_args(
+                    &c.arguments,
+                    &[Ty::Function(vec![], Box::new(Ty::Void)), num],
+                );
+                return Some((Expr::Builtin(Builtin::SetTimeout, args), Ty::Number));
+            }
+            ("window", "clearTimeout") => (Builtin::ClearTimeout, vec![], Ty::Void),
+            ("window", "setInterval") => {
+                let (args, _) = self.exprs_args(
+                    &c.arguments,
+                    &[Ty::Function(vec![], Box::new(Ty::Void)), num],
+                );
+                return Some((Expr::Builtin(Builtin::SetInterval, args), Ty::Number));
+            }
+            ("window", "clearInterval") => (Builtin::ClearInterval, vec![], Ty::Void),
+            ("Promise", "resolve") => {
+                let (args, tys) = self.exprs_args(&c.arguments, &[]);
+                return Some((
+                    Expr::Builtin(Builtin::PromiseResolve, args),
+                    Ty::Promise(Box::new(tys.into_iter().next().unwrap_or(Ty::Undefined))),
+                ));
+            }
+            (
+                "Math" | "Number" | "JSON" | "Object" | "Array" | "console" | "Date" | "window"
+                | "document" | "Promise" | "String",
+                _,
+            ) => {
+                self.err(
+                    c.span,
+                    format!("`{ns}.{name}` is outside the compiled subset"),
+                );
+                return Some((Expr::Undefined, Ty::Unknown));
+            }
+            _ => return None,
+        };
+        let (args, _) = self.exprs_args(&c.arguments, &want);
+        Some((Expr::Builtin(b, args), ret))
+    }
+
+    fn check_hook_position(&mut self, span: Span, name: &str) {
+        let ctx = self.fns.last().unwrap();
+        let ok = matches!(ctx.kind, FunctionKind::Component | FunctionKind::Hook)
+            && ctx.cond_depth == 0
+            && self.hole_always.is_empty();
+        if !ok {
+            self.err(
+                span,
+                format!("`{name}` must be called at the top level of a component or hook"),
+            );
+        }
+    }
+
+    fn react_call(
+        &mut self,
+        r: ReactName,
+        c: &'a ast::CallExpression<'a>,
+        want: Option<&Ty>,
+    ) -> Lowered {
+        let ReactName::Hook(hook) = r else {
+            let what = match r {
+                ReactName::CreateContext => "`createContext` inside a function",
+                ReactName::Memo => "`memo` outside a module-level `const`",
+                ReactName::CreateRoot => "`createRoot` outside the render call",
+                _ => "this React API",
+            };
+            return self.unsupported(c.span, what);
+        };
+        self.check_hook_position(c.span, &format!("{hook:?}"));
+        let targ = c
+            .type_arguments
+            .as_ref()
+            .and_then(|t| t.params.first())
+            .map(|t| self.ts_type(t));
+        match hook {
+            Hook::State => {
+                let init_want = targ
+                    .clone()
+                    .map(|t| union(t.clone(), Ty::Function(vec![], Box::new(t))));
+                let args = self.arg_exprs(&c.arguments, &init_want.into_iter().collect::<Vec<_>>());
+                let (init, it) = args
+                    .into_iter()
+                    .next()
+                    .unwrap_or((Expr::Undefined, Ty::Undefined));
+                let st = match targ {
+                    Some(t) => t,
+                    None => match &it {
+                        Ty::Function(ps, r) if ps.is_empty() => widen(r),
+                        t => widen(t),
+                    },
+                };
+                (
+                    Expr::Hook(Hook::State, vec![init]),
+                    Ty::Tuple(vec![st.clone(), Ty::Setter(Box::new(st))]),
+                )
+            }
+            Hook::Reducer => {
+                let args = self.arg_exprs(&c.arguments, &[]);
+                let mut it = args.into_iter();
+                let (reducer, rt) = it.next().unwrap_or((Expr::Undefined, Ty::Unknown));
+                let (init, initt) = it.next().unwrap_or((Expr::Undefined, Ty::Undefined));
+                let init_fn = it.next();
+                let (st, at) = match &rt {
+                    Ty::Function(ps, _) => (
+                        ps.first().cloned().unwrap_or(Ty::Unknown),
+                        ps.get(1).cloned().unwrap_or(Ty::Undefined),
+                    ),
+                    _ => (widen(&initt), Ty::Unknown),
+                };
+                let mut hargs = vec![reducer, init];
+                if let Some((f, _)) = init_fn {
+                    hargs.push(f);
+                }
+                (
+                    Expr::Hook(Hook::Reducer, hargs),
+                    Ty::Tuple(vec![st, Ty::Dispatch(Box::new(at))]),
+                )
+            }
+            Hook::Memo | Hook::Callback => {
+                let fwant = match (&targ, hook) {
+                    (Some(t), Hook::Memo) => Ty::Function(vec![], Box::new(t.clone())),
+                    (Some(t), _) => t.clone(),
+                    (None, _) => Ty::Unknown,
+                };
+                let args = self.arg_exprs(&c.arguments, &[fwant]);
+                let mut it = args.into_iter();
+                let (f, ft) = it.next().unwrap_or((Expr::Undefined, Ty::Unknown));
+                let (deps, _) = it.next().unwrap_or((Expr::Undefined, Ty::Undefined));
+                let t = match (hook, &ft) {
+                    (Hook::Memo, Ty::Function(_, r)) => (**r).clone(),
+                    (Hook::Memo, _) => Ty::Unknown,
+                    _ => ft.clone(),
+                };
+                (Expr::Hook(hook, vec![f, deps]), t)
+            }
+            Hook::Ref => {
+                let args = self.arg_exprs(&c.arguments, &targ.iter().cloned().collect::<Vec<_>>());
+                let (init, it) = args
+                    .into_iter()
+                    .next()
+                    .unwrap_or((Expr::Undefined, Ty::Undefined));
+                let t = match targ {
+                    Some(Ty::DomNode) => union(Ty::DomNode, Ty::Null),
+                    Some(t) => t,
+                    None => widen(&it),
+                };
+                (Expr::Hook(Hook::Ref, vec![init]), Ty::Ref(Box::new(t)))
+            }
+            Hook::Effect | Hook::LayoutEffect => {
+                let fwant = Ty::Function(
+                    vec![],
+                    Box::new(union(Ty::Void, Ty::Function(vec![], Box::new(Ty::Void)))),
+                );
+                let args = self.arg_exprs(&c.arguments, &[fwant]);
+                let mut it = args.into_iter();
+                let (f, _) = it.next().unwrap_or((Expr::Undefined, Ty::Unknown));
+                let deps = it.next().map(|(d, _)| d);
+                let mut hargs = vec![f];
+                match deps {
+                    Some(d) => hargs.push(d),
+                    None => self.cur().has_depless_effect = true,
+                }
+                (Expr::Hook(hook, hargs), Ty::Void)
+            }
+            Hook::Context => {
+                let args = self.arg_exprs(&c.arguments, &[]);
+                let (ctx, ct) = args
+                    .into_iter()
+                    .next()
+                    .unwrap_or((Expr::Undefined, Ty::Unknown));
+                let t = match ct {
+                    Ty::Context(t) => *t,
+                    other => {
+                        self.err(
+                            c.span,
+                            format!("`useContext` of a value of type {}", types::show(&other)),
+                        );
+                        Ty::Unknown
+                    }
+                };
+                // A context read cannot be tracked by frame identity.
+                (Expr::Hook(Hook::Context, vec![ctx]), t)
+            }
+            Hook::Id => {
+                let _ = want;
+                (Expr::Hook(Hook::Id, vec![]), Ty::String)
+            }
+        }
+    }
+
+    fn method_call(
+        &mut self,
+        recv: Expr,
+        rt: Ty,
+        name: &str,
+        optional: bool,
+        c: &'a ast::CallExpression<'a>,
+        want: Option<&Ty>,
+    ) -> Lowered {
+        let base = non_null(&rt);
+        // A function-valued property: `props.onToggle(id)`.
+        if let Ty::Object(_) = &base {
+            if let Some(ft) = property(&base, name) {
+                let callee = Expr::Member(Box::new(recv), name.to_owned(), optional);
+                return self.value_call(callee, ft, c, want);
+            }
+        }
+        let is_arr = types::is_array(&base);
+        let is_str = types::is_stringy(&base);
+        let elem = element(&base).unwrap_or(Ty::Unknown);
+        let arr = || Ty::Array(Box::new(elem.clone()));
+        let num = Ty::Number;
+        let s = Ty::String;
+        use Method as M;
+        let cb = |ret: Ty| Ty::Function(vec![elem.clone(), Ty::Number, arr()], Box::new(ret));
+        let (m, want_args, ret): (Method, Vec<Ty>, Ty) = if is_arr {
+            match name {
+                "map" => {
+                    let args = self.arg_exprs(&c.arguments, &[cb(Ty::Unknown)]);
+                    let r = match args.first().map(|a| &a.1) {
+                        Some(Ty::Function(_, r)) => (**r).clone(),
+                        _ => Ty::Unknown,
+                    };
+                    let args = args.into_iter().map(|(x, _)| ArrayItem::Item(x)).collect();
+                    return (
+                        Expr::Method {
+                            recv: Box::new(recv),
+                            method: M::ArrayMap,
+                            args,
+                            optional,
+                        },
+                        Ty::Array(Box::new(r)),
+                    );
+                }
+                "flatMap" => {
+                    let args = self.arg_exprs(&c.arguments, &[cb(Ty::Unknown)]);
+                    let r = match args.first().map(|a| &a.1) {
+                        Some(Ty::Function(_, r)) => element(r).unwrap_or((**r).clone()),
+                        _ => Ty::Unknown,
+                    };
+                    let args = args.into_iter().map(|(x, _)| ArrayItem::Item(x)).collect();
+                    return (
+                        Expr::Method {
+                            recv: Box::new(recv),
+                            method: M::ArrayFlatMap,
+                            args,
+                            optional,
+                        },
+                        Ty::Array(Box::new(r)),
+                    );
+                }
+                "reduce" => {
+                    // The accumulator is typed by the initial value.
+                    let init = c.arguments.get(1).and_then(|a| a.as_expression());
+                    let (init_x, init_t) = match init {
+                        Some(e) => {
+                            let (x, t) = self.expr(e, None);
+                            (Some(x), widen(&t))
+                        }
+                        None => (None, elem.clone()),
+                    };
+                    let acc = match init {
+                        Some(E::ArrayExpression(a)) if a.elements.is_empty() => {
+                            // `[]` alone says nothing: type from `want`.
+                            want.cloned().unwrap_or(init_t)
+                        }
+                        _ => init_t,
+                    };
+                    let fw = Ty::Function(
+                        vec![acc.clone(), elem.clone(), Ty::Number],
+                        Box::new(acc.clone()),
+                    );
+                    let f = c.arguments.first().and_then(|a| a.as_expression());
+                    let (fx, _) = match f {
+                        Some(f) => self.expr(f, Some(&fw)),
+                        None => (Expr::Undefined, Ty::Unknown),
+                    };
+                    let mut args = vec![ArrayItem::Item(fx)];
+                    if let Some(i) = init_x {
+                        args.push(ArrayItem::Item(i));
+                    }
+                    return (
+                        Expr::Method {
+                            recv: Box::new(recv),
+                            method: M::ArrayReduce,
+                            args,
+                            optional,
+                        },
+                        acc,
+                    );
+                }
+                "filter" => (M::ArrayFilter, vec![cb(Ty::Boolean)], arr()),
+                "find" => (
+                    M::ArrayFind,
+                    vec![cb(Ty::Boolean)],
+                    union(elem.clone(), Ty::Undefined),
+                ),
+                "findLast" => (
+                    M::ArrayFindLast,
+                    vec![cb(Ty::Boolean)],
+                    union(elem.clone(), Ty::Undefined),
+                ),
+                "findIndex" => (M::ArrayFindIndex, vec![cb(Ty::Boolean)], num),
+                "some" => (M::ArraySome, vec![cb(Ty::Boolean)], Ty::Boolean),
+                "every" => (M::ArrayEvery, vec![cb(Ty::Boolean)], Ty::Boolean),
+                "forEach" => (M::ArrayForEach, vec![cb(Ty::Void)], Ty::Void),
+                "slice" => (M::ArraySlice, vec![num.clone(), num], arr()),
+                "concat" => (M::ArrayConcat, vec![], arr()),
+                "includes" => (M::ArrayIncludes, vec![elem.clone()], Ty::Boolean),
+                "indexOf" => (M::ArrayIndexOf, vec![elem.clone()], num),
+                "join" => (M::ArrayJoin, vec![s.clone()], s),
+                "sort" | "toSorted" => {
+                    if name == "sort" {
+                        self.note_mutation(&recv);
+                    }
+                    (
+                        if name == "sort" {
+                            M::ArraySort
+                        } else {
+                            M::ArrayToSorted
+                        },
+                        vec![Ty::Function(
+                            vec![elem.clone(), elem.clone()],
+                            Box::new(num),
+                        )],
+                        arr(),
+                    )
+                }
+                "reverse" => {
+                    self.note_mutation(&recv);
+                    (M::ArrayReverse, vec![], arr())
+                }
+                "toReversed" => (M::ArrayToReversed, vec![], arr()),
+                "push" => {
+                    self.note_mutation(&recv);
+                    (
+                        M::ArrayPush,
+                        vec![elem.clone(), elem.clone(), elem.clone()],
+                        num,
+                    )
+                }
+                "unshift" => {
+                    self.note_mutation(&recv);
+                    (M::ArrayUnshift, vec![elem.clone(), elem.clone()], num)
+                }
+                "pop" => {
+                    self.note_mutation(&recv);
+                    (M::ArrayPop, vec![], union(elem.clone(), Ty::Undefined))
+                }
+                "shift" => {
+                    self.note_mutation(&recv);
+                    (M::ArrayShift, vec![], union(elem.clone(), Ty::Undefined))
+                }
+                "splice" => {
+                    self.note_mutation(&recv);
+                    (
+                        M::ArraySplice,
+                        vec![num.clone(), num, elem.clone(), elem.clone()],
+                        arr(),
+                    )
+                }
+                "fill" => {
+                    self.note_mutation(&recv);
+                    (M::ArrayFill, vec![elem.clone()], arr())
+                }
+                "flat" => (
+                    M::ArrayFlat,
+                    vec![],
+                    Ty::Array(Box::new(element(&elem).unwrap_or(elem.clone()))),
+                ),
+                "at" => (M::ArrayAt, vec![num], union(elem.clone(), Ty::Undefined)),
+                "keys" => (M::ArrayKeys, vec![], Ty::Array(Box::new(num))),
+                "entries" => (
+                    M::ArrayEntries,
+                    vec![],
+                    Ty::Array(Box::new(Ty::Tuple(vec![num, elem.clone()]))),
+                ),
+                "with" => (M::ArrayWith, vec![num, elem.clone()], arr()),
+                "toString" => (M::ToString, vec![], s),
+                _ => {
+                    self.err(
+                        c.span,
+                        format!("array method `{name}` is outside the compiled subset"),
+                    );
+                    return (Expr::Undefined, Ty::Unknown);
+                }
+            }
+        } else if is_str {
+            match name {
+                "trim" => (M::StrTrim, vec![], s),
+                "trimStart" => (M::StrTrimStart, vec![], s),
+                "trimEnd" => (M::StrTrimEnd, vec![], s),
+                "toUpperCase" | "toLocaleUpperCase" => (M::StrToUpperCase, vec![], s),
+                "toLowerCase" | "toLocaleLowerCase" => (M::StrToLowerCase, vec![], s),
+                "includes" => (M::StrIncludes, vec![s], Ty::Boolean),
+                "startsWith" => (M::StrStartsWith, vec![s], Ty::Boolean),
+                "endsWith" => (M::StrEndsWith, vec![s], Ty::Boolean),
+                "indexOf" => (M::StrIndexOf, vec![s], num),
+                "lastIndexOf" => (M::StrLastIndexOf, vec![s], num),
+                "slice" => (M::StrSlice, vec![num.clone(), num], s),
+                "substring" => (M::StrSubstring, vec![num.clone(), num], s),
+                "split" => (M::StrSplit, vec![s], Ty::Array(Box::new(Ty::String))),
+                "replace" => (M::StrReplace, vec![s.clone(), s.clone()], s),
+                "replaceAll" => (M::StrReplaceAll, vec![s.clone(), s.clone()], s),
+                "repeat" => (M::StrRepeat, vec![num], s),
+                "padStart" => (M::StrPadStart, vec![num, s.clone()], s),
+                "padEnd" => (M::StrPadEnd, vec![num, s.clone()], s),
+                "charAt" => (M::StrCharAt, vec![num], s),
+                "charCodeAt" => (M::StrCharCodeAt, vec![num.clone()], num),
+                "at" => (M::StrAt, vec![num], union(s, Ty::Undefined)),
+                "localeCompare" => (M::StrLocaleCompare, vec![s], num),
+                "concat" => (M::StrConcat, vec![], s),
+                "toString" => (M::ToString, vec![], s),
+                _ => {
+                    self.err(
+                        c.span,
+                        format!("string method `{name}` is outside the compiled subset"),
+                    );
+                    return (Expr::Undefined, Ty::Unknown);
+                }
+            }
+        } else {
+            match (&base, name) {
+                (Ty::Number | Ty::NumLit(_), "toFixed") => (M::NumToFixed, vec![num], s),
+                (Ty::Number | Ty::NumLit(_), "toString") => (M::NumToString, vec![num], s),
+                (Ty::Boolean, "toString") => (M::ToString, vec![], s),
+                (Ty::Promise(t), "then") => {
+                    let args = self.arg_exprs(
+                        &c.arguments,
+                        &[Ty::Function(vec![(**t).clone()], Box::new(Ty::Unknown))],
+                    );
+                    let r = match args.first().map(|a| &a.1) {
+                        Some(Ty::Function(_, r)) => match &**r {
+                            Ty::Promise(inner) => (**inner).clone(),
+                            other => other.clone(),
+                        },
+                        _ => Ty::Unknown,
+                    };
+                    let args = args.into_iter().map(|(x, _)| ArrayItem::Item(x)).collect();
+                    return (
+                        Expr::Method {
+                            recv: Box::new(recv),
+                            method: M::PromiseThen,
+                            args,
+                            optional,
+                        },
+                        Ty::Promise(Box::new(r)),
+                    );
+                }
+                (Ty::Promise(t), "catch") => (
+                    M::PromiseCatch,
+                    vec![Ty::Function(vec![Ty::String], Box::new(Ty::Unknown))],
+                    Ty::Promise(t.clone()),
+                ),
+                (Ty::Promise(t), "finally") => (
+                    M::PromiseFinally,
+                    vec![Ty::Function(vec![], Box::new(Ty::Void))],
+                    Ty::Promise(t.clone()),
+                ),
+                (Ty::Response, "json") => {
+                    (M::ResponseJson, vec![], Ty::Promise(Box::new(Ty::Unknown)))
+                }
+                (Ty::Response, "text") => {
+                    (M::ResponseText, vec![], Ty::Promise(Box::new(Ty::String)))
+                }
+                (Ty::DomNode, "focus") => (M::NodeFocus, vec![], Ty::Void),
+                (Ty::DomNode, "blur") => (M::NodeBlur, vec![], Ty::Void),
+                (Ty::DomNode, "select") => (M::NodeSelect, vec![], Ty::Void),
+                (Ty::Event, "preventDefault") => (M::EventPreventDefault, vec![], Ty::Void),
+                (Ty::Event, "stopPropagation") => (M::EventStopPropagation, vec![], Ty::Void),
+                (Ty::Unknown, _) => {
+                    self.err(
+                        c.span,
+                        format!("calling `.{name}` on a value of type unknown"),
+                    );
+                    return (Expr::Undefined, Ty::Unknown);
+                }
+                (t, _) => {
+                    self.err(
+                        c.span,
+                        format!(
+                            "method `{name}` on type {} is outside the compiled subset",
+                            types::show(t)
+                        ),
+                    );
+                    return (Expr::Undefined, Ty::Unknown);
+                }
+            }
+        };
+        let (args, _) = self.exprs_args(&c.arguments, &want_args);
+        (
+            Expr::Method {
+                recv: Box::new(recv),
+                method: m,
+                args,
+                optional,
+            },
+            ret,
+        )
+    }
+
+    // ------------------------------------------------------------------ JSX
+
+    fn jsx_element(&mut self, el: &'a ast::JSXElement<'a>) -> Lowered {
+        let name = &el.opening_element.name;
+        match self.jsx_kind(name) {
+            JsxKind::Host(tag) => {
+                let mut tb = TemplateBuilder {
+                    holes: Vec::new(),
+                    meta: Vec::new(),
+                };
+                let mut key = None;
+                let node = self.host_node(el, &tag, &mut tb, Some(&mut key));
+                let tid = self.templates.len() as u32;
+                self.templates.push(Template {
+                    root: node,
+                    holes: tb.meta,
+                });
+                (
+                    Expr::Element(Box::new(ElementExpr::Template {
+                        template: tid,
+                        holes: tb.holes,
+                        key,
+                    })),
+                    Ty::Node,
+                )
+            }
+            JsxKind::Fragment => {
+                let mut key = None;
+                for a in &el.opening_element.attributes {
+                    if let ast::JSXAttributeItem::Attribute(a) = a {
+                        if jsx_attr_name(&a.name) == "key" {
+                            key = self.jsx_attr_value(a, None).map(|x| x.0);
+                        } else {
+                            self.err(a.span, "a Fragment takes only `key`");
+                        }
+                    }
+                }
+                let children = self.jsx_children_exprs(&el.children);
+                (
+                    Expr::Element(Box::new(ElementExpr::Fragment { children, key })),
+                    Ty::Node,
+                )
+            }
+            JsxKind::Provider(ctx, vt) => {
+                let mut key = None;
+                let mut value = None;
+                for a in &el.opening_element.attributes {
+                    match a {
+                        ast::JSXAttributeItem::Attribute(a) => {
+                            match jsx_attr_name(&a.name).as_str() {
+                                "key" => key = self.jsx_attr_value(a, None).map(|x| x.0),
+                                "value" => value = self.jsx_attr_value(a, Some(&vt)).map(|x| x.0),
+                                _ => self.err(a.span, "a Provider takes only `value` and `key`"),
+                            }
+                        }
+                        ast::JSXAttributeItem::SpreadAttribute(s) => {
+                            self.err(
+                                s.span,
+                                "spread props on a Provider are outside the compiled subset",
+                            );
+                        }
+                    }
+                }
+                let children = self.jsx_children_exprs(&el.children);
+                (
+                    Expr::Element(Box::new(ElementExpr::Provider {
+                        context: ctx,
+                        value: value.unwrap_or(Expr::Undefined),
+                        children,
+                        key,
+                    })),
+                    Ty::Node,
+                )
+            }
+            JsxKind::Component(callee, props_ty) => {
+                let mut props = Vec::new();
+                let mut key = None;
+                for a in &el.opening_element.attributes {
+                    match a {
+                        ast::JSXAttributeItem::Attribute(a) => {
+                            let name = jsx_attr_name(&a.name);
+                            if name == "key" {
+                                key = self.jsx_attr_value(a, None).map(|x| x.0);
+                                continue;
+                            }
+                            if name == "ref" {
+                                self.err(
+                                    a.span,
+                                    "`ref` on a component is outside the compiled subset",
+                                );
+                                continue;
+                            }
+                            let want = props_ty.as_ref().and_then(|t| property(t, &name));
+                            if props_ty
+                                .as_ref()
+                                .is_some_and(|t| matches!(t, Ty::Object(_)))
+                                && want.is_none()
+                            {
+                                self.err(a.span, format!("the component has no prop `{name}`"));
+                            }
+                            if let Some((x, _)) = self.jsx_attr_value(a, want.as_ref()) {
+                                props.push(Prop::KeyValue(name, x));
+                            }
+                        }
+                        ast::JSXAttributeItem::SpreadAttribute(s) => {
+                            let (x, _) = self.expr(&s.argument, props_ty.as_ref());
+                            props.push(Prop::Spread(x));
+                        }
+                    }
+                }
+                let mut kids = self.jsx_children_exprs(&el.children);
+                let children = match kids.len() {
+                    0 => None,
+                    1 => kids.pop(),
+                    _ => Some(Expr::Array(kids.into_iter().map(ArrayItem::Item).collect())),
+                };
+                (
+                    Expr::Element(Box::new(ElementExpr::Component {
+                        callee,
+                        props,
+                        children,
+                        key,
+                    })),
+                    Ty::Node,
+                )
+            }
+            JsxKind::Invalid => (Expr::Undefined, Ty::Unknown),
+        }
+    }
+
+    fn jsx_kind(&mut self, name: &'a ast::JSXElementName<'a>) -> JsxKind {
+        match name {
+            ast::JSXElementName::Identifier(id) => JsxKind::Host(id.name.to_string()),
+            ast::JSXElementName::IdentifierReference(id) => {
+                let n = id.name.as_str();
+                if self.resolve_is_free(n) {
+                    match self.react.get(n) {
+                        Some(ReactName::Fragment | ReactName::StrictMode) => {
+                            return JsxKind::Fragment
+                        }
+                        Some(_) => {
+                            self.err(id.span, format!("`<{n}>` is outside the compiled subset"));
+                            return JsxKind::Invalid;
+                        }
+                        None => {}
+                    }
+                }
+                let (callee, ty) = self.identifier(n, id.span);
+                let props = match &ty {
+                    Ty::Function(ps, _) => ps.first().cloned(),
+                    Ty::Unknown => None,
+                    other => {
+                        self.err(
+                            id.span,
+                            format!(
+                                "`<{n}>`: a value of type {} is not a component",
+                                types::show(other)
+                            ),
+                        );
+                        return JsxKind::Invalid;
+                    }
+                };
+                JsxKind::Component(callee, props.filter(|p| !matches!(p, Ty::Unknown)))
+            }
+            ast::JSXElementName::MemberExpression(m) => {
+                let prop = m.property.name.as_str();
+                if let ast::JSXMemberExpressionObject::IdentifierReference(obj) = &m.object {
+                    let on = obj.name.as_str();
+                    if self.resolve_is_free(on) && self.react.get(on) == Some(&ReactName::ReactNs) {
+                        return match prop {
+                            "Fragment" | "StrictMode" => JsxKind::Fragment,
+                            _ => {
+                                self.err(
+                                    m.span,
+                                    format!("`<React.{prop}>` is outside the compiled subset"),
+                                );
+                                JsxKind::Invalid
+                            }
+                        };
+                    }
+                    if prop == "Provider" {
+                        let (ctx, ct) = self.identifier(on, obj.span);
+                        return match ct {
+                            Ty::Context(t) => JsxKind::Provider(ctx, *t),
+                            other => {
+                                self.err(
+                                    m.span,
+                                    format!(
+                                        "`<{on}.Provider>` on a value of type {}",
+                                        types::show(&other)
+                                    ),
+                                );
+                                JsxKind::Invalid
+                            }
+                        };
+                    }
+                }
+                self.err(m.span, "this element name is outside the compiled subset");
+                JsxKind::Invalid
+            }
+            ast::JSXElementName::NamespacedName(n) => {
+                self.err(
+                    n.span,
+                    "namespaced element names are outside the compiled subset",
+                );
+                JsxKind::Invalid
+            }
+            ast::JSXElementName::ThisExpression(t) => {
+                self.err(t.span, "`this` is outside the compiled subset");
+                JsxKind::Invalid
+            }
+        }
+    }
+
+    /// An attribute's value: a string, an expression, or `true` when absent.
+    fn jsx_attr_value(
+        &mut self,
+        a: &'a ast::JSXAttribute<'a>,
+        want: Option<&Ty>,
+    ) -> Option<Lowered> {
+        match &a.value {
+            None => Some((Expr::Bool(true), Ty::Boolean)),
+            Some(ast::JSXAttributeValue::StringLiteral(s)) => {
+                let v = decode_entities(s.value.as_str());
+                Some((Expr::Str(v.clone()), Ty::Lit(v)))
+            }
+            Some(ast::JSXAttributeValue::ExpressionContainer(c)) => match &c.expression {
+                ast::JSXExpression::EmptyExpression(e) => {
+                    self.err(e.span, "an empty attribute expression");
+                    None
+                }
+                other => Some(self.expr(other.as_expression().expect("expression"), want)),
+            },
+            Some(ast::JSXAttributeValue::Element(e)) => Some(self.jsx_element(e)),
+            Some(ast::JSXAttributeValue::Fragment(f)) => {
+                let children = self.jsx_children_exprs(&f.children);
+                Some((
+                    Expr::Element(Box::new(ElementExpr::Fragment {
+                        children,
+                        key: None,
+                    })),
+                    Ty::Node,
+                ))
+            }
+        }
+    }
+
+    /// Children as a list of expressions (for components, fragments and providers).
+    fn jsx_children_exprs(
+        &mut self,
+        children: &'a oxc_allocator::Vec<'a, ast::JSXChild<'a>>,
+    ) -> Vec<Expr> {
+        let mut out = Vec::new();
+        for c in children {
+            match c {
+                ast::JSXChild::Text(t) => {
+                    if let Some(s) = clean_jsx_text(t.value.as_str()) {
+                        out.push(Expr::Str(s));
+                    }
+                }
+                ast::JSXChild::Element(e) => out.push(self.jsx_element(e).0),
+                ast::JSXChild::Fragment(f) => {
+                    let children = self.jsx_children_exprs(&f.children);
+                    out.push(Expr::Element(Box::new(ElementExpr::Fragment {
+                        children,
+                        key: None,
+                    })));
+                }
+                ast::JSXChild::ExpressionContainer(ec) => match &ec.expression {
+                    ast::JSXExpression::EmptyExpression(_) => {}
+                    other => {
+                        let e = other.as_expression().expect("expression");
+                        let (x, t) = self.expr(e, Some(&Ty::Node));
+                        self.check_renderable(&t, e.span());
+                        out.push(x);
+                    }
+                },
+                ast::JSXChild::Spread(s) => {
+                    self.err(s.span, "spread children are outside the compiled subset");
+                }
+            }
+        }
+        out
+    }
+
+    fn check_renderable(&mut self, t: &Ty, span: Span) {
+        if !matches!(t, Ty::Unknown) && !types::is_renderable(t) {
+            self.err(
+                span,
+                format!("a value of type {} cannot be rendered", types::show(t)),
+            );
+        }
+    }
+
+    /// Lowers a host element into template nodes, adding holes to `tb`.
+    fn host_node(
+        &mut self,
+        el: &'a ast::JSXElement<'a>,
+        tag: &str,
+        tb: &mut TemplateBuilder,
+        key_out: Option<&mut Option<Expr>>,
+    ) -> TNode {
+        let mut attrs = Vec::new();
+        let mut key = None;
+        for a in &el.opening_element.attributes {
+            match a {
+                ast::JSXAttributeItem::Attribute(a) => {
+                    let name = jsx_attr_name(&a.name);
+                    if name == "key" {
+                        key = self.jsx_attr_value(a, None).map(|x| x.0);
+                        continue;
+                    }
+                    if name == "dangerouslySetInnerHTML" {
+                        self.err(
+                            a.span,
+                            "`dangerouslySetInnerHTML` is outside the compiled subset",
+                        );
+                        continue;
+                    }
+                    if name == "ref" {
+                        let hole = self.hole(tb, |l| {
+                            l.jsx_attr_value(a, None)
+                                .unwrap_or((Expr::Undefined, Ty::Unknown))
+                        });
+                        attrs.push(TAttr::Ref(hole));
+                        continue;
+                    }
+                    // A string that React writes as-is: a static attribute.
+                    if let Some(ast::JSXAttributeValue::StringLiteral(s)) = &a.value {
+                        if let Some(dom) = static_attr_name(&name) {
+                            attrs.push(TAttr::Static(dom, decode_entities(s.value.as_str())));
+                            continue;
+                        }
+                    }
+                    let want = prop_want(&name);
+                    let hole = self.hole(tb, |l| {
+                        l.jsx_attr_value(a, want.as_ref())
+                            .unwrap_or((Expr::Undefined, Ty::Unknown))
+                    });
+                    attrs.push(TAttr::Dynamic(name, hole));
+                }
+                ast::JSXAttributeItem::SpreadAttribute(s) => {
+                    let hole = self.hole(tb, |l| l.expr(&s.argument, None));
+                    attrs.push(TAttr::Spread(hole));
+                }
+            }
+        }
+        match key_out {
+            Some(k) => *k = key,
+            None => {
+                // A key below the root of a template changes nothing React renders.
+            }
+        }
+        let mut children = Vec::new();
+        for c in &el.children {
+            match c {
+                ast::JSXChild::Text(t) => {
+                    if let Some(s) = clean_jsx_text(t.value.as_str()) {
+                        children.push(TNode::Text(s));
+                    }
+                }
+                ast::JSXChild::Element(e) => match self.jsx_kind(&e.opening_element.name) {
+                    JsxKind::Host(t) => children.push(self.host_node(e, &t, tb, None)),
+                    _ => {
+                        let hole = self.hole(tb, |l| l.jsx_element(e));
+                        children.push(TNode::Hole(hole));
+                    }
+                },
+                ast::JSXChild::Fragment(f) => {
+                    let hole = self.hole(tb, |l| {
+                        let children = l.jsx_children_exprs(&f.children);
+                        (
+                            Expr::Element(Box::new(ElementExpr::Fragment {
+                                children,
+                                key: None,
+                            })),
+                            Ty::Node,
+                        )
+                    });
+                    children.push(TNode::Hole(hole));
+                }
+                ast::JSXChild::ExpressionContainer(ec) => match &ec.expression {
+                    ast::JSXExpression::EmptyExpression(_) => {}
+                    ast::JSXExpression::StringLiteral(s) => {
+                        if !s.value.is_empty() {
+                            children.push(TNode::Text(s.value.to_string()));
+                        }
+                    }
+                    other => {
+                        let e = other.as_expression().expect("expression");
+                        let hole = self.hole(tb, |l| {
+                            let (x, t) = l.expr(e, Some(&Ty::Node));
+                            l.check_renderable(&t, e.span());
+                            (x, t)
+                        });
+                        children.push(TNode::Hole(hole));
+                    }
+                },
+                ast::JSXChild::Spread(s) => {
+                    self.err(s.span, "spread children are outside the compiled subset");
+                }
+            }
+        }
+        if matches!(tag, "textarea") && !children.is_empty() {
+            self.err(
+                el.span,
+                "`<textarea>` children: use `value` or `defaultValue`",
+            );
+        }
+        TNode::Element {
+            tag: tag.to_owned(),
+            attrs,
+            children,
+        }
+    }
+
+    /// Lowers one hole expression and records what it depends on.
+    fn hole(&mut self, tb: &mut TemplateBuilder, f: impl FnOnce(&mut Self) -> Lowered) -> u32 {
+        self.hole_always.push(false);
+        let (x, t) = f(self);
+        let always = self.hole_always.pop().unwrap();
+        let mut deps = BTreeSet::new();
+        let mut hook = false;
+        self.free_slots(&x, &mut deps, &mut hook);
+        if hook {
+            self.err(Span::default(), "a hook called inside JSX");
+        }
+        let idx = tb.holes.len() as u32;
+        tb.holes.push(x);
+        tb.meta.push(Hole {
+            deps: deps
+                .into_iter()
+                .map(|(k, n)| {
+                    if k == 0 {
+                        Capture::Local(n)
+                    } else {
+                        Capture::Capture(n)
+                    }
+                })
+                .collect(),
+            always,
+            ty: t,
+        });
+        // A nested hole leaves its parent hole's flag set too.
+        if always {
+            self.mark_always();
+        }
+        idx
+    }
+
+    /// The frame slots `x` reads: `(0, slot)` for locals, `(1, idx)` for captures.
+    fn free_slots(&self, x: &Expr, out: &mut BTreeSet<(u8, u32)>, hook: &mut bool) {
+        walk_expr(x, &mut |e| match e {
+            Expr::Local(n) => {
+                out.insert((0, *n));
+            }
+            Expr::Capture(n) => {
+                out.insert((1, *n));
+            }
+            Expr::Closure(f) => {
+                if let Some(Some(func)) = self.functions.get(*f as usize) {
+                    for c in &func.captures {
+                        match c {
+                            Capture::Local(n) => out.insert((0, *n)),
+                            Capture::Capture(n) => out.insert((1, *n)),
+                        };
+                    }
+                }
+            }
+            Expr::Hook(..) => *hook = true,
+            _ => {}
+        });
+    }
+}
+
+enum JsxKind {
+    Host(String),
+    Fragment,
+    Provider(Expr, Ty),
+    Component(Expr, Option<Ty>),
+    Invalid,
+}
+
+enum PathStep {
+    Key(String),
+    Index(usize),
+}
+
+/// Every name a binding pattern binds, with the path from the bound value.
+fn binding_names(p: &ast::BindingPattern<'_>, out: &mut Vec<(String, Vec<PathStep>)>) {
+    fn go(
+        p: &ast::BindingPattern<'_>,
+        path: &mut Vec<(bool, String, usize)>,
+        out: &mut Vec<(String, Vec<PathStep>)>,
+    ) {
+        match p {
+            ast::BindingPattern::BindingIdentifier(id) => out.push((
+                id.name.to_string(),
+                path.iter()
+                    .map(|(is_key, k, i)| {
+                        if *is_key {
+                            PathStep::Key(k.clone())
+                        } else {
+                            PathStep::Index(*i)
+                        }
+                    })
+                    .collect(),
+            )),
+            ast::BindingPattern::ArrayPattern(a) => {
+                for (i, el) in a.elements.iter().enumerate() {
+                    if let Some(el) = el {
+                        path.push((false, String::new(), i));
+                        go(el, path, out);
+                        path.pop();
+                    }
+                }
+            }
+            ast::BindingPattern::ObjectPattern(o) => {
+                for prop in &o.properties {
+                    if let Some(k) = property_key_name(&prop.key) {
+                        path.push((true, k, 0));
+                        go(&prop.value, path, out);
+                        path.pop();
+                    }
+                }
+            }
+            ast::BindingPattern::AssignmentPattern(a) => go(&a.left, path, out),
+        }
+    }
+    go(p, &mut Vec::new(), out)
+}
+
+fn pattern_display(p: &ast::BindingPattern<'_>) -> String {
+    match p {
+        ast::BindingPattern::BindingIdentifier(id) => id.name.to_string(),
+        ast::BindingPattern::ObjectPattern(_) => "{...}".into(),
+        ast::BindingPattern::ArrayPattern(_) => "[...]".into(),
+        ast::BindingPattern::AssignmentPattern(a) => pattern_display(&a.left),
+    }
+}
+
+fn property_key_name(k: &ast::PropertyKey<'_>) -> Option<String> {
+    match k {
+        ast::PropertyKey::StaticIdentifier(id) => Some(id.name.to_string()),
+        ast::PropertyKey::StringLiteral(s) => Some(s.value.to_string()),
+        ast::PropertyKey::NumericLiteral(n) => Some(crate::lower::num_key(n.value)),
+        _ => None,
+    }
+}
+
+pub(crate) fn num_key(n: f64) -> String {
+    if n.fract() == 0.0 && n.abs() < 1e15 {
+        format!("{}", n as i64)
+    } else {
+        format!("{n}")
+    }
+}
+
+fn type_name(n: &ast::TSTypeName<'_>) -> String {
+    match n {
+        ast::TSTypeName::IdentifierReference(id) => id.name.to_string(),
+        ast::TSTypeName::QualifiedName(q) => format!("{}.{}", type_name(&q.left), q.right.name),
+        ast::TSTypeName::ThisExpression(_) => "this".into(),
+    }
+}
+
+/// Unwraps parentheses and TypeScript-only wrappers.
+fn strip<'b, 'a>(e: &'b E<'a>) -> &'b E<'a> {
+    match e {
+        E::ParenthesizedExpression(p) => strip(&p.expression),
+        E::TSAsExpression(a) => strip(&a.expression),
+        E::TSSatisfiesExpression(a) => strip(&a.expression),
+        E::TSNonNullExpression(a) => strip(&a.expression),
+        E::TSTypeAssertion(a) => strip(&a.expression),
+        E::TSInstantiationExpression(a) => strip(&a.expression),
+        e => e,
+    }
+}
+
+/// Whether an initialiser creates a new array or object this frame owns.
+fn is_fresh_init(e: &E<'_>) -> bool {
+    match strip(e) {
+        E::ArrayExpression(_) | E::ObjectExpression(_) => true,
+        E::CallExpression(c) => match strip(&c.callee) {
+            E::StaticMemberExpression(m) => matches!(
+                m.property.name.as_str(),
+                "map"
+                    | "filter"
+                    | "slice"
+                    | "concat"
+                    | "toSorted"
+                    | "toReversed"
+                    | "flat"
+                    | "flatMap"
+                    | "split"
+                    | "keys"
+                    | "values"
+                    | "entries"
+                    | "from"
+            ),
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+/// The function type inside a (possibly union) expected type.
+fn function_member(t: &Ty) -> Option<Ty> {
+    match t {
+        Ty::Function(..) => Some(t.clone()),
+        Ty::Union(ts) => ts.iter().find_map(function_member),
+        Ty::Setter(inner) => Some(Ty::Function(vec![(**inner).clone()], inner.clone())),
+        Ty::Dispatch(a) => Some(Ty::Function(vec![(**a).clone()], Box::new(Ty::Void))),
+        _ => None,
+    }
+}
+
+fn non_null_keep(t: &Ty) -> Ty {
+    match non_null(t) {
+        Ty::Unknown => t.clone(),
+        n => n,
+    }
+}
+
+/// The falsy values a `&&` can yield from its left side.
+fn falsy_part(t: &Ty) -> Ty {
+    match t {
+        Ty::Boolean => Ty::Boolean,
+        Ty::Number | Ty::NumLit(_) => Ty::Number,
+        Ty::String | Ty::Lit(_) => Ty::String,
+        Ty::Null | Ty::Undefined | Ty::Void => t.clone(),
+        Ty::Union(ts) => union_all(ts.iter().map(falsy_part)),
+        _ => Ty::Unknown,
+    }
+}
+
+fn jsx_attr_name(n: &ast::JSXAttributeName<'_>) -> String {
+    match n {
+        ast::JSXAttributeName::Identifier(id) => id.name.to_string(),
+        ast::JSXAttributeName::NamespacedName(n) => format!("{}:{}", n.namespace.name, n.name.name),
+    }
+}
+
+/// The expected type of a host element prop, for typing inline handlers.
+fn prop_want(name: &str) -> Option<Ty> {
+    if name.len() > 2 && name.starts_with("on") && name.as_bytes()[2].is_ascii_uppercase() {
+        return Some(Ty::Function(vec![Ty::Event], Box::new(Ty::Void)));
+    }
+    match name {
+        "style" => Some(Ty::Dict(Box::new(union(Ty::String, Ty::Number)))),
+        _ => None,
+    }
+}
+
+/// The DOM attribute a string-valued JSX prop becomes when React writes it with
+/// `setAttribute` unchanged; `None` for props React treats specially.
+pub fn static_attr_name(name: &str) -> Option<String> {
+    if name.starts_with("on") && name.len() > 2 && name.as_bytes()[2].is_ascii_uppercase() {
+        return None;
+    }
+    match name {
+        "value"
+        | "defaultValue"
+        | "checked"
+        | "defaultChecked"
+        | "style"
+        | "children"
+        | "autoFocus"
+        | "suppressContentEditableWarning"
+        | "suppressHydrationWarning"
+        | "selected"
+        | "multiple"
+        | "muted"
+        | "innerHTML" => None,
+        n => Some(cw_ui::dom_attr_name(n)),
+    }
+}
+
+/// Babel's JSX text cleanup: lines trimmed, blank lines dropped, lines joined by a
+/// space; `None` when nothing is left.
+pub fn clean_jsx_text(raw: &str) -> Option<String> {
+    let lines: Vec<&str> = raw
+        .split(['\n'])
+        .map(|l| l.strip_suffix('\r').unwrap_or(l))
+        .collect();
+    // Babel starts this at 0: a whitespace-only single line keeps its text.
+    let last_non_empty = lines
+        .iter()
+        .rposition(|l| l.chars().any(|c| c != ' ' && c != '\t'))
+        .unwrap_or(0);
+    let mut out = String::new();
+    for (i, line) in lines.iter().enumerate() {
+        let first = i == 0;
+        let last = i == lines.len() - 1;
+        let mut t: String = line.replace('\t', " ");
+        if !first {
+            t = t.trim_start_matches(' ').to_owned();
+        }
+        if !last {
+            t = t.trim_end_matches(' ').to_owned();
+        }
+        if !t.is_empty() {
+            if i != last_non_empty {
+                t.push(' ');
+            }
+            out.push_str(&t);
+        }
+    }
+    if out.is_empty() {
+        None
+    } else {
+        Some(decode_entities(&out))
+    }
+}
+
+/// HTML character references in JSX text and attribute strings.
+pub fn decode_entities(s: &str) -> String {
+    if !s.contains('&') {
+        return s.to_owned();
+    }
+    let mut out = String::new();
+    let mut rest = s;
+    while let Some(i) = rest.find('&') {
+        out.push_str(&rest[..i]);
+        rest = &rest[i..];
+        let end = rest[1..].find(';').map(|e| e + 1);
+        let decoded = end.and_then(|e| {
+            let name = &rest[1..e];
+            let c = if let Some(hex) = name.strip_prefix("#x").or_else(|| name.strip_prefix("#X")) {
+                u32::from_str_radix(hex, 16).ok().and_then(char::from_u32)
+            } else if let Some(dec) = name.strip_prefix('#') {
+                dec.parse::<u32>().ok().and_then(char::from_u32)
+            } else {
+                match name {
+                    "amp" => Some('&'),
+                    "lt" => Some('<'),
+                    "gt" => Some('>'),
+                    "quot" => Some('"'),
+                    "apos" => Some('\''),
+                    "nbsp" => Some('\u{a0}'),
+                    "copy" => Some('©'),
+                    "reg" => Some('®'),
+                    "hellip" => Some('…'),
+                    "mdash" => Some('—'),
+                    "ndash" => Some('–'),
+                    "middot" => Some('·'),
+                    "times" => Some('×'),
+                    "rarr" => Some('→'),
+                    "larr" => Some('←'),
+                    "bull" => Some('•'),
+                    "lsquo" => Some('‘'),
+                    "rsquo" => Some('’'),
+                    "ldquo" => Some('“'),
+                    "rdquo" => Some('”'),
+                    _ => None,
+                }
+            };
+            c.map(|c| (c, e))
+        });
+        match decoded {
+            Some((c, e)) => {
+                out.push(c);
+                rest = &rest[e + 1..];
+            }
+            None => {
+                out.push('&');
+                rest = &rest[1..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Visits `x` and every expression inside it (not into other functions' bodies).
+pub(crate) fn walk_expr(x: &Expr, f: &mut impl FnMut(&Expr)) {
+    f(x);
+    let items = |items: &Vec<ArrayItem>, f: &mut dyn FnMut(&Expr)| {
+        for i in items {
+            match i {
+                ArrayItem::Item(e) | ArrayItem::Spread(e) => f(e),
+            }
+        }
+    };
+    match x {
+        Expr::Template(_, es) | Expr::Seq(es) | Expr::Hook(_, es) => {
+            for e in es {
+                walk_expr(e, f);
+            }
+        }
+        Expr::Array(xs) | Expr::Builtin(_, xs) => items(xs, &mut |e| walk_expr(e, f)),
+        Expr::Object(ps) => {
+            for p in ps {
+                match p {
+                    Prop::KeyValue(_, v) | Prop::Spread(v) => walk_expr(v, f),
+                    Prop::Computed(k, v) => {
+                        walk_expr(k, f);
+                        walk_expr(v, f);
+                    }
+                }
+            }
+        }
+        Expr::Member(o, _, _) | Expr::Unary(_, o) | Expr::TypeOf(o) | Expr::Chain(o) => {
+            walk_expr(o, f)
+        }
+        Expr::Index(o, k, _) => {
+            walk_expr(o, f);
+            walk_expr(k, f);
+        }
+        Expr::Call(c, args, _) => {
+            walk_expr(c, f);
+            items(args, &mut |e| walk_expr(e, f));
+        }
+        Expr::Method { recv, args, .. } => {
+            walk_expr(recv, f);
+            items(args, &mut |e| walk_expr(e, f));
+        }
+        Expr::Binary(_, a, b) | Expr::Logical(_, a, b) => {
+            walk_expr(a, f);
+            walk_expr(b, f);
+        }
+        Expr::Cond(a, b, c) => {
+            walk_expr(a, f);
+            walk_expr(b, f);
+            walk_expr(c, f);
+        }
+        Expr::Assign(lv, _, v) => {
+            walk_lvalue(lv, f);
+            walk_expr(v, f);
+        }
+        Expr::Update(lv, _, _) => walk_lvalue(lv, f),
+        Expr::Element(el) => match &**el {
+            ElementExpr::Template { holes, key, .. } => {
+                for h in holes {
+                    walk_expr(h, f);
+                }
+                if let Some(k) = key {
+                    walk_expr(k, f);
+                }
+            }
+            ElementExpr::Component {
+                callee,
+                props,
+                children,
+                key,
+            } => {
+                walk_expr(callee, f);
+                for p in props {
+                    match p {
+                        Prop::KeyValue(_, v) | Prop::Spread(v) => walk_expr(v, f),
+                        Prop::Computed(k, v) => {
+                            walk_expr(k, f);
+                            walk_expr(v, f);
+                        }
+                    }
+                }
+                if let Some(c) = children {
+                    walk_expr(c, f);
+                }
+                if let Some(k) = key {
+                    walk_expr(k, f);
+                }
+            }
+            ElementExpr::Fragment { children, key } => {
+                for c in children {
+                    walk_expr(c, f);
+                }
+                if let Some(k) = key {
+                    walk_expr(k, f);
+                }
+            }
+            ElementExpr::Provider {
+                context,
+                value,
+                children,
+                key,
+            } => {
+                walk_expr(context, f);
+                walk_expr(value, f);
+                for c in children {
+                    walk_expr(c, f);
+                }
+                if let Some(k) = key {
+                    walk_expr(k, f);
+                }
+            }
+        },
+        _ => {}
+    }
+}
+
+fn walk_lvalue(lv: &LValue, f: &mut impl FnMut(&Expr)) {
+    match lv {
+        LValue::Local(n) => f(&Expr::Local(*n)),
+        LValue::Global(_) => {}
+        LValue::Member(o, _) => walk_expr(o, f),
+        LValue::Index(o, k) => {
+            walk_expr(o, f);
+            walk_expr(k, f);
+        }
+    }
+}
