@@ -1,4 +1,8 @@
 {
+ "app-analytics.initial": 0.35,
+ "app-analytics.quarter": 0.34,
+ "app-analytics.range-menu": 0.34,
+ "app-analytics.reports": 0.65,
  "react18-tasks.added": 0.87,
  "react18-tasks.board": 0.91,
  "react18-tasks.filtered": 0.86,

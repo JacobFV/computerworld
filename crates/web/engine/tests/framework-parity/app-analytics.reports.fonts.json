@@ -1,0 +1,12 @@
+[
+ {
+  "family": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+  "first": "html>body>div:nth-child(1)>div:nth-child(1)>aside:nth-child(1)>div:nth-child(1)>span:nth-child(2)",
+  "chromium": [
+   {
+    "family": "Inter",
+    "glyphs": 5
+   }
+  ]
+ }
+]

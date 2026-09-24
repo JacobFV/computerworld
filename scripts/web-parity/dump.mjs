@@ -25,8 +25,9 @@
 // the focused element) and `{"action": "press", "key"}`, which is how a page a framework
 // renders is driven into a state (tests/framework-parity/*.steps.json); there the file
 // is an object of named step lists and --state-name picks one. The page is let settle
-// (two animation frames and a task) after loading and after every step, so a framework
-// that commits asynchronously has committed before anything is read.
+// (two animation frames and a task, and any finite transition or animation finished)
+// after loading and after every step, so a framework that commits asynchronously has
+// committed, and a transition has reached its end state, before anything is read.
 import {readFile, writeFile} from 'node:fs/promises';
 import {basename, dirname, extname, join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
@@ -37,7 +38,7 @@ import {PROPERTIES} from './common.mjs';
 // `/vendor/whatever` (root-relative, exactly as the Rust test expects it) gets the real
 // file instead of a filesystem 404.
 const vendorDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'crates', 'web', 'engine', 'tests', 'vendor');
-const VENDOR_MIME = {'.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json'};
+const VENDOR_MIME = {'.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.ttf': 'font/ttf', '.woff2': 'font/woff2'};
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -145,8 +146,20 @@ try {
   });
   await page.goto(url, {waitUntil: 'load'});
   await page.evaluate(() => document.fonts.ready);
-  const settle = () => page.evaluate(() => new Promise(done =>
+  // Two frames and a task, then every finite CSS transition or animation run to its end
+  // (a class change under `transition-colors` would otherwise be dumped mid-way), then
+  // the frames again. A page with no animations settles exactly as before.
+  const frames = () => page.evaluate(() => new Promise(done =>
     requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 0)))));
+  const settle = async () => {
+    await frames();
+    const running = await page.evaluate(() => {
+      const finite = document.getAnimations().filter(a => a.effect?.getComputedTiming().endTime !== Infinity);
+      finite.forEach(a => a.finish());
+      return finite.length;
+    });
+    if (running) await frames();
+  };
   await settle();
   for (const {selector, action, text, key} of states) {
     if (action === 'hover') await page.hover(selector);

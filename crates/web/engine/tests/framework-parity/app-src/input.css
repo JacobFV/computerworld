@@ -1,0 +1,20 @@
+/* Inter in the two weights the engine bundles; Chromium picks 400 for 100-500 and 700
+   for 600-900, as CSS font matching does when only these two faces exist. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(/vendor/inter-regular.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url(/vendor/inter-bold.ttf) format('truetype');
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

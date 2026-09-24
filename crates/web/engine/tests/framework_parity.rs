@@ -295,4 +295,9 @@ mod cases {
     fn vue3_tasks() {
         run_fixture("vue3-tasks");
     }
+
+    #[test]
+    fn app_analytics() {
+        run_fixture("app-analytics");
+    }
 }

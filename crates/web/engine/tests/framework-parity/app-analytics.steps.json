@@ -1,0 +1,13 @@
+{
+ "initial": [],
+ "range-menu": [
+  {"action": "click", "selector": "button[aria-label=\"Date range\"]"}
+ ],
+ "quarter": [
+  {"action": "click", "selector": "button[aria-label=\"Date range\"]"},
+  {"action": "click", "selector": "button[data-range=\"90d\"]"}
+ ],
+ "reports": [
+  {"action": "click", "selector": "button[data-tab=\"Reports\"]"}
+ ]
+}
