@@ -7,7 +7,9 @@
 //! as attributes and `display: none` subtrees marked hidden, so `to_page` lists what
 //! the person can see).
 
-use cw_web::script::{Realm, UiEvent};
+use cw_web::script::UiEvent;
+
+use crate::page_script::PageScript;
 use cw_web::style::computed::Display;
 
 use super::*;
@@ -88,6 +90,27 @@ impl WebDocument {
         web
     }
 
+    /// A document a compiled TSX app runs (see `page_script`); `None` when the app
+    /// does not fit the page. Nothing has rendered: `script_enter(.., |s|
+    /// s.run_document())` boots it.
+    pub fn new_compiled(
+        module: cw_ui::ir::Module,
+        html: &str,
+        url: &str,
+        css_viewport: (u32, u32),
+        now: u64,
+    ) -> Option<WebDocument> {
+        let viewport = Viewport {
+            width: css_viewport.0.max(1),
+            height: css_viewport.1.max(1),
+            scale: 1,
+            zoom: 100,
+        };
+        let mut web = WebDocument::parse("", url);
+        web.script = Some(Scripted::new_compiled(module, html, url, viewport, now).ok()?);
+        Some(web)
+    }
+
     /// Reads the document, wherever it lives.
     pub fn with_document<T>(&self, f: impl FnOnce(&Document) -> T) -> T {
         match &self.script {
@@ -102,7 +125,7 @@ impl WebDocument {
     pub(crate) fn script_enter<T>(
         &mut self,
         env: &mut HostEnv,
-        f: impl FnOnce(&mut Realm) -> T,
+        f: impl FnOnce(&mut PageScript) -> T,
     ) -> Option<T> {
         let s = self.script.as_ref()?;
         let (out, title, url) = s.enter(env, |realm| {

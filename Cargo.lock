@@ -341,6 +341,7 @@ dependencies = [
  "cw-determinism",
  "cw-protocol",
  "cw-scene",
+ "cw-ui",
  "cw-web",
  "jpeg-decoder",
  "png",

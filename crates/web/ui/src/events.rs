@@ -456,7 +456,7 @@ impl Runtime {
         DefaultAction::None
     }
 
-    fn submit_form(&mut self, form: NodeId, submitter: Option<NodeId>) -> DefaultAction {
+    pub(crate) fn submit_form(&mut self, form: NodeId, submitter: Option<NodeId>) -> DefaultAction {
         let prevented = self.fire("submit", form, &Init::default());
         if prevented {
             return DefaultAction::Prevented;

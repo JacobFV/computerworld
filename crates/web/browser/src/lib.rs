@@ -13,6 +13,7 @@ use cw_scene::Primitive;
 use cw_scene::{AxNode, Scene};
 mod omnibox;
 mod page_scene;
+pub mod page_script;
 mod script_driver;
 pub mod scripted;
 pub mod web_document;

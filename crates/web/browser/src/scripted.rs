@@ -40,6 +40,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use cw_determinism::Determinism;
 use cw_protocol::{HttpRequest, HttpResponse, Result};
+use cw_ui::{UiApp, UiState};
 use cw_web::script::{
     FetchRequest, FetchResponse, LogLevel, Realm, RealmState, ScriptHostDocument, StorageArea,
 };
@@ -47,6 +48,7 @@ use cw_web::Viewport;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use crate::page_script::{PageScript, ScriptState};
 use crate::{cookie_path_matches, parse_cookie, Cookie, MAX_TEXT_RESOURCE_BYTES};
 
 /// VM steps a document's load (each `<script>`) and each later entry may spend.
@@ -429,7 +431,7 @@ impl ScriptHostDocument for BrowserHost {
 /// and `Scripted::read` hand the closure a `&mut Realm` that cannot escape). The
 /// reference counts are therefore only touched by the thread holding that mutex.
 struct RealmCell {
-    realm: Option<Realm>,
+    realm: Option<PageScript>,
     epoch: u64,
     env: Arc<Mutex<HostEnv>>,
 }
@@ -455,7 +457,7 @@ struct Local {
     epoch: u64,
     /// The realm's state at `epoch`; always present when the cell has moved on or
     /// holds no realm.
-    saved: Option<Arc<RealmState>>,
+    saved: Option<Arc<ScriptState>>,
     mirror: Mirror,
 }
 
@@ -464,14 +466,22 @@ pub struct Scripted {
     local: Mutex<Local>,
 }
 
+/// A realm's state is written as `state`, as it always was; a compiled app's as
+/// `ui`.
 #[derive(Serialize)]
 struct ScriptedRef<'a> {
-    state: &'a RealmState,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    state: Option<&'a RealmState>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ui: Option<&'a UiState>,
     mirror: &'a Mirror,
 }
 #[derive(Deserialize)]
 struct ScriptedOwned {
-    state: RealmState,
+    #[serde(default)]
+    state: Option<RealmState>,
+    #[serde(default)]
+    ui: Option<Box<UiState>>,
     #[serde(default)]
     mirror: Mirror,
 }
@@ -479,8 +489,13 @@ struct ScriptedOwned {
 impl Serialize for Scripted {
     fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
         let state = self.state();
+        let (state, ui) = match &*state {
+            ScriptState::Js(r) => (Some(r), None),
+            ScriptState::Ui(u) => (None, Some(&**u)),
+        };
         ScriptedRef {
-            state: &state,
+            state,
+            ui,
             mirror: &self.mirror(),
         }
         .serialize(s)
@@ -489,7 +504,12 @@ impl Serialize for Scripted {
 impl<'de> Deserialize<'de> for Scripted {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
         let o = ScriptedOwned::deserialize(d)?;
-        Ok(Scripted::from_state(o.state, o.mirror))
+        let state = match (o.state, o.ui) {
+            (_, Some(ui)) => ScriptState::Ui(ui),
+            (Some(r), None) => ScriptState::Js(r),
+            (None, None) => return Err(serde::de::Error::missing_field("state")),
+        };
+        Ok(Scripted::from_state(state, o.mirror))
     }
 }
 impl Clone for Scripted {
@@ -524,8 +544,36 @@ impl Scripted {
         }));
         let mut realm = Realm::new(html, url, Box::new(BrowserHost { env: env.clone() }));
         realm.set_step_budget(STEP_BUDGET);
+        Self::with_script(PageScript::Js(Box::new(realm)), env)
+    }
+
+    /// A compiled TSX app (`module`, its IR) for the page `html` at `url`; nothing
+    /// has rendered yet. `Err` when the IR does not fit the page (no container).
+    pub fn new_compiled(
+        module: cw_ui::ir::Module,
+        html: &str,
+        url: &str,
+        viewport: Viewport,
+        now: u64,
+    ) -> std::result::Result<Scripted, cw_ui::UiError> {
+        let env = Arc::new(Mutex::new(HostEnv {
+            viewport,
+            now,
+            url: url.to_owned(),
+            ..HostEnv::default()
+        }));
+        let app = UiApp::new(
+            module,
+            html,
+            url,
+            Box::new(BrowserHost { env: env.clone() }),
+        )?;
+        Ok(Self::with_script(PageScript::Ui(Box::new(app)), env))
+    }
+
+    fn with_script(script: PageScript, env: Arc<Mutex<HostEnv>>) -> Scripted {
         let cell = RealmCell {
-            realm: Some(realm),
+            realm: Some(script),
             epoch: 1,
             env,
         };
@@ -539,7 +587,7 @@ impl Scripted {
         }
     }
 
-    fn from_state(state: RealmState, mirror: Mirror) -> Scripted {
+    fn from_state(state: ScriptState, mirror: Mirror) -> Scripted {
         let cell = RealmCell {
             realm: None,
             epoch: 0,
@@ -564,7 +612,7 @@ impl Scripted {
     }
 
     /// The realm's serialisable state as of this handle's epoch.
-    pub fn state(&self) -> Arc<RealmState> {
+    pub fn state(&self) -> Arc<ScriptState> {
         let mut local = lock(&self.local);
         if let Some(s) = &local.saved {
             return s.clone();
@@ -582,9 +630,19 @@ impl Scripted {
         state
     }
 
-    /// How many inputs the realm's journal holds (the replay cost of a restore).
+    /// How many inputs the realm's journal holds (the replay cost of a restore; a
+    /// compiled app restores without replay).
     pub fn journal_len(&self) -> usize {
-        self.state().inputs.len()
+        PageScript::journal_len(&self.state())
+    }
+
+    /// Whether a compiled app (not a JS realm) runs the page.
+    pub fn is_compiled(&self) -> bool {
+        let saved = lock(&self.local).saved.clone();
+        match saved {
+            Some(s) => matches!(*s, ScriptState::Ui(_)),
+            None => self.read(|r| r.is_compiled()),
+        }
     }
 
     /// Drops the live realm, keeping its state: what a document left behind in the
@@ -616,7 +674,7 @@ impl Scripted {
             muted: true,
             ..HostEnv::default()
         }));
-        let realm = Realm::restore(&state, Box::new(BrowserHost { env: env.clone() }));
+        let realm = PageScript::restore(&state, Box::new(BrowserHost { env: env.clone() }));
         lock(&env).muted = false;
         let fresh = RealmCell {
             realm: Some(realm),
@@ -632,7 +690,7 @@ impl Scripted {
 
     /// Enters the realm to change it. `env` is moved into the host's slot for the
     /// length of `f` and handed back with what the page did to it.
-    pub fn enter<T>(&self, env: &mut HostEnv, f: impl FnOnce(&mut Realm) -> T) -> T {
+    pub fn enter<T>(&self, env: &mut HostEnv, f: impl FnOnce(&mut PageScript) -> T) -> T {
         let mut local = lock(&self.local);
         Self::ready(&mut local);
         let cell_arc = local.cell.clone();
@@ -664,7 +722,7 @@ impl Scripted {
 
     /// Enters the realm to read it (paint, hit testing, projection). Layout may be
     /// flushed; nothing the page can observe changes.
-    pub fn read<T>(&self, f: impl FnOnce(&mut Realm) -> T) -> T {
+    pub fn read<T>(&self, f: impl FnOnce(&mut PageScript) -> T) -> T {
         let mut local = lock(&self.local);
         Self::ready(&mut local);
         let cell_arc = local.cell.clone();

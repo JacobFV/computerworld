@@ -232,6 +232,15 @@ impl UiApp {
         a
     }
 
+    /// `form.requestSubmit()`: the `submit` event through the app's handlers, then
+    /// the submission unless one prevented it.
+    pub fn request_submit(&mut self, form: NodeId) -> DefaultAction {
+        let a = self.rt.submit_form(form, None);
+        self.rt.settle();
+        self.rt.trim_journal();
+        a
+    }
+
     /// Runs timers due on the world clock, advancing the virtual clock by up to
     /// `advance_ms` to reach later ones. Returns whether anything ran.
     pub fn run_until_idle(&mut self, advance_ms: u32) -> bool {

@@ -11,6 +11,7 @@ serde.workspace = true
 serde_json.workspace = true
 url.workspace = true
 cw-web = { path = "../engine" }
+cw-ui = { path = "../ui" }
 cw-determinism = { path = "../../core/determinism" }
 png = "0.17"
 jpeg-decoder = { version = "0.3", default-features = false, features = [

@@ -15,7 +15,7 @@
 use cw_determinism::Determinism;
 use cw_protocol::{HttpRequest, HttpResponse, Page, Result, SimError};
 use cw_web::dom::{Document, NodeId};
-use cw_web::script::{DefaultAction, Modifiers, Realm, UiEvent};
+use cw_web::script::{DefaultAction, Modifiers, UiEvent};
 use cw_web::Viewport;
 use std::sync::Arc;
 use url::Url;
@@ -159,7 +159,7 @@ impl BrowserState {
         web: &mut WebDocument,
         index: usize,
         mut transport: Option<Transport<'_, '_>>,
-        f: impl FnOnce(&mut Realm) -> T,
+        f: impl FnOnce(&mut crate::page_script::PageScript) -> T,
     ) -> Option<(T, Vec<PendingNav>)> {
         if !web.is_scripted() {
             return None;
@@ -201,7 +201,7 @@ impl BrowserState {
         &mut self,
         index: usize,
         transport: Option<Transport<'_, '_>>,
-        f: impl FnOnce(&mut Realm) -> T,
+        f: impl FnOnce(&mut crate::page_script::PageScript) -> T,
     ) -> Option<(T, Vec<PendingNav>)> {
         let tab = self.tabs.get_mut(index)?;
         let position = tab.position;
@@ -230,7 +230,7 @@ impl BrowserState {
     fn with_script<T>(
         &mut self,
         transport: Option<Transport<'_, '_>>,
-        f: impl FnOnce(&mut Realm) -> T,
+        f: impl FnOnce(&mut crate::page_script::PageScript) -> T,
     ) -> Result<(T, Vec<PendingNav>)> {
         self.with_script_at(self.active, transport, f)
             .ok_or_else(not_scripted)
@@ -253,8 +253,11 @@ impl BrowserState {
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
-        let mut web =
-            WebDocument::new_scripted(html, url.as_str(), self.css_viewport(), self.clock);
+        let mut web = self
+            .compiled_document(html, url, transport)
+            .unwrap_or_else(|| {
+                WebDocument::new_scripted(html, url.as_str(), self.css_viewport(), self.clock)
+            });
         let index = self.active;
         let navs = self.enter_doc(&mut web, index, Some(transport), |realm| {
             realm.run_document();
@@ -263,6 +266,24 @@ impl BrowserState {
         // Queued until the entry is committed (`script_after_load`).
         self.load_navs = navs.map(|(_, n)| n).unwrap_or_default();
         web
+    }
+
+    /// A page that declares a compiled app (`data-cw-ui`, see `page_script`) whose IR
+    /// loads and fits the page: that app, not a realm, runs it.
+    fn compiled_document<F>(
+        &mut self,
+        html: &str,
+        url: &Url,
+        transport: &mut F,
+    ) -> Option<WebDocument>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
+        let parsed = WebDocument::parse(html, url.as_str());
+        let ir_url = parsed.with_document(|d| crate::page_script::declared_ui(d, &parsed.base))?;
+        let text = self.fetch_text(&ir_url, transport)?;
+        let module = cw_ui::UiApp::parse_ir(&text).ok()?;
+        WebDocument::new_compiled(module, html, url.as_str(), self.css_viewport(), self.clock)
     }
 
     pub(crate) fn script_after_load<F>(&mut self, transport: &mut F) -> Result<()>
@@ -814,10 +835,7 @@ impl BrowserState {
                 modifiers: Modifiers::default(),
                 detail: 1,
             }),
-            None => {
-                let _ = realm.eval(&format!("document.forms[{form_index}].requestSubmit()"));
-                DefaultAction::None
-            }
+            None => realm.request_submit(form, form_index),
         })?;
         self.after_action(action, false, navs, transport)
     }
@@ -1033,10 +1051,22 @@ impl BrowserState {
         Ok(())
     }
 
-    /// The realm state of the document on show, for measuring what a snapshot holds.
+    /// The realm state of the document on show, for measuring what a snapshot holds
+    /// (`None` for a compiled app, whose state is `script_ui_state`).
     pub fn script_state(&self) -> Option<Arc<cw_web::script::RealmState>> {
-        self.document()
-            .and_then(WebDocument::scripted)
-            .map(|s| s.state())
+        let state = self.document().and_then(WebDocument::scripted)?.state();
+        match &*state {
+            crate::page_script::ScriptState::Js(r) => Some(Arc::new(r.clone())),
+            crate::page_script::ScriptState::Ui(_) => None,
+        }
+    }
+
+    /// The state of the compiled app on show, if a compiled app runs it.
+    pub fn script_ui_state(&self) -> Option<cw_ui::UiState> {
+        let state = self.document().and_then(WebDocument::scripted)?.state();
+        match &*state {
+            crate::page_script::ScriptState::Ui(u) => Some((**u).clone()),
+            crate::page_script::ScriptState::Js(_) => None,
+        }
     }
 }
