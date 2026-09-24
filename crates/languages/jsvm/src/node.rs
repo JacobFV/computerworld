@@ -1158,14 +1158,14 @@ impl<'h> Vm<'h> {
             Some(false) => "script",
         };
         let params = cjs_params.join(",");
-        let k = crate::codecache::key(&[
+        let parts: [&[u8]; 5] = [
             b"program",
             force.as_bytes(),
             params.as_bytes(),
             file.as_bytes(),
             src.as_bytes(),
-        ]);
-        if let Some((code, is_module)) = crate::codecache::get(&k) {
+        ];
+        if let Some((k, code, is_module)) = crate::codecache::get(&parts) {
             let code = self.first_use(k, code);
             let fname: Rc<str> = if is_module {
                 Rc::from(format!("file://{file}").as_str())
@@ -1179,7 +1179,7 @@ impl<'h> Vm<'h> {
         }
         let r = self.compile_source_inner(src, file, force_module, cjs_params);
         if let Ok((code, is_module)) = &r {
-            crate::codecache::put(k, code.clone(), *is_module, src.len());
+            let k = crate::codecache::put(&parts, code.clone(), *is_module);
             self.cache_seen.insert(k);
         }
         self.prof_leave(pk);
@@ -1558,14 +1558,14 @@ impl<'h> Vm<'h> {
         let _ = completion;
         let pk = self.prof_enter(|| format!("[parse+compile] {file}"));
         let t0 = self.prof.as_ref().map(|_| crate::profile::now_ns());
-        let k = crate::codecache::key(&[
+        let parts: [&[u8]; 4] = [
             b"eval",
             if global_scope { b"global" } else { b"local" },
             file.as_bytes(),
             src.as_bytes(),
-        ]);
-        let code = match crate::codecache::get(&k) {
-            Some((code, _)) => {
+        ];
+        let code = match crate::codecache::get(&parts) {
+            Some((k, code, _)) => {
                 let code = self.first_use(k, code);
                 self.register_source(Rc::from(file), Rc::from(src));
                 self.prof_source(file, src.len(), t0, t0, true);
@@ -1574,7 +1574,7 @@ impl<'h> Vm<'h> {
             }
             None => {
                 let code = self.compile_eval_source(src, file, global_scope, t0, pk)?;
-                crate::codecache::put(k, code.clone(), false, src.len());
+                let k = crate::codecache::put(&parts, code.clone(), false);
                 self.cache_seen.insert(k);
                 code
             }
