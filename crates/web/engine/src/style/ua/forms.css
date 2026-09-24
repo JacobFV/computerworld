@@ -18,9 +18,10 @@ select { padding: 0 2px; border: 1px solid #767676; border-radius: 2px; backgrou
 /* Blink's menulist theme sets the line height whatever the page says. */
 select:not([multiple]):not([size]), select[size="1"] { line-height: normal !important; }
 select[multiple], select[size]:not([size="1"]) { overflow: auto; }
-/* Options are drawn by the select; their computed style is Blink's. */
-option { display: block; padding: 0 2px 1px; white-space: nowrap; min-height: 1.2em; }
-optgroup { display: block; }
+/* Options are drawn by the select; their computed style there is Blink's. Outside a
+   select the engine still hides them. */
+option, optgroup { display: none; }
+select option { display: block; padding: 0 2px 1px; white-space: nowrap; min-height: 1.2em; }
 input::placeholder, textarea::placeholder { color: #757575; }
 input:disabled, select:disabled, button:disabled, textarea:disabled, optgroup:disabled, option:disabled, fieldset:disabled { color: GrayText; cursor: default; }
 button:disabled, input[type=button i]:disabled, input[type=submit i]:disabled, input[type=reset i]:disabled { background-color: rgba(239, 239, 239, 0.3); border-color: rgba(118, 118, 118, 0.3); }

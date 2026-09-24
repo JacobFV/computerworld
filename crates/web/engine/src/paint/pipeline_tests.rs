@@ -932,3 +932,26 @@ fn a_transformed_inline_svg_is_drawn_whole() {
         "the bottom of the ring"
     );
 }
+
+#[test]
+fn a_select_does_not_show_an_option_the_page_hides() {
+    // css-display's select-4-option-optgroup-display-none: a select whose only
+    // option is display: none shows no text; options outside a select stay hidden.
+    let text = |html: &str| -> Vec<String> {
+        render(html)
+            .scene
+            .nodes
+            .iter()
+            .filter_map(|n| {
+                n.primitive
+                    .text_style()
+                    .map(|_| format!("{:?}", n.primitive))
+            })
+            .filter(|t| t.contains("\"option\""))
+            .collect()
+    };
+    let hidden = "<!doctype html><select size=4><option style='display:none'>option</option></select><option>option</option>";
+    assert!(text(hidden).is_empty(), "{:?}", text(hidden));
+    let shown = "<!doctype html><select><option>option</option></select>";
+    assert_eq!(text(shown).len(), 1);
+}

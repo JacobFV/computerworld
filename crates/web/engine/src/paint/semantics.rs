@@ -300,7 +300,13 @@ pub(crate) fn value_of(p: &Painter, node: NodeId) -> Option<String> {
             }
         }
         "textarea" => Some(doc.text_content(node)),
+        // An option the page hides (display: none on it or its optgroup) is not
+        // shown in the control (css-display's select-4-option-optgroup-display-none).
         "select" => selected_option(doc, node)
+            .filter(|o| {
+                let hidden = |n: NodeId| p.styles.get(n).is_some_and(|s| s.display.is_none());
+                !hidden(*o) && !doc.ancestors(*o).take_while(|a| *a != node).any(hidden)
+            })
             .map(|o| collapse(&doc.text_content(o)))
             .or_else(|| Some(String::new())),
         "progress" | "meter" => doc.attr(node, "value").map(str::to_owned),
