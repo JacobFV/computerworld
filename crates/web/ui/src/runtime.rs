@@ -3,6 +3,7 @@
 //! module globals, component instances with their hooks, the mounted tree, event
 //! handlers, timers and the microtask queue.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, VecDeque};
 use std::rc::Rc;
 
@@ -22,10 +23,41 @@ pub(crate) enum Throw {
 pub(crate) type R<T> = Result<T, Throw>;
 
 pub(crate) fn type_error<T>(msg: impl Into<String>) -> R<T> {
-    Err(Throw::Value(Value::str(&format!(
-        "TypeError: {}",
-        msg.into()
-    ))))
+    Err(Throw::Value(Value::error("TypeError", &msg.into())))
+}
+
+/// A thrown `Error` of the given name.
+pub(crate) fn js_error<T>(name: &str, msg: impl Into<String>) -> R<T> {
+    Err(Throw::Value(Value::error(name, &msg.into())))
+}
+
+/// The functions the runtime itself provides.
+#[derive(Debug)]
+pub enum NativeFn {
+    /// `resolve`/`reject` of `new Promise(executor)`.
+    Resolver {
+        promise: Rc<RefCell<Promise>>,
+        reject: bool,
+    },
+    /// Element `index` of a `Promise.all` settling.
+    AllSlot {
+        state: Rc<RefCell<AllState>>,
+        index: usize,
+    },
+    AllReject(Rc<RefCell<AllState>>),
+    /// An async function resumed after an `await` (with the value, or throwing it).
+    Resume {
+        task: Rc<RefCell<Option<crate::asyncfn::Task>>>,
+        throw: bool,
+    },
+}
+
+#[derive(Debug)]
+pub struct AllState {
+    pub values: Vec<Value>,
+    pub remaining: usize,
+    pub result: Rc<RefCell<Promise>>,
+    pub done: bool,
 }
 
 /// A hook's state, in call order.
@@ -257,6 +289,8 @@ pub(crate) struct Runtime {
     pub booted: bool,
     /// A render threw: React unmounted the root.
     pub crashed: bool,
+    /// Per function: which frame slots are boxed.
+    pub boxed_cache: Vec<Option<Rc<[bool]>>>,
     /// Compiled regular expressions by (pattern, flags).
     pub regex_cache: BTreeMap<(String, String), Rc<cw_regex::Regex>>,
     /// Counters for timing and tests.
@@ -319,6 +353,7 @@ impl Runtime {
             booted: false,
             crashed: false,
             regex_cache: BTreeMap::new(),
+            boxed_cache: Vec::new(),
             stats: Stats::default(),
             fire_depth: 0,
         }
@@ -333,6 +368,7 @@ impl Runtime {
         if let Throw::Value(v) = t {
             let text = match &v {
                 Value::Str(s) if s.contains("Error") => s.to_string(),
+                Value::Error(_) => v.to_js_string(),
                 other => crate::interp::inspect(other),
             };
             self.log(LogLevel::Error, &format!("Uncaught {text}"));

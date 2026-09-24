@@ -26,6 +26,7 @@
 pub mod ir;
 pub mod value;
 
+mod asyncfn;
 mod dom;
 mod events;
 mod interp;
@@ -178,16 +179,7 @@ impl UiApp {
                 _ => {}
             }
         }
-        let empty = Rc::new(Closure {
-            func: 0,
-            captures: Vec::new(),
-        });
-        let mut frame = Frame {
-            locals: Vec::new(),
-            closure: empty,
-            inst: None,
-            occ: Default::default(),
-        };
+        let mut frame = Frame::bare();
         for (i, g) in module.globals.iter().enumerate() {
             let r = match &g.init {
                 ir::GlobalInit::Expr(e) => rt.eval(&mut frame, e).map(|v| rt.globals[i] = v),

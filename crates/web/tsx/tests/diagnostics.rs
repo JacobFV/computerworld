@@ -70,11 +70,11 @@ fn hooks_in_conditions_are_refused() {
 }
 
 #[test]
-fn async_code_and_classes_are_refused() {
+fn awaits_inside_expressions_and_classes_are_refused() {
     assert_refused(
-        "async function load(): Promise<void> {}\nfunction App() { return <p />; }",
+        "async function load(): Promise<number> { return 1 + (await Promise.resolve(2)); }\nfunction App() { return <p />; }",
         3,
-        "async functions",
+        "`await` inside an expression",
     );
     assert_refused("class X {}\nfunction App() { return <p />; }", 3, "class");
 }
@@ -101,12 +101,15 @@ fn a_module_that_never_renders_is_refused() {
 }
 
 #[test]
-fn reassigned_captures_are_refused() {
-    assert_refused(
-        "function App() {\n  let n = 0;\n  const f = () => n;\n  n = 2;\n  return <p>{f()}</p>;\n}",
-        6,
-        "reassigned and also captured",
+fn reassigned_captures_are_shared() {
+    let b = cw_tsx::build(
+        &module("function App() {\n  let n = 0;\n  const f = () => { n += 1; return n; };\n  n = 2;\n  return <p>{f()}</p>;\n}"),
+        "app.tsx",
     );
+    assert!(b.diagnostics.is_empty(), "{:?}", b.diagnostics);
+    let ir = b.ir.unwrap();
+    let app = ir.functions.iter().find(|f| f.name == "App").unwrap();
+    assert_eq!(app.boxed, vec![0]);
 }
 
 #[test]

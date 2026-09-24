@@ -88,7 +88,12 @@ state, an event handler's event, a component prop's declared type).
 `null`/`undefined`, arrays and objects (spread, computed keys), destructuring with
 defaults and rest, optional chaining, `??`, ternaries, all arithmetic, comparison
 and bitwise operators, `typeof`, assignment and update; `if`, `for`, `for...of`,
-`while`, `switch`, `break`/`continue`, `return`, `throw`. Array methods (`map`,
+`while`, `switch`, `break`/`continue`, `return`, `throw`, `try`/`catch`/`finally`
+(thrown values are real `Error`s: `message`, `name`), `async` functions and
+`await` (in a `const`/`let` initialiser, an expression statement, an assignment's
+right side or a `return`; inside `if`, loops, `switch` and `try` as well). A
+variable a closure captures and someone reassigns (`let cancelled = false` flipped
+by an effect's cleanup) is shared between them, as in JavaScript. Array methods (`map`,
 `filter`, `find`, `findIndex`, `findLast`, `some`, `every`, `reduce`, `forEach`,
 `slice`, `concat`, `includes`, `indexOf`, `join`, `sort`/`toSorted`,
 `reverse`/`toReversed`, `push`, `pop`, `shift`, `unshift`, `splice`, `flat`,
@@ -104,11 +109,13 @@ regular expressions (literals; `test`, `exec`; `match`, `search`, `replace`,
 `replaceAll`, `split` with a regex; JavaScript syntax and flags on cw-regex, the JS
 VM's engine), `console.*`, `Date.now()` on the world clock, timers
 (`setTimeout`, `setInterval`) on the world clock, `fetch` with `.then`/`.catch`/
-`.finally`, `response.json()`/`text()`, `Promise.resolve`.
+`.finally`, `response.json()`/`text()`, `Promise.resolve`, `Promise.reject`,
+`Promise.all`, `new Promise((resolve, reject) => …)`.
 
 **Outside the subset** (the page runs its React fallback): `any` and values of
-unknown type (`JSON.parse`, an unannotated `response.json()` result), `async`/
-`await`, `try`/`catch`, classes and class components, packages other than React
+unknown type (`JSON.parse`, an unannotated `response.json()` result), `await`
+inside a larger expression (`f(await g())`: await into a variable first), `for
+await`, generators, classes and class components, packages other than React
 (an app bundles its own modules only), re-exports (`export … from`), `import * as`
 of a module of the app, `enum`, `delete`, `this`, `new` (except `Set`, `Map`,
 `Error`), a variable that
@@ -227,7 +234,9 @@ let next = app.next_timer_micros();                       // when to call it aga
 * `snapshot()` returns a `UiState` (serde; `to_json`/`from_json`): the document, the
   component tree with every hook's value, handlers, timers and form state, with
   shared values kept shared. `UiApp::restore(&state, host)` decodes it; nothing
-  replays.
+  replays. An async function waiting on an `await` when the snapshot is taken is not
+  in it: the restored app carries on without that continuation (the timers and
+  state are there; the suspended call is not).
 
 ## Verification
 

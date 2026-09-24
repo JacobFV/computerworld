@@ -124,7 +124,6 @@ fn react_export(name: &str) -> ReactName {
 }
 
 struct Local {
-    name: String,
     ty: Ty,
     captured: bool,
     /// Offset of an assignment after the declaration.
@@ -147,6 +146,7 @@ struct FnCtx {
     has_depless_effect: bool,
     declared_ret: Option<Ty>,
     ret: Ty,
+    is_async: bool,
 }
 
 impl FnCtx {
@@ -162,6 +162,7 @@ impl FnCtx {
             has_depless_effect: false,
             declared_ret: None,
             ret: Ty::Unknown,
+            is_async: false,
         }
     }
     fn lookup(&self, name: &str) -> Option<u32> {
@@ -175,7 +176,6 @@ impl FnCtx {
     fn declare(&mut self, name: &str, ty: Ty) -> u32 {
         let slot = self.locals.len() as u32;
         self.locals.push(Local {
-            name: name.to_owned(),
             ty,
             captured: false,
             reassigned: None,
@@ -270,6 +270,8 @@ struct Lowerer<'a> {
     mods: Vec<ModNames<'a>>,
     /// Generic parameters in scope: each stands for its constraint.
     type_params: Vec<BTreeMap<String, Ty>>,
+    /// The one `await` the statement being lowered may contain (see `ir::Expr::Await`).
+    await_slot: Option<Span>,
     cur_mod: usize,
     functions: Vec<Option<Function>>,
     pending: BTreeMap<u32, PendingFn<'a>>,
@@ -328,6 +330,7 @@ impl<'a> Lowerer<'a> {
             ginfo: Vec::new(),
             mods: Vec::new(),
             type_params: Vec::new(),
+            await_slot: None,
             cur_mod: 0,
             functions: Vec::new(),
             pending: BTreeMap::new(),
@@ -1082,6 +1085,8 @@ impl<'a> Lowerer<'a> {
             ret: Ty::Node,
             line: self.line(render.span),
             has_depless_effect: false,
+            boxed: Vec::new(),
+            is_async: false,
         });
         if self.root.is_some() {
             self.err(render.span, "the module renders twice");
@@ -1317,6 +1322,7 @@ impl<'a> Lowerer<'a> {
             "Set" | "ReadonlySet" => Ty::Set(Box::new(arg(0))),
             "Map" | "ReadonlyMap" => Ty::Map(Box::new(arg(0)), Box::new(arg(1))),
             "RegExp" => Ty::Regex,
+            "Error" | "TypeError" | "RangeError" | "SyntaxError" => Ty::Error,
             "ReactNode" | "ReactElement" | "Element" | "ReactChild" | "ReactPortal" => Ty::Node,
             "PropsWithChildren" => match arg(0) {
                 Ty::Object(mut fs) => {
@@ -1480,16 +1486,16 @@ impl<'a> Lowerer<'a> {
         declared_ret: Ty,
         _outer: Option<()>,
     ) -> Function {
-        if p.is_async {
-            self.err(
-                p.span,
-                "async functions are outside the compiled subset (use promise `.then` chains)",
-            );
-        }
         if p.generator {
             self.err(p.span, "generators are outside the compiled subset");
         }
         let mut ctx = FnCtx::new(p.kind);
+        ctx.is_async = p.is_async;
+        // An async function's body returns what its promise resolves to.
+        let declared_ret = match (p.is_async, declared_ret) {
+            (true, Ty::Promise(t)) => *t,
+            (_, t) => t,
+        };
         if !matches!(declared_ret, Ty::Unknown) {
             ctx.declared_ret = Some(declared_ret.clone());
         }
@@ -1551,22 +1557,23 @@ impl<'a> Lowerer<'a> {
             }
         };
         let ctx = self.fns.pop().unwrap();
-        for l in &ctx.locals {
-            if let (true, Some(at)) = (l.captured, l.reassigned) {
-                self.diags.push(Diagnostic::at(
-                    self.src,
-                    at,
-                    format!(
-                        "`{}` is reassigned and also captured by a closure, which the compiled subset cannot share",
-                        l.name
-                    ),
-                ));
-            }
-        }
+        // Captured and reassigned: shared through a cell.
+        let boxed: Vec<u32> = ctx
+            .locals
+            .iter()
+            .enumerate()
+            .filter(|(_, l)| l.captured && l.reassigned.is_some())
+            .map(|(i, _)| i as u32)
+            .collect();
         let ret = match ctx.declared_ret.clone() {
             Some(t) => t,
             None if matches!(ctx.ret, Ty::Unknown) => Ty::Void,
             None => ctx.ret.clone(),
+        };
+        let ret = if p.is_async {
+            Ty::Promise(Box::new(ret))
+        } else {
+            ret
         };
         Function {
             name: p.name.clone(),
@@ -1579,6 +1586,8 @@ impl<'a> Lowerer<'a> {
             ret,
             line: self.line(p.span),
             has_depless_effect: ctx.has_depless_effect,
+            boxed,
+            is_async: p.is_async,
         }
     }
 
@@ -1855,7 +1864,20 @@ impl<'a> Lowerer<'a> {
         match s {
             S::EmptyStatement(_) => {}
             S::ExpressionStatement(e) => {
+                // `await x;` and `v = await x;` are places an async function stops.
+                match strip(&e.expression) {
+                    E::AwaitExpression(a) => self.await_slot = Some(a.span),
+                    E::AssignmentExpression(asg)
+                        if asg.operator == ast::AssignmentOperator::Assign =>
+                    {
+                        if let E::AwaitExpression(a) = strip(&asg.right) {
+                            self.await_slot = Some(a.span);
+                        }
+                    }
+                    _ => {}
+                }
                 let (x, _) = self.expr(&e.expression, None);
+                self.await_slot = None;
                 out.push(Stmt::Expr(x));
             }
             S::VariableDeclaration(d) => self.var_decl(d, out),
@@ -1890,6 +1912,9 @@ impl<'a> Lowerer<'a> {
                 } else {
                     None
                 });
+                if let Some(E::AwaitExpression(aw)) = r.argument.as_ref().map(strip) {
+                    self.await_slot = Some(aw.span);
+                }
                 let x = r.argument.as_ref().map(|a| {
                     let (x, t) = self.expr(a, want.as_ref());
                     let c = self.cur();
@@ -2022,6 +2047,35 @@ impl<'a> Lowerer<'a> {
                 let (x, _) = self.expr(&t.argument, None);
                 out.push(Stmt::Throw(x));
             }
+            S::TryStatement(t) => {
+                self.cur().cond_depth += 1;
+                let block = self.block(&t.block.body);
+                let (param, handler) = match &t.handler {
+                    Some(h) => {
+                        self.cur().scopes.push(Vec::new());
+                        let param = h.param.as_ref().map(|cp| {
+                            let ty = cp
+                                .type_annotation
+                                .as_ref()
+                                .map(|a| self.ts_type(&a.type_annotation))
+                                .unwrap_or(Ty::Unknown);
+                            self.bind_pattern(&cp.pattern, &ty)
+                        });
+                        let body = self.block(&h.body.body);
+                        self.cur().scopes.pop();
+                        (param, Some(body))
+                    }
+                    None => (None, None),
+                };
+                let finalizer = t.finalizer.as_ref().map(|f| self.block(&f.body));
+                self.cur().cond_depth -= 1;
+                out.push(Stmt::Try {
+                    block,
+                    param,
+                    handler,
+                    finalizer,
+                });
+            }
             S::TSTypeAliasDeclaration(_) | S::TSInterfaceDeclaration(_) => {}
             other => {
                 self.err(
@@ -2047,7 +2101,11 @@ impl<'a> Lowerer<'a> {
             let (init, ty) = match &decl.init {
                 Some(e) => {
                     let fresh = is_fresh_init(e);
+                    if let E::AwaitExpression(aw) = strip(e) {
+                        self.await_slot = Some(aw.span);
+                    }
                     let (x, t) = self.expr(e, declared.as_ref());
+                    self.await_slot = None;
                     let t = declared.clone().unwrap_or(t);
                     let t = if d.kind == ast::VariableDeclarationKind::Let {
                         widen(&t)
@@ -2354,14 +2412,61 @@ impl<'a> Lowerer<'a> {
                         };
                         return (Expr::Builtin(b, args), t);
                     }
-                    if id.name == "Error" {
+                    if matches!(id.name.as_str(), "Error" | "TypeError")
+                        && self.resolve_is_free(id.name.as_str())
+                    {
                         let (args, _) = self.exprs_args(&n.arguments, &[Ty::String]);
-                        return (Expr::Builtin(Builtin::Error, args), Ty::String);
+                        let b = if id.name == "Error" {
+                            Builtin::Error
+                        } else {
+                            Builtin::TypeError
+                        };
+                        return (Expr::Builtin(b, args), Ty::Error);
+                    }
+                    if id.name == "Promise" && self.resolve_is_free("Promise") {
+                        let t = match &n.type_arguments {
+                            Some(ta) => ta
+                                .params
+                                .first()
+                                .map(|t| self.ts_type(t))
+                                .unwrap_or(Ty::Unknown),
+                            None => match want.map(non_null) {
+                                Some(Ty::Promise(t)) => *t,
+                                _ => Ty::Unknown,
+                            },
+                        };
+                        let exec = Ty::Function(
+                            vec![
+                                Ty::Function(vec![t.clone()], Box::new(Ty::Void)),
+                                Ty::Function(vec![Ty::Unknown], Box::new(Ty::Void)),
+                            ],
+                            Box::new(Ty::Void),
+                        );
+                        let (args, _) = self.exprs_args(&n.arguments, &[exec]);
+                        return (
+                            Expr::Builtin(Builtin::NewPromise, args),
+                            Ty::Promise(Box::new(t)),
+                        );
                     }
                 }
                 self.unsupported(n.span, "`new`")
             }
-            E::AwaitExpression(a) => self.unsupported(a.span, "`await`"),
+            E::AwaitExpression(a) => {
+                if !self.fns.last().is_some_and(|f| f.is_async) {
+                    return self.unsupported(a.span, "`await` outside an async function");
+                }
+                if self.await_slot != Some(a.span) {
+                    self.err(a.span, "`await` inside an expression is outside the compiled subset (await into a variable first)");
+                    return (Expr::Undefined, Ty::Unknown);
+                }
+                self.await_slot = None;
+                let (x, t) = self.expr(&a.argument, None);
+                let t = match non_null(&t) {
+                    Ty::Promise(inner) => *inner,
+                    _ => t,
+                };
+                (Expr::Await(Box::new(x)), t)
+            }
             E::ThisExpression(t) => self.unsupported(t.span, "`this`"),
             E::ClassExpression(c) => self.unsupported(c.span, "a class"),
             E::RegExpLiteral(r) => (
@@ -2594,12 +2699,16 @@ impl<'a> Lowerer<'a> {
             return Some((LValue::Local(slot), l.ty.clone()));
         }
         for level in (0..depth - 1).rev() {
-            if self.fns[level].lookup(name).is_some() {
-                self.err(
-                    span,
-                    format!("assigning `{name}` from inside a closure is outside the compiled subset (keep it in state or a ref)"),
-                );
-                return None;
+            if let Some(slot) = self.fns[level].lookup(name) {
+                // A variable of an enclosing function: it becomes shared (boxed).
+                let l = &mut self.fns[level].locals[slot as usize];
+                l.reassigned = Some(span.start);
+                l.fresh = false;
+                let ty = l.ty.clone();
+                return match self.resolve(name, span) {
+                    Some((Expr::Capture(idx), _)) => Some((LValue::Capture(idx), ty)),
+                    _ => None,
+                };
             }
         }
         if let Some(g) = self.gname(name).cloned() {
@@ -3067,6 +3176,29 @@ impl<'a> Lowerer<'a> {
                 return Some((Expr::Builtin(Builtin::SetInterval, args), Ty::Number));
             }
             ("window", "clearInterval") => (Builtin::ClearInterval, vec![], Ty::Void),
+            ("Promise", "all") => {
+                let (args, tys) = self.exprs_args(&c.arguments, &[]);
+                let unwrap = |t: Ty| match t {
+                    Ty::Promise(i) => *i,
+                    t => t,
+                };
+                let t = match tys.into_iter().next().map(|t| non_null(&t)) {
+                    Some(Ty::Tuple(ts)) => Ty::Tuple(ts.into_iter().map(unwrap).collect()),
+                    Some(Ty::Array(e)) => Ty::Array(Box::new(unwrap(*e))),
+                    _ => Ty::Unknown,
+                };
+                return Some((
+                    Expr::Builtin(Builtin::PromiseAll, args),
+                    Ty::Promise(Box::new(t)),
+                ));
+            }
+            ("Promise", "reject") => {
+                let (args, _) = self.exprs_args(&c.arguments, &[]);
+                return Some((
+                    Expr::Builtin(Builtin::PromiseReject, args),
+                    Ty::Promise(Box::new(Ty::Unknown)),
+                ));
+            }
             ("Promise", "resolve") => {
                 let (args, tys) = self.exprs_args(&c.arguments, &[]);
                 return Some((
@@ -4446,9 +4578,11 @@ pub(crate) fn walk_expr(x: &Expr, f: &mut impl FnMut(&Expr)) {
                 }
             }
         }
-        Expr::Member(o, _, _) | Expr::Unary(_, o) | Expr::TypeOf(o) | Expr::Chain(o) => {
-            walk_expr(o, f)
-        }
+        Expr::Member(o, _, _)
+        | Expr::Unary(_, o)
+        | Expr::TypeOf(o)
+        | Expr::Chain(o)
+        | Expr::Await(o) => walk_expr(o, f),
         Expr::Index(o, k, _) => {
             walk_expr(o, f);
             walk_expr(k, f);
@@ -4538,6 +4672,7 @@ pub(crate) fn walk_expr(x: &Expr, f: &mut impl FnMut(&Expr)) {
 fn walk_lvalue(lv: &LValue, f: &mut impl FnMut(&Expr)) {
     match lv {
         LValue::Local(n) => f(&Expr::Local(*n)),
+        LValue::Capture(n) => f(&Expr::Capture(*n)),
         LValue::Global(_) => {}
         LValue::Member(o, _) => walk_expr(o, f),
         LValue::Index(o, k) => {

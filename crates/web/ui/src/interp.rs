@@ -12,6 +12,7 @@ use crate::ir::*;
 use crate::runtime::*;
 use crate::value::*;
 
+#[derive(Debug)]
 pub(crate) struct Frame {
     pub locals: Vec<Value>,
     pub closure: Rc<Closure>,
@@ -19,9 +20,33 @@ pub(crate) struct Frame {
     pub inst: Option<u32>,
     /// Occurrences of element expressions this frame evaluated, for cache keys.
     pub occ: BTreeMap<usize, u32>,
+    /// Which slots are boxed (live in a shared cell).
+    pub boxed: Rc<[bool]>,
 }
 
 impl Frame {
+    /// A frame for module initialisers and other code outside any function.
+    pub fn bare() -> Frame {
+        Frame {
+            locals: Vec::new(),
+            closure: Rc::new(Closure {
+                func: 0,
+                captures: Vec::new(),
+            }),
+            inst: None,
+            occ: BTreeMap::new(),
+            boxed: Rc::from(Vec::new()),
+        }
+    }
+
+    /// A slot's value, read through its cell when it is boxed.
+    pub fn slot_value(&self, c: &Capture) -> Value {
+        match self.slot(c) {
+            Value::Cell(cell) => cell.borrow().clone(),
+            v => v.clone(),
+        }
+    }
+
     pub fn slot(&self, c: &Capture) -> &Value {
         match c {
             Capture::Local(n) => &self.locals[*n as usize],
@@ -282,6 +307,10 @@ impl Runtime {
                 self.dispatch_action(*inst, *hook, arg(&args, 0))?;
                 Ok(Value::Undefined)
             }
+            Value::Native(n) => {
+                let n = n.clone();
+                self.call_native(&n, arg(&args, 0))
+            }
             other => type_error(format!("{} is not a function", inspect(other))),
         }
     }
@@ -300,16 +329,40 @@ impl Runtime {
             closure: c.clone(),
             inst,
             occ: BTreeMap::new(),
+            boxed: self.boxed_flags(c.func),
         };
         let mut args = args.into_iter();
         for p in &f.params {
             let v = args.next().unwrap_or(Value::Undefined);
             self.bind(&mut frame, p, v)?;
         }
+        if f.is_async {
+            return Ok(crate::asyncfn::start(self, module.clone(), c.func, frame));
+        }
         match self.exec_block(&mut frame, &f.body)? {
             Flow::Return(v) => Ok(v),
             _ => Ok(Value::Undefined),
         }
+    }
+
+    /// Per slot of function `f`: whether it is boxed.
+    pub(crate) fn boxed_flags(&mut self, f: u32) -> Rc<[bool]> {
+        if let Some(Some(b)) = self.boxed_cache.get(f as usize) {
+            return b.clone();
+        }
+        let func = &self.module.functions[f as usize];
+        let mut flags = vec![false; func.n_locals as usize];
+        for b in &func.boxed {
+            if let Some(x) = flags.get_mut(*b as usize) {
+                *x = true;
+            }
+        }
+        let flags: Rc<[bool]> = Rc::from(flags);
+        if self.boxed_cache.len() <= f as usize {
+            self.boxed_cache.resize(f as usize + 1, None);
+        }
+        self.boxed_cache[f as usize] = Some(flags.clone());
+        flags
     }
 
     /// How many arguments a callback reads (so `map` does not build unused ones).
@@ -404,7 +457,7 @@ impl Runtime {
                     }
                     guard += 1;
                     if guard > 50_000_000 {
-                        return throw(Value::str("RangeError: loop did not terminate"));
+                        return js_error("RangeError", "loop did not terminate");
                     }
                 }
             }
@@ -436,11 +489,40 @@ impl Runtime {
                 let v = self.eval(frame, e)?;
                 return throw(v);
             }
+            Stmt::Try {
+                block,
+                param,
+                handler,
+                finalizer,
+            } => {
+                let mut r = self.exec_block(frame, block);
+                if let (Err(Throw::Value(v)), Some(h)) = (&r, handler) {
+                    let v = v.clone();
+                    r = match param {
+                        Some(p) => self
+                            .bind(frame, p, v)
+                            .and_then(|_| self.exec_block(frame, h)),
+                        None => self.exec_block(frame, h),
+                    };
+                }
+                if let Some(f) = finalizer {
+                    match self.exec_block(frame, f)? {
+                        Flow::Normal => {}
+                        other => return Ok(other),
+                    }
+                }
+                return r;
+            }
         }
         Ok(Flow::Normal)
     }
 
-    fn iterate(&mut self, v: &Value) -> R<Vec<Value>> {
+    /// One statement (for the async walk).
+    pub(crate) fn exec_stmt(&mut self, frame: &mut Frame, s: &Stmt) -> R<Flow> {
+        self.exec(frame, s)
+    }
+
+    pub(crate) fn iterate(&mut self, v: &Value) -> R<Vec<Value>> {
         match v {
             Value::Array(a) => Ok(a.borrow().clone()),
             Value::Str(s) => Ok(s.chars().map(|c| Value::str(&c.to_string())).collect()),
@@ -456,7 +538,13 @@ impl Runtime {
 
     pub(crate) fn bind(&mut self, frame: &mut Frame, p: &Pattern, v: Value) -> R<()> {
         match p {
-            Pattern::Local(n) => frame.locals[*n as usize] = v,
+            Pattern::Local(n) => {
+                frame.locals[*n as usize] = if frame.boxed.get(*n as usize) == Some(&true) {
+                    Value::Cell(Rc::new(RefCell::new(v)))
+                } else {
+                    v
+                };
+            }
             Pattern::Ignore => {}
             Pattern::Default(inner, d) => {
                 let v = if matches!(v, Value::Undefined) {
@@ -537,8 +625,14 @@ impl Runtime {
             Expr::Bool(b) => Value::Bool(*b),
             Expr::Num(n) => Value::Num(*n),
             Expr::Str(s) => Value::str(s),
-            Expr::Local(n) => frame.locals[*n as usize].clone(),
-            Expr::Capture(n) => frame.closure.captures[*n as usize].clone(),
+            Expr::Local(n) => match &frame.locals[*n as usize] {
+                Value::Cell(c) => c.borrow().clone(),
+                v => v.clone(),
+            },
+            Expr::Capture(n) => match &frame.closure.captures[*n as usize] {
+                Value::Cell(c) => c.borrow().clone(),
+                v => v.clone(),
+            },
             Expr::Global(n) => self.globals[*n as usize].clone(),
             Expr::Template(quasis, exprs) => {
                 let mut s = String::new();
@@ -711,6 +805,9 @@ impl Runtime {
                 last
             }
             Expr::Regex(pattern, flags) => self.new_regex(pattern, flags)?,
+            Expr::Await(_) => {
+                return js_error("SyntaxError", "await is only valid in an async function")
+            }
             Expr::Chain(x) => match self.eval(frame, x) {
                 Err(Throw::Short) => Value::Undefined,
                 other => other?,
@@ -720,7 +817,14 @@ impl Runtime {
 
     fn read_lvalue(&mut self, frame: &mut Frame, lv: &LValue) -> R<Value> {
         match lv {
-            LValue::Local(n) => Ok(frame.locals[*n as usize].clone()),
+            LValue::Local(n) => Ok(match &frame.locals[*n as usize] {
+                Value::Cell(c) => c.borrow().clone(),
+                v => v.clone(),
+            }),
+            LValue::Capture(n) => Ok(match &frame.closure.captures[*n as usize] {
+                Value::Cell(c) => c.borrow().clone(),
+                v => v.clone(),
+            }),
             LValue::Global(n) => Ok(self.globals[*n as usize].clone()),
             LValue::Member(o, k) => {
                 let o = self.eval(frame, o)?;
@@ -734,9 +838,16 @@ impl Runtime {
         }
     }
 
-    fn write_lvalue(&mut self, frame: &mut Frame, lv: &LValue, v: Value) -> R<()> {
+    pub(crate) fn write_lvalue(&mut self, frame: &mut Frame, lv: &LValue, v: Value) -> R<()> {
         match lv {
-            LValue::Local(n) => frame.locals[*n as usize] = v,
+            LValue::Local(n) => match &frame.locals[*n as usize] {
+                Value::Cell(c) => *c.borrow_mut() = v,
+                _ => frame.locals[*n as usize] = v,
+            },
+            LValue::Capture(n) => match &frame.closure.captures[*n as usize] {
+                Value::Cell(c) => *c.borrow_mut() = v,
+                _ => return js_error("TypeError", "Assignment to a captured constant"),
+            },
             LValue::Global(n) => self.globals[*n as usize] = v,
             LValue::Member(o, k) => {
                 let o = self.eval(frame, o)?;
@@ -883,6 +994,16 @@ impl Runtime {
                 "deltaY" => Value::Num(e.delta_y),
                 _ => Value::Undefined,
             },
+            Value::Error(e) => match name {
+                "name" => Value::Str(e.name.clone()),
+                "message" => Value::Str(e.message.clone()),
+                "stack" => Value::str(&o.to_js_string()),
+                _ => Value::Undefined,
+            },
+            Value::Cell(c) => {
+                let inner = c.borrow().clone();
+                return self.get_member(&inner, name);
+            }
             Value::Set(a) => match name {
                 "size" => Value::Num(a.borrow().len() as f64),
                 _ => Value::Undefined,
@@ -1211,7 +1332,7 @@ impl Runtime {
             },
             B::JsonParse => match crate::json::parse(&arg(&args, 0).to_js_string()) {
                 Ok(v) => v,
-                Err(e) => return throw(Value::str(&format!("SyntaxError: {e}"))),
+                Err(e) => return js_error("SyntaxError", e),
             },
             B::DateNow => Value::Num(self.now_ms().floor()),
             B::ConsoleLog | B::ConsoleWarn | B::ConsoleError => {
@@ -1258,7 +1379,64 @@ impl Runtime {
                 Value::Promise(p)
             }
             B::DocumentTitle => Value::str(&self.inner.title()),
-            B::Error => Value::str(&format!("Error: {}", arg(&args, 0).to_js_string())),
+            B::Error | B::TypeError => {
+                let m = match arg(&args, 0) {
+                    Value::Undefined => String::new(),
+                    v => v.to_js_string(),
+                };
+                Value::error(if b == B::Error { "Error" } else { "TypeError" }, &m)
+            }
+            B::NewPromise => {
+                let p = new_promise();
+                let resolve = Value::Native(Rc::new(NativeFn::Resolver {
+                    promise: p.clone(),
+                    reject: false,
+                }));
+                let reject = Value::Native(Rc::new(NativeFn::Resolver {
+                    promise: p.clone(),
+                    reject: true,
+                }));
+                if let Err(Throw::Value(e)) = self.call_value(&arg(&args, 0), vec![resolve, reject])
+                {
+                    self.reject_promise(&p, e);
+                }
+                Value::Promise(p)
+            }
+            B::PromiseReject => {
+                let p = new_promise();
+                self.reject_promise(&p, arg(&args, 0));
+                Value::Promise(p)
+            }
+            B::PromiseAll => {
+                let items = self.iterate(&arg(&args, 0))?;
+                let result = new_promise();
+                let state = Rc::new(RefCell::new(AllState {
+                    values: vec![Value::Undefined; items.len()],
+                    remaining: items.len(),
+                    result: result.clone(),
+                    done: false,
+                }));
+                if items.is_empty() {
+                    self.resolve_promise(&result, Value::array(vec![]));
+                }
+                for (i, item) in items.into_iter().enumerate() {
+                    let p = match item {
+                        Value::Promise(p) => p,
+                        v => {
+                            let p = new_promise();
+                            self.resolve_promise(&p, v);
+                            p
+                        }
+                    };
+                    let ok = Value::Native(Rc::new(NativeFn::AllSlot {
+                        state: state.clone(),
+                        index: i,
+                    }));
+                    let bad = Value::Native(Rc::new(NativeFn::AllReject(state.clone())));
+                    self.promise_then(&p, ReactionKind::Then, ok, bad);
+                }
+                Value::Promise(result)
+            }
             B::NewSet => {
                 let mut out: Vec<Value> = Vec::new();
                 let src = arg(&args, 0);
@@ -1318,9 +1496,10 @@ impl Runtime {
         let p = new_promise();
         match r {
             Ok(resp) => self.resolve_promise(&p, Value::Response(Rc::new(resp))),
-            Err(e) => {
-                self.reject_promise(&p, Value::str(&format!("TypeError: Failed to fetch ({e})")))
-            }
+            Err(e) => self.reject_promise(
+                &p,
+                Value::error("TypeError", &format!("Failed to fetch ({e})")),
+            ),
         }
         Ok(Value::Promise(p))
     }
@@ -1375,7 +1554,7 @@ impl Runtime {
                 let p = new_promise();
                 match crate::json::parse(&String::from_utf8_lossy(&resp.body)) {
                     Ok(v) => self.resolve_promise(&p, v),
-                    Err(e) => self.reject_promise(&p, Value::str(&format!("SyntaxError: {e}"))),
+                    Err(e) => self.reject_promise(&p, Value::error("SyntaxError", &e)),
                 }
                 Value::Promise(p)
             }
@@ -1658,7 +1837,7 @@ impl Runtime {
                 let i = arg(&args, 0).to_number().trunc();
                 let i = if i < 0.0 { v.len() as f64 + i } else { i };
                 if i < 0.0 || i as usize >= v.len() {
-                    return throw(Value::str("RangeError: Invalid index"));
+                    return js_error("RangeError", "Invalid index");
                 }
                 v[i as usize] = arg(&args, 1);
                 Value::array(v)
@@ -1878,7 +2057,7 @@ impl Runtime {
             M::StrRepeat => {
                 let n = arg(&args, 0).to_number();
                 if n < 0.0 || n.is_infinite() {
-                    return throw(Value::str("RangeError: Invalid count value"));
+                    return js_error("RangeError", "Invalid count value");
                 }
                 Value::str(&s.repeat(n as usize))
             }
@@ -2061,15 +2240,16 @@ impl Runtime {
                         'u' | 'v' => fl.unicode = true,
                         'g' | 'y' | 'd' => {}
                         _ => {
-                            return throw(Value::str(&format!(
-                                "SyntaxError: Invalid regular expression flags '{flags}'"
-                            )))
+                            return js_error(
+                                "SyntaxError",
+                                format!("Invalid regular expression flags '{flags}'"),
+                            )
                         }
                     }
                 }
                 let re = match cw_regex::Regex::new(pattern, cw_regex::Flavor::JavaScript, fl) {
                     Ok(r) => Rc::new(r),
-                    Err(e) => return throw(Value::str(&format!("SyntaxError: {}", e.message))),
+                    Err(e) => return js_error("SyntaxError", e.message),
                 };
                 self.regex_cache.insert(key, re.clone());
                 re
@@ -2097,16 +2277,12 @@ impl Runtime {
     ) -> R<Option<Slots>> {
         match re.re.exec(text, start, sticky, false) {
             Ok(m) => Ok(m),
-            Err(_) => throw(Value::str("RangeError: regular expression too complex")),
+            Err(_) => js_error("RangeError", "regular expression too complex"),
         }
     }
 
     /// `exec` honouring `lastIndex` for `g`/`y` regexes.
-    fn exec_stateful(
-        &mut self,
-        re: &RegexObj,
-        text: &[char],
-    ) -> R<Option<Slots>> {
+    fn exec_stateful(&mut self, re: &RegexObj, text: &[char]) -> R<Option<Slots>> {
         let stateful = re.global() || re.sticky();
         let start = if stateful {
             char_index(text, re.last_index.get())
@@ -2424,6 +2600,54 @@ fn radix_string(n: f64, radix: u32) -> String {
     digits.iter().rev().collect()
 }
 
+impl Runtime {
+    fn call_native(&mut self, n: &NativeFn, v: Value) -> R<Value> {
+        match n {
+            NativeFn::Resolver { promise, reject } => {
+                if *reject {
+                    self.reject_promise(promise, v);
+                } else {
+                    self.resolve_promise(promise, v);
+                }
+            }
+            NativeFn::AllSlot { state, index } => {
+                let done = {
+                    let mut st = state.borrow_mut();
+                    if st.done {
+                        return Ok(Value::Undefined);
+                    }
+                    st.values[*index] = v;
+                    st.remaining -= 1;
+                    st.remaining == 0
+                };
+                if done {
+                    let (result, values) = {
+                        let mut st = state.borrow_mut();
+                        st.done = true;
+                        (st.result.clone(), std::mem::take(&mut st.values))
+                    };
+                    self.resolve_promise(&result, Value::array(values));
+                }
+            }
+            NativeFn::AllReject(state) => {
+                let result = {
+                    let mut st = state.borrow_mut();
+                    if st.done {
+                        return Ok(Value::Undefined);
+                    }
+                    st.done = true;
+                    st.result.clone()
+                };
+                self.reject_promise(&result, v);
+            }
+            NativeFn::Resume { task, throw } => {
+                crate::asyncfn::resume(self, task, v, *throw);
+            }
+        }
+        Ok(Value::Undefined)
+    }
+}
+
 pub(crate) fn new_promise() -> Rc<RefCell<Promise>> {
     Rc::new(RefCell::new(Promise {
         state: PromiseState::Pending,
@@ -2480,7 +2704,7 @@ impl Runtime {
         }
     }
 
-    fn promise_then(
+    pub(crate) fn promise_then(
         &mut self,
         p: &Rc<RefCell<Promise>>,
         kind: ReactionKind,

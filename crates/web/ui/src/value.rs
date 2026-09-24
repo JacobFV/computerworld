@@ -40,10 +40,24 @@ pub enum Value {
     /// A context object (`createContext`): its id.
     Context(u32),
     Regex(Rc<RegexObj>),
+    /// An `Error` (or `TypeError`, …): name and message.
+    Error(Rc<ErrorObj>),
+    /// A boxed variable's cell (see `ir::Function::boxed`); never seen by programs,
+    /// which read through it.
+    Cell(Rc<RefCell<Value>>),
+    /// A function the runtime provides: a promise's resolve/reject, a
+    /// `Promise.all` slot, an async function's continuation.
+    Native(Rc<crate::runtime::NativeFn>),
     /// A `Set`: its members in insertion order.
     Set(Arr),
     /// A `Map`: its entries in insertion order.
     Map(Rc<RefCell<Vec<(Value, Value)>>>),
+}
+
+#[derive(Debug)]
+pub struct ErrorObj {
+    pub name: Str,
+    pub message: Str,
 }
 
 /// A `RegExp` object.
@@ -156,6 +170,13 @@ pub struct Reaction {
 }
 
 impl Value {
+    pub fn error(name: &str, message: &str) -> Value {
+        Value::Error(Rc::new(ErrorObj {
+            name: Rc::from(name),
+            message: Rc::from(message),
+        }))
+    }
+
     pub fn str(s: &str) -> Value {
         Value::Str(Rc::from(s))
     }
@@ -186,7 +207,9 @@ impl Value {
             Value::Bool(_) => "boolean",
             Value::Num(_) => "number",
             Value::Str(_) => "string",
-            Value::Func(_) | Value::Setter(..) | Value::Dispatch(..) => "function",
+            Value::Func(_) | Value::Setter(..) | Value::Dispatch(..) | Value::Native(_) => {
+                "function"
+            }
             _ => "object",
         }
     }
@@ -242,6 +265,15 @@ impl Value {
             }
             Value::Promise(_) => "[object Promise]".into(),
             Value::Regex(r) => format!("/{}/{}", r.source, r.flags),
+            Value::Error(e) => {
+                if e.message.is_empty() {
+                    e.name.to_string()
+                } else {
+                    format!("{}: {}", e.name, e.message)
+                }
+            }
+            Value::Cell(c) => c.borrow().to_js_string(),
+            Value::Native(_) => "function () { [native code] }".into(),
             Value::Set(_) => "[object Set]".into(),
             Value::Map(_) => "[object Map]".into(),
             Value::Response(_) => "[object Response]".into(),
@@ -298,6 +330,8 @@ fn strict_equals_ref(a: &Value, b: &Value) -> bool {
         (Value::Response(x), Value::Response(y)) => Rc::ptr_eq(x, y),
         (Value::Context(x), Value::Context(y)) => x == y,
         (Value::Regex(x), Value::Regex(y)) => Rc::ptr_eq(x, y),
+        (Value::Error(x), Value::Error(y)) => Rc::ptr_eq(x, y),
+        (Value::Native(x), Value::Native(y)) => Rc::ptr_eq(x, y),
         (Value::Set(x), Value::Set(y)) => Rc::ptr_eq(x, y),
         (Value::Map(x), Value::Map(y)) => Rc::ptr_eq(x, y),
         _ => false,

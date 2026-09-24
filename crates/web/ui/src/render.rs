@@ -131,6 +131,23 @@ fn walk_stmts(stmts: &[ir::Stmt], f: &mut impl FnMut(&Expr)) {
                 }
             }
             S::Block(b) => walk_stmts(b, f),
+            S::Try {
+                block,
+                param,
+                handler,
+                finalizer,
+            } => {
+                walk_stmts(block, f);
+                if let Some(p) = param {
+                    walk_pattern(p, f);
+                }
+                if let Some(h) = handler {
+                    walk_stmts(h, f);
+                }
+                if let Some(x) = finalizer {
+                    walk_stmts(x, f);
+                }
+            }
             S::Break | S::Continue => {}
         }
     }
@@ -164,7 +181,11 @@ fn walk(e: &Expr, f: &mut impl FnMut(&Expr)) {
         }
         Expr::Array(xs) | Expr::Builtin(_, xs) => items(xs, &mut |e| walk(e, f)),
         Expr::Object(ps) => props(ps, &mut |e| walk(e, f)),
-        Expr::Member(o, _, _) | Expr::Unary(_, o) | Expr::TypeOf(o) | Expr::Chain(o) => walk(o, f),
+        Expr::Member(o, _, _)
+        | Expr::Unary(_, o)
+        | Expr::TypeOf(o)
+        | Expr::Chain(o)
+        | Expr::Await(o) => walk(o, f),
         Expr::Index(o, k, _) => {
             walk(o, f);
             walk(k, f);
@@ -634,8 +655,7 @@ impl Runtime {
                     let mut all_same = old.is_some();
                     for (i, h) in holes.iter().enumerate() {
                         let m = &meta[i];
-                        let cur: Vec<Value> =
-                            m.deps.iter().map(|d| frame.slot(d).clone()).collect();
+                        let cur: Vec<Value> = m.deps.iter().map(|d| frame.slot_value(d)).collect();
                         let reuse = match &old {
                             Some(o) if !m.always => {
                                 o.deps[i].len() == cur.len()

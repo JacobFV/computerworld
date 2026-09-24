@@ -94,6 +94,14 @@ pub struct Function {
     /// For a component: it calls `useEffect`/`useLayoutEffect` without a
     /// dependency list, so skipping one of its renders would be observable.
     pub has_depless_effect: bool,
+    /// Frame slots that closures capture and someone reassigns: they live in a
+    /// shared cell (created by each `Let` that binds them), so the frame and every
+    /// closure see one variable, as in JavaScript.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub boxed: Vec<u32>,
+    /// An `async` function: calling it returns a promise, and `await` suspends it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub is_async: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -155,8 +163,15 @@ pub enum Stmt {
     Break,
     Continue,
     Block(Vec<Stmt>),
-    /// `throw expr`: a runtime error with the value's text.
+    /// `throw expr`.
     Throw(Expr),
+    /// `try { block } catch (param) { handler } finally { finalizer }`.
+    Try {
+        block: Vec<Stmt>,
+        param: Option<Pattern>,
+        handler: Option<Vec<Stmt>>,
+        finalizer: Option<Vec<Stmt>>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -210,6 +225,10 @@ pub enum Expr {
     /// A regular expression literal: pattern and flags (JavaScript syntax). Each
     /// evaluation is a new `RegExp` object, as in JavaScript.
     Regex(String, String),
+    /// `await expr`, in an async function. The compiler puts it only where the
+    /// runtime can suspend: a whole `let` initialiser, expression statement,
+    /// assignment's right side or `return` value.
+    Await(Box<Expr>),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -228,6 +247,8 @@ pub enum Prop {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum LValue {
     Local(u32),
+    /// A captured variable of the enclosing function (always a boxed slot there).
+    Capture(u32),
     Global(u32),
     Member(Expr, String),
     Index(Expr, Expr),
@@ -442,8 +463,17 @@ pub enum Builtin {
     NaN,
     /// `document.title = x` is an assignment; reading it is this.
     DocumentTitle,
-    /// `new Error(msg)`: evaluates to the message.
+    /// `new Error(msg)` (or `TypeError`, … by name in the first argument's place:
+    /// `Error` is `new Error(message)`).
     Error,
+    /// `new TypeError(msg)`.
+    TypeError,
+    /// `new Promise(executor)`.
+    NewPromise,
+    /// `Promise.all(promises)`.
+    PromiseAll,
+    /// `Promise.reject(reason)`.
+    PromiseReject,
     /// `new Set(iterable?)`.
     NewSet,
     /// `new Map(entries?)`.
@@ -552,6 +582,7 @@ pub enum Ty {
     Promise(Box<Ty>),
     Response,
     Regex,
+    Error,
     Set(Box<Ty>),
     Map(Box<Ty>, Box<Ty>),
     /// A string literal type (unions of them are how TS spells enums of names).

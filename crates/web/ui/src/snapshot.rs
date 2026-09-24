@@ -52,6 +52,8 @@ pub enum HeapObj {
     Map(Vec<(V, V)>),
     /// Pattern, flags, `lastIndex`.
     Regex(String, String, usize),
+    Error(String, String),
+    Cell(V),
     /// Promises and events do not outlive the entry that created them; a pending
     /// promise restores as one that never settles.
     Opaque,
@@ -310,7 +312,23 @@ impl Enc {
                     V::H(i)
                 }
             },
-            Value::Event(_) | Value::Promise(_) => {
+            Value::Error(e) => match self.reserve(Rc::as_ptr(e) as *const u8 as usize) {
+                Err(i) => V::H(i),
+                Ok(i) => {
+                    self.heap[i as usize] =
+                        HeapObj::Error(e.name.to_string(), e.message.to_string());
+                    V::H(i)
+                }
+            },
+            Value::Cell(c) => match self.reserve(Rc::as_ptr(c) as *const u8 as usize) {
+                Err(i) => V::H(i),
+                Ok(i) => {
+                    let inner = self.v(&c.borrow());
+                    self.heap[i as usize] = HeapObj::Cell(inner);
+                    V::H(i)
+                }
+            },
+            Value::Event(_) | Value::Promise(_) | Value::Native(_) => {
                 let i = self.heap.len() as u32;
                 self.heap.push(HeapObj::Opaque);
                 V::H(i)
@@ -643,6 +661,14 @@ impl Dec<'_> {
                 }))
             }
             HeapObj::Response(r) => Value::Response(Rc::new(r.clone())),
+            HeapObj::Error(name, message) => Value::error(name, message),
+            HeapObj::Cell(x) => {
+                let c = Rc::new(RefCell::new(Value::Undefined));
+                self.done[idx] = Some(Value::Cell(c.clone()));
+                let inner = self.v(x)?;
+                *c.borrow_mut() = inner;
+                return Ok(Value::Cell(c));
+            }
             HeapObj::Set(items) => {
                 let a: Arr = Rc::new(RefCell::new(Vec::new()));
                 self.done[idx] = Some(Value::Set(a.clone()));

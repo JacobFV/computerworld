@@ -176,6 +176,10 @@ pub fn property(t: &Ty, name: &str) -> Option<Ty> {
             _ => None,
         },
         Ty::Set(_) | Ty::Map(..) if name == "size" => Some(Ty::Number),
+        Ty::Error => match name {
+            "message" | "name" | "stack" => Some(Ty::String),
+            _ => None,
+        },
         Ty::Regex => match name {
             "source" | "flags" => Some(Ty::String),
             "global" => Some(Ty::Boolean),
@@ -294,6 +298,7 @@ pub fn show(t: &Ty) -> String {
         Ty::Promise(t) => format!("Promise<{}>", show(t)),
         Ty::Response => "Response".into(),
         Ty::Regex => "RegExp".into(),
+        Ty::Error => "Error".into(),
         Ty::Set(t) => format!("Set<{}>", show(t)),
         Ty::Map(k, v) => format!("Map<{}, {}>", show(k), show(v)),
         Ty::Lit(s) => format!("{s:?}"),

@@ -12,11 +12,27 @@ const BASE: &str = "https://example.test/";
 
 fn vendor(h: MemoryHost) -> MemoryHost {
     let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../engine/tests/vendor");
-    let mut h = h.with_response(
-        &format!("{BASE}api/items"),
-        "application/json",
-        r#"[{"id": 2, "name": "beta", "tags": ["x"]}, {"id": 1, "name": "alpha", "tags": []}]"#,
-    );
+    let mut h = h
+        .with_response(
+            &format!("{BASE}api/items"),
+            "application/json",
+            r#"[{"id": 2, "name": "beta", "tags": ["x"]}, {"id": 1, "name": "alpha", "tags": []}]"#,
+        )
+        .with_response(
+            &format!("{BASE}api/user/1"),
+            "application/json",
+            r#"{"id": 1, "name": "Ada"}"#,
+        )
+        .with_response(
+            &format!("{BASE}api/user/2"),
+            "application/json",
+            r#"{"id": 2, "name": "Bo"}"#,
+        )
+        .with_response(
+            &format!("{BASE}api/broken"),
+            "application/json",
+            "{not json",
+        );
     for name in [
         "react-18.3.1.production.min.js",
         "react-dom-18.3.1.production.min.js",
@@ -222,6 +238,9 @@ fn same_as_react(tsx: &str, steps: &[Step]) -> Vec<String> {
     let (module, js) = compile(tsx);
     let a = run_compiled(&module, steps);
     let b = run_fallback(&js, steps);
+    if std::env::var_os("CW_UI_SHOW").is_some() {
+        eprintln!("logs: {:?}\ndom: {}", a.logs, a.dom);
+    }
     assert_eq!(
         a.logs, b.logs,
         "console logs differ (left: compiled, right: React)"
@@ -742,5 +761,129 @@ createRoot(document.getElementById('root')!).render(<App />);
             Step::Click("#n2"),
             Step::Click("#tab-b"),
         ],
+    );
+}
+
+#[test]
+fn captured_variables_are_shared_and_errors_are_caught() {
+    same_as_react(
+        r#"
+import { useEffect, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+function counter() {
+  let n = 0;
+  return { next: () => { n += 1; return n; }, peek: () => n };
+}
+function parse(text: string): number {
+  const v = Number(text);
+  if (Number.isNaN(v)) throw new Error('not a number: ' + text);
+  return v;
+}
+function App() {
+  const [log, setLog] = useState<string[]>([]);
+  const c = useRef(counter());
+  useEffect(() => {
+    let cancelled = false;
+    const id = setTimeout(() => { if (!cancelled) setLog((l) => [...l, 'timer fired']); }, 50);
+    return () => { cancelled = true; clearTimeout(id); console.log('cleanup saw', cancelled); };
+  }, []);
+  const tryIt = (text: string) => {
+    const out: string[] = [];
+    try {
+      out.push('parsed ' + parse(text));
+    } catch (e) {
+      out.push('caught ' + String(e) + ' / ' + (e as Error).message);
+    } finally {
+      out.push('finally ' + c.current.next());
+    }
+    setLog((l) => [...l, ...out]);
+  };
+  return (
+    <div>
+      <button id="good" onClick={() => tryIt('42')}>good</button>
+      <button id="bad" onClick={() => tryIt('4x2')}>bad</button>
+      <ul>{log.map((l, i) => <li key={i}>{l}</li>)}</ul>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[
+            Step::Click("#good"),
+            Step::Click("#bad"),
+            Step::Wait(100),
+            Step::Click("#good"),
+        ],
+    );
+}
+
+#[test]
+fn async_functions_await_fetches_timers_and_each_other() {
+    same_as_react(
+        r#"
+import { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+interface User { id: number; name: string }
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+async function getUser(id: number): Promise<User> {
+  const res = await fetch('/api/user/' + id);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const user: User = await res.json();
+  return user;
+}
+function App() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [status, setStatus] = useState('idle');
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      try {
+        const both = await Promise.all([getUser(1), getUser(2)]);
+        await delay(30);
+        if (!cancelled) setUsers(both);
+        const missing = await getUser(3);
+        console.log('never', missing.name);
+      } catch (e) {
+        setStatus('failed: ' + (e as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+  async function sequence() {
+    const names: string[] = [];
+    for (const id of [2, 1]) {
+      const u = await getUser(id);
+      names.push(u.name);
+      if (names.length > 5) break;
+    }
+    let i = 0;
+    while (i < 2) {
+      await delay(10);
+      i++;
+    }
+    try {
+      const r = await fetch('/api/broken');
+      await r.json();
+    } catch (e) {
+      names.push('bad json');
+    }
+    setStatus(names.join(',') + ' after ' + i);
+  }
+  return (
+    <div>
+      <button id="seq" onClick={() => { sequence(); }}>seq</button>
+      <p>{loading ? 'loading' : 'done'} {status}</p>
+      <ul>{users.map((u) => <li key={u.id}>{u.name}</li>)}</ul>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Wait(100), Step::Click("#seq"), Step::Wait(100)],
     );
 }
