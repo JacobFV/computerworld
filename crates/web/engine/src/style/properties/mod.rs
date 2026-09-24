@@ -257,6 +257,8 @@ pub struct ComputeCtx<'a> {
     pub quirks: bool,
     /// The device's installed fonts, for `font-family`.
     pub fonts: crate::css::FontEnvironment,
+    /// Families the page's `@font-face` rules download.
+    pub web_fonts: &'a [String],
 }
 
 /// One longhand's row in the table.

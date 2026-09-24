@@ -523,4 +523,31 @@ mod cases {
         assert_eq!(p.computed("o", "white-space"), "nowrap");
         assert_eq!(p.computed("o", "padding-left"), "2px");
     }
+
+    /// On the Linux baseline the dumps were made on, a family is found only if the
+    /// machine has it or the page downloads it: `@font-face` serving Inter makes
+    /// Inter the face (the bundled file is the one the page serves), and without the
+    /// rule the list falls through to Liberation Sans's stand-in.
+    #[test]
+    fn a_font_face_rule_makes_its_family_available() {
+        let face = |css: &str| {
+            let p = page(&format!(
+                "<!DOCTYPE html><style>{css} p {{ font: 16px Inter, sans-serif }}</style><p id=p>Hello</p>"
+            ));
+            p.0.fonts
+                .iter()
+                .find(|f| f.family.starts_with("Inter"))
+                .map(|f| f.engine.clone())
+                .unwrap()
+        };
+        assert_eq!(
+            face("@font-face { font-family: 'Inter'; src: url(/vendor/inter-regular.ttf) format('truetype') }"),
+            "Inter"
+        );
+        assert_eq!(face(""), "Arimo");
+        assert_eq!(
+            face("@font-face { font-family: Inter; src: local(Inter) }"),
+            "Arimo"
+        );
+    }
 }

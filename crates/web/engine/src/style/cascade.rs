@@ -163,6 +163,8 @@ struct Engine<'a> {
     layer_count: usize,
     unsupported: Vec<Unsupported>,
     font_faces: Vec<FontFace>,
+    /// Families an `@font-face` rule downloads (a `url()` source), for `font-family`.
+    web_fonts: Vec<String>,
     keyframes: BTreeMap<String, Keyframes>,
     viewport: (Au, Au),
     fonts: crate::css::FontEnvironment,
@@ -194,6 +196,7 @@ impl<'a> Engine<'a> {
             layer_count: 0,
             unsupported: Vec::new(),
             font_faces: Vec::new(),
+            web_fonts: Vec::new(),
             keyframes: BTreeMap::new(),
             viewport: (
                 Au::from_px_i32(media.width_px),
@@ -302,6 +305,11 @@ impl<'a> Engine<'a> {
             match r {
                 Rule::FontFace(decls) => {
                     if let Some(f) = font_face(decls) {
+                        if f.src.iter().any(|s| !s.starts_with("local:"))
+                            && !self.web_fonts.contains(&f.family)
+                        {
+                            self.web_fonts.push(f.family.clone());
+                        }
                         self.font_faces.push(f);
                     }
                 }
@@ -544,6 +552,7 @@ impl<'a> Engine<'a> {
             parent_lengths: lengths_for(&parent.font, root_fs),
             quirks: self.quirks,
             fonts: self.fonts,
+            web_fonts: &self.web_fonts,
         };
         let apply_phase = |s: &mut ComputedStyle, ctx: &ComputeCtx, phase: u8| {
             for def in LONGHANDS.iter().filter(|d| d.phase == phase) {
@@ -1579,6 +1588,7 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
         layer_count: 0,
         unsupported: Vec::new(),
         font_faces: Vec::new(),
+        web_fonts: Vec::new(),
         keyframes: BTreeMap::new(),
         viewport: (Au::from_px_i32(1280), Au::from_px_i32(800)),
         fonts: crate::css::FontEnvironment::Bundled,

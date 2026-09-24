@@ -169,7 +169,7 @@ pub fn font_family(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool
     };
     let was_mono = is_monospace_family(&s.font.family);
     s.font.family = fonts::serialize_family_list(list);
-    s.font.typeface = fonts::resolve_family_in(list, c.fonts);
+    s.font.typeface = fonts::resolve_family_with(list, c.fonts, c.web_fonts);
     let now_mono = is_monospace_family(&s.font.family);
     if was_mono != now_mono {
         if let Some(i) = s.font_size_keyword {

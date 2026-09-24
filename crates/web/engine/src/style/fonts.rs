@@ -12,13 +12,49 @@ pub fn resolve_family(families: &[String]) -> Typeface {
 
 /// Resolves a family list on a device with the given installed fonts.
 pub fn resolve_family_in(families: &[String], env: FontEnvironment) -> Typeface {
+    resolve_family_with(families, env, &[])
+}
+
+/// Resolves a family list on a device with the given installed fonts, where the
+/// page's `@font-face` rules also download `web_fonts`. The engine cannot load a
+/// font file, so a downloaded family is the bundled face of the same name (a page
+/// serving Inter gets the bundled Inter, which is the file the parity fixtures
+/// serve); one the engine does not bundle falls through to the list's next family.
+pub fn resolve_family_with(
+    families: &[String],
+    env: FontEnvironment,
+    web_fonts: &[String],
+) -> Typeface {
     match env {
         FontEnvironment::Bundled => resolve_family(families),
         FontEnvironment::LinuxBaseline => families
             .iter()
-            .find_map(|f| linux_baseline_face(f))
+            .find_map(|f| {
+                let web = web_fonts.iter().any(|w| same_family(w, f));
+                web.then(|| bundled_face(f))
+                    .flatten()
+                    .or_else(|| linux_baseline_face(f))
+            })
             .unwrap_or(Typeface::Arimo),
     }
+}
+
+fn same_family(a: &str, b: &str) -> bool {
+    let norm = |s: &str| {
+        s.split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_lowercase()
+    };
+    norm(a) == norm(b)
+}
+
+/// The bundled face whose own family name is `name`.
+fn bundled_face(name: &str) -> Option<Typeface> {
+    Typeface::ALL
+        .iter()
+        .copied()
+        .find(|t| same_family(t.family_name(), name))
 }
 
 /// The face a stock Linux desktop has for one family name, or `None` when the name
@@ -188,6 +224,21 @@ mod tests {
             Typeface::Cousine
         );
         assert_eq!(resolve_family_in(&list(&["Nope"]), env), Typeface::Arimo);
+        // A family the page downloads with @font-face is the bundled face of that
+        // name; one the engine does not bundle falls through.
+        let web = list(&["Inter"]);
+        assert_eq!(
+            resolve_family_with(&list(&["Inter", "sans-serif"]), env, &web),
+            Typeface::Inter
+        );
+        assert_eq!(
+            resolve_family_with(
+                &list(&["Brand Sans", "Georgia", "serif"]),
+                env,
+                &list(&["Brand Sans"])
+            ),
+            Typeface::Tinos
+        );
         // The world's browser keeps its bundled faces.
         assert_eq!(
             resolve_family_in(&list(&["Inter", "sans-serif"]), FontEnvironment::Bundled),
