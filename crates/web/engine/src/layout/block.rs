@@ -2074,7 +2074,13 @@ pub fn layout_absolute(ctx: &LayoutContext, cbf: &Fragment, req: &AbsRequest) ->
         (Some(t), Some(h), None) => (h, t + mt),
         (None, None, None) => (content_h, mt),
     };
-    let _ = mb;
+    // What `getComputedStyle` reports for the margins: `auto` resolved as above.
+    let used_margin = Edges {
+        top: mt,
+        right: mr,
+        bottom: mb,
+        left: ml,
+    };
     let h = clamp_height(s, h, Some(cbh), ev);
     if h + ev != frag.rect.size.height {
         // The content keeps its layout; the box is simply taller or shorter.
@@ -2086,5 +2092,6 @@ pub fn layout_absolute(ctx: &LayoutContext, cbf: &Fragment, req: &AbsRequest) ->
         y: bt + y,
     };
     frag.is_positioned = true;
+    frag.used_margin = Some(used_margin);
     frag
 }

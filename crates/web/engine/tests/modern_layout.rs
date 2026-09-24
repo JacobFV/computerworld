@@ -431,4 +431,18 @@ mod cases {
         rect_is(&p, "i", 0.0, 2.0, 568.0, 28.0);
         rect_is(&p, "row", 0.0, 0.0, 600.0, 32.0);
     }
+
+    /// An absolutely positioned box centred by `auto` margins between its insets
+    /// reports the margins it used (an icon placed with `inset-y-0 my-auto`).
+    #[test]
+    fn auto_margins_of_an_absolute_box_report_their_used_values() {
+        let p = page(
+            "<!DOCTYPE html><style>body { margin: 0 }</style>\
+             <div style='position: relative; height: 36px'>\
+             <div id=a style='position: absolute; top: 0; bottom: 0; left: 12px; height: 16px; width: 16px; margin: auto 0'></div></div>",
+        );
+        rect_is(&p, "a", 12.0, 10.0, 16.0, 16.0);
+        assert_eq!(p.computed("a", "margin-top"), "10px");
+        assert_eq!(p.computed("a", "margin-bottom"), "10px");
+    }
 }
