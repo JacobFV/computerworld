@@ -11,6 +11,11 @@
 //! key (one keystroke into the controlled `#new-task` input). Prints the median
 //! of each in milliseconds and checks the resulting DOM against the same
 //! summary the Node driver checks.
+//!
+//! Each run starts with the compile cache (`cw_jsvm::codecache`) empty, as a
+//! fresh Node process compiles everything anew; `DOM_BENCH_CACHE=warm` keeps it
+//! across runs instead, which is what a second realm loading the same bundles
+//! sees.
 use cw_jsvm::value::{Ctl, Value};
 use cw_jsvm::vm::Vm;
 use cw_script_host::memory::MemoryHost;
@@ -49,6 +54,9 @@ struct Sources {
 }
 
 fn once(which: &str, src: &Sources) -> [f64; 4] {
+    if std::env::var("DOM_BENCH_CACHE").as_deref() != Ok("warm") {
+        cw_jsvm::codecache::clear();
+    }
     let mut host = MemoryHost::default();
     let mut vm = Vm::new(&mut host, vec!["/usr/bin/node".into()], vec![], None);
     let r = vm.eval_source_with(&src.shim, "dom-shim.js", false, true);
@@ -125,7 +133,12 @@ fn main() {
         all[all.len() / 2][i]
     };
     let (load, mount, click, key) = (med(0), med(1), med(2), med(3));
+    let cache = if std::env::var("DOM_BENCH_CACHE").as_deref() == Ok("warm") {
+        "warm"
+    } else {
+        "cold"
+    };
     println!(
-        "{which} load {load:.2} mount {mount:.2} click {click:.2} key {key:.2} (ms, median of {runs}, cw-jsvm)"
+        "{which} load {load:.2} mount {mount:.2} click {click:.2} key {key:.2} (ms, median of {runs}, cw-jsvm, {cache} compile cache)"
     );
 }

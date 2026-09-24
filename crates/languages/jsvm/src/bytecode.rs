@@ -1,8 +1,7 @@
 //! Bytecode instruction set and compiled function objects.
 
 use crate::ast::{FuncKind, Pos};
-use crate::value::{JsStr, Obj, Value};
-use std::cell::RefCell;
+use crate::value::{JsStr, Value};
 use std::rc::Rc;
 
 /// `repr(u8)`: the first byte is the variant, which the profiler's histogram reads.
@@ -266,18 +265,61 @@ pub struct Code {
     pub file: Rc<str>,
     /// Source text of the function (for `toString`).
     pub source: Rc<str>,
-    pub template_cache: RefCell<Vec<Option<Obj>>>,
     /// Tagged template sites: (cooked, raw).
     pub templates: Vec<(Vec<Option<JsStr>>, Vec<JsStr>)>,
     /// Module top level (frame named `Object.<anonymous>`).
     pub is_top: bool,
     /// Uses `arguments`, so the frame keeps its argument list.
     pub needs_args: bool,
-    /// Whether this body has already been charged its compile cost: V8 compiles
-    /// a function the first time it runs, and the simulation charges for it
-    /// then (see `Vm::charge_compile`).
-    pub compiled: std::cell::Cell<bool>,
+    /// Identifies this body on its thread (`codecache::next_id`): per-realm
+    /// state about it (the compile charge, template objects) is keyed by it,
+    /// because compiled code is shared by every realm that loads the source.
+    pub uid: u64,
+    /// The realm (`Vm::id`) that first charged this body its compile cost: V8
+    /// compiles a function the first time it runs, and the simulation charges
+    /// for it then, once per realm (see `Vm::charge_compile`). Other realms
+    /// that run it too remember that in `Vm::compiled`.
+    pub compiled_by: std::cell::Cell<u64>,
     /// Bytes of source that belong to this body alone (nested functions carry
     /// their own), which is what that charge is proportional to.
     pub own_bytes: u32,
+}
+
+impl Code {
+    /// A copy of this body and every body nested in it with fresh identities:
+    /// what compiling the same source again in the same realm yields (its own
+    /// compile charge and template objects), without parsing it again.
+    pub fn fresh_copy(&self) -> Rc<Code> {
+        Rc::new(Code {
+            name: self.name.clone(),
+            ops: self.ops.clone(),
+            pos: self.pos.clone(),
+            consts: self.consts.clone(),
+            codes: self.codes.iter().map(|c| c.fresh_copy()).collect(),
+            nlocals: self.nlocals,
+            local_names: self.local_names.clone(),
+            is_cell: self.is_cell.clone(),
+            captures: self.captures.clone(),
+            free_names: self.free_names.clone(),
+            simple_params: self.simple_params,
+            length: self.length,
+            this_slot: self.this_slot,
+            newtarget_slot: self.newtarget_slot,
+            home_slot: self.home_slot,
+            fn_slot: self.fn_slot,
+            args_slot: self.args_slot,
+            kind: self.kind,
+            is_async: self.is_async,
+            is_generator: self.is_generator,
+            strict: self.strict,
+            file: self.file.clone(),
+            source: self.source.clone(),
+            templates: self.templates.clone(),
+            is_top: self.is_top,
+            needs_args: self.needs_args,
+            uid: crate::codecache::next_id(),
+            compiled_by: std::cell::Cell::new(0),
+            own_bytes: self.own_bytes,
+        })
+    }
 }

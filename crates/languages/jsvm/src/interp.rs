@@ -719,7 +719,7 @@ impl<'h> Vm<'h> {
 
     fn template_object(&mut self, site: u32) -> Value {
         let code = self.frames.last().unwrap().code.clone();
-        if let Some(Some(o)) = code.template_cache.borrow().get(site as usize) {
+        if let Some(o) = self.templates.get(&(code.uid, site)) {
             return Value::Obj(o.clone());
         }
         let (cooked, raw) = &code.templates[site as usize];
@@ -737,7 +737,7 @@ impl<'h> Vm<'h> {
             .insert(Key::str("raw"), Prop::data(Value::Obj(raw_arr), 0));
         arr.borrow_mut().elems_frozen = true;
         arr.borrow_mut().extensible = false;
-        code.template_cache.borrow_mut()[site as usize] = Some(arr.clone());
+        self.templates.insert((code.uid, site), arr.clone());
         Value::Obj(arr)
     }
 

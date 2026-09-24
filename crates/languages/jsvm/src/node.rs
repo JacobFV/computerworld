@@ -1151,7 +1151,37 @@ impl<'h> Vm<'h> {
         cjs_params: &[&str],
     ) -> JsResult<(Rc<crate::bytecode::Code>, bool)> {
         let pk = self.prof_enter(|| format!("[parse+compile] {file}"));
+        let t0 = self.prof.as_ref().map(|_| crate::profile::now_ns());
+        let force = match force_module {
+            None => "auto",
+            Some(true) => "module",
+            Some(false) => "script",
+        };
+        let params = cjs_params.join(",");
+        let k = crate::codecache::key(&[
+            b"program",
+            force.as_bytes(),
+            params.as_bytes(),
+            file.as_bytes(),
+            src.as_bytes(),
+        ]);
+        if let Some((code, is_module)) = crate::codecache::get(&k) {
+            let code = self.first_use(k, code);
+            let fname: Rc<str> = if is_module {
+                Rc::from(format!("file://{file}").as_str())
+            } else {
+                Rc::from(file)
+            };
+            self.register_source(fname, Rc::from(src));
+            self.prof_source(file, src.len(), t0, t0, true);
+            self.prof_leave(pk);
+            return Ok((code, is_module));
+        }
         let r = self.compile_source_inner(src, file, force_module, cjs_params);
+        if let Ok((code, is_module)) = &r {
+            crate::codecache::put(k, code.clone(), *is_module, src.len());
+            self.cache_seen.insert(k);
+        }
         self.prof_leave(pk);
         r
     }
@@ -1528,6 +1558,54 @@ impl<'h> Vm<'h> {
         let _ = completion;
         let pk = self.prof_enter(|| format!("[parse+compile] {file}"));
         let t0 = self.prof.as_ref().map(|_| crate::profile::now_ns());
+        let k = crate::codecache::key(&[
+            b"eval",
+            if global_scope { b"global" } else { b"local" },
+            file.as_bytes(),
+            src.as_bytes(),
+        ]);
+        let code = match crate::codecache::get(&k) {
+            Some((code, _)) => {
+                let code = self.first_use(k, code);
+                self.register_source(Rc::from(file), Rc::from(src));
+                self.prof_source(file, src.len(), t0, t0, true);
+                self.prof_leave(pk);
+                code
+            }
+            None => {
+                let code = self.compile_eval_source(src, file, global_scope, t0, pk)?;
+                crate::codecache::put(k, code.clone(), false, src.len());
+                self.cache_seen.insert(k);
+                code
+            }
+        };
+        let caps: Rc<[CellRef]> = Rc::from(Vec::new());
+        let f = self.make_closure(code, caps);
+        self.call(&Value::Obj(f), Value::Obj(self.global.clone()), vec![])
+    }
+
+    /// Cached code for this realm: shared the first time the realm compiles
+    /// the source, a fresh copy after that (as recompiling would give).
+    fn first_use(
+        &mut self,
+        k: crate::codecache::CacheKey,
+        code: Rc<crate::bytecode::Code>,
+    ) -> Rc<crate::bytecode::Code> {
+        if self.cache_seen.insert(k) {
+            code
+        } else {
+            code.fresh_copy()
+        }
+    }
+
+    fn compile_eval_source(
+        &mut self,
+        src: &str,
+        file: &str,
+        global_scope: bool,
+        t0: Option<u64>,
+        pk: usize,
+    ) -> JsResult<Rc<crate::bytecode::Code>> {
         let chars: Vec<char> = src.chars().collect();
         let prog = match crate::parser::parse(src, false) {
             Ok((p, _)) => p,
@@ -1545,16 +1623,13 @@ impl<'h> Vm<'h> {
         let compiled = c.compile_eval(&prog);
         self.prof_source(file, src.len(), t0, t1, false);
         self.prof_leave(pk);
-        let code = match compiled {
-            Ok(code) => code,
+        match compiled {
+            Ok(code) => Ok(code),
             Err(e) => {
                 let err = self.make_error(ErrKind::SyntaxError, &e.msg);
-                return Err(Ctl::Throw(Value::Obj(err)));
+                Err(Ctl::Throw(Value::Obj(err)))
             }
-        };
-        let caps: Rc<[CellRef]> = Rc::from(Vec::new());
-        let f = self.make_closure(code, caps);
-        self.call(&Value::Obj(f), Value::Obj(self.global.clone()), vec![])
+        }
     }
 
     fn builtin_module(&mut self, name: &str) -> JsResult<Value> {

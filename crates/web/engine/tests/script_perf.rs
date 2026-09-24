@@ -3,7 +3,8 @@
 //! `framework_parity.rs`): boot (load the page, run its scripts, settle), a click
 //! that re-renders (`#check-2`), and a keystroke into a controlled input
 //! (`#new-task`). Each phase is timed over several fresh realms (median reported),
-//! then profiled once with the VM's built-in profiler.
+//! then profiled once with the VM's built-in profiler. "First boot" loads with the
+//! compile cache empty; "boot" is a later realm loading the same page.
 //!
 //!     cargo test --release -p cw-web --features pipeline --test script_perf -- --ignored --nocapture
 //!
@@ -106,7 +107,14 @@ mod perf {
             .and_then(|v| v.parse().ok())
             .unwrap_or(25);
         let (mut news, mut boots, mut clicks, mut keys) = (vec![], vec![], vec![], vec![]);
+        let mut colds = vec![];
         for _ in 0..runs {
+            // A first load: nothing compiled yet on this thread.
+            cw_jsvm::codecache::clear();
+            let t = Instant::now();
+            drop(boot(name, &html));
+            colds.push(t.elapsed().as_secs_f64() * 1000.0);
+            // Later loads reuse the compiled prelude and bundles.
             let t = Instant::now();
             let r = Realm::new(&html, &format!("{BASE}{name}.html"), Box::new(host()));
             news.push(t.elapsed().as_secs_f64() * 1000.0);
@@ -125,7 +133,8 @@ mod perf {
             keys.push(t.elapsed().as_secs_f64() * 1000.0);
         }
         eprintln!(
-            "{name}: boot {:.2} ms (of which Realm::new {:.2}), click {:.2} ms, key {:.2} ms (median of {runs}; boot min {:.2})",
+            "{name}: first boot {:.2} ms, boot {:.2} ms (of which Realm::new {:.2}), click {:.2} ms, key {:.2} ms (median of {runs}; boot min {:.2})",
+            median(colds),
             median(boots.clone()),
             median(news),
             median(clicks),

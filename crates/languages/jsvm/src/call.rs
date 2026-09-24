@@ -104,8 +104,16 @@ impl<'h> Vm<'h> {
         // V8 compiles a function body the first time it runs: that costs
         // simulated time, which is what makes the event loop's orderings follow
         // from the program rather than from a fixed assumption.
-        if !code.compiled.get() {
-            code.compiled.set(true);
+        let by = code.compiled_by.get();
+        let first_run = if by == self.id {
+            false
+        } else if by == 0 {
+            code.compiled_by.set(self.id);
+            true
+        } else {
+            self.compiled.insert(code.uid)
+        };
+        if first_run {
             // Node's own builtins are in V8's startup snapshot: they are
             // already compiled, so only the program's own code is charged.
             if !code.file.starts_with("node:") {

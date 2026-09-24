@@ -9,7 +9,6 @@ use crate::bytecode::*;
 use crate::lexer::SyntaxErr;
 use crate::numconv::number_to_string;
 use crate::value::{JsStr, Value};
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -930,7 +929,6 @@ impl<'a> Compiler<'a> {
             let pc = fs.labels[l as usize].expect("unbound label");
             set_target(&mut fs.ops[i], pc);
         }
-        let ntemplates = fs.templates.len();
         let nested: usize = fs.codes.iter().map(|c| c.source.len()).sum();
         let own_bytes = source.len().saturating_sub(nested) as u32;
         Rc::new(Code {
@@ -957,11 +955,11 @@ impl<'a> Compiler<'a> {
             strict: fs.strict,
             file: self.file.clone(),
             source,
-            template_cache: RefCell::new(vec![None; ntemplates]),
             templates: fs.templates,
             is_top: fs.is_top,
             needs_args: false,
-            compiled: std::cell::Cell::new(false),
+            uid: crate::codecache::next_id(),
+            compiled_by: std::cell::Cell::new(0),
             own_bytes,
         })
     }

@@ -352,6 +352,16 @@ pub struct Vm<'h> {
     /// The embedder's state (a browser realm's document), reachable from its
     /// native functions through `embedder::<T>()`.
     pub embedder: Option<Rc<dyn std::any::Any>>,
+    /// This VM's identity on its thread (`codecache::next_id`).
+    pub id: u64,
+    /// Shared code bodies another realm charged first that this one has been
+    /// charged for too (see `Code::compiled_by`).
+    pub compiled: std::collections::HashSet<u64, std::hash::BuildHasherDefault<Fnv>>,
+    /// Compile-cache entries this realm has used: compiling one of them again
+    /// yields a fresh copy, as a fresh compile would (`Code::fresh_copy`).
+    pub cache_seen: std::collections::HashSet<crate::codecache::CacheKey>,
+    /// Tagged-template objects, by code body and site: one per realm.
+    pub templates: FnvMap<(u64, u32), Obj>,
     /// The profiler, while one is running (see `profile`).
     pub prof: Option<Box<crate::profile::Profiler>>,
 }

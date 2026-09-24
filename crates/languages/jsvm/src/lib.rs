@@ -13,6 +13,7 @@ pub mod bigint;
 pub mod builtins;
 pub mod bytecode;
 pub mod call;
+pub mod codecache;
 pub mod compiler;
 pub mod conv;
 pub mod debug;

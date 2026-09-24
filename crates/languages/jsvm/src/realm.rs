@@ -184,6 +184,10 @@ impl<'h> Vm<'h> {
             completion: Value::Undefined,
             handles: vec![],
             embedder: None,
+            id: crate::codecache::next_id(),
+            compiled: Default::default(),
+            templates: Default::default(),
+            cache_seen: Default::default(),
             prof: None,
         };
         // The inspect symbol is registered under its key.
