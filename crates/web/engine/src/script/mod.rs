@@ -497,6 +497,11 @@ pub struct RealmState {
     /// Part of the state so a restore replays under the same limit.
     #[serde(default)]
     pub step_budget: u64,
+    /// The host draws scrollbars over the content (overlay scrollbars, or a
+    /// headless browser that hides them), so scroll containers give no space to
+    /// them; see `Realm::set_overlay_scrollbars`.
+    #[serde(default)]
+    pub overlay_scrollbars: bool,
 }
 
 /// One document's script environment. See the module documentation.
@@ -535,6 +540,7 @@ impl Realm {
             Vec::new(),
         );
         realm.state.step_budget = state.step_budget;
+        realm.set_overlay_scrollbars(state.overlay_scrollbars);
         for input in inputs {
             match input {
                 Input::RunDocument => realm.run_document(),
@@ -587,6 +593,7 @@ impl Realm {
                 inputs,
                 journal: Vec::new(),
                 step_budget: 0,
+                overlay_scrollbars: false,
             },
         };
         realm.run_prelude();
@@ -635,6 +642,20 @@ impl Realm {
     /// Stops the profiler and returns what it recorded since `profile_start`.
     pub fn profile_stop(&mut self) -> Option<ProfileReport> {
         self.vm.profile_stop()
+    }
+
+    /// Whether the host's scrollbars overlay the content (as on macOS, on phones,
+    /// or in a headless Chromium launched with `--hide-scrollbars`, which is how
+    /// the parity dumps are taken) instead of taking 15 px from each scroll
+    /// container. A host setting, kept in the snapshot; layout redoes itself.
+    pub fn set_overlay_scrollbars(&mut self, on: bool) {
+        self.state.overlay_scrollbars = on;
+        let mut i = self.inner.borrow_mut();
+        if i.layout_cache.overlay_scrollbars != on {
+            i.layout_cache.overlay_scrollbars = on;
+            i.layout_cache.invalidate_all();
+            i.touch();
+        }
     }
 
     /// Re-arms the VM's step limit for one entry-point call.

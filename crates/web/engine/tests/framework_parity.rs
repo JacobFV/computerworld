@@ -220,15 +220,9 @@ mod cases {
     fn render(name: &str, html: &str, list: &[Value]) -> (Rendered, Timing) {
         let t = Instant::now();
         // Playwright launches Chromium with `--hide-scrollbars`, so a scroll container
-        // there gives no space to its bars. A realm has no host setting for overlay
-        // scrollbars, so the page's elements get `scrollbar-width: none`, which takes
-        // the same (none); the rule sits in <head>, which neither dump includes.
-        let html = html.replacen(
-            "<head>",
-            "<head><style>* { scrollbar-width: none }</style>",
-            1,
-        );
-        let mut r = Realm::new(&html, &format!("{BASE}{name}.html"), Box::new(host()));
+        // there gives no space to its bars: the realm's host draws overlay scrollbars.
+        let mut r = Realm::new(html, &format!("{BASE}{name}.html"), Box::new(host()));
+        r.set_overlay_scrollbars(true);
         r.run_document();
         settle(&mut r, 50);
         let boot = t.elapsed();

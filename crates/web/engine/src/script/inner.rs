@@ -155,7 +155,7 @@ pub struct Inner {
     styles_generation: u64,
     /// Bumped by every mutation, style change, scroll or viewport change.
     pub generation: u64,
-    layout_cache: LayoutCache,
+    pub(crate) layout_cache: LayoutCache,
     pub images: ImageSizeMap,
     pub scroll: ScrollState,
     pub hovered: Option<NodeId>,
