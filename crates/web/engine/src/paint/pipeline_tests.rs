@@ -869,3 +869,25 @@ fn a_later_relative_sibling_is_hit_over_an_absolute_backdrop() {
         );
     }
 }
+
+#[test]
+fn inline_svg_draws_its_shapes_instead_of_a_placeholder() {
+    // A Lucide-style icon at 4x (a 24-unit viewBox in 96 px): the stroke is drawn in
+    // currentColor, fill none leaves the inside clear, and a filled rect with a
+    // linear gradient paints its stops.
+    let html = r##"<!doctype html><style>body{margin:0;background:#fff;color:rgb(0,0,255)}svg{display:block}</style>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:96px;height:96px"><circle cx="12" cy="12" r="8"/></svg>
+        <svg viewBox="0 0 10 10" style="width:100px;height:100px"><defs><linearGradient id="g"><stop offset="0" stop-color="#f00"/><stop offset="1" stop-color="#0f0"/></linearGradient></defs><rect width="10" height="10" fill="url(#g)"/></svg>"##;
+    let f = pixels(&render(html));
+    assert_eq!(f.at(48, 16), Color(0, 0, 255, 255), "the top of the ring");
+    assert_eq!(
+        f.at(48, 48),
+        Color(255, 255, 255, 255),
+        "the unfilled middle"
+    );
+    assert_eq!(f.at(4, 4), Color(255, 255, 255, 255), "no placeholder box");
+    let left = f.at(2, 146);
+    let right = f.at(97, 146);
+    assert!(left.0 > 240 && left.1 < 15, "red end {left:?}");
+    assert!(right.1 > 240 && right.0 < 15, "green end {right:?}");
+}

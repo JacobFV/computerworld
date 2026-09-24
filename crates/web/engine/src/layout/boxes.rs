@@ -1493,6 +1493,28 @@ impl<'a> Builder<'a> {
                     }),
                 }
             }
+            "svg" if crate::svg::is_svg(doc, node) => {
+                // `width` and `height` reach the box as presentational hints (CSS
+                // `width`/`height`); the natural size is theirs in px, with the
+                // `viewBox` ratio filling in a missing one, else 300 × 150.
+                let (w, h, ratio) = crate::svg::natural_size(doc, node);
+                let (w, h) = match (w, h, ratio) {
+                    (Some(w), Some(h), _) => (w, h),
+                    (Some(w), None, Some(r)) => (w, w / r),
+                    (None, Some(h), Some(r)) => (h * r, h),
+                    (None, None, Some(r)) => (300.0, 300.0 / r),
+                    (w, h, _) => (w.unwrap_or(300.0), h.unwrap_or(150.0)),
+                };
+                Some(ReplacedBox {
+                    replaced: Replaced::Placeholder(tag.to_owned()),
+                    intrinsic: Some(Size {
+                        width: Au((w * 64.0).round() as i32),
+                        height: Au((h * 64.0).round() as i32),
+                    }),
+                    attr_width: None,
+                    attr_height: None,
+                })
+            }
             "iframe" | "canvas" | "video" | "svg" | "frame" => Some(ReplacedBox {
                 replaced: Replaced::Placeholder(tag.to_owned()),
                 intrinsic: px(300, 150),

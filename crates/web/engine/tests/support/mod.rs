@@ -1017,12 +1017,23 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
         out: &mut Vec<DumpNode>,
         fams: &mut Vec<(String, String)>,
     ) {
-        let tag = doc.tag(node).unwrap_or("").to_owned();
+        // `tagName.toLowerCase()`, as dump.mjs writes it (SVG keeps `linearGradient`'s
+        // case in the DOM).
+        let tag = doc.tag(node).unwrap_or("").to_ascii_lowercase();
         let info = ix.boxes.get(&node).copied().unwrap_or_default();
         let mut computed = match styles.get(node) {
             Some(s) => computed_strings(s, &info),
             None => BTreeMap::new(),
         };
+        // An element inside an `<svg>` has no CSS box, so `getComputedStyle` gives
+        // the computed `width` and `height` (`auto`, or a geometry property's
+        // length), not its bounding box.
+        if tag != "svg" && cw_web::svg::is_svg(doc, node) {
+            if let Some(s) = styles.get(node) {
+                computed.insert("width".into(), sizing_str(s.width));
+                computed.insert("height".into(), sizing_str(s.height));
+            }
+        }
         flex_auto_margins(doc, styles, ix, node, &mut computed);
         if let Some(f) = computed.get("font-family") {
             if !fams.iter().any(|(family, _)| family == f) {
@@ -1055,7 +1066,7 @@ pub fn engine_dump(fixture: &str, r: &Rendered, viewport: Viewport) -> Dump {
                     let seg = if ct == "body" && tag == "html" {
                         "body".to_owned()
                     } else {
-                        format!("{ct}:nth-child({n})")
+                        format!("{}:nth-child({n})", ct.to_ascii_lowercase())
                     };
                     let child_index = out.len();
                     walk(doc, styles, ix, child, format!("{path}>{seg}"), out, fams);

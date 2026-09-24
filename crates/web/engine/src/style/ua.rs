@@ -12,6 +12,8 @@ pub const UA_CSS: &str = concat!(
     include_str!("ua/tables.css"),
     "\n",
     include_str!("ua/forms.css"),
+    "\n",
+    include_str!("ua/svg.css"),
 );
 
 /// Extra rules for documents in quirks mode, applied after `UA_CSS`.

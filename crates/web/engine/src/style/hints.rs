@@ -84,6 +84,9 @@ fn color_decl(name: &str, value: &str) -> Option<Declaration> {
 /// The attribute names that map to hints on this element, for restyle invalidation.
 pub fn is_hint_attribute(doc: &Document, node: NodeId, attr: &str) -> bool {
     let tag = doc.tag(node).unwrap_or("");
+    if crate::svg::is_svg(doc, node) {
+        return SVG_PRESENTATION.contains(&attr) || attr == "width" || attr == "height";
+    }
     match attr {
         "align" | "width" | "height" | "bgcolor" | "background" | "border" | "valign"
         | "nowrap" | "color" | "size" | "face" | "hspace" | "vspace" | "noshade" | "type"
@@ -98,11 +101,68 @@ pub fn is_hint_attribute(doc: &Document, node: NodeId, attr: &str) -> bool {
     }
 }
 
+/// SVG presentation attributes the cascade knows as CSS properties (SVG 2 §6.6):
+/// each is parsed as that property's value, a bare number as px where a length goes.
+const SVG_PRESENTATION: &[&str] = &[
+    "font-size",
+    "font-weight",
+    "font-family",
+    "font-style",
+    "color",
+    "display",
+    "visibility",
+    "opacity",
+    "overflow",
+    "letter-spacing",
+    "word-spacing",
+];
+
+/// An SVG element's presentation attributes as declarations; `width` and `height`
+/// are geometry properties of the elements that establish a box (`svg`, `rect`,
+/// `image`, `foreignObject`, `use`), which Chromium maps to CSS `width`/`height`.
+fn svg_hints(doc: &Document, node: NodeId, tag: &str) -> Vec<Declaration> {
+    let mut out = Vec::new();
+    let length = |v: &str| -> Option<Vec<ComponentValue>> {
+        let v = v.trim();
+        if v.parse::<f64>().is_ok() {
+            return parse_dimension(v).map(|d| vec![d]);
+        }
+        let values = crate::css::parser::parse_component_value_list(v);
+        (!values.is_empty()).then_some(values)
+    };
+    if matches!(tag, "svg" | "rect" | "image" | "foreignObject" | "use") {
+        for name in ["width", "height"] {
+            if let Some(v) = doc.attr(node, name).and_then(length) {
+                out.push(decl(name, v));
+            }
+        }
+    }
+    for name in SVG_PRESENTATION {
+        let Some(v) = doc.attr(node, name) else {
+            continue;
+        };
+        let value = match *name {
+            "font-size" | "letter-spacing" | "word-spacing" => length(v),
+            _ => {
+                let values = crate::css::parser::parse_component_value_list(v.trim());
+                (!values.is_empty()).then_some(values)
+            }
+        };
+        if let Some(value) = value {
+            out.push(decl(name, value));
+        }
+    }
+    out
+}
+
 /// The declarations an element's attributes imply.
 pub fn presentational_hints(doc: &Document, node: NodeId) -> Vec<Declaration> {
     let Some(tag) = doc.tag(node) else {
         return Vec::new();
     };
+    if crate::svg::is_svg(doc, node) {
+        return svg_hints(doc, node, tag);
+    }
     let mut out = Vec::new();
     let attr = |n: &str| doc.attr(node, n);
     // `dir` on any element.

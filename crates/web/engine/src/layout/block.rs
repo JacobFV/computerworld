@@ -8,6 +8,7 @@
 //! when it attaches it). Floats live in a `Bfc` whose coordinates are relative to the
 //! BFC root's content box.
 
+use crate::dom::NodeId;
 use crate::geom::{Au, Edges, Point, Rect, Size};
 use crate::layout::boxes::{BoxId, BoxKind, Dim, Level, ReplacedBox};
 use crate::layout::fragment::{Fragment, FragmentKind, Replaced, StyleSource};
@@ -1572,7 +1573,78 @@ pub fn replaced_fragment(
         Rect::new(Au::ZERO, Au::ZERO, w, h),
     );
     finish_fragment(ctx, id, &mut f);
+    if let (Replaced::Placeholder(tag), Some(node)) = (&rb.replaced, b.node) {
+        if tag == "svg" && crate::svg::is_svg(ctx.doc, node) {
+            svg_descendants(
+                ctx,
+                node,
+                &mut f,
+                size,
+                Point {
+                    x: bw.left + p.left,
+                    y: bw.top + p.top,
+                },
+            );
+        }
+    }
     f
+}
+
+/// Hangs the bounding boxes of an inline `<svg>`'s descendant elements and text
+/// on its fragment, as fragments that are laid out but not painted, so client
+/// rects and hit-free geometry queries find them (`crate::svg` draws the content).
+fn svg_descendants(ctx: &LayoutContext, svg: NodeId, f: &mut Fragment, size: Size, content: Point) {
+    let built = crate::svg::build(
+        ctx.doc,
+        ctx.styles,
+        svg,
+        size.width.0 as f64 / 64.0,
+        size.height.0 as f64 / 64.0,
+    );
+    let au = |v: f64| Au((v * 64.0).round() as i32);
+    let rect = |b: crate::svg::BoxF| {
+        Rect::new(
+            content.x + au(b.x),
+            content.y + au(b.y),
+            au(b.w.max(0.0)),
+            au(b.h.max(0.0)),
+        )
+    };
+    for (node, b) in &built.boxes {
+        let mut c = Fragment::new(
+            FragmentKind::Box {
+                source: StyleSource::Element(*node),
+                padding: Edges::default(),
+                border: Edges::default(),
+                replaced: None,
+                scroll: None,
+                baseline: None,
+            },
+            rect(*b),
+        );
+        c.hidden_for_paint = true;
+        f.children.push(c);
+    }
+    for (node, b) in &built.text_boxes {
+        let Some(parent) = ctx.doc.parent(*node) else {
+            continue;
+        };
+        let text = ctx.doc.text(*node).unwrap_or("").to_owned();
+        let len = text.len();
+        let mut c = Fragment::new(
+            FragmentKind::Text {
+                source: StyleSource::Element(parent),
+                text,
+                node: Some(*node),
+                range: (0, len),
+                baseline: Au::ZERO,
+                ellipsis: false,
+            },
+            rect(*b),
+        );
+        c.hidden_for_paint = true;
+        f.children.push(c);
+    }
 }
 
 /// The marker box of a list item: text in the marker font, baseline-aligned with the

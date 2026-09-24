@@ -1,0 +1,5 @@
+/* SVG content, after Chromium's svg.css: an inline svg (and the other elements that
+   establish a viewport) clips to its box; text is a block that does not wrap. */
+svg:not(:root), symbol, image, marker, pattern, foreignObject { overflow: hidden; }
+text, foreignObject { display: block; }
+text { white-space: nowrap; }

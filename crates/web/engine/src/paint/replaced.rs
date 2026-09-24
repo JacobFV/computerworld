@@ -70,6 +70,11 @@ pub(crate) fn paint(p: &mut Painter, f: &Fragment, state: &State) {
             disabled,
             *baseline,
         ),
+        Replaced::Placeholder(tag)
+            if tag == "svg" && p.doc.is_some_and(|d| crate::svg::is_svg(d, node)) =>
+        {
+            paint_svg(p, key, state, content, node)
+        }
         Replaced::Placeholder(tag) => {
             // A `<canvas>` the page drew on: the session hands its raster to the image
             // cache under `canvas:<node>`, and it fills the content box.
@@ -142,6 +147,63 @@ pub(crate) fn paint(p: &mut Painter, f: &Fragment, state: &State) {
                 style.color,
             );
             p.nodes[i].semantic = Some(semantics::text_semantic(marker));
+        }
+    }
+}
+
+/// An inline `<svg>`: its shapes rasterised into the content box (one image per run
+/// of shapes between text runs, so text stays in paint order), its text set with
+/// the page's text painter, all clipped to the content box.
+fn paint_svg(p: &mut Painter, key: (NodeId, u32), state: &State, content: Rect, node: NodeId) {
+    let r = snap(content);
+    if r.width == 0 || r.height == 0 {
+        return;
+    }
+    let Some(doc) = p.doc else { return };
+    let f = |a: crate::geom::Au| a.0 as f64 / 64.0;
+    // Geometry is laid out from the fractional content origin; the raster's pixel
+    // grid starts at the snapped one.
+    let origin = crate::svg::geom::Pt::new(
+        f(content.origin.x) - r.x as f64,
+        f(content.origin.y) - r.y as f64,
+    );
+    let built = crate::svg::build_at(
+        doc,
+        p.styles,
+        node,
+        f(content.size.width),
+        f(content.size.height),
+        origin,
+    );
+    let clipped = state.clipped(r);
+    for layer in crate::svg::layers(&built, r.width as usize, r.height as usize) {
+        let part = p.next_part(key);
+        let id = p.id(key, part);
+        match layer {
+            crate::svg::Layer::Raster(rgba) => {
+                p.emit(
+                    &clipped,
+                    id,
+                    r,
+                    Primitive::Image {
+                        width: r.width,
+                        height: r.height,
+                        rgba,
+                    },
+                );
+            }
+            crate::svg::Layer::Text(t) => {
+                text::draw_text(
+                    p,
+                    &clipped,
+                    id,
+                    r.x + t.x.round() as i32,
+                    r.y + t.baseline.round() as i32,
+                    &t.text,
+                    &t.font,
+                    t.color,
+                );
+            }
         }
     }
 }

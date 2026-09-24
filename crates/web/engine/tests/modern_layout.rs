@@ -380,4 +380,41 @@ mod cases {
         rect_is(&p, "i", 0.0, 0.0, 1280.0, 36.0);
         rect_is(&p, "d", 0.0, 0.0, 1280.0, 36.0);
     }
+
+    /// Inline SVG lays out as a replaced box sized by its classes, and each shape
+    /// inside reports its fill geometry mapped through the `viewBox`, as
+    /// `getBoundingClientRect` does: a Lucide icon at 16 px, a chart's text label.
+    #[test]
+    fn inline_svg_children_report_their_geometry() {
+        let p = page(
+            "<!DOCTYPE html><style>body { margin: 0; font: 16px/1.5 Arimo } svg { display: block }</style>\
+             <svg id=icon width=24 height=24 viewBox='0 0 24 24' fill=none stroke=currentColor stroke-width=2 style='width: 16px; height: 16px'>\
+             <circle id=c cx=11 cy=11 r=8 /><path id=p d='m21 21-4.3-4.3' /><rect id=r x=3 y=3 width=7 height=9 rx=1 /></svg>\
+             <svg id=chart viewBox='0 0 200 100' style='width: 400px; height: 200px'>\
+             <g id=g><line id=l x1=0 x2=200 y1=50 y2=50 stroke=black /><text id=t x=100 y=90 text-anchor=middle font-size=10>Mon</text></g></svg>",
+        );
+        rect_is(&p, "icon", 0.0, 0.0, 16.0, 16.0);
+        let s = 16.0 / 24.0;
+        rect_is(&p, "c", 3.0 * s, 3.0 * s, 16.0 * s, 16.0 * s);
+        rect_is(&p, "p", 16.7 * s, 16.7 * s, 4.3 * s, 4.3 * s);
+        rect_is(&p, "r", 3.0 * s, 3.0 * s, 7.0 * s, 9.0 * s);
+        // A presentation attribute is a computed value; a shape's box is not.
+        assert_eq!(p.computed("r", "width"), "7px");
+        assert_eq!(p.computed("c", "width"), "auto");
+        rect_is(&p, "chart", 0.0, 16.0, 400.0, 200.0);
+        rect_is(&p, "l", 0.0, 116.0, 400.0, 0.0);
+        // `font-size=10` in a 2x viewBox is 20 px text, centred on x = 200.
+        let t = p.rect("t");
+        close(t.x + t.width / 2.0, 200.0, "text centred on its anchor");
+        close(
+            t.y + t.height,
+            16.0 + 180.0 + 4.0,
+            "text box ends at the descent",
+        );
+        assert_eq!(p.computed("t", "font-size"), "10px");
+        assert_eq!(p.computed("t", "display"), "block");
+        let g = p.rect("g");
+        close(g.width, 400.0, "the group spans its children");
+        assert_eq!(p.computed("chart", "overflow-x"), "hidden");
+    }
 }
