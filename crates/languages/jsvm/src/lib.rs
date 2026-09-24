@@ -25,6 +25,7 @@ pub mod node;
 pub mod nodelib;
 pub mod numconv;
 pub mod parser;
+pub mod profile;
 pub mod promise;
 pub mod props;
 pub mod realm;

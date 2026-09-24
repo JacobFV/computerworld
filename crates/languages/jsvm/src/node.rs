@@ -1150,6 +1150,20 @@ impl<'h> Vm<'h> {
         force_module: Option<bool>,
         cjs_params: &[&str],
     ) -> JsResult<(Rc<crate::bytecode::Code>, bool)> {
+        let pk = self.prof_enter(|| format!("[parse+compile] {file}"));
+        let r = self.compile_source_inner(src, file, force_module, cjs_params);
+        self.prof_leave(pk);
+        r
+    }
+
+    fn compile_source_inner(
+        &mut self,
+        src: &str,
+        file: &str,
+        force_module: Option<bool>,
+        cjs_params: &[&str],
+    ) -> JsResult<(Rc<crate::bytecode::Code>, bool)> {
+        let t0 = self.prof.as_ref().map(|_| crate::profile::now_ns());
         let chars: Vec<char> = src.chars().collect();
         let try_module = force_module.unwrap_or(false);
         let parsed = crate::parser::parse(src, try_module);
@@ -1182,6 +1196,7 @@ impl<'h> Vm<'h> {
             Rc::from(file)
         };
         self.register_source(fname.clone(), Rc::from(src));
+        let t1 = self.prof.as_ref().map(|_| crate::profile::now_ns());
         let mut c = crate::compiler::Compiler::new(fname.clone(), &chars, is_module);
         c.completion = file == "[eval]" || file == "[stdin]";
         let params: Vec<&str> = if is_module {
@@ -1189,7 +1204,9 @@ impl<'h> Vm<'h> {
         } else {
             cjs_params.to_vec()
         };
-        match c.compile_program(&prog, &params, is_module) {
+        let r = c.compile_program(&prog, &params, is_module);
+        self.prof_source(file, src.len(), t0, t1, false);
+        match r {
             Ok(code) => Ok((code, is_module)),
             Err(e) => Err(self.syntax_error_from(e, src, &fname, is_module)),
         }
@@ -1472,6 +1489,28 @@ impl<'h> Vm<'h> {
         Ok(Value::Obj(p))
     }
 
+    /// Records a source's parse and compile times while profiling (`t0` before
+    /// parsing, `t1` before compiling).
+    fn prof_source(
+        &mut self,
+        file: &str,
+        bytes: usize,
+        t0: Option<u64>,
+        t1: Option<u64>,
+        cached: bool,
+    ) {
+        if let (Some(p), Some(t0), Some(t1)) = (self.prof.as_deref_mut(), t0, t1) {
+            let t2 = crate::profile::now_ns();
+            p.source(crate::profile::SourceStat {
+                file: file.to_string(),
+                bytes,
+                parse_ns: t1.saturating_sub(t0),
+                compile_ns: t2.saturating_sub(t1),
+                cached,
+            });
+        }
+    }
+
     /// Runs source in the global scope (indirect eval / new Function).
     pub fn eval_source(&mut self, src: &str, file: &str, completion: bool) -> JsResult<Value> {
         self.eval_source_with(src, file, completion, false)
@@ -1487,19 +1526,26 @@ impl<'h> Vm<'h> {
         global_scope: bool,
     ) -> JsResult<Value> {
         let _ = completion;
+        let pk = self.prof_enter(|| format!("[parse+compile] {file}"));
+        let t0 = self.prof.as_ref().map(|_| crate::profile::now_ns());
         let chars: Vec<char> = src.chars().collect();
         let prog = match crate::parser::parse(src, false) {
             Ok((p, _)) => p,
             Err(e) => {
+                self.prof_leave(pk);
                 let err = self.make_error(ErrKind::SyntaxError, &e.msg);
                 return Err(Ctl::Throw(Value::Obj(err)));
             }
         };
         let fname: Rc<str> = Rc::from(file);
         self.register_source(fname.clone(), Rc::from(src));
+        let t1 = self.prof.as_ref().map(|_| crate::profile::now_ns());
         let mut c = crate::compiler::Compiler::new(fname, &chars, false);
         c.global_scope = global_scope;
-        let code = match c.compile_eval(&prog) {
+        let compiled = c.compile_eval(&prog);
+        self.prof_source(file, src.len(), t0, t1, false);
+        self.prof_leave(pk);
+        let code = match compiled {
             Ok(code) => code,
             Err(e) => {
                 let err = self.make_error(ErrKind::SyntaxError, &e.msg);

@@ -71,7 +71,10 @@ impl<'h> Vm<'h> {
                 Kind::Host(h) => {
                     let hooks = h.hooks;
                     drop(d);
-                    if let Some(v) = (hooks.get)(self, o, key)? {
+                    let pk = self.prof_enter(|| format!("[host get] {}", hooks.class));
+                    let r = (hooks.get)(self, o, key);
+                    self.prof_leave(pk);
+                    if let Some(v) = r? {
                         return Ok(Some(Prop::data(v, ALL)));
                     }
                     None
@@ -189,6 +192,66 @@ impl<'h> Vm<'h> {
     }
 
     pub fn get_from(&mut self, o: &Obj, key: &Key, receiver: &Value) -> JsResult<Value> {
+        if self.prof.is_some() {
+            return self.get_from_profiled(o, key, receiver);
+        }
+        self.get_from_inner(o, key, receiver)
+    }
+
+    #[cold]
+    fn get_from_profiled(&mut self, o: &Obj, key: &Key, receiver: &Value) -> JsResult<Value> {
+        use crate::profile::Counters;
+        // Count the walk the read makes without running anything.
+        let mut hops = 0u64;
+        let mut own_fast = false;
+        let mut accessor = false;
+        {
+            let mut cur = Some(o.clone());
+            while let Some(c) = cur {
+                let d = c.borrow();
+                let ordinary = matches!(d.kind, Kind::Ordinary | Kind::Function(_));
+                if let Some(p) = d.props.get(key) {
+                    own_fast = hops == 0 && ordinary && matches!(p.slot, Slot::Data(_));
+                    accessor = matches!(p.slot, Slot::Accessor(..));
+                    break;
+                }
+                if !ordinary {
+                    break;
+                }
+                cur = d.proto.clone();
+                hops += 1;
+                if hops > 64 {
+                    break;
+                }
+            }
+        }
+        if let Some(p) = self.prof.as_deref_mut() {
+            Counters::bump(&p.counters.get);
+            Counters::add(&p.counters.get_hops, hops);
+            if own_fast {
+                Counters::bump(&p.counters.get_own_fast);
+            }
+            if accessor {
+                Counters::bump(&p.counters.get_accessor);
+            }
+            if !matches!(receiver, Value::Obj(r) if r.ptr_eq(o)) {
+                Counters::bump(&p.counters.get_primitive);
+            }
+            if p.opts.prop_names {
+                let name = match key {
+                    Key::Str(s) => s.to_string(),
+                    Key::Sym(s) => format!(
+                        "Symbol({})",
+                        s.desc.as_ref().map(|d| d.to_string()).unwrap_or_default()
+                    ),
+                };
+                p.prop_name(&name, hops);
+            }
+        }
+        self.get_from_inner(o, key, receiver)
+    }
+
+    fn get_from_inner(&mut self, o: &Obj, key: &Key, receiver: &Value) -> JsResult<Value> {
         let mut cur = o.clone();
         let mut hops = 0;
         loop {
@@ -316,6 +379,21 @@ impl<'h> Vm<'h> {
 
     pub fn set_on(&mut self, o: &Obj, key: Key, v: Value, receiver: &Value) -> JsResult<bool> {
         let same = matches!(receiver, Value::Obj(r) if r.ptr_eq(o));
+        if let Some(p) = &self.prof {
+            use crate::profile::Counters;
+            Counters::bump(&p.counters.set);
+            let d = o.borrow();
+            match d.props.get(&key) {
+                Some(Prop {
+                    slot: Slot::Data(_),
+                    ..
+                }) if same => Counters::bump(&p.counters.set_own_fast),
+                None if same && matches!(d.kind, Kind::Ordinary | Kind::Function(_)) => {
+                    Counters::bump(&p.counters.set_add)
+                }
+                _ => {}
+            }
+        }
         if same {
             // Exotic own elements.
             enum Ex {
@@ -410,7 +488,10 @@ impl<'h> Vm<'h> {
                     return self.set_on(&t, key, v, &Value::Obj(t.clone()));
                 }
                 Ex::Host(hooks) => {
-                    if let Some(ok) = (hooks.set)(self, o, &key, &v)? {
+                    let pk = self.prof_enter(|| format!("[host set] {}", hooks.class));
+                    let r = (hooks.set)(self, o, &key, &v);
+                    self.prof_leave(pk);
+                    if let Some(ok) = r? {
                         return Ok(ok);
                     }
                 }
@@ -700,7 +781,10 @@ impl<'h> Vm<'h> {
             }
             let host = c.host_hooks();
             if let Some(h) = host {
-                if (h.get)(self, &c, key)?.is_some() {
+                let pk = self.prof_enter(|| format!("[host has] {}", h.class));
+                let r = (h.get)(self, &c, key);
+                self.prof_leave(pk);
+                if r?.is_some() {
                     return Ok(true);
                 }
             }

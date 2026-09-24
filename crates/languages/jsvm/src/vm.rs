@@ -352,6 +352,8 @@ pub struct Vm<'h> {
     /// The embedder's state (a browser realm's document), reachable from its
     /// native functions through `embedder::<T>()`.
     pub embedder: Option<Rc<dyn std::any::Any>>,
+    /// The profiler, while one is running (see `profile`).
+    pub prof: Option<Box<crate::profile::Profiler>>,
 }
 
 impl<'h> Vm<'h> {
@@ -378,12 +380,18 @@ impl<'h> Vm<'h> {
         );
     }
     pub fn obj_with(&self, proto: Option<Obj>, kind: Kind) -> Obj {
+        if let Some(p) = &self.prof {
+            crate::profile::Counters::bump(&p.counters.objects);
+        }
         Obj::new(ObjData::new(proto, kind))
     }
     pub fn new_object(&self) -> Obj {
         self.obj_with(Some(self.intr.object_proto.clone()), Kind::Ordinary)
     }
     pub fn new_array(&self, v: Vec<Value>) -> Obj {
+        if let Some(p) = &self.prof {
+            crate::profile::Counters::bump(&p.counters.arrays);
+        }
         self.obj_with(Some(self.intr.array_proto.clone()), Kind::Array(v))
     }
     pub fn arr(&self, v: Vec<Value>) -> Value {
@@ -962,6 +970,60 @@ impl<'h> Vm<'h> {
         } else {
             format!("{name}: {msg}")
         })
+    }
+
+    // ------------------------------------------------------------ profiling
+    /// Starts the profiler (restarting it if one runs).
+    pub fn profile_start(&mut self, opts: crate::profile::ProfileOptions) {
+        self.prof = Some(Box::new(crate::profile::Profiler::new(opts, self.steps)));
+    }
+
+    /// Stops the profiler and returns what it recorded.
+    pub fn profile_stop(&mut self) -> Option<crate::profile::ProfileReport> {
+        let p = self.prof.take()?;
+        Some(p.finish(self.steps))
+    }
+
+    /// Opens a profiler span for native work named `name` (a native function,
+    /// a host hook, a compile); returns its key for `prof_leave`, 0 when not
+    /// profiling. `seed` separates spans that share a name.
+    #[cold]
+    pub fn prof_enter_as(&mut self, seed: usize, name: String) -> usize {
+        let mut h: u64 = 0xcbf29ce484222325;
+        for b in name.bytes() {
+            h ^= b as u64;
+            h = h.wrapping_mul(0x100000001b3);
+        }
+        let key = (seed ^ h as usize) | 1;
+        let depth = self.frames.len();
+        let steps = self.steps;
+        match self.prof.as_deref_mut() {
+            Some(p) => {
+                p.native_enter(key, || name, depth, steps);
+                key
+            }
+            None => 0,
+        }
+    }
+
+    /// `prof_enter_as` for a span only named when profiling.
+    #[inline]
+    pub fn prof_enter(&mut self, name: impl FnOnce() -> String) -> usize {
+        if self.prof.is_none() {
+            return 0;
+        }
+        self.prof_enter_as(0, name())
+    }
+
+    #[inline]
+    pub fn prof_leave(&mut self, key: usize) {
+        if key == 0 {
+            return;
+        }
+        let steps = self.steps;
+        if let Some(p) = self.prof.as_deref_mut() {
+            p.native_leave(key, steps);
+        }
     }
 
     // ------------------------------------------------------------ time

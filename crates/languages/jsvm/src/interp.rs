@@ -48,6 +48,14 @@ impl<'h> Vm<'h> {
 
     /// Runs until the frame at index `base` completes or suspends.
     pub fn run(&mut self, base: usize) -> JsResult<Value> {
+        let r = self.run_loop(base);
+        if let Some(p) = self.prof.as_deref_mut() {
+            p.sync(self.frames.len(), self.steps);
+        }
+        r
+    }
+
+    fn run_loop(&mut self, base: usize) -> JsResult<Value> {
         loop {
             if let Some(res) = top!(self).resume.take() {
                 let r = match res {
@@ -784,6 +792,10 @@ impl<'h> Vm<'h> {
                 f.code.ops[pc]
             };
             self.steps += 1;
+            if let Some(p) = self.prof.as_deref_mut() {
+                let f = self.frames.last().unwrap();
+                p.on_op(self.frames.len(), &f.code, &op, self.steps - 1);
+            }
             if self.steps > self.budget {
                 self.set_site_here();
                 let e = self.make_error(ErrKind::Error, "execution step limit exceeded");
@@ -1786,6 +1798,9 @@ impl<'h> Vm<'h> {
                     }
                 }
                 Op::Closure(i) => {
+                    if let Some(p) = &self.prof {
+                        crate::profile::Counters::bump(&p.counters.closures);
+                    }
                     let code = self.frames.last().unwrap().code.codes[i as usize].clone();
                     let caps = self.closure_captures(&code);
                     let f = self.make_closure(code, caps);

@@ -5,7 +5,9 @@ use crate::value::{JsStr, Obj, Value};
 use std::cell::RefCell;
 use std::rc::Rc;
 
+/// `repr(u8)`: the first byte is the variant, which the profiler's histogram reads.
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(u8)]
 pub enum Op {
     // constants
     Undef,

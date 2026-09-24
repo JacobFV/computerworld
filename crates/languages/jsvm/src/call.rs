@@ -67,6 +67,29 @@ impl<'h> Vm<'h> {
         }
     }
 
+    /// Profiler bookkeeping around a native call; 0 when not profiling.
+    #[inline]
+    fn prof_native_enter(&mut self, f: NativeFn, fo: &Obj) -> usize {
+        if self.prof.is_none() {
+            return 0;
+        }
+        let name = Self::func_name(fo);
+        let name = if name.is_empty() {
+            "(anonymous native)".to_string()
+        } else {
+            name
+        };
+        if let Some(p) = &self.prof {
+            crate::profile::Counters::bump(&p.counters.calls_native);
+        }
+        self.prof_enter_as(f as usize, name)
+    }
+
+    #[inline]
+    fn prof_native_leave(&mut self, key: usize) {
+        self.prof_leave(key)
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn make_frame(
         &mut self,
@@ -89,6 +112,9 @@ impl<'h> Vm<'h> {
                 let bytes = code.own_bytes as usize;
                 self.charge_compile(bytes);
             }
+        }
+        if let Some(p) = &self.prof {
+            crate::profile::Counters::bump(&p.counters.frames);
         }
         let n = code.nlocals as usize;
         let mut locals = vec![Local::V(Value::Undefined); n];
@@ -209,6 +235,9 @@ impl<'h> Vm<'h> {
                     )));
                 }
                 self.check_depth()?;
+                if let Some(p) = &self.prof {
+                    crate::profile::Counters::bump(&p.counters.calls_js);
+                }
                 if code.is_generator {
                     let g = self.make_generator(fo, code, caps, this, args);
                     return Ok(Invoked::Done(Value::Obj(g)));
@@ -257,11 +286,16 @@ impl<'h> Vm<'h> {
                     new_target: None,
                     callee: fo.clone(),
                 };
+                let key = self.prof_native_enter(f, fo);
                 let r = f(self, &mut a);
+                self.prof_native_leave(key);
                 self.natives.pop();
                 Ok(Invoked::Done(r?))
             }
             Callee::Bound(target, bthis, mut bargs) => {
+                if let Some(p) = &self.prof {
+                    crate::profile::Counters::bump(&p.counters.calls_bound);
+                }
                 bargs.extend(args);
                 self.invoke(&Value::Obj(target), bthis, bargs, text)
             }
@@ -341,6 +375,9 @@ impl<'h> Vm<'h> {
             return Err(not_ctor(self));
         };
         let nt = new_target.unwrap_or_else(|| fo.clone());
+        if let Some(p) = &self.prof {
+            crate::profile::Counters::bump(&p.counters.constructs);
+        }
         match self.callee_of(fo) {
             Callee::Closure(code, caps, _, ctor) => {
                 if ctor == CtorKind::None || code.is_generator || code.is_async {
@@ -391,7 +428,9 @@ impl<'h> Vm<'h> {
                     new_target: Some(nt),
                     callee: fo.clone(),
                 };
+                let key = self.prof_native_enter(f, fo);
                 let r = f(self, &mut a);
+                self.prof_native_leave(key);
                 self.natives.pop();
                 Ok(Invoked::Done(r?))
             }

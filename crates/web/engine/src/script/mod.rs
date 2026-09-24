@@ -59,6 +59,7 @@ use crate::paint::RgbaImage;
 use crate::style::StyleSet;
 use crate::Viewport;
 
+pub use cw_jsvm::profile::{ProfileOptions, ProfileReport};
 pub use inner::{Inner, LogEntry, LogLevel};
 pub use journal::{Journal, JournalEntry};
 
@@ -623,6 +624,17 @@ impl Realm {
     /// the per-call limit.
     pub fn set_step_budget(&mut self, steps: u64) {
         self.state.step_budget = steps;
+    }
+
+    /// Starts the VM's profiler (see `cw_jsvm::profile`). It only observes: the
+    /// realm behaves identically with it on, and it is not part of the snapshot.
+    pub fn profile_start(&mut self, opts: ProfileOptions) {
+        self.vm.profile_start(opts);
+    }
+
+    /// Stops the profiler and returns what it recorded since `profile_start`.
+    pub fn profile_stop(&mut self) -> Option<ProfileReport> {
+        self.vm.profile_stop()
     }
 
     /// Re-arms the VM's step limit for one entry-point call.

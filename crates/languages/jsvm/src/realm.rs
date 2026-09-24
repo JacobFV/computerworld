@@ -184,6 +184,7 @@ impl<'h> Vm<'h> {
             completion: Value::Undefined,
             handles: vec![],
             embedder: None,
+            prof: None,
         };
         // The inspect symbol is registered under its key.
         let ic = vm.syms.inspect_custom.clone();
