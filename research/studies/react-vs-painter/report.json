@@ -1,0 +1,1076 @@
+{
+  "analytics.initial": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 392
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 537
+    },
+    "state": "initial"
+  },
+  "analytics.initial@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 50,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 50,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 392
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 537
+    },
+    "state": "initial"
+  },
+  "analytics.quarter": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 392
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 537
+    },
+    "state": "quarter"
+  },
+  "analytics.quarter@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 50,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 50,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 392
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 537
+    },
+    "state": "quarter"
+  },
+  "analytics.range-menu": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 392
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 537
+    },
+    "state": "range-menu"
+  },
+  "analytics.range-menu@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 59,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 59,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 392
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 537
+    },
+    "state": "range-menu"
+  },
+  "analytics.reports": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 392
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 537
+    },
+    "state": "reports"
+  },
+  "analytics.reports@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 20,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 20,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 392
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 537
+    },
+    "state": "reports"
+  },
+  "kanban.created": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 293
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 292
+    },
+    "state": "created"
+  },
+  "kanban.created@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 26,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 26,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 293
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 14,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 14,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 292
+    },
+    "state": "created"
+  },
+  "kanban.initial": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 293
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 292
+    },
+    "state": "initial"
+  },
+  "kanban.initial@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 26,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 26,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 293
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 14,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 14,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 292
+    },
+    "state": "initial"
+  },
+  "kanban.invalid": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 293
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 292
+    },
+    "state": "invalid"
+  },
+  "kanban.invalid@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 26,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 26,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 293
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 14,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 14,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 292
+    },
+    "state": "invalid"
+  },
+  "kanban.modal": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 293
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 292
+    },
+    "state": "modal"
+  },
+  "kanban.modal@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 26,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 26,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 293
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 14,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 14,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 292
+    },
+    "state": "modal"
+  },
+  "kanban.moved": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 293
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 292
+    },
+    "state": "moved"
+  },
+  "kanban.moved@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 26,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 26,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 293
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 14,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 14,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 292
+    },
+    "state": "moved"
+  },
+  "settings.errors": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 1
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": [
+          "Usernames can only contain letters, num…"
+        ]
+      },
+      "loc_rust": 260
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 300
+    },
+    "state": "errors"
+  },
+  "settings.errors@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 18,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 1
+      },
+      "detail": {
+        "cut_off_right": 18,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": [
+          "Usernames can only contain letters, num…"
+        ]
+      },
+      "loc_rust": 260
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 300
+    },
+    "state": "errors"
+  },
+  "settings.initial": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 260
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 300
+    },
+    "state": "initial"
+  },
+  "settings.initial@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 15,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 15,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 260
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 300
+    },
+    "state": "initial"
+  },
+  "settings.notifications": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 260
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 300
+    },
+    "state": "notifications"
+  },
+  "settings.notifications@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 17,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 17,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 260
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 300
+    },
+    "state": "notifications"
+  },
+  "settings.saved": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 1,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 1,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 260
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 300
+    },
+    "state": "saved"
+  },
+  "settings.saved@1024": {
+    "painter": {
+      "counts": {
+        "cut_off_right": 20,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 20,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_rust": 260
+    },
+    "react": {
+      "counts": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": 0,
+        "near_miss_alignment": 0,
+        "text_overflowing_its_box": 0,
+        "text_overlaps": 0,
+        "truncated": 0
+      },
+      "detail": {
+        "cut_off_right": 0,
+        "inconsistent_spacing": [],
+        "near_miss_alignment": [],
+        "text_overflowing_its_box": [],
+        "text_overlaps": [],
+        "truncated": []
+      },
+      "loc_tsx": 300
+    },
+    "state": "saved"
+  },
+  "shared": {
+    "icons_tsx_loc": 365,
+    "tailwind_and_build_loc": 58
+  }
+}
