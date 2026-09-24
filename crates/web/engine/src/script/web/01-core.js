@@ -450,11 +450,18 @@ function eventPath(target, composed) {
 }
 const SHADOW_HOST = Symbol('shadowHost');
 
+// Counts `on*` attributes set by script, so a dispatch that began with none in
+// the document notices one added while it runs.
+let inlineEpoch = 0;
+hooks.inlineHandlerSet = () => { inlineEpoch++; };
 function invokeListeners(target, event, phase) {
+  // With no `on*` attribute anywhere in the document (`_inline` false, measured
+  // when the dispatch began, and none set since) and no handler slot here, there
+  // is no inline handler to compile or refresh.
+  if (event._inline !== false || event._inlineEpoch !== inlineEpoch || target[HANDLERS] !== undefined) maybeInlineHandler(target, event);
   const m = target[LISTENERS];
-  if (!m) { maybeInlineHandler(target, event); const m2 = target[LISTENERS]; if (!m2) return; }
-  else maybeInlineHandler(target, event);
-  const list = target[LISTENERS].get(event._type);
+  if (!m) return;
+  const list = m.get(event._type);
   if (!list || list.length === 0) return;
   const snapshot = list.slice();
   event._currentTarget = target;
@@ -493,6 +500,8 @@ function dispatch(target, event) {
   event._target = event._targetOverride || target;
   event._stop = false;
   event._stopImmediate = false;
+  event._inline = W.inlineHandlers();
+  event._inlineEpoch = inlineEpoch;
   const path = eventPath(target, event._composed);
   event._path = path;
   // Capture phase, then target, then bubble.

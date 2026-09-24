@@ -726,3 +726,5 @@ fn css_animation_fires_start_iteration_and_end() {
     );
     assert!(errors(&r).is_empty(), "{}", errors(&r));
 }
+check!(inline_handler_added_during_dispatch_runs_in_the_same_event, "<div id=a><p id=b></p></div>", "const a=document.getElementById('a'), b=document.getElementById('b'); window.seen=[]; b.addEventListener('click', ()=>{ seen.push('b'); a.setAttribute('onclick', 'seen.push(\"a inline\")'); }); b.dispatchEvent(new MouseEvent('click', {bubbles:true})); b.dispatchEvent(new MouseEvent('click', {bubbles:true})); console.log(seen.join());", "b,a inline,b,a inline");
+check!(inline_handler_attribute_removed_stops_running, "<div id=a onclick=\"window.n=(window.n||0)+1\"><p id=b></p></div>", "const a=document.getElementById('a'), b=document.getElementById('b'); b.dispatchEvent(new Event('click', {bubbles:true})); a.removeAttribute('onclick'); b.dispatchEvent(new Event('click', {bubbles:true})); console.log(window.n);", "1");

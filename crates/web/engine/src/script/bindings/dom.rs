@@ -1080,7 +1080,16 @@ pub fn set_attribute_value(
             Some(v) => Value::str(v),
             None => Value::Null,
         };
-        notify(vm, "attribute", vec![w, string_val(name), old_v, new_v])?;
+        notify(
+            vm,
+            "attribute",
+            vec![w, string_val(name.clone()), old_v, new_v],
+        )?;
+    }
+    // A new inline event handler: an event being dispatched must look for it on
+    // the nodes it has still to visit (see `W.inlineHandlers`).
+    if value.is_some() && name.len() > 2 && name.as_bytes()[..2].eq_ignore_ascii_case(b"on") {
+        notify(vm, "inlineHandlerSet", vec![])?;
     }
     Ok(())
 }
@@ -1300,6 +1309,29 @@ fn wrap_id(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     })
 }
 
+/// `W.inlineHandlers()`: whether any element of the document has an `on*`
+/// content attribute (an inline event handler to compile). Event dispatch skips
+/// its per-node attribute check when none has. Every attribute change bumps the
+/// generation and every new node the node count, so the answer is cached on the
+/// pair.
+fn inline_handlers(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
+    let rc = inner(vm);
+    let mut i = rc.borrow_mut();
+    let key = (i.generation, i.doc.len());
+    if (i.inline_handlers.0, i.inline_handlers.1) != key {
+        let any = (0..i.doc.len()).any(|k| {
+            let n = NodeId(k as u32);
+            i.doc.is_element(n)
+                && i.doc
+                    .attrs(n)
+                    .iter()
+                    .any(|a| a.name.len() > 2 && a.name.as_bytes()[..2].eq_ignore_ascii_case(b"on"))
+        });
+        i.inline_handlers = (key.0, key.1, any);
+    }
+    Ok(Value::Bool(i.inline_handlers.2))
+}
+
 fn node_id(_vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     Ok(match node_of(&a.arg(0)) {
         Some(n) => Value::Num(n.0 as f64),
@@ -1328,6 +1360,7 @@ pub fn install(vm: &mut Vm, w: &Obj) {
     vm.method(w, "setAttribute", 3, set_attribute_fn);
     vm.method(w, "partAttr", 1, part_attr);
     vm.method(w, "nodeId", 1, node_id);
+    vm.method(w, "inlineHandlers", 0, inline_handlers);
     super::dom_query::install(vm, w);
     super::dom_forms::install(vm, w);
 }
