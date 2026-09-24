@@ -445,4 +445,19 @@ mod cases {
         assert_eq!(p.computed("a", "margin-top"), "10px");
         assert_eq!(p.computed("a", "margin-bottom"), "10px");
     }
+
+    /// `min-width: 100%` stretches a table whose columns need less (Tailwind's
+    /// `min-w-full`), and the extra width goes to its columns.
+    #[test]
+    fn a_table_is_at_least_its_min_width() {
+        let p = page(
+            "<!DOCTYPE html><style>body { margin: 0; font: 16px Arimo } td { padding: 0 }</style>\
+             <div style='width: 500px'><table id=t style='min-width: 100%; border-spacing: 0'>\
+             <tr><td id=a>a</td><td id=b>b</td></tr></table></div>",
+        );
+        let t = p.rect("t");
+        close(t.width, 500.0, "table width");
+        let (a, b) = (p.rect("a"), p.rect("b"));
+        close(a.width + b.width, 500.0, "columns fill it");
+    }
 }

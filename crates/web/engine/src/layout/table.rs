@@ -757,19 +757,29 @@ pub fn intrinsic_widths(ctx: &LayoutContext, wrapper: BoxId) -> (Au, Au) {
 fn used_table_width(ctx: &LayoutContext, grid: BoxId, cb: &Cb, avail: Au) -> Au {
     let s = ctx.style(grid);
     let (mn, mx) = intrinsic::min_max(ctx, grid);
-    match s.width {
+    let edges =
+        block::padding_edges(s, cb.width).horizontal() + s.used_border_widths().horizontal();
+    let w = match s.width {
         // §17.5.2.1: with the fixed algorithm the table is exactly as wide as
         // specified; the cells' contents do not widen it (they overflow instead).
-        Sizing::Set(lp) if s.table_layout == TableLayout::Fixed => {
-            let edges = block::padding_edges(s, cb.width).horizontal()
-                + s.used_border_widths().horizontal();
-            lp.resolve(cb.width).max(edges)
-        }
+        Sizing::Set(lp) if s.table_layout == TableLayout::Fixed => lp.resolve(cb.width).max(edges),
         Sizing::Set(lp) => lp.resolve(cb.width).max(mn),
         Sizing::MinContent => mn,
         Sizing::MaxContent => mx,
         _ => mn.max(avail.min(mx)),
-    }
+    };
+    // `min-width` and `max-width` apply to the table box as to a block (Tailwind's
+    // `min-w-full` stretches a narrow table across its container); the columns'
+    // minimum still wins.
+    let clamped = block::clamp_size(
+        (w - edges).max(Au::ZERO),
+        s.min_width,
+        s.max_width,
+        Some(cb.width),
+        edges,
+        s.box_sizing,
+    ) + edges;
+    clamped.max(mn)
 }
 
 /// Column widths for a used inner width (the grid's content width minus spacing).
