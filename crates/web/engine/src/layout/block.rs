@@ -662,18 +662,27 @@ pub fn replaced_size(ctx: &LayoutContext, id: BoxId, rb: &ReplacedBox, cb: &Cb) 
         },
     });
     let (iw, ih) = (intrinsic.width, intrinsic.height);
+    // Images, canvases, videos and SVG have a natural aspect ratio that carries one
+    // specified dimension to the other; form controls, iframes and the like have a
+    // natural size but no ratio, so an `auto` dimension stays at its natural length
+    // (an `<input>` at `width: 100%` keeps its one-line height).
+    let ratio = match &rb.replaced {
+        Replaced::Image { .. } => true,
+        Replaced::Placeholder(tag) => matches!(tag.as_str(), "canvas" | "video" | "svg"),
+        _ => false,
+    };
     let (mut uw, mut uh) = match (w, h) {
         (Some(w), Some(h)) => (w, h),
         (Some(w), None) => (
             w,
-            if iw > Au::ZERO {
+            if ratio && iw > Au::ZERO {
                 w.scale(ih.0, iw.0)
             } else {
                 ih
             },
         ),
         (None, Some(h)) => (
-            if ih > Au::ZERO {
+            if ratio && ih > Au::ZERO {
                 h.scale(iw.0, ih.0)
             } else {
                 iw
@@ -691,14 +700,14 @@ pub fn replaced_size(ctx: &LayoutContext, id: BoxId, rb: &ReplacedBox, cb: &Cb) 
         s.box_sizing,
     );
     if cw != uw {
-        if w.is_none() && h.is_none() && uw > Au::ZERO {
+        if ratio && w.is_none() && h.is_none() && uw > Au::ZERO {
             uh = cw.scale(uh.0, uw.0);
         }
         uw = cw;
     }
     let ch = clamp_size(uh, s.min_height, s.max_height, cb.height, ev, s.box_sizing);
     if ch != uh {
-        if w.is_none() && h.is_none() && uh > Au::ZERO {
+        if ratio && w.is_none() && h.is_none() && uh > Au::ZERO {
             uw = ch.scale(uw.0, uh.0);
         }
         uh = ch;

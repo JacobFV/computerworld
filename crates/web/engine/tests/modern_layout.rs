@@ -367,4 +367,17 @@ mod cases {
         rect_is(&p, "bg", 0.0, 0.0, 1280.0, 800.0);
         rect_is(&p, "m", 540.0, 350.0, 200.0, 100.0);
     }
+
+    /// A text input has a natural size but no natural aspect ratio: at `width: 100%`
+    /// its height stays one line (Tailwind's `w-full` search fields).
+    #[test]
+    fn a_full_width_text_input_keeps_its_one_line_height() {
+        let p = page(
+            "<!DOCTYPE html><style>html { line-height: 1.5; font-family: Inter } body { margin: 0 }\
+             input { font-family: inherit; font-size: 100%; line-height: inherit; margin: 0; padding: 0; border-width: 0 }</style>\
+             <div id=d><input id=i placeholder='Search' style='font-size: 14px; line-height: 20px; padding: 8px 16px; width: 100%; box-sizing: border-box'></div>",
+        );
+        rect_is(&p, "i", 0.0, 0.0, 1280.0, 36.0);
+        rect_is(&p, "d", 0.0, 0.0, 1280.0, 36.0);
+    }
 }
