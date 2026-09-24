@@ -16,6 +16,46 @@ pub const MAX_NATIVE_DEPTH: usize = 200;
 pub const STEP_BUDGET: u64 = 200_000_000;
 pub const NODE_VERSION: &str = "v24.21.0";
 
+/// Buffers of finished frames, reused by the next calls so that a call does
+/// not allocate its operand stack, locals and argument list afresh.
+#[derive(Default)]
+pub struct FramePool {
+    pub vals: Vec<Vec<Value>>,
+    pub locals: Vec<Vec<Local>>,
+}
+
+const POOL_MAX: usize = 64;
+
+impl FramePool {
+    #[inline]
+    pub fn give_vals(&mut self, mut v: Vec<Value>) {
+        if v.capacity() != 0 && v.capacity() <= 1024 && self.vals.len() < POOL_MAX {
+            v.clear();
+            self.vals.push(v);
+        }
+    }
+    #[inline]
+    pub fn give_locals(&mut self, mut v: Vec<Local>) {
+        if v.capacity() != 0 && v.capacity() <= 1024 && self.locals.len() < POOL_MAX {
+            v.clear();
+            self.locals.push(v);
+        }
+    }
+    /// Keeps the buffers of a frame that is done.
+    #[inline]
+    pub fn recycle(&mut self, f: Frame) {
+        let Frame {
+            stack,
+            locals,
+            args,
+            ..
+        } = f;
+        self.give_vals(stack);
+        self.give_vals(args);
+        self.give_locals(locals);
+    }
+}
+
 #[derive(Clone)]
 pub enum Local {
     V(Value),
@@ -362,6 +402,8 @@ pub struct Vm<'h> {
     pub cache_seen: std::collections::HashSet<crate::codecache::CacheKey>,
     /// Tagged-template objects, by code body and site: one per realm.
     pub templates: FnvMap<(u64, u32), Obj>,
+    /// Reusable frame buffers.
+    pub pool: FramePool,
     /// The profiler, while one is running (see `profile`).
     pub prof: Option<Box<crate::profile::Profiler>>,
 }

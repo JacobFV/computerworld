@@ -29,9 +29,11 @@ impl<'h> Vm<'h> {
         &s[s.len() - 1 - n]
     }
     fn pop_n(&mut self, n: usize) -> Vec<Value> {
-        let s = &mut top!(self).stack;
+        let mut out = self.pool.vals.pop().unwrap_or_default();
+        let s = &mut self.frames.last_mut().unwrap().stack;
         let at = s.len() - n;
-        s.split_off(at)
+        out.extend(s.drain(at..));
+        out
     }
     fn konst(&self, i: u32) -> Value {
         self.frames.last().unwrap().code.consts[i as usize].clone()
@@ -108,9 +110,11 @@ impl<'h> Vm<'h> {
                     return Ok(None);
                 }
             }
-            let frame = self.frames.pop().unwrap();
+            let mut frame = self.frames.pop().unwrap();
             let at_base = self.frames.len() == base;
-            match frame.kind {
+            let kind = std::mem::replace(&mut frame.kind, FrameKind::Normal);
+            self.pool.recycle(frame);
+            match kind {
                 FrameKind::Async { promise, first, .. } => {
                     self.reject_promise(&promise, v);
                     let pv = Value::Obj(promise);
@@ -151,9 +155,10 @@ impl<'h> Vm<'h> {
     }
 
     fn return_value(&mut self, v: Value, base: usize) -> JsResult<Option<Value>> {
-        let frame = self.frames.pop().unwrap();
+        let mut frame = self.frames.pop().unwrap();
         let at_base = self.frames.len() == base;
-        let result = match frame.kind {
+        let kind = std::mem::replace(&mut frame.kind, FrameKind::Normal);
+        let result = match kind {
             FrameKind::Normal => v,
             FrameKind::Construct(this) => {
                 if let Value::Obj(_) = v {
@@ -197,6 +202,7 @@ impl<'h> Vm<'h> {
                 Value::Obj(promise)
             }
         };
+        self.pool.recycle(frame);
         if at_base {
             self.exit = Exit::Return;
             return Ok(Some(result));

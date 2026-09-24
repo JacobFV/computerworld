@@ -125,11 +125,25 @@ impl<'h> Vm<'h> {
             crate::profile::Counters::bump(&p.counters.frames);
         }
         let n = code.nlocals as usize;
-        let mut locals = vec![Local::V(Value::Undefined); n];
+        let mut locals = self.pool.locals.pop().unwrap_or_default();
+        locals.resize(n, Local::V(Value::Undefined));
+        let mut args = args;
         if let Some(k) = code.simple_params {
-            for (i, slot) in locals.iter_mut().enumerate().take(k as usize) {
-                *slot = Local::V(args.get(i).cloned().unwrap_or(Value::Undefined));
+            let k = (k as usize).min(args.len());
+            if code.needs_args {
+                for (slot, a) in locals.iter_mut().zip(args.iter()).take(k) {
+                    *slot = Local::V(a.clone());
+                }
+            } else {
+                // Nothing reads the list after entry: move the values in.
+                for (slot, a) in locals.iter_mut().zip(args.drain(..)).take(k) {
+                    *slot = Local::V(a);
+                }
             }
+        }
+        if !code.needs_args {
+            let spent = std::mem::take(&mut args);
+            self.pool.give_vals(spent);
         }
         if let Some(s) = code.this_slot {
             let t = if code.kind == FuncKind::DerivedConstructor {
@@ -169,17 +183,22 @@ impl<'h> Vm<'h> {
             let a = self.make_arguments(&args);
             locals[s as usize] = Local::V(Value::Obj(a));
         }
-        for (i, c) in code.is_cell.iter().enumerate() {
-            if *c {
-                if let Local::V(v) = &locals[i] {
-                    locals[i] = Local::C(new_cell(v.clone()));
-                }
+        for &i in &code.cell_slots {
+            let slot = &mut locals[i as usize];
+            if let Local::V(v) = slot {
+                let v = std::mem::replace(v, Value::Undefined);
+                *slot = Local::C(new_cell(v));
             }
         }
+        let stack = self
+            .pool
+            .vals
+            .pop()
+            .unwrap_or_else(|| Vec::with_capacity(8));
         Frame {
             code,
             pc: 0,
-            stack: Vec::with_capacity(8),
+            stack,
             locals,
             captures,
             handlers: vec![],

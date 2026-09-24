@@ -269,8 +269,13 @@ pub struct Code {
     pub templates: Vec<(Vec<Option<JsStr>>, Vec<JsStr>)>,
     /// Module top level (frame named `Object.<anonymous>`).
     pub is_top: bool,
-    /// Uses `arguments`, so the frame keeps its argument list.
+    /// Reads its argument list after entry (`arguments`, a rest parameter, or
+    /// parameters that are not plain identifiers), so the frame keeps it;
+    /// otherwise the simple parameters are moved straight into their slots.
     pub needs_args: bool,
+    /// The slots captured by closures (those with `is_cell`), which start
+    /// life as cells.
+    pub cell_slots: Vec<u32>,
     /// Identifies this body on its thread (`codecache::next_id`): per-realm
     /// state about it (the compile charge, template objects) is keyed by it,
     /// because compiled code is shared by every realm that loads the source.
@@ -317,6 +322,7 @@ impl Code {
             templates: self.templates.clone(),
             is_top: self.is_top,
             needs_args: self.needs_args,
+            cell_slots: self.cell_slots.clone(),
             uid: crate::codecache::next_id(),
             compiled_by: std::cell::Cell::new(0),
             own_bytes: self.own_bytes,

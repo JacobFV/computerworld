@@ -930,6 +930,18 @@ impl<'a> Compiler<'a> {
             set_target(&mut fs.ops[i], pc);
         }
         let nested: usize = fs.codes.iter().map(|c| c.source.len()).sum();
+        let needs_args = fs.args_slot.is_some()
+            || fs
+                .ops
+                .iter()
+                .any(|op| matches!(op, Op::Arg(_) | Op::RestParam(_)));
+        let cell_slots: Vec<u32> = fs
+            .is_cell
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| **c)
+            .map(|(i, _)| i as u32)
+            .collect();
         let own_bytes = source.len().saturating_sub(nested) as u32;
         Rc::new(Code {
             name,
@@ -957,7 +969,8 @@ impl<'a> Compiler<'a> {
             source,
             templates: fs.templates,
             is_top: fs.is_top,
-            needs_args: false,
+            needs_args,
+            cell_slots,
             uid: crate::codecache::next_id(),
             compiled_by: std::cell::Cell::new(0),
             own_bytes,

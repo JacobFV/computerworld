@@ -188,6 +188,7 @@ impl<'h> Vm<'h> {
             compiled: Default::default(),
             templates: Default::default(),
             cache_seen: Default::default(),
+            pool: Default::default(),
             prof: None,
         };
         // The inspect symbol is registered under its key.
