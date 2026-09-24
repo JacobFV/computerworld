@@ -1122,6 +1122,10 @@ impl<'h> Vm<'h> {
                     let v = f.stack.pop().unwrap();
                     f.stack.push(Value::Bool(!v.truthy()));
                 }
+                Op::Typeof => {
+                    let v = f.stack.pop().unwrap();
+                    f.stack.push(Value::Str(JsStr::intern(v.type_of())));
+                }
                 Op::Add
                 | Op::Sub
                 | Op::Mul
@@ -1401,7 +1405,7 @@ impl<'h> Vm<'h> {
                     } else {
                         "undefined"
                     };
-                    self.push(Value::str(t));
+                    self.push(Value::Str(JsStr::intern(t)));
                 }
                 Op::GetProp(c) => {
                     let obj = self.pop();
@@ -1797,7 +1801,7 @@ impl<'h> Vm<'h> {
                 }
                 Op::Typeof => {
                     let v = self.pop();
-                    self.push(Value::str(v.type_of()));
+                    self.push(Value::Str(JsStr::intern(v.type_of())));
                 }
                 Op::ToNumeric => {
                     let v = self.pop();

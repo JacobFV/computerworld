@@ -89,7 +89,10 @@ struct Interner {
 
 thread_local! {
     static INTERNER: RefCell<Interner> = RefCell::new(Interner::default());
+    /// `JsStr::intern`'s memory of recent requests: (text address, string).
+    static RECENT: RefCell<Vec<Option<(usize, JsStr)>>> = RefCell::new(vec![None; RECENT_SLOTS]);
 }
+const RECENT_SLOTS: usize = 512;
 
 #[derive(Clone)]
 pub struct JsStr(pub Rc<StrInner>);
@@ -140,12 +143,26 @@ impl JsStr {
             me
         })
     }
-    /// The canonical string for `s`.
+    /// The canonical string for `s`. Recent requests are remembered by the
+    /// address and length of the text asked for (the literals native code
+    /// names properties with come back at the same address), confirmed by
+    /// comparing the text, so a repeated `Key::str("length")` skips the hash.
     pub fn intern(s: &str) -> JsStr {
-        if let Some(c) = Self::lookup_canon(s) {
-            return c;
+        let at = s.as_ptr() as usize;
+        let slot = ((at >> 3) ^ (at >> 11) ^ s.len().wrapping_mul(0x9e37)) & (RECENT_SLOTS - 1);
+        let hit = RECENT.with(|r| match &r.borrow()[slot] {
+            Some((p, js)) if *p == at && js.as_str() == s => Some(js.clone()),
+            _ => None,
+        });
+        if let Some(js) = hit {
+            return js;
         }
-        JsStr::new(s).canonical()
+        let js = match Self::lookup_canon(s) {
+            Some(c) => c,
+            None => JsStr::new(s).canonical(),
+        };
+        RECENT.with(|r| r.borrow_mut()[slot] = Some((at, js.clone())));
+        js
     }
     pub fn as_str(&self) -> &str {
         &self.0.s
