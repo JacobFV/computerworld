@@ -119,6 +119,70 @@ pub fn advance(font: &Font, c: char) -> Au {
     Au(a.clamp(0, Au::MAX.0 as i64) as i32)
 }
 
+/// Sub-`Au` precision for text: 1/65536 px, the 16.16 fixed point HarfBuzz positions
+/// glyphs in for Blink. 1024 of them make an `Au`.
+pub const FINE_PER_AU: i64 = 1024;
+
+/// Advance of one character in 1/65536 px ([`FINE_PER_AU`]), without letter
+/// spacing: the face's advance in font units scaled to the font's size and
+/// truncated, as Blink converts Skia's float advance to HarfBuzz's 16.16. Summing
+/// these and rounding the total up to an `Au` ([`Pen`]) is how Chromium arrives at
+/// a text run's width; rounding each glyph to an `Au` first drifted by up to a
+/// fifth of a pixel over a phrase (`Fixed point everywhere.` in 16 px bold Arimo
+/// was 182.453 px against Chromium's 182.281).
+pub fn advance_fine(font: &Font, c: char) -> i64 {
+    let style = font.scene_style();
+    let one = match metrics::advance_units(font.typeface, style, c) {
+        Some((units, upem)) => {
+            (i64::from(units) * font.size.0 as i64 * FINE_PER_AU).div_euclid(i64::from(upem))
+        }
+        None => {
+            let base = if c == '\t' { ' ' } else { c };
+            let fine = fallback_advance(font.typeface, style, base);
+            (fine * font.size.0 as i64 * FINE_PER_AU).div_euclid(i64::from(REF_SIZE) * 64)
+        }
+    };
+    if c == '\t' {
+        one * 4
+    } else {
+        one
+    }
+}
+
+/// Pair kerning in 1/65536 px, like [`advance_fine`] (zero where [`kern`] is).
+pub fn kern_fine(font: &Font, left: char, right: char) -> i64 {
+    metrics::kern_units(font.typeface, font.scene_style(), left, right).map_or(
+        0,
+        |(units, upem)| {
+            (i64::from(units) * font.size.0 as i64 * FINE_PER_AU).div_euclid(i64::from(upem))
+        },
+    )
+}
+
+/// The pen along one run of text, in 1/65536 px, and the `Au` widths handed out so
+/// far. Each piece of the run (a word, a space) is as wide as it takes the rounded-up
+/// pen to move, so the pieces add up to the run's exact width rounded up once, as
+/// Chromium snaps a run's width (`LayoutUnit::FromFloatCeil`), rather than
+/// accumulating a rounding per glyph.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Pen {
+    fine: i64,
+    au: i64,
+}
+
+impl Pen {
+    /// Advances the pen by `fine` (1/65536 px); returns how far that moves the pen
+    /// rounded up to whole `Au`.
+    pub fn advance(&mut self, fine: i64) -> Au {
+        self.fine += fine;
+        let to =
+            self.fine.div_euclid(FINE_PER_AU) + i64::from(self.fine.rem_euclid(FINE_PER_AU) != 0);
+        let step = to - self.au;
+        self.au = to;
+        Au(step.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32)
+    }
+}
+
 /// The advance of a character no metrics table covers, at [`REF_SIZE`], measured the
 /// way the renderer draws it: through the complex-text path, which picks the fallback
 /// face (an emoji face is far wider than the 0.6 em the tables assume). Layout used
@@ -184,17 +248,21 @@ pub fn kern_spaced(font: &Font, prev: Option<char>, c: char, _letter_spacing: Au
 
 /// Width of a string, applying pair kerning between characters, `letter-spacing`
 /// after every character and `word-spacing` after every space.
+/// Kerning is added whatever the letter spacing (see [`kern_spaced`]); the exact sum
+/// is rounded up once ([`Pen`]).
 pub fn measure(font: &Font, text: &str, letter_spacing: Au, word_spacing: Au) -> Au {
-    let mut w = Au::ZERO;
+    let mut fine = 0;
     let mut prev = None;
     for c in text.chars() {
-        w += kern_spaced(font, prev, c, letter_spacing) + advance(font, c) + letter_spacing;
+        fine += prev.map_or(0, |p| kern_fine(font, p, c))
+            + advance_fine(font, c)
+            + i64::from(letter_spacing.0) * FINE_PER_AU;
         if c == ' ' {
-            w += word_spacing;
+            fine += i64::from(word_spacing.0) * FINE_PER_AU;
         }
         prev = Some(c);
     }
-    w
+    Pen::default().advance(fine)
 }
 
 /// The `ch` unit: the advance of `0`.
@@ -578,10 +646,17 @@ mod tests {
         );
         // DejaVu Sans kerns, as in Chromium: T-a is -339 units, -2.65 px at 16 px.
         assert_eq!(kern(&s.font, 'T', 'a'), Au(-169));
+        // The exact (1/65536 px) sum, spacing included, rounded up once.
+        let fine = advance_fine(&s.font, 'a')
+            + advance_fine(&s.font, ' ')
+            + advance_fine(&s.font, 'b')
+            + (3 + 2) * FINE_PER_AU;
         assert_eq!(
             measure(&s.font, "a b", Au(1), Au(2)),
-            advance(&s.font, 'a') + advance(&s.font, ' ') + advance(&s.font, 'b') + Au(3) + Au(2)
+            Au(((fine + FINE_PER_AU - 1) / FINE_PER_AU) as i32)
         );
+        // 16 px DejaVu: "a" is 1255 units, 9.8047 px: 642,560 / 65536 px.
+        assert_eq!(advance_fine(&s.font, 'a'), 1255 * 1024 * 1024 / 2048);
     }
     #[test]
     fn kerning_matches_chromium_and_letter_spacing_disables_it() {

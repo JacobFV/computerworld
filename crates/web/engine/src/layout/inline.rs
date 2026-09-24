@@ -356,8 +356,19 @@ impl Collector<'_, '_> {
         let font = &s.font;
         let ls = s.letter_spacing;
         let wsp = s.word_spacing;
-        let space_w = text::advance(font, ' ') + ls + wsp;
+        let space_fine =
+            text::advance_fine(font, ' ') + i64::from((ls + wsp).0) * text::FINE_PER_AU;
+        let ls_fine = i64::from(ls.0) * text::FINE_PER_AU;
         let tab_w = (text::advance(font, ' ') + ls) * s.tab_size.max(1) as i32;
+        // The pen along this text's run: its words and spaces are as wide as the
+        // run's exact (1/65536 px) pen moves, rounded up, so the run adds up to its
+        // exact width rounded up once, as Chromium's does. A kern against the
+        // previous unit moves that unit's end when the unit is this run's.
+        let mut pen = text::Pen::default();
+        let mut in_run = false;
+        // Whether the last unit is a space of this text, which is in this font
+        // whatever element the word before it belonged to.
+        let mut space_here = false;
         // Kerning carries over from the previous unit when it is set in the same font,
         // whichever element it belongs to: Blink shapes a line's text in one run per
         // font, so `| <a>API</a>` kerns the space against the `A`.
@@ -375,15 +386,23 @@ impl Collector<'_, '_> {
                     let bb = ws == WhiteSpace::BreakSpaces
                         && matches!(self.last_content, Some(UnitKind::Space { .. }));
                     // Kerning runs through the spaces of a text run, as the shaper's does.
-                    let joint = text::kern_spaced(
-                        font,
-                        self.last_char.filter(|_| {
-                            matches!(self.last_content, Some(UnitKind::Word)) && same_font(self)
-                        }),
-                        ' ',
-                        ls,
-                    );
+                    let carried = self.last_char.filter(|_| {
+                        matches!(self.last_content, Some(UnitKind::Word)) && same_font(self)
+                    });
+                    let joint = if in_run {
+                        pen.advance(carried.map_or(0, |p| text::kern_fine(font, p, ' ')))
+                    } else {
+                        text::kern_spaced(font, carried, ' ', ls)
+                    };
                     self.kern_previous(joint);
+                    // A collapsible space that opens the run is not part of it: at a
+                    // line's start it is removed, and Chromium's run starts after it.
+                    let space_w = if in_run || !collapsible {
+                        in_run = true;
+                        pen.advance(space_fine)
+                    } else {
+                        text::Pen::default().advance(space_fine)
+                    };
                     self.push(Unit {
                         kind: UnitKind::Space { collapsible, hang },
                         owner,
@@ -394,12 +413,16 @@ impl Collector<'_, '_> {
                         face: 0,
                     });
                     self.last_content = Some(UnitKind::Space { collapsible, hang });
+                    space_here = true;
                     self.last_char = Some(' ');
                     self.last_wraps = wraps;
                     self.pending_break = false;
                     i += 1;
                 }
                 CharKind::Tab => {
+                    // A tab advances to a tab stop, so the run starts afresh after it.
+                    pen = text::Pen::default();
+                    in_run = false;
                     self.push(Unit {
                         kind: UnitKind::Tab,
                         owner,
@@ -415,6 +438,8 @@ impl Collector<'_, '_> {
                     i += 1;
                 }
                 CharKind::Newline => {
+                    pen = text::Pen::default();
+                    in_run = false;
                     self.push(Unit {
                         kind: UnitKind::Newline,
                         owner,
@@ -451,7 +476,7 @@ impl Collector<'_, '_> {
                     let start_src = pc.src;
                     let mut end_src = pc.src + pc.ch.len_utf8();
                     let mut word = String::new();
-                    let mut width = Au::ZERO;
+                    let mut fine = 0i64;
                     let mut prev = None;
                     // The character the next one kerns against: the previous unit's
                     // last character when it is set in the same font.
@@ -459,10 +484,18 @@ impl Collector<'_, '_> {
                         matches!(
                             self.last_content,
                             Some(UnitKind::Word | UnitKind::Space { .. })
-                        ) && same_font(self)
+                        ) && (same_font(self)
+                            || space_here
+                                && matches!(self.last_content, Some(UnitKind::Space { .. })))
                     });
-                    self.kern_previous(text::kern_spaced(font, carried, pc.ch, ls));
-                    let mut kern_prev = None;
+                    let joint = if in_run {
+                        pen.advance(carried.map_or(0, |p| text::kern_fine(font, p, pc.ch)))
+                    } else {
+                        text::kern_spaced(font, carried, pc.ch, ls)
+                    };
+                    self.kern_previous(joint);
+                    in_run = true;
+                    let mut kern_prev: Option<char> = None;
                     while i < chars.len() {
                         let c = chars[i];
                         if c.kind != CharKind::Other {
@@ -479,14 +512,15 @@ impl Collector<'_, '_> {
                             }
                         }
                         word.push(c.ch);
-                        width += text::kern_spaced(font, kern_prev, c.ch, ls)
-                            + text::advance(font, c.ch)
-                            + ls;
+                        fine += kern_prev.map_or(0, |p| text::kern_fine(font, p, c.ch))
+                            + text::advance_fine(font, c.ch)
+                            + ls_fine;
                         kern_prev = Some(c.ch);
                         end_src = c.src + c.ch.len_utf8();
                         prev = Some(c.ch);
                         i += 1;
                     }
+                    let width = pen.advance(fine);
                     // `end_src` may be smaller than the mapped source for transforms
                     // that expand; keep the range monotonic.
                     let end_src = end_src.max(start_src);

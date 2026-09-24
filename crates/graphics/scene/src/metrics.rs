@@ -411,6 +411,16 @@ pub fn table_face(typeface: Typeface, style: Style, c: char) -> Option<(Typeface
     }
     None
 }
+/// The tabulated advance of `c` in font units, with the face's units per em: the
+/// face's own advance, even for [`Typeface::Mono`] outside web content (which
+/// [`tabulated_advance`] puts on the terminal grid instead). `None` when only the
+/// rasterizer knows the glyph. Tabs read as spaces.
+pub fn advance_units(typeface: Typeface, style: impl Into<Style>, c: char) -> Option<(u16, u32)> {
+    let style = style.into();
+    let c = if c == '\t' { ' ' } else { c };
+    let (family, slanted) = table_face(typeface, style, c)?;
+    face_units(family, style, slanted, c)
+}
 /// Tabulated advance in 1/64 pixel, or `None` when only the rasterizer knows the glyph.
 pub fn tabulated_advance(
     typeface: Typeface,
