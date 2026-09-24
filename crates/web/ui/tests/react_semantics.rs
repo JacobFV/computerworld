@@ -12,7 +12,11 @@ const BASE: &str = "https://example.test/";
 
 fn vendor(h: MemoryHost) -> MemoryHost {
     let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../engine/tests/vendor");
-    let mut h = h;
+    let mut h = h.with_response(
+        &format!("{BASE}api/items"),
+        "application/json",
+        r#"[{"id": 2, "name": "beta", "tags": ["x"]}, {"id": 1, "name": "alpha", "tags": []}]"#,
+    );
     for name in [
         "react-18.3.1.production.min.js",
         "react-dom-18.3.1.production.min.js",
@@ -576,4 +580,120 @@ createRoot(document.getElementById('root')!).render(<App />);
     assert_eq!(text(&app), text(&restored));
     assert_eq!(text(&restored), "add1,2,3,42");
     assert_eq!(app.snapshot().to_json(), restored.snapshot().to_json());
+}
+
+#[test]
+fn svg_spread_props_ids_and_autofocus() {
+    same_as_react(
+        r#"
+import { useId, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+function Field({ label }: { label: string }) {
+  const id = useId();
+  return <p><label htmlFor={id}>{label}</label><input id={id} autoFocus={label === 'b'} /></p>;
+}
+function App() {
+  const [n, setN] = useState(1);
+  const extra = { title: 'spread', 'data-n': n, className: 'x' + n };
+  return (
+    <div>
+      <button id="go" {...extra} onClick={() => setN(n + 1)}>go</button>
+      <svg width="40" height="20" viewBox="0 0 40 20"><rect x={n} y="2" width="10" height="10" strokeWidth={2} fill="red" /></svg>
+      <Field label="a" /><Field label="b" />
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Click("#go"), Step::Type("typed")],
+    );
+}
+
+#[test]
+fn capture_focus_and_pointer_handlers_fire_in_order() {
+    same_as_react(
+        r#"
+import { createRoot } from 'react-dom/client';
+function App() {
+  return (
+    <div id="outer" onClickCapture={() => console.log('outer capture')} onClick={() => console.log('outer bubble')}
+         onFocus={() => console.log('focus within')} onBlur={() => console.log('blur within')}>
+      <button id="inner" onClickCapture={() => console.log('inner capture')}
+              onClick={(e) => { console.log('inner bubble', e.target === e.currentTarget); }}
+              onMouseDown={() => console.log('down')} onMouseUp={() => console.log('up')}
+              onMouseEnter={() => console.log('enter')}>inner</button>
+      <button id="stop" onClick={(e) => { e.stopPropagation(); console.log('stopped'); }}>stop</button>
+      <input id="field" onKeyDown={(e) => console.log('key', e.key)} onFocus={() => console.log('field focus')} />
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[
+            Step::Click("#inner"),
+            Step::Click("#stop"),
+            Step::Click("#field"),
+            Step::Type("ab"),
+            Step::Click("#inner"),
+        ],
+    );
+}
+
+#[test]
+fn controlled_selects_and_checkboxes() {
+    same_as_react(
+        r#"
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+function App() {
+  const [size, setSize] = useState('m');
+  const [on, setOn] = useState(true);
+  const [stuck] = useState(false);
+  return (
+    <div>
+      <select id="size" value={size} onChange={(e) => setSize(e.target.value)}>
+        <option value="s">small</option><option value="m">medium</option><option value="l">large</option>
+      </select>
+      <input id="on" type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} />
+      <input id="stuck" type="checkbox" checked={stuck} onChange={() => console.log('stuck clicked')} />
+      <button id="big" onClick={() => setSize('l')}>big</button>
+      <p>{size} {on ? 'on' : 'off'}</p>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[
+            Step::Click("#on"),
+            Step::Click("#stuck"),
+            Step::Click("#big"),
+            Step::Click("#on"),
+        ],
+    );
+}
+
+#[test]
+fn fetched_data_renders() {
+    same_as_react(
+        r#"
+import { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+interface Item { id: number; name: string; tags: string[] }
+function App() {
+  const [items, setItems] = useState<Item[]>([]);
+  const [status, setStatus] = useState('loading');
+  useEffect(() => {
+    fetch('/api/items')
+      .then((r) => { console.log('status', r.status, r.ok); return r.json(); })
+      .then((data: Item[]) => { setItems(data); setStatus('done'); })
+      .catch((e: string) => setStatus('failed ' + e));
+    fetch('/api/missing').then((r) => console.log('missing', r.status));
+  }, []);
+  const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
+  return <div><p>{status}</p><ul>{sorted.map((it) => <li key={it.id}>{it.name} ({it.tags.length})</li>)}</ul></div>;
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Wait(50)],
+    );
 }
