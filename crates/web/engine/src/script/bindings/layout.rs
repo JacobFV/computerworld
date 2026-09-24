@@ -377,6 +377,15 @@ fn scroll_of(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     Ok(vm.arr(vec![Value::Num(px(x)), Value::Num(px(y))]))
 }
 
+/// `W.windowScroll()`: the window's scroll offset as it stands, without flushing
+/// layout. The page coordinates of a UI event come from the scroll position at the
+/// time the browser hit-tested it, as in Chromium; reading `scrollX` instead would
+/// force a layout for every event while an update is pending.
+fn window_scroll(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
+    let (x, y) = inner(vm).borrow().window_scroll();
+    Ok(vm.arr(vec![Value::Num(px(x)), Value::Num(px(y))]))
+}
+
 /// `W.scrollIntoView(node, alignToTop)`: scrolls the window (and scroll
 /// container ancestors) so the element is visible.
 fn scroll_into_view(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
@@ -557,6 +566,7 @@ pub fn install(vm: &mut Vm, w: &Obj) {
     vm.method(w, "boxMetrics", 1, box_metrics);
     vm.method(w, "scrollTo", 3, scroll_to);
     vm.method(w, "scrollOf", 1, scroll_of);
+    vm.method(w, "windowScroll", 0, window_scroll);
     vm.method(w, "scrollIntoView", 3, scroll_into_view);
     vm.method(w, "elementFromPoint", 2, element_from_point);
     vm.method(w, "elementsFromPoint", 2, elements_from_point);

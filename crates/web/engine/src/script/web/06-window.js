@@ -632,7 +632,8 @@ function scrollWindow(x, y, by) {
 // ---------------------------------------------------------------- dispatch hooks (from Realm::dispatch)
 
 function mouseInit(x, y, button, mods, detail, related) {
-  return { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, screenX: x, screenY: y, button: button, buttons: button === 0 ? 1 : button === 1 ? 4 : 2, detail: detail, view: globalThis, relatedTarget: related || null, ctrlKey: mods.ctrlKey, shiftKey: mods.shiftKey, altKey: mods.altKey, metaKey: mods.metaKey };
+  const s = W.windowScroll();
+  return { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, pageX: x + s[0], pageY: y + s[1], screenX: x, screenY: y, button: button, buttons: button === 0 ? 1 : button === 1 ? 4 : 2, detail: detail, view: globalThis, relatedTarget: related || null, ctrlKey: mods.ctrlKey, shiftKey: mods.shiftKey, altKey: mods.altKey, metaKey: mods.metaKey };
 }
 hooks.pointer = (kind, target, x, y, button, mods, detail) => {
   const names = { down: ['pointerdown', 'mousedown'], up: ['pointerup', 'mouseup'], move: ['pointermove', 'mousemove'] }[kind];
