@@ -4,6 +4,7 @@
 use crate::kerning_data as kerning;
 use crate::kerning_dejavu;
 use crate::metrics_data as data;
+use crate::metrics_dejavu as dejavu_web;
 use crate::metrics_italic as italic;
 use crate::metrics_web as web;
 use crate::text;
@@ -361,6 +362,35 @@ fn lookup(table: &[(u32, u16)], c: char) -> Option<u16> {
         .ok()
         .map(|i| table[i].1)
 }
+/// The advance of `c` in font units in `family`'s face (`slanted` or upright), with
+/// the face's units per em. The DejaVu tables tabulate the `WIDE` ranges; for web
+/// content the upright DejaVu Sans and Mono faces also answer for the rest of what
+/// their files draw (symbols, arrows, maths, box drawing, dingbats), which native
+/// text measures at 0.6 em but Chromium, falling back to DejaVu Sans, by the font.
+fn face_units(family: Typeface, style: Style, slanted: bool, c: char) -> Option<(u16, u32)> {
+    let (table, upem) = family.table(style.bold, slanted);
+    lookup(table, c).map(|units| (units, upem)).or_else(|| {
+        if !style.web || slanted {
+            return None;
+        }
+        let (table, upem) = match family {
+            Typeface::DejaVu if style.bold => (
+                dejavu_web::DEJAVU_BOLD_WEB,
+                dejavu_web::DEJAVU_BOLD_WEB_UPEM,
+            ),
+            Typeface::DejaVu => (
+                dejavu_web::DEJAVU_REGULAR_WEB,
+                dejavu_web::DEJAVU_REGULAR_WEB_UPEM,
+            ),
+            Typeface::Mono => (
+                dejavu_web::DEJAVU_MONO_WEB,
+                dejavu_web::DEJAVU_MONO_WEB_UPEM,
+            ),
+            _ => return None,
+        };
+        lookup(table, c).map(|units| (units, upem))
+    })
+}
 /// Which table-driven face draws `c` in `style`: the platform family's face, else
 /// DejaVu's, and for italic text a character neither italic face has is drawn by the
 /// upright faces in the same order (symbols, arrows and box drawing never slant).
@@ -374,7 +404,7 @@ pub fn table_face(typeface: Typeface, style: Style, c: char) -> Option<(Typeface
     };
     for &slanted in slants {
         for family in [typeface, Typeface::DejaVu] {
-            if lookup(family.table(style.bold, slanted).0, c).is_some() {
+            if face_units(family, style, slanted, c).is_some() {
                 return Some((family, slanted));
             }
         }
@@ -397,8 +427,7 @@ pub fn tabulated_advance(
     if typeface == Typeface::Mono && !style.web {
         return Some(i64::from(crate::text_cell(size).0) * 64);
     }
-    let (table, upem) = family.table(style.bold, slanted);
-    lookup(table, c).map(|units| {
+    face_units(family, style, slanted, c).map(|(units, upem)| {
         (i64::from(units) * i64::from(size) * 64 + i64::from(upem) / 2) / i64::from(upem)
     })
 }
@@ -741,6 +770,20 @@ mod tests {
         assert_eq!(advance(Typeface::Mono, false, 'i', 12), 8 * 64);
         assert_eq!(text_width(Typeface::Mono, web(false), "npm run", 12), 51);
         assert_eq!(kern(Typeface::Mono, web(false), 'T', 'o', 12), 0);
+        // A symbol DejaVu draws beyond the tabulated ranges measures by the font
+        // as web content (Chromium falls back to DejaVu Sans for it: 13 px "☎" is
+        // 16.19 px, "⋮" 13 px) and at 0.6 em natively; in the monospace face, by
+        // the mono advance.
+        assert_eq!(advance(Typeface::DejaVu, web(false), '☎', 13), 1036);
+        assert_eq!(advance(Typeface::DejaVu, web(false), '⋮', 13), 13 * 64);
+        assert_eq!(advance(Typeface::Arimo, web(false), '⋮', 13), 13 * 64);
+        assert_eq!(advance(Typeface::DejaVu, false, '☎', 13), 13 * 64 * 3 / 5);
+        assert_eq!(advance(Typeface::Mono, web(false), '─', 12), 462);
+        assert_eq!(
+            table_face(Typeface::Mono, web(false), '─'),
+            Some((Typeface::Mono, false))
+        );
+        assert_eq!(table_face(Typeface::DejaVu, Style::default(), '☎'), None);
         // Placement follows the same pen, so drawing and measuring agree.
         let laid = &crate::text::layout(Typeface::DejaVu, web(true), "Tracker", 18, 400)[0];
         assert_eq!(

@@ -220,16 +220,18 @@ impl Renderer {
         self.frame.rgba.resize(len as usize, 0);
     }
     fn glyph(&mut self, c: char, size: u16, ui: u8, typeface: Typeface) -> Arc<Glyph> {
-        self.glyph_styled(c, size, ui, false, typeface)
+        self.glyph_styled(c, size, ui, Style::default(), typeface)
     }
     /// A character of the table-driven faces: `ui` 0 is the terminal's monospace
-    /// face, 1 and 2 the UI faces (regular, bold), `italic` slants the UI faces.
+    /// face, 1 and 2 the UI faces (regular, bold); `style`'s italic slants the UI
+    /// faces, and web content picks faces from the same wider tables it measures
+    /// with (its weight is `ui`'s).
     fn glyph_styled(
         &mut self,
         c: char,
         size: u16,
         ui: u8,
-        italic: bool,
+        style: Style,
         typeface: Typeface,
     ) -> Arc<Glyph> {
         let size = size.clamp(1, 256);
@@ -239,7 +241,14 @@ impl Renderer {
         let bold = ui == 2;
         let face = match (
             ui,
-            metrics::table_face(typeface, Style::new(bold, italic, Lang::Auto), c),
+            metrics::table_face(
+                typeface,
+                Style {
+                    web: style.web,
+                    ..Style::new(bold, style.italic, Lang::Auto)
+                },
+                c,
+            ),
         ) {
             (0, _) => None,
             (_, Some((Typeface::Mono, _))) => Some(MONO),
@@ -472,7 +481,7 @@ impl Renderer {
                             if c == '\t' { ' ' } else { c },
                             size,
                             ui,
-                            style.italic,
+                            style,
                             typeface,
                         ),
                         (Some(face), GlyphRef::Index(index)) => {

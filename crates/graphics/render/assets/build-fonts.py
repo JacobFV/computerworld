@@ -149,6 +149,11 @@ downloads (google/fonts at the same pinned commit, pinned SHA-256):
     draws them with keep no layout tables, and a page that serves those files
     (the analytics parity fixture's Inter) is measured unkerned by Chromium, so
     kerning them by their masters' pairs lost 9 of its 448 nodes.
+  * `crates/graphics/scene/src/metrics_dejavu.rs` (`--dejavu-web`) — the advances
+    of every codepoint the DejaVu subsets draw beyond `WIDE`. Native text keeps
+    measuring those at 0.6 em; web content measures them by the font, as
+    Chromium does when it falls back to DejaVu Sans for a symbol (a 13 px
+    "☎" is 16.19 px there, and was 7.8 here).
 
 Usage:
   build-fonts.py <source-dir>   rebuild everything (requires the variable fonts)
@@ -162,6 +167,8 @@ Usage:
                                 `kerning_data.rs` from the masters
                                 `fetch-web-sources.py <dir>` downloads
   build-fonts.py --kern <dir>   rewrite just `kerning_data.rs` from those masters
+  build-fonts.py --dejavu-web   write `metrics_dejavu.rs` from the committed
+                                DejaVu subsets
   build-fonts.py --kern-dejavu <dir>
                                 write `kerning_dejavu.rs` from the DejaVu masters
                                 here and the obliques `fetch-noto-sources.py <dir>`
@@ -865,6 +872,29 @@ DEJAVU_KERN_FACES = {
 }
 
 
+METRICS_DEJAVU = HERE.parents[1] / "scene" / "src" / "metrics_dejavu.rs"
+
+
+def build_dejavu_web_advances():
+    """`metrics_dejavu.rs`: the advances of every codepoint the committed DejaVu
+    subsets cover beyond `WIDE` (symbols, arrows, maths, box drawing, dingbats,
+    ...). `metrics_data.rs` tabulates `WIDE` only, and native text measures the
+    rest at 0.6 em; web content measures them by these, as Chromium does."""
+    rows = []
+    wide = set(codepoints(WIDE))
+    for weight, _master, out_name in DEJAVU:
+        font = TTFont(OUT / out_name)
+        extra = [(c, a) for c, a in table(font, DEJAVU_RANGES) if c not in wide]
+        rows.append(("dejavu", f"{weight}_web", font["head"].unitsPerEm, extra))
+        print(f"{out_name:22s} {len(extra):>6} advances beyond WIDE")
+    global METRICS
+    saved, METRICS = METRICS, METRICS_DEJAVU
+    try:
+        write_metrics(rows)
+    finally:
+        METRICS = saved
+
+
 def build_dejavu_kerning(src):
     """`kerning_dejavu.rs`: the `kern` feature of DejaVu Sans's four faces, read
     from the masters (the committed subsets keep no layout tables)."""
@@ -932,6 +962,9 @@ def main(argv):
         return
     if argv[:1] == ["--kern"]:
         build_kerning(argv[1])
+        return
+    if argv[:1] == ["--dejavu-web"]:
+        build_dejavu_web_advances()
         return
     if argv[:1] == ["--kern-dejavu"]:
         build_dejavu_kerning(argv[1])

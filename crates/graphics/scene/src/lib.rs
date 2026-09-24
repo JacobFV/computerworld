@@ -12,6 +12,8 @@ mod kerning_dejavu;
 #[rustfmt::skip]
 mod metrics_data;
 #[rustfmt::skip]
+mod metrics_dejavu;
+#[rustfmt::skip]
 mod metrics_italic;
 #[rustfmt::skip]
 mod metrics_web;

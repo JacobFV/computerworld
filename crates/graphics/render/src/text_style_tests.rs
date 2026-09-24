@@ -411,3 +411,18 @@ fn web_monospace_is_drawn_on_its_real_advances() {
         assert_eq!(run, (9 * step + 32).div_euclid(64) + lone, "{style:?}");
     }
 }
+
+/// A symbol DejaVu draws beyond its tabulated ranges advances by the font's own
+/// advance in web content, so the glyph after it sits where layout measured it
+/// (natively it keeps the 0.6 em it always had, which the symbol's ink overhangs).
+#[test]
+fn web_symbols_advance_by_the_font() {
+    use cw_scene::metrics::advance;
+    let size = 26;
+    let web = Style::default().for_web();
+    let lone = last_ink_column(&styled("l", 100, 40, size, web, Typeface::DejaVu));
+    let step = advance(Typeface::DejaVu, web, '☎', size);
+    assert!(step > advance(Typeface::DejaVu, Style::default(), '☎', size) + 64 * 10);
+    let run = last_ink_column(&styled("☎l", 200, 40, size, web, Typeface::DejaVu));
+    assert_eq!(run, (step + 32).div_euclid(64) + lone);
+}
