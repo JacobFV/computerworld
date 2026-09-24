@@ -513,3 +513,75 @@ fn the_desktop_runs_notes_as_a_web_application() {
         .unwrap();
     assert!(matches!(&more[..], [AppEffect::ListTree { .. }]));
 }
+
+fn compiled_counter() -> &'static str {
+    define(cw_sdk::WebApplication {
+        kind: "compiled-counter".into(),
+        version: 1,
+        titles: Default::default(),
+        source: cw_sdk::WebSource::Compiled {
+            ir: include_str!("fixtures/counter.ui.json").into(),
+            script: include_str!("fixtures/counter.js").into(),
+            style: String::new(),
+        },
+    })
+    .unwrap();
+    "compiled-counter"
+}
+
+fn page_of(app: &WebApp) -> Vec<cw_protocol::PageElement> {
+    let mut page = cw_protocol::Page::new("t");
+    app.page(&mut page);
+    page.elements
+}
+
+fn text_of(app: &WebApp, id: &str) -> String {
+    page_of(app)
+        .into_iter()
+        .find_map(|e| match e {
+            cw_protocol::PageElement::Text { id: i, text } if i == id => Some(text),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("no text {id}"))
+}
+
+/// An app inside the compiled subset runs on cw-ui, behind the same host: clicks
+/// by id, typing into the focused field, the semantic page, and a snapshot that is
+/// cw-ui's own state, so a restored window is exactly the one it was taken from.
+#[test]
+fn a_compiled_app_runs_on_cw_ui_and_restores_exactly() {
+    let kind = compiled_counter();
+    let (mut app, effects) = WebApp::launch(kind, "", 1, 0, DesktopTheme::Macos).unwrap();
+    assert!(effects.is_empty());
+    {
+        let local = lock(&app.local);
+        let cell = lock(&local.cell);
+        assert_eq!(
+            cell.runtime.as_ref().unwrap().weight(),
+            0,
+            "on cw-ui, not the VM"
+        );
+    }
+    assert_eq!(text_of(&app, "counter-value"), "0");
+    app.click(1, "counter:add", 0).unwrap();
+    app.click(1, "counter:add", 0).unwrap();
+    assert_eq!(text_of(&app, "counter-value"), "2");
+    app.click(1, "counter:name", 0).unwrap();
+    assert_eq!(app.text_field().as_deref(), Some("counter:name"));
+    app.text_effects(1, "Ada").unwrap();
+    assert_eq!(text_of(&app, "counter-greeting"), "Hello Ada");
+    // The window's state is cw-ui's snapshot of the app.
+    let json = serde_json::to_string(&app).unwrap();
+    let restored: WebApp = serde_json::from_str(&json).unwrap();
+    assert_eq!(page_of(&restored), page_of(&app));
+    assert_eq!(restored.text_field(), app.text_field());
+    let (a, b) = (
+        scene(&app, DesktopTheme::Macos),
+        scene(&restored, DesktopTheme::Macos),
+    );
+    assert_eq!(a.nodes, b.nodes);
+    let mut restored = restored;
+    restored.click(1, "counter:add", 0).unwrap();
+    assert_eq!(text_of(&restored, "counter-value"), "3");
+    assert_eq!(text_of(&app, "counter-value"), "2");
+}

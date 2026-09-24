@@ -242,7 +242,16 @@ function Note(props: { s: NotesState; phone: boolean; heading: string }) {
     <section className={phone ? "note phone" : "note"}>
       {phone && (
         <button id="notes:close" data-cw-back="" className="back" aria-label="Back to notes" onClick={close}>
-          <span className="chevron">‹</span>
+          <svg className="chevron" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+            <path
+              d="M12.5 4.5 L7 10 L12.5 15.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
           <span className="back-title">{heading}</span>
         </button>
       )}

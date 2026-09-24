@@ -44,7 +44,7 @@ use serde_json::Value;
 use crate::desktop_scene::{DesktopTheme, Painter};
 use crate::AppEffect;
 pub use catalog::{define, get as definition};
-use runtime::{AppRuntime, Boot, Chrome, Env, JsRuntime, Outbox, Reply, Request};
+use runtime::{AppRuntime, Boot, Chrome, Env, JsRuntime, Outbox, Reply, Request, UiRuntime};
 
 /// Inputs a live runtime takes before it is rebooted from declared state.
 pub const COMPACT_AFTER: usize = 4000;
@@ -140,6 +140,17 @@ fn boot(
         } => Ok(Box::new(JsRuntime::boot(
             style, script, *react, &boot, clock,
         ))),
+        WebSource::Compiled { ir, script, style } => {
+            match UiRuntime::boot(ir, style, &boot, state, clock) {
+                Ok(runtime) => Ok(Box::new(runtime)),
+                // A first launch the IR cannot mount runs the same source on React;
+                // cw-ui's own snapshot can only be restored by cw-ui.
+                Err(_) if state.is_none_or(Value::is_null) => {
+                    Ok(Box::new(JsRuntime::boot(style, script, true, &boot, clock)))
+                }
+                Err(reason) => Err(format!("{kind} cannot be restored: {reason}")),
+            }
+        }
     }
 }
 
@@ -418,6 +429,10 @@ impl WebApp {
                 .as_mut()
                 .expect("ready")
                 .deliver(&immediate, now);
+        }
+        // A backend that snapshots itself is its own state.
+        if let Some(state) = cell.runtime.as_mut().and_then(|r| r.snapshot()) {
+            self.state = state;
         }
         cell.epoch += 1;
         local.epoch = cell.epoch;

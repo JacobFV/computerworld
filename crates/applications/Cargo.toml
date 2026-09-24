@@ -18,6 +18,7 @@ cw-determinism = { path = "../core/determinism" }
 cw-sql = { path = "../engines/sql" }
 cw-eda = { path = "../engines/eda" }
 cw-web = { path = "../web/engine" }
+cw-ui = { path = "../web/ui" }
 serde.workspace = true
 serde_json.workspace = true
 regex = "1"

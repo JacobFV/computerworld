@@ -304,6 +304,7 @@ dependencies = [
  "cw-sdk",
  "cw-sheet",
  "cw-sql",
+ "cw-ui",
  "cw-video",
  "cw-web",
  "png",

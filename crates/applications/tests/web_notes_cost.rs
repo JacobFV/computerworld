@@ -158,7 +158,10 @@ fn where_a_web_entry_spends_its_time() {
         script,
         style,
         react,
-    } = &def.app.source;
+    } = &def.app.source
+    else {
+        panic!("Notes is a script on React");
+    };
     let env = env_for(DesktopTheme::Macos, 900, 600);
     let t = Instant::now();
     let mut rt = JsRuntime::boot(
@@ -205,5 +208,80 @@ fn where_a_web_entry_spends_its_time() {
         let t = Instant::now();
         rt.view(&mut |_| {});
         println!("type+settle {typed:?}, layout after {:?}", t.elapsed());
+    }
+}
+
+/// One app both ways behind the same host: compiled on cw-ui, and its React
+/// fallback on the VM (the counter fixture).
+#[test]
+#[ignore]
+fn compiled_against_react() {
+    use cw_applications::web_app::{define, WebApp};
+    for (kind, source) in [
+        (
+            "bench-compiled",
+            cw_sdk::WebSource::Compiled {
+                ir: include_str!("../src/web_app/fixtures/counter.ui.json").into(),
+                script: include_str!("../src/web_app/fixtures/counter.js").into(),
+                style: String::new(),
+            },
+        ),
+        (
+            "bench-react",
+            cw_sdk::WebSource::Script {
+                script: include_str!("../src/web_app/fixtures/counter.js").into(),
+                style: String::new(),
+                react: true,
+            },
+        ),
+    ] {
+        define(cw_sdk::WebApplication {
+            kind: kind.into(),
+            version: 1,
+            titles: Default::default(),
+            source,
+        })
+        .unwrap();
+        let launches: Vec<Duration> = (0..9)
+            .map(|_| {
+                let t = Instant::now();
+                let app = WebApp::launch(kind, "", 1, 0, DesktopTheme::Macos).unwrap();
+                let d = t.elapsed();
+                drop(app);
+                d
+            })
+            .collect();
+        let before = LIVE.load(Ordering::Relaxed);
+        let (mut app, _) = WebApp::launch(kind, "", 1, 0, DesktopTheme::Macos).unwrap();
+        let held = LIVE.load(Ordering::Relaxed) - before;
+        let clicks: Vec<Duration> = (0..30)
+            .map(|_| {
+                let t = Instant::now();
+                app.click(1, "counter:add", 0).unwrap();
+                t.elapsed()
+            })
+            .collect();
+        app.click(1, "counter:name", 0).unwrap();
+        let keys: Vec<Duration> = (0..30)
+            .map(|_| {
+                let t = Instant::now();
+                app.text_effects(1, "a").unwrap();
+                t.elapsed()
+            })
+            .collect();
+        let snapshot = serde_json::to_string(&app).unwrap();
+        let t = Instant::now();
+        let restored: WebApp = serde_json::from_str(&snapshot).unwrap();
+        let _ = restored.text_field();
+        let restore = t.elapsed();
+        println!(
+            "{kind}: launch {:?}, click {:?}, keystroke {:?} (medians), heap held {held} bytes, \
+             snapshot {} bytes, restore {:?}",
+            median(launches),
+            median(clicks),
+            median(keys),
+            snapshot.len(),
+            restore
+        );
     }
 }

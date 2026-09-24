@@ -39,6 +39,14 @@ world.register_web_application(cw_sdk::WebApplication {
 })?;
 ```
 
+An app inside `cw-tsx`'s compiled subset ([TSX apps](tsx-apps.md)) is registered with
+`WebSource::Compiled { ir, script, style }` instead — the `<app>.ui.json` and
+`<app>.js` that `cw-tsx build` writes — and runs on `cw-ui`, with no VM and no React;
+its snapshot is `cw-ui`'s own state (document, components, hook values), so it declares
+none. The `script` is its React fallback, run when this build cannot mount the IR. The
+compiled subset has no `cw` global yet, so an app that reaches the machine is a
+`Script` app for now.
+
 The script renders into `#root`. It reaches the machine only through the `cw` global,
 typed in `crates/applications/web/types/cw.d.ts`; each call becomes an application
 effect the environment mediates exactly as it mediates a native application's:
@@ -82,7 +90,10 @@ The code itself is never serialised: a snapshot names the kind and version, and 
 world restoring it must have registered the same application.
 
 **Building TSX.** `node crates/applications/web/build.mjs` type-checks the sources
-against `cw.d.ts` and React's types and bundles each app, with `react` and
-`react-dom/client` resolved to the globals the host's React build defines; the bundle
-is checked in beside its source. `crates/applications/web/sdk/cw.ts` has a store for
-declared state (`declaredStore`, `useStore`) and `useEnv`.
+against `cw.d.ts` and React's types, then compiles each app with `cw-tsx`
+([TSX apps](tsx-apps.md)): `<app>.js` is the script React 18's production build runs,
+and `<app>.diagnostics.json` records why the app is not (yet) inside the compiled
+subset, whose IR would run on `cw-ui` without a VM. The outputs are checked in beside
+the source (`--check` fails when one is stale).
+`crates/applications/web/sdk/cw.ts` has a store for declared state
+(`declaredStore`, `useStore`) and `useEnv`.

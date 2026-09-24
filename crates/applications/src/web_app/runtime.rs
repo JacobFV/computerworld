@@ -179,6 +179,11 @@ pub trait AppRuntime {
     /// VM inputs (or the backend's equivalent) since boot: what a live runtime has
     /// accumulated, which the host bounds by rebooting from declared state.
     fn weight(&self) -> usize;
+    /// The backend's own complete state, for a backend that can snapshot itself
+    /// (cw-ui); `None` when the application's declared state is what a snapshot keeps.
+    fn snapshot(&mut self) -> Option<Value> {
+        None
+    }
 }
 
 /// The channel between the realm's host and the `JsRuntime` driving it.
@@ -422,5 +427,150 @@ impl AppRuntime for JsRuntime {
     }
     fn weight(&self) -> usize {
         self.inputs
+    }
+}
+
+/// The page shell a compiled application renders into: the theme sheet, its own
+/// stylesheet and the container. Nothing in it runs.
+fn shell(style: &str, env: &Env) -> String {
+    format!(
+        "<!DOCTYPE html><html data-platform=\"{}\"{}><head><meta charset=\"utf-8\">\
+         <style id=\"cw-theme\">{}</style><style>{}</style></head>\
+         <body><div id=\"root\"></div></body></html>",
+        env.platform,
+        if env.mobile { " data-mobile" } else { "" },
+        env.css,
+        style
+    )
+}
+
+/// An application compiled by cw-tsx, run by cw-ui on the document with React 18's
+/// semantics and no VM. Its snapshot is cw-ui's own state.
+pub struct UiRuntime {
+    app: cw_ui::UiApp,
+    channel: Arc<Mutex<Channel>>,
+}
+
+impl UiRuntime {
+    fn host(boot: &Boot<'_>, now_us: u64) -> (Arc<Mutex<Channel>>, Box<Host>) {
+        let channel = Arc::new(Mutex::new(Channel {
+            boot: serde_json::to_string(boot).expect("boot facts serialise"),
+            now_us,
+            viewport: Viewport {
+                width: boot.env.width.max(1),
+                height: boot.env.height.max(1),
+                scale: 1,
+                zoom: 100,
+            },
+            seed: boot.kind.bytes().fold(0xCBF2_9CE4_8422_2325_u64, |h, b| {
+                (h ^ u64::from(b)).wrapping_mul(0x100_0000_01B3)
+            }),
+            ..Channel::default()
+        }));
+        let host = Box::new(Host {
+            channel: channel.clone(),
+        });
+        (channel, host)
+    }
+
+    /// Mounts the IR `ir` in a fresh document, or restores it from `state` (a
+    /// snapshot this backend took).
+    pub fn boot(
+        ir: &str,
+        style: &str,
+        boot: &Boot<'_>,
+        state: Option<&Value>,
+        now_us: u64,
+    ) -> Result<Self, String> {
+        let (channel, host) = Self::host(boot, now_us);
+        let app = match state.filter(|s| !s.is_null()) {
+            Some(state) => {
+                let state = cw_ui::UiState::from_json(&state.to_string())?;
+                cw_ui::UiApp::restore(&state, host).map_err(|e| e.to_string())?
+            }
+            None => {
+                let module = cw_ui::UiApp::parse_ir(ir).map_err(|e| e.to_string())?;
+                let mut app = cw_ui::UiApp::new(
+                    module,
+                    &shell(style, boot.env),
+                    "cw-app://application/",
+                    host,
+                )
+                .map_err(|e| e.to_string())?;
+                app.boot();
+                app.run_until_idle(SETTLE_MS);
+                app
+            }
+        };
+        Ok(Self { app, channel })
+    }
+}
+
+impl AppRuntime for UiRuntime {
+    fn dispatch(&mut self, event: UiEvent, now_us: u64) -> DefaultAction {
+        lock(&self.channel).now_us = now_us;
+        let action = self.app.dispatch(event);
+        self.app.run_until_idle(SETTLE_MS);
+        action
+    }
+    fn deliver(&mut self, _replies: &[Reply], _now_us: u64) {
+        // A compiled application makes no `cw` requests, so nothing is ever owed it.
+    }
+    fn set_env(&mut self, env: &Env, now_us: u64) {
+        lock(&self.channel).now_us = now_us;
+        let resized = {
+            let mut c = lock(&self.channel);
+            let before = c.viewport;
+            c.viewport.width = env.width.max(1);
+            c.viewport.height = env.height.max(1);
+            before != c.viewport
+        };
+        {
+            let inner = self.app.inner();
+            if let Some(html) = inner.doc.document_element() {
+                inner.doc.set_attr(html, "data-platform", &env.platform);
+                if env.mobile {
+                    inner.doc.set_attr(html, "data-mobile", "");
+                } else {
+                    inner.doc.remove_attr(html, "data-mobile");
+                }
+            }
+            let sheet = inner.doc.by_id("cw-theme").first().copied();
+            if let Some(text) = sheet.and_then(|s| inner.doc.first_child(s)) {
+                inner.doc.set_text(text, &env.css);
+                inner.sheets_dirty = true;
+            }
+            inner.touch();
+        }
+        if resized {
+            self.app.dispatch(UiEvent::Resize {
+                width: env.width.max(1),
+                height: env.height.max(1),
+            });
+        }
+    }
+    fn drain(&mut self) -> Outbox {
+        std::mem::take(&mut lock(&self.channel).outbox)
+    }
+    fn view(&mut self, f: &mut dyn FnMut(&View<'_>)) {
+        let inner = self.app.inner();
+        inner.ensure_layout();
+        let Some(tree) = inner.tree.as_ref() else {
+            return;
+        };
+        f(&View {
+            doc: &inner.doc,
+            styles: &inner.styles,
+            tree,
+            focused: inner.focused,
+            values: &inner.form.values,
+            selection: &inner.form.selection,
+        });
+    }
+    fn weight(&self) -> usize {
+        0
+    }
+    fn snapshot(&mut self) -> Option<Value> {
+        serde_json::from_str(&self.app.snapshot().to_json()).ok()
     }
 }

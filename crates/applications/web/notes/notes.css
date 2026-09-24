@@ -250,10 +250,8 @@ strong {
 }
 .chevron {
   position: absolute;
-  left: 4px;
-  top: 0;
-  font-size: 28px;
-  line-height: 28px;
+  left: 2px;
+  top: 5px;
 }
 .back-title {
   position: absolute;

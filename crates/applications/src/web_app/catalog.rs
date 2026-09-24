@@ -49,7 +49,7 @@ fn builtin() -> Vec<WebApplication> {
         .map(|(k, v)| (k.to_owned(), v.to_owned()))
         .collect(),
         source: WebSource::Script {
-            script: include_str!("../../web/notes/notes.bundle.js").into(),
+            script: include_str!("../../web/notes/notes.js").into(),
             style: include_str!("../../web/notes/notes.css").into(),
             react: true,
         },

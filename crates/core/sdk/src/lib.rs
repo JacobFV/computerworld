@@ -250,6 +250,17 @@ pub enum WebSource {
         #[serde(default)]
         react: bool,
     },
+    /// An app inside cw-tsx's compiled subset: the UI IR cw-tsx emitted
+    /// (`<app>.ui.json`), which cw-ui runs on the document without a VM, and the
+    /// React fallback script cw-tsx emitted from the same source (`<app>.js`), run on
+    /// React 18 when this build's cw-ui cannot load the IR. A compiled app's snapshot
+    /// is cw-ui's own state (document, component tree, hook values); it declares none.
+    Compiled {
+        ir: String,
+        script: String,
+        #[serde(default)]
+        style: String,
+    },
 }
 pub trait Application: Send + Sync {
     fn kind(&self) -> &str;
