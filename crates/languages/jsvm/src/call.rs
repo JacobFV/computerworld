@@ -101,26 +101,7 @@ impl<'h> Vm<'h> {
         new_target: Value,
         kind: FrameKind,
     ) -> Frame {
-        // V8 compiles a function body the first time it runs: that costs
-        // simulated time, which is what makes the event loop's orderings follow
-        // from the program rather than from a fixed assumption.
-        let by = code.compiled_by.get();
-        let first_run = if by == self.id {
-            false
-        } else if by == 0 {
-            code.compiled_by.set(self.id);
-            true
-        } else {
-            self.compiled.insert(code.uid)
-        };
-        if first_run {
-            // Node's own builtins are in V8's startup snapshot: they are
-            // already compiled, so only the program's own code is charged.
-            if !code.file.starts_with("node:") {
-                let bytes = code.own_bytes as usize;
-                self.charge_compile(bytes);
-            }
-        }
+        self.charge_first_run(&code);
         if let Some(p) = &self.prof {
             crate::profile::Counters::bump(&p.counters.frames);
         }
@@ -145,6 +126,48 @@ impl<'h> Vm<'h> {
             let spent = std::mem::take(&mut args);
             self.pool.give_vals(spent);
         }
+        self.finish_frame(func, code, captures, this, locals, args, new_target, kind)
+    }
+
+    /// V8 compiles a function body the first time it runs: that costs
+    /// simulated time, which is what makes the event loop's orderings follow
+    /// from the program rather than from a fixed assumption. Charged once per
+    /// body per realm.
+    #[inline]
+    pub(crate) fn charge_first_run(&mut self, code: &Code) {
+        let by = code.compiled_by.get();
+        if by == self.id {
+            return;
+        }
+        let first_run = if by == 0 {
+            code.compiled_by.set(self.id);
+            true
+        } else {
+            self.compiled.insert(code.uid)
+        };
+        // Node's own builtins are in V8's startup snapshot: they are already
+        // compiled, so only the program's own code is charged.
+        if first_run && !code.file.starts_with("node:") {
+            let bytes = code.own_bytes as usize;
+            self.charge_compile(bytes);
+        }
+    }
+
+    /// The rest of a frame once its parameter slots are filled: the special
+    /// slots (`this`, `new.target`, home object, the function, `arguments`),
+    /// captured slots made cells, and an operand stack.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn finish_frame(
+        &mut self,
+        func: Option<&Obj>,
+        code: Rc<Code>,
+        captures: Rc<[CellRef]>,
+        this: Value,
+        mut locals: Vec<Local>,
+        args: Vec<Value>,
+        new_target: Value,
+        kind: FrameKind,
+    ) -> Frame {
         if let Some(s) = code.this_slot {
             let t = if code.kind == FuncKind::DerivedConstructor {
                 Value::Empty
@@ -317,6 +340,7 @@ impl<'h> Vm<'h> {
                 let r = f(self, &mut a);
                 self.prof_native_leave(key);
                 self.natives.pop();
+                self.pool.give_vals(std::mem::take(&mut a.args));
                 Ok(Invoked::Done(r?))
             }
             Callee::Bound(target, bthis, mut bargs) => {
@@ -459,6 +483,7 @@ impl<'h> Vm<'h> {
                 let r = f(self, &mut a);
                 self.prof_native_leave(key);
                 self.natives.pop();
+                self.pool.give_vals(std::mem::take(&mut a.args));
                 Ok(Invoked::Done(r?))
             }
             Callee::Bound(target, _, mut bargs) => {

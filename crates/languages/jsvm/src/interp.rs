@@ -747,6 +747,112 @@ impl<'h> Vm<'h> {
         Value::Obj(arr)
     }
 
+    /// `f(...)` / `o.f(...)` straight from the operand stack, for the two
+    /// common callees: an ordinary closure that does not read its argument
+    /// list after entry (its frame is built from the caller's stack, no
+    /// argument vector in between), and a native function (called with a
+    /// pooled argument vector). Returns false, having changed nothing, for
+    /// every other callee (bound functions, class constructors, generators,
+    /// async functions, proxies, non-callables), when the stack is full, and
+    /// while profiling; the general call path handles those.
+    #[inline]
+    fn call_from_stack(&mut self, argc: usize, method: bool) -> JsResult<bool> {
+        enum Target {
+            Closure(Obj, Rc<Code>, Rc<[CellRef]>),
+            Native(Obj, NativeFn),
+        }
+        if self.prof.is_some() || self.frames.len() >= MAX_FRAMES {
+            return Ok(false);
+        }
+        let target = {
+            let f = self.frames.last().unwrap();
+            let Value::Obj(fo) = &f.stack[f.stack.len() - argc - 1] else {
+                return Ok(false);
+            };
+            let d = fo.borrow();
+            let Kind::Function(fd) = &d.kind else {
+                return Ok(false);
+            };
+            match &fd.imp {
+                FuncImpl::Closure { code, captures }
+                    if !(fd.class_ctor
+                        || code.needs_args
+                        || code.is_generator
+                        || code.is_async) =>
+                {
+                    Target::Closure(fo.clone(), code.clone(), captures.clone())
+                }
+                FuncImpl::Native { f, .. } => Target::Native(fo.clone(), *f),
+                _ => return Ok(false),
+            }
+        };
+        match target {
+            Target::Closure(fo, code, caps) => {
+                self.charge_first_run(&code);
+                let k = code.simple_params.unwrap_or(0) as usize;
+                let mut locals = self.pool.locals.pop().unwrap_or_default();
+                locals.resize(code.nlocals as usize, Local::V(Value::Undefined));
+                let this = {
+                    let f = self.frames.last_mut().unwrap();
+                    let at = f.stack.len() - argc;
+                    for (slot, v) in locals.iter_mut().zip(f.stack.drain(at..)).take(k) {
+                        *slot = Local::V(v);
+                    }
+                    // Arguments past the parameters were dropped with the drain.
+                    f.stack.pop();
+                    if method {
+                        f.stack.pop().unwrap_or(Value::Undefined)
+                    } else {
+                        Value::Undefined
+                    }
+                };
+                let frame = self.finish_frame(
+                    Some(&fo),
+                    code,
+                    caps,
+                    this,
+                    locals,
+                    Vec::new(),
+                    Value::Undefined,
+                    FrameKind::Normal,
+                );
+                self.frames.push(frame);
+            }
+            Target::Native(fo, native) => {
+                let mut args = self.pool.vals.pop().unwrap_or_default();
+                let this = {
+                    let f = self.frames.last_mut().unwrap();
+                    let at = f.stack.len() - argc;
+                    args.extend(f.stack.drain(at..));
+                    f.stack.pop();
+                    if method {
+                        f.stack.pop().unwrap_or(Value::Undefined)
+                    } else {
+                        Value::Undefined
+                    }
+                };
+                self.natives.push(NativeMark {
+                    depth: self.frames.len(),
+                    callee: fo.clone(),
+                    this: this.clone(),
+                    construct: false,
+                });
+                let mut a = Args {
+                    this,
+                    args,
+                    new_target: None,
+                    callee: fo,
+                };
+                let r = native(self, &mut a);
+                self.natives.pop();
+                self.pool.give_vals(std::mem::take(&mut a.args));
+                let v = r?;
+                self.push(v);
+            }
+        }
+        Ok(true)
+    }
+
     fn call_op(&mut self, f: Value, this: Value, args: Vec<Value>, text: u32) -> JsResult<()> {
         // Fast check for non-callables to build V8's message.
         match self.invoke(&f, this, args, None) {
@@ -841,12 +947,26 @@ impl<'h> Vm<'h> {
         // while `f` is used; `code` lives in the `Rc` the frame holds.
         let f = unsafe { &mut *fp };
         let code: &Code = unsafe { &*Rc::as_ptr(&f.code) };
+        let ops = &code.ops[..];
+        // The program counter and the step count live in registers here and
+        // are written back whenever control leaves the loop.
+        let mut pc = f.pc;
+        let mut steps = self.steps;
+        let budget = self.budget;
+        macro_rules! leave {
+            ($op:expr) => {{
+                f.pc = pc;
+                self.steps = steps;
+                return Ok($op);
+            }};
+        }
         loop {
-            let pc = f.pc;
-            let op = code.ops[pc];
-            f.pc = pc + 1;
-            self.steps += 1;
-            if self.steps > self.budget {
+            let op = ops[pc];
+            pc += 1;
+            steps += 1;
+            if steps > budget {
+                f.pc = pc;
+                self.steps = steps;
                 return Err(self.step_limit());
             }
             match op {
@@ -869,7 +989,7 @@ impl<'h> Vm<'h> {
                         Local::C(c) => c.borrow().clone(),
                     };
                     if let Value::Empty = v {
-                        return Ok(op);
+                        leave!(op);
                     }
                     f.stack.push(v);
                 }
@@ -878,14 +998,14 @@ impl<'h> Vm<'h> {
                     match slot {
                         Local::V(x) => {
                             if let Value::Empty = x {
-                                return Ok(op);
+                                leave!(op);
                             }
                             *x = f.stack.pop().unwrap();
                         }
                         Local::C(c) => {
                             let mut c = c.borrow_mut();
                             if let Value::Empty = *c {
-                                return Ok(op);
+                                leave!(op);
                             }
                             *c = f.stack.pop().unwrap();
                         }
@@ -901,14 +1021,14 @@ impl<'h> Vm<'h> {
                 Op::LoadFree(i) => {
                     let v = f.captures[i as usize].borrow().clone();
                     if let Value::Empty = v {
-                        return Ok(op);
+                        leave!(op);
                     }
                     f.stack.push(v);
                 }
                 Op::StoreFree(i) => {
                     let mut c = f.captures[i as usize].borrow_mut();
                     if let Value::Empty = *c {
-                        return Ok(op);
+                        leave!(op);
                     }
                     *c = f.stack.pop().unwrap();
                 }
@@ -923,41 +1043,67 @@ impl<'h> Vm<'h> {
                         Local::V(Value::Empty)
                     };
                 }
-                Op::Jump(t) => f.pc = t as usize,
+                Op::CopyCell(s) => {
+                    if let Local::C(c) = &f.locals[s as usize] {
+                        let v = c.borrow().clone();
+                        f.locals[s as usize] = Local::C(new_cell(v));
+                    }
+                }
+                Op::LoadGlobal(c) => {
+                    // An own data property of the global object; anything else
+                    // (accessors, the prototype chain, named elements, a
+                    // ReferenceError) takes the general path.
+                    let Value::Str(name) = &code.consts[c as usize] else {
+                        leave!(op);
+                    };
+                    if !name.is_canon() {
+                        leave!(op);
+                    }
+                    let id = Rc::as_ptr(&name.0) as *const u8 as usize;
+                    let v = {
+                        let g = self.global.borrow();
+                        match g.props.find_ident(id).map(|i| &g.props.entries[i].1.slot) {
+                            Some(Slot::Data(v)) => v.clone(),
+                            _ => leave!(op),
+                        }
+                    };
+                    f.stack.push(v);
+                }
+                Op::Jump(t) => pc = t as usize,
                 Op::JumpIfFalse(t) => {
                     if !f.stack.pop().unwrap().truthy() {
-                        f.pc = t as usize;
+                        pc = t as usize;
                     }
                 }
                 Op::JumpIfTrue(t) => {
                     if f.stack.pop().unwrap().truthy() {
-                        f.pc = t as usize;
+                        pc = t as usize;
                     }
                 }
                 Op::JumpIfFalseKeep(t) => {
                     if !f.stack.last().unwrap().truthy() {
-                        f.pc = t as usize;
+                        pc = t as usize;
                     } else {
                         f.stack.pop();
                     }
                 }
                 Op::JumpIfTrueKeep(t) => {
                     if f.stack.last().unwrap().truthy() {
-                        f.pc = t as usize;
+                        pc = t as usize;
                     } else {
                         f.stack.pop();
                     }
                 }
                 Op::JumpIfNotNullishKeep(t) => {
                     if !f.stack.last().unwrap().is_nullish() {
-                        f.pc = t as usize;
+                        pc = t as usize;
                     } else {
                         f.stack.pop();
                     }
                 }
                 Op::JumpIfNotUndefKeep(t) => {
                     if !f.stack.last().unwrap().is_undefined() {
-                        f.pc = t as usize;
+                        pc = t as usize;
                     } else {
                         f.stack.pop();
                     }
@@ -993,7 +1139,7 @@ impl<'h> Vm<'h> {
                 | Op::Ge => {
                     let n = f.stack.len();
                     let (Value::Num(x), Value::Num(y)) = (&f.stack[n - 2], &f.stack[n - 1]) else {
-                        return Ok(op);
+                        leave!(op);
                     };
                     let (x, y) = (*x, *y);
                     let r = match op {
@@ -1013,12 +1159,16 @@ impl<'h> Vm<'h> {
                         Op::Le => Value::Bool(x <= y),
                         _ => Value::Bool(x >= y),
                     };
-                    f.stack.truncate(n - 2);
-                    f.stack.push(r);
+                    // SAFETY: both operands are numbers, which own nothing, so
+                    // they can be overwritten and forgotten without dropping.
+                    unsafe {
+                        std::ptr::write(f.stack.as_mut_ptr().add(n - 2), r);
+                        f.stack.set_len(n - 1);
+                    }
                 }
                 Op::Inc | Op::Dec => {
                     let Some(Value::Num(x)) = f.stack.last_mut() else {
-                        return Ok(op);
+                        leave!(op);
                     };
                     *x = if matches!(op, Op::Inc) {
                         *x + 1.0
@@ -1045,10 +1195,10 @@ impl<'h> Vm<'h> {
                 }
                 Op::GetProp(c) | Op::GetPropKeep(c) => {
                     let Value::Str(name) = &code.consts[c as usize] else {
-                        return Ok(op);
+                        leave!(op);
                     };
                     let Some(v) = plain_get(f.stack.last().unwrap(), name) else {
-                        return Ok(op);
+                        leave!(op);
                     };
                     if let Op::GetProp(_) = op {
                         *f.stack.last_mut().unwrap() = v;
@@ -1058,11 +1208,11 @@ impl<'h> Vm<'h> {
                 }
                 Op::SetProp(c) => {
                     let Value::Str(name) = &code.consts[c as usize] else {
-                        return Ok(op);
+                        leave!(op);
                     };
                     let n = f.stack.len();
                     if !plain_set(&f.stack[n - 2], name, &f.stack[n - 1]) {
-                        return Ok(op);
+                        leave!(op);
                     }
                     // [obj value] -> value
                     let v = f.stack.pop().unwrap();
@@ -1071,12 +1221,12 @@ impl<'h> Vm<'h> {
                 Op::GetElem => {
                     let n = f.stack.len();
                     let Some(v) = element_get(&f.stack[n - 2], &f.stack[n - 1]) else {
-                        return Ok(op);
+                        leave!(op);
                     };
                     f.stack.truncate(n - 2);
                     f.stack.push(v);
                 }
-                _ => return Ok(op),
+                _ => leave!(op),
             }
         }
     }
@@ -1208,7 +1358,7 @@ impl<'h> Vm<'h> {
                 Op::ConstAssign => return Err(self.type_error("Assignment to constant variable.")),
                 Op::LoadGlobal(c) => {
                     let name = self.kstr(c);
-                    let fast = match self.global.borrow().props.get_str(&name) {
+                    let fast = match self.global.borrow().props.get(&Key::Str(name.clone())) {
                         Some(Prop {
                             slot: Slot::Data(v),
                             ..
@@ -1413,11 +1563,17 @@ impl<'h> Vm<'h> {
                     self.push(Value::Bool(has));
                 }
                 Op::Call(argc, text) => {
+                    if self.call_from_stack(argc as usize, false)? {
+                        continue;
+                    }
                     let args = self.pop_n(argc as usize);
                     let f = self.pop();
                     self.call_op(f, Value::Undefined, args, text)?;
                 }
                 Op::CallMethod(argc, text) => {
+                    if self.call_from_stack(argc as usize, true)? {
+                        continue;
+                    }
                     let args = self.pop_n(argc as usize);
                     let f = self.pop();
                     let this = self.pop();
@@ -2569,14 +2725,23 @@ fn plain_get(obj: &Value, name: &JsStr) -> Option<Value> {
         return None;
     }
     match obj {
-        Value::Obj(o) => {
-            let id = std::rc::Rc::as_ptr(&name.0) as *const u8 as usize;
+        Value::Obj(o) => plain_get_ident(o, std::rc::Rc::as_ptr(&name.0) as *const u8 as usize),
+        Value::Str(s) if name.as_str() == "length" => Some(Value::Num(s.len16() as f64)),
+        _ => None,
+    }
+}
+
+/// `plain_get` on an object by key identity (`Key::ident`).
+#[inline]
+fn plain_get_ident(o: &Obj, id: usize) -> Option<Value> {
+    {
+        {
             let mut next: Option<Obj> = None;
             let mut hops = 0;
             loop {
                 let cur = next.as_ref().unwrap_or(o);
                 let d = cur.borrow();
-                if !matches!(d.kind, Kind::Ordinary | Kind::Function(_)) {
+                if !d.kind.ordinary_props() {
                     return None;
                 }
                 if let Some(i) = d.props.find_ident(id) {
@@ -2598,8 +2763,6 @@ fn plain_get(obj: &Value, name: &JsStr) -> Option<Value> {
                 }
             }
         }
-        Value::Str(s) if name.as_str() == "length" => Some(Value::Num(s.len16() as f64)),
-        _ => None,
     }
 }
 
@@ -2614,7 +2777,7 @@ fn plain_set(obj: &Value, name: &JsStr, v: &Value) -> bool {
         return false;
     }
     let mut d = o.borrow_mut();
-    if !matches!(d.kind, Kind::Ordinary | Kind::Function(_)) {
+    if !d.kind.ordinary_props() {
         return false;
     }
     let id = std::rc::Rc::as_ptr(&name.0) as *const u8 as usize;
@@ -2635,9 +2798,12 @@ fn plain_set(obj: &Value, name: &JsStr, v: &Value) -> bool {
 }
 
 /// An element read the fast path can answer: a present element of an array
-/// by an integer index.
+/// by an integer index, or a symbol-keyed data property of a plain object.
 #[inline]
 fn element_get(obj: &Value, key: &Value) -> Option<Value> {
+    if let (Value::Obj(o), Value::Sym(s)) = (obj, key) {
+        return plain_get_ident(o, std::rc::Rc::as_ptr(s) as *const u8 as usize);
+    }
     if let (Value::Obj(o), Value::Num(n)) = (obj, key) {
         let i = *n as usize;
         if i as f64 == *n {
