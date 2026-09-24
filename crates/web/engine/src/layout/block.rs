@@ -1553,7 +1553,6 @@ pub fn replaced_fragment(
         Replaced::Control(
             crate::layout::fragment::ControlKind::TextInput
             | crate::layout::fragment::ControlKind::Password
-            | crate::layout::fragment::ControlKind::Select
             | crate::layout::fragment::ControlKind::Button
             | crate::layout::fragment::ControlKind::Submit
             | crate::layout::fragment::ControlKind::File,
@@ -1562,6 +1561,14 @@ pub fn replaced_fragment(
             let lh = size.height;
             let half = text::half_leading(lh, fm.content_height());
             Some(bw.top + p.top + half + fm.ascent)
+        }
+        // A menu list's text sits a pixel of internal padding below its padding
+        // edge, on the font's rounded ascent (Chromium: 14 px below the border box
+        // top for 13.33px Arimo, 20 for 20px Arimo).
+        Replaced::Control(crate::layout::fragment::ControlKind::Select) => {
+            let fm = text::font_metrics(&b.style.font);
+            let ascent = Au::from_px_i32((fm.ascent.0 + 32).div_euclid(64));
+            Some(bw.top + p.top + Au::from_px_i32(1) + ascent)
         }
         _ => Some(h),
     };

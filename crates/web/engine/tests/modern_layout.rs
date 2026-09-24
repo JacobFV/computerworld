@@ -550,4 +550,24 @@ mod cases {
             "Arimo"
         );
     }
+
+    /// A menu list's baseline is its border and padding, Blink's internal pixel and
+    /// the font's rounded ascent: on a 40px Arimo line a 13.33px select's top is 22
+    /// px below the line's and a 20px one's 16 (Chromium's dump of this page).
+    #[test]
+    fn a_menu_list_sits_on_blinks_baseline() {
+        let p = page(
+            "<!DOCTYPE html><style>body { margin: 0 }</style>\
+             <div id=b style='font: 40px Arimo'>x<select id=s2 style='font: 13.3333px Arimo'><option>Hi</option></select></div>\
+             <div id=c style='font: 40px Arimo'>x<select id=s3 style='font: 20px Arimo'><option>Hi</option></select></div>",
+        );
+        let (b, c) = (p.rect("b"), p.rect("c"));
+        close(
+            p.rect("s2").y - b.y,
+            22.0,
+            "13.33px select below the line top",
+        );
+        close(p.rect("s3").y - c.y, 16.0, "20px select below the line top");
+        close(p.rect("s3").height, 26.0, "20px select height");
+    }
 }
