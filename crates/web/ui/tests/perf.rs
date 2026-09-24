@@ -46,12 +46,23 @@ fn dir() -> std::path::PathBuf {
 fn host() -> MemoryHost {
     let mut h = MemoryHost::new();
     let vendor = dir().join("../vendor");
-    for name in [
-        "react-18.3.1.production.min.js",
-        "react-dom-18.3.1.production.min.js",
-    ] {
-        let body = std::fs::read_to_string(vendor.join(name)).unwrap();
-        h = h.with_response(&format!("{BASE}vendor/{name}"), "text/javascript", &body);
+    let mut files: Vec<_> = std::fs::read_dir(&vendor)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.is_file())
+        .collect();
+    files.sort();
+    for p in files {
+        let name = p.file_name().unwrap().to_string_lossy().into_owned();
+        let Ok(body) = std::fs::read_to_string(&p) else {
+            continue;
+        };
+        let ty = if name.ends_with(".css") {
+            "text/css"
+        } else {
+            "text/javascript"
+        };
+        h = h.with_response(&format!("{BASE}vendor/{name}"), ty, &body);
     }
     for entry in std::fs::read_dir(dir()).unwrap() {
         let p = entry.unwrap().path();
@@ -100,13 +111,33 @@ fn realm_centre(r: &mut Realm, selector: &str) -> (i32, i32) {
 #[test]
 #[ignore]
 fn compiled_against_fallback() {
+    let name = "tsx-tasks";
+    let html = std::fs::read_to_string(dir().join(format!("{name}.html"))).unwrap();
+    let ir = std::fs::read_to_string(dir().join(format!("{name}.ui.json"))).unwrap();
+    measure(name, &html, &ir, "#check-2", &["#new-task"]);
+    // An agent-written app: the kanban board of app-src/kanban, compiled from its
+    // sources; the fallback is the page as the agent built it (esbuild's bundle).
+    let root = dir().join("app-src/kanban");
+    let mut read = |rel: &str| std::fs::read_to_string(root.join(rel)).ok();
+    let sources = cw_tsx::load("main.tsx", &mut read).unwrap();
+    let ir = serde_json::to_string(&cw_tsx::build_modules(&sources).ir.unwrap()).unwrap();
+    let html = std::fs::read_to_string(dir().join("app-kanban.html")).unwrap();
+    measure(
+        "app-kanban",
+        &html,
+        &ir,
+        "button[data-card=\"3\"]",
+        &["#new-task", "#task-title"],
+    );
+}
+
+/// Times one page both ways: boot, a click on `target` (twice), and a keystroke
+/// after clicking each of `focus` in turn.
+fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
     let runs: usize = std::env::var("UI_PERF_RUNS")
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(15);
-    let name = "tsx-tasks";
-    let html = std::fs::read_to_string(dir().join(format!("{name}.html"))).unwrap();
-    let ir = std::fs::read_to_string(dir().join(format!("{name}.ui.json"))).unwrap();
     let url = format!("{BASE}{name}.html");
 
     // ---------------------------------------------------------------- compiled
@@ -120,9 +151,9 @@ fn compiled_against_fallback() {
         let h = host();
         let before = LIVE.load(Ordering::Relaxed);
         let t = Instant::now();
-        let module = UiApp::parse_ir(&ir).unwrap();
+        let module = UiApp::parse_ir(ir).unwrap();
         parses.push(ms(t));
-        let mut app = UiApp::new(module, &html, &url, Box::new(h)).unwrap();
+        let mut app = UiApp::new(module, html, &url, Box::new(h)).unwrap();
         app.boot();
         app.run_until_idle(50);
         boots.push(ms(t));
@@ -134,7 +165,7 @@ fn compiled_against_fallback() {
         layouts.push(ms(t));
         mems.push((LIVE.load(Ordering::Relaxed) - before) as f64);
         let at = {
-            let n = app.query_selector("#check-2").unwrap();
+            let n = app.query_selector(target).unwrap();
             app.centre_of(n).unwrap()
         };
         let t = Instant::now();
@@ -143,18 +174,24 @@ fn compiled_against_fallback() {
         app.run_until_idle(20);
         clicks.push(ms(t));
         click_scripts.push((app.stats().script_micros - script) as f64 / 1000.0);
+        let at = {
+            let n = app.query_selector(target).unwrap();
+            app.centre_of(n).unwrap()
+        };
         let t = Instant::now();
         let script = app.stats().script_micros;
         click(&mut |e| drop(app.dispatch(e)), at);
         app.run_until_idle(20);
         agains.push(ms(t));
         again_scripts.push((app.stats().script_micros - script) as f64 / 1000.0);
-        let at = {
-            let n = app.query_selector("#new-task").unwrap();
-            app.centre_of(n).unwrap()
-        };
-        click(&mut |e| drop(app.dispatch(e)), at);
-        app.run_until_idle(20);
+        for sel in focus {
+            let at = {
+                let n = app.query_selector(sel).unwrap();
+                app.centre_of(n).unwrap()
+            };
+            click(&mut |e| drop(app.dispatch(e)), at);
+            app.run_until_idle(20);
+        }
         let t = Instant::now();
         app.dispatch(UiEvent::TypeText { text: "x".into() });
         app.run_until_idle(20);
@@ -201,7 +238,7 @@ fn compiled_against_fallback() {
         // A first load: nothing compiled yet on this thread.
         cw_jsvm::codecache::clear();
         let t = Instant::now();
-        let mut r = Realm::new(&html, &url, Box::new(host()));
+        let mut r = Realm::new(html, &url, Box::new(host()));
         r.run_document();
         r.run_until_idle(50);
         firsts.push(ms(t));
@@ -209,23 +246,26 @@ fn compiled_against_fallback() {
         let h = host();
         let before = LIVE.load(Ordering::Relaxed);
         let t = Instant::now();
-        let mut r = Realm::new(&html, &url, Box::new(h));
+        let mut r = Realm::new(html, &url, Box::new(h));
         r.run_document();
         r.run_until_idle(50);
         boots.push(ms(t));
         mems.push((LIVE.load(Ordering::Relaxed) - before) as f64);
-        let at = realm_centre(&mut r, "#check-2");
+        let at = realm_centre(&mut r, target);
         let t = Instant::now();
         click(&mut |e| drop(r.dispatch(e)), at);
         r.run_until_idle(20);
         clicks.push(ms(t));
+        let at = realm_centre(&mut r, target);
         let t = Instant::now();
         click(&mut |e| drop(r.dispatch(e)), at);
         r.run_until_idle(20);
         agains.push(ms(t));
-        let at = realm_centre(&mut r, "#new-task");
-        click(&mut |e| drop(r.dispatch(e)), at);
-        r.run_until_idle(20);
+        for sel in focus {
+            let at = realm_centre(&mut r, sel);
+            click(&mut |e| drop(r.dispatch(e)), at);
+            r.run_until_idle(20);
+        }
         let t = Instant::now();
         r.dispatch(UiEvent::TypeText { text: "x".into() });
         r.run_until_idle(20);

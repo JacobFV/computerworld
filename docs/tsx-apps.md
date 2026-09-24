@@ -19,8 +19,9 @@ document is identical, node for node, to the one React builds.
 
 ## Writing an app
 
-A compiled app is one module that imports only `react` and `react-dom`
-(`react-dom/client`) and renders once at the top level:
+A compiled app is a set of modules that import `react`, `react-dom`
+(`react-dom/client`) and each other (`./App`, `../shared/icons`), with one render
+call at the top level of one of them:
 
 ```tsx
 import { useState } from 'react';
@@ -46,7 +47,10 @@ function App() {
 createRoot(document.getElementById('root')!).render(<App />);
 ```
 
-`crates/web/engine/tests/framework-parity/tsx-tasks.tsx` is a complete example.
+`crates/web/engine/tests/framework-parity/tsx-tasks.tsx` is a one-module example;
+`framework-parity/app-src/<app>/` holds six apps written by a coding agent (an
+analytics dashboard, a chat, a data table, a kanban board, a settings form, a shop:
+Tailwind classes, inline SVG icons, several modules each) that compile unchanged.
 
 ### The compiled subset
 
@@ -66,9 +70,16 @@ objects (numbers get `px` as React adds it), boolean and numeric attributes,
 `onContextMenu`, and their `...Capture` forms. Controlled inputs, textareas and
 selects (`value`, `checked`, `defaultValue`, `defaultChecked`), `autoFocus`.
 
-**Types.** `interface`, `type` aliases, unions of literals, arrays and tuples, object
-types (optional members, index signatures), `Record<K, V>`, `Partial`, function
-types, React's types (`ReactNode`, `FormEvent`, `ChangeEvent<…>`, `Dispatch<…>`,
+**Modules.** Relative imports resolve as a bundler resolves them (`./x`, `x.tsx`,
+`x.ts`, `x/index.tsx`, `x/index.ts`); named, default and `type` imports; `export`
+declarations, `export default function`, `export { a as b }`.
+
+**Types.** `interface` (with `extends`), `type` aliases, unions of literals,
+intersections, arrays and tuples, object types (optional members, index
+signatures), `Record<K, V>`, `Partial`, `Pick`, `Omit`, `Exclude`, `Extract`,
+`keyof`, `typeof x` in a type, indexed access (`T['k']`, `T[number]`), `as const`,
+generic functions (a type parameter stands for its constraint), function types,
+`Set<T>`, `Map<K, V>`, `RegExp`, React's types (`ReactNode`, `FormEvent`, `ChangeEvent<…>`, `Dispatch<…>`,
 `RefObject<…>`, `CSSProperties`, …), DOM element types. Unannotated callback
 parameters take their type from context (an array method's element, a setter's
 state, an event handler's event, a component prop's declared type).
@@ -87,14 +98,20 @@ case, `includes`, `startsWith`, `endsWith`, `indexOf`, `slice`, `substring`,
 `charAt`, `charCodeAt`, `at`, `localeCompare`, `concat`), `toFixed`, `toString`,
 `Math.*`, `Number(…)`, `String(…)`, `parseInt`/`parseFloat`, `Object.keys`/
 `values`/`entries`/`assign`/`fromEntries`, `Array.from`/`of`/`isArray`,
-`JSON.stringify`, `console.*`, `Date.now()` on the world clock, timers
+`JSON.stringify`, `Set` and `Map` (`new`, `has`, `add`, `get`, `set`, `delete`,
+`clear`, `size`, `forEach`, `keys`/`values`/`entries`, spread, `for...of`),
+regular expressions (literals; `test`, `exec`; `match`, `search`, `replace`,
+`replaceAll`, `split` with a regex; JavaScript syntax and flags on cw-regex, the JS
+VM's engine), `console.*`, `Date.now()` on the world clock, timers
 (`setTimeout`, `setInterval`) on the world clock, `fetch` with `.then`/`.catch`/
 `.finally`, `response.json()`/`text()`, `Promise.resolve`.
 
 **Outside the subset** (the page runs its React fallback): `any` and values of
 unknown type (`JSON.parse`, an unannotated `response.json()` result), `async`/
-`await`, classes and class components, imports of anything but React, regular
-expressions, `enum`, `delete`, `this`, `new` (except `new Error`), a variable that
+`await`, `try`/`catch`, classes and class components, packages other than React
+(an app bundles its own modules only), re-exports (`export … from`), `import * as`
+of a module of the app, `enum`, `delete`, `this`, `new` (except `Set`, `Map`,
+`Error`), a variable that
 is both reassigned and captured by a closure, `dangerouslySetInnerHTML`,
 portals and the React APIs not listed above (`forwardRef`, `useTransition`, …).
 
@@ -109,9 +126,13 @@ app.tsx:line 52:3: `useEffect` must be called at the top level of a component or
 ## Building
 
 ```
-cw-tsx build app.tsx -o out/      # out/app.ui.json, out/app.js, out/app.diagnostics.json
-cw-tsx check app.tsx              # diagnostics only; exit 1 if any
+cw-tsx build main.tsx -o out/ [--name app]   # out/app.ui.json, out/app.js, out/app.diagnostics.json
+cw-tsx check main.tsx                        # diagnostics only; exit 1 if any
 ```
+
+The argument is the app's entry; the modules it imports are compiled with it into one
+IR and one script (each module in its own scope in the script, as a bundler's output
+has them).
 
 `build` exits 0 when both outputs were written, 3 when only the fallback was (the
 module is outside the subset, and a stale `app.ui.json` is removed), 1 when neither
@@ -216,6 +237,13 @@ let next = app.next_timer_micros();                       // when to call it aga
   be identical, the compiled layout must reach the state's `thresholds.json` entry
   against Chromium's dump of the fallback, and the checked-in `<name>.js` and
   `<name>.ui.json` must be what `cw-tsx` builds (`CW_TSX_BLESS=1` rewrites them).
+* The same test compiles each agent-written app in `framework-parity/app-src/` and
+  runs it three ways through its `app-<name>.steps.json`: compiled, the agent's own
+  esbuild bundle on React on the Realm, and cw-tsx's bundle on React on the Realm. In
+  all 27 states the compiled document is identical to React's, cw-tsx's bundle is
+  identical to esbuild's, and the compiled layout reaches the React fixture's
+  threshold against Chromium (18 states at 100% of nodes, the others at
+  98.8–99.7%, as React's are).
 * `crates/web/engine/tests/framework_parity.rs`: the fallback on the Realm against
   the same Chromium dumps.
 * `crates/web/ui/tests/react_semantics.rs`: small apps run both ways, logs and
@@ -229,24 +257,41 @@ let next = app.next_timer_micros();                       // when to call it aga
 
 ## Performance
 
-The task tracker (`tsx-tasks`), release builds; engine sides median of 15 fresh apps
-(`cargo test --release -p cw-ui --test perf -- --ignored --nocapture`), Chromium
-median of 15 fresh pages with DevTools' script time
-(`node crates/web/ui/bench/chromium-perf.mjs …/tsx-tasks.html`):
+Release builds; engine sides median of 15 fresh apps (`cargo test --release -p cw-ui
+--test perf -- --ignored --nocapture`), Chromium median of 15 fresh pages with
+DevTools' script time (`node crates/web/ui/bench/chromium-perf.mjs
+…/tsx-tasks.html`). Boot is to the rendered DOM; the first style and layout pass,
+which both engine sides do next, is not in it.
+
+The task tracker (`tsx-tasks`):
 
 | | compiled (cw-ui) | fallback (React 18 on the Realm) | Chromium (script) |
 |---|---|---|---|
-| boot | 0.25 ms (0.10 of it parsing the IR) | 51.0 ms first load, 11.1 ms with the code cache warm | 10.9 ms |
-| click that re-renders | 2.10 ms, of which 0.041 ms script | 6.88 ms | 3.51 ms (first), 0.75 ms (second) |
-| keystroke, controlled input | 0.017 ms | 2.94 ms | 1.10 ms |
-| memory held by the mounted app | 720 KB | 5,150 KB | — |
+| boot | 0.31 ms (0.13 of it parsing the IR) | 53.0 ms first load, 9.8 ms with the code cache warm | 10.9 ms |
+| first click that re-renders | 2.13 ms, of which 0.057 ms script | 6.47 ms | 3.51 ms |
+| second click | 0.46 ms, of which 0.040 ms script | 3.78 ms | 0.75 ms |
+| keystroke, controlled input | 0.024 ms | 2.65 ms | 1.10 ms |
+| memory held by the mounted app | 729 KB | 5,162 KB | — |
 | snapshot | 82 KB (32 KB of it the IR) | 520 KB (journal) | — |
-| restore, first layout included | 2.2 ms | 33.1 ms (replay) | — |
+| restore, first layout included | 2.8 ms | 31.3 ms (replay) | — |
 
-The compiled click is almost all the engine's style and layout pass that hit testing
-forces after the hover state changes (a full restyle and layout of this page is
-1.65 ms); handlers, render and commit take 41 µs. `cw-ui` adds 799 KB raw, 207 KB
-gzipped, to the site's Wasm module.
+The agent-written kanban board (`app-src/kanban`, Tailwind, 92 KB of IR), the
+fallback being the agent's esbuild bundle:
+
+| | compiled (cw-ui) | fallback (React 18 on the Realm) |
+|---|---|---|
+| boot | 0.75 ms (0.31 of it parsing the IR) | 76.4 ms first load, 30.7 ms warm |
+| click that moves a card | 23.2 ms, of which 0.21 ms script | 41.4 ms |
+| keystroke, controlled input | 0.037 ms | 3.6 ms |
+| memory held by the mounted app | 4,753 KB | 9,548 KB |
+| snapshot | 288 KB | 656 KB |
+| restore, first layout included | 21.1 ms | 208.6 ms |
+
+A compiled click is almost all the engine's style and layout pass that hit testing
+forces once the hover state changes (a full restyle and layout is 1.65 ms for the
+tracker, 17.9 ms for the kanban page's Tailwind sheet); handlers, render and commit
+take 57 µs and 209 µs. `cw-ui` added 799 KB raw, 207 KB gzipped, to the site's
+Wasm module when the browser first linked it (fef4e40).
 
 ## Later: Rust code generation
 
