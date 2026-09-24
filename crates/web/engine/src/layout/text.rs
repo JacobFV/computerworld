@@ -151,6 +151,9 @@ pub fn advance_fine(font: &Font, c: char) -> i64 {
 
 /// Pair kerning in 1/65536 px, like [`advance_fine`] (zero where [`kern`] is).
 pub fn kern_fine(font: &Font, left: char, right: char) -> i64 {
+    if !font.kerns() {
+        return 0;
+    }
     metrics::kern_units(font.typeface, font.scene_style(), left, right).map_or(
         0,
         |(units, upem)| {
@@ -224,6 +227,9 @@ fn fallback_advance(typeface: Typeface, style: cw_scene::Style, c: char) -> i64 
 /// DejaVu Sans and the platform faces kern here, as web content. It applies whatever `letter-spacing` is: see
 /// `kern_spaced`.
 pub fn kern(font: &Font, left: char, right: char) -> Au {
+    if !font.kerns() {
+        return Au::ZERO;
+    }
     let Some((units, upem)) = metrics::kern_units(font.typeface, font.scene_style(), left, right)
     else {
         return Au::ZERO;
@@ -700,5 +706,22 @@ mod tests {
             kern(&font, 'T', 'a')
         );
         assert_eq!(kern_spaced(&font, None, 'a', Au::ZERO), Au::ZERO);
+    }
+    #[test]
+    fn font_kerning_none_and_the_kern_feature_turn_pairs_off() {
+        let mut font = ComputedStyle::initial().font;
+        let kerned = measure(&font, "PASS To", Au::ZERO, Au::ZERO);
+        assert!(kern(&font, 'T', 'o') < Au::ZERO);
+        font.kerning_none = true;
+        assert_eq!(kern(&font, 'T', 'o'), Au::ZERO);
+        assert_eq!(kern_fine(&font, 'T', 'o'), 0);
+        let plain = measure(&font, "PASS To", Au::ZERO, Au::ZERO);
+        assert!(plain > kerned, "{plain:?} {kerned:?}");
+        // `font-feature-settings` is the lower-level control and wins either way.
+        font.kern_feature = 1;
+        assert!(kern(&font, 'T', 'o') < Au::ZERO);
+        font.kerning_none = false;
+        font.kern_feature = 0;
+        assert_eq!(kern(&font, 'T', 'o'), Au::ZERO);
     }
 }

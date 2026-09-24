@@ -305,6 +305,8 @@ longhands! {
     FontWeight, "font-weight", true, 0, p::font_weight, a::font_weight, |d, s| d.font.weight = s.font.weight;
     FontStyle, "font-style", true, 0, p::font_style, a::font_style, |d, s| d.font.style = s.font.style;
     FontVariant, "font-variant", true, 0, p::font_variant, a::font_variant, |d, s| d.font.small_caps = s.font.small_caps;
+    FontKerning, "font-kerning", true, 0, p::font_kerning, a::font_kerning, |d, s| d.font.kerning_none = s.font.kerning_none;
+    FontFeatureSettings, "font-feature-settings", true, 0, p::font_feature_settings, a::font_feature_settings, |d, s| d.font.kern_feature = s.font.kern_feature;
     // Phase 1: what other lengths and colours depend on.
     LineHeight, "line-height", true, 1, p::line_height, a::line_height, |d, s| d.line_height = s.line_height;
     Color, "color", true, 1, p::color, a::color, |d, s| d.color = s.color;

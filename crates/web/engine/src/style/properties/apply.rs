@@ -241,6 +241,9 @@ pub fn font_weight(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool
 
 simple!(font_style, FontStyle, |s, x| s.font.style = x);
 simple!(font_variant, Bool, |s, x| s.font.small_caps = x);
+simple!(font_kerning, Bool, |s, x| s.font.kerning_none = x);
+simple!(font_feature_settings, Integer, |s, x| s.font.kern_feature =
+    x.clamp(-1, 1) as i8);
 
 pub fn line_height(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
     let Specified::LineHeight(spec) = v else {

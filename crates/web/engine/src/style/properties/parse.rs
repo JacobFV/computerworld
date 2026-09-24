@@ -429,6 +429,43 @@ pub fn font_variant(p: &mut Parser) -> Option<Specified> {
     .map(Specified::Bool)
 }
 
+/// `font-kerning`: `none` is `true` (kerning off); `auto` and `normal` kern.
+pub fn font_kerning(p: &mut Parser) -> Option<Specified> {
+    keyword(p, &[("auto", false), ("normal", false), ("none", true)]).map(Specified::Bool)
+}
+
+/// `font-feature-settings`: `normal` or a comma-separated list of `"tag" [on | off |
+/// <integer>]`. Only the `kern` tag has an effect here, so the value is what the list
+/// says of it: -1 when it does not name `kern` (or is `normal`), 0 for off, 1 for on.
+/// The last `kern` in the list wins.
+pub fn font_feature_settings(p: &mut Parser) -> Option<Specified> {
+    if p.try_parse(|p| p.expect_ident_matching("normal")).is_some() {
+        return Some(Specified::Integer(-1));
+    }
+    let mut kern = -1;
+    loop {
+        let tag = p.expect_string()?;
+        if tag.len() != 4 || !tag.chars().all(|c| (' '..='~').contains(&c)) {
+            return None;
+        }
+        let value = if let Some(v) = p.try_parse(|p| p.expect_integer()) {
+            if v < 0 {
+                return None;
+            }
+            v
+        } else {
+            p.try_parse(|p| keyword(p, &[("on", 1), ("off", 0)]))
+                .unwrap_or(1)
+        };
+        if tag == "kern" {
+            kern = i32::from(value != 0);
+        }
+        if p.try_parse(|p| p.expect_comma()).is_none() {
+            return Some(Specified::Integer(kern));
+        }
+    }
+}
+
 pub fn line_height_spec(p: &mut Parser) -> Option<LineHeightSpec> {
     if p.expect_ident_matching("normal").is_some() {
         return Some(LineHeightSpec::Normal);

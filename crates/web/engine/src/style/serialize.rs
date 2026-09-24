@@ -582,6 +582,13 @@ impl ComputedStyle {
                 FontStyle::Oblique => "oblique",
             }
             .into(),
+            L::FontKerning => if s.font.kerning_none { "none" } else { "auto" }.into(),
+            L::FontFeatureSettings => match s.font.kern_feature {
+                0 => "\"kern\" 0",
+                1 => "\"kern\"",
+                _ => "normal",
+            }
+            .into(),
             L::FontVariant => if s.font.small_caps {
                 "small-caps"
             } else {

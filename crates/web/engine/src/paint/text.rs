@@ -14,10 +14,12 @@
 //! never wraps.
 //!
 //! `letter-spacing` has no scene parameter, so a spaced run is painted one node per
-//! character, each advanced by `metrics::advance` plus the spacing. That also turns
-//! pair kerning off for the run, as CSS requires of a non-zero `letter-spacing`: an
-//! unspaced run is one node, which the renderer kerns (`metrics::kern`) exactly as
-//! layout measured it; single-character nodes have no pairs.
+//! character, each advanced by `metrics::advance`, the pair's kerning (Chromium keeps
+//! the `kern` feature under letter-spacing) and the spacing. A run with kerning
+//! turned off (`font-kerning: none`, `font-feature-settings: "kern" 0`) is painted
+//! the same way without the pairs, since the renderer kerns every run it is given.
+//! An unspaced, kerned run is one node, which the renderer kerns (`metrics::kern`)
+//! exactly as layout measured it.
 //!
 //! Decorations: underline `1px` below the baseline, line-through at `0.35em` above
 //! it, overline at the ascent (`1em`), all `max(1, size / 16)` thick, in the
@@ -153,7 +155,7 @@ fn offset_px(font: &Font, text: &str, at: usize) -> i32 {
     let mut prev = None;
     let mut sum = 0i64;
     for c in text[..at.min(text.len())].chars() {
-        sum += prev.map_or(0, |p| {
+        sum += prev.filter(|_| font.kerns()).map_or(0, |p| {
             cw_scene::metrics::kern(font.typeface, style, p, c, size)
         }) + cw_scene::metrics::advance(font.typeface, style, c, size);
         prev = Some(c);
@@ -388,7 +390,9 @@ fn draw_spaced(
     spacing: crate::geom::Au,
     main: bool,
 ) -> Option<usize> {
-    if spacing.is_zero() {
+    // One node draws a kerned run; a spaced or unkerned one (`font-kerning: none`)
+    // is one node per character, placed by the pen layout measured with.
+    if spacing.is_zero() && font.kerns() {
         return Some(draw_text(p, state, id, x, baseline, text, font, color));
     }
     let size = draw_size(font, text);
@@ -396,7 +400,14 @@ fn draw_spaced(
     let sp = px(spacing);
     let mut pen: i64 = (x as i64) * 64;
     let mut first = true;
+    let mut prev: Option<char> = None;
     for ch in text.chars() {
+        if font.kerns() {
+            if let Some(l) = prev {
+                pen += cw_scene::metrics::kern(font.typeface, style, l, ch, size);
+            }
+        }
+        prev = Some(ch);
         let s = ch.to_string();
         let part_id = if first && main {
             id

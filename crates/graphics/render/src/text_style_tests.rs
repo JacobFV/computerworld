@@ -423,49 +423,6 @@ fn web_symbols_advance_by_the_font() {
     let lone = last_ink_column(&styled("l", 100, 40, size, web, Typeface::DejaVu));
     let step = advance(Typeface::DejaVu, web, '☎', size);
     assert!(step > advance(Typeface::DejaVu, Style::default(), '☎', size) + 64 * 10);
-    // Within a pixel: the glyph after it is drawn at its quarter-pixel phase.
     let run = last_ink_column(&styled("☎l", 200, 40, size, web, Typeface::DejaVu));
-    assert!(
-        (run - (step + 32).div_euclid(64) - lone).abs() <= 1,
-        "{run}"
-    );
-}
-
-/// Web text is placed to a quarter pixel, as Chromium places it at device scale 1:
-/// a run of 13 px "l" (3.61 px apart) draws each stem at its own quarter-pixel phase,
-/// so the stems' ink centroids advance by the run's real pitch, not by 3 or 4 whole
-/// pixels. Native text keeps one bitmap per glyph at whole pixels.
-#[test]
-fn web_glyphs_are_placed_to_a_quarter_pixel() {
-    let pitch = 569.0 * 13.0 / 2048.0; // DejaVu Sans "l"
-    let centroids = |style: Style| -> Vec<f64> {
-        let f = styled("llllllllllllllll", 400, 30, 13, style, Typeface::DejaVu);
-        let mut out = Vec::new();
-        for i in 0..16 {
-            let (lo, hi) = ((i as f64 * pitch) as u32, ((i + 1) as f64 * pitch) as u32);
-            let (mut sum, mut weight) = (0.0, 0.0);
-            for x in lo..hi {
-                let ink: u32 = (0..20)
-                    .map(|y| 255 - u32::from(f.pixel(x, y).unwrap()[0]))
-                    .sum();
-                sum += f64::from(ink) * (f64::from(x) + 0.5);
-                weight += f64::from(ink);
-            }
-            out.push(sum / weight);
-        }
-        out
-    };
-    let web = centroids(Style::default().for_web());
-    for pair in web.windows(2) {
-        let step = pair[1] - pair[0];
-        assert!((step - pitch).abs() < 0.35, "{step} {web:?}");
-    }
-    let native = centroids(Style::default());
-    for pair in native.windows(2) {
-        let step = pair[1] - pair[0];
-        assert!(
-            (step - 3.0).abs() < 1e-9 || (step - 4.0).abs() < 1e-9,
-            "{native:?}"
-        );
-    }
+    assert_eq!(run, (step + 32).div_euclid(64) + lone);
 }

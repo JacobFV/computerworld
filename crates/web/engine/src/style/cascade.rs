@@ -1645,6 +1645,26 @@ mod tests {
     }
 
     #[test]
+    fn font_kerning_and_the_kern_feature_cascade() {
+        let (d, s) = styled(
+            r#"<div id="a"><p id="p">t</p></div><p id="b">t</p><p id="c">t</p><p id="e">t</p>"#,
+            "#a { font-kerning: none; font-feature-settings: \"kern\" off } \
+             #b { font-feature-settings: \"liga\" 0, \"kern\" } \
+             #c { font-feature-settings: \"kern\" 0, \"liga\" } \
+             #e { font-kerning: none; font-feature-settings: \"kerning\" }",
+        );
+        assert_eq!(ser(&d, &s, "p", "font-kerning"), "none");
+        assert_eq!(ser(&d, &s, "p", "font-feature-settings"), "\"kern\" 0");
+        let font = |id: &str| s.get(by_id(&d, id)).unwrap().font.clone();
+        assert!(!font("p").kerns(), "inherited from the div");
+        assert!(font("b").kerns() && font("b").kern_feature == 1);
+        assert!(!font("c").kerns());
+        // An invalid tag drops the declaration; `font-kerning: none` still applies.
+        assert_eq!(font("e").kern_feature, -1);
+        assert!(!font("e").kerns());
+    }
+
+    #[test]
     fn important_and_inline() {
         let (d, s) = styled(
             r#"<p id="p" style="color: blue">t</p>"#,

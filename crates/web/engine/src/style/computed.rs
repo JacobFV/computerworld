@@ -984,6 +984,11 @@ pub struct Font {
     pub style: FontStyle,
     /// `font-variant: small-caps`.
     pub small_caps: bool,
+    /// `font-kerning: none`.
+    pub kerning_none: bool,
+    /// What `font-feature-settings` says of the `kern` feature: -1 nothing, 0 off,
+    /// 1 on. It overrides `font-kerning`, as the lower-level feature control does.
+    pub kern_feature: i8,
     /// The language for glyph selection (from `lang` attributes).
     pub lang: cw_scene::Lang,
 }
@@ -994,6 +999,16 @@ impl Font {
     }
     pub fn is_italic(&self) -> bool {
         !matches!(self.style, FontStyle::Normal)
+    }
+    /// Whether pair kerning applies: `font-kerning` unless `font-feature-settings`
+    /// names `kern`. (`letter-spacing` does not turn it off: Chromium keeps the
+    /// `kern` feature and adds the spacing, see `layout::text::kern_spaced`.)
+    pub fn kerns(&self) -> bool {
+        match self.kern_feature {
+            0 => false,
+            1 => true,
+            _ => !self.kerning_none,
+        }
     }
     /// Size in whole px for the text metrics tables (they take u16 px).
     pub fn size_px(&self) -> u16 {
@@ -1174,6 +1189,8 @@ impl ComputedStyle {
                 weight: 400,
                 style: FontStyle::Normal,
                 small_caps: false,
+                kerning_none: false,
+                kern_feature: -1,
                 lang: cw_scene::Lang::Auto,
             },
             font_size_keyword: Some(3),
