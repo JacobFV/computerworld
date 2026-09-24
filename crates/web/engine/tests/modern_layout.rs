@@ -417,4 +417,18 @@ mod cases {
         close(g.width, 400.0, "the group spans its children");
         assert_eq!(p.computed("chart", "overflow-x"), "hidden");
     }
+
+    /// A text input as a flex item keeps its one-line height when the row gives it
+    /// the width (a chat composer's `flex-1` field).
+    #[test]
+    fn a_flexed_text_input_keeps_its_one_line_height() {
+        let p = page(
+            "<!DOCTYPE html><style>body { margin: 0; font: 14px/20px Arimo }\
+             input { font: inherit; margin: 0; padding: 4px 0; border: 0 }</style>\
+             <div id=row style='display: flex; align-items: center; width: 600px'>\
+             <input id=i style='flex: 1'><button style='width: 32px; height: 32px; border: 0; padding: 0'></button></div>",
+        );
+        rect_is(&p, "i", 0.0, 2.0, 568.0, 28.0);
+        rect_is(&p, "row", 0.0, 0.0, 600.0, 32.0);
+    }
 }

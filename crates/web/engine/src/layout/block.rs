@@ -632,6 +632,18 @@ pub fn shrink_to_fit(ctx: &LayoutContext, id: BoxId, available: Au) -> Au {
 }
 
 /// Used content-box size of a replaced element (§10.3.2, §10.6.2).
+/// Images, canvases, videos and SVG have a natural aspect ratio that carries one
+/// specified dimension to the other; form controls, iframes and the like have a
+/// natural size but no ratio, so an `auto` dimension stays at its natural length
+/// (an `<input>` at `width: 100%` keeps its one-line height).
+pub fn has_natural_ratio(rb: &ReplacedBox) -> bool {
+    match &rb.replaced {
+        Replaced::Image { .. } => true,
+        Replaced::Placeholder(tag) => matches!(tag.as_str(), "canvas" | "video" | "svg"),
+        _ => false,
+    }
+}
+
 pub fn replaced_size(ctx: &LayoutContext, id: BoxId, rb: &ReplacedBox, cb: &Cb) -> Size {
     let s = ctx.style(id);
     let p = padding_edges(s, cb.width);
@@ -663,15 +675,7 @@ pub fn replaced_size(ctx: &LayoutContext, id: BoxId, rb: &ReplacedBox, cb: &Cb) 
         },
     });
     let (iw, ih) = (intrinsic.width, intrinsic.height);
-    // Images, canvases, videos and SVG have a natural aspect ratio that carries one
-    // specified dimension to the other; form controls, iframes and the like have a
-    // natural size but no ratio, so an `auto` dimension stays at its natural length
-    // (an `<input>` at `width: 100%` keeps its one-line height).
-    let ratio = match &rb.replaced {
-        Replaced::Image { .. } => true,
-        Replaced::Placeholder(tag) => matches!(tag.as_str(), "canvas" | "video" | "svg"),
-        _ => false,
-    };
+    let ratio = has_natural_ratio(rb);
     let (mut uw, mut uh) = match (w, h) {
         (Some(w), Some(h)) => (w, h),
         (Some(w), None) => (

@@ -435,7 +435,11 @@ fn replaced_height_for_width(
     let h = match css_h {
         Some(h) => h,
         None => match rb.intrinsic {
-            Some(z) if z.width > Au::ZERO && rb.attr_height.is_none() => {
+            Some(z)
+                if block::has_natural_ratio(rb)
+                    && z.width > Au::ZERO
+                    && rb.attr_height.is_none() =>
+            {
                 width.scale(z.height.0, z.width.0)
             }
             _ => block::replaced_size(ctx, it.id, rb, cb).height,
