@@ -284,14 +284,20 @@ class EventSource extends EventTarget { constructor(url) { super(); this.url = S
 
 // ---------------------------------------------------------------- MessageChannel
 
+// The realm's task queue without a delay (Node's setImmediate, kept before the
+// Node globals are removed below).
+const postTask = globalThis.setImmediate;
 class MessagePort extends EventTarget {
   constructor() { super(); this._other = null; this._started = false; this._queue = []; this._closed = false; }
   postMessage(data) {
     const other = this._other;
     if (!other || other._closed) return;
     const msg = structuredClone(data);
-    // One task per message, in posting order across every port.
-    setTimeout(() => { other._queue.push(msg); other._flush(); }, 0);
+    // One task per message, in posting order across every port. A posted message
+    // is a task that runs as soon as the loop gets to it, with no timer delay
+    // (which is why React's scheduler posts to itself), so it goes on the
+    // immediate queue the event loop drains without advancing the clock.
+    postTask(() => { other._queue.push(msg); other._flush(); });
   }
   _flush() {
     if (!this._started) return;

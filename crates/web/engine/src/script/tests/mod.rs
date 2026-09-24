@@ -8,6 +8,7 @@ mod elements;
 mod events;
 mod fixtures;
 mod frameworks;
+mod host_state;
 mod more;
 mod support;
 mod window;
