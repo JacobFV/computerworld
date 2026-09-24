@@ -1043,7 +1043,7 @@ impl Runtime {
     fn mount_elem(&mut self, e: &Rc<Elem>, parent: NodeId, anchor: Option<NodeId>) -> MNode {
         match &**e {
             Elem::Template { tid, holes, key } => {
-                let (root, mholes) = self.instantiate(*tid, holes);
+                let (root, mholes) = self.instantiate(*tid, holes, parent);
                 self.insert(parent, root, anchor);
                 MNode::Template(Box::new(MTemplate {
                     tid: *tid,

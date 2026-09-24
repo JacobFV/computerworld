@@ -1000,6 +1000,9 @@ impl Runtime {
                 let (x, y) = i.scroll.get(&n).copied().unwrap_or_default();
                 Value::Num(if name == "scrollTop" { y } else { x }.to_px_round() as f64)
             }
+            "scrollHeight" | "scrollWidth" | "clientHeight" | "clientWidth" => {
+                Value::Num(box_metric(i, n, name))
+            }
             _ => Value::Undefined,
         }
     }
@@ -1950,6 +1953,58 @@ impl Runtime {
             M::ToString => Value::Str(s.clone()),
             other => return type_error(format!("{other:?} is not a string method")),
         })
+    }
+}
+
+/// `clientWidth`/`clientHeight`/`scrollWidth`/`scrollHeight` of a block box, as the
+/// Realm's layout bindings compute them.
+fn box_metric(i: &mut cw_web::script::Inner, n: NodeId, name: &str) -> f64 {
+    use cw_web::geom::Au;
+    use cw_web::layout::FragmentKind;
+    i.ensure_layout();
+    let Some(tree) = i.tree.as_ref() else {
+        return 0.0;
+    };
+    let px = |a: Au| a.to_px_round() as f64;
+    if Some(n) == i.doc.document_element() {
+        return match name {
+            "clientWidth" => px(tree.viewport_width),
+            "clientHeight" => px(tree.viewport_height),
+            "scrollWidth" => px(tree.content_width.max(tree.viewport_width)),
+            _ => px(tree.content_height.max(tree.viewport_height)),
+        };
+    }
+    let Some((f, abs)) = cw_web::script::inner::fragment_of(tree, n) else {
+        return 0.0;
+    };
+    let (border, scroll) = match &f.kind {
+        FragmentKind::Box { border, scroll, .. } => (*border, *scroll),
+        _ => (cw_web::geom::Edges::ZERO, None),
+    };
+    let bar = |on: bool| if on { Au::from_px_i32(15) } else { Au::ZERO };
+    let bar_w = scroll.map(|s| bar(s.shows_y_bar)).unwrap_or(Au::ZERO);
+    let bar_h = scroll.map(|s| bar(s.shows_x_bar)).unwrap_or(Au::ZERO);
+    let (w, h) = (abs.size.width, abs.size.height);
+    let client_w = (w - border.horizontal() - bar_w).max(Au::ZERO);
+    let client_h = (h - border.vertical() - bar_h).max(Au::ZERO);
+    let (scroll_w, scroll_h) = match scroll {
+        Some(s) => (
+            s.content_width.max(client_w),
+            s.content_height.max(client_h),
+        ),
+        None => {
+            let ov = f.overflow;
+            (
+                (ov.right() - border.left).max((w - border.horizontal()).max(Au::ZERO)),
+                (ov.bottom() - border.top).max((h - border.vertical()).max(Au::ZERO)),
+            )
+        }
+    };
+    match name {
+        "clientWidth" => px(client_w),
+        "clientHeight" => px(client_h),
+        "scrollWidth" => px(scroll_w),
+        _ => px(scroll_h),
     }
 }
 

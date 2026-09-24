@@ -509,6 +509,8 @@ impl Runtime {
                 if !initial.is_empty() {
                     let t = self.inner.doc.create_text(&initial);
                     self.inner.doc.append(n, t);
+                    // `node.value = textContent` (ReactDOMTextarea.postMountWrapper).
+                    self.inner.set_value(n, &initial);
                 }
                 self.track_controlled(n, &tag, &p);
             }
@@ -699,13 +701,24 @@ impl Runtime {
 
     /// Creates a template's DOM (detached) and mounts its holes. Returns the root
     /// and the mounted holes.
-    pub(crate) fn instantiate(&mut self, tid: u32, values: &[Value]) -> (NodeId, Vec<MHole>) {
+    pub(crate) fn instantiate(
+        &mut self,
+        tid: u32,
+        values: &[Value],
+        parent: NodeId,
+    ) -> (NodeId, Vec<MHole>) {
+        // React takes the namespace from where the element is mounted: inside an
+        // `<svg>` (and not in its `<foreignObject>`) elements are SVG elements.
+        let in_svg = matches!(
+            self.inner.doc.kind(parent),
+            NodeKind::Element { ns: Namespace::Svg, tag, .. } if tag != "foreignObject"
+        );
         let module = self.module.clone();
         let t = &module.templates[tid as usize];
         let info = self.templates[tid as usize].clone();
         let mut created: Vec<NodeId> = Vec::with_capacity(info.tags.len());
         let mut holes: Vec<Option<MHole>> = (0..values.len()).map(|_| None).collect();
-        let root = self.build(&t.root, false, &info, values, &mut created, &mut holes);
+        let root = self.build(&t.root, in_svg, &info, values, &mut created, &mut holes);
         let holes = holes
             .into_iter()
             .map(|h| h.expect("every hole is placed"))

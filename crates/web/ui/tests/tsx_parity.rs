@@ -234,7 +234,7 @@ fn run_fallback(html: &str, name: &str, list: &[Value]) -> (Realm, Timing) {
     let t = Instant::now();
     let mut r = Realm::new(html, &format!("{BASE}{name}.html"), Box::new(host()));
     r.run_document();
-    r.run_until_idle(50);
+    settle(&mut r, 50);
     let boot = t.elapsed();
     let mut steps = Vec::new();
     for step in list {
@@ -243,7 +243,7 @@ fn run_fallback(html: &str, name: &str, list: &[Value]) -> (Realm, Timing) {
         for ev in ui_event(step, at) {
             r.dispatch(ev);
         }
-        r.run_until_idle(20);
+        settle(&mut r, 20);
         steps.push(t.elapsed());
     }
     let errors: Vec<_> = r
@@ -279,12 +279,15 @@ fn dom_text(
     ) {
         let pad = "  ".repeat(depth);
         match doc.kind(n) {
-            NodeKind::Element { tag, attrs, .. } => {
+            NodeKind::Element { tag, attrs, ns } => {
                 if tag == "script" {
                     return;
                 }
                 out.push_str(&pad);
                 out.push('<');
+                if *ns != cw_web::dom::Namespace::Html {
+                    out.push_str(&format!("{ns:?}:"));
+                }
                 out.push_str(tag);
                 for a in attrs {
                     out.push_str(&format!(" {}={:?}", a.name, a.value));
@@ -357,6 +360,27 @@ fn first_difference(a: &str, b: &str) -> String {
     )
 }
 
+/// The page as the parity harness shows it: Playwright launches Chromium with
+/// `--hide-scrollbars`, so scroll containers there reserve no space for bars; the
+/// engine's pages get `scrollbar-width: none` to match (as framework_parity.rs does).
+fn as_dumped(html: &str) -> String {
+    html.replacen(
+        "<head>",
+        "<head><style>* { scrollbar-width: none }</style>",
+        1,
+    )
+}
+
+/// Runs a realm's event loop until a pass runs nothing (React's scheduler posts
+/// itself tasks; framework_parity.rs settles the same way).
+fn settle(r: &mut Realm, advance_ms: u32) {
+    for _ in 0..16 {
+        if !r.run_until_idle(advance_ms) {
+            break;
+        }
+    }
+}
+
 fn ms(d: Duration) -> f64 {
     d.as_secs_f64() * 1000.0
 }
@@ -367,8 +391,9 @@ fn compiled_and_fallback_documents_are_identical_after_every_state() {
     for name in tsx_fixtures() {
         let built = build(&name);
         let _ = &built.js;
-        let html =
-            std::fs::read_to_string(fixture_dir().join(format!("{name}.html"))).expect("html");
+        let html = as_dumped(
+            &std::fs::read_to_string(fixture_dir().join(format!("{name}.html"))).expect("html"),
+        );
         for (state, list) in steps(&name) {
             let (mut app, tc) = run_compiled(&built.module, &html, &name, &list);
             let (mut realm, tf) = run_fallback(&html, &name, &list);
@@ -397,8 +422,9 @@ fn compiled_layout_matches_chromium() {
     let mut failures = Vec::new();
     for name in tsx_fixtures() {
         let built = build(&name);
-        let html =
-            std::fs::read_to_string(fixture_dir().join(format!("{name}.html"))).expect("html");
+        let html = as_dumped(
+            &std::fs::read_to_string(fixture_dir().join(format!("{name}.html"))).expect("html"),
+        );
         for (state, list) in steps(&name) {
             let key = format!("{name}.{state}");
             let dump = fixture_dir().join(format!("{key}.chromium.json"));
@@ -447,4 +473,182 @@ fn compiled_layout_matches_chromium() {
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+// ---------------------------------------------------------------- agent-written apps
+
+/// The React apps in `framework-parity/app-src/<name>/` (TSX, several modules, as a
+/// coding agent writes them), whose pages `app-<name>.html` run the agent's own
+/// esbuild bundle of them. Each is compiled here from its `main.tsx`.
+fn agent_apps() -> Vec<String> {
+    let dir = fixture_dir().join("app-src");
+    let mut names: Vec<String> = std::fs::read_dir(&dir)
+        .expect("app-src")
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().join("main.tsx").is_file())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+fn build_agent_app(name: &str) -> (cw_ui::ir::Module, String) {
+    let root = fixture_dir().join("app-src").join(name);
+    let mut read = |rel: &str| std::fs::read_to_string(root.join(rel)).ok();
+    let sources = cw_tsx::load("main.tsx", &mut read).unwrap_or_else(|d| panic!("{name}: {d:?}"));
+    let b = cw_tsx::build_modules(&sources);
+    assert!(
+        b.diagnostics.is_empty(),
+        "app-src/{name} is outside the compiled subset:\n{}",
+        b.diagnostics
+            .iter()
+            .map(|d| d.to_string())
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+    (b.ir.unwrap(), b.js.unwrap())
+}
+
+/// Runs a page on the Realm (whatever script it loads) through `list`.
+fn run_realm_page(html: &str, name: &str, list: &[Value], host: MemoryHost) -> Realm {
+    let mut r = Realm::new(html, &format!("{BASE}{name}.html"), Box::new(host));
+    r.run_document();
+    settle(&mut r, 50);
+    for step in list {
+        let at = click_step(step).map(|sel| realm_centre(&mut r, sel));
+        for ev in ui_event(step, at) {
+            r.dispatch(ev);
+        }
+        settle(&mut r, 20);
+    }
+    let errors: Vec<_> = r
+        .logs()
+        .into_iter()
+        .filter(|l| format!("{:?}", l.level).contains("Error"))
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "{name}: the page logged errors: {errors:?}"
+    );
+    r
+}
+
+#[test]
+fn agent_apps_compiled_match_react_and_chromium() {
+    let thresholds = thresholds();
+    let out = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../target/tsx-parity");
+    std::fs::create_dir_all(&out).unwrap();
+    let mut failures = Vec::new();
+    for app in agent_apps() {
+        let fixture = format!("app-{app}");
+        let html_path = fixture_dir().join(format!("{fixture}.html"));
+        let Ok(html) = std::fs::read_to_string(&html_path) else {
+            continue;
+        };
+        let html = as_dumped(&html);
+        let (module, js) = build_agent_app(&app);
+        // The same page, loading cw-tsx's bundle of the sources instead of esbuild's.
+        let bundle = format!("/vendor/{fixture}.js");
+        assert!(
+            html.contains(&bundle),
+            "{fixture}.html no longer loads {bundle}"
+        );
+        let ours = html.replace(&bundle, "/cw-tsx/app.js");
+        for (state, list) in steps(&fixture) {
+            let key = format!("{fixture}.{state}");
+            let (mut app_ui, t) = run_compiled(&module, &html, &fixture, &list);
+            let mut react = run_realm_page(&html, &fixture, &list, host());
+            let mut fallback = run_realm_page(
+                &ours,
+                &fixture,
+                &list,
+                host().with_response(&format!("{BASE}cw-tsx/app.js"), "text/javascript", &js),
+            );
+            let a = compiled_dom(&mut app_ui);
+            let b = fallback_dom(&mut react);
+            let c = fallback_dom(&mut fallback);
+            if a != b {
+                failures.push(format!(
+                    "{key}: compiled vs React: {}",
+                    first_difference(&a, &b)
+                ));
+            }
+            if c != b {
+                failures.push(format!(
+                    "{key}: cw-tsx's bundle vs esbuild's: {}",
+                    first_difference(&c, &b)
+                ));
+            }
+            // Layout against Chromium's dump of the page.
+            let expected = read_dump(&fixture_dir().join(format!("{key}.chromium.json")));
+            let values = app_ui.form_values();
+            let doc = app_ui.document().clone();
+            let styles = app_ui.styles().clone();
+            let tree = app_ui.fragment_tree().clone();
+            let vp = viewport();
+            let images = cw_web::paint::ImageMap::from_document(&doc, &styles);
+            let mut ctx = cw_web::paint::PaintContext::new(&images);
+            ctx.values = values;
+            let scene = cw_web::paint::paint(&doc, &styles, &tree, vp, &ctx);
+            let rendered = Rendered {
+                doc,
+                styles,
+                tree,
+                scene,
+            };
+            let got = engine_dump(&format!("{fixture}.html"), &rendered, vp);
+            let report = compare(&expected, &got);
+            let threshold = thresholds.get(&key).copied().unwrap_or(1.0);
+            write_png(
+                &out.join(format!("{key}.compiled.png")),
+                &rasterise(&rendered.scene),
+            );
+            eprintln!(
+                "{key}: compiled {}/{} nodes pass ({:.1}%), threshold {threshold}; boot {:.2} ms, steps {:?} ms",
+                report.passed,
+                report.total,
+                report.pass_rate() * 100.0,
+                ms(t.boot),
+                t.steps.iter().map(|d| (ms(*d) * 100.0).round() / 100.0).collect::<Vec<_>>(),
+            );
+            if report.pass_rate() < threshold {
+                // Where the compiled page's layout parts from React's on the same
+                // engine: the first place to look.
+                let react_render = {
+                    let doc = react.document().clone();
+                    let styles = react.styles().clone();
+                    let tree = react.fragment_tree().clone();
+                    let images = cw_web::paint::ImageMap::from_document(&doc, &styles);
+                    let scene = cw_web::paint::paint(
+                        &doc,
+                        &styles,
+                        &tree,
+                        vp,
+                        &cw_web::paint::PaintContext::new(&images),
+                    );
+                    Rendered {
+                        doc,
+                        styles,
+                        tree,
+                        scene,
+                    }
+                };
+                let theirs = engine_dump(&format!("{fixture}.html"), &react_render, vp);
+                let vs_react = compare(&theirs, &got);
+                let react_vs_chromium = compare(&expected, &theirs);
+                eprintln!(
+                    "{key}: React on the Realm here passes {:.3} against Chromium",
+                    react_vs_chromium.pass_rate()
+                );
+                failures.push(format!(
+                    "{key}: layout {:.3} below {threshold}: {:?}\n  {key} against React on the Realm {:.3}: {:?}",
+                    report.pass_rate(),
+                    report.worst(3),
+                    vs_react.pass_rate(),
+                    vs_react.worst(3)
+                ));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
