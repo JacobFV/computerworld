@@ -353,6 +353,7 @@ pub fn layout_root(ctx: &LayoutContext) -> FragmentTree {
         content_height: content.height,
         viewport_width: vw,
         viewport_height: vh,
+        doc_order: crate::layout::DocOrder::of(ctx.doc),
     }
 }
 

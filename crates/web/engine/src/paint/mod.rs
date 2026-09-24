@@ -365,6 +365,10 @@ impl<'a> Painter<'a> {
         p.assign_ordinals();
         if let Some(doc) = doc {
             p.semantics = semantics::Tables::build(doc);
+        }
+        // Layout recorded the order of the document it laid out; only a hand-built
+        // tree painted with a document needs it worked out here.
+        if let (Some(doc), true) = (doc, tree.doc_order.is_empty()) {
             for (i, n) in doc.descendants(Document::ROOT).enumerate() {
                 p.doc_order.insert(n, (i as u32, i as u32));
                 for a in doc.ancestors(n) {
@@ -379,10 +383,14 @@ impl<'a> Painter<'a> {
 
     /// Where a fragment's element sits in document order: `(index, rank)`, with
     /// `::before` just inside the element's start and `::after` after its last
-    /// descendant. `None` without a document or for anonymous fragments' lack of one.
+    /// descendant. `None` without a laid-out or given document, or for anonymous
+    /// fragments' lack of one.
     pub fn tree_order(&self, f: &Fragment) -> Option<(u32, u8)> {
         let src = f.source()?;
-        let (start, end) = *self.doc_order.get(&src.node())?;
+        let (start, end) = match self.tree.doc_order.get(src.node()) {
+            Some(e) => e,
+            None => *self.doc_order.get(&src.node())?,
+        };
         Some(match src {
             StyleSource::Before(_) | StyleSource::Marker(_) => (start, 1),
             StyleSource::After(_) => (end, 2),

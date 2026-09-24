@@ -844,3 +844,28 @@ fn shadows_paint_behind_what_they_belong_to() {
     );
     assert_eq!(f.at(110, 70), INK, "which still shows past its corner");
 }
+
+#[test]
+fn a_later_relative_sibling_is_hit_over_an_absolute_backdrop() {
+    // A modal as Tailwind apps write it: a fixed overlay holding an absolutely
+    // positioned backdrop (which closes the dialog on click) and, after it, the
+    // relatively positioned dialog. Both are z-index: auto, so the later one paints,
+    // and is hit, on top; with backdrop-filter the backdrop is a stacking context of
+    // z-index 0, which paints in the same layer, still in tree order.
+    for filter in ["", "backdrop-filter: blur(4px);"] {
+        let html = format!(
+            "<!doctype html><style>body{{margin:0}}</style>\
+             <div style='position:fixed;inset:0;display:flex;align-items:center;justify-content:center'>\
+             <div id=bg style='position:absolute;inset:0;background:rgb(0 0 0/.4);{filter}'></div>\
+             <form id=dlg style='position:relative;width:200px;height:100px;background:#fff'><input id=i></form></div>"
+        );
+        let p = render(&html);
+        let hit = super::hit::hit_test(&p.tree, &p.styles, 200, 150);
+        let dlg = p.doc.by_id("dlg")[0];
+        let input = p.doc.by_id("i")[0];
+        assert!(
+            hit == Some(dlg) || hit == Some(input),
+            "{filter:?}: hit {hit:?}, not the dialog"
+        );
+    }
+}

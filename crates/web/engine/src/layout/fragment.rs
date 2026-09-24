@@ -209,6 +209,55 @@ pub struct FragmentTree {
     pub content_height: Au,
     pub viewport_width: Au,
     pub viewport_height: Au,
+    /// Where each node of the laid-out document sits in tree order, so painting
+    /// order (and hit testing, which has no document) can sort a stacking layer.
+    pub doc_order: DocOrder,
+}
+
+/// Each node's preorder index and the index of its last descendant, by `NodeId`,
+/// for the document a tree was laid out from; empty for a hand-built tree.
+#[derive(Clone, Default, PartialEq, Eq)]
+pub struct DocOrder(Vec<(u32, u32)>);
+
+impl DocOrder {
+    const NONE: (u32, u32) = (u32::MAX, u32::MAX);
+
+    pub fn of(doc: &crate::dom::Document) -> DocOrder {
+        let mut v = vec![Self::NONE; doc.len()];
+        let order: Vec<NodeId> = doc.descendants(crate::dom::Document::ROOT).collect();
+        for (i, n) in order.iter().enumerate() {
+            if let Some(e) = v.get_mut(n.0 as usize) {
+                *e = (i as u32, i as u32);
+            }
+        }
+        // Reverse preorder meets every descendant before its ancestor.
+        for n in order.iter().rev() {
+            let end = v[n.0 as usize].1;
+            if let Some(p) = doc.parent(*n) {
+                let e = &mut v[p.0 as usize];
+                e.1 = e.1.max(end);
+            }
+        }
+        DocOrder(v)
+    }
+
+    /// `(start, end)` of a node, or `None` when it was not in the document.
+    pub fn get(&self, n: NodeId) -> Option<(u32, u32)> {
+        self.0
+            .get(n.0 as usize)
+            .copied()
+            .filter(|e| *e != Self::NONE)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl std::fmt::Debug for DocOrder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "DocOrder({} nodes)", self.0.len())
+    }
 }
 
 impl FragmentTree {

@@ -102,6 +102,7 @@ fn tree(root: Fragment) -> FragmentTree {
         content_height: h,
         viewport_width: w,
         viewport_height: h,
+        doc_order: Default::default(),
     }
 }
 
@@ -2119,6 +2120,7 @@ fn the_root_scroll_offset_is_applied_once() {
         content_height: au(1000),
         viewport_width: au(200),
         viewport_height: au(200),
+        doc_order: Default::default(),
     };
     let ctx = PaintContext {
         scroll: crate::geom::Point {
