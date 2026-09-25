@@ -1747,7 +1747,7 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
                 for c in ch {
                     kids.push(self.emit(c, cx, cy, total, inner_x));
                 }
-                f.children = kids;
+                f.children = kids.into();
                 let off = block::relative_offset(s, &self.cb);
                 f.rect.origin.x += off.x;
                 f.rect.origin.y += off.y;

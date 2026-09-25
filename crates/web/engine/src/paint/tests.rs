@@ -63,7 +63,7 @@ fn bordered(n: u32, r: Rect, b: Edges) -> Fragment {
 
 fn line(r: Rect, children: Vec<Fragment>) -> Fragment {
     let mut f = Fragment::new(FragmentKind::Line, r);
-    f.children = children;
+    f.children = children.into();
     f
 }
 
@@ -178,10 +178,10 @@ fn appendix_e_order_within_one_stacking_context() {
     f.is_float = true;
     let a = boxf(2, rect(0, 20, 100, 20));
     let mut i = inline_box(7, rect(0, 0, 50, 20), true, true);
-    i.children = vec![text_run(7, None, "hi", rect(0, 0, 20, 20), 16)];
+    i.children = vec![text_run(7, None, "hi", rect(0, 0, 20, 20), 16)].into();
     let l = line(rect(0, 40, 200, 20), vec![i]);
     // Tree order deliberately puts the later-painted things first.
-    root.children = vec![z, p, l, f, n, a];
+    root.children = vec![z, p, l, f, n, a].into();
     let t = tree(root);
     let scene = paint_no_doc(&styles, &t);
     assert_eq!(
@@ -220,7 +220,7 @@ fn z_index_sorts_contexts_and_keeps_tree_order_for_ties() {
         b.z_index = z;
         b
     };
-    root.children = vec![mk(2, 3), mk(3, -1), mk(4, 1), mk(5, -2), mk(6, 1)];
+    root.children = vec![mk(2, 3), mk(3, -1), mk(4, 1), mk(5, -2), mk(6, 1)].into();
     let scene = paint_no_doc(&styles, &tree(root));
     assert_eq!(backgrounds(&scene), vec![1, 5, 3, 4, 6, 2]);
 }
@@ -240,8 +240,8 @@ fn floats_paint_before_inline_content_even_when_later_in_tree() {
     f.is_float = true;
     let mut nested = boxf(3, rect(0, 0, 10, 10));
     nested.is_float = true;
-    f.children = vec![nested];
-    root.children = vec![l, f];
+    f.children = vec![nested].into();
+    root.children = vec![l, f].into();
     let scene = paint_no_doc(&styles, &tree(root));
     let order = painted(&scene);
     let float_bg = order
@@ -282,7 +282,7 @@ fn body_background_propagates_to_the_canvas() {
         });
     });
     let mut root = boxf(html.0, rect(0, 0, 100, 100));
-    root.children = vec![bordered(body.0, rect(8, 8, 84, 84), Edges::uniform(au(2)))];
+    root.children = vec![bordered(body.0, rect(8, 8, 84, 84), Edges::uniform(au(2)))].into();
     let t = tree(root);
     let scene = paint(
         &doc,
@@ -329,7 +329,7 @@ fn border_scene(f: impl FnOnce(&mut ComputedStyle)) -> Scene {
     set(&mut styles, 1, |_| {});
     set(&mut styles, 2, f);
     let mut root = boxf(1, rect(0, 0, 200, 200));
-    root.children = vec![bordered(2, rect(10, 10, 100, 50), Edges::uniform(au(2)))];
+    root.children = vec![bordered(2, rect(10, 10, 100, 50), Edges::uniform(au(2)))].into();
     paint_no_doc(&styles, &tree(root))
 }
 
@@ -525,7 +525,8 @@ fn text_is_placed_by_its_baseline_and_font_metrics() {
     root.children = vec![line(
         rect(0, 10, 200, 20),
         vec![text_run(2, None, "Hello", rect(5, 0, 40, 20), 14)],
-    )];
+    )]
+    .into();
     let scene = paint_no_doc(&styles, &tree(root));
     let t = scene
         .nodes
@@ -575,7 +576,8 @@ fn decorations_sit_at_the_baseline_and_x_height() {
     root.children = vec![line(
         rect(0, 0, 200, 30),
         vec![text_run(2, None, "abc", rect(0, 0, 40, 30), 22)],
-    )];
+    )]
+    .into();
     let scene = paint_no_doc(&styles, &tree(root));
     let find = |part: u32| scene.nodes.iter().find(|n| decode(n.id).2 == part).unwrap();
     let w = cw_scene::metrics::text_width(cw_scene::Typeface::default(), false, "abc", 20);
@@ -611,7 +613,8 @@ fn letter_spacing_paints_one_node_per_character() {
     root.children = vec![line(
         rect(0, 0, 200, 30),
         vec![text_run(2, None, "abc", rect(0, 0, 60, 30), 16)],
-    )];
+    )]
+    .into();
     let scene = paint_no_doc(&styles, &tree(root));
     let glyphs: Vec<_> = scene
         .nodes
@@ -645,7 +648,8 @@ fn selection_highlights_the_selected_bytes() {
             rect(0, 0, 100, 20),
             16,
         )],
-    )];
+    )]
+    .into();
     let ctx = PaintContext {
         selection: Some(Selection {
             start: (t, 0),
@@ -850,7 +854,7 @@ fn regions_carry_semantics_focus_and_control_state() {
         },
         rect(0, 30, 150, 24),
     );
-    field.children = vec![];
+    field.children = vec![].into();
     let btn = Fragment::new(
         FragmentKind::Box {
             source: StyleSource::Element(button),
@@ -873,8 +877,8 @@ fn regions_carry_semantics_focus_and_control_state() {
         },
         rect(0, 90, 13, 13),
     );
-    b.children = vec![line(rect(0, 0, 300, 20), vec![link]), field, btn, check];
-    root.children = vec![b];
+    b.children = vec![line(rect(0, 0, 300, 20), vec![link]), field, btn, check].into();
+    root.children = vec![b].into();
     let mut ctx = PaintContext {
         focused: Some(input),
         ..Default::default()
@@ -944,13 +948,13 @@ fn hit_testing_honours_stacking_clips_and_pointer_events() {
     set(&mut styles, 5, |_| {});
     let mut root = boxf(1, rect(0, 0, 200, 200));
     let mut clipper = boxf(2, rect(0, 0, 50, 50));
-    clipper.children = vec![boxf(3, rect(0, 0, 100, 100))];
+    clipper.children = vec![boxf(3, rect(0, 0, 100, 100))].into();
     let inert = boxf(4, rect(100, 100, 50, 50));
     let mut top = boxf(5, rect(0, 0, 30, 30));
     top.establishes_stacking_context = true;
     top.is_positioned = true;
     top.z_index = 5;
-    root.children = vec![clipper, inert, top];
+    root.children = vec![clipper, inert, top].into();
     let t = tree(root);
     assert_eq!(hit::hit_test(&t, &styles, 40, 40), Some(NodeId(3)));
     assert_eq!(
@@ -980,7 +984,8 @@ fn text_runs_hit_their_element() {
     root.children = vec![line(
         rect(0, 0, 200, 20),
         vec![text_run(2, Some(9), "hello", rect(10, 0, 50, 20), 16)],
-    )];
+    )]
+    .into();
     let t = tree(root);
     assert_eq!(hit::hit_test(&t, &styles, 20, 10), Some(NodeId(2)));
     assert_eq!(hit::hit_test(&t, &styles, 100, 10), Some(NodeId(1)));
@@ -998,7 +1003,7 @@ fn ids_are_stable_across_paints_and_unrelated_edits() {
         if extra {
             kids.insert(0, boxf(4, rect(0, 100, 50, 50)));
         }
-        root.children = kids;
+        root.children = kids.into();
         tree(root)
     };
     let a = paint_no_doc(&styles, &build(false));
@@ -1035,7 +1040,8 @@ fn ids_are_stable_across_paints_and_unrelated_edits() {
             rect(0, 20, 200, 20),
             vec![inline_box(2, rect(0, 0, 50, 20), false, true)],
         ),
-    ];
+    ]
+    .into();
     let s = paint_no_doc(&styles, &tree(root));
     let ords: Vec<u32> = s
         .nodes
@@ -1067,9 +1073,9 @@ fn opacity_groups_clips_and_visibility() {
     let mut root = boxf(1, rect(0, 0, 200, 200));
     let mut g = boxf(2, rect(10, 10, 100, 100));
     let mut hidden = boxf(3, rect(0, 0, 150, 150));
-    hidden.children = vec![boxf(4, rect(5, 5, 20, 20))];
-    g.children = vec![hidden];
-    root.children = vec![g];
+    hidden.children = vec![boxf(4, rect(5, 5, 20, 20))].into();
+    g.children = vec![hidden].into();
+    root.children = vec![g].into();
     let scene = paint_no_doc(&styles, &tree(root));
     let bg = backgrounds(&scene);
     assert!(
@@ -1125,8 +1131,8 @@ fn transforms_compose_about_the_origin() {
     });
     let mut root = boxf(1, rect(0, 0, 200, 200));
     let mut moved = boxf(2, rect(20, 20, 40, 40));
-    moved.children = vec![boxf(4, rect(0, 0, 10, 10))];
-    root.children = vec![moved, boxf(3, rect(100, 100, 40, 40))];
+    moved.children = vec![boxf(4, rect(0, 0, 10, 10))].into();
+    root.children = vec![moved, boxf(3, rect(100, 100, 40, 40))].into();
     let scene = paint_no_doc(&styles, &tree(root));
     // A transform moves the element's own background and its children alike.
     let moved_bg = scene
@@ -1226,10 +1232,10 @@ fn scroll_areas_are_registered_for_the_root_and_scroll_containers() {
         },
         rect(10, 10, 100, 100),
     );
-    list.children = vec![boxf(item.0, rect(0, 0, 90, 400))];
+    list.children = vec![boxf(item.0, rect(0, 0, 90, 400))].into();
     set(&mut styles, item.0, |s| s.background_color = BLUE);
-    b.children = vec![list];
-    root.children = vec![b];
+    b.children = vec![list].into();
+    root.children = vec![b].into();
     let mut t = tree(root);
     t.content_height = au(600);
     let mut ctx = PaintContext {
@@ -1375,7 +1381,7 @@ fn gradients_rasterise_deterministically_and_cache() {
     set(&mut styles, 2, |s| s.background = vec![layer.clone()]);
     set(&mut styles, 3, |s| s.background = vec![layer]);
     let mut root = boxf(1, rect(0, 0, 200, 200));
-    root.children = vec![boxf(2, rect(0, 0, 50, 100)), boxf(3, rect(100, 0, 50, 100))];
+    root.children = vec![boxf(2, rect(0, 0, 50, 100)), boxf(3, rect(100, 0, 50, 100))].into();
     let t = tree(root);
     let ctx = PaintContext::default();
     let mut p = Painter::new(None, &styles, &t, viewport(200, 200), &ctx);
@@ -1441,7 +1447,8 @@ fn background_images_tile_scale_and_fix() {
         boxf(3, rect(50, 0, 40, 20)),
         boxf(4, rect(0, 100, 30, 30)),
         boxf(5, rect(100, 100, 45, 30)),
-    ];
+    ]
+    .into();
     let scene = paint_fragments(&styles, &tree(root), viewport(200, 200), &ctx);
     let of = |n: u32| {
         scene
@@ -1543,7 +1550,8 @@ fn replaced_images_and_placeholders() {
             rect(100, 100, 100, 60),
         ),
         img(5, "a.png", rect(200, 0, 50, 50)),
-    ];
+    ]
+    .into();
     let scene = paint_fragments(&styles, &tree(root), viewport(300, 300), &ctx);
     let contain = scene
         .nodes
@@ -1694,7 +1702,8 @@ fn controls_draw_from_dom_state() {
         ctl(pw, ControlKind::Password, rect(0, 150, 100, 24)),
         ctl(empty, ControlKind::TextInput, rect(0, 180, 100, 24)),
         ctl(submit, ControlKind::Submit, rect(0, 210, 100, 24)),
-    ];
+    ]
+    .into();
     let scene = paint(
         &d,
         &styles,
@@ -1800,7 +1809,8 @@ fn inline_fragments_open_their_cut_ends() {
     root.children = vec![
         line(rect(0, 0, 200, 20), vec![a]),
         line(rect(0, 20, 200, 20), vec![b]),
-    ];
+    ]
+    .into();
     let scene = paint_no_doc(&styles, &tree(root));
     let parts_of = |ord: u32| {
         scene
@@ -1843,7 +1853,7 @@ fn fixed_boxes_ignore_the_scroll_offset() {
     let mut fixed = boxf(2, rect(0, 0, 50, 50));
     fixed.is_positioned = true;
     fixed.establishes_stacking_context = true;
-    root.children = vec![boxf(3, rect(0, 100, 50, 50)), fixed];
+    root.children = vec![boxf(3, rect(0, 100, 50, 50)), fixed].into();
     let ctx = PaintContext {
         scroll: crate::geom::Point {
             x: Au::ZERO,
@@ -1978,12 +1988,13 @@ fn golden_composite_digest() {
     let mut root = boxf(html.0, rect(0, 0, 320, 240));
     let mut b = boxf(body.0, rect(8, 8, 304, 224));
     let mut link = inline_box(a.0, rect(0, 0, 60, 18), true, true);
-    link.children = vec![text_run(a.0, None, "Go home", rect(0, 0, 60, 18), 14)];
+    link.children = vec![text_run(a.0, None, "Go home", rect(0, 0, 60, 18), 14)].into();
     let mut heading = boxf(h2.0, rect(0, 20, 304, 30));
     heading.children = vec![line(
         rect(0, 0, 304, 30),
         vec![text_run(h2.0, None, "Title", rect(0, 0, 70, 30), 24)],
-    )];
+    )]
+    .into();
     let field = ctl(
         input,
         ControlKind::TextInput,
@@ -2030,8 +2041,9 @@ fn golden_composite_digest() {
         check,
         menu,
         popup,
-    ];
-    root.children = vec![b];
+    ]
+    .into();
+    root.children = vec![b].into();
     let ctx = PaintContext {
         focused: Some(input),
         ..Default::default()
@@ -2113,7 +2125,7 @@ fn the_root_scroll_offset_is_applied_once() {
         rect(0, 0, 200, 200),
     );
     root.establishes_stacking_context = true;
-    root.children = vec![boxf(1, rect(0, 150, 50, 20))];
+    root.children = vec![boxf(1, rect(0, 150, 50, 20))].into();
     let t = FragmentTree {
         root,
         content_width: au(200),
@@ -2156,10 +2168,10 @@ fn a_positioned_box_with_z_auto_hands_its_positioned_children_to_the_enclosing_c
     n.is_positioned = true;
     n.establishes_stacking_context = true;
     n.z_index = -1;
-    p.children = vec![a, n];
+    p.children = vec![a, n].into();
     let mut q = boxf(5, rect(0, 0, 10, 10));
     q.is_positioned = true;
-    root.children = vec![p, q];
+    root.children = vec![p, q].into();
     let scene = paint_no_doc(&styles, &tree(root));
     assert_eq!(backgrounds(&scene), vec![1, 4, 2, 3, 5]);
 }
@@ -2214,7 +2226,8 @@ fn path_points_are_relative_to_the_node_bounds() {
     root.children = vec![
         bordered(2, rect(100, 50, 22, 22), Edges::uniform(au(3))),
         boxf(3, rect(200, 150, 40, 20)),
-    ];
+    ]
+    .into();
     let scene = paint_no_doc(&styles, &tree(root));
     let paths: Vec<_> = scene
         .nodes

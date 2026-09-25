@@ -137,13 +137,75 @@ pub struct ScrollInfo {
     pub shows_y_bar: bool,
 }
 
+/// A fragment's children, shared between copies of the fragment until one of them
+/// changes its list (copy on write): the layout memo hands out copies of whole
+/// laid-out subtrees, which would otherwise be copied fragment by fragment.
+#[derive(Clone, Default, PartialEq, Eq)]
+pub struct FragmentList(std::rc::Rc<Vec<Fragment>>);
+
+impl FragmentList {
+    /// The children as a vector of their own (copied only when shared).
+    pub fn into_vec(self) -> Vec<Fragment> {
+        std::rc::Rc::try_unwrap(self.0).unwrap_or_else(|rc| (*rc).clone())
+    }
+}
+
+impl std::ops::Deref for FragmentList {
+    type Target = Vec<Fragment>;
+    fn deref(&self) -> &Vec<Fragment> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for FragmentList {
+    fn deref_mut(&mut self) -> &mut Vec<Fragment> {
+        std::rc::Rc::make_mut(&mut self.0)
+    }
+}
+
+impl From<Vec<Fragment>> for FragmentList {
+    fn from(v: Vec<Fragment>) -> FragmentList {
+        FragmentList(std::rc::Rc::new(v))
+    }
+}
+
+impl IntoIterator for FragmentList {
+    type Item = Fragment;
+    type IntoIter = std::vec::IntoIter<Fragment>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.into_vec().into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a FragmentList {
+    type Item = &'a Fragment;
+    type IntoIter = std::slice::Iter<'a, Fragment>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a mut FragmentList {
+    type Item = &'a mut Fragment;
+    type IntoIter = std::slice::IterMut<'a, Fragment>;
+    fn into_iter(self) -> Self::IntoIter {
+        std::rc::Rc::make_mut(&mut self.0).iter_mut()
+    }
+}
+
+impl std::fmt::Debug for FragmentList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Fragment {
     pub kind: FragmentKind,
     /// Border-box rect relative to the parent fragment's border-box origin. For
     /// positioned fragments this already includes the positioning offset.
     pub rect: Rect,
-    pub children: Vec<Fragment>,
+    pub children: FragmentList,
     /// Painting order hints: fragments are painted in tree order except that paint
     /// sorts stacking contexts by `z_index` and paints floats and positioned boxes in
     /// the CSS 2.1 Appendix E order. Layout marks what it knows.
@@ -171,7 +233,7 @@ impl Fragment {
         Fragment {
             kind,
             rect,
-            children: Vec::new(),
+            children: FragmentList::default(),
             establishes_stacking_context: false,
             z_index: 0,
             is_float: false,
