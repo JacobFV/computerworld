@@ -1672,13 +1672,7 @@ pub fn replaced_fragment(
 /// on its fragment, as fragments that are laid out but not painted, so client
 /// rects and hit-free geometry queries find them (`crate::svg` draws the content).
 fn svg_descendants(ctx: &LayoutContext, svg: NodeId, f: &mut Fragment, size: Size, content: Point) {
-    let built = crate::svg::build(
-        ctx.doc,
-        ctx.styles,
-        svg,
-        size.width.0 as f64 / 64.0,
-        size.height.0 as f64 / 64.0,
-    );
+    let built = svg_boxes(ctx, svg, size);
     let au = |v: f64| Au((v * 64.0).round() as i32);
     let rect = |b: crate::svg::BoxF| {
         Rect::new(
@@ -1723,6 +1717,55 @@ fn svg_descendants(ctx: &LayoutContext, svg: NodeId, f: &mut Fragment, size: Siz
         c.hidden_for_paint = true;
         f.children.push(c);
     }
+}
+
+/// The boxes of an inline svg's elements and text at a content size, as
+/// `svg::build` finds them (parsing every path), remembered per thread under a
+/// digest of the subtree, its nodes' layout epochs and the size: an icon laid out
+/// again and again is parsed once.
+fn svg_boxes(ctx: &LayoutContext, svg: NodeId, size: Size) -> std::rc::Rc<SvgBoxes> {
+    use std::hash::Hash;
+    thread_local! {
+        static BOXES: std::cell::RefCell<
+            std::collections::HashMap<crate::paint::replaced::SvgKey, std::rc::Rc<SvgBoxes>>,
+        > = std::cell::RefCell::new(std::collections::HashMap::new());
+    }
+    let key = crate::paint::replaced::svg_digest(
+        ctx.doc,
+        svg,
+        &|n, h| ctx.styles.epoch(n).hash(h),
+        &|h| (size.width, size.height).hash(h),
+    );
+    if let Some(b) = key.and_then(|k| BOXES.with(|m| m.borrow().get(&k).cloned())) {
+        return b;
+    }
+    let built = crate::svg::build(
+        ctx.doc,
+        ctx.styles,
+        svg,
+        size.width.0 as f64 / 64.0,
+        size.height.0 as f64 / 64.0,
+    );
+    let b = std::rc::Rc::new(SvgBoxes {
+        boxes: built.boxes,
+        text_boxes: built.text_boxes,
+    });
+    if let Some(k) = key {
+        BOXES.with(|m| {
+            let mut m = m.borrow_mut();
+            if m.len() >= 1024 {
+                m.clear();
+            }
+            m.insert(k, b.clone());
+        });
+    }
+    b
+}
+
+/// What layout reads of `svg::Built`.
+struct SvgBoxes {
+    boxes: Vec<(NodeId, crate::svg::BoxF)>,
+    text_boxes: Vec<(NodeId, crate::svg::BoxF)>,
 }
 
 /// The marker box of a list item: text in the marker font, baseline-aligned with the

@@ -235,7 +235,7 @@ fn paint_svg(p: &mut Painter, key: (NodeId, u32), state: &State, content: Rect, 
 
 /// Rasterised inline `<svg>`s, by everything that decides their pixels (see
 /// `svg_cache_key`): an icon repainted frame after frame is rasterised once.
-type SvgKey = (u64, u64);
+pub(crate) type SvgKey = (u64, u64);
 const SVG_CACHE_ENTRIES: usize = 512;
 thread_local! {
     static SVG_LAYERS: std::cell::RefCell<HashMap<SvgKey, Rc<Vec<crate::svg::Layer>>>> =
@@ -254,12 +254,32 @@ fn svg_cache_key(
     geometry: [f64; 4],
     r: SRect,
 ) -> Option<SvgKey> {
+    use std::hash::Hash;
+    svg_digest(doc, svg, &|n, h| styles.get(n).hash(h), &|h| {
+        for g in geometry {
+            g.to_bits().hash(h);
+        }
+        (r.width, r.height).hash(h);
+    })
+}
+
+/// A 128-bit digest of an inline svg's subtree (structure, attributes, text, and
+/// whatever `style` hashes of each node's style) and of what `extra` adds. `None`
+/// when the subtree references an element (`url(#...)`, `href="#..."`) that does
+/// not resolve inside it, whose content the digest would not cover.
+pub(crate) fn svg_digest(
+    doc: &crate::dom::Document,
+    svg: NodeId,
+    style: &dyn Fn(NodeId, &mut std::collections::hash_map::DefaultHasher),
+    extra: &dyn Fn(&mut std::collections::hash_map::DefaultHasher),
+) -> Option<SvgKey> {
     use std::hash::{Hash, Hasher};
+    type H = std::collections::hash_map::DefaultHasher;
     fn visit<'d>(
         doc: &'d crate::dom::Document,
-        styles: &crate::style::StyleSet,
+        style: &dyn Fn(NodeId, &mut H),
         n: NodeId,
-        hs: &mut [std::collections::hash_map::DefaultHasher; 2],
+        hs: &mut [H; 2],
         refs: &mut Vec<&'d str>,
     ) -> Option<()> {
         match doc.kind(n) {
@@ -284,14 +304,14 @@ fn svg_cache_key(
                         a.name.hash(h);
                         a.value.hash(h);
                     }
-                    styles.get(n).hash(h);
+                    style(n, h);
                 }
             }
             crate::dom::NodeKind::Text(t) => {
                 for h in hs.iter_mut() {
                     2u8.hash(h);
                     t.hash(h);
-                    styles.get(n).hash(h);
+                    style(n, h);
                 }
             }
             _ => {
@@ -301,21 +321,18 @@ fn svg_cache_key(
             }
         }
         for c in doc.children(n) {
-            visit(doc, styles, c, hs, refs)?;
+            visit(doc, style, c, hs, refs)?;
         }
         for h in hs.iter_mut() {
             4u8.hash(h);
         }
         Some(())
     }
-    let mut hs = [
-        std::collections::hash_map::DefaultHasher::new(),
-        std::collections::hash_map::DefaultHasher::new(),
-    ];
+    let mut hs = [H::new(), H::new()];
     // Two digests of the same input, the second salted: a 128-bit key.
     0xC0FFEEu32.hash(&mut hs[1]);
     let mut refs = Vec::new();
-    visit(doc, styles, svg, &mut hs, &mut refs)?;
+    visit(doc, style, svg, &mut hs, &mut refs)?;
     for id in refs {
         let target = *doc.by_id(id).first()?;
         if target != svg && !doc.ancestors(target).any(|a| a == svg) {
@@ -323,10 +340,7 @@ fn svg_cache_key(
         }
     }
     for h in hs.iter_mut() {
-        for g in geometry {
-            g.to_bits().hash(h);
-        }
-        (r.width, r.height).hash(h);
+        extra(h);
     }
     Some((hs[0].finish(), hs[1].finish()))
 }
