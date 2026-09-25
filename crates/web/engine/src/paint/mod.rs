@@ -308,7 +308,7 @@ pub(crate) struct Painter<'a> {
     pub hits: Vec<HitItem>,
     /// `(node, ordinal)` of every fragment, keyed by its address, assigned in tree
     /// order before painting starts.
-    ordinals: HashMap<usize, (NodeId, u32)>,
+    ordinals: HashMap<usize, (NodeId, u32), PtrHash>,
     pub gradients: HashMap<GradientKey, Rc<Vec<u8>>>,
     initial: ComputedStyle,
     pub semantics: semantics::Tables,
@@ -367,7 +367,7 @@ impl<'a> Painter<'a> {
             background: Color::WHITE,
             hits: Vec::new(),
             hits_only: false,
-            ordinals: HashMap::new(),
+            ordinals: HashMap::default(),
             gradients: HashMap::new(),
             initial: ComputedStyle::initial(),
             semantics: semantics::Tables::default(),
@@ -375,7 +375,6 @@ impl<'a> Painter<'a> {
             parts: HashMap::new(),
             doc_order: HashMap::new(),
         };
-        p.assign_ordinals();
         if let Some(doc) = doc {
             p.semantics = semantics::Tables::build(doc);
         }
@@ -412,14 +411,17 @@ impl<'a> Painter<'a> {
     }
 
     fn assign_ordinals(&mut self) {
-        let mut counts: BTreeMap<NodeId, u32> = BTreeMap::new();
+        let mut counts: Vec<u32> = Vec::new();
         fn walk(
             f: &Fragment,
-            counts: &mut BTreeMap<NodeId, u32>,
-            out: &mut HashMap<usize, (NodeId, u32)>,
+            counts: &mut Vec<u32>,
+            out: &mut HashMap<usize, (NodeId, u32), PtrHash>,
         ) {
             if let Some(node) = id_node(f) {
-                let n = counts.entry(node).or_insert(0);
+                if counts.len() <= node.index() {
+                    counts.resize(node.index() + 1, 0);
+                }
+                let n = &mut counts[node.index()];
                 out.insert(f as *const Fragment as usize, (node, *n));
                 *n += 1;
             }
@@ -430,8 +432,12 @@ impl<'a> Painter<'a> {
         walk(&self.tree.root, &mut counts, &mut self.ordinals);
     }
 
-    /// `(node, ordinal)` of a fragment; line boxes have none.
+    /// `(node, ordinal)` of a fragment; line boxes have none. A hits-only pass
+    /// names no scene nodes, so it needs only whether there is one.
     pub fn key(&self, f: &Fragment) -> Option<(NodeId, u32)> {
+        if self.hits_only {
+            return id_node(f).map(|n| (n, 0));
+        }
         self.ordinals.get(&(f as *const Fragment as usize)).copied()
     }
 
@@ -548,6 +554,9 @@ impl<'a> Painter<'a> {
     }
 
     pub fn run(&mut self) {
+        if !self.hits_only && self.ordinals.is_empty() {
+            self.assign_ordinals();
+        }
         let state = State::root(self.viewport);
         display_list::paint_root(self, &state);
     }
@@ -593,6 +602,27 @@ fn id_node(f: &Fragment) -> Option<NodeId> {
         _ => f.source().map(StyleSource::node),
     }
 }
+
+/// A hasher for keys that are addresses: one multiply, where SipHash would do
+/// dozens of rounds per fragment.
+#[derive(Clone, Copy, Default)]
+pub(crate) struct PtrHasher(u64);
+
+impl std::hash::Hasher for PtrHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+    fn write(&mut self, bytes: &[u8]) {
+        for b in bytes {
+            self.0 = (self.0.rotate_left(5) ^ u64::from(*b)).wrapping_mul(0x517c_c1b7_2722_0a95);
+        }
+    }
+    fn write_usize(&mut self, n: usize) {
+        self.0 = (self.0.rotate_left(5) ^ n as u64).wrapping_mul(0x517c_c1b7_2722_0a95);
+    }
+}
+
+pub(crate) type PtrHash = std::hash::BuildHasherDefault<PtrHasher>;
 
 /// Absolute border-box rect of a fragment in scene pixels.
 pub(crate) fn abs_rect(state: &State, f: &Fragment) -> Rect {
