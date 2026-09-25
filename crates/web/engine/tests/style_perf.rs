@@ -140,6 +140,12 @@ mod perf {
                     repeat: false,
                 });
             }
+            "focus" => {
+                // What Playwright's `page.focus` does: the element's own focus().
+                let selector = step["selector"].as_str().unwrap();
+                r.eval(&format!("document.querySelector({selector:?}).focus()"))
+                    .unwrap_or_else(|e| panic!("{selector}: {e}"));
+            }
             other => panic!("unknown action {other:?}"),
         }
         settle(r, 20);

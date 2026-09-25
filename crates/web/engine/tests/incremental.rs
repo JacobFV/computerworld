@@ -98,6 +98,12 @@ mod cases {
                     repeat: false,
                 });
             }
+            "focus" => {
+                // What Playwright's `page.focus` does: the element's own focus().
+                let selector = step["selector"].as_str().unwrap();
+                r.eval(&format!("document.querySelector({selector:?}).focus()"))
+                    .unwrap_or_else(|e| panic!("{selector}: {e}"));
+            }
             other => panic!("unknown action {other:?}"),
         }
         settle(r, 20);
@@ -195,5 +201,20 @@ mod cases {
     #[test]
     fn app_shop() {
         run("app-shop");
+    }
+
+    #[test]
+    fn app_inbox() {
+        run("app-inbox");
+    }
+
+    #[test]
+    fn app_calendar() {
+        run("app-calendar");
+    }
+
+    #[test]
+    fn app_music() {
+        run("app-music");
     }
 }
