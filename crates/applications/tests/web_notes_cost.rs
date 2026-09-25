@@ -341,3 +341,51 @@ fn saved_mid_request() {
         );
     }
 }
+
+/// What a React window's journal costs as it grows, and how often the host folds it
+/// back into declared state: keystrokes into Notes on the VM.
+#[test]
+#[ignore]
+fn journal_growth() {
+    use cw_applications::web_app::runtime::{AppRuntime, Boot, JsRuntime};
+    use cw_applications::web_app::{definition, env_for};
+    let entry = definition("notes").unwrap();
+    let cw_sdk::WebSource::Compiled { script, style, .. } = &entry.app.source else {
+        panic!("Notes ships its IR");
+    };
+    let env = env_for(DesktopTheme::Macos, 900, 600);
+    let mut rt = JsRuntime::boot(
+        style,
+        script,
+        true,
+        &Boot {
+            kind: "notes",
+            argument: FOLDER,
+            state: Some(
+                &serde_json::json!({"folder": FOLDER, "entries": ["a.txt"], "open": "a.txt",
+                "text": "", "dirty": false, "problem": null, "editing": true}),
+            ),
+            env: &env,
+        },
+        0,
+    );
+    let _ = rt.drain();
+    if std::env::var("NOJOURNAL").is_ok() {
+        rt.set_journaling(false);
+    }
+    let (len0, heap0) = (rt.weight(), LIVE.load(Ordering::Relaxed));
+    let t = Instant::now();
+    for _ in 0..1000 {
+        rt.dispatch(cw_web::script::UiEvent::TypeText { text: "a".into() }, 0);
+        let _ = rt.drain();
+    }
+    let per = t.elapsed() / 1000;
+    let (len1, heap1) = (rt.weight(), LIVE.load(Ordering::Relaxed));
+    println!(
+        "1000 keystrokes: journal {len0} -> {len1} entries ({} per keystroke), heap {} bytes more \
+         ({} per entry), {per:?} per keystroke",
+        (len1 - len0) / 1000,
+        heap1 - heap0,
+        (heap1 - heap0) / (len1 - len0).max(1) as isize
+    );
+}

@@ -24,8 +24,9 @@
 //! it last saw, and a handle the live runtime has moved on from boots the same code
 //! with its own state the first time it is used. A restore boot is silent: requests it
 //! makes are dropped, so a restored window and the live one it was taken from behave
-//! alike. The live runtime is also rebooted from state once its journal has grown past
-//! `COMPACT_AFTER` inputs, so a long session costs no more than a short one.
+//! alike. A runtime on the JS VM is also rebooted from state once its journal holds
+//! `COMPACT_AFTER` entries (and no request is outstanding), so a long session costs
+//! no more than a short one.
 
 mod catalog;
 mod paint;
@@ -46,8 +47,14 @@ use crate::AppEffect;
 pub use catalog::{define, get as definition};
 use runtime::{AppRuntime, Boot, Chrome, Env, JsRuntime, Outbox, Reply, Request, UiRuntime};
 
-/// Inputs a live runtime takes before it is rebooted from declared state.
-pub const COMPACT_AFTER: usize = 4000;
+/// Journal entries (`Realm::journal_len`: inputs and host answers) a runtime on the
+/// JS VM holds before it is rebooted from declared state. The journal stays on,
+/// since it is what lets a window saved with a request outstanding restore exactly,
+/// and it is small (about 108 bytes an entry, five entries a keystroke into Notes);
+/// what the reboot really bounds is the VM heap, which grows about 41 KB a keystroke
+/// with journaling on or off. 2,000 entries is about 400 keystrokes, about 16 MB,
+/// for one reboot of about 10 ms.
+pub const COMPACT_AFTER: usize = 2000;
 /// Console lines a window keeps.
 const CONSOLE_LIMIT: usize = 200;
 /// Rounds of immediately answered requests one entry may chain.

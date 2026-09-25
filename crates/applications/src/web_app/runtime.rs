@@ -25,7 +25,8 @@ pub const STEP_BUDGET: u64 = 30_000_000;
 /// rendered before the host paints. The browser tab's `SETTLE_MS`, for the same reason.
 pub const SETTLE_MS: u32 = 20;
 
-/// The reserved key space of the channel (see `bridge.js`).
+/// The storage keys cw-ui reaches the host's `boot`, `now` and `out` through; the JS bridge
+/// calls them with `__cw_host`.
 const KEY: &str = "\u{1}cw:";
 
 /// One thing the application asked of its machine.
@@ -205,6 +206,27 @@ struct Channel {
     seed: u64,
 }
 
+impl Channel {
+    /// The answer to `boot` or `now`.
+    fn read(&self, name: &str) -> Option<String> {
+        match name {
+            "boot" => Some(self.boot.clone()),
+            "now" => Some(self.now_us.to_string()),
+            _ => None,
+        }
+    }
+    /// A message the application sent with `out`.
+    fn take(&mut self, message: &str) {
+        match serde_json::from_str::<Message>(message) {
+            Ok(Message::Request { id, request }) => self.outbox.requests.push((id, request)),
+            Ok(Message::State { value }) => self.outbox.state = Some(value),
+            Ok(Message::Refuse { message }) => self.outbox.refusal = Some(message),
+            Ok(Message::Chrome { chrome }) => self.outbox.chrome = Some(chrome),
+            Err(e) => self.outbox.logs.push(format!("error: cw: {e}")),
+        }
+    }
+}
+
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     match m.lock() {
         Ok(g) => g,
@@ -233,14 +255,21 @@ impl ScriptHostDocument for Host {
     fn viewport(&self) -> Viewport {
         lock(&self.channel).viewport
     }
+    fn host_call(&mut self, name: &str, payload: &str) -> Result<String, String> {
+        match name {
+            "boot" | "now" => Ok(lock(&self.channel).read(name).unwrap_or_default()),
+            "out" => {
+                lock(&self.channel).take(payload);
+                Ok(String::new())
+            }
+            other => Err(format!("the web-app host does not answer `{other}`")),
+        }
+    }
     fn storage_get(&self, area: StorageArea, key: &str) -> Option<String> {
         let c = lock(&self.channel);
+        // cw-ui reaches the same three names through the storage keys.
         if let Some(reserved) = key.strip_prefix(KEY) {
-            return match reserved {
-                "boot" => Some(c.boot.clone()),
-                "now" => Some(c.now_us.to_string()),
-                _ => None,
-            };
+            return c.read(reserved);
         }
         match area {
             StorageArea::Local => c.local.get(key).cloned(),
@@ -250,13 +279,7 @@ impl ScriptHostDocument for Host {
     fn storage_set(&mut self, area: StorageArea, key: &str, value: &str) {
         let mut c = lock(&self.channel);
         if key == "\u{1}cw:out" {
-            match serde_json::from_str::<Message>(value) {
-                Ok(Message::Request { id, request }) => c.outbox.requests.push((id, request)),
-                Ok(Message::State { value }) => c.outbox.state = Some(value),
-                Ok(Message::Refuse { message }) => c.outbox.refusal = Some(message),
-                Ok(Message::Chrome { chrome }) => c.outbox.chrome = Some(chrome),
-                Err(e) => c.outbox.logs.push(format!("error: cw: {e}")),
-            }
+            c.take(value);
             return;
         }
         if key.starts_with(KEY) {
@@ -403,6 +426,12 @@ impl JsRuntime {
         // What the replay said again was said before the snapshot.
         lock(&channel).outbox = Outbox::default();
         Ok(Self { realm, channel })
+    }
+
+    /// Whether the realm journals its inputs and host answers (see
+    /// `Realm::set_journaling`).
+    pub fn set_journaling(&mut self, on: bool) {
+        self.realm.set_journaling(on);
     }
 
     fn at(&mut self, now_us: u64) {

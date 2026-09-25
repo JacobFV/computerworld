@@ -324,21 +324,28 @@ fn a_copy_left_behind_keeps_its_own_state() {
 #[test]
 fn a_long_session_is_compacted_from_declared_state() {
     let mut disk = disk_with(&["a.txt"]);
-    let mut app = web_notes(&mut disk, DesktopTheme::Macos);
+    let (mut app, effects) =
+        WebApp::launch(react_notes(), FOLDER, 1, 0, DesktopTheme::Macos).unwrap();
+    disk.web(&mut app, effects).unwrap();
     let effects = app.click(1, "notes:open:a.txt", 0).unwrap();
     disk.web(&mut app, effects).unwrap();
-    for _ in 0..(COMPACT_AFTER / 2 + 10) {
-        app.text_effects(1, "x").unwrap();
-    }
-    let weight = {
+    let weight = |app: &WebApp| {
         let local = lock(&app.local);
         let cell = lock(&local.cell);
         cell.runtime.as_ref().map(|r| r.weight())
     };
-    assert!(weight.is_none_or(|w| w < COMPACT_AFTER), "{weight:?}");
+    let mut folded = false;
+    let typed = COMPACT_AFTER / 2;
+    for _ in 0..typed {
+        app.text_effects(1, "x").unwrap();
+        let w = weight(&app);
+        assert!(w.is_none_or(|w| w <= COMPACT_AFTER + 64), "{w:?}");
+        folded |= w.is_none();
+    }
+    assert!(folded, "the journal was folded into declared state");
     assert_eq!(
         app.state()["text"].as_str().unwrap().len(),
-        "text of a.txt".len() + COMPACT_AFTER / 2 + 10
+        "text of a.txt".len() + typed
     );
     assert_eq!(app.text_field().as_deref(), Some("notes:body"));
 }

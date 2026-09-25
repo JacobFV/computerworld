@@ -2,16 +2,15 @@
 // host before the application's own script; see `docs/custom-application.md` and
 // `crates/applications/web/types/cw.d.ts`, which types every member for app authors.
 //
-// The host and this file speak over a reserved key space of `localStorage`, the one
-// synchronous channel a document already has into its host: the boot facts and the
-// world clock are read from it, and requests, state and window facts are written to
-// it. Nothing an application stores under its own keys can collide with it.
+// It speaks to the host through `__cw_host(name, payload)`, the realm's synchronous
+// call into its embedder: `boot` answers the boot facts, `now` the world clock, and
+// `out` takes a message (a request, the declared state, a refusal, window facts).
+// cw-ui implements the same three names natively for compiled apps.
 (() => {
   'use strict';
-  const KEY = '\u0001cw:';
-  const store = globalThis.localStorage;
-  const boot = JSON.parse(store.getItem(KEY + 'boot'));
-  const send = (message) => store.setItem(KEY + 'out', JSON.stringify(message));
+  const call = globalThis.__cw_host;
+  const boot = JSON.parse(call('boot', ''));
+  const send = (message) => call('out', JSON.stringify(message));
   let env = boot.env;
   let state = boot.state;
   let next = 1;
@@ -74,7 +73,7 @@
       return () => listeners.delete(listener);
     },
     now() {
-      return Number(store.getItem(KEY + 'now'));
+      return Number(call('now', ''));
     },
     state: Object.freeze({
       get: () => state,
