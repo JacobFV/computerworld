@@ -1,12 +1,12 @@
-split test, compiled alone (no islands): 149 projects, 5027 diagnostics
-modules        77 / 530    14.5%
-functions     169 / 770    21.9%
-components     77 / 594    13.0%
+split test, compiled alone (no islands): 149 projects, 4863 diagnostics
+modules        84 / 530    15.8%
+functions     177 / 770    23.0%
+components     85 / 594    14.3%
 apps            0 / 39      0.0%
 functions blocked, by cause:
-    567  value imported from a package
-     27  value imported from a module that does not resolve
-     15  `new` is outside the compiled subset
+    560  value imported from a package
+     25  value imported from a module that does not resolve
+     13  `new` is outside the compiled subset
      12  built-in method `toLocaleString` is outside the compiled subset
      10  this React API is outside the compiled subset
       8  method `toLocaleDateString` on Date
@@ -20,7 +20,6 @@ functions blocked, by cause:
       2  `ReactDOM` from React cannot be used as a value here
       2  `await` inside an expression is outside the compiled subset (await into a variable first)
       2  `window.history` is outside the compiled subset
-      2  property does not exist on another type
       1  `<FilterContext.Provider>` on a value of type unknown
       1  `Promise.withResolvers` is outside the compiled subset
       1  `dangerouslySetInnerHTML` is outside the compiled subset
@@ -39,11 +38,11 @@ functions blocked, by cause:
       1  unknown name `crypto`
       1  unknown name `navigator`
 diagnostics, by cause:
-   3628  value imported from a package
-   1045  import from a package
-     98  value imported from a module that does not resolve
-     72  relative import that does not resolve
-     42  `new` is outside the compiled subset
+   3545  value imported from a package
+   1013  import from a package
+     94  value imported from a module that does not resolve
+     40  `new` is outside the compiled subset
+     35  relative import that does not resolve
      22  built-in method `toLocaleString` is outside the compiled subset
      17  import of a stylesheet
      10  this React API is outside the compiled subset
@@ -55,7 +54,6 @@ diagnostics, by cause:
       5  class components are outside the compiled subset
       5  imported name the subset cannot use
       5  unknown name `window`
-      4  import of an image
       4  unknown name `module`
       3  `window.localStorage` is outside the compiled subset
       3  method `toLocaleString` on Date
@@ -64,7 +62,6 @@ diagnostics, by cause:
       2  `instanceof` of anything but a built-in class is outside the compiled subset
       2  `window.history` is outside the compiled subset
       2  method `persist` on Event
-      2  property does not exist on another type
       1  `<FilterContext.Provider>` on a value of type unknown
       1  `Promise.withResolvers` is outside the compiled subset
       1  `createRoot` outside the render call is outside the compiled subset
@@ -79,3 +76,5 @@ diagnostics, by cause:
       1  unknown name `afterAll`
       1  unknown name `afterEach`
       1  unknown name `beforeAll`
+      1  unknown name `crypto`
+      1  unknown name `navigator`

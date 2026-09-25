@@ -1,9 +1,15 @@
 //! What `cw-tsx` accepts, what it refuses (with a line and column), and that a
 //! refused module still gets its React fallback.
 
+/// What keeps the module from compiling: the diagnostics that stop the build,
+/// or those that sent its code to the island.
+fn refusals(b: &cw_tsx::Build) -> Vec<cw_tsx::Diagnostic> {
+    b.diagnostics.iter().chain(&b.outside).cloned().collect()
+}
+
 fn diags(src: &str) -> Vec<String> {
     let b = cw_tsx::build(src, "app.tsx");
-    b.diagnostics.iter().map(|d| d.to_string()).collect()
+    refusals(&b).iter().map(|d| d.to_string()).collect()
 }
 
 const HEAD: &str = "import { useState, useEffect } from 'react';\nimport { createRoot } from 'react-dom/client';\n";
@@ -16,14 +22,17 @@ fn module(body: &str) -> String {
 fn assert_refused(body: &str, line: u32, needle: &str) {
     let src = module(body);
     let b = cw_tsx::build(&src, "app.tsx");
-    assert!(b.ir.is_none(), "accepted:\n{src}");
+    assert!(
+        b.ir.is_none() || !b.island_modules.is_empty(),
+        "accepted:\n{src}"
+    );
     assert!(
         b.js.is_some(),
         "no fallback for:\n{src}\n{:?}",
         b.diagnostics
     );
     assert!(
-        b.diagnostics
+        refusals(&b)
             .iter()
             .any(|d| d.line == line && d.message.contains(needle)),
         "expected line {line}: …{needle}…, got {:?}",
@@ -208,7 +217,7 @@ fn module_errors_name_their_file() {
     ];
     let fixed: Vec<(&str, &str)> = fixed.iter().map(|(p, t)| (*p, t.as_str())).collect();
     let b = cw_tsx::build_modules(&load_virtual(&fixed, "main.tsx").unwrap());
-    let shown: Vec<String> = b.diagnostics.iter().map(|d| d.to_string()).collect();
+    let shown: Vec<String> = refusals(&b).iter().map(|d| d.to_string()).collect();
     assert!(
         shown.iter().any(|d| d.starts_with("a.tsx: line 1:")),
         "{shown:?}"

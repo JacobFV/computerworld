@@ -1698,3 +1698,124 @@ createRoot(document.getElementById('root')!).render(<App />);
         ],
     );
 }
+
+#[test]
+fn modules_outside_the_subset_run_on_the_island_between_compiled_ones() {
+    // fancy.tsx uses a generator, a class with a private field and a labelled
+    // loop, none of which cw-tsx compiles: the module runs on the island, reading
+    // util.ts's compiled exports, while main.tsx and util.ts are compiled and
+    // render its component, call its functions and pass it callbacks.
+    let logs = same_as_react(
+        r#"
+// @file main.tsx
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { Fancy, firstPair, summary } from './fancy';
+import { calls } from './util';
+function App() {
+  const [n, setN] = useState(4);
+  const [last, setLast] = useState<number[]>([]);
+  return (
+    <div>
+      <button id="more" onClick={() => setN(n + 2)}>more</button>
+      <Fancy n={n} onPick={(v) => setLast([...last, v])} />
+      <p id="out">{last.join(',')} | {firstPair(last)} | {summary(last)} | {calls > 0 ? 'called' : 'not'}</p>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+// @file util.ts
+export const scale = 3;
+export let calls = 0;
+export function double(n: number): number {
+  calls = calls + 1;
+  return n * 2;
+}
+// @file fancy.tsx
+import { useState } from 'react';
+import { double, scale } from './util';
+function* evens(n: number) {
+  for (let i = 0; i < n; i++) if (i % 2 === 0) yield double(i) * scale;
+}
+class Acc {
+  #total = 0;
+  add(n: number) { this.#total += n; return this; }
+  get total() { return this.#total; }
+}
+let made = 0;
+console.log('fancy loads', scale);
+export function firstPair(xs: number[]): string {
+  outer: for (const a of xs) {
+    for (const b of xs) {
+      if (a !== b && a + b === 36) { return a + '+' + b; }
+      if (b > 100) continue outer;
+    }
+  }
+  return 'none';
+}
+export const summary = (xs: number[]) => new Acc().add(xs.length).add(made).total;
+export function Fancy({ n, onPick }: { n: number; onPick: (v: number) => void }) {
+  const [picked, setPicked] = useState(-1);
+  made++;
+  const items = [...evens(n)];
+  return (
+    <ul>
+      {items.map((v) => (
+        <li key={v} className={v === picked ? 'on' : 'off'} onClick={() => { setPicked(v); onPick(v); }}>{v}</li>
+      ))}
+    </ul>
+  );
+}
+"#,
+        &[
+            Step::Click("#more"),
+            Step::Click("li:nth-child(2)"),
+            Step::Click("li:nth-child(3)"),
+            Step::Click("#more"),
+            Step::Click("li:nth-child(4)"),
+        ],
+    );
+    assert_eq!(logs, vec!["Log: fancy loads 3".to_owned()]);
+}
+
+#[test]
+fn an_entry_outside_the_subset_renders_compiled_components_from_the_island() {
+    // main.tsx keeps its state in a class and renders through React 18's
+    // createRoot: it runs on the island, and the compiled App it renders reads
+    // and changes that store through the functions it is given.
+    same_as_react(
+        r#"
+// @file main.tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { App } from './app';
+class Store {
+  #items: string[] = ['a'];
+  #subs = new Set<() => void>();
+  get items() { return this.#items; }
+  add(x: string) { this.#items = [...this.#items, x]; this.#subs.forEach((f) => f()); }
+  subscribe(f: () => void) { this.#subs.add(f); return () => { this.#subs.delete(f); }; }
+}
+const store = new Store();
+const container = document.getElementById('root')!;
+console.log('container', container.id);
+ReactDOM.createRoot(container).render(
+  <React.StrictMode>
+    <App subscribe={(f) => store.subscribe(f)} items={() => store.items} add={(x) => store.add(x)} />
+  </React.StrictMode>,
+);
+// @file app.tsx
+import { useSyncExternalStore } from 'react';
+export function App({ subscribe, items, add }: { subscribe: (f: () => void) => () => void; items: () => string[]; add: (x: string) => void }) {
+  const list = useSyncExternalStore(subscribe, items);
+  return (
+    <div>
+      <button id="add" onClick={() => add('n' + list.length)}>add</button>
+      <ul>{list.map((x) => <li key={x}>{x}</li>)}</ul>
+    </div>
+  );
+}
+"#,
+        &[Step::Click("#add"), Step::Click("#add")],
+    );
+}

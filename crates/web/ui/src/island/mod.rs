@@ -941,7 +941,56 @@ const NATIVES: &[(&str, u32, Native)] = &[
     ("inspect", 1, n_inspect),
     ("timer", 4, n_timer),
     ("clearTimer", 1, n_clear_timer),
+    ("g", 1, n_global),
+    ("builtin", 2, n_builtin),
 ];
+
+/// The page builtins the shim's `document` and `window` call:
+/// `__cw.builtin(name, args)`.
+fn n_builtin(vm: &mut Vm, a: &mut Args) -> JsResult<Js> {
+    use crate::ir::Builtin as B;
+    let name = match a.arg(0) {
+        Js::Str(s) => s.as_str().to_owned(),
+        _ => return Ok(Js::Undefined),
+    };
+    let b = match name.as_str() {
+        "GetElementById" => B::GetElementById,
+        "QuerySelector" => B::QuerySelector,
+        "QuerySelectorAll" => B::QuerySelectorAll,
+        "DocumentBody" => B::DocumentBody,
+        "DocumentElement" => B::DocumentElement,
+        "ActiveElement" => B::ActiveElement,
+        "DocumentTitle" => B::DocumentTitle,
+        "DocumentAddListener" => B::DocumentAddListener,
+        "DocumentRemoveListener" => B::DocumentRemoveListener,
+        "WindowAddListener" => B::WindowAddListener,
+        "WindowRemoveListener" => B::WindowRemoveListener,
+        _ => return Ok(Js::Undefined),
+    };
+    let rt = rt_of(vm);
+    let list = a.arg(1);
+    let items = rt.js_to_array(&list).unwrap_or_default();
+    let mut args: Vec<Value> = items.iter().map(|v| rt.cw_value(v)).collect();
+    while args.last().is_some_and(|v| matches!(v, Value::Undefined)) {
+        args.pop();
+    }
+    match rt.builtin(b, args) {
+        Ok(v) => Ok(rt.js_value(&v)),
+        Err(t) => Err(throw_to_js(rt, t)),
+    }
+}
+
+/// A compiled module's global, read by the island's modules of the app:
+/// `__cw.g(slot)`.
+fn n_global(vm: &mut Vm, a: &mut Args) -> JsResult<Js> {
+    let slot = match a.arg(0) {
+        Js::Num(n) => n as usize,
+        _ => return Ok(Js::Undefined),
+    };
+    let rt = rt_of(vm);
+    let v = rt.globals.get(slot).cloned().unwrap_or(Value::Undefined);
+    Ok(rt.js_value(&v))
+}
 
 /// A cw-ui function called from the VM.
 fn n_call_cw(vm: &mut Vm, a: &mut Args) -> JsResult<Js> {
@@ -1389,10 +1438,15 @@ impl Runtime {
 
     /// The export `i` of the island, as compiled code imports it.
     pub fn island_export(&mut self, i: u32) -> R<Value> {
-        match self.island.as_ref().and_then(|x| x.exports.get(i as usize)) {
-            Some(v) => Ok(v.clone()),
-            None => crate::runtime::type_error("the app's island has no such export"),
-        }
+        // Each export is a function returning the value, called when the global it
+        // initialises is (so an app module on the island has run by then).
+        let f = match self.island.as_ref().and_then(|x| x.exports.get(i as usize)) {
+            Some(v) => v.clone(),
+            None => return crate::runtime::type_error("the app's island has no such export"),
+        };
+        let r = self.call_value(&f, Vec::new());
+        self.run_js_jobs();
+        r
     }
 }
 

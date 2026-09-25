@@ -89,6 +89,15 @@ pub struct ProjectResult {
     pub components: Count,
     /// `Some(compiled)` for a project with an entry.
     pub app: Option<bool>,
+    /// For an app: whether it builds with its modules outside the subset on the
+    /// island (packages stood in for by empty modules: the corpus has none).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_island: Option<bool>,
+    #[serde(default)]
+    pub apps_island_modules: Count,
+    /// For an app that builds so: its modules on the island.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub island_modules: Vec<String>,
     /// The entry module, for an app.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub entry: Option<String>,
@@ -109,6 +118,13 @@ pub struct Report {
     pub functions: Count,
     pub components: Count,
     pub apps: Count,
+    /// Apps that build with the modules outside the subset on the island
+    /// (packages assumed to resolve), and of those apps' modules, how many are
+    /// compiled.
+    #[serde(default)]
+    pub apps_island: Count,
+    #[serde(default)]
+    pub apps_island_modules: Count,
     pub diagnostics: usize,
     pub diagnostics_by_cause: BTreeMap<String, usize>,
     pub functions_by_cause: BTreeMap<String, usize>,
@@ -145,6 +161,14 @@ impl Report {
         line(&mut s, "functions", &self.functions);
         line(&mut s, "components", &self.components);
         line(&mut s, "apps", &self.apps);
+        if self.islands {
+            s.push_str(
+                "with the modules outside the subset on the island (packages stubbed):
+",
+            );
+            line(&mut s, "  apps", &self.apps_island);
+            line(&mut s, "  compiled", &self.apps_island_modules);
+        }
         fn ranked(m: &BTreeMap<String, usize>, top: usize) -> Vec<(&String, &usize)> {
             let mut v: Vec<(&String, &usize)> = m.iter().collect();
             v.sort_by(|a, b| b.1.cmp(a.1).then(a.0.cmp(b.0)));
@@ -524,6 +548,12 @@ pub fn evaluate_opts(
         if let Some(c) = result.app {
             report.apps.add(c);
         }
+        if let Some(c) = result.app_island {
+            report.apps_island.add(c);
+        }
+        report
+            .apps_island_modules
+            .merge(&result.apps_island_modules);
         report.projects += 1;
         report.per_project.push(result);
     }
@@ -638,6 +668,37 @@ fn evaluate_project(
             };
         result.app = Some(compiled);
         result.entry = Some(entry.clone());
+        if lower.islands {
+            // Again, with the app's packages as empty modules, so a package import
+            // resolves; what does not compile goes to the island.
+            let stub_options = LoadOptions {
+                aliases: options.aliases.clone(),
+                node_modules: Some("node_modules".into()),
+            };
+            let mut read = |rel: &str| match rel.strip_prefix("node_modules/") {
+                Some(r) if r.ends_with("package.json") => Some("{}".to_owned()),
+                Some(r) if r.ends_with(".js") => Some("export default {};\n".to_owned()),
+                Some(_) => None,
+                None => read_file(rel),
+            };
+            let (sources, errors) = crate::load_with(entry, &mut read, &stub_options);
+            let b = crate::build_modules(&sources);
+            let builds = errors.is_empty() && b.diagnostics.is_empty();
+            if !builds && std::env::var_os("CW_TSX_SHOW_APPS").is_some() {
+                for d in errors.iter().chain(&b.diagnostics).take(3) {
+                    eprintln!("app {}: {}: {d}", p.id, d.file);
+                }
+            }
+            result.app_island = Some(builds);
+            if builds {
+                for s in sources.iter().filter(|s| !s.package && !s.is_ambient()) {
+                    result
+                        .apps_island_modules
+                        .add(!b.island_modules.contains(&s.file));
+                }
+                result.island_modules = b.island_modules;
+            }
+        }
     }
     result
 }

@@ -87,33 +87,67 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
 /// `react/jsx-runtime` for a bundle whose packages import it.
 const JSX_RUNTIME: &str = "const __cw_jsx = (() => { const jsx = (type, props, key) => React.createElement(type, key === undefined ? props : Object.assign({}, props, { key })); return { jsx, jsxs: jsx, jsxDEV: jsx, Fragment: React.Fragment }; })();\n";
 
-/// The island's script: the package modules (and, in time, the app's code outside
-/// the compiled subset), bundled as `emit_modules` bundles them, then
-/// `__cw_exports`, the values `imports` name: `(specifier, name)` pairs, each
-/// resolved from a module that imports the specifier.
+/// The island's script: the package modules, which run as it loads; the app's
+/// modules outside the compiled subset (`vm`), each wrapped to run when
+/// `__cw_run(i)` first asks, at its place in the module order; the exports of
+/// compiled modules those import, as getters reading the compiled globals
+/// (`__cw.g(slot)`); and `__cw_exports`, one function per `island.imports` entry
+/// returning that value (or, for `"!run"`, running the module).
 pub fn emit_island(
     sources: &[Source],
-    imports: &[(String, String)],
+    island: &cw_ui::ir::Island,
+    vm: &[usize],
 ) -> Result<String, Vec<Diagnostic>> {
     let names = export_names(sources);
     let mut out = String::from("// The island of an app compiled by cw-tsx.\n");
     out.push_str(&format!(
-        "var __cw_m = [{}];\n",
+        "var __cw_m = [{}];\nvar __cw_init = {{}};\nvar __cw_done = {{}};\nfunction __cw_run(i) {{ if (!__cw_done[i]) {{ __cw_done[i] = true; __cw_init[i](); }} }}\n",
         vec!["{}"; sources.len()].join(", ")
     ));
+    if sources.iter().enumerate().any(|(i, s)| {
+        (s.package || vm.contains(&i))
+            && (s.imports.contains_key("react/jsx-runtime") || s.text.contains("react/jsx-runtime"))
+    }) {
+        out.push_str("var __cw_jsx = globalThis.__cw_jsx;\n");
+    }
+    let file_index = |f: &str| sources.iter().position(|s| s.file == f);
+    // Compiled modules' exports, as the island's modules see them.
+    let mut provided: BTreeMap<usize, Vec<String>> = BTreeMap::new();
+    for (file, name, slot) in &island.provides {
+        if let Some(m) = file_index(file) {
+            provided.entry(m).or_default().push(format!(
+                "{}: {{ enumerable: true, get: () => __cw.g({slot}) }}",
+                js_key(name)
+            ));
+        }
+    }
+    for (m, props) in &provided {
+        out.push_str(&format!(
+            "Object.defineProperties(__cw_m[{m}], {{ {} }});\n",
+            props.join(", ")
+        ));
+    }
     let mut errors = Vec::new();
     for (i, src) in sources.iter().enumerate() {
-        if !src.package {
-            continue;
-        }
-        match emit_one(src, 2, i, &names) {
-            Ok(code) => out.push_str(&format!("// {}\n(() => {{\n{code}}})();\n", src.file)),
-            Err(e) => errors.extend(e),
+        if src.package {
+            match emit_one(src, 2, i, &names) {
+                Ok(code) => out.push_str(&format!("// {}\n(() => {{\n{code}}})();\n", src.file)),
+                Err(e) => errors.extend(e),
+            }
+        } else if vm.contains(&i) {
+            match emit_one(src, 2, i, &names) {
+                Ok(code) => out.push_str(&format!(
+                    "// {}\n__cw_init[{i}] = () => {{\n{code}}};\n",
+                    src.file
+                )),
+                Err(e) => errors.extend(e),
+            }
         }
     }
     let mut exports = Vec::new();
-    for (spec, name) in imports {
-        let module = sources.iter().find_map(|s| s.imports.get(spec).copied());
+    for (spec, name) in &island.imports {
+        let module =
+            file_index(spec).or_else(|| sources.iter().find_map(|s| s.imports.get(spec).copied()));
         let Some(m) = module else {
             errors.push(Diagnostic {
                 file: String::new(),
@@ -124,8 +158,10 @@ pub fn emit_island(
             continue;
         };
         exports.push(match name.as_str() {
-            "*" | "" => format!("__cw_m[{m}]"),
-            n => format!("__cw_m[{m}]{}", js_member(n)),
+            "!run" => format!("() => __cw_run({m})"),
+            "!root" => "() => __cw.rendered".to_owned(),
+            "*" | "" => format!("() => __cw_m[{m}]"),
+            n => format!("() => __cw_m[{m}]{}", js_member(n)),
         });
     }
     if !errors.is_empty() {
@@ -329,6 +365,28 @@ fn emit_one(
                 }
                 let module = import.source.value.to_string();
                 let local_module = module_of(&module);
+                if local_module.is_none() {
+                    if let Some(url) = crate::asset_url(&src.file, &module) {
+                        // A stylesheet the page loads, or a media file's URL.
+                        for spec in import.specifiers.iter().flatten() {
+                            match spec {
+                                ImportDeclarationSpecifier::ImportDefaultSpecifier(s)
+                                    if !crate::is_stylesheet(&module) =>
+                                {
+                                    preamble
+                                        .push_str(&format!("const {} = {url:?};\n", s.local.name));
+                                }
+                                _ => errors.push(at(
+                                    import.span.start,
+                                    format!(
+                                        "import of names from `{module}`, which is not a module"
+                                    ),
+                                )),
+                            }
+                        }
+                        continue;
+                    }
+                }
                 let global = match (module.as_str(), local_module) {
                     (_, Some(m)) => {
                         used_modules.insert(m);

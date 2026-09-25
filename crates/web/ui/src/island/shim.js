@@ -258,9 +258,18 @@
   };
   React.default = React;
   const jsxRuntime = { jsx, jsxs: jsx, jsxDEV: jsx, Fragment: FRAGMENT };
+  // The app's root, when its entry runs here: what it renders, which cw-ui
+  // mounts in the container (`island_root` in cw-tsx names it).
+  const rootOf = () => ({
+    render(el) { cw.rendered = el; },
+    unmount() { cw.rendered = null; },
+  });
   const ReactDOM = {
     flushSync(f) { return f(); },
     createPortal() { throw new Error('createPortal is not supported in an island'); },
+    createRoot: () => rootOf(),
+    hydrateRoot: (container, el) => { cw.rendered = el; return rootOf(); },
+    render(el) { cw.rendered = el; },
     version: '18.3.1',
   };
   ReactDOM.default = ReactDOM;
@@ -272,6 +281,21 @@
   // ------------------------------------------------------------ the host
   globalThis.window = globalThis;
   globalThis.self = globalThis;
+  // The page, through cw-ui's own builtins (the same the compiled code uses).
+  const B = (name, ...a) => cw.builtin(name, a);
+  globalThis.document = {
+    getElementById: (id) => B('GetElementById', id),
+    querySelector: (s) => B('QuerySelector', s),
+    querySelectorAll: (s) => B('QuerySelectorAll', s),
+    get body() { return B('DocumentBody'); },
+    get documentElement() { return B('DocumentElement'); },
+    get activeElement() { return B('ActiveElement'); },
+    get title() { return B('DocumentTitle'); },
+    addEventListener: (t, f, o) => B('DocumentAddListener', t, f, o),
+    removeEventListener: (t, f, o) => B('DocumentRemoveListener', t, f, o),
+  };
+  globalThis.addEventListener = (t, f, o) => B('WindowAddListener', t, f, o);
+  globalThis.removeEventListener = (t, f, o) => B('WindowRemoveListener', t, f, o);
   globalThis.setTimeout = (f, ms, ...args) => cw.timer(0, f, ms, args);
   globalThis.setInterval = (f, ms, ...args) => cw.timer(1, f, ms, args);
   globalThis.clearTimeout = (id) => cw.clearTimer(id);

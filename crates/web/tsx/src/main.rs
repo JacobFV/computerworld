@@ -80,6 +80,16 @@ fn main() -> ExitCode {
             eprintln!("{}/{d}", root.display());
         }
     }
+    if !build.island_modules.is_empty() {
+        for d in &build.outside {
+            eprintln!("{}/{d} (runs on the island)", root.display());
+        }
+        eprintln!(
+            "{}: on the island, outside the subset: {}",
+            input.display(),
+            build.island_modules.join(", ")
+        );
+    }
     match cmd {
         "check" => {
             if build.diagnostics.is_empty() {

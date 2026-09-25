@@ -234,6 +234,36 @@ pub struct LoadOptions {
     pub node_modules: Option<String>,
 }
 
+/// What a relative import of a stylesheet or media file is, as Vite serves it: its
+/// URL, the path from the app's root (`import logo from './logo.svg'`), for an
+/// importer `file`. `None` for a module, a CSS module (`.module.css`, whose
+/// default export is a class map) or an import with a query (`?raw`).
+pub fn asset_url(file: &str, spec: &str) -> Option<String> {
+    if !is_relative(spec) || spec.contains('?') || spec.contains(".module.") {
+        return None;
+    }
+    let ext = spec.rsplit('.').next()?.to_ascii_lowercase();
+    const ASSETS: &[&str] = &[
+        "css", "scss", "sass", "less", "png", "jpg", "jpeg", "gif", "svg", "webp", "avif", "ico",
+        "bmp", "woff", "woff2", "ttf", "otf", "mp3", "mp4", "webm", "wav", "ogg",
+    ];
+    if !ASSETS.contains(&ext.as_str()) {
+        return None;
+    }
+    let dir = match file.rfind('/') {
+        Some(i) => &file[..i],
+        None => "",
+    };
+    Some(format!("/{}", normalize(&format!("{dir}/{spec}"))))
+}
+
+/// Whether a relative import names a stylesheet (imported for its effect).
+pub(crate) fn is_stylesheet(spec: &str) -> bool {
+    [".css", ".scss", ".sass", ".less"]
+        .iter()
+        .any(|e| spec.to_ascii_lowercase().ends_with(e))
+}
+
 /// Modules the island's React shim provides (never read from `node_modules`).
 pub fn is_shim_module(spec: &str) -> bool {
     matches!(
@@ -389,6 +419,10 @@ pub fn load_with(
             }
             let mut imports = BTreeMap::new();
             for (spec, at) in specifiers_of(&text, file) {
+                if asset_url(file, &spec).is_some() {
+                    // A stylesheet or media file, which a bundler serves, not a module.
+                    continue;
+                }
                 let base = if is_relative(&spec) {
                     normalize(&format!("{dir}/{spec}"))
                 } else if let Some((from, to)) = self
@@ -429,6 +463,8 @@ pub fn load_with(
                     format!("{base}.js"),
                     format!("{base}/index.mjs"),
                     format!("{base}/index.js"),
+                    format!("{base}.d.ts"),
+                    format!("{base}/index.d.ts"),
                 ];
                 if let Some(stem) = stem {
                     candidates.push(format!("{stem}.tsx"));
@@ -568,13 +604,11 @@ pub fn build_modules(sources: &[Source]) -> Build {
         Ok(js) => (Some(js), Vec::new()),
         Err(e) => (None, e),
     };
-    let (mut ir, mut diagnostics) = match lower::lower_modules(sources) {
-        Ok(m) => (Some(m), Vec::new()),
-        Err(d) => (None, d),
-    };
-    // Packages the compiled code imports run on the app's island.
+    let (mut ir, mut diagnostics, vm, outside) = lower_with_islands(sources);
+    // Packages the compiled code imports, and the app's modules outside the
+    // subset, run on the app's island.
     if let Some(island) = ir.as_mut().and_then(|m| m.island.as_mut()) {
-        match emit_js::emit_island(sources, &island.imports) {
+        match emit_js::emit_island(sources, island, &vm) {
             Ok(script) => island.script = script,
             Err(e) => {
                 diagnostics.extend(e);
@@ -588,11 +622,104 @@ pub fn build_modules(sources: &[Source]) -> Build {
         }
     }
     diagnostics.sort_by(|a, b| (&a.file, a.line, a.col).cmp(&(&b.file, b.line, b.col)));
+    let island_modules = if ir.is_some() {
+        vm.iter().map(|&i| sources[i].file.clone()).collect()
+    } else {
+        Vec::new()
+    };
     Build {
         ir,
         js,
         diagnostics,
         js_errors,
+        island_modules,
+        outside,
+    }
+}
+
+const NEVER_RENDERS: &str = "the module never renders";
+
+/// Whether a module's text calls one of React DOM's ways to render a root.
+fn renders(text: &str) -> bool {
+    ["createRoot(", "hydrateRoot(", ".render("]
+        .iter()
+        .any(|c| text.contains(c))
+}
+
+/// Lowers the app, moving each module with code outside the subset onto the
+/// island (with any module it imports from later in the order, so the island's
+/// modules never wait on compiled ones mid-cycle) until the rest lowers. An
+/// entry on the island renders through the shim's `createRoot`. Returns the IR or the
+/// diagnostics that stop it, the modules on the island, and the diagnostics the
+/// island absorbed.
+#[allow(clippy::type_complexity)]
+fn lower_with_islands(
+    sources: &[Source],
+) -> (
+    Option<cw_ui::ir::Module>,
+    Vec<Diagnostic>,
+    Vec<usize>,
+    Vec<Diagnostic>,
+) {
+    let code = code_modules(sources);
+    let entry = sources.len().saturating_sub(1);
+    let mut options = lower::LowerOptions::default();
+    let mut outside: Vec<Diagnostic> = Vec::new();
+    loop {
+        let d = match lower::lower_modules_with(sources, &options) {
+            Ok(m) => return (Some(m), Vec::new(), options.vm_modules, outside),
+            Err(d) => d,
+        };
+        let mut add: Vec<usize> = Vec::new();
+        let mut stuck = false;
+        // With code outside the subset, the render call may not have been found
+        // for that reason alone: it counts once the rest lowers.
+        let others = d.iter().any(|x| !x.message.starts_with(NEVER_RENDERS));
+        for x in &d {
+            if x.message.starts_with(NEVER_RENDERS) {
+                stuck |= !others;
+                continue;
+            }
+            let m = (0..sources.len()).find(|&i| sources[i].display_file(code) == x.file);
+            match m {
+                // An entry goes to the island only if it renders there.
+                Some(m) if m == entry && !renders(&sources[m].text) => stuck = true,
+                Some(m) if !sources[m].package && !sources[m].is_ambient() => {
+                    if !options.vm_modules.contains(&m) && !add.contains(&m) {
+                        add.push(m);
+                    }
+                }
+                _ => stuck = true,
+            }
+        }
+        if stuck || add.is_empty() {
+            let mut all = outside;
+            all.extend(d);
+            return (None, all, Vec::new(), Vec::new());
+        }
+        outside.extend(d);
+        options.vm_modules.extend(add);
+        // A module on the island that imports one later in the order (a cycle)
+        // takes it along.
+        loop {
+            let mut more = Vec::new();
+            for &v in &options.vm_modules {
+                for &m in sources[v].imports.values() {
+                    if m > v
+                        && !sources[m].package
+                        && !options.vm_modules.contains(&m)
+                        && !more.contains(&m)
+                    {
+                        more.push(m);
+                    }
+                }
+            }
+            if more.is_empty() {
+                break;
+            }
+            options.vm_modules.extend(more);
+        }
+        options.vm_modules.sort_unstable();
     }
 }
 
@@ -607,6 +734,11 @@ pub struct Build {
     pub diagnostics: Vec<Diagnostic>,
     /// Reasons the script could not be produced (a subset of `diagnostics`).
     pub js_errors: Vec<Diagnostic>,
+    /// The app's modules that run on the island because they are outside the
+    /// subset (empty when the whole app compiled, or when it did not build).
+    pub island_modules: Vec<String>,
+    /// What put those modules outside the subset.
+    pub outside: Vec<Diagnostic>,
 }
 
 /// Compiles a one-module app both ways.

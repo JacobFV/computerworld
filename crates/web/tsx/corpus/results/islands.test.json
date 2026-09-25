@@ -4,21 +4,29 @@
   "projects": 149,
   "modules": {
     "total": 530,
-    "inside": 400
+    "inside": 421
   },
   "functions": {
     "total": 770,
-    "inside": 657
+    "inside": 661
   },
   "components": {
     "total": 594,
-    "inside": 506
+    "inside": 510
   },
   "apps": {
     "total": 39,
     "inside": 0
   },
-  "diagnostics": 356,
+  "apps_island": {
+    "total": 39,
+    "inside": 38
+  },
+  "apps_island_modules": {
+    "total": 292,
+    "inside": 231
+  },
+  "diagnostics": 307,
   "diagnostics_by_cause": {
     "`<FilterContext.Provider>` on a value of type unknown": 1,
     "`Promise.withResolvers` is outside the compiled subset": 1,
@@ -28,7 +36,7 @@
     "`dangerouslySetInnerHTML` is outside the compiled subset": 1,
     "`document.getElementsByClassName` is outside the compiled subset": 1,
     "`instanceof` of anything but a built-in class is outside the compiled subset": 2,
-    "`new` is outside the compiled subset": 42,
+    "`new` is outside the compiled subset": 40,
     "`window.confirm` is outside the compiled subset": 1,
     "`window.history` is outside the compiled subset": 2,
     "`window.localStorage` is outside the compiled subset": 3,
@@ -38,15 +46,13 @@
     "class components are outside the compiled subset": 5,
     "generators are outside the compiled subset": 1,
     "import of a stylesheet": 17,
-    "import of an image": 4,
     "imported name the subset cannot use": 5,
     "method `current` on RefObject<() => void>": 1,
     "method `persist` on Event": 2,
     "method `toLocaleDateString` on Date": 8,
     "method `toLocaleString` on Date": 3,
     "method `toLocaleTimeString` on Date": 3,
-    "property does not exist on another type": 2,
-    "relative import that does not resolve": 72,
+    "relative import that does not resolve": 35,
     "this React API is outside the compiled subset": 10,
     "this expression is outside the compiled subset": 9,
     "unknown name `Symbol`": 1,
@@ -59,7 +65,7 @@
     "unknown name `navigator`": 1,
     "unknown name `process`": 8,
     "unknown name `window`": 5,
-    "value imported from a module that does not resolve": 98,
+    "value imported from a module that does not resolve": 94,
     "value imported from a package": 2
   },
   "functions_by_cause": {
@@ -70,7 +76,7 @@
     "`dangerouslySetInnerHTML` is outside the compiled subset": 1,
     "`document.getElementsByClassName` is outside the compiled subset": 1,
     "`instanceof` of anything but a built-in class is outside the compiled subset": 1,
-    "`new` is outside the compiled subset": 15,
+    "`new` is outside the compiled subset": 13,
     "`window.confirm` is outside the compiled subset": 1,
     "`window.history` is outside the compiled subset": 2,
     "`window.matchMedia` is outside the compiled subset": 1,
@@ -83,7 +89,6 @@
     "method `toLocaleDateString` on Date": 8,
     "method `toLocaleString` on Date": 3,
     "method `toLocaleTimeString` on Date": 3,
-    "property does not exist on another type": 2,
     "this React API is outside the compiled subset": 10,
     "this expression is outside the compiled subset": 6,
     "unknown name `Symbol`": 1,
@@ -95,7 +100,7 @@
     "unknown name `navigator`": 1,
     "unknown name `process`": 6,
     "unknown name `window`": 4,
-    "value imported from a module that does not resolve": 27,
+    "value imported from a module that does not resolve": 25,
     "value imported from a package": 2
   },
   "packages": {
@@ -261,6 +266,18 @@
         "inside": 0
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 6,
+        "inside": 1
+      },
+      "island_modules": [
+        "examples/typescript-react/js/utils.ts",
+        "examples/typescript-react/js/todoModel.ts",
+        "examples/typescript-react/js/footer.tsx",
+        "examples/typescript-react/js/todoItem.tsx",
+        "examples/typescript-react/js/app.tsx"
+      ],
       "entry": "examples/typescript-react/js/app.tsx",
       "sample": [
         "examples/typescript-react/js/app.tsx: examples/typescript-react/js/app.tsx: line 12:1: `TodoModel` from `./todoModel` is neither a value nor a type the compiled subset knows",
@@ -282,27 +299,25 @@
       "id": "zustand/examples/starter/src",
       "modules": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "functions": {
         "total": 3,
-        "inside": 2
+        "inside": 3
       },
       "components": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 1,
+        "inside": 1
+      },
       "entry": "examples/starter/src/index.tsx",
-      "sample": [
-        "examples/starter/src/index.tsx: examples/starter/src/index.tsx: line 5:1: cannot find module `./assets/zustand-mascot.svg`",
-        "examples/starter/src/index.tsx: examples/starter/src/index.tsx: line 7:1: cannot find module `./index.css`",
-        "examples/starter/src/index.tsx: line 5:1: import from `./assets/zustand-mascot.svg`: a compiled app imports only `react` and `react-dom`",
-        "examples/starter/src/index.tsx: line 41:16: unknown name `mascot`"
-      ],
-      "outside": [
-        "examples/starter/src/index.tsx: App: value imported from a module that does not resolve"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "tanstack-table/examples/react/basic-dynamic-columns/src",
@@ -319,9 +334,16 @@
         "inside": 2
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "island_modules": [
+        "examples/react/basic-dynamic-columns/src/main.tsx"
+      ],
       "entry": "examples/react/basic-dynamic-columns/src/main.tsx",
       "sample": [
-        "examples/react/basic-dynamic-columns/src/main.tsx: examples/react/basic-dynamic-columns/src/main.tsx: line 36:1: cannot find module `./index.css`",
         "examples/react/basic-dynamic-columns/src/main.tsx: examples/react/basic-dynamic-columns/src/main.tsx: line 160:35: method `toLocaleDateString` on type Date is outside the compiled subset",
         "examples/react/basic-dynamic-columns/src/main.tsx: examples/react/basic-dynamic-columns/src/main.tsx: line 274:13: built-in method `toLocaleString` is outside the compiled subset"
       ],
@@ -334,7 +356,7 @@
       "id": "tanstack-table/examples/react/cell-spanning/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 4,
@@ -345,17 +367,20 @@
         "inside": 1
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 2
+      },
       "entry": "examples/react/cell-spanning/src/main.tsx",
-      "sample": [
-        "examples/react/cell-spanning/src/main.tsx: examples/react/cell-spanning/src/main.tsx: line 3:1: cannot find module `./index.css`"
-      ],
+      "sample": [],
       "outside": []
     },
     {
       "id": "tanstack-table/examples/react/column-ordering/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 4,
@@ -366,17 +391,20 @@
         "inside": 1
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 2
+      },
       "entry": "examples/react/column-ordering/src/main.tsx",
-      "sample": [
-        "examples/react/column-ordering/src/main.tsx: examples/react/column-ordering/src/main.tsx: line 13:1: cannot find module `./index.css`"
-      ],
+      "sample": [],
       "outside": []
     },
     {
       "id": "tanstack-table/examples/react/column-pinning-sticky/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 5,
@@ -387,17 +415,20 @@
         "inside": 1
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 2
+      },
       "entry": "examples/react/column-pinning-sticky/src/main.tsx",
-      "sample": [
-        "examples/react/column-pinning-sticky/src/main.tsx: examples/react/column-pinning-sticky/src/main.tsx: line 18:1: cannot find module `./index.css`"
-      ],
+      "sample": [],
       "outside": []
     },
     {
       "id": "tanstack-table/examples/react/column-sizing/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 4,
@@ -408,17 +439,20 @@
         "inside": 1
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 2
+      },
       "entry": "examples/react/column-sizing/src/main.tsx",
-      "sample": [
-        "examples/react/column-sizing/src/main.tsx: examples/react/column-sizing/src/main.tsx: line 11:1: cannot find module `./index.css`"
-      ],
+      "sample": [],
       "outside": []
     },
     {
       "id": "tanstack-table/examples/react/kitchen-sink-material-ui/src",
       "modules": {
         "total": 15,
-        "inside": 10
+        "inside": 11
       },
       "functions": {
         "total": 54,
@@ -429,6 +463,11 @@
         "inside": 25
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 1,
+        "inside": 1
+      },
       "entry": "examples/react/kitchen-sink-material-ui/src/main.tsx",
       "sample": [
         "examples/react/kitchen-sink-material-ui/src/components/data-table/cell-components.tsx: line 218:18: unknown name `navigator`",
@@ -459,9 +498,16 @@
         "inside": 0
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "island_modules": [
+        "examples/react/lib-chakra-ui/src/main.tsx"
+      ],
       "entry": "examples/react/lib-chakra-ui/src/main.tsx",
       "sample": [
-        "examples/react/lib-chakra-ui/src/main.tsx: examples/react/lib-chakra-ui/src/main.tsx: line 39:1: cannot find module `./index.css`",
         "examples/react/lib-chakra-ui/src/main.tsx: examples/react/lib-chakra-ui/src/main.tsx: line 225:16: built-in method `toLocaleString` is outside the compiled subset"
       ],
       "outside": [
@@ -483,9 +529,16 @@
         "inside": 0
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "island_modules": [
+        "examples/react/lib-mantine/src/main.tsx"
+      ],
       "entry": "examples/react/lib-mantine/src/main.tsx",
       "sample": [
-        "examples/react/lib-mantine/src/main.tsx: examples/react/lib-mantine/src/main.tsx: line 42:1: cannot find module `./index.css`",
         "examples/react/lib-mantine/src/main.tsx: examples/react/lib-mantine/src/main.tsx: line 212:16: built-in method `toLocaleString` is outside the compiled subset"
       ],
       "outside": [
@@ -507,9 +560,16 @@
         "inside": 21
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 7,
+        "inside": 6
+      },
+      "island_modules": [
+        "examples/react/lib-shadcn-radix/src/main.tsx"
+      ],
       "entry": "examples/react/lib-shadcn-radix/src/main.tsx",
       "sample": [
-        "examples/react/lib-shadcn-radix/src/main.tsx: examples/react/lib-shadcn-radix/src/main.tsx: line 48:1: cannot find module `./index.css`",
         "examples/react/lib-shadcn-radix/src/main.tsx: examples/react/lib-shadcn-radix/src/main.tsx: line 205:12: built-in method `toLocaleString` is outside the compiled subset",
         "examples/react/lib-shadcn-radix/src/main.tsx: examples/react/lib-shadcn-radix/src/main.tsx: line 206:12: built-in method `toLocaleString` is outside the compiled subset"
       ],
@@ -532,9 +592,16 @@
         "inside": 0
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "island_modules": [
+        "examples/react/sorting/src/main.tsx"
+      ],
       "entry": "examples/react/sorting/src/main.tsx",
       "sample": [
-        "examples/react/sorting/src/main.tsx: examples/react/sorting/src/main.tsx: line 3:1: cannot find module `./index.css`",
         "examples/react/sorting/src/main.tsx: examples/react/sorting/src/main.tsx: line 183:13: built-in method `toLocaleString` is outside the compiled subset"
       ],
       "outside": [
@@ -556,9 +623,16 @@
         "inside": 1
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "island_modules": [
+        "examples/react/sub-components/src/main.tsx"
+      ],
       "entry": "examples/react/sub-components/src/main.tsx",
       "sample": [
-        "examples/react/sub-components/src/main.tsx: examples/react/sub-components/src/main.tsx: line 3:1: cannot find module `./index.css`",
         "examples/react/sub-components/src/main.tsx: examples/react/sub-components/src/main.tsx: line 156:13: built-in method `toLocaleString` is outside the compiled subset"
       ],
       "outside": [
@@ -580,9 +654,16 @@
         "inside": 6
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "island_modules": [
+        "examples/react/virtualized-columns/src/main.tsx"
+      ],
       "entry": "examples/react/virtualized-columns/src/main.tsx",
       "sample": [
-        "examples/react/virtualized-columns/src/main.tsx: examples/react/virtualized-columns/src/main.tsx: line 3:1: cannot find module `./index.css`",
         "examples/react/virtualized-columns/src/main.tsx: examples/react/virtualized-columns/src/main.tsx: line 95:8: unknown name `process`",
         "examples/react/virtualized-columns/src/main.tsx: examples/react/virtualized-columns/src/main.tsx: line 102:14: built-in method `toLocaleString` is outside the compiled subset",
         "examples/react/virtualized-columns/src/main.tsx: examples/react/virtualized-columns/src/main.tsx: line 103:14: built-in method `toLocaleString` is outside the compiled subset",
@@ -608,13 +689,21 @@
         "inside": 0
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "island_modules": [
+        "examples/react/virtualized-infinite-scrolling/src/main.tsx"
+      ],
       "entry": "examples/react/virtualized-infinite-scrolling/src/main.tsx",
       "sample": [
-        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 3:1: cannot find module `./index.css`",
         "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 81:27: built-in method `toLocaleString` is outside the compiled subset",
         "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 173:14: unknown name `window`",
         "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 186:8: unknown name `process`",
-        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 193:9: built-in method `toLocaleString` is outside the compiled subset"
+        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 193:9: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 193:47: built-in method `toLocaleString` is outside the compiled subset"
       ],
       "outside": [
         "examples/react/virtualized-infinite-scrolling/src/main.tsx: App: built-in method `toLocaleString` is outside the compiled subset; unknown name `process`; unknown name `window`"
@@ -635,9 +724,16 @@
         "inside": 3
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 6,
+        "inside": 5
+      },
+      "island_modules": [
+        "examples/react/algolia/src/App.tsx"
+      ],
       "entry": "examples/react/algolia/src/index.tsx",
       "sample": [
-        "examples/react/algolia/src/App.tsx: examples/react/algolia/src/App.tsx: line 3:1: cannot find module `./styles.css`",
         "examples/react/algolia/src/App.tsx: examples/react/algolia/src/App.tsx: line 6:21: `new` is outside the compiled subset"
       ],
       "outside": []
@@ -657,6 +753,14 @@
         "inside": 3
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/basic-graphql-request/src/index.tsx"
+      ],
       "entry": "examples/react/basic-graphql-request/src/index.tsx",
       "sample": [
         "examples/react/basic-graphql-request/src/index.tsx: line 14:21: `new` is outside the compiled subset",
@@ -683,6 +787,14 @@
         "inside": 3
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/basic/src/index.tsx"
+      ],
       "entry": "examples/react/basic/src/index.tsx",
       "sample": [
         "examples/react/basic/src/index.tsx: line 8:21: `new` is outside the compiled subset",
@@ -705,6 +817,15 @@
         "inside": 3
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 2,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/batching/src/character-loader.ts",
+        "examples/react/batching/src/index.tsx"
+      ],
       "entry": "examples/react/batching/src/index.tsx",
       "sample": [
         "examples/react/batching/src/character-loader.ts: line 37:26: `new` is outside the compiled subset",
@@ -730,12 +851,20 @@
         "inside": 4
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 3,
+        "inside": 1
+      },
+      "island_modules": [
+        "examples/react/chat/src/chat.ts",
+        "examples/react/chat/src/index.tsx"
+      ],
       "entry": "examples/react/chat/src/index.tsx",
       "sample": [
         "examples/react/chat/src/chat.ts: line 13:13: unknown name `Symbol`",
         "examples/react/chat/src/chat.ts: line 13:34: generators are outside the compiled subset",
         "examples/react/chat/src/chat.ts: line 20:9: this expression is outside the compiled subset",
-        "examples/react/chat/src/index.tsx: examples/react/chat/src/index.tsx: line 9:1: cannot find module `./style.css`",
         "examples/react/chat/src/index.tsx: examples/react/chat/src/index.tsx: line 14:21: `new` is outside the compiled subset"
       ],
       "outside": [
@@ -757,6 +886,14 @@
         "inside": 3
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/default-query-function/src/index.tsx"
+      ],
       "entry": "examples/react/default-query-function/src/index.tsx",
       "sample": [
         "examples/react/default-query-function/src/index.tsx: line 27:21: `new` is outside the compiled subset"
@@ -778,6 +915,14 @@
         "inside": 3
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/eslint-legacy/src/index.tsx"
+      ],
       "entry": "examples/react/eslint-legacy/src/index.tsx",
       "sample": [
         "examples/react/eslint-legacy/src/index.tsx: line 8:21: `new` is outside the compiled subset",
@@ -800,6 +945,10 @@
         "inside": 3
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/react/load-more-infinite-scroll/src/pages/about.tsx: line 6:9: `window.history` is outside the compiled subset",
         "examples/react/load-more-infinite-scroll/src/pages/index.tsx: line 11:21: `new` is outside the compiled subset"
@@ -823,6 +972,10 @@
         "inside": 4
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/react/nextjs-suspense-streaming/src/app/api/wait/route.ts: line 4:28: `new` is outside the compiled subset",
         "examples/react/nextjs-suspense-streaming/src/app/page.tsx: line 11:7: unknown name `process`",
@@ -852,6 +1005,10 @@
         "inside": 6
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/react/nextjs/src/pages/_app.tsx: line 11:46: `new` is outside the compiled subset",
         "examples/react/nextjs/src/pages/index.tsx: examples/react/nextjs/src/pages/index.tsx: line 17:23: `new` is outside the compiled subset"
@@ -876,6 +1033,15 @@
         "inside": 3
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 4,
+        "inside": 2
+      },
+      "island_modules": [
+        "examples/react/offline/src/api.ts",
+        "examples/react/offline/src/App.tsx"
+      ],
       "entry": "examples/react/offline/src/index.tsx",
       "sample": [
         "examples/react/offline/src/App.tsx: examples/react/offline/src/App.tsx: line 25:12: `window.localStorage` is outside the compiled subset",
@@ -905,6 +1071,10 @@
         "inside": 3
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/react/pagination/src/pages/index.tsx: line 12:21: `new` is outside the compiled subset"
       ],
@@ -925,9 +1095,16 @@
         "inside": 4
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/playground/src/index.tsx"
+      ],
       "entry": "examples/react/playground/src/index.tsx",
       "sample": [
-        "examples/react/playground/src/index.tsx: examples/react/playground/src/index.tsx: line 11:1: cannot find module `./styles.css`",
         "examples/react/playground/src/index.tsx: line 30:21: `new` is outside the compiled subset",
         "examples/react/playground/src/index.tsx: line 298:17: method `persist` on type Event is outside the compiled subset",
         "examples/react/playground/src/index.tsx: line 309:17: method `persist` on type Event is outside the compiled subset"
@@ -951,6 +1128,14 @@
         "inside": 2
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/simple/src/index.tsx"
+      ],
       "entry": "examples/react/simple/src/index.tsx",
       "sample": [
         "examples/react/simple/src/index.tsx: line 10:21: `new` is outside the compiled subset"
@@ -972,9 +1157,16 @@
         "inside": 10
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 9,
+        "inside": 8
+      },
+      "island_modules": [
+        "examples/react/star-wars/src/App.tsx"
+      ],
       "entry": "examples/react/star-wars/src/index.tsx",
       "sample": [
-        "examples/react/star-wars/src/App.tsx: examples/react/star-wars/src/App.tsx: line 6:1: cannot find module `./styles.css`",
         "examples/react/star-wars/src/App.tsx: examples/react/star-wars/src/App.tsx: line 8:21: `new` is outside the compiled subset"
       ],
       "outside": []
@@ -994,6 +1186,14 @@
         "inside": 6
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 4,
+        "inside": 3
+      },
+      "island_modules": [
+        "examples/react/suspense/src/index.tsx"
+      ],
       "entry": "examples/react/suspense/src/index.tsx",
       "sample": [
         "examples/react/suspense/src/index.tsx: examples/react/suspense/src/index.tsx: line 18:18: this React API is outside the compiled subset",
@@ -1020,6 +1220,15 @@
         "inside": 4
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 8,
+        "inside": 6
+      },
+      "island_modules": [
+        "examples/query/react/graphql-codegen/src/features/posts/GetPosts.generated.ts",
+        "examples/query/react/graphql-codegen/src/index.tsx"
+      ],
       "entry": "examples/query/react/graphql-codegen/src/index.tsx",
       "sample": [
         "examples/query/react/graphql-codegen/src/features/posts/GetPost.generated.ts: examples/query/react/graphql-codegen/src/features/posts/GetPost.generated.ts: line 15:1: unknown name `module`",
@@ -1034,7 +1243,7 @@
       "id": "redux-toolkit/examples/query/react/infinite-queries/src",
       "modules": {
         "total": 24,
-        "inside": 18
+        "inside": 19
       },
       "functions": {
         "total": 19,
@@ -1045,13 +1254,24 @@
         "inside": 10
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 18,
+        "inside": 14
+      },
+      "island_modules": [
+        "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts",
+        "examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/infiniteScrollApi.ts",
+        "examples/query/react/infinite-queries/src/features/infinite-scroll/InfiniteScrollExample.tsx",
+        "examples/query/react/infinite-queries/src/main.tsx"
+      ],
       "entry": "examples/query/react/infinite-queries/src/main.tsx",
       "sample": [
-        "examples/query/react/infinite-queries/src/App.tsx: examples/query/react/infinite-queries/src/App.tsx: line 2:1: cannot find module `./App.css`",
         "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts: line 12:41: `new` is outside the compiled subset",
         "examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/infiniteScrollApi.ts: examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/infiniteScrollApi.ts: line 35:24: `new` is outside the compiled subset",
         "examples/query/react/infinite-queries/src/features/infinite-scroll/InfiniteScrollExample.tsx: examples/query/react/infinite-queries/src/features/infinite-scroll/InfiniteScrollExample.tsx: line 13:9: `window.history` is outside the compiled subset",
-        "examples/query/react/infinite-queries/src/main.tsx: examples/query/react/infinite-queries/src/main.tsx: line 6:1: cannot find module `./index.css`"
+        "examples/query/react/infinite-queries/src/main.tsx: examples/query/react/infinite-queries/src/main.tsx: line 9:7: unknown name `process`",
+        "examples/query/react/infinite-queries/src/main.tsx: examples/query/react/infinite-queries/src/main.tsx: line 13:28: this expression is outside the compiled subset"
       ],
       "outside": [
         "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts: useIntersectionCallback: `new` is outside the compiled subset",
@@ -1063,7 +1283,7 @@
       "id": "redux-toolkit/examples/query/react/kitchen-sink/src",
       "modules": {
         "total": 26,
-        "inside": 17
+        "inside": 19
       },
       "functions": {
         "total": 29,
@@ -1074,13 +1294,18 @@
         "inside": 15
       },
       "app": false,
+      "app_island": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/query/react/kitchen-sink/src/index.tsx",
       "sample": [
-        "examples/query/react/kitchen-sink/src/App.tsx: examples/query/react/kitchen-sink/src/App.tsx: line 8:1: cannot find module `./App.css`",
         "examples/query/react/kitchen-sink/src/features/bundleSplitting/Lazy.tsx: line 2:1: import from `.`: a compiled app imports only `react` and `react-dom`",
         "examples/query/react/kitchen-sink/src/features/bundleSplitting/Lazy.tsx: line 7:8: unknown name `PostsList`",
         "examples/query/react/kitchen-sink/src/features/bundleSplitting/PostsList.tsx: examples/query/react/kitchen-sink/src/features/bundleSplitting/PostsList.tsx: line 3:1: import from `.`: a compiled app imports only `react` and `react-dom`",
-        "examples/query/react/kitchen-sink/src/features/bundleSplitting/PostsList.tsx: examples/query/react/kitchen-sink/src/features/bundleSplitting/PostsList.tsx: line 24:21: unknown name `Post`"
+        "examples/query/react/kitchen-sink/src/features/bundleSplitting/PostsList.tsx: examples/query/react/kitchen-sink/src/features/bundleSplitting/PostsList.tsx: line 24:21: unknown name `Post`",
+        "examples/query/react/kitchen-sink/src/features/bundleSplitting/index.ts: examples/query/react/kitchen-sink/src/features/bundleSplitting/index.ts: line 3:26: this React API is outside the compiled subset"
       ],
       "outside": [
         "examples/query/react/kitchen-sink/src/features/bundleSplitting/Lazy.tsx: Lazy: value imported from a package",
@@ -1108,6 +1333,14 @@
         "inside": 8
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 8,
+        "inside": 7
+      },
+      "island_modules": [
+        "examples/query/react/mutations/src/index.tsx"
+      ],
       "entry": "examples/query/react/mutations/src/index.tsx",
       "sample": [
         "examples/query/react/mutations/src/index.tsx: examples/query/react/mutations/src/index.tsx: line 13:3: `ReactDOM` from React cannot be used as a value here"
@@ -1129,6 +1362,14 @@
         "inside": 10
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 7,
+        "inside": 6
+      },
+      "island_modules": [
+        "examples/query/react/optimistic-update/src/index.tsx"
+      ],
       "entry": "examples/query/react/optimistic-update/src/index.tsx",
       "sample": [
         "examples/query/react/optimistic-update/src/index.tsx: examples/query/react/optimistic-update/src/index.tsx: line 13:3: `ReactDOM` from React cannot be used as a value here"
@@ -1139,7 +1380,7 @@
       "id": "refine/examples/auth-otp/src",
       "modules": {
         "total": 9,
-        "inside": 5
+        "inside": 9
       },
       "functions": {
         "total": 6,
@@ -1150,20 +1391,20 @@
         "inside": 6
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 9,
+        "inside": 9
+      },
       "entry": "examples/auth-otp/src/index.tsx",
-      "sample": [
-        "examples/auth-otp/src/pages/posts/create.tsx: examples/auth-otp/src/pages/posts/create.tsx: line 9:1: cannot find module `../../interfaces`",
-        "examples/auth-otp/src/pages/posts/edit.tsx: examples/auth-otp/src/pages/posts/edit.tsx: line 9:1: cannot find module `../../interfaces`",
-        "examples/auth-otp/src/pages/posts/list.tsx: examples/auth-otp/src/pages/posts/list.tsx: line 13:1: cannot find module `../../interfaces`",
-        "examples/auth-otp/src/pages/posts/show.tsx: examples/auth-otp/src/pages/posts/show.tsx: line 7:1: cannot find module `../../interfaces`"
-      ],
+      "sample": [],
       "outside": []
     },
     {
       "id": "refine/examples/blog-ra-chakra-tutorial/src",
       "modules": {
         "total": 12,
-        "inside": 11
+        "inside": 12
       },
       "functions": {
         "total": 8,
@@ -1174,10 +1415,13 @@
         "inside": 8
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 12,
+        "inside": 12
+      },
       "entry": "examples/blog-ra-chakra-tutorial/src/index.tsx",
-      "sample": [
-        "examples/blog-ra-chakra-tutorial/src/pages/posts/list.tsx: examples/blog-ra-chakra-tutorial/src/pages/posts/list.tsx: line 24:1: cannot find module `../../interfaces`"
-      ],
+      "sample": [],
       "outside": []
     },
     {
@@ -1195,6 +1439,14 @@
         "inside": 9
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 3,
+        "inside": 2
+      },
+      "island_modules": [
+        "examples/blog-react-aria/src/reportWebVitals.ts"
+      ],
       "entry": "examples/blog-react-aria/src/index.tsx",
       "sample": [
         "examples/blog-react-aria/src/reportWebVitals.ts: line 5:5: this expression is outside the compiled subset"
@@ -1218,6 +1470,14 @@
         "inside": 13
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 19,
+        "inside": 18
+      },
+      "island_modules": [
+        "examples/inferencer-material-ui/src/contexts/color-mode/index.tsx"
+      ],
       "entry": "examples/inferencer-material-ui/src/index.tsx",
       "sample": [
         "examples/inferencer-material-ui/src/contexts/color-mode/index.tsx: line 23:34: `window.matchMedia` is outside the compiled subset"
@@ -1230,29 +1490,30 @@
       "id": "refine/examples/upload-material-ui-base64/src",
       "modules": {
         "total": 6,
-        "inside": 3
+        "inside": 6
       },
       "functions": {
         "total": 4,
-        "inside": 2
+        "inside": 4
       },
       "components": {
         "total": 4,
-        "inside": 2
+        "inside": 4
       },
       "app": false,
-      "entry": "examples/upload-material-ui-base64/src/index.tsx",
-      "sample": [
-        "examples/upload-material-ui-base64/src/pages/posts/create.tsx: examples/upload-material-ui-base64/src/pages/posts/create.tsx: line 14:1: cannot find module `../../interfaces`",
-        "examples/upload-material-ui-base64/src/pages/posts/create.tsx: line 38:26: `new` is outside the compiled subset",
-        "examples/upload-material-ui-base64/src/pages/posts/create.tsx: line 58:34: property `files` does not exist on type HTMLElement",
-        "examples/upload-material-ui-base64/src/pages/posts/edit.tsx: examples/upload-material-ui-base64/src/pages/posts/edit.tsx: line 14:1: cannot find module `../../interfaces`",
-        "examples/upload-material-ui-base64/src/pages/posts/edit.tsx: line 40:26: `new` is outside the compiled subset"
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 6,
+        "inside": 3
+      },
+      "island_modules": [
+        "examples/upload-material-ui-base64/src/pages/posts/create.tsx",
+        "examples/upload-material-ui-base64/src/pages/posts/edit.tsx",
+        "examples/upload-material-ui-base64/src/App.tsx"
       ],
-      "outside": [
-        "examples/upload-material-ui-base64/src/pages/posts/create.tsx: PostCreate: `new` is outside the compiled subset; property does not exist on another type",
-        "examples/upload-material-ui-base64/src/pages/posts/edit.tsx: PostEdit: `new` is outside the compiled subset; property does not exist on another type"
-      ]
+      "entry": "examples/upload-material-ui-base64/src/index.tsx",
+      "sample": [],
+      "outside": []
     },
     {
       "id": "refine/examples/with-nextjs-headless/src",
@@ -1269,6 +1530,10 @@
         "inside": 14
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/with-nextjs-headless/src/app/blog-posts/page.tsx: line 82:21: method `toLocaleDateString` on type Date is outside the compiled subset",
         "examples/with-nextjs-headless/src/app/blog-posts/page.tsx: line 112:41: `window.confirm` is outside the compiled subset",
@@ -1285,17 +1550,38 @@
       "id": "react-admin/examples/demo/src",
       "modules": {
         "total": 97,
-        "inside": 79
+        "inside": 80
       },
       "functions": {
         "total": 135,
-        "inside": 112
+        "inside": 113
       },
       "components": {
         "total": 120,
-        "inside": 101
+        "inside": 102
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 91,
+        "inside": 77
+      },
+      "island_modules": [
+        "examples/demo/src/products/ProductList.tsx",
+        "examples/demo/src/products/ProductEdit.tsx",
+        "examples/demo/src/products/ProductCreate.tsx",
+        "examples/demo/src/dashboard/CardWithIcon.tsx",
+        "examples/demo/src/dashboard/PendingOrder.tsx",
+        "examples/demo/src/dashboard/Dashboard.tsx",
+        "examples/demo/src/dataProvider/index.ts",
+        "examples/demo/src/orders/Basket.tsx",
+        "examples/demo/src/invoices/InvoiceShow.tsx",
+        "examples/demo/src/orders/Totals.tsx",
+        "examples/demo/src/visitors/Aside.tsx",
+        "examples/demo/src/App.tsx",
+        "examples/demo/src/fakeServer/index.ts",
+        "examples/demo/src/index.tsx"
+      ],
       "entry": "examples/demo/src/index.tsx",
       "sample": [
         "examples/demo/src/App.tsx: examples/demo/src/App.tsx: line 29:20: this expression is outside the compiled subset",
@@ -1313,7 +1599,6 @@
         "examples/demo/src/dashboard/OrderChart.tsx: dateFormatter: method `toLocaleDateString` on Date",
         "examples/demo/src/dashboard/OrderChart.tsx: OrderChart: `new` is outside the compiled subset",
         "examples/demo/src/dashboard/PendingOrder.tsx: PendingOrder: method `toLocaleString` on Date",
-        "examples/demo/src/dashboard/Welcome.tsx: Welcome: value imported from a module that does not resolve",
         "examples/demo/src/dataProvider/graphql.ts: customBuildQuery: a tagged template is outside the compiled subset",
         "examples/demo/src/dataProvider/graphql.ts: Default: `new` is outside the compiled subset",
         "examples/demo/src/dataProvider/index.ts: Default: `new` is outside the compiled subset",
@@ -1334,7 +1619,7 @@
       "id": "react-admin/examples/simple/src",
       "modules": {
         "total": 43,
-        "inside": 36
+        "inside": 37
       },
       "functions": {
         "total": 66,
@@ -1345,13 +1630,26 @@
         "inside": 54
       },
       "app": false,
+      "app_island": true,
+      "apps_island_modules": {
+        "total": 40,
+        "inside": 34
+      },
+      "island_modules": [
+        "examples/simple/src/comments/CommentList.tsx",
+        "examples/simple/src/addUploadFeature.tsx",
+        "examples/simple/src/queryClient.ts",
+        "examples/simple/src/dataProvider.tsx",
+        "examples/simple/src/i18nProvider.tsx",
+        "examples/simple/src/posts/PostList.tsx"
+      ],
       "entry": "examples/simple/src/index.tsx",
       "sample": [
-        "examples/simple/src/Layout.tsx: examples/simple/src/Layout.tsx: line 10:1: cannot find module `../assets/app.css`",
         "examples/simple/src/addUploadFeature.tsx: line 16:18: `instanceof` of anything but a built-in class is outside the compiled subset",
         "examples/simple/src/addUploadFeature.tsx: line 19:20: `instanceof` of anything but a built-in class is outside the compiled subset",
         "examples/simple/src/addUploadFeature.tsx: line 51:24: `new` is outside the compiled subset",
-        "examples/simple/src/comments/CommentList.tsx: line 144:13: method `toLocaleDateString` on type Date is outside the compiled subset"
+        "examples/simple/src/comments/CommentList.tsx: line 144:13: method `toLocaleDateString` on type Date is outside the compiled subset",
+        "examples/simple/src/dataProvider.tsx: examples/simple/src/dataProvider.tsx: line 53:38: `new` is outside the compiled subset"
       ],
       "outside": [
         "examples/simple/src/addUploadFeature.tsx: addUploadCapabilities: `instanceof` of anything but a built-in class is outside the compiled subset",
@@ -1377,6 +1675,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1395,6 +1697,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1413,6 +1719,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1431,6 +1741,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1449,6 +1763,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1467,6 +1785,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1485,6 +1807,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1503,6 +1829,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1521,6 +1851,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1539,6 +1873,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1557,6 +1895,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1575,6 +1917,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1593,6 +1939,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1611,6 +1961,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1629,6 +1983,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1647,6 +2005,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1665,6 +2027,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1683,6 +2049,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1701,6 +2071,10 @@
         "inside": 4
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1719,6 +2093,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1737,6 +2115,10 @@
         "inside": 3
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1755,6 +2137,10 @@
         "inside": 6
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1773,6 +2159,10 @@
         "inside": 8
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1791,6 +2181,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1809,6 +2203,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1827,6 +2225,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1845,6 +2247,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1863,6 +2269,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1881,6 +2291,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1899,6 +2313,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1917,6 +2335,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1935,6 +2357,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1953,6 +2379,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1971,6 +2401,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1989,6 +2423,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/charts/chart-tooltip-default.tsx: apps/v4/registry/new-york-v4/charts/chart-tooltip-default.tsx: line 62:24: method `toLocaleDateString` on type Date is outside the compiled subset"
       ],
@@ -2011,6 +2449,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2029,6 +2471,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2047,6 +2493,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2065,6 +2515,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2083,6 +2537,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2101,6 +2559,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2119,6 +2581,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2137,6 +2603,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2155,6 +2625,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2173,6 +2647,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2191,6 +2669,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2209,6 +2691,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2227,6 +2713,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2245,6 +2735,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2263,6 +2757,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2281,6 +2779,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2299,6 +2801,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2317,6 +2823,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2335,6 +2845,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2353,6 +2867,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2371,6 +2889,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2389,6 +2911,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2407,6 +2933,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2425,6 +2955,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2443,6 +2977,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/modal/SpringModal.tsx: line 45:8: this React API is outside the compiled subset"
       ],
@@ -2465,6 +3003,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2483,6 +3025,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2501,6 +3047,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2519,6 +3069,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2537,6 +3091,10 @@
         "inside": 4
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2555,6 +3113,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2573,6 +3135,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2591,6 +3157,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/customization/transitions/TransitionHover.tsx: line 13:22: a tagged template is outside the compiled subset"
       ],
@@ -2611,6 +3181,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2629,6 +3203,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/getting-started/templates/crud-dashboard/components/DashboardSidebarDividerItem.tsx: docs/data/material/getting-started/templates/crud-dashboard/components/DashboardSidebarDividerItem.tsx: line 4:1: cannot find module `../context/DashboardSidebarContext`",
         "docs/data/material/getting-started/templates/crud-dashboard/components/DashboardSidebarDividerItem.tsx: docs/data/material/getting-started/templates/crud-dashboard/components/DashboardSidebarDividerItem.tsx: line 5:1: cannot find module `../mixins`",
@@ -2655,6 +3233,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/integrations/routing/LinkRouter.tsx: line 23:14: unknown name `window`"
       ],
@@ -2677,6 +3259,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2695,6 +3281,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/CheckboxCard/CheckboxCard.tsx: lib/CheckboxCard/CheckboxCard.tsx: line 3:1: cannot find module `./CheckboxCard.module.css`",
         "lib/CheckboxCard/CheckboxCard.tsx: line 3:1: import from `./CheckboxCard.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -2719,6 +3309,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/DndListHandle/DndListHandle.tsx: lib/DndListHandle/DndListHandle.tsx: line 21:1: cannot find module `./DndListHandle.module.css`",
         "lib/DndListHandle/DndListHandle.tsx: line 21:1: import from `./DndListHandle.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -2745,6 +3339,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/DoubleHeader/DoubleHeader.tsx: lib/DoubleHeader/DoubleHeader.tsx: line 5:1: cannot find module `./DoubleHeader.module.css`",
         "lib/DoubleHeader/DoubleHeader.tsx: line 5:1: import from `./DoubleHeader.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -2771,6 +3369,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/DropzoneButton/DropzoneButton.tsx: lib/DropzoneButton/DropzoneButton.tsx: line 5:1: cannot find module `./DropzoneButton.module.css`",
         "lib/DropzoneButton/DropzoneButton.tsx: line 5:1: import from `./DropzoneButton.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -2797,12 +3399,16 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
-        "lib/EmailBanner/EmailBanner.tsx: lib/EmailBanner/EmailBanner.tsx: line 2:1: cannot find module `./image.svg`",
         "lib/EmailBanner/EmailBanner.tsx: lib/EmailBanner/EmailBanner.tsx: line 3:1: cannot find module `./EmailBanner.module.css`",
-        "lib/EmailBanner/EmailBanner.tsx: line 2:1: import from `./image.svg`: a compiled app imports only `react` and `react-dom`",
         "lib/EmailBanner/EmailBanner.tsx: line 3:1: import from `./EmailBanner.module.css`: a compiled app imports only `react` and `react-dom`",
-        "lib/EmailBanner/EmailBanner.tsx: line 7:21: unknown name `classes`"
+        "lib/EmailBanner/EmailBanner.tsx: line 7:21: unknown name `classes`",
+        "lib/EmailBanner/EmailBanner.tsx: line 8:23: unknown name `classes`",
+        "lib/EmailBanner/EmailBanner.tsx: line 9:27: unknown name `classes`"
       ],
       "outside": [
         "lib/EmailBanner/EmailBanner.tsx: EmailBanner: value imported from a module that does not resolve"
@@ -2823,6 +3429,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/FaqSimple/FaqSimple.tsx: lib/FaqSimple/FaqSimple.tsx: line 2:1: cannot find module `./FaqSimple.module.css`",
         "lib/FaqSimple/FaqSimple.tsx: line 2:1: import from `./FaqSimple.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -2849,6 +3459,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/FooterSimple/FooterSimple.tsx: lib/FooterSimple/FooterSimple.tsx: line 3:1: cannot find module `./FooterSimple.module.css`",
         "lib/FooterSimple/FooterSimple.tsx: line 3:1: import from `./FooterSimple.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -2875,6 +3489,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/GetInTouch/ContactIcons.tsx: lib/GetInTouch/ContactIcons.tsx: line 3:1: cannot find module `./ContactIcons.module.css`",
         "lib/GetInTouch/ContactIcons.tsx: line 3:1: import from `./ContactIcons.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -2902,6 +3520,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/HeaderMenu/HeaderMenu.tsx: lib/HeaderMenu/HeaderMenu.tsx: line 16:1: cannot find module `./HeaderMenu.module.css`",
         "lib/HeaderMenu/HeaderMenu.tsx: line 16:1: import from `./HeaderMenu.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -2929,6 +3551,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2947,6 +3573,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/ServerError/ServerError.tsx: lib/ServerError/ServerError.tsx: line 2:1: cannot find module `./ServerError.module.css`",
         "lib/ServerError/ServerError.tsx: line 2:1: import from `./ServerError.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -2973,6 +3603,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/ServerOverload/ServerOverload.tsx: lib/ServerOverload/ServerOverload.tsx: line 3:1: cannot find module `./ServerOverload.module.css`",
         "lib/ServerOverload/ServerOverload.tsx: lib/ServerOverload/ServerOverload.tsx: line 3:1: import from `./ServerOverload.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -2999,6 +3633,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/SliderLabel/SliderLabel.tsx: lib/SliderLabel/SliderLabel.tsx: line 2:1: cannot find module `./SliderLabel.module.css`",
         "lib/SliderLabel/SliderLabel.tsx: line 2:1: import from `./SliderLabel.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -3023,6 +3661,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/SliderWhite/SliderWhite.tsx: lib/SliderWhite/SliderWhite.tsx: line 3:1: cannot find module `./SliderWhite.module.css`",
         "lib/SliderWhite/SliderWhite.tsx: line 3:1: import from `./SliderWhite.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -3047,6 +3689,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3065,6 +3711,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/TableSort/TableSort.tsx: lib/TableSort/TableSort.tsx: line 13:1: cannot find module `./TableSort.module.css`",
         "lib/TableSort/TableSort.tsx: line 13:1: import from `./TableSort.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -3091,6 +3741,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/UserCardImage/UserCardImage.tsx: lib/UserCardImage/UserCardImage.tsx: line 2:1: cannot find module `./UserCardImage.module.css`",
         "lib/UserCardImage/UserCardImage.tsx: line 2:1: import from `./UserCardImage.module.css`: a compiled app imports only `react` and `react-dom`",
@@ -3116,6 +3770,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3134,6 +3792,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/dialog/dialog-focus-issue.tsx: playgrounds/react/page-examples/dialog/dialog-focus-issue.tsx: line 3:1: cannot find module `../../components/button`",
         "playgrounds/react/page-examples/dialog/dialog-focus-issue.tsx: line 3:1: import from `../../components/button`: a compiled app imports only `react` and `react-dom`",
@@ -3161,6 +3823,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/dialog/dialog.tsx: playgrounds/react/page-examples/dialog/dialog.tsx: line 4:1: cannot find module `../../components/button`",
         "playgrounds/react/page-examples/dialog/dialog.tsx: playgrounds/react/page-examples/dialog/dialog.tsx: line 5:1: cannot find module `../../utils/class-names`",
@@ -3189,6 +3855,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3207,6 +3877,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3225,6 +3899,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/menu/menu-with-floating-ui.tsx: playgrounds/react/page-examples/menu/menu-with-floating-ui.tsx: line 6:1: cannot find module `../../components/button`",
         "playgrounds/react/page-examples/menu/menu-with-floating-ui.tsx: playgrounds/react/page-examples/menu/menu-with-floating-ui.tsx: line 7:1: cannot find module `../../utils/class-names`",
@@ -3252,6 +3930,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3270,6 +3952,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3288,6 +3974,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3306,6 +3996,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3313,7 +4007,7 @@
       "id": "react-hook-form/examples/V7/customMaskedInputWithController.tsx",
       "modules": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "functions": {
         "total": 6,
@@ -3324,9 +4018,11 @@
         "inside": 3
       },
       "app": null,
-      "sample": [
-        "examples/V7/customMaskedInputWithController.tsx: examples/V7/customMaskedInputWithController.tsx: line 5:1: cannot find module `./styles.css`"
-      ],
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "sample": [],
       "outside": []
     },
     {
@@ -3344,6 +4040,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3362,6 +4062,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3380,6 +4084,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3398,6 +4106,10 @@
         "inside": 2
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3405,7 +4117,7 @@
       "id": "react-hook-form/examples/V7/typescript/UseFormMethods.tsx",
       "modules": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "functions": {
         "total": 4,
@@ -3416,9 +4128,11 @@
         "inside": 4
       },
       "app": null,
-      "sample": [
-        "examples/V7/typescript/UseFormMethods.tsx: examples/V7/typescript/UseFormMethods.tsx: line 9:1: cannot find module `./styles.css`"
-      ],
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "sample": [],
       "outside": []
     }
   ]

@@ -34,11 +34,17 @@ pub struct LowerOptions {
     /// Whether imports from packages run on the island. Off, a package's names are
     /// outside the subset, as they were before islands (the corpus reports both).
     pub islands: bool,
+    /// Modules of the app (indices into the sources) that run on the island
+    /// instead of compiled, as a package's do; see `crate::build_modules`.
+    pub vm_modules: Vec<usize>,
 }
 
 impl Default for LowerOptions {
     fn default() -> Self {
-        LowerOptions { islands: true }
+        LowerOptions {
+            islands: true,
+            vm_modules: Vec::new(),
+        }
     }
 }
 
@@ -50,9 +56,14 @@ pub fn lower_modules_with(
     let allocator = Allocator::default();
     let mut programs = Vec::with_capacity(sources.len());
     let mut errors = Vec::new();
-    for src in sources {
-        // A package's module is the island's, never lowered.
-        let text = if src.package { "" } else { src.text.as_str() };
+    for (i, src) in sources.iter().enumerate() {
+        // A package's module is the island's, never lowered; so is one of the app's
+        // that runs there.
+        let text = if src.package || options.vm_modules.contains(&i) {
+            ""
+        } else {
+            src.text.as_str()
+        };
         let ret = Parser::new(&allocator, text, SourceType::tsx()).parse();
         for d in &ret.diagnostics {
             let mut d = Diagnostic::from_oxc(&src.text, d);
@@ -77,21 +88,52 @@ pub fn lower_modules_with(
     l.ambient_mods = (0..sources.len())
         .filter(|i| sources[*i].is_ambient())
         .collect();
-    l.package_mods = (0..sources.len()).filter(|i| sources[*i].package).collect();
+    l.package_mods = (0..sources.len())
+        .filter(|i| sources[*i].package || options.vm_modules.contains(i))
+        .collect();
+    l.source_files = sources.iter().map(|s| s.file.clone()).collect();
     l.swap_current(0);
     let mut decls = Vec::with_capacity(programs.len());
     for (i, program) in programs.iter().enumerate() {
         l.enter_module(i);
-        if sources[i].package {
+        if options.vm_modules.contains(&i) {
+            // The module's code runs on the island here, in module order.
+            l.island_run(i);
+        }
+        if sources[i].package || options.vm_modules.contains(&i) {
             decls.push(Vec::new());
             continue;
         }
         decls.push(l.declare(&program.body, &sources[i].imports));
     }
+    let entry = sources.len().saturating_sub(1);
+    if options.vm_modules.contains(&entry) {
+        // The entry runs on the island: what it renders is the root, into the
+        // container it names.
+        l.island_root(entry, &sources[entry].text);
+    }
     // Imports that close a cycle, now that every module is declared.
     for (i, import, m) in std::mem::take(&mut l.deferred_imports) {
         l.enter_module(i);
         l.local_import(import, m);
+    }
+    // What island modules import from compiled ones: every value export of each.
+    let mut provides = Vec::new();
+    for &v in &options.vm_modules {
+        for &m in sources[v].imports.values() {
+            if l.package_mods.contains(&m) || l.ambient_mods.contains(&m) {
+                continue;
+            }
+            let theirs = &l.mods[m];
+            for (exported, local) in &theirs.exports {
+                if let Some(&slot) = theirs.global_names.get(local) {
+                    let p = (sources[m].file.clone(), exported.clone(), slot);
+                    if !provides.contains(&p) {
+                        provides.push(p);
+                    }
+                }
+            }
+        }
     }
     // Reassigned module `let`s make identity tracking unsafe across calls.
     l.mutable_globals = l.ginfo.iter().any(|g| g.reassigned);
@@ -118,6 +160,7 @@ pub fn lower_modules_with(
             island: (!l.island_imports.is_empty()).then(|| Island {
                 script: String::new(),
                 imports: l.island_imports.clone(),
+                provides,
             }),
             mutates_shared: l.mutates_shared,
         })
@@ -423,6 +466,8 @@ struct Lowerer<'a> {
     package_mods: Vec<usize>,
     /// Whether package imports go to the island (`LowerOptions::islands`).
     islands: bool,
+    /// Each source's file, by module index.
+    source_files: Vec<String>,
     /// What compiled code imports from the island: (specifier, name), each once.
     island_imports: Vec<(String, String)>,
     /// Module-level `const r = createRoot(container)`, by (module, name): the
@@ -491,6 +536,7 @@ impl<'a> Lowerer<'a> {
             namespaces: BTreeMap::new(),
             package_mods: Vec::new(),
             islands: true,
+            source_files: Vec::new(),
             island_imports: Vec::new(),
             root_vars: BTreeMap::new(),
             container_vars: BTreeMap::new(),
@@ -826,16 +872,51 @@ impl<'a> Lowerer<'a> {
                     && !matches!(module, "react" | "react-dom" | "react-dom/client"))
         {
             // A package: its values come from the island.
-            self.island_import(import);
+            let key = match resolved {
+                Some(m) => self.source_files[m].clone(),
+                None => module.to_owned(),
+            };
+            self.island_import(import, key);
             return;
         }
-        if resolved.is_none()
-            && import.specifiers.as_ref().is_none_or(|s| s.is_empty())
-            && [".css", ".scss", ".sass", ".less"]
-                .iter()
-                .any(|e| module.ends_with(e))
-        {
+        let url = if resolved.is_none() {
+            let importer = self.source_files.get(self.cur_mod).cloned();
+            importer.and_then(|f| crate::asset_url(&f, module))
+        } else {
+            None
+        };
+        if let Some(url) = url {
             // `import './App.css'`: the page's stylesheet, loaded with the page.
+            // `import logo from './logo.svg'`: the file's URL, as a bundler gives it.
+            for spec in import.specifiers.iter().flatten() {
+                match spec {
+                    ast::ImportDeclarationSpecifier::ImportDefaultSpecifier(s)
+                        if !crate::is_stylesheet(module) =>
+                    {
+                        let slot = self.globals.len() as u32;
+                        self.globals.push(Global {
+                            name: s.local.name.to_string(),
+                            init: GlobalInit::Expr(Expr::Str(url.clone())),
+                            ty: Ty::String,
+                        });
+                        self.add_global_name(
+                            &s.local.name,
+                            GlobalInfo {
+                                slot,
+                                ty: Ty::String,
+                                func: None,
+                                kind: FunctionKind::Plain,
+                                reassigned: false,
+                                generic: None,
+                            },
+                        );
+                    }
+                    _ => self.err(
+                        import.span,
+                        format!("import of names from `{module}`, which is not a module"),
+                    ),
+                }
+            }
             return;
         }
         if let Some(&m) = imports.get(module) {
@@ -894,11 +975,10 @@ impl<'a> Lowerer<'a> {
     }
 
     /// An import from a package: each name a global the island's export initialises.
-    fn island_import(&mut self, import: &'a ast::ImportDeclaration<'a>) {
+    fn island_import(&mut self, import: &'a ast::ImportDeclaration<'a>, spec: String) {
         if import.import_kind.is_type() {
             return;
         }
-        let spec = import.source.value.to_string();
         let export = |l: &mut Self, name: &str| -> u32 {
             let key = (spec.clone(), name.to_owned());
             match l.island_imports.iter().position(|k| *k == key) {
@@ -949,6 +1029,89 @@ impl<'a> Lowerer<'a> {
                 },
             );
         }
+    }
+
+    /// The root of an app whose entry (module `m`, source `text`) is on the island:
+    /// the element the entry's `createRoot(…).render(…)` gave the shim (island
+    /// export `"!root"`), in the container its `getElementById('…')` names, else
+    /// `root`.
+    fn island_root(&mut self, m: usize, text: &str) {
+        let key = (self.source_files[m].clone(), "!root".to_owned());
+        self.island_imports.push(key);
+        let k = self.island_imports.len() as u32 - 1;
+        let slot = self.globals.len() as u32;
+        self.globals.push(Global {
+            name: "__cw_root".into(),
+            init: GlobalInit::Island(k),
+            ty: Ty::Unknown,
+        });
+        self.ginfo.push(GlobalInfo {
+            slot,
+            ty: Ty::Unknown,
+            func: None,
+            kind: FunctionKind::Plain,
+            reassigned: false,
+            generic: None,
+        });
+        let fidx = self.functions.len() as u32;
+        self.functions.push(Some(Function {
+            name: "<root>".into(),
+            kind: FunctionKind::Plain,
+            params: Vec::new(),
+            n_locals: 0,
+            captures: Vec::new(),
+            body: vec![Stmt::Return(Some(Expr::Global(slot)))],
+            local_types: Vec::new(),
+            ret: Ty::Node,
+            line: 1,
+            has_depless_effect: false,
+            boxed: Vec::new(),
+            is_async: false,
+            rest: None,
+            forward_ref: false,
+        }));
+        let container_id = text
+            .find("getElementById(")
+            .and_then(|at| {
+                let rest = text[at + "getElementById(".len()..].trim_start();
+                let q = rest
+                    .chars()
+                    .next()
+                    .filter(|c| matches!(c, '\'' | '"' | '`'))?;
+                let end = rest[1..].find(q)?;
+                Some(rest[1..1 + end].to_owned())
+            })
+            .unwrap_or_else(|| "root".to_owned());
+        self.root = Some(Root {
+            container_id,
+            element: fidx,
+        });
+    }
+
+    /// Module `m` of the app runs on the island: a global whose initialisation, at
+    /// this point of the module order, runs it (island export `"!run"`).
+    fn island_run(&mut self, m: usize) {
+        let key = (self.source_files[m].clone(), "!run".to_owned());
+        let k = match self.island_imports.iter().position(|x| *x == key) {
+            Some(i) => i as u32,
+            None => {
+                self.island_imports.push(key);
+                self.island_imports.len() as u32 - 1
+            }
+        };
+        self.globals.push(Global {
+            name: format!("__cw_run_{m}"),
+            init: GlobalInit::Island(k),
+            ty: Ty::Unknown,
+        });
+        self.ginfo.push(GlobalInfo {
+            slot: self.globals.len() as u32 - 1,
+            ty: Ty::Unknown,
+            func: None,
+            kind: FunctionKind::Plain,
+            reassigned: false,
+            generic: None,
+        });
     }
 
     /// An import from another module of the app: its values become names for the

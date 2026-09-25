@@ -4,21 +4,29 @@
   "projects": 138,
   "modules": {
     "total": 532,
-    "inside": 85
+    "inside": 101
   },
   "functions": {
     "total": 985,
-    "inside": 290
+    "inside": 302
   },
   "components": {
     "total": 647,
-    "inside": 85
+    "inside": 97
   },
   "apps": {
     "total": 29,
+    "inside": 1
+  },
+  "apps_island": {
+    "total": 0,
     "inside": 0
   },
-  "diagnostics": 5931,
+  "apps_island_modules": {
+    "total": 0,
+    "inside": 0
+  },
+  "diagnostics": 5736,
   "diagnostics_by_cause": {
     "`<TooltipPrimitive.Provider>` on a value of type unknown": 1,
     "`Object.hasOwn` is outside the compiled subset": 1,
@@ -39,9 +47,8 @@
     "built-in method `substr` is outside the compiled subset": 1,
     "built-in method `toLocaleDateString` is outside the compiled subset": 1,
     "built-in method `toLocaleString` is outside the compiled subset": 27,
-    "import from a package": 1122,
+    "import from a package": 1089,
     "import of a stylesheet": 9,
-    "import of an image": 4,
     "method `addEventListener` on HTMLElement": 1,
     "method `attachShadow` on HTMLElement": 1,
     "method `get` on Promise<Map<string, unknown>>": 2,
@@ -49,7 +56,7 @@
     "method `toLocaleDateString` on Date": 1,
     "property does not exist on a union": 4,
     "property does not exist on another type": 10,
-    "relative import that does not resolve": 120,
+    "relative import that does not resolve": 85,
     "spread props on a Provider are outside the compiled subset": 1,
     "this React API is outside the compiled subset": 4,
     "this expression is outside the compiled subset": 4,
@@ -68,8 +75,8 @@
     "unknown name `queueMicrotask`": 1,
     "unknown name `requestAnimationFrame`": 4,
     "unknown name `window`": 1,
-    "value imported from a module that does not resolve": 141,
-    "value imported from a package": 4357
+    "value imported from a module that does not resolve": 135,
+    "value imported from a package": 4240
   },
   "functions_by_cause": {
     "`<TooltipPrimitive.Provider>` on a value of type unknown": 1,
@@ -110,8 +117,8 @@
     "unknown name `queueMicrotask`": 1,
     "unknown name `requestAnimationFrame`": 3,
     "unknown name `window`": 1,
-    "value imported from a module that does not resolve": 24,
-    "value imported from a package": 649
+    "value imported from a module that does not resolve": 23,
+    "value imported from a package": 638
   },
   "packages": {
     "@/columns": 3,
@@ -232,34 +239,30 @@
       "id": "vite/packages/create-vite/template-react-ts/src",
       "modules": {
         "total": 2,
-        "inside": 0
+        "inside": 2
       },
       "functions": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "components": {
         "total": 1,
+        "inside": 1
+      },
+      "app": true,
+      "apps_island_modules": {
+        "total": 0,
         "inside": 0
       },
-      "app": false,
       "entry": "packages/create-vite/template-react-ts/src/main.tsx",
-      "sample": [
-        "packages/create-vite/template-react-ts/src/App.tsx: packages/create-vite/template-react-ts/src/App.tsx: line 2:1: cannot find module `./assets/hero.png`",
-        "packages/create-vite/template-react-ts/src/App.tsx: packages/create-vite/template-react-ts/src/App.tsx: line 3:1: cannot find module `./assets/react.svg`",
-        "packages/create-vite/template-react-ts/src/App.tsx: packages/create-vite/template-react-ts/src/App.tsx: line 4:1: cannot find module `./assets/vite.svg`",
-        "packages/create-vite/template-react-ts/src/App.tsx: packages/create-vite/template-react-ts/src/App.tsx: line 5:1: cannot find module `./App.css`",
-        "packages/create-vite/template-react-ts/src/App.tsx: line 2:1: import from `./assets/hero.png`: a compiled app imports only `react` and `react-dom`"
-      ],
-      "outside": [
-        "packages/create-vite/template-react-ts/src/App.tsx: App: value imported from a module that does not resolve"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "realworld/src",
       "modules": {
         "total": 44,
-        "inside": 12
+        "inside": 13
       },
       "functions": {
         "total": 104,
@@ -270,6 +273,10 @@
         "inside": 29
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "src/index.tsx",
       "sample": [
         "src/components/App/App.slice.ts: src/components/App/App.slice.ts: line 1:1: import from `@hqoss/monads`: a compiled app imports only `react` and `react-dom`",
@@ -344,13 +351,17 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/basic-use-app-table/src/main.tsx",
       "sample": [
-        "examples/react/basic-use-app-table/src/main.tsx: examples/react/basic-use-app-table/src/main.tsx: line 9:1: cannot find module `./index.css`",
         "examples/react/basic-use-app-table/src/main.tsx: line 2:1: import from `@tanstack/react-devtools`: a compiled app imports only `react` and `react-dom`",
         "examples/react/basic-use-app-table/src/main.tsx: line 4:1: import from `@tanstack/react-table`: a compiled app imports only `react` and `react-dom`",
         "examples/react/basic-use-app-table/src/main.tsx: line 5:1: import from `@tanstack/react-table-devtools`: a compiled app imports only `react` and `react-dom`",
-        "examples/react/basic-use-app-table/src/main.tsx: line 60:48: unknown name `createTableHook`"
+        "examples/react/basic-use-app-table/src/main.tsx: line 60:48: unknown name `createTableHook`",
+        "examples/react/basic-use-app-table/src/main.tsx: line 120:3: unknown name `useTanStackTableDevtools`"
       ],
       "outside": [
         "examples/react/basic-use-app-table/src/main.tsx: App: value imported from a package"
@@ -371,13 +382,17 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/column-dnd/src/main.tsx",
       "sample": [
-        "examples/react/column-dnd/src/main.tsx: examples/react/column-dnd/src/main.tsx: line 31:1: cannot find module `./index.css`",
         "examples/react/column-dnd/src/main.tsx: examples/react/column-dnd/src/main.tsx: line 3:1: import from `@tanstack/react-table`: a compiled app imports only `react` and `react-dom`",
         "examples/react/column-dnd/src/main.tsx: examples/react/column-dnd/src/main.tsx: line 9:1: import from `@dnd-kit/core`: a compiled app imports only `react` and `react-dom`",
         "examples/react/column-dnd/src/main.tsx: examples/react/column-dnd/src/main.tsx: line 18:1: import from `@dnd-kit/modifiers`: a compiled app imports only `react` and `react-dom`",
-        "examples/react/column-dnd/src/main.tsx: examples/react/column-dnd/src/main.tsx: line 19:1: import from `@dnd-kit/sortable`: a compiled app imports only `react` and `react-dom`"
+        "examples/react/column-dnd/src/main.tsx: examples/react/column-dnd/src/main.tsx: line 19:1: import from `@dnd-kit/sortable`: a compiled app imports only `react` and `react-dom`",
+        "examples/react/column-dnd/src/main.tsx: examples/react/column-dnd/src/main.tsx: line 25:1: import from `@dnd-kit/utilities`: a compiled app imports only `react` and `react-dom`"
       ],
       "outside": [
         "examples/react/column-dnd/src/main.tsx: DraggableTableHeader: value imported from a package",
@@ -401,13 +416,17 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/column-visibility/src/main.tsx",
       "sample": [
-        "examples/react/column-visibility/src/main.tsx: examples/react/column-visibility/src/main.tsx: line 11:1: cannot find module `./index.css`",
         "examples/react/column-visibility/src/main.tsx: examples/react/column-visibility/src/main.tsx: line 3:1: import from `@tanstack/react-table`: a compiled app imports only `react` and `react-dom`",
         "examples/react/column-visibility/src/main.tsx: examples/react/column-visibility/src/main.tsx: line 13:18: unknown name `tableFeatures`",
         "examples/react/column-visibility/src/main.tsx: examples/react/column-visibility/src/main.tsx: line 13:34: unknown name `columnVisibilityFeature`",
-        "examples/react/column-visibility/src/main.tsx: examples/react/column-visibility/src/main.tsx: line 15:22: unknown name `createColumnHelper`"
+        "examples/react/column-visibility/src/main.tsx: examples/react/column-visibility/src/main.tsx: line 15:22: unknown name `createColumnHelper`",
+        "examples/react/column-visibility/src/main.tsx: examples/react/column-visibility/src/main.tsx: line 69:17: unknown name `useTable`"
       ],
       "outside": [
         "examples/react/column-visibility/src/main.tsx: App: value imported from a package",
@@ -429,6 +448,10 @@
         "inside": 10
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/composable-tables/src/main.tsx",
       "sample": [
         "examples/react/composable-tables/src/components/cell-components.tsx: examples/react/composable-tables/src/components/cell-components.tsx: line 7:1: import from `@tanstack/react-table`: a compiled app imports only `react` and `react-dom`",
@@ -466,6 +489,10 @@
         "inside": 1
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/kitchen-sink-chakra-ui/src/main.tsx",
       "sample": [
         "examples/react/kitchen-sink-chakra-ui/src/columns.tsx: line 2:1: import from `@/hooks/table`: a compiled app imports only `react` and `react-dom`",
@@ -539,6 +566,10 @@
         "inside": 3
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/kitchen-sink-react-aria/src/main.tsx",
       "sample": [
         "examples/react/kitchen-sink-react-aria/src/columns.tsx: line 2:1: import from `@/hooks/table`: a compiled app imports only `react` and `react-dom`",
@@ -601,6 +632,10 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/kitchen-sink-shadcn-radix/src/main.tsx",
       "sample": [
         "examples/react/kitchen-sink-shadcn-radix/src/columns.tsx: line 2:1: import from `@/hooks/table`: a compiled app imports only `react` and `react-dom`",
@@ -739,13 +774,17 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/lib-material-ui/src/main.tsx",
       "sample": [
-        "examples/react/lib-material-ui/src/main.tsx: examples/react/lib-material-ui/src/main.tsx: line 43:1: cannot find module `./index.css`",
         "examples/react/lib-material-ui/src/main.tsx: examples/react/lib-material-ui/src/main.tsx: line 3:1: import from `@mui/icons-material/ArrowDownward`: a compiled app imports only `react` and `react-dom`",
         "examples/react/lib-material-ui/src/main.tsx: examples/react/lib-material-ui/src/main.tsx: line 4:1: import from `@mui/icons-material/Search`: a compiled app imports only `react` and `react-dom`",
         "examples/react/lib-material-ui/src/main.tsx: examples/react/lib-material-ui/src/main.tsx: line 5:1: import from `@mui/material`: a compiled app imports only `react` and `react-dom`",
-        "examples/react/lib-material-ui/src/main.tsx: examples/react/lib-material-ui/src/main.tsx: line 26:1: import from `@tanstack/react-table`: a compiled app imports only `react` and `react-dom`"
+        "examples/react/lib-material-ui/src/main.tsx: examples/react/lib-material-ui/src/main.tsx: line 26:1: import from `@tanstack/react-table`: a compiled app imports only `react` and `react-dom`",
+        "examples/react/lib-material-ui/src/main.tsx: examples/react/lib-material-ui/src/main.tsx: line 45:18: unknown name `tableFeatures`"
       ],
       "outside": [
         "examples/react/lib-material-ui/src/main.tsx: App: value imported from a package",
@@ -767,13 +806,17 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/row-dnd/src/main.tsx",
       "sample": [
-        "examples/react/row-dnd/src/main.tsx: examples/react/row-dnd/src/main.tsx: line 30:1: cannot find module `./index.css`",
         "examples/react/row-dnd/src/main.tsx: examples/react/row-dnd/src/main.tsx: line 3:1: import from `@tanstack/react-table`: a compiled app imports only `react` and `react-dom`",
         "examples/react/row-dnd/src/main.tsx: examples/react/row-dnd/src/main.tsx: line 8:1: import from `@dnd-kit/core`: a compiled app imports only `react` and `react-dom`",
         "examples/react/row-dnd/src/main.tsx: examples/react/row-dnd/src/main.tsx: line 17:1: import from `@dnd-kit/modifiers`: a compiled app imports only `react` and `react-dom`",
-        "examples/react/row-dnd/src/main.tsx: examples/react/row-dnd/src/main.tsx: line 18:1: import from `@dnd-kit/sortable`: a compiled app imports only `react` and `react-dom`"
+        "examples/react/row-dnd/src/main.tsx: examples/react/row-dnd/src/main.tsx: line 18:1: import from `@dnd-kit/sortable`: a compiled app imports only `react` and `react-dom`",
+        "examples/react/row-dnd/src/main.tsx: examples/react/row-dnd/src/main.tsx: line 24:1: import from `@dnd-kit/utilities`: a compiled app imports only `react` and `react-dom`"
       ],
       "outside": [
         "examples/react/row-dnd/src/main.tsx: RowDragHandleCell: value imported from a package",
@@ -786,7 +829,7 @@
       "id": "tanstack-table/examples/react/spreadsheet/src",
       "modules": {
         "total": 9,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 49,
@@ -797,6 +840,10 @@
         "inside": 6
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/spreadsheet/src/main.tsx",
       "sample": [
         "examples/react/spreadsheet/src/CellContextMenu.tsx: examples/react/spreadsheet/src/CellContextMenu.tsx: line 49:10: this React API is outside the compiled subset",
@@ -837,13 +884,17 @@
         "inside": 5
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/virtualized-columns-experimental/src/main.tsx",
       "sample": [
-        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 3:1: cannot find module `./index.css`",
         "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 4:1: import from `@tanstack/react-table`: a compiled app imports only `react` and `react-dom`",
         "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 16:1: import from `@tanstack/react-virtual`: a compiled app imports only `react` and `react-dom`",
         "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 29:3: unknown name `columnResizingFeature`",
-        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 30:3: unknown name `columnSizingFeature`"
+        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 30:3: unknown name `columnSizingFeature`",
+        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 31:3: unknown name `rowSortingFeature`"
       ],
       "outside": [
         "examples/react/virtualized-columns-experimental/src/main.tsx: App: built-in method `toLocaleString` is outside the compiled subset; unknown name `process`; value imported from a package",
@@ -869,6 +920,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/react/auto-refetching/src/pages/index.tsx: line 3:1: import from `@tanstack/react-query`: a compiled app imports only `react` and `react-dom`",
         "examples/react/auto-refetching/src/pages/index.tsx: line 10:1: import from `@tanstack/react-query-devtools`: a compiled app imports only `react` and `react-dom`",
@@ -896,6 +951,10 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/devtools-panel/src/index.tsx",
       "sample": [
         "examples/react/devtools-panel/src/index.tsx: line 3:1: import from `@tanstack/react-query`: a compiled app imports only `react` and `react-dom`",
@@ -924,6 +983,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/react/eslint-plugin-demo/src/allowlist-demo.tsx: line 1:1: import from `@tanstack/react-query`: a compiled app imports only `react` and `react-dom`",
         "examples/react/eslint-plugin-demo/src/allowlist-demo.tsx: line 4:15: `useApiClient` must be called at the top level of a component or hook",
@@ -960,6 +1023,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/react/infinite-query-with-max-pages/src/pages/index.tsx: line 2:1: import from `@tanstack/react-query`: a compiled app imports only `react` and `react-dom`",
         "examples/react/infinite-query-with-max-pages/src/pages/index.tsx: line 7:1: import from `@tanstack/react-query-devtools`: a compiled app imports only `react` and `react-dom`",
@@ -987,6 +1054,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/react/prefetching/src/pages/[user]/[repo].tsx: line 2:1: import from `next/link`: a compiled app imports only `react` and `react-dom`",
         "examples/react/prefetching/src/pages/[user]/[repo].tsx: line 3:1: import from `@tanstack/react-query`: a compiled app imports only `react` and `react-dom`",
@@ -1015,6 +1086,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/react/react-native/src/components/Divider.tsx: line 2:1: import from `react-native`: a compiled app imports only `react` and `react-dom`",
         "examples/react/react-native/src/components/Divider.tsx: line 3:1: import from `react-native-paper`: a compiled app imports only `react` and `react-dom`",
@@ -1049,6 +1124,10 @@
         "inside": 2
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/react-router/src/index.tsx",
       "sample": [
         "examples/react/react-router/src/contacts.ts: line 1:1: import from `localforage`: a compiled app imports only `react` and `react-dom`",
@@ -1093,13 +1172,17 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/rick-morty/src/index.tsx",
       "sample": [
-        "examples/react/rick-morty/src/App.tsx: examples/react/rick-morty/src/App.tsx: line 6:1: cannot find module `./styles.css`",
         "examples/react/rick-morty/src/App.tsx: examples/react/rick-morty/src/App.tsx: line 1:1: import from `react-router-dom`: a compiled app imports only `react` and `react-dom`",
         "examples/react/rick-morty/src/App.tsx: examples/react/rick-morty/src/App.tsx: line 2:1: import from `@tanstack/react-query`: a compiled app imports only `react` and `react-dom`",
         "examples/react/rick-morty/src/App.tsx: examples/react/rick-morty/src/App.tsx: line 3:1: import from `@tanstack/react-query-devtools`: a compiled app imports only `react` and `react-dom`",
-        "examples/react/rick-morty/src/App.tsx: examples/react/rick-morty/src/App.tsx: line 8:21: `new` is outside the compiled subset"
+        "examples/react/rick-morty/src/App.tsx: examples/react/rick-morty/src/App.tsx: line 8:21: `new` is outside the compiled subset",
+        "examples/react/rick-morty/src/App.tsx: examples/react/rick-morty/src/App.tsx: line 12:6: unknown name `QueryClientProvider`"
       ],
       "outside": [
         "examples/react/rick-morty/src/App.tsx: App: value imported from a package",
@@ -1129,13 +1212,17 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/shadow-dom/src/main.tsx",
       "sample": [
         "examples/react/shadow-dom/src/DogList.tsx: line 1:1: import from `@tanstack/react-query`: a compiled app imports only `react` and `react-dom`",
         "examples/react/shadow-dom/src/DogList.tsx: line 10:28: unknown name `useQuery`",
-        "examples/react/shadow-dom/src/main.tsx: examples/react/shadow-dom/src/main.tsx: line 3:1: cannot find module `./index.css`",
         "examples/react/shadow-dom/src/main.tsx: examples/react/shadow-dom/src/main.tsx: line 4:1: import from `@tanstack/react-query`: a compiled app imports only `react` and `react-dom`",
-        "examples/react/shadow-dom/src/main.tsx: examples/react/shadow-dom/src/main.tsx: line 5:1: import from `@tanstack/react-query-devtools`: a compiled app imports only `react` and `react-dom`"
+        "examples/react/shadow-dom/src/main.tsx: examples/react/shadow-dom/src/main.tsx: line 5:1: import from `@tanstack/react-query-devtools`: a compiled app imports only `react` and `react-dom`",
+        "examples/react/shadow-dom/src/main.tsx: examples/react/shadow-dom/src/main.tsx: line 11:21: `new` is outside the compiled subset"
       ],
       "outside": [
         "examples/react/shadow-dom/src/DogList.tsx: DogList: value imported from a package"
@@ -1156,6 +1243,10 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/query/react/authentication/src/index.tsx",
       "sample": [
         "examples/query/react/authentication/src/App.tsx: examples/query/react/authentication/src/App.tsx: line 1:1: import from `react-router-dom`: a compiled app imports only `react` and `react-dom`",
@@ -1179,7 +1270,7 @@
       "id": "redux-toolkit/examples/query/react/basic/src",
       "modules": {
         "total": 5,
-        "inside": 0
+        "inside": 1
       },
       "functions": {
         "total": 2,
@@ -1190,13 +1281,17 @@
         "inside": 1
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/query/react/basic/src/index.tsx",
       "sample": [
-        "examples/query/react/basic/src/App.tsx: examples/query/react/basic/src/App.tsx: line 1:1: cannot find module `./styles.css`",
         "examples/query/react/basic/src/index.tsx: examples/query/react/basic/src/index.tsx: line 2:1: import from `react-redux`: a compiled app imports only `react` and `react-dom`",
         "examples/query/react/basic/src/index.tsx: examples/query/react/basic/src/index.tsx: line 13:4: unknown name `Provider`",
         "examples/query/react/basic/src/services/pokemon.ts: line 1:1: import from `@reduxjs/toolkit/query/react`: a compiled app imports only `react` and `react-dom`",
-        "examples/query/react/basic/src/services/pokemon.ts: line 3:27: unknown name `createApi`"
+        "examples/query/react/basic/src/services/pokemon.ts: line 3:27: unknown name `createApi`",
+        "examples/query/react/basic/src/services/pokemon.ts: line 4:14: unknown name `fetchBaseQuery`"
       ],
       "outside": [
         "examples/query/react/basic/src/store.ts: setupStore: value imported from a package"
@@ -1217,6 +1312,10 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/query/react/graphql/src/index.tsx",
       "sample": [
         "examples/query/react/graphql/src/App.tsx: examples/query/react/graphql/src/App.tsx: line 1:1: import from `react-router-dom`: a compiled app imports only `react` and `react-dom`",
@@ -1248,6 +1347,10 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/query/react/prefetching/src/index.tsx",
       "sample": [
         "examples/query/react/prefetching/src/App.tsx: examples/query/react/prefetching/src/App.tsx: line 1:1: import from `react-router-dom`: a compiled app imports only `react` and `react-dom`",
@@ -1279,6 +1382,10 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/blog-issue-tracker/src/index.tsx",
       "sample": [
         "examples/blog-issue-tracker/src/App.tsx: examples/blog-issue-tracker/src/App.tsx: line 1:1: import from `@refinedev/core`: a compiled app imports only `react` and `react-dom`",
@@ -1318,6 +1425,10 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/data-provider-graphql/src/index.tsx",
       "sample": [
         "examples/data-provider-graphql/src/App.tsx: examples/data-provider-graphql/src/App.tsx: line 1:1: import from `@refinedev/core`: a compiled app imports only `react` and `react-dom`",
@@ -1341,17 +1452,21 @@
       "id": "refine/examples/form-antd-mutation-mode/src",
       "modules": {
         "total": 7,
-        "inside": 2
+        "inside": 5
       },
       "functions": {
         "total": 5,
-        "inside": 0
+        "inside": 3
       },
       "components": {
         "total": 5,
-        "inside": 0
+        "inside": 3
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/form-antd-mutation-mode/src/index.tsx",
       "sample": [
         "examples/form-antd-mutation-mode/src/App.tsx: examples/form-antd-mutation-mode/src/App.tsx: line 1:1: import from `@refinedev/core`: a compiled app imports only `react` and `react-dom`",
@@ -1362,27 +1477,28 @@
       ],
       "outside": [
         "examples/form-antd-mutation-mode/src/App.tsx: App: value imported from a package",
-        "examples/form-antd-mutation-mode/src/components/mutation-mode-picker/index.tsx: MutationModePicker: value imported from a package",
-        "examples/form-antd-mutation-mode/src/pages/posts/create.tsx: PostCreate: value imported from a package",
-        "examples/form-antd-mutation-mode/src/pages/posts/edit.tsx: PostEdit: value imported from a package",
-        "examples/form-antd-mutation-mode/src/pages/posts/list.tsx: PostList: value imported from a package"
+        "examples/form-antd-mutation-mode/src/components/mutation-mode-picker/index.tsx: MutationModePicker: value imported from a package"
       ]
     },
     {
       "id": "refine/examples/table-antd-use-update-many/src",
       "modules": {
         "total": 7,
-        "inside": 2
+        "inside": 6
       },
       "functions": {
         "total": 5,
-        "inside": 0
+        "inside": 4
       },
       "components": {
         "total": 5,
-        "inside": 0
+        "inside": 4
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/table-antd-use-update-many/src/index.tsx",
       "sample": [
         "examples/table-antd-use-update-many/src/App.tsx: examples/table-antd-use-update-many/src/App.tsx: line 1:1: import from `@refinedev/core`: a compiled app imports only `react` and `react-dom`",
@@ -1392,56 +1508,59 @@
         "examples/table-antd-use-update-many/src/App.tsx: examples/table-antd-use-update-many/src/App.tsx: line 14:1: import from `react-router`: a compiled app imports only `react` and `react-dom`"
       ],
       "outside": [
-        "examples/table-antd-use-update-many/src/App.tsx: App: value imported from a package",
-        "examples/table-antd-use-update-many/src/pages/posts/create.tsx: PostCreate: value imported from a package",
-        "examples/table-antd-use-update-many/src/pages/posts/edit.tsx: PostEdit: value imported from a package",
-        "examples/table-antd-use-update-many/src/pages/posts/list.tsx: PostList: value imported from a package",
-        "examples/table-antd-use-update-many/src/pages/posts/show.tsx: PostShow: value imported from a package"
+        "examples/table-antd-use-update-many/src/App.tsx: App: value imported from a package"
       ]
     },
     {
       "id": "refine/examples/table-react-table-basic/src",
       "modules": {
         "total": 4,
-        "inside": 2
+        "inside": 3
       },
       "functions": {
         "total": 2,
-        "inside": 0
+        "inside": 1
       },
       "components": {
         "total": 2,
-        "inside": 0
+        "inside": 1
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/table-react-table-basic/src/index.tsx",
       "sample": [
-        "examples/table-react-table-basic/src/App.tsx: examples/table-react-table-basic/src/App.tsx: line 9:1: cannot find module `./App.css`",
         "examples/table-react-table-basic/src/App.tsx: examples/table-react-table-basic/src/App.tsx: line 1:1: import from `@refinedev/core`: a compiled app imports only `react` and `react-dom`",
         "examples/table-react-table-basic/src/App.tsx: examples/table-react-table-basic/src/App.tsx: line 2:1: import from `@refinedev/react-router`: a compiled app imports only `react` and `react-dom`",
         "examples/table-react-table-basic/src/App.tsx: examples/table-react-table-basic/src/App.tsx: line 7:1: import from `react-router`: a compiled app imports only `react` and `react-dom`",
-        "examples/table-react-table-basic/src/App.tsx: examples/table-react-table-basic/src/App.tsx: line 8:1: import from `@refinedev/simple-rest`: a compiled app imports only `react` and `react-dom`"
+        "examples/table-react-table-basic/src/App.tsx: examples/table-react-table-basic/src/App.tsx: line 8:1: import from `@refinedev/simple-rest`: a compiled app imports only `react` and `react-dom`",
+        "examples/table-react-table-basic/src/App.tsx: examples/table-react-table-basic/src/App.tsx: line 15:6: unknown name `BrowserRouter`"
       ],
       "outside": [
-        "examples/table-react-table-basic/src/App.tsx: App: value imported from a package",
-        "examples/table-react-table-basic/src/pages/posts/list.tsx: PostList: value imported from a package"
+        "examples/table-react-table-basic/src/App.tsx: App: value imported from a package"
       ]
     },
     {
       "id": "refine/examples/theme-material-ui-demo/src",
       "modules": {
         "total": 10,
-        "inside": 3
+        "inside": 6
       },
       "functions": {
         "total": 6,
-        "inside": 0
+        "inside": 3
       },
       "components": {
         "total": 6,
-        "inside": 0
+        "inside": 3
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/theme-material-ui-demo/src/index.tsx",
       "sample": [
         "examples/theme-material-ui-demo/src/App.tsx: examples/theme-material-ui-demo/src/App.tsx: line 2:1: import from `@refinedev/core`: a compiled app imports only `react` and `react-dom`",
@@ -1453,10 +1572,7 @@
       "outside": [
         "examples/theme-material-ui-demo/src/App.tsx: App: value imported from a package",
         "examples/theme-material-ui-demo/src/components/remember-me/index.tsx: RememeberMe: value imported from a package",
-        "examples/theme-material-ui-demo/src/components/theme-settings/index.tsx: ThemeSettings: value imported from a package",
-        "examples/theme-material-ui-demo/src/pages/posts/create.tsx: PostCreate: value imported from a package",
-        "examples/theme-material-ui-demo/src/pages/posts/edit.tsx: PostEdit: value imported from a package",
-        "examples/theme-material-ui-demo/src/pages/posts/list.tsx: PostList: value imported from a package"
+        "examples/theme-material-ui-demo/src/components/theme-settings/index.tsx: ThemeSettings: value imported from a package"
       ]
     },
     {
@@ -1474,6 +1590,10 @@
         "inside": 5
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/crm/src/index.tsx",
       "sample": [
         "examples/crm/src/activity/ActivityLog.tsx: examples/crm/src/activity/ActivityLog.tsx: line 1:1: import from `@mui/material`: a compiled app imports only `react` and `react-dom`",
@@ -1668,6 +1788,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1686,6 +1810,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/breadcrumb-ellipsis.tsx: apps/v4/registry/new-york-v4/examples/breadcrumb-ellipsis.tsx: line 1:1: import from `next/link`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/breadcrumb-ellipsis.tsx: apps/v4/registry/new-york-v4/examples/breadcrumb-ellipsis.tsx: line 19:14: unknown name `Link`",
@@ -1710,6 +1838,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/breadcrumb-separator.tsx: apps/v4/registry/new-york-v4/examples/breadcrumb-separator.tsx: line 1:1: import from `next/link`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/breadcrumb-separator.tsx: apps/v4/registry/new-york-v4/examples/breadcrumb-separator.tsx: line 2:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
@@ -1736,6 +1868,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/button-group-popover.tsx: apps/v4/registry/new-york-v4/examples/button-group-popover.tsx: line 1:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/button-group-popover.tsx: apps/v4/registry/new-york-v4/examples/button-group-popover.tsx: line 17:10: unknown name `BotIcon`",
@@ -1760,6 +1896,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/button-group-select.tsx: apps/v4/registry/new-york-v4/examples/button-group-select.tsx: line 4:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/button-group-select.tsx: apps/v4/registry/new-york-v4/examples/button-group-select.tsx: line 52:12: unknown name `ArrowRightIcon`"
@@ -1783,6 +1923,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/button-group-size.tsx: apps/v4/registry/new-york-v4/examples/button-group-size.tsx: line 1:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/button-group-size.tsx: apps/v4/registry/new-york-v4/examples/button-group-size.tsx: line 20:12: unknown name `PlusIcon`",
@@ -1808,6 +1952,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1826,6 +1974,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1844,6 +1996,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/carousel-plugin.tsx: apps/v4/registry/new-york-v4/examples/carousel-plugin.tsx: line 4:1: import from `embla-carousel-autoplay`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/carousel-plugin.tsx: apps/v4/registry/new-york-v4/examples/carousel-plugin.tsx: line 17:5: unknown name `Autoplay`"
@@ -1867,6 +2023,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/empty-input-group.tsx: apps/v4/registry/new-york-v4/examples/empty-input-group.tsx: line 1:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/empty-input-group.tsx: apps/v4/registry/new-york-v4/examples/empty-input-group.tsx: line 31:14: unknown name `SearchIcon`"
@@ -1890,6 +2050,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1908,6 +2072,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/form-rhf-switch.tsx: apps/v4/registry/new-york-v4/examples/form-rhf-switch.tsx: line 4:1: import from `@hookform/resolvers/zod`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/form-rhf-switch.tsx: apps/v4/registry/new-york-v4/examples/form-rhf-switch.tsx: line 5:1: import from `react-hook-form`: a compiled app imports only `react` and `react-dom`",
@@ -1934,6 +2102,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/input-group-spinner.tsx: apps/v4/registry/new-york-v4/examples/input-group-spinner.tsx: line 1:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/input-group-spinner.tsx: apps/v4/registry/new-york-v4/examples/input-group-spinner.tsx: line 36:12: unknown name `LoaderIcon`"
@@ -1957,6 +2129,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/item-group.tsx: apps/v4/registry/new-york-v4/examples/item-group.tsx: line 2:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/item-group.tsx: apps/v4/registry/new-york-v4/examples/item-group.tsx: line 58:20: unknown name `PlusIcon`"
@@ -1980,6 +2156,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/kbd-input-group.tsx: apps/v4/registry/new-york-v4/examples/kbd-input-group.tsx: line 1:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/kbd-input-group.tsx: apps/v4/registry/new-york-v4/examples/kbd-input-group.tsx: line 16:12: unknown name `SearchIcon`"
@@ -2003,6 +2183,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2021,6 +2205,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2039,6 +2227,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/scroll-area-horizontal-demo.tsx: apps/v4/registry/new-york-v4/examples/scroll-area-horizontal-demo.tsx: line 2:1: import from `next/image`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/scroll-area-horizontal-demo.tsx: apps/v4/registry/new-york-v4/examples/scroll-area-horizontal-demo.tsx: line 33:16: unknown name `Image`"
@@ -2062,6 +2254,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2080,6 +2276,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2098,6 +2298,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/toggle-group-demo.tsx: apps/v4/registry/new-york-v4/examples/toggle-group-demo.tsx: line 1:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/toggle-group-demo.tsx: apps/v4/registry/new-york-v4/examples/toggle-group-demo.tsx: line 12:10: unknown name `Bold`",
@@ -2123,6 +2327,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/examples/toggle-lg.tsx: apps/v4/registry/new-york-v4/examples/toggle-lg.tsx: line 1:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/examples/toggle-lg.tsx: apps/v4/registry/new-york-v4/examples/toggle-lg.tsx: line 8:8: unknown name `Italic`"
@@ -2146,6 +2354,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2164,6 +2376,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/blocks/login-02/components/login-form.tsx: apps/v4/registry/new-york-v4/blocks/login-02/components/login-form.tsx: line 1:1: import from `cn`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/blocks/login-02/components/login-form.tsx: apps/v4/registry/new-york-v4/blocks/login-02/components/login-form.tsx: line 18:22: unknown name `cn`",
@@ -2190,6 +2406,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/blocks/login-05/components/login-form.tsx: apps/v4/registry/new-york-v4/blocks/login-05/components/login-form.tsx: line 1:1: import from `cn`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/blocks/login-05/components/login-form.tsx: apps/v4/registry/new-york-v4/blocks/login-05/components/login-form.tsx: line 2:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
@@ -2215,6 +2435,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/blocks/sidebar-02/components/app-sidebar.tsx: apps/v4/registry/new-york-v4/blocks/sidebar-02/components/app-sidebar.tsx: line 2:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/blocks/sidebar-02/components/app-sidebar.tsx: apps/v4/registry/new-york-v4/blocks/sidebar-02/components/app-sidebar.tsx: line 192:20: unknown name `ChevronRight`",
@@ -2243,6 +2467,10 @@
         "inside": 4
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/blocks/sidebar-10/components/app-sidebar.tsx: apps/v4/registry/new-york-v4/blocks/sidebar-10/components/app-sidebar.tsx: line 4:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/blocks/sidebar-10/components/app-sidebar.tsx: apps/v4/registry/new-york-v4/blocks/sidebar-10/components/app-sidebar.tsx: line 35:13: unknown name `Command`",
@@ -2272,6 +2500,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/blocks/sidebar-11/components/app-sidebar.tsx: apps/v4/registry/new-york-v4/blocks/sidebar-11/components/app-sidebar.tsx: line 2:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/blocks/sidebar-11/components/app-sidebar.tsx: apps/v4/registry/new-york-v4/blocks/sidebar-11/components/app-sidebar.tsx: line 78:22: unknown name `File`",
@@ -2299,6 +2531,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/charts/chart-bar-stacked.tsx: apps/v4/registry/new-york-v4/charts/chart-bar-stacked.tsx: line 3:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/charts/chart-bar-stacked.tsx: apps/v4/registry/new-york-v4/charts/chart-bar-stacked.tsx: line 4:1: import from `recharts`: a compiled app imports only `react` and `react-dom`",
@@ -2325,6 +2561,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/charts/chart-line-label.tsx: apps/v4/registry/new-york-v4/charts/chart-line-label.tsx: line 3:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/charts/chart-line-label.tsx: apps/v4/registry/new-york-v4/charts/chart-line-label.tsx: line 4:1: import from `recharts`: a compiled app imports only `react` and `react-dom`",
@@ -2351,6 +2591,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/charts/chart-pie-label.tsx: apps/v4/registry/new-york-v4/charts/chart-pie-label.tsx: line 3:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/charts/chart-pie-label.tsx: apps/v4/registry/new-york-v4/charts/chart-pie-label.tsx: line 4:1: import from `recharts`: a compiled app imports only `react` and `react-dom`",
@@ -2377,6 +2621,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/charts/chart-pie-simple.tsx: apps/v4/registry/new-york-v4/charts/chart-pie-simple.tsx: line 3:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/charts/chart-pie-simple.tsx: apps/v4/registry/new-york-v4/charts/chart-pie-simple.tsx: line 4:1: import from `recharts`: a compiled app imports only `react` and `react-dom`",
@@ -2403,6 +2651,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle-fill.tsx: apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle-fill.tsx: line 3:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle-fill.tsx: apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle-fill.tsx: line 4:1: import from `recharts`: a compiled app imports only `react` and `react-dom`",
@@ -2429,6 +2681,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle.tsx: apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle.tsx: line 3:1: import from `lucide-react`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle.tsx: apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle.tsx: line 4:1: import from `recharts`: a compiled app imports only `react` and `react-dom`",
@@ -2455,6 +2711,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx: apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx: line 3:1: import from `recharts`: a compiled app imports only `react` and `react-dom`",
         "apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx: apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx: line 50:12: unknown name `BarChart`",
@@ -2481,6 +2741,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/accordion-controlled.tsx: line 3:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/accordion-controlled.tsx: line 9:6: unknown name `Stack`",
@@ -2507,6 +2771,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/accordion-with-icon.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/accordion-with-icon.tsx: line 2:1: import from `react-icons/lu`: a compiled app imports only `react` and `react-dom`",
@@ -2533,6 +2801,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/action-bar-with-dialog.tsx: line 3:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/action-bar-with-dialog.tsx: line 5:1: import from `react-icons/lu`: a compiled app imports only `react` and `react-dom`",
@@ -2559,6 +2831,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/avatar-closed-component.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/avatar-closed-component.tsx: line 23:8: unknown name `ChakraAvatar`",
@@ -2585,6 +2861,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/avatar-with-random-color.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/avatar-with-random-color.tsx: line 12:6: unknown name `HStack`",
@@ -2611,6 +2891,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/checkbox-with-hook-form.tsx: line 3:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/checkbox-with-hook-form.tsx: line 4:1: import from `@hookform/resolvers/standard-schema`: a compiled app imports only `react` and `react-dom`",
@@ -2637,6 +2921,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/checkbox-with-sizes.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/checkbox-with-sizes.tsx: line 5:6: unknown name `Stack`",
@@ -2663,6 +2951,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/code-with-colors.tsx: apps/compositions/src/examples/code-with-colors.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/code-with-colors.tsx: apps/compositions/src/examples/code-with-colors.tsx: line 6:6: unknown name `Stack`",
@@ -2689,6 +2981,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/color-swatch-with-badge.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/color-swatch-with-badge.tsx: line 5:6: unknown name `Badge`",
@@ -2713,6 +3009,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/combobox-autohighlight.tsx: line 3:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/combobox-autohighlight.tsx: line 11:24: unknown name `useFilter`",
@@ -2739,6 +3039,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/data-list-closed-component.tsx: apps/compositions/src/examples/data-list-closed-component.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/data-list-closed-component.tsx: apps/compositions/src/examples/data-list-closed-component.tsx: line 5:29: unknown name `ChakraDataList`",
@@ -2765,6 +3069,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/data-list-with-variants.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/data-list-with-variants.tsx: line 5:6: unknown name `Stack`",
@@ -2791,6 +3099,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/dialog-with-placement.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/dialog-with-placement.tsx: line 12:6: unknown name `HStack`",
@@ -2817,6 +3129,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/group-with-attached.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/group-with-attached.tsx: line 5:6: unknown name `Stack`",
@@ -2843,6 +3159,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/input-with-error-text.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/input-with-error-text.tsx: line 5:6: unknown name `Field`",
@@ -2869,6 +3189,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/listbox-with-description.tsx: line 3:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/listbox-with-description.tsx: line 7:6: unknown name `Listbox`",
@@ -2895,6 +3219,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/listbox-with-icon.tsx: line 3:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/listbox-with-icon.tsx: line 4:1: import from `react-icons/lu`: a compiled app imports only `react` and `react-dom`",
@@ -2921,6 +3249,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/radio-with-sizes.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/radio-with-sizes.tsx: line 5:6: unknown name `HStack`",
@@ -2947,6 +3279,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/select-with-avatar.tsx: line 3:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/select-with-avatar.tsx: line 12:18: unknown name `useSelectContext`",
@@ -2974,6 +3310,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/slider-with-thumb-alignment.tsx: line 1:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/slider-with-thumb-alignment.tsx: line 5:6: unknown name `Stack`",
@@ -3000,6 +3340,10 @@
         "inside": 0
       },
       "app": false,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "apps/compositions/src/examples/splitter-ide-layout.tsx",
       "sample": [
         "apps/compositions/src/examples/splitter-ide-layout.tsx: line 3:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
@@ -3031,6 +3375,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "apps/compositions/src/examples/tree-view-with-links.tsx: line 3:1: import from `@chakra-ui/react`: a compiled app imports only `react` and `react-dom`",
         "apps/compositions/src/examples/tree-view-with-links.tsx: line 4:1: import from `react-icons/lu`: a compiled app imports only `react` and `react-dom`",
@@ -3057,6 +3405,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/alert/BasicAlerts.tsx: line 1:1: import from `@mui/material/Alert`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/alert/BasicAlerts.tsx: line 2:1: import from `@mui/material/Stack`: a compiled app imports only `react` and `react-dom`",
@@ -3083,6 +3435,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/autocomplete/Virtualize.tsx: line 2:1: import from `@mui/material/TextField`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/autocomplete/Virtualize.tsx: line 3:1: import from `@mui/material/Autocomplete`: a compiled app imports only `react` and `react-dom`",
@@ -3111,6 +3467,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/chips/ColorChips.tsx: line 1:1: import from `@mui/material/Chip`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/chips/ColorChips.tsx: line 2:1: import from `@mui/material/Stack`: a compiled app imports only `react` and `react-dom`",
@@ -3137,6 +3497,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/dialogs/CookiesBanner.tsx: line 2:1: import from `@mui/material/Stack`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/dialogs/CookiesBanner.tsx: line 3:1: import from `@mui/material/Unstable_TrapFocus`: a compiled app imports only `react` and `react-dom`",
@@ -3163,6 +3527,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/grid/BasicGrid.tsx: line 1:1: import from `@mui/material/styles`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/grid/BasicGrid.tsx: line 2:1: import from `@mui/material/Box`: a compiled app imports only `react` and `react-dom`",
@@ -3190,6 +3558,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/grid/ColumnsGrid.tsx: line 1:1: import from `@mui/material/styles`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/grid/ColumnsGrid.tsx: line 2:1: import from `@mui/material/Box`: a compiled app imports only `react` and `react-dom`",
@@ -3217,6 +3589,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/image-list/MasonryImageList.tsx: line 1:1: import from `@mui/material/Box`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/image-list/MasonryImageList.tsx: line 2:1: import from `@mui/material/ImageList`: a compiled app imports only `react` and `react-dom`",
@@ -3243,6 +3619,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/menubar/CheckboxItemsMenubar.tsx: docs/data/material/components/menubar/CheckboxItemsMenubar.tsx: line 2:1: cannot find module `./components/Menubar`",
         "docs/data/material/components/menubar/CheckboxItemsMenubar.tsx: line 2:1: import from `./components/Menubar`: a compiled app imports only `react` and `react-dom`",
@@ -3269,6 +3649,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/pagination/BasicPagination.tsx: line 1:1: import from `@mui/material/Pagination`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/pagination/BasicPagination.tsx: line 2:1: import from `@mui/material/Stack`: a compiled app imports only `react` and `react-dom`",
@@ -3295,6 +3679,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/popover/PopoverPopupState.tsx: line 1:1: import from `@mui/material/Typography`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/popover/PopoverPopupState.tsx: line 2:1: import from `@mui/material/Button`: a compiled app imports only `react` and `react-dom`",
@@ -3321,6 +3709,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/slider/DiscreteSlider.tsx: line 1:1: import from `@mui/material/Box`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/slider/DiscreteSlider.tsx: line 2:1: import from `@mui/material/Slider`: a compiled app imports only `react` and `react-dom`",
@@ -3347,6 +3739,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/table/SpanningTable.tsx: line 1:1: import from `@mui/material/Table`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/table/SpanningTable.tsx: line 2:1: import from `@mui/material/TableBody`: a compiled app imports only `react` and `react-dom`",
@@ -3373,6 +3769,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/tabs/AccessibleTabs2.tsx: line 2:1: import from `@mui/material/Tabs`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/tabs/AccessibleTabs2.tsx: line 3:1: import from `@mui/material/Tab`: a compiled app imports only `react` and `react-dom`",
@@ -3399,6 +3799,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/components/text-fields/CustomizedInputsStyled.tsx: line 2:1: import from `@mui/material/styles`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/components/text-fields/CustomizedInputsStyled.tsx: line 3:1: import from `@mui/material/InputBase`: a compiled app imports only `react` and `react-dom`",
@@ -3427,6 +3831,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/customization/css-layers/CssLayersCaveat.tsx: line 2:1: import from `@mui/material/styles`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/customization/css-layers/CssLayersCaveat.tsx: line 3:1: import from `@mui/material/Accordion`: a compiled app imports only `react` and `react-dom`",
@@ -3453,6 +3861,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/customization/focus-visible/FocusVisibleCustomIcons.tsx: line 2:1: import from `@mui/material/styles`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/customization/focus-visible/FocusVisibleCustomIcons.tsx: line 3:1: import from `@mui/material/SvgIcon`: a compiled app imports only `react` and `react-dom`",
@@ -3483,6 +3895,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/getting-started/templates/checkout/Checkout.tsx: docs/data/material/getting-started/templates/checkout/Checkout.tsx: line 15:1: cannot find module `./components/AddressForm`",
         "docs/data/material/getting-started/templates/checkout/Checkout.tsx: docs/data/material/getting-started/templates/checkout/Checkout.tsx: line 16:1: cannot find module `./components/Info`",
@@ -3510,6 +3926,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: line 3:1: cannot find module `./components/DashboardLayout`",
         "docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: line 4:1: cannot find module `./components/EmployeeList`",
@@ -3536,6 +3956,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: line 8:1: cannot find module `./SelectContent`",
         "docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: line 9:1: cannot find module `./MenuContent`",
@@ -3562,6 +3986,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx: docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx: line 13:1: cannot find module `./SitemarkIcon`",
         "docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx: line 1:1: import from `@mui/material/Box`: a compiled app imports only `react` and `react-dom`",
@@ -3589,6 +4017,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/getting-started/templates/marketing-page/components/Highlights.tsx: line 1:1: import from `@mui/material/Box`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/getting-started/templates/marketing-page/components/Highlights.tsx: line 2:1: import from `@mui/material/Card`: a compiled app imports only `react` and `react-dom`",
@@ -3615,6 +4047,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/getting-started/templates/sign-in/components/ForgotPassword.tsx: line 2:1: import from `@mui/material/Button`: a compiled app imports only `react` and `react-dom`",
         "docs/data/material/getting-started/templates/sign-in/components/ForgotPassword.tsx: line 3:1: import from `@mui/material/Dialog`: a compiled app imports only `react` and `react-dom`",
@@ -3641,6 +4077,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/AuthenticationTitle/AuthenticationTitle.tsx: lib/AuthenticationTitle/AuthenticationTitle.tsx: line 13:1: cannot find module `./AuthenticationTitle.module.css`",
         "lib/AuthenticationTitle/AuthenticationTitle.tsx: line 1:1: import from `@mantine/core`: a compiled app imports only `react` and `react-dom`",
@@ -3667,6 +4107,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/DoubleNavbar/DoubleNavbar.tsx: lib/DoubleNavbar/DoubleNavbar.tsx: line 13:1: cannot find module `./DoubleNavbar.module.css`",
         "lib/DoubleNavbar/DoubleNavbar.tsx: line 2:1: import from `@tabler/icons-react`: a compiled app imports only `react` and `react-dom`",
@@ -3693,12 +4137,16 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
-        "lib/FaqWithImage/FaqWithImage.tsx: lib/FaqWithImage/FaqWithImage.tsx: line 2:1: cannot find module `./image.svg`",
         "lib/FaqWithImage/FaqWithImage.tsx: lib/FaqWithImage/FaqWithImage.tsx: line 3:1: cannot find module `./FaqWithImage.module.css`",
         "lib/FaqWithImage/FaqWithImage.tsx: line 1:1: import from `@mantine/core`: a compiled app imports only `react` and `react-dom`",
-        "lib/FaqWithImage/FaqWithImage.tsx: line 2:1: import from `./image.svg`: a compiled app imports only `react` and `react-dom`",
-        "lib/FaqWithImage/FaqWithImage.tsx: line 3:1: import from `./FaqWithImage.module.css`: a compiled app imports only `react` and `react-dom`"
+        "lib/FaqWithImage/FaqWithImage.tsx: line 3:1: import from `./FaqWithImage.module.css`: a compiled app imports only `react` and `react-dom`",
+        "lib/FaqWithImage/FaqWithImage.tsx: line 10:21: unknown name `classes`",
+        "lib/FaqWithImage/FaqWithImage.tsx: line 11:8: unknown name `Container`"
       ],
       "outside": [
         "lib/FaqWithImage/FaqWithImage.tsx: FaqWithImage: value imported from a module that does not resolve; value imported from a package"
@@ -3719,6 +4167,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/FeaturesGrid/FeaturesGrid.tsx: lib/FeaturesGrid/FeaturesGrid.tsx: line 3:1: cannot find module `./FeaturesGrid.module.css`",
         "lib/FeaturesGrid/FeaturesGrid.tsx: line 1:1: import from `@tabler/icons-react`: a compiled app imports only `react` and `react-dom`",
@@ -3746,6 +4198,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/HeaderMegaMenu/HeaderMegaMenu.tsx: lib/HeaderMegaMenu/HeaderMegaMenu.tsx: line 30:1: cannot find module `./HeaderMegaMenu.module.css`",
         "lib/HeaderMegaMenu/HeaderMegaMenu.tsx: line 1:1: import from `@tabler/icons-react`: a compiled app imports only `react` and `react-dom`",
@@ -3772,6 +4228,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/HeroImageRight/HeroImageRight.tsx: lib/HeroImageRight/HeroImageRight.tsx: line 2:1: cannot find module `./HeroImageRight.module.css`",
         "lib/HeroImageRight/HeroImageRight.tsx: line 1:1: import from `@mantine/core`: a compiled app imports only `react` and `react-dom`",
@@ -3798,6 +4258,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/HeroText/HeroText.tsx: lib/HeroText/HeroText.tsx: line 3:1: cannot find module `./HeroText.module.css`",
         "lib/HeroText/HeroText.tsx: lib/HeroText/HeroText.tsx: line 1:1: import from `@mantine/core`: a compiled app imports only `react` and `react-dom`",
@@ -3824,6 +4288,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/PasswordStrength/PasswordStrength.tsx: line 1:1: import from `@tabler/icons-react`: a compiled app imports only `react` and `react-dom`",
         "lib/PasswordStrength/PasswordStrength.tsx: line 2:1: import from `@mantine/core`: a compiled app imports only `react` and `react-dom`",
@@ -3851,6 +4319,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/SliderMarks/SliderMarks.tsx: lib/SliderMarks/SliderMarks.tsx: line 3:1: cannot find module `./SliderMarks.module.css`",
         "lib/SliderMarks/SliderMarks.tsx: line 1:1: import from `@tabler/icons-react`: a compiled app imports only `react` and `react-dom`",
@@ -3877,6 +4349,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/SplitButton/SplitButton.tsx: lib/SplitButton/SplitButton.tsx: line 3:1: cannot find module `./SplitButton.module.css`",
         "lib/SplitButton/SplitButton.tsx: line 1:1: import from `@tabler/icons-react`: a compiled app imports only `react` and `react-dom`",
@@ -3903,6 +4379,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/UserInfoAction/UserInfoAction.tsx: line 1:1: import from `@mantine/core`: a compiled app imports only `react` and `react-dom`",
         "lib/UserInfoAction/UserInfoAction.tsx: line 5:6: unknown name `Paper`",
@@ -3929,6 +4409,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: line 5:1: cannot find module `../../components/button`",
         "playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: line 6:1: cannot find module `../../utils/class-names`",
@@ -3955,6 +4439,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: line 5:1: cannot find module `../../components/button`",
         "playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: line 6:1: cannot find module `../../data`",
@@ -3982,6 +4470,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: line 4:1: cannot find module `../../components/button`",
         "playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: line 5:1: cannot find module `../../utils/class-names`",
@@ -4008,6 +4500,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/menu/multiple-elements.tsx: playgrounds/react/page-examples/menu/multiple-elements.tsx: line 2:1: cannot find module `../../components/button`",
         "playgrounds/react/page-examples/menu/multiple-elements.tsx: playgrounds/react/page-examples/menu/multiple-elements.tsx: line 3:1: cannot find module `../../utils/class-names`",
@@ -4034,6 +4530,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/radio-group/radio-group.tsx: playgrounds/react/page-examples/radio-group/radio-group.tsx: line 3:1: cannot find module `../../utils/class-names`",
         "playgrounds/react/page-examples/radio-group/radio-group.tsx: line 1:1: import from `@headlessui/react`: a compiled app imports only `react` and `react-dom`",
@@ -4060,6 +4560,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx: playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx: line 4:1: cannot find module `../../utils/class-names`",
         "playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx: line 1:1: import from `@headlessui/react`: a compiled app imports only `react` and `react-dom`",
@@ -4086,6 +4590,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/transitions/component-examples/modal.tsx: line 1:1: import from `@headlessui/react`: a compiled app imports only `react` and `react-dom`",
         "playgrounds/react/page-examples/transitions/component-examples/modal.tsx: line 43:8: unknown name `Transition`",
@@ -4111,6 +4619,10 @@
         "inside": 1
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: line 4:1: cannot find module `../../../utils/class-names`",
         "playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: line 5:1: cannot find module `../../../utils/match`",
@@ -4137,6 +4649,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/V7/conditionalFields.tsx: line 3:1: import from `react-hook-form`: a compiled app imports only `react` and `react-dom`",
         "examples/V7/conditionalFields.tsx: line 6:45: unknown name `useForm`"
@@ -4160,6 +4676,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/V7/defaultValues.tsx: line 3:1: import from `react-hook-form`: a compiled app imports only `react` and `react-dom`",
         "examples/V7/defaultValues.tsx: line 6:38: unknown name `useForm`"
@@ -4183,6 +4703,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/V7/disableNativeValidation.tsx: line 2:1: import from `react-hook-form`: a compiled app imports only `react` and `react-dom`",
         "examples/V7/disableNativeValidation.tsx: line 9:7: unknown name `useForm`"
@@ -4206,6 +4730,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/V7/fieldArrayMinLength.tsx: line 2:1: import from `react-hook-form`: a compiled app imports only `react` and `react-dom`",
         "examples/V7/fieldArrayMinLength.tsx: line 3:1: import from `yup`: a compiled app imports only `react` and `react-dom`",
@@ -4232,8 +4760,11 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
-        "examples/V7/initalFormState.tsx: examples/V7/initalFormState.tsx: line 5:1: cannot find module `./styles.css`",
         "examples/V7/initalFormState.tsx: line 3:1: import from `react-hook-form`: a compiled app imports only `react` and `react-dom`",
         "examples/V7/initalFormState.tsx: line 14:38: unknown name `useForm`"
       ],
@@ -4256,6 +4787,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/V7/triggerFieldValidation.tsx: line 2:1: import from `react-hook-form`: a compiled app imports only `react` and `react-dom`",
         "examples/V7/triggerFieldValidation.tsx: line 10:7: unknown name `useForm`"
@@ -4279,6 +4814,10 @@
         "inside": 0
       },
       "app": null,
+      "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/V7/validationOnFieldBlur.tsx: line 3:1: import from `react-hook-form`: a compiled app imports only `react` and `react-dom`",
         "examples/V7/validationOnFieldBlur.tsx: line 10:7: unknown name `useForm`"

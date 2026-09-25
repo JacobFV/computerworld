@@ -56,9 +56,14 @@ pub struct Island {
     /// A classic script. It defines `__cw_exports`, an array of the values
     /// `GlobalInit::Island` globals are initialised with, in `imports` order.
     pub script: String,
-    /// What each export is: a module specifier and a name (`"default"`, or `"*"`
-    /// for the namespace), for diagnostics and tools.
+    /// What each export is: a module (its file when it resolved, else the
+    /// specifier) and a name (`"default"`, `"*"` for the namespace, or `"!run"`
+    /// for running a module of the app that is on the island).
     pub imports: Vec<(String, String)>,
+    /// What the island's modules of the app import from compiled ones: module
+    /// file, exported name, and the global slot it reads (`__cw.g(slot)`).
+    #[serde(default)]
+    pub provides: Vec<(String, String, u32)>,
 }
 
 /// A module-level binding, initialised in declaration order when the module loads.
