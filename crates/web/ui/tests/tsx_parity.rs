@@ -733,10 +733,9 @@ fn lockstep(module: &cw_ui::ir::Module, html: &str, name: &str, list: &[Value]) 
             first_difference(&sa, &sb)
         ));
     }
-    // Each snapshot on the other form, against the same snapshot restored on its own
-    // form. (Not against the live app: a snapshot's JSON does not round-trip every
-    // float exactly — serde_json parses `93.33333333333333` as `…31` — on either
-    // form.)
+    // Each snapshot, through its JSON, restored on both forms: both must be the live
+    // app's state exactly (serde_json's `float_roundtrip` parses every float back to
+    // the value that was written).
     let program = cw_ui_fixtures::for_module(module).unwrap();
     let gen = || -> std::rc::Rc<dyn cw_ui::Program> {
         std::rc::Rc::new(cw_ui::program::StaticProgram(program))
@@ -749,12 +748,17 @@ fn lockstep(module: &cw_ui::ir::Module, html: &str, name: &str, list: &[Value]) 
         let on_interp = UiApp::restore_with(&state, interp(), Box::new(host())).unwrap();
         let on_gen = UiApp::restore_with(&state, gen(), Box::new(host())).unwrap();
         assert!(on_gen.is_generated() && !on_interp.is_generated());
-        let (x, y) = (state_json(&on_interp), state_json(&on_gen));
-        if x != y {
-            failures.push(format!(
-                "{name}: the {what} snapshot restores differently on the two forms: {}",
-                first_difference(&x, &y)
-            ));
+        let live = state_json(from);
+        for (restored, on) in [
+            (state_json(&on_interp), "interpreted"),
+            (state_json(&on_gen), "generated"),
+        ] {
+            if restored != live {
+                failures.push(format!(
+                    "{name}: the {what} snapshot restored on the {on} form is not the live state: {}",
+                    first_difference(&live, &restored)
+                ));
+            }
         }
     }
     failures
