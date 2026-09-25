@@ -17,9 +17,35 @@ pub struct Entry {
     pub app: Arc<WebApplication>,
 }
 
+/// The built-in applications whose IR is also built in as Rust (`cw-tsx build
+/// --emit rust`, checked in beside the IR by `crates/applications/web/build.mjs`),
+/// each with the IR it was generated from.
+mod generated {
+    include!("../../web/notes/notes.ui.rs");
+
+    pub static PROGRAMS: [(&cw_ui::GenProgram, &str); 1] = [(
+        &notes::PROGRAM,
+        include_str!("../../web/notes/notes.ui.json"),
+    )];
+}
+
+/// The generated program of the IR `ir`, when one is built in: cw-ui runs it
+/// instead of interpreting the IR. Only the very IR it was generated from selects
+/// it, so a world's own application never runs a built-in's code.
+pub fn generated_program(ir: &str) -> Option<&'static cw_ui::GenProgram> {
+    generated::PROGRAMS
+        .iter()
+        .find(|(_, source)| *source == ir)
+        .map(|(p, _)| *p)
+}
+
 fn catalog() -> &'static Mutex<BTreeMap<String, Entry>> {
     static CATALOG: OnceLock<Mutex<BTreeMap<String, Entry>>> = OnceLock::new();
     CATALOG.get_or_init(|| {
+        // A snapshot of a generated app names its program: make them findable.
+        for (p, _) in generated::PROGRAMS {
+            cw_ui::program::register(p);
+        }
         let mut map = BTreeMap::new();
         for app in builtin() {
             let kind: &'static str = Box::leak(app.kind.clone().into_boxed_str());
@@ -91,4 +117,35 @@ pub fn get(kind: &str) -> Option<Entry> {
         Err(p) => p.into_inner(),
     };
     map.get(kind).cloned()
+}
+
+#[cfg(test)]
+mod generated_tests {
+    /// Each generated program is the program of the IR it is paired with (the IR
+    /// is checked in as its canonical JSON and a newline, what the hash covers).
+    #[test]
+    fn generated_programs_are_of_their_ir() {
+        for (p, ir) in super::generated::PROGRAMS {
+            assert_eq!(
+                cw_ui::program::fnv1a(ir.trim_end().as_bytes()),
+                p.hash,
+                "{} is stale: run node crates/applications/web/build.mjs",
+                p.name
+            );
+            let module = cw_ui::UiApp::parse_ir(ir).unwrap();
+            assert_eq!(cw_ui::program::ir_hash(&module), p.hash);
+        }
+    }
+
+    /// Notes as the catalog defines it runs its generated program.
+    #[test]
+    fn notes_boots_its_generated_program() {
+        let entry = super::get("notes").unwrap();
+        let cw_sdk::WebSource::Compiled { ir, .. } = &entry.app.source else {
+            panic!("notes is compiled");
+        };
+        let p = super::generated_program(ir).expect("notes has generated code");
+        assert!(std::ptr::eq(p, super::generated::PROGRAMS[0].0));
+        assert!(super::generated_program(&format!("{ir} ")).is_none());
+    }
 }

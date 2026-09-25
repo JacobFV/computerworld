@@ -570,14 +570,17 @@ impl UiRuntime {
         let app = match own {
             Some(state) => cw_ui::UiApp::restore(&state, host).map_err(|e| e.to_string())?,
             None => {
-                let module = cw_ui::UiApp::parse_ir(ir).map_err(|e| e.to_string())?;
-                let mut app = cw_ui::UiApp::new(
-                    module,
-                    &shell(style, boot.env),
-                    "cw-app://application/",
-                    host,
-                )
-                .map_err(|e| e.to_string())?;
+                let shell = shell(style, boot.env);
+                let url = "cw-app://application/";
+                // A built-in app's generated Rust when there is one, else the IR.
+                let app = match super::catalog::generated_program(ir) {
+                    Some(program) => cw_ui::UiApp::generated(program, &shell, url, host),
+                    None => {
+                        let module = cw_ui::UiApp::parse_ir(ir).map_err(|e| e.to_string())?;
+                        cw_ui::UiApp::new(module, &shell, url, host)
+                    }
+                };
+                let mut app = app.map_err(|e| e.to_string())?;
                 app.boot();
                 app.run_until_idle(SETTLE_MS);
                 app
