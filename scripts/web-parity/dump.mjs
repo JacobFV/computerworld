@@ -29,6 +29,18 @@
 // after loading and after every step, so a framework that commits asynchronously has
 // committed, and a transition has reached its end state, before anything is read.
 //
+// A fixture named `<name>.site.json` is a site rather than a page: an app served as the
+// world serves it, for apps a file: URL cannot load (ES modules, chunks loaded from
+// root-relative paths, an API on another host). The file names the URL to open, the
+// directory each static host serves (a node-app package's `public/`, with its manifest's
+// `spa_fallback` for HTML navigations), and a recording of the API answers
+// (`<name>.api.json`, written from the world's own services by
+// crates/computerworld/tests/oss_parity_record.rs). Every request is answered from those
+// two; anything else fails as it does offline in the world, and API requests that are
+// not in the recording are listed and fail the dump, so the recording can be extended.
+// With PARITY_HTML=<file> the page's serialised DOM at the end of the steps is written
+// there too, for choosing the selectors a steps file clicks.
+//
 // --baseline-fonts runs Chromium with a fontconfig that knows only the Liberation and
 // DejaVu families, the stock Linux desktop the engine's `FontEnvironment::LinuxBaseline`
 // models. A page whose font stack names a face this machine happens to have (JSON
@@ -63,7 +75,7 @@ const width = Number(flag('--width', 1280));
 const height = Number(flag('--height', 800));
 const dpr = Number(flag('--dpr', 1));
 const full = args.includes('--full');
-const stem = basename(fixture).replace(/\.html?$/, '');
+const stem = basename(fixture).replace(/\.html?$/, '').replace(/\.site\.json$/, '');
 const out = resolve(flag('--out', join(dirname(resolve(fixture)), `${stem}.chromium.json`)));
 const outStem = out.replace(/\.json$/, '');
 // Extra properties are appended (deduped, shared ones win their original slot) so
@@ -130,6 +142,19 @@ function collect(properties) {
   };
 }
 
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const siteMode = fixture.endsWith('.site.json');
+const site = siteMode ? JSON.parse(await readFile(resolve(fixture), 'utf8')) : null;
+const SITE_MIME = {...VENDOR_MIME, '.html': 'text/html', '.mjs': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff': 'font/woff', '.map': 'application/json', '.txt': 'text/plain', '.md': 'text/markdown'};
+// Recorded API answers, keyed by method, URL and body.
+const apiKey = (method, url, body) => `${method} ${url} ${body ?? ''}`;
+const recorded = new Map();
+if (siteMode && site.api) {
+  const rec = JSON.parse(await readFile(join(dirname(resolve(fixture)), site.api), 'utf8'));
+  for (const r of rec.requests) if (r.response) recorded.set(apiKey(r.method, r.url, r.body), r.response);
+}
+const missing = [];
+
 const {chromium} = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright').then(m => m.default ?? m);
 const launchEnv = {...process.env};
 if (args.includes('--baseline-fonts')) {
@@ -152,7 +177,37 @@ const browser = await chromium.launch({executablePath: process.env.CHROME_BIN, e
 try {
   const context = await browser.newContext({viewport: {width, height}, deviceScaleFactor: dpr, reducedMotion: 'reduce'});
   const page = await context.newPage();
-  const url = pathToFileURL(resolve(fixture)).href;
+  const url = siteMode ? site.url : pathToFileURL(resolve(fixture)).href;
+  const inflight = new Set();
+  page.on('request', r => inflight.add(r));
+  page.on('requestfinished', r => inflight.delete(r));
+  page.on('requestfailed', r => inflight.delete(r));
+  if (siteMode) {
+    await page.route(() => true, async route => {
+      const req = route.request();
+      const u = new URL(req.url());
+      const dir = site.static?.[u.host];
+      if (dir && (req.method() === 'GET' || req.method() === 'HEAD')) {
+        const root = join(repoRoot, dir, 'public');
+        const manifest = JSON.parse(await readFile(join(repoRoot, dir, 'manifest.json'), 'utf8'));
+        let rel = decodeURIComponent(u.pathname);
+        if (rel.endsWith('/')) rel += 'index.html';
+        let body = await readFile(join(root, rel)).catch(() => null);
+        if (!body && manifest.spa_fallback && (req.headers().accept ?? '').includes('text/html')) {
+          rel = manifest.spa_fallback;
+          body = await readFile(join(root, rel)).catch(() => null);
+        }
+        if (body) return route.fulfill({status: 200, contentType: SITE_MIME[extname(rel)] ?? 'application/octet-stream', body});
+        return route.fulfill({status: 404, body: 'not found'});
+      }
+      const key = apiKey(req.method(), req.url(), req.postData());
+      const answer = recorded.get(key);
+      if (answer) return route.fulfill({status: answer.status, headers: answer.headers, body: answer.text ?? Buffer.from(answer.bytes)});
+      if (req.method() === 'OPTIONS') return route.fulfill({status: 204, headers: {'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*'}});
+      if (site.api_hosts?.includes(u.host)) missing.push({method: req.method(), url: req.url(), body: req.postData() ?? undefined});
+      return route.abort('internetdisconnected');
+    });
+  }
   // web-platform-tests' server answers `?pipe=status(N)` with that HTTP status (Acid2's
   // `<object data="acid2/404.html?pipe=status(404)">` must fail to load and fall back). A
   // file: URL has no status, so Chromium would load the document; answer for the server.
@@ -170,6 +225,16 @@ try {
     }
   });
   await page.goto(url, {waitUntil: 'load'});
+  // A site's app fetches its data after load: let the network go quiet first.
+  const quiet = async () => {
+    if (!siteMode) return;
+    // Until no request has been in flight for 300 ms (at most ten seconds).
+    for (let i = 0, still = 0; i < 200 && still < 6; i++) {
+      await new Promise(r => setTimeout(r, 50));
+      still = inflight.size ? 0 : still + 1;
+    }
+  };
+  await quiet();
   await page.evaluate(() => document.fonts.ready);
   // Two frames and a task, then every finite CSS transition or animation run to its end
   // (a class change under `transition-colors` would otherwise be dumped mid-way), then
@@ -193,8 +258,14 @@ try {
     else if (action === 'type') await page.keyboard.type(text);
     else if (action === 'press') await page.keyboard.press(key);
     else throw new Error(`--state: unknown action "${action}" for ${selector}`);
+    await quiet();
     await settle();
   }
+  if (missing.length) {
+    console.error(`${basename(fixture)}: API requests not in ${site.api}:\n${JSON.stringify(missing, null, 1)}`);
+    process.exitCode = 1;
+  }
+  if (process.env.PARITY_HTML) await writeFile(process.env.PARITY_HTML, await page.content());
   const dump = await page.evaluate(collect, properties);
 
   // Which platform faces Chromium really used, per distinct family list, through CDP.

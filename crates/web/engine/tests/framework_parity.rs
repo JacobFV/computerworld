@@ -18,6 +18,12 @@
 //! `crates/web/ui/tests/tsx_parity.rs` runs the same module compiled (`cw-ui`) and
 //! requires the two documents to be identical after every state.
 //!
+//! An `oss-*` fixture with a `<name>.site.json` instead of a page is a real app served
+//! as `worlds/oss-web` serves it: its package's `public/` files at the site's URL and
+//! its API's answers from `<name>.api.json`, recorded from the world's own services
+//! (crates/computerworld/tests/oss_parity_record.rs). Chromium's dumps come from the
+//! same two through `dump.mjs <name>.site.json`.
+//!
 //!     cargo test -p cw-web --features pipeline --test framework_parity -- --nocapture
 
 mod support;
@@ -36,7 +42,9 @@ fn fixtures() -> Vec<String> {
         .filter_map(|e| e.ok())
         .filter_map(|e| {
             let name = e.file_name().to_string_lossy().into_owned();
-            name.strip_suffix(".html").map(str::to_owned)
+            name.strip_suffix(".html")
+                .or_else(|| name.strip_suffix(".site.json"))
+                .map(str::to_owned)
         })
         .collect();
     names.sort();
@@ -108,7 +116,7 @@ fn every_state_has_a_chromium_dump_and_a_threshold() {
 #[cfg(feature = "pipeline")]
 mod cases {
     use super::*;
-    use cw_web::script::{MemoryHost, Modifiers, Realm, UiEvent};
+    use cw_web::script::{FetchResponse, MemoryHost, Modifiers, Realm, UiEvent};
     use std::time::{Duration, Instant};
 
     const BASE: &str = "https://example.test/";
@@ -149,6 +157,96 @@ mod cases {
             h = h.with_response(&format!("{BASE}{name}"), "text/javascript", &body);
         }
         h
+    }
+
+    /// A site fixture's page and URL, and a host serving its package's files at the
+    /// site's origin and the recorded API answers at theirs; anything else is not
+    /// found, as it is offline in the world.
+    fn site(name: &str) -> (String, String, MemoryHost) {
+        let spec: Value = serde_json::from_str(
+            &std::fs::read_to_string(fixture_dir().join(format!("{name}.site.json")))
+                .expect("site.json"),
+        )
+        .expect("site.json parses");
+        let repo = crate_dir().join("../../..");
+        let mut h = MemoryHost::new();
+        let url = spec["url"].as_str().expect("site url").to_owned();
+        let mut page = None;
+        for (host, dir) in spec["static"].as_object().expect("site static hosts") {
+            let root = repo.join(dir.as_str().unwrap()).join("public");
+            let mut stack = vec![root.clone()];
+            while let Some(d) = stack.pop() {
+                for e in std::fs::read_dir(&d).expect("package dir") {
+                    let p = e.unwrap().path();
+                    if p.is_dir() {
+                        stack.push(p);
+                        continue;
+                    }
+                    let rel = p
+                        .strip_prefix(&root)
+                        .unwrap()
+                        .to_string_lossy()
+                        .replace('\\', "/");
+                    let body = std::fs::read(&p).unwrap();
+                    let at = format!("http://{host}/{rel}");
+                    let ty = content_type(&rel);
+                    if rel == "index.html" {
+                        let dir_url = format!("http://{host}/");
+                        if url == dir_url {
+                            page = Some(String::from_utf8(body.clone()).unwrap());
+                        }
+                        h.responses
+                            .insert(dir_url.clone(), FetchResponse::ok(&dir_url, ty, &body));
+                    }
+                    h.responses
+                        .insert(at.clone(), FetchResponse::ok(&at, ty, &body));
+                }
+            }
+        }
+        if let Some(api) = spec["api"].as_str() {
+            let rec: Value = serde_json::from_str(
+                &std::fs::read_to_string(fixture_dir().join(api)).expect("api recording"),
+            )
+            .expect("api recording parses");
+            for r in rec["requests"].as_array().unwrap() {
+                let (u, resp) = (r["url"].as_str().unwrap(), &r["response"]);
+                let body: Vec<u8> = match resp["text"].as_str() {
+                    Some(t) => t.as_bytes().to_vec(),
+                    None => serde_json::from_value(resp["bytes"].clone()).unwrap(),
+                };
+                let mut f = FetchResponse::ok(u, "", &body);
+                f.status = resp["status"].as_u64().unwrap() as u16;
+                f.headers = resp["headers"]
+                    .as_object()
+                    .unwrap()
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.as_str().unwrap_or_default().to_owned()))
+                    .collect();
+                h.responses.insert(u.to_owned(), f);
+            }
+        }
+        (
+            page.expect("the site's URL is a package's index.html"),
+            url,
+            h,
+        )
+    }
+
+    fn content_type(path: &str) -> &'static str {
+        match path.rsplit('.').next().unwrap_or("") {
+            "html" => "text/html",
+            "css" => "text/css",
+            "js" | "mjs" => "text/javascript",
+            "json" => "application/json",
+            "svg" => "image/svg+xml",
+            "png" => "image/png",
+            "jpg" | "jpeg" => "image/jpeg",
+            "ico" => "image/x-icon",
+            "woff2" => "font/woff2",
+            "woff" => "font/woff",
+            "ttf" => "font/ttf",
+            _ => "application/octet-stream",
+        }
     }
 
     /// The centre of the element `selector` matches, in viewport pixels.
@@ -227,8 +325,17 @@ mod cases {
         let t = Instant::now();
         // Playwright launches Chromium with `--hide-scrollbars`, so a scroll container
         // there gives no space to its bars: the realm's host draws overlay scrollbars.
-        let mut r = Realm::new(html, &format!("{BASE}{name}.html"), Box::new(host()));
+        let is_site = fixture_dir().join(format!("{name}.site.json")).exists();
+        let mut r = if is_site {
+            let (page, url, h) = site(name);
+            Realm::new(&page, &url, Box::new(h))
+        } else {
+            Realm::new(html, &format!("{BASE}{name}.html"), Box::new(host()))
+        };
         r.set_overlay_scrollbars(true);
+        // Fonts as on the machine the dumps were taken on (the static parity runner's
+        // environment too): a family it lacks falls through to the list's next.
+        r.set_font_environment(cw_web::css::FontEnvironment::LinuxBaseline);
         r.run_document();
         settle(&mut r, 50);
         let boot = t.elapsed();
@@ -277,7 +384,7 @@ mod cases {
 
     fn run_fixture(name: &str) {
         let html =
-            std::fs::read_to_string(fixture_dir().join(format!("{name}.html"))).expect("fixture");
+            std::fs::read_to_string(fixture_dir().join(format!("{name}.html"))).unwrap_or_default();
         let thresholds = framework_thresholds();
         let out = out_dir();
         let mut failures = Vec::new();
@@ -401,5 +508,10 @@ mod cases {
     #[test]
     fn oss_json_server() {
         run_fixture("oss-json-server");
+    }
+
+    #[test]
+    fn oss_conduit_react() {
+        run_fixture("oss-conduit-react");
     }
 }

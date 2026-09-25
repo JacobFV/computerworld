@@ -177,6 +177,10 @@ pub struct Inner {
     pub doc: Document,
     pub url: String,
     pub viewport: Viewport,
+    /// Which font families count as installed (a parity harness asks for the stock
+    /// Linux desktop Chromium's dumps were taken on; the world's browser keeps the
+    /// default, every bundled face).
+    pub font_env: crate::css::FontEnvironment,
     pub sheets: Vec<SheetEntry>,
     pub constructed: BTreeMap<u32, SheetEntry>,
     pub adopted: Vec<u32>,
@@ -352,6 +356,7 @@ impl Inner {
             doc: Document::new(),
             url: url.to_owned(),
             viewport: Viewport::default(),
+            font_env: crate::css::FontEnvironment::default(),
             sheets: Vec::new(),
             constructed: BTreeMap::new(),
             adopted: Vec::new(),
@@ -582,6 +587,7 @@ impl Inner {
             width_px: (self.viewport.width as i64 * 100 / z) as i32,
             height_px: (self.viewport.height as i64 * 100 / z) as i32,
             dppx: css::token::Number::from_i64(self.viewport.scale.max(1) as i64),
+            fonts: self.font_env,
             ..Media::default()
         }
     }

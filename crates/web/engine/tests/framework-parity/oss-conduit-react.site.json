@@ -1,0 +1,6 @@
+{
+ "url": "http://conduit.realworld.show/",
+ "static": {"conduit.realworld.show": "crates/services/oss-web/packages/conduit-react"},
+ "api_hosts": ["api.realworld.show"],
+ "api": "oss-conduit-react.api.json"
+}

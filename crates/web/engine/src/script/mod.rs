@@ -977,6 +977,19 @@ impl Realm {
     /// or in a headless Chromium launched with `--hide-scrollbars`, which is how
     /// the parity dumps are taken) instead of taking 15 px from each scroll
     /// container. A host setting, kept in the snapshot; layout redoes itself.
+    /// Resolves `font-family` lists as on a device with these fonts installed (the
+    /// parity harnesses use `LinuxBaseline`). Not journaled: a harness setting, made
+    /// before the page runs.
+    pub fn set_font_environment(&mut self, env: crate::css::FontEnvironment) {
+        let mut i = self.inner.borrow_mut();
+        if i.font_env != env {
+            i.font_env = env;
+            i.sheets_dirty = true;
+            i.layout_cache.invalidate_all();
+            i.touch();
+        }
+    }
+
     pub fn set_overlay_scrollbars(&mut self, on: bool) {
         self.state.overlay_scrollbars = on;
         let mut i = self.inner.borrow_mut();
