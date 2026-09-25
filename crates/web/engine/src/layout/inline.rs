@@ -1062,12 +1062,22 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
                     _ => break,
                 }
             }
+            // What follows the content does not widen the line: trailing spaces are
+            // gone, a `<br>` or newline has no width, and an inline box closing after
+            // them ends where the content does plus its own end edge. The `<br>` is
+            // placed after the spaces, so its x would count them (hn-front's centred
+            // footer sat half a space left of Chromium's).
             let mut content_width = Au::ZERO;
+            let mut spaces = Au::ZERO;
             for (k, p) in placed.iter().enumerate() {
-                let is_trailing_space =
-                    k >= end_content && matches!(self.units[p.unit].kind, UnitKind::Space { .. });
-                if !is_trailing_space {
+                if k < end_content {
                     content_width = content_width.max(p.x + p.width);
+                    continue;
+                }
+                match self.units[p.unit].kind {
+                    UnitKind::Space { .. } => spaces += p.width,
+                    UnitKind::Br(_) | UnitKind::Newline => {}
+                    _ => content_width = content_width.max(p.x - spaces + p.width),
                 }
             }
             let ended_by_br = forced;
@@ -1294,9 +1304,12 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
         let mut delta = Au::ZERO; // justification shift accumulated
         let mut spaces_seen = 0;
         let mut closed_on_line: Vec<BoxId> = Vec::new();
+        // Trailing collapsible spaces removed so far: what closes after them (an
+        // inline box's end, a `<br>`) moves back over them.
+        let mut removed = Au::ZERO;
         for (k, p) in placed.iter().enumerate() {
             let u = &self.units[p.unit];
-            let ux = p.x + delta;
+            let ux = p.x + delta - removed;
             match u.kind {
                 UnitKind::Open(id) => {
                     let mut node = LineNode::new(
@@ -1335,6 +1348,7 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
                             }
                         )
                     {
+                        removed += u.width;
                         continue;
                     }
                     let mut w = u.width;

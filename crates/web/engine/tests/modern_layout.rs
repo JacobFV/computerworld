@@ -624,4 +624,21 @@ mod cases {
         assert_eq!(p.computed("c", "text-align"), "center");
         assert_eq!(p.computed("d", "text-align"), "right");
     }
+    /// Spaces before a `<br>` do not widen an aligned line, even in a larger font
+    /// than the content (hn-front's centred footer links), and an inline box that
+    /// closes after its own trailing space ends at its content plus its padding.
+    /// Positions are Chromium's.
+    #[test]
+    fn spaces_before_a_br_do_not_shift_an_aligned_line() {
+        let p = page(
+            "<!DOCTYPE html><style>body { margin: 0 }</style>
+             <div style='text-align: center; width: 200px; font: 20px/20px Arimo'><span id=s style='font-size: 10px'>x</span>
+             <br>y</div>
+             <div style='text-align: right; width: 200px; font: 20px/20px Arimo'><span id=t style='font-size: 10px; padding-right: 3px'>x </span> <br>y</div>",
+        );
+        close(p.rect("s").x, 97.5, "#s x");
+        close(p.rect("s").width, 5.0, "#s width");
+        close(p.rect("t").x, 192.0, "#t x");
+        close(p.rect("t").width, 8.0, "#t width");
+    }
 }
