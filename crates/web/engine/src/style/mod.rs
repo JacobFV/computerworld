@@ -20,5 +20,5 @@ pub mod serialize;
 pub mod shorthands;
 pub mod ua;
 pub mod values;
-pub use cascade::{cascade, restyle, restyle_state, FontFace};
+pub use cascade::{cascade, restyle, restyle_state, FontFace, StyleEngine};
 pub use computed::*;

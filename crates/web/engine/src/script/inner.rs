@@ -171,6 +171,8 @@ pub struct Inner {
     pub sheets_dirty: bool,
     pub styles: StyleSet,
     styles_valid: bool,
+    /// The cascade engine built from the current sheets (see `ensure_styles`).
+    style_engine: Option<style::StyleEngine>,
     /// Elements whose matching state (hover, focus, active) changed since the last
     /// restyle.
     state_changed: Vec<NodeId>,
@@ -334,6 +336,7 @@ impl Inner {
             sheets_dirty: true,
             styles: StyleSet::new(),
             styles_valid: false,
+            style_engine: None,
             state_changed: Vec::new(),
             tree: None,
             tree_generation: u64::MAX,
@@ -850,9 +853,22 @@ impl Inner {
             return;
         }
         let media = self.media();
-        let sheets_t = style::profile::span(style::profile::Phase::Sheets);
-        let sheets = self.effective_sheets();
-        drop(sheets_t);
+        let quirks = self.doc.quirks == crate::dom::QuirksMode::Quirks;
+        // The cascade engine lives as long as the sheets and media it was built
+        // from: every sheet change (and a viewport change) clears `styles_valid`.
+        if !self.styles_valid
+            || !self
+                .style_engine
+                .as_ref()
+                .is_some_and(|e| e.is_for(&media, quirks, Strictness::Lenient))
+        {
+            self.styles_valid = false;
+            let sheets_t = style::profile::span(style::profile::Phase::Sheets);
+            let sheets = self.effective_sheets();
+            drop(sheets_t);
+            self.style_engine =
+                style::StyleEngine::build(&sheets, &media, quirks, Strictness::Lenient).ok();
+        }
         let mutations: Vec<Mutation> = self.doc.drain_mutations();
         let changed: Vec<NodeId> = std::mem::take(&mut self.state_changed);
         let ctx = match_context(
@@ -862,36 +878,23 @@ impl Inner {
             self.focus_visible,
             &self.target_id,
         );
-        if !self.styles_valid {
-            match style::cascade(&self.doc, &sheets, &media, &ctx, Strictness::Lenient) {
-                Ok(set) => self.styles = set,
-                Err(_) => self.styles = StyleSet::new(),
+        match &self.style_engine {
+            None => self.styles = StyleSet::new(),
+            Some(engine) if !self.styles_valid => {
+                self.styles = engine
+                    .cascade(&self.doc, &ctx)
+                    .unwrap_or_else(|_| StyleSet::new());
             }
-            self.styles_valid = true;
-        } else {
-            if !mutations.is_empty() {
-                let _ = style::restyle(
-                    &self.doc,
-                    &mut self.styles,
-                    &mutations,
-                    &sheets,
-                    &media,
-                    &ctx,
-                    Strictness::Lenient,
-                );
-            }
-            if !changed.is_empty() {
-                let _ = style::restyle_state(
-                    &self.doc,
-                    &mut self.styles,
-                    &changed,
-                    &sheets,
-                    &media,
-                    &ctx,
-                    Strictness::Lenient,
-                );
+            Some(engine) => {
+                if !mutations.is_empty() {
+                    let _ = engine.restyle(&self.doc, &mut self.styles, &mutations, &ctx);
+                }
+                if !changed.is_empty() {
+                    let _ = engine.restyle_state(&self.doc, &mut self.styles, &changed, &ctx);
+                }
             }
         }
+        self.styles_valid = true;
         self.styles_generation = self.generation;
         let _t = style::profile::span(style::profile::Phase::StyleOther);
         self.inline_cache.clear();

@@ -148,12 +148,14 @@ impl Winners {
     }
 }
 
-/// Everything the cascade needs for one document and one set of sheets.
-struct Engine<'a> {
-    doc: &'a Document,
-    ctx: &'a MatchContext<'a>,
-    strictness: Strictness,
+/// A cascade engine: the selector indexes and parsed declarations of one set of
+/// sheets under one media environment. Building one is the fixed cost of a style
+/// flush, so a host keeps it while its sheets, media, quirks mode and strictness
+/// are unchanged, and hands it every restyle ([`StyleEngine::is_for`]).
+pub struct StyleEngine {
+    media: Media,
     quirks: bool,
+    strictness: Strictness,
     elements: SelectorIndex<RuleData>,
     before: SelectorIndex<RuleData>,
     after: SelectorIndex<RuleData>,
@@ -168,26 +170,39 @@ struct Engine<'a> {
     keyframes: BTreeMap<String, Keyframes>,
     viewport: (Au, Au),
     fonts: crate::css::FontEnvironment,
+}
+
+/// A cascade engine applied to one document and matching state for one pass.
+struct Engine<'a> {
+    data: &'a StyleEngine,
+    doc: &'a Document,
+    ctx: &'a MatchContext<'a>,
     body_text_color: Color,
     /// Parsed `style=""` attributes, cached per element per pass.
     inline_cache: std::cell::RefCell<BTreeMap<NodeId, Rc<ParsedBlock>>>,
 }
 
-impl<'a> Engine<'a> {
-    fn build(
-        doc: &'a Document,
-        sheets: &'a [Stylesheet],
+impl std::ops::Deref for Engine<'_> {
+    type Target = StyleEngine;
+    fn deref(&self) -> &StyleEngine {
+        self.data
+    }
+}
+
+impl StyleEngine {
+    /// Builds the engine for `sheets` (after the UA sheet, and its quirks sheet when
+    /// `quirks`) under `media`.
+    pub fn build(
+        sheets: &[Stylesheet],
         media: &Media,
-        ctx: &'a MatchContext<'a>,
+        quirks: bool,
         strictness: Strictness,
-    ) -> Result<Engine<'a>, Unsupported> {
+    ) -> Result<StyleEngine, Unsupported> {
         let _t = super::profile::span(super::profile::Phase::EngineBuild);
-        let quirks = doc.quirks == QuirksMode::Quirks;
-        let mut e = Engine {
-            doc,
-            ctx,
-            strictness,
+        let mut e = StyleEngine {
+            media: *media,
             quirks,
+            strictness,
             elements: SelectorIndex::new(),
             before: SelectorIndex::new(),
             after: SelectorIndex::new(),
@@ -204,14 +219,7 @@ impl<'a> Engine<'a> {
                 Au::from_px_i32(media.height_px),
             ),
             fonts: media.fonts,
-            body_text_color: Color::BLACK,
-            inline_cache: std::cell::RefCell::new(BTreeMap::new()),
         };
-        if let Some(body) = doc.body() {
-            if let Some(c) = doc.attr(body, "text").and_then(parse_legacy_color) {
-                e.body_text_color = c;
-            }
-        }
         // Global layer order: first declaration wins the position, across sheets.
         let mut layers: Vec<String> = Vec::new();
         for s in sheets {
@@ -292,7 +300,104 @@ impl<'a> Engine<'a> {
                 }
             }
         }
+        e.strictness = strictness;
         Ok(e)
+    }
+
+    /// Whether this engine was built for `media`, `quirks` and `strictness` (its
+    /// sheets are the caller's to track).
+    pub fn is_for(&self, media: &Media, quirks: bool, strictness: Strictness) -> bool {
+        self.media == *media && self.quirks == quirks && self.strictness == strictness
+    }
+
+    /// Computes the style of every element in the document.
+    pub fn cascade(&self, doc: &Document, ctx: &MatchContext) -> Result<StyleSet, Unsupported> {
+        let engine = Engine::new(self, doc, ctx);
+        let mut set = StyleSet::new();
+        engine.fill_set(&mut set);
+        let mut unsupported = Vec::new();
+        if let Some(root) = doc.document_element() {
+            engine.style_subtree(&mut set, root, &mut unsupported)?;
+        }
+        for u in unsupported {
+            set.record_unsupported(u);
+        }
+        Ok(set)
+    }
+
+    /// Recomputes only what `mutations` can have changed (see [`restyle`]).
+    pub fn restyle(
+        &self,
+        doc: &Document,
+        set: &mut StyleSet,
+        mutations: &[Mutation],
+        ctx: &MatchContext,
+    ) -> Result<(), Unsupported> {
+        let engine = Engine::new(self, doc, ctx);
+        engine.fill_set(set);
+        let mut unsupported = Vec::new();
+        match engine.invalidation_roots(set, mutations) {
+            None => {
+                if let Some(root) = doc.document_element() {
+                    engine.style_subtree(set, root, &mut unsupported)?;
+                }
+            }
+            Some(roots) => {
+                for r in roots {
+                    if is_connected(doc, r) {
+                        engine.style_subtree(set, r, &mut unsupported)?;
+                    }
+                }
+            }
+        }
+        for u in unsupported {
+            set.record_unsupported(u);
+        }
+        Ok(())
+    }
+
+    /// Restyles after matching-state changes (see [`restyle_state`]).
+    pub fn restyle_state(
+        &self,
+        doc: &Document,
+        set: &mut StyleSet,
+        changed: &[NodeId],
+        ctx: &MatchContext,
+    ) -> Result<(), Unsupported> {
+        let engine = Engine::new(self, doc, ctx);
+        if !engine.deps.state && !engine.deps.form {
+            return Ok(());
+        }
+        let mut unsupported = Vec::new();
+        if engine.deps.has {
+            if let Some(root) = doc.document_element() {
+                engine.style_subtree(set, root, &mut unsupported)?;
+            }
+        } else {
+            let mut roots: Vec<NodeId> = Vec::new();
+            for c in changed {
+                if !is_connected(doc, *c) {
+                    continue;
+                }
+                let r = if engine.deps.structural {
+                    doc.parent(*c).filter(|p| doc.is_element(*p)).unwrap_or(*c)
+                } else {
+                    *c
+                };
+                if doc.ancestors(r).any(|a| roots.contains(&a)) || roots.contains(&r) {
+                    continue;
+                }
+                roots.retain(|o| !doc.ancestors(*o).any(|a| a == r));
+                roots.push(r);
+            }
+            for r in roots {
+                engine.style_subtree(set, r, &mut unsupported)?;
+            }
+        }
+        for u in unsupported {
+            set.record_unsupported(u);
+        }
+        Ok(())
     }
 
     fn record(&mut self, u: Unsupported) {
@@ -351,6 +456,40 @@ impl<'a> Engine<'a> {
                 }
             }
         }
+    }
+}
+
+impl<'a> Engine<'a> {
+    fn new(data: &'a StyleEngine, doc: &'a Document, ctx: &'a MatchContext<'a>) -> Engine<'a> {
+        let mut body_text_color = Color::BLACK;
+        if let Some(body) = doc.body() {
+            if let Some(c) = doc.attr(body, "text").and_then(parse_legacy_color) {
+                body_text_color = c;
+            }
+        }
+        Engine {
+            data,
+            doc,
+            ctx,
+            body_text_color,
+            inline_cache: std::cell::RefCell::new(BTreeMap::new()),
+        }
+    }
+
+    /// The sheet-level parts of a style set: `@font-face`, `@keyframes`, what the
+    /// sheets left unsupported, and the viewport.
+    fn fill_set(&self, set: &mut StyleSet) {
+        set.font_faces = self.font_faces.clone();
+        set.keyframes = self.keyframes.clone();
+        for u in &self.unsupported {
+            set.record_unsupported(u.clone());
+        }
+        set.viewport = Viewport {
+            width: self.media.width_px.max(0) as u32,
+            height: self.media.height_px.max(0) as u32,
+            scale: 1,
+            zoom: 100,
+        };
     }
 
     fn inline_block(&self, node: NodeId) -> Result<Option<Rc<ParsedBlock>>, Unsupported> {
@@ -1428,27 +1567,8 @@ pub fn cascade(
     ctx: &MatchContext,
     strictness: Strictness,
 ) -> Result<StyleSet, Unsupported> {
-    let engine = Engine::build(doc, sheets, media, ctx, strictness)?;
-    let mut set = StyleSet::new();
-    set.viewport = Viewport {
-        width: media.width_px.max(0) as u32,
-        height: media.height_px.max(0) as u32,
-        scale: 1,
-        zoom: 100,
-    };
-    set.font_faces = engine.font_faces.clone();
-    set.keyframes = engine.keyframes.clone();
-    for u in &engine.unsupported {
-        set.record_unsupported(u.clone());
-    }
-    let mut unsupported = Vec::new();
-    if let Some(root) = doc.document_element() {
-        engine.style_subtree(&mut set, root, &mut unsupported)?;
-    }
-    for u in unsupported {
-        set.record_unsupported(u);
-    }
-    Ok(set)
+    let quirks = doc.quirks == QuirksMode::Quirks;
+    StyleEngine::build(sheets, media, quirks, strictness)?.cascade(doc, ctx)
 }
 
 /// Recomputes only what `mutations` can have changed, using the selectors'
@@ -1464,37 +1584,8 @@ pub fn restyle(
     ctx: &MatchContext,
     strictness: Strictness,
 ) -> Result<(), Unsupported> {
-    let engine = Engine::build(doc, sheets, media, ctx, strictness)?;
-    set.font_faces = engine.font_faces.clone();
-    set.keyframes = engine.keyframes.clone();
-    for u in &engine.unsupported {
-        set.record_unsupported(u.clone());
-    }
-    set.viewport = Viewport {
-        width: media.width_px.max(0) as u32,
-        height: media.height_px.max(0) as u32,
-        scale: 1,
-        zoom: 100,
-    };
-    let mut unsupported = Vec::new();
-    match engine.invalidation_roots(set, mutations) {
-        None => {
-            if let Some(root) = doc.document_element() {
-                engine.style_subtree(set, root, &mut unsupported)?;
-            }
-        }
-        Some(roots) => {
-            for r in roots {
-                if is_connected(doc, r) {
-                    engine.style_subtree(set, r, &mut unsupported)?;
-                }
-            }
-        }
-    }
-    for u in unsupported {
-        set.record_unsupported(u);
-    }
-    Ok(())
+    let quirks = doc.quirks == QuirksMode::Quirks;
+    StyleEngine::build(sheets, media, quirks, strictness)?.restyle(doc, set, mutations, ctx)
 }
 
 /// Restyles the subtrees of the given elements (for `MatchContext` state changes
@@ -1509,40 +1600,8 @@ pub fn restyle_state(
     ctx: &MatchContext,
     strictness: Strictness,
 ) -> Result<(), Unsupported> {
-    let engine = Engine::build(doc, sheets, media, ctx, strictness)?;
-    if !engine.deps.state && !engine.deps.form {
-        return Ok(());
-    }
-    let mut unsupported = Vec::new();
-    if engine.deps.has {
-        if let Some(root) = doc.document_element() {
-            engine.style_subtree(set, root, &mut unsupported)?;
-        }
-    } else {
-        let mut roots: Vec<NodeId> = Vec::new();
-        for c in changed {
-            if !is_connected(doc, *c) {
-                continue;
-            }
-            let r = if engine.deps.structural {
-                doc.parent(*c).filter(|p| doc.is_element(*p)).unwrap_or(*c)
-            } else {
-                *c
-            };
-            if doc.ancestors(r).any(|a| roots.contains(&a)) || roots.contains(&r) {
-                continue;
-            }
-            roots.retain(|o| !doc.ancestors(*o).any(|a| a == r));
-            roots.push(r);
-        }
-        for r in roots {
-            engine.style_subtree(set, r, &mut unsupported)?;
-        }
-    }
-    for u in unsupported {
-        set.record_unsupported(u);
-    }
-    Ok(())
+    let quirks = doc.quirks == QuirksMode::Quirks;
+    StyleEngine::build(sheets, media, quirks, strictness)?.restyle_state(doc, set, changed, ctx)
 }
 
 /// The style a detached or unstyled element would get as a child of `parent`, from
@@ -1578,11 +1637,15 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
     }
     let doc = Document::new();
     let ctx = MatchContext::new();
-    let engine = Engine {
-        doc: &doc,
-        ctx: &ctx,
-        strictness: Strictness::Lenient,
+    let media = Media {
+        width_px: 1280,
+        height_px: 800,
+        ..Media::default()
+    };
+    let data = StyleEngine {
+        media,
         quirks: false,
+        strictness: Strictness::Lenient,
         elements: SelectorIndex::new(),
         before: SelectorIndex::new(),
         after: SelectorIndex::new(),
@@ -1596,9 +1659,8 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
         keyframes: BTreeMap::new(),
         viewport: (Au::from_px_i32(1280), Au::from_px_i32(800)),
         fonts: crate::css::FontEnvironment::Bundled,
-        body_text_color: Color::BLACK,
-        inline_cache: std::cell::RefCell::new(BTreeMap::new()),
     };
+    let engine = Engine::new(&data, &doc, &ctx);
     engine.compute(Document::ROOT, &w, parent, Some(parent.font.size), true)
 }
 
