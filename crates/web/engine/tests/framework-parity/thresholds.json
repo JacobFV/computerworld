@@ -38,7 +38,7 @@
  "app-shop.options": 1.0,
  "app-shop.quantity": 1.0,
  "app-shop.size-error": 0.99,
- "oss-json-server.initial": 0.05,
+ "oss-json-server.initial": 0.98,
  "oss-todomvc-react.active": 1.0,
  "oss-todomvc-react.added": 1.0,
  "oss-todomvc-react.completed": 1.0,

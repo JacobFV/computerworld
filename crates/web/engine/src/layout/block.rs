@@ -1364,11 +1364,19 @@ fn layout_block_box_uncached(
     let quirky_root = ctx.quirks
         && b.node
             .is_some_and(|n| ctx.doc.is(n, "html") || ctx.doc.is(n, "body"));
-    let child_cb_height = own_height.or(ratio_h).or(if quirky_root {
-        Some(ctx.viewport.height)
-    } else {
-        None
-    });
+    // The quirks-mode stretch is a minimum, not a definite height: a flex or grid
+    // `<body>` (JSON Server's column of header, `flex: 1` main and footer) sizes to
+    // its content when that is taller than the viewport, so its items must not be
+    // laid out against the viewport's height as a definite main size.
+    let lays_out_items = crate::layout::flex::is_flex_container(b)
+        || crate::layout::grid::is_grid_container(&b.style);
+    let child_cb_height = own_height
+        .or(ratio_h)
+        .or(if quirky_root && !lays_out_items {
+            Some(ctx.viewport.height)
+        } else {
+            None
+        });
     let top_adjoining = !is_bfc_root && bw.top.is_zero() && p.top.is_zero() && b.marker.is_none();
     let bottom_adjoining = !is_bfc_root
         && bw.bottom.is_zero()

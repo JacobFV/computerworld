@@ -885,7 +885,8 @@ fn line_height_and_vertical_align_of_inline_boxes() {
     let ts = texts(&tree);
     let x_y = ts[0].1.origin.y;
     let s_y = ts.iter().find(|(s, _)| s == "s").unwrap().1.origin.y;
-    assert_eq!(x_y - s_y, px(16) / 3);
+    // Blink raises `super` a third of the parent's font size plus a pixel.
+    assert_eq!(x_y - s_y, px(16) / 3 + px(1));
 }
 
 #[test]

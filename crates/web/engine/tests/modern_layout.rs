@@ -702,4 +702,34 @@ mod cases {
         assert_eq!(p.computed("e", "color"), "rgba(16, 16, 16, 0.3)");
         assert_eq!(p.computed("f", "color"), "rgb(128, 128, 128)");
     }
+    /// Flex items whose content ends in a space inside an inline box and an empty
+    /// inline box with a margin (JSON Server's header nav) share free space as in
+    /// Chromium: trailing spaces are not part of an item's max-content width.
+    /// Widths are Chromium's.
+    #[test]
+    fn trailing_spaces_in_inline_boxes_do_not_widen_flex_items() {
+        let p = page("<!DOCTYPE html><style>body{margin:0;font-family:Arimo} ul{display:flex;justify-content:space-between;margin:0;padding:0;width:960px} li{flex-grow:1;text-align:right} li.t{flex-grow:5;font-weight:bold;font-size:22.4px;text-align:left} i{margin-right:.5rem} a{color:inherit;text-decoration:none}</style>\n<ul>\n            <li class=\"t\" id=a>\n              JSON Server\n            </li>\n            <li id=b>\n              <a href=\"x\">\n                <i class=\"fas fa-heart\"></i>GitHub Sponsors\n              </a>\n            </li>\n            <li id=c><a href=\"x\">GitHub Sponsors</a></li>\n            <li id=d><a href=\"x\"><i></i>GitHub Sponsors</a></li>\n</ul>\n");
+        close(p.rect("a").width, 412.890625, "#a width");
+        close(p.rect("b").width, 185.046875, "#b width");
+        close(p.rect("c").width, 177.03125, "#c width");
+        close(p.rect("d").width, 185.03125, "#d width");
+    }
+    /// `vertical-align: super` and `sub` shift by a third and a fifth of the parent's
+    /// font size plus one pixel, as Blink does (JSON Server's resource counts).
+    /// Offsets are Chromium's.
+    #[test]
+    fn super_and_sub_shift_as_in_blink() {
+        for (fs, up, down) in [
+            (16.0, 6.328125, 4.1875),
+            (13.0, 5.328125, 3.59375),
+            (20.0, 7.65625, 5.0),
+        ] {
+            let p = page(&format!(
+                "<!DOCTYPE html><div style='font: {fs}px Arimo; line-height: 80px'><span id=r>x</span><span id=s style='vertical-align: super'>x</span><span id=b style='vertical-align: sub'>x</span></div>"
+            ));
+            let r = p.rect("r").y;
+            close(r - p.rect("s").y, up, &format!("super at {fs}px"));
+            close(p.rect("b").y - r, down, &format!("sub at {fs}px"));
+        }
+    }
 }

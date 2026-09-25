@@ -1868,8 +1868,10 @@ fn baseline_shift(
 ) -> Au {
     match va {
         VerticalAlign::Baseline => Au::ZERO,
-        VerticalAlign::Sub => pstyle.font.size / 5,
-        VerticalAlign::Super => -(pstyle.font.size / 3),
+        // Blink's `ComputeBaselineShift`: a fifth (a third) of the parent's font size
+        // plus one pixel (16 px text: `super` 6.33 px up, `sub` 4.2 px down).
+        VerticalAlign::Sub => pstyle.font.size / 5 + Au::from_px_i32(1),
+        VerticalAlign::Super => -(pstyle.font.size / 3 + Au::from_px_i32(1)),
         VerticalAlign::TextTop => -pm.fm.ascent + above,
         VerticalAlign::TextBottom => pm.fm.descent - below,
         VerticalAlign::Middle => {
@@ -2116,8 +2118,13 @@ pub fn intrinsic_widths(ctx: &LayoutContext, container: BoxId) -> (Au, Au) {
                     }
                 };
                 line += w;
-                line_trailing = Au::ZERO;
-                run_trailing = Au::ZERO;
+                // An inline box's edge does not end a run of trailing spaces: in
+                // `<a>Sponsors </a>` the space still hangs at the line's end and is
+                // not part of the max-content width (JSON Server's nav items).
+                if !matches!(u.kind, UnitKind::Open(_) | UnitKind::Close(_)) {
+                    line_trailing = Au::ZERO;
+                    run_trailing = Au::ZERO;
+                }
                 let _ = pending_spaces;
             }
         }
