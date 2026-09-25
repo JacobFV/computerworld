@@ -620,9 +620,12 @@ fn create_element(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
             attrs: Vec::new(),
         });
         if tag == "template" && ns == Namespace::Html {
+            // Only the content fragment's own insertion is dropped: mutations
+            // script made before this call must still reach the restyle.
+            let marks = i.doc.mutations.len();
             let frag = i.doc.create(NodeKind::DocumentFragment);
             i.doc.append(id, frag);
-            i.doc.mutations.clear();
+            i.doc.mutations.truncate(marks);
         }
         id
     };
