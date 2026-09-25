@@ -1379,6 +1379,14 @@ impl ComputedStyle {
         *self == o
     }
 
+    /// Whether hit testing sees the two styles the same: they lay out the same
+    /// and agree on `pointer-events` and the corner radii (a rounded box's hit area).
+    pub fn hit_eq(&self, other: &ComputedStyle) -> bool {
+        self.pointer_events == other.pointer_events
+            && self.border_radius == other.border_radius
+            && self.layout_eq(other)
+    }
+
     pub fn is_positioned(&self) -> bool {
         !matches!(self.position, Position::Static)
     }

@@ -160,6 +160,8 @@ mod perf {
         label: String,
         wall: Vec<u64>,
         phases: Vec<Vec<u64>>,
+        /// Layouts and hit-list builds per run.
+        counts: Vec<(u64, u64)>,
     }
 
     fn print_header() {
@@ -167,6 +169,7 @@ mod perf {
         for p in PHASES {
             h.push_str(&format!(" {:>9}", short(p)));
         }
+        h.push_str("  layouts/hits");
         eprintln!("{h}");
     }
 
@@ -203,6 +206,9 @@ mod perf {
         );
         for m in phase_meds {
             s.push_str(&format!(" {:>9.3}", m));
+        }
+        if let Some((l, h)) = row.counts.get(row.counts.len() / 2) {
+            s.push_str(&format!("  {l}/{h}"));
         }
         eprintln!("{s}");
     }
@@ -311,6 +317,9 @@ mod perf {
                         }
                         rows[i].wall.push(wall);
                         rows[i].phases.push(times.nanos.to_vec());
+                        rows[i]
+                            .counts
+                            .push((times.get(Phase::Layout).1, times.get(Phase::HitTest).1));
                         i += 1;
                     }
                     if full.wall.len() < rows[0].wall.len() {
@@ -337,6 +346,38 @@ mod perf {
                 print_row(row);
             }
             print_row(&full);
+        }
+        profile::set_clock(None);
+    }
+
+    /// Layout alone, repeated over the settled page of each fixture (the phase
+    /// timers split it; `STYLE_PERF_RUNS` sets the repeats).
+    #[test]
+    #[ignore]
+    fn layout_only() {
+        let runs: usize = std::env::var("STYLE_PERF_RUNS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(7);
+        profile::set_clock(Some(clock));
+        for name in fixtures() {
+            let html = std::fs::read_to_string(fixture_dir().join(format!("{name}.html"))).unwrap();
+            let mut r = boot(&name, &html);
+            let styles = r.styles().clone();
+            let doc = r.document().clone();
+            let mut row = Row {
+                label: format!("{name} layout"),
+                ..Default::default()
+            };
+            for _ in 0..runs {
+                profile::take();
+                let t = clock();
+                std::hint::black_box(cw_web::layout::layout(&doc, &styles, viewport()));
+                row.wall.push(clock() - t);
+                row.phases.push(profile::take().nanos.to_vec());
+            }
+            print_header();
+            print_row(&row);
         }
         profile::set_clock(None);
     }

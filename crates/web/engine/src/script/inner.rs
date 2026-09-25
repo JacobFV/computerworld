@@ -180,8 +180,8 @@ pub struct Inner {
     /// tree was laid out with.
     laid_out: Option<(Viewport, ScrollState, ImageSizeMap, bool)>,
     /// Bumped when the fragment tree is replaced, and when a style flush changed
-    /// any style: the key of the hit-test list.
-    paint_epoch: u64,
+    /// a style hit testing reads: the key of the hit-test list.
+    hit_epoch: u64,
     hit_list: Option<(u64, crate::paint::hit::HitList)>,
     /// Elements whose matching state (hover, focus, active) changed since the last
     /// restyle.
@@ -349,7 +349,7 @@ impl Inner {
             style_engine: None,
             layout_dirty: true,
             laid_out: None,
-            paint_epoch: 0,
+            hit_epoch: 0,
             hit_list: None,
             state_changed: Vec::new(),
             tree: None,
@@ -901,6 +901,7 @@ impl Inner {
                 style::Restyled {
                     changed: true,
                     layout_changed: true,
+                    hits_changed: true,
                 }
             }
             Some(engine) if !self.styles_valid => {
@@ -910,6 +911,7 @@ impl Inner {
                 style::Restyled {
                     changed: true,
                     layout_changed: true,
+                    hits_changed: true,
                 }
             }
             Some(engine) => engine
@@ -917,11 +919,12 @@ impl Inner {
                 .unwrap_or(style::Restyled {
                     changed: true,
                     layout_changed: true,
+                    hits_changed: true,
                 }),
         };
         self.layout_dirty |= restyled.layout_changed;
-        if restyled.changed {
-            self.paint_epoch += 1;
+        if restyled.hits_changed {
+            self.hit_epoch += 1;
         }
         self.styles_valid = true;
         self.styles_generation = self.generation;
@@ -1104,7 +1107,7 @@ impl Inner {
             self.images.clone(),
             self.layout_cache.overlay_scrollbars,
         ));
-        self.paint_epoch += 1;
+        self.hit_epoch += 1;
         if style::profile::verifying() {
             self.verify_incremental();
         }
@@ -1225,9 +1228,14 @@ impl Inner {
                     .insert(*n, crate::geom::Point { x: *ox, y: *oy });
             }
         }
-        if self.hit_list.as_ref().map(|(e, _)| *e) != Some(self.paint_epoch) {
+        if self.hit_list.as_ref().map(|(e, _)| *e) != Some(self.hit_epoch) {
             let list = crate::paint::hit::HitList::build(tree, &self.styles, self.viewport, &ctx);
-            self.hit_list = Some((self.paint_epoch, list));
+            self.hit_list = Some((self.hit_epoch, list));
+        } else if style::profile::verifying() {
+            let fresh = crate::paint::hit::HitList::build(tree, &self.styles, self.viewport, &ctx);
+            if self.hit_list.as_ref().map(|(_, l)| l) != Some(&fresh) {
+                panic!("a reused hit list differs from a fresh one at {}", self.url);
+            }
         }
         let hit = self.hit_list.as_ref().and_then(|(_, l)| l.at(x, y));
         match hit {
@@ -1617,6 +1625,106 @@ impl Inner {
                 .map(|c| c != "false")
                 .unwrap_or(false),
         }
+    }
+
+    /// The caret position a click at viewport point (`x`, `y`) puts in the text
+    /// control `node`: the character boundary nearest the point, as painting
+    /// lays the value out (from the content box's left edge; a textarea's lines
+    /// wrapped to its width). `None` when the control has no box.
+    pub fn caret_from_point(&mut self, node: NodeId, x: i32, y: i32) -> Option<usize> {
+        self.ensure_layout();
+        let (sx, sy) = self.window_scroll();
+        let (content, font) = {
+            let tree = self.tree.as_ref()?;
+            let (f, abs) = fragment_of(tree, node)?;
+            let layout::FragmentKind::Box {
+                padding, border, ..
+            } = &f.kind
+            else {
+                return None;
+            };
+            let left = abs.origin.x + border.left + padding.left;
+            let top = abs.origin.y + border.top + padding.top;
+            let width = abs.size.width - border.left - border.right - padding.left - padding.right;
+            (
+                (
+                    left.to_px_round(),
+                    top.to_px_round(),
+                    width.to_px_round().max(1),
+                ),
+                self.styles.get(node)?.font.clone(),
+            )
+        };
+        let px = x + sx.to_px_round();
+        let py = y + sy.to_px_round();
+        let value = self.control_value(node);
+        let password = self.doc.is(node, "input")
+            && self
+                .doc
+                .attr(node, "type")
+                .is_some_and(|t| t.eq_ignore_ascii_case("password"));
+        let shown: Vec<char> = if password {
+            vec!['\u{2022}'; value.chars().count()]
+        } else {
+            value.chars().collect()
+        };
+        // The boundary in `line` (a run of `shown` starting at `start`) nearest
+        // `px`.
+        let nearest = |start: usize, line: &[char]| -> usize {
+            let mut best = (i32::MAX, 0);
+            let mut prefix = String::new();
+            for i in 0..=line.len() {
+                if i > 0 {
+                    prefix.push(line[i - 1]);
+                }
+                let at = content.0 + crate::paint::text::width_px(&font, &prefix) as i32;
+                let d = (at - px).abs();
+                if d < best.0 {
+                    best = (d, i);
+                }
+                if at > px {
+                    break;
+                }
+            }
+            start + best.1
+        };
+        if !self.doc.is(node, "textarea") {
+            return Some(nearest(0, &shown));
+        }
+        // Visual lines: each hard line wrapped to the content width, with the
+        // character offset where it starts.
+        let size = font.size_px();
+        let mut lines: Vec<(usize, Vec<char>)> = Vec::new();
+        let mut at = 0;
+        for hard in value.split('\n') {
+            let hard_chars: Vec<char> = hard.chars().collect();
+            let wrapped = cw_scene::metrics::wrap(
+                font.typeface,
+                font.scene_style(),
+                hard,
+                size,
+                content.2 as u32,
+            );
+            let mut pos = 0;
+            for w in wrapped.iter().filter(|w| !w.is_empty()) {
+                let w: Vec<char> = w.chars().collect();
+                // Soft breaks drop the spaces they break at.
+                while pos < hard_chars.len() && hard_chars[pos] == ' ' && w.first() != Some(&' ') {
+                    pos += 1;
+                }
+                let len = w.len().min(hard_chars.len() - pos);
+                lines.push((at + pos, hard_chars[pos..pos + len].to_vec()));
+                pos += len;
+            }
+            if wrapped.iter().all(|w| w.is_empty()) {
+                lines.push((at, Vec::new()));
+            }
+            at += hard_chars.len() + 1;
+        }
+        let lh = crate::paint::text::line_height_px(size) as i32;
+        let row = ((py - content.1) / lh.max(1)).clamp(0, lines.len().saturating_sub(1) as i32);
+        let (start, line) = &lines[row as usize];
+        Some(nearest(*start, line))
     }
 
     pub fn is_text_control(&self, node: NodeId) -> bool {

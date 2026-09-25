@@ -181,7 +181,7 @@ pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
         return;
     }
     let Some(key) = p.key(f) else { return };
-    let style = p.style(*source).clone();
+    let style = p.style_rc(*source);
     let rect = abs_rect(state, f);
     let srect = super::snap(rect);
     let font = &style.font;

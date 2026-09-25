@@ -258,7 +258,7 @@ impl State {
 }
 
 /// What hit testing needs about one painted box, recorded in paint order.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct HitItem {
     pub node: NodeId,
     pub bounds: SRect,
@@ -444,6 +444,22 @@ impl<'a> Painter<'a> {
             StyleSource::Marker(n) => self.styles.marker(n).or_else(|| self.styles.get(n)),
         };
         s.unwrap_or(&self.initial)
+    }
+
+    /// [`Painter::style`], shared: for a caller that goes on to borrow the
+    /// painter mutably while it reads the style (a clone of the style would cost a
+    /// deep copy per fragment).
+    pub fn style_rc(&self, src: StyleSource) -> std::rc::Rc<ComputedStyle> {
+        let s = match src {
+            StyleSource::Element(n) | StyleSource::Anonymous(n) => self.styles.get_rc(n),
+            StyleSource::Before(n) => self.styles.before.get(&n).or(self.styles.get_rc(n)),
+            StyleSource::After(n) => self.styles.after.get(&n).or(self.styles.get_rc(n)),
+            StyleSource::Marker(n) => self.styles.marker.get(&n).or(self.styles.get_rc(n)),
+        };
+        match s {
+            Some(s) => s.clone(),
+            None => ComputedStyle::initial_rc(),
+        }
     }
 
     pub fn style_of(&self, f: &Fragment) -> &ComputedStyle {

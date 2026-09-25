@@ -420,6 +420,7 @@ impl StyleEngine {
             Delta {
                 any: true,
                 layout: true,
+                hit: true,
             }
         } else if targets.is_empty() {
             Delta::default()
@@ -451,6 +452,7 @@ impl StyleEngine {
         Ok(Restyled {
             changed: any.any,
             layout_changed: any.layout,
+            hits_changed: any.hit,
         })
     }
 
@@ -985,6 +987,7 @@ impl<'a> Engine<'a> {
             Some(old) if **old == style => (old.clone(), false),
             old => {
                 delta.layout = old.is_none_or(|o| !o.layout_eq(&style));
+                delta.hit = old.is_none_or(|o| !o.hit_eq(&style));
                 let style = Rc::new(style);
                 set.set(node, style.clone());
                 (style, true)
@@ -1044,6 +1047,7 @@ impl<'a> Engine<'a> {
                     if map.remove(&node).is_some() {
                         delta.any = true;
                         delta.layout = true;
+                        delta.hit = true;
                     }
                 }
                 Some(n) => {
@@ -1051,6 +1055,7 @@ impl<'a> Engine<'a> {
                     if old.is_none_or(|o| **o != n) {
                         delta.any = true;
                         delta.layout |= old.is_none_or(|o| !o.layout_eq(&n));
+                        delta.hit |= old.is_none_or(|o| !o.hit_eq(&n));
                         map.insert(node, Rc::new(n));
                     }
                 }
@@ -1123,6 +1128,7 @@ impl<'a> Engine<'a> {
                         // A text node's style is its parent's, whose change is
                         // counted there; a newly styled one is new content.
                         layout: old.is_none(),
+                        hit: old.is_none(),
                     };
                     set.set(node, parent.clone());
                     return Ok(delta);
@@ -1242,12 +1248,15 @@ pub struct Restyled {
     /// Some change can move or resize boxes (see `ComputedStyle::layout_eq`); when
     /// false, and the document did not change, the last layout still stands.
     pub layout_changed: bool,
+    /// Some change can move what a hit test finds (`ComputedStyle::hit_eq`).
+    pub hits_changed: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
 struct Delta {
     any: bool,
     layout: bool,
+    hit: bool,
 }
 
 impl std::ops::BitOr for Delta {
@@ -1256,6 +1265,7 @@ impl std::ops::BitOr for Delta {
         Delta {
             any: self.any | o.any,
             layout: self.layout | o.layout,
+            hit: self.hit | o.hit,
         }
     }
 }

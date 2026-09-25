@@ -41,7 +41,7 @@ pub fn hit_test_with(
 /// testing walks. Built once per layout (and style change), it answers any number
 /// of points, so a host that hit-tests a pointer move and then a click on the same
 /// layout pays for one traversal.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct HitList {
     hits: Vec<super::HitItem>,
 }

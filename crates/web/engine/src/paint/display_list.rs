@@ -468,7 +468,7 @@ fn paint_scrollbars(p: &mut Painter, f: &Fragment, state: &State) {
     }
     let (source, info) = (*source, *info);
     let Some(key) = p.key(f) else { return };
-    let style = p.style(source).clone();
+    let style = p.style_rc(source);
     if style.visibility != Visibility::Visible {
         return;
     }
@@ -835,7 +835,7 @@ pub(crate) fn paint_own(p: &mut Painter, f: &Fragment, state: &State) {
     let Some(key) = p.key(f) else { return };
     let rect = box_rect(p, f, state);
     let srect = snap(rect);
-    let style = p.style(source).clone();
+    let style = p.style_rc(source);
     let transformed_state;
     let state = if style.transform.is_empty() {
         state

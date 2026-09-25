@@ -53,7 +53,7 @@ pub(crate) fn paint(p: &mut Painter, f: &Fragment, state: &State) {
     let Some(key) = p.key(f) else { return };
     let rect = box_rect(p, f, state);
     let content = padding.inset(border.inset(rect));
-    let style = p.style(*source).clone();
+    let style = p.style_rc(*source);
     let node = source.node();
     let disabled = p.doc.is_some_and(|d| semantics::is_disabled(d, node));
     match replaced {
@@ -81,7 +81,7 @@ pub(crate) fn paint(p: &mut Painter, f: &Fragment, state: &State) {
             if tag.as_str() == "canvas" {
                 let name = format!("canvas:{}", node.0);
                 if p.ctx.images.image(&name).is_some() {
-                    let mut fill = style.clone();
+                    let mut fill = (*style).clone();
                     fill.object_fit = ObjectFit::Fill;
                     paint_image(p, key, state, &fill, content, &name, "");
                     return;
