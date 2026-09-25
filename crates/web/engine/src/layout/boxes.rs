@@ -1588,32 +1588,38 @@ impl<'a> Builder<'a> {
 
 /// The intrinsic content width of a single-line text control with `size` columns,
 /// the way Blink sizes one (`LayoutTextControlSingleLine::PreferredContentLogicalWidth`):
-/// `ceil(ceil(size * avg) + max - avg)` in whole pixels, where `avg` is
-/// the face's OS/2 `xAvgCharWidth` and `max` its `head` bounding-box width
-/// (`xMax - xMin`). The table holds the values of the faces a Linux Chromium shapes
-/// with (Liberation for the Croscore stand-ins, read with fontTools). Faces without
-/// an entry fall back to `size` advances of `0`.
+/// `ceil64(size * avg) + floor64(max - avg)` in `LayoutUnit`s, rounded up to a
+/// whole pixel. `avg` is the face's OS/2 `xAvgCharWidth` at the font size, taken
+/// up to the next whole pixel when its fraction is a half or more (Linux Chromium's
+/// hinted metrics: 13.33 px Arial columns are 8 px, 14 px ones 8.114), and `max`
+/// its `head` bounding-box width (`xMax - xMin`) rounded to a whole pixel. The
+/// table holds the faces a Linux Chromium shapes with (Liberation for the Croscore
+/// stand-ins, the system DejaVu), read with fontTools; the rule was fitted to
+/// Chromium's widths for 1, 20 and 1020 columns at 8-26 px in all four. Faces
+/// without an entry fall back to `size` advances of `0`.
 pub fn text_control_width(font: &crate::style::Font, size: i32) -> Au {
     use cw_scene::Typeface;
     // `(units per em, xAvgCharWidth, xMax - xMin)`.
-    let units: Option<(i64, i64, i64)> = match font.typeface {
-        Typeface::Arimo => Some((2048, 1187, 3780)),
-        Typeface::Tinos => Some((2048, 1137, 4013)),
-        Typeface::Cousine => Some((2048, 1229, 2508)),
-        Typeface::DejaVu => Some((2048, 1038, 5532)),
-        Typeface::Mono => Some((2048, 1233, 2614)),
+    let units: Option<(f64, f64, f64)> = match font.typeface {
+        Typeface::Arimo => Some((2048.0, 1187.0, 3780.0)),
+        Typeface::Tinos => Some((2048.0, 1124.0, 3732.0)),
+        Typeface::Cousine => Some((2048.0, 1229.0, 2508.0)),
+        Typeface::DejaVu => Some((2048.0, 1038.0, 5763.0)),
+        Typeface::Mono => Some((2048.0, 1233.0, 2614.0)),
         _ => None,
     };
     let Some((upem, avg_units, max_units)) = units else {
         return text::ch_unit(font) * size;
     };
-    // Everything in Au (1/64 px) as i64, truncated like FreeType's 26.6 metrics
-    // that Skia hands Blink (so 55 columns of 16px Arial are 510px, not 511).
-    let fs = font.size.0 as i64;
-    let avg = (fs * avg_units).div_euclid(upem);
-    let max = (fs * max_units).div_euclid(upem);
-    let columns = (avg * size as i64 + 63).div_euclid(64);
-    let total = columns * 64 + max - avg;
+    let fs = font.size.to_f64_px();
+    let raw = fs * avg_units / upem;
+    let avg = if raw.fract() >= 0.5 { raw.ceil() } else { raw };
+    let max = (fs * max_units / upem).round();
+    // `LayoutUnit::FromFloatCeil` of the columns, plus `max - avg` truncated to a
+    // `LayoutUnit` (1/64 px, an Au) as the addition converts it.
+    let columns = (avg * f64::from(size) * 64.0).ceil() as i64;
+    let rest = ((max - avg) * 64.0).floor() as i64;
+    let total = columns + rest;
     Au::from_px_i32(((total + 63).div_euclid(64)).clamp(0, 100_000) as i32)
 }
 

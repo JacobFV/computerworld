@@ -71,13 +71,14 @@ fn linux_baseline_face(name: &str) -> Option<Typeface> {
         "serif" | "times" | "times new roman" | "liberation serif" | "tinos" | "nimbus roman" => {
             Typeface::Tinos
         }
-        // Chromium's fixed-width default there is Liberation Mono (hn-front's
-        // `monospace` input measures as it), and fontconfig binds Consolas to DejaVu
-        // Sans Mono (slack-shell's code font).
-        "monospace" | "courier" | "courier new" | "liberation mono" | "cousine" => {
-            Typeface::Cousine
+        // Courier maps to Liberation Mono; Chromium's fixed-width default is
+        // fontconfig's `monospace`, DejaVu Sans Mono (CSS.getPlatformFontsForNode
+        // names it, and hn-front's `size=17` monospace input is 154 px as its
+        // metrics give), which is also what Consolas binds to (slack-shell).
+        "courier" | "courier new" | "liberation mono" | "cousine" => Typeface::Cousine,
+        "monospace" | "consolas" | "dejavu sans mono" | "bitstream vera sans mono" => {
+            Typeface::Mono
         }
-        "consolas" | "dejavu sans mono" | "bitstream vera sans mono" => Typeface::Mono,
         "dejavu sans" | "bitstream vera sans" => Typeface::DejaVu,
         _ => return None,
     })
@@ -221,7 +222,7 @@ mod tests {
         );
         assert_eq!(
             resolve_family_in(&list(&["monospace"]), env),
-            Typeface::Cousine
+            Typeface::Mono
         );
         assert_eq!(resolve_family_in(&list(&["Nope"]), env), Typeface::Arimo);
         // A family the page downloads with @font-face is the bundled face of that

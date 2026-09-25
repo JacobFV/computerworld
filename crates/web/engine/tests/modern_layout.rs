@@ -641,4 +641,34 @@ mod cases {
         close(p.rect("t").x, 192.0, "#t x");
         close(p.rect("t").width, 8.0, "#t width");
     }
+    /// A text input's `size` columns are Blink's `PreferredContentLogicalWidth` on
+    /// Linux Chromium's metrics: the average width goes up to a whole pixel when
+    /// its fraction is a half or more, the bounding-box width rounds, and plain
+    /// `monospace` is DejaVu Sans Mono. Widths are Chromium's for these inputs.
+    #[test]
+    fn text_input_columns_match_chromium() {
+        let cases: &[(&str, &str, u32, f64)] = &[
+            ("a", "9px Arial", 1, 17.0),
+            ("b", "13px Arial", 20, 176.0),
+            ("c", "14px Arial", 20, 181.0),
+            ("d", "16px Arial", 20, 207.0),
+            ("e", "20px Arial", 20, 265.0),
+            ("f", "13px 'Times New Roman'", 20, 160.0),
+            ("g", "11px 'DejaVu Sans'", 20, 145.0),
+            ("h", "16px 'Courier New'", 20, 210.0),
+            ("i", "16px monospace", 20, 210.0),
+        ];
+        let mut html = String::from(
+            "<!DOCTYPE html><style>body { margin: 0 } input { display: block; padding: 0; border: 0 }</style>",
+        );
+        for (id, font, size, _) in cases {
+            html.push_str(&format!(
+                "<input id={id} size={size} style=\"font: {font}\">"
+            ));
+        }
+        let p = page(&html);
+        for (id, font, size, want) in cases {
+            close(p.rect(id).width, *want, &format!("{font} size={size}"));
+        }
+    }
 }
