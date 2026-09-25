@@ -1,8 +1,8 @@
 {
- "css/CSS2/abspos": 9,
+ "css/CSS2/abspos": 10,
  "css/CSS2/box": 0,
  "css/CSS2/floats": 42,
- "css/CSS2/linebox": 0,
+ "css/CSS2/linebox": 8,
  "css/css-cascade": 10,
  "css/css-display": 30,
  "css/css-flexbox": 399,
@@ -16,9 +16,9 @@
  "css/css-grid/implicit-grids": 1,
  "css/css-grid/layout-algorithm": 2,
  "css/css-position": 11,
- "css/css-tables": 35,
+ "css/css-tables": 36,
  "css/css-tables/height-distribution": 1,
  "css/css-tables/paint": 0,
- "css/css-values": 44,
+ "css/css-values": 51,
  "css/selectors": 61
 }
