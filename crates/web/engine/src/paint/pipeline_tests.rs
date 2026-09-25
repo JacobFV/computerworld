@@ -1008,3 +1008,25 @@ fn a_fixed_box_paints_in_its_ancestors_stacking_context() {
         "and takes the hit"
     );
 }
+
+/// Fractional letter spacing is drawn as laid out: MUI's `0.00938em` (0.15 px at
+/// 16 px) was rounded to 0 px a character when painting, so a run was drawn
+/// narrower than the box layout gave it. Forty characters at 0.25 px end 10 px
+/// further right than without.
+#[test]
+fn fractional_letter_spacing_is_painted() {
+    let text = "x".repeat(40);
+    let html = format!("<!doctype html><body style='margin:0;font:16px/20px Arimo'><div>{text}</div><div style='letter-spacing:0.25px'>{text}</div>");
+    let f = pixels(&render(&html));
+    let right = |y0: u32| {
+        (0..400u32)
+            .rev()
+            .find(|&x| (y0..y0 + 20).any(|y| f.at(x, y) != WHITE))
+            .unwrap()
+    };
+    let (plain, spaced) = (right(0), right(20));
+    assert!(
+        (spaced as i32 - plain as i32 - 10).abs() <= 1,
+        "plain ends at {plain}, spaced at {spaced}"
+    );
+}

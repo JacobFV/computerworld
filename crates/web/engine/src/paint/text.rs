@@ -301,7 +301,7 @@ pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
     let total_width = if style.letter_spacing.is_zero() {
         width
     } else {
-        (bounds.width - 2) + shown.chars().count() as u32 * px(style.letter_spacing).max(0) as u32
+        (bounds.width - 2) + px(style.letter_spacing * shown.chars().count() as i32).max(0) as u32
     };
     for deco in decoration_of(p, &style, *node) {
         let color = deco.color.unwrap_or(style.color);
@@ -410,7 +410,6 @@ fn draw_spaced(
     }
     let size = draw_size(font, text);
     let style = font.scene_style();
-    let sp = px(spacing);
     let mut pen: i64 = (x as i64) * 64;
     let mut first = true;
     let mut prev: Option<char> = None;
@@ -437,7 +436,9 @@ fn draw_spaced(
             text_bounds(gx, baseline, w, size),
             Primitive::ui_text_face(s, color, size, style, font.typeface),
         );
-        pen += cw_scene::metrics::advance(font.typeface, style, ch, size) + sp as i64 * 64;
+        // Letter spacing in `Au` (1/64 px), as the pen is: MUI's 0.00938em is 0.15 px
+        // a character, which rounding to whole pixels threw away.
+        pen += cw_scene::metrics::advance(font.typeface, style, ch, size) + spacing.0 as i64;
     }
     None
 }
