@@ -502,6 +502,32 @@
   globalThis.prompt = (m) => B('Alert', 'prompt', m === undefined ? '' : String(m));
   // `fetch(url, init)`: the page's fetch, through cw-ui. Headers given as a
   // Headers object or as pairs go as a plain object.
+  // The page's navigator: the same constants as the Realm's (web/06-window.js).
+  const __cwDomError = (name, message) => { const e = new Error(message); e.name = name; return e; };
+  const navigator = {
+    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Computerworld/1.0',
+    appName: 'Netscape', appVersion: '5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Computerworld/1.0', appCodeName: 'Mozilla', product: 'Gecko', productSub: '20030107', vendor: 'Computerworld', vendorSub: '',
+    language: 'en-US', languages: Object.freeze(['en-US', 'en']), platform: 'Linux x86_64', onLine: true, hardwareConcurrency: 4, maxTouchPoints: 0, cookieEnabled: true, doNotTrack: null, deviceMemory: 8, webdriver: false, pdfViewerEnabled: false,
+    userAgentData: { brands: [{ brand: 'Chromium', version: '124' }, { brand: 'Computerworld', version: '1' }], mobile: false, platform: 'Linux', getHighEntropyValues: () => Promise.resolve({ platform: 'Linux', mobile: false, brands: [] }) },
+    clipboard: { writeText: () => Promise.resolve(), readText: () => Promise.resolve(''), write: () => Promise.resolve(), read: () => Promise.resolve([]) },
+    sendBeacon: () => true,
+    javaEnabled: () => false,
+    vibrate: () => false,
+    getGamepads: () => [],
+    registerProtocolHandler() {},
+    permissions: { query: () => Promise.resolve({ state: 'prompt', onchange: null, addEventListener() {}, removeEventListener() {} }) },
+    connection: { effectiveType: '4g', rtt: 50, downlink: 10, saveData: false, addEventListener() {}, removeEventListener() {} },
+    mediaDevices: { enumerateDevices: () => Promise.resolve([]), getUserMedia: () => Promise.reject(__cwDomError('NotAllowedError', 'Permission denied')) },
+    storage: { estimate: () => Promise.resolve({ quota: 1073741824, usage: 0 }), persist: () => Promise.resolve(false), persisted: () => Promise.resolve(false) },
+    locks: { request: (name, opts, cb) => Promise.resolve((typeof opts === 'function' ? opts : cb)({ name })) },
+    mimeTypes: { length: 0, item: () => null, namedItem: () => null },
+    plugins: { length: 0, item: () => null, namedItem: () => null, refresh() {} },
+    serviceWorker: undefined,
+    geolocation: { getCurrentPosition: (ok, err) => { if (err) setTimeout(() => err({ code: 1, message: 'User denied Geolocation' }), 0); }, watchPosition: () => 0, clearWatch() {} },
+    share: () => Promise.reject(__cwDomError('NotAllowedError', 'Share not available.')),
+    canShare: () => false,
+  };
+  globalThis.navigator = navigator;
   globalThis.fetch = (url, init) => {
     if (init && init.headers && typeof init.headers === 'object') {
       const h = init.headers;

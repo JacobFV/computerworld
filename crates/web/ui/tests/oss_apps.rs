@@ -192,6 +192,8 @@ struct App {
     /// The package's public directory.
     public: PathBuf,
     ir: PathBuf,
+    /// World time the page may take to settle after boot and after each step.
+    settle_ms: u32,
 }
 
 fn compare(app: &App, steps: &[Step]) {
@@ -208,12 +210,12 @@ fn compare(app: &App, steps: &[Step]) {
     let t = Instant::now();
     let mut r = Realm::new(&html, &url, Box::new(serve(&app.public, app.base)));
     r.run_document();
-    r.run_until_idle(50);
+    r.run_until_idle(app.settle_ms);
     let react_boot = t.elapsed();
     let t = Instant::now();
     let mut ui = UiApp::new(module, &html, &url, Box::new(serve(&app.public, app.base))).unwrap();
     ui.boot();
-    ui.run_until_idle(50);
+    ui.run_until_idle(app.settle_ms);
     let ui_boot = t.elapsed();
 
     let snap = |r: &mut Realm, ui: &mut UiApp| -> (String, String) {
@@ -269,7 +271,7 @@ fn compare(app: &App, steps: &[Step]) {
         for ev in events(s, at_r) {
             r.dispatch(ev);
         }
-        r.run_until_idle(20);
+        r.run_until_idle(app.settle_ms);
         react_steps.push(t.elapsed());
         let at_u = selector(s).map(|(sel, n)| {
             let nodes = ui.query_selector_all(sel);
@@ -282,7 +284,7 @@ fn compare(app: &App, steps: &[Step]) {
         for ev in events(s, at_u) {
             ui.dispatch(ev);
         }
-        ui.run_until_idle(20);
+        ui.run_until_idle(app.settle_ms);
         ui_steps.push(t.elapsed());
         let (a, b) = snap(&mut r, &mut ui);
         if a != b {
@@ -323,6 +325,7 @@ fn todomvc_react_matches_its_react_build() {
         page: "examples/react/dist/index.html",
         public,
         ir,
+        settle_ms: 50,
     };
     let mut steps = vec![Step::Click(".new-todo")];
     for todo in [
@@ -389,4 +392,27 @@ fn boot_phases() {
         median(json),
         size / 1024
     );
+}
+
+/// react-admin's simple example (frontend only: its fake REST provider is in the
+/// bundle): the compiled app against its React build. It builds (cw-tsx, with
+/// the monorepo's package aliases, as its Vite config has them), but does not run:
+/// its libraries work the DOM directly (ProseMirror in the rich-text editor, MUI's
+/// Popper), and the island has only the page APIs cw-ui models, not a browser's
+/// DOM. Run with `CW_OSS_REACT_ADMIN_IR` naming an IR built from the checkout.
+#[test]
+#[ignore]
+fn react_admin_matches_its_react_build() {
+    let public = packages().join("react-admin/public");
+    let ir = std::env::var_os("CW_OSS_REACT_ADMIN_IR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| public.join("app.ui.json"));
+    let app = App {
+        base: "http://react-admin.marmelab.com/",
+        page: "index.html",
+        public,
+        ir,
+        settle_ms: 2000,
+    };
+    compare(&app, &[]);
 }

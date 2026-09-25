@@ -52,7 +52,19 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
     let mut errors = Vec::new();
     if !bundled {
         for src in sources.iter().filter(|s| !s.is_ambient()) {
-            match emit_one(src, code_modules, 0, &[], &[]) {
+            match emit_one(
+                src,
+                code_modules,
+                0,
+                &ModuleSet {
+                    names: &[],
+                    cjs: &[],
+                    pure: &[],
+                    lazy: &[],
+                    island: false,
+                },
+                None,
+            ) {
                 Ok(code) => out.push_str(&code),
                 Err(e) => errors.extend(e),
             }
@@ -82,7 +94,19 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
                 out.push_str(&emit_cjs(src, i));
                 continue;
             }
-            match emit_one(src, code_modules, i, &names, &cjs) {
+            match emit_one(
+                src,
+                code_modules,
+                i,
+                &ModuleSet {
+                    names: &names,
+                    cjs: &cjs,
+                    pure: &[],
+                    lazy: &[],
+                    island: false,
+                },
+                None,
+            ) {
                 Ok(code) => {
                     out.push_str(&format!("// {}\n(() => {{\n{code}}})();\n", src.file));
                 }
@@ -106,6 +130,17 @@ const MODULE_RUNTIME: &str = r#"var __cw_lazy = {};
 var __cw_import_meta = { url: typeof location === 'undefined' ? '' : String(location.href) };
 function __cw_get(i) { var l = __cw_lazy[i]; if (l) { __cw_lazy[i] = null; l(); } return __cw_m[i]; }
 function __cw_import(i) { return Promise.resolve().then(function () { return __cw_get(i); }); }
+var __cw_nss = {};
+function __cw_ns(i) {
+  if (__cw_nss[i]) return __cw_nss[i];
+  var run = function () { __cw_get(i); };
+  return (__cw_nss[i] = new Proxy(__cw_m[i], {
+    get: function (t, k) { run(); return Reflect.get(t, k); },
+    has: function (t, k) { run(); return Reflect.has(t, k); },
+    ownKeys: function (t) { run(); return Reflect.ownKeys(t); },
+    getOwnPropertyDescriptor: function (t, k) { run(); return Reflect.getOwnPropertyDescriptor(t, k); },
+  }));
+}
 function __cw_req(map, s) {
   if (s === 'react') return React;
   if (s === 'react-dom' || s === 'react-dom/client') return ReactDOM;
@@ -154,7 +189,9 @@ fn define_node_env_text(
     text: &str,
     env: &std::sync::Arc<std::collections::BTreeMap<String, String>>,
 ) -> String {
-    if !text.contains("process.env") {
+    // Unchanged unless it defines something or says something the island's VM
+    // reads only escaped (a non-ASCII identifier).
+    if !text.contains("process.env") && text.is_ascii() {
         return text.to_owned();
     }
     let allocator = Allocator::default();
@@ -169,7 +206,13 @@ fn define_node_env_text(
         alloc: &allocator,
     }
     .visit_program(&mut program);
-    Codegen::new().build(&program).code
+    Codegen::new()
+        .with_options(CodegenOptions {
+            ascii_only: true,
+            ..CodegenOptions::default()
+        })
+        .build(&program)
+        .code
 }
 
 /// `react/jsx-runtime` for a bundle whose packages import it.
@@ -203,6 +246,12 @@ pub fn emit_island(
     let cjs: Vec<usize> = (0..sources.len())
         .filter(|&i| sources[i].commonjs)
         .collect();
+    let pure: Vec<usize> = (0..sources.len())
+        .filter(|&i| sources[i].package && sources[i].pure && !sources[i].commonjs)
+        .collect();
+    let lazy: Vec<usize> = (0..sources.len())
+        .filter(|&i| sources[i].package && !sources[i].commonjs)
+        .collect();
     // Compiled modules' exports, as the island's modules see them.
     let mut provided: BTreeMap<usize, Vec<String>> = BTreeMap::new();
     for (file, name, slot) in &island.provides {
@@ -220,17 +269,34 @@ pub fn emit_island(
         ));
     }
     let mut errors = Vec::new();
+    let set = ModuleSet {
+        names: &names,
+        cjs: &cjs,
+        pure: &pure,
+        lazy: &lazy,
+        island: true,
+    };
+    // Re-exports, linked before any module runs (see `emit_one`).
+    let mut linked = String::new();
+    let mut modules = String::new();
     for (i, src) in sources.iter().enumerate() {
         if src.package && src.commonjs {
-            out.push_str(&emit_cjs(src, i));
+            modules.push_str(&emit_cjs(src, i));
         } else if src.package {
-            match emit_one(src, 2, i, &names, &cjs) {
-                Ok(code) => out.push_str(&format!("// {}\n(() => {{\n{code}}})();\n", src.file)),
+            // A package's module runs as ES modules do: when a module importing it
+            // runs (first), or for a package without side effects, when a binding
+            // it exports is first read; never when nothing that runs imports it,
+            // as a bundler leaves it out.
+            match emit_one(src, 2, i, &set, Some(&mut linked)) {
+                Ok(code) => modules.push_str(&format!(
+                    "// {}\n__cw_lazy[{i}] = function () {{\n{code}}};\n",
+                    src.file
+                )),
                 Err(e) => errors.extend(e),
             }
         } else if vm.contains(&i) {
-            match emit_one(src, 2, i, &names, &cjs) {
-                Ok(code) => out.push_str(&format!(
+            match emit_one(src, 2, i, &set, Some(&mut linked)) {
+                Ok(code) => modules.push_str(&format!(
                     "// {}\n__cw_init[{i}] = () => {{\n{code}}};\n",
                     src.file
                 )),
@@ -238,6 +304,8 @@ pub fn emit_island(
             }
         }
     }
+    out.push_str(&linked);
+    out.push_str(&modules);
     let mut exports = Vec::new();
     for (spec, name) in &island.imports {
         if spec == "!global" {
@@ -272,7 +340,7 @@ pub fn emit_island(
 
 /// The names each module exports (values and types alike), `export *` resolved
 /// through the modules before it.
-fn export_names(sources: &[Source]) -> Vec<Vec<String>> {
+pub(crate) fn export_names(sources: &[Source]) -> Vec<Vec<String>> {
     let mut out: Vec<Vec<String>> = Vec::new();
     for src in sources {
         let allocator = Allocator::default();
@@ -418,13 +486,36 @@ fn top_level_values(body: &[Statement<'_>]) -> BTreeSet<String> {
 /// another module of the app reads that module's exports object
 /// (`__cw_i3.Button`), so an import cycle sees the other module as it is when the
 /// name is used, not when this module started.
+/// What a bundle knows of its modules while emitting one (see [`emit_one`]).
+#[derive(Clone, Copy)]
+struct ModuleSet<'a> {
+    /// Each module's exported names.
+    names: &'a [Vec<String>],
+    /// CommonJS modules (run when first required or imported).
+    cjs: &'a [usize],
+    /// Modules of packages without side effects (run when first read).
+    pure: &'a [usize],
+    /// Modules that may not have run when an importer starts (the island's
+    /// package modules).
+    lazy: &'a [usize],
+    /// The island's bundle (for the VM: ASCII output, re-exports linked first).
+    island: bool,
+}
+
 fn emit_one(
     src: &Source,
     modules: usize,
     index: usize,
-    names: &[Vec<String>],
-    cjs: &[usize],
+    set: &ModuleSet<'_>,
+    mut hoist: Option<&mut String>,
 ) -> Result<String, Vec<Diagnostic>> {
+    let ModuleSet {
+        names,
+        cjs,
+        pure,
+        lazy,
+        island: ascii,
+    } = *set;
     let bundled = modules > 1;
     let source = src.text.as_str();
     let at = |offset: u32, msg: String| {
@@ -469,7 +560,7 @@ fn emit_one(
     for stmt in body {
         match stmt {
             Statement::ImportDeclaration(mut import) => {
-                if import.import_kind.is_type() {
+                if crate::types_only(&import) {
                     continue;
                 }
                 let module = import.source.value.to_string();
@@ -775,6 +866,8 @@ fn emit_one(
     let code = Codegen::new()
         .with_options(CodegenOptions {
             single_quote: true,
+            // The island's VM reads identifiers of ASCII and escapes.
+            ascii_only: ascii,
             comments: oxc_codegen::CommentOptions {
                 annotation: false,
                 ..oxc_codegen::CommentOptions::default()
@@ -788,8 +881,12 @@ fn emit_one(
     }
     let mut head = String::new();
     for m in &used_modules {
-        // A CommonJS module runs when first imported.
-        if cjs.contains(m) {
+        // A side-effect-free package's module runs when a binding is first read
+        // through its namespace; any other module that may not have run yet (a
+        // CommonJS module, a package's) runs before this one.
+        if pure.contains(m) {
+            head.push_str(&format!("const __cw_i{m} = __cw_ns({m});\n"));
+        } else if cjs.contains(m) || lazy.contains(m) {
             head.push_str(&format!("const __cw_i{m} = __cw_get({m});\n"));
         } else {
             head.push_str(&format!("const __cw_i{m} = __cw_m[{m}];\n"));
@@ -797,15 +894,41 @@ fn emit_one(
     }
     if !exports.is_empty() {
         let mut seen = BTreeSet::new();
-        let props: Vec<String> = exports
-            .iter()
-            .filter(|(n, _)| seen.insert(n.clone()))
-            .map(|(n, g)| format!("{}: {{ enumerable: true, get: () => {g} }}", js_key(n)))
-            .collect();
-        head.push_str(&format!(
-            "Object.defineProperties(__cw_m[{index}], {{ {} }});\n",
-            props.join(", ")
-        ));
+        let mut props: Vec<String> = Vec::new();
+        let mut linked: Vec<String> = Vec::new();
+        for (n, g) in exports.iter().filter(|(n, _)| seen.insert(n.clone())) {
+            // A re-export, in the island: linked before any module runs, as ES
+            // modules link a re-exported binding to the module it comes from (a
+            // module in an import cycle reads it before this one has run).
+            let reexport = g.strip_prefix("__cw_i").and_then(|rest| {
+                let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+                (!digits.is_empty()).then(|| (digits.clone(), rest[digits.len()..].to_owned()))
+            });
+            match (hoist.as_mut(), reexport) {
+                (Some(_), Some((m, member))) => linked.push(format!(
+                    "{}: {{ enumerable: true, get: () => __cw_get({m}){member} }}",
+                    js_key(n)
+                )),
+                _ => props.push(format!(
+                    "{}: {{ enumerable: true, get: () => {g} }}",
+                    js_key(n)
+                )),
+            }
+        }
+        if !props.is_empty() {
+            head.push_str(&format!(
+                "Object.defineProperties(__cw_m[{index}], {{ {} }});\n",
+                props.join(", ")
+            ));
+        }
+        if let Some(h) = hoist {
+            if !linked.is_empty() {
+                h.push_str(&format!(
+                    "Object.defineProperties(__cw_m[{index}], {{ {} }});\n",
+                    linked.join(", ")
+                ));
+            }
+        }
     }
     Ok(format!("{head}{preamble}{code}"))
 }

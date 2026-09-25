@@ -468,7 +468,14 @@ impl Runtime {
             // message), as the VM would print it.
             Value::Foreign(f) => {
                 let f = f.clone();
-                self.foreign_string(&f)
+                let text = self.foreign_string(&f);
+                // `CW_UI_STACKS`: where in the island it was thrown (debugging).
+                if std::env::var_os("CW_UI_STACKS").is_some() {
+                    if let Ok(Value::Str(stack)) = self.foreign_get(&f, "stack") {
+                        return format!("{text}\n{stack}");
+                    }
+                }
+                text
             }
             other => crate::interp::inspect(other),
         }

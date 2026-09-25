@@ -44,6 +44,7 @@ fn main() -> ExitCode {
     let mut mod_name: Option<String> = None;
     let mut root_arg: Option<PathBuf> = None;
     let mut env = std::collections::BTreeMap::new();
+    let mut aliases: Vec<(String, String)> = Vec::new();
     let mut it = rest.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -55,6 +56,14 @@ fn main() -> ExitCode {
             },
             "--mod" => mod_name = it.next().cloned(),
             "--root" => root_arg = it.next().map(PathBuf::from),
+            "--alias" => {
+                // `--alias FROM=TO`: an import of FROM (a package name, or a prefix
+                // ending in `/`) resolves to TO, relative to the root.
+                let Some((k, v)) = it.next().and_then(|a| a.split_once('=')) else {
+                    return usage();
+                };
+                aliases.push((k.to_owned(), v.to_owned()));
+            }
             "--env" => {
                 // `--env NAME=VALUE`: `process.env.NAME` in the app and its packages.
                 let Some((k, v)) = it.next().and_then(|a| a.split_once('=')) else {
@@ -89,7 +98,7 @@ fn main() -> ExitCode {
                 .unwrap_or_else(|| "app.tsx".into())
         });
     let options = cw_tsx::LoadOptions {
-        aliases: Vec::new(),
+        aliases,
         node_modules: root
             .join("node_modules")
             .is_dir()

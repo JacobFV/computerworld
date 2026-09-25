@@ -28,6 +28,8 @@ const MAX_IMAGE_BYTES: usize = 4 * 1024 * 1024;
 const MAX_CACHE_BYTES: usize = 16 * 1024 * 1024;
 /// The most a stylesheet or a document fetched as a subresource may weigh.
 const MAX_TEXT_RESOURCE_BYTES: usize = 2 * 1024 * 1024;
+/// The largest compiled app's IR a page may name (`data-cw-ui`).
+pub(crate) const MAX_UI_IR_BYTES: usize = 32 * 1024 * 1024;
 /// A portable pixel asset; integer RGBA8, row-major, straight alpha.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImageAsset {
@@ -1275,6 +1277,20 @@ impl BrowserState {
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
+        self.fetch_text_up_to(url, MAX_TEXT_RESOURCE_BYTES, transport)
+    }
+
+    /// [`Self::fetch_text`] with a size cap of `max` bytes (a compiled app's IR is
+    /// its code, and larger than a page's other text resources).
+    pub(crate) fn fetch_text_up_to<F>(
+        &mut self,
+        url: &str,
+        max: usize,
+        transport: &mut F,
+    ) -> Option<String>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
         let url = Url::parse(url).ok()?;
         if !matches!(url.scheme(), "http" | "https")
             || !url.username().is_empty()
@@ -1283,7 +1299,7 @@ impl BrowserState {
             return None;
         }
         let response = self.fetch_resource(url, transport).ok()?;
-        if !(200..300).contains(&response.status) || response.body.len() > MAX_TEXT_RESOURCE_BYTES {
+        if !(200..300).contains(&response.status) || response.body.len() > max {
             return None;
         }
         let kind = media_type(&response);

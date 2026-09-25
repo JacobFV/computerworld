@@ -281,7 +281,7 @@ impl BrowserState {
     {
         let parsed = WebDocument::parse(html, url.as_str());
         let ir_url = parsed.with_document(|d| crate::page_script::declared_ui(d, &parsed.base))?;
-        let text = self.fetch_text(&ir_url, transport)?;
+        let text = self.fetch_text_up_to(&ir_url, crate::MAX_UI_IR_BYTES, transport)?;
         let module = cw_ui::UiApp::parse_ir(&text).ok()?;
         WebDocument::new_compiled(module, html, url.as_str(), self.css_viewport(), self.clock)
     }

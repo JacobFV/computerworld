@@ -260,7 +260,6 @@ const PAGE_GLOBALS: &[&str] = &[
     "moveBy",
     "moveTo",
     "name",
-    "navigator",
     "onabort",
     "onafterprint",
     "onanimationcancel",

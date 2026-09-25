@@ -100,6 +100,14 @@ pub struct Source {
     /// A CommonJS module (`require`, `module.exports`): a package's, run when first
     /// required or imported, as a bundler runs it.
     pub commonjs: bool,
+    /// A module of a package that declares no side effects (`"sideEffects":
+    /// false`): it runs when a binding it exports is first read, as a bundler
+    /// leaves out what nothing uses.
+    pub pure: bool,
+    /// A library's source reached through a package-name alias (a monorepo's
+    /// `ra-core` → `packages/ra-core/src`): compiled like the app's own, but
+    /// judged as a package's by the island's check.
+    pub library: bool,
     /// The stylesheets it imports, by specifier: the file and its text.
     pub stylesheets: BTreeMap<String, (String, String)>,
 }
@@ -115,6 +123,8 @@ impl Source {
             order: Vec::new(),
             env: Default::default(),
             commonjs: false,
+            pure: false,
+            library: false,
             stylesheets: BTreeMap::new(),
         }
     }
@@ -174,6 +184,9 @@ fn specifiers(text: &str) -> Vec<(String, u32)> {
 pub fn source_type(file: &str) -> oxc_span::SourceType {
     if file.ends_with(".mjs") || file.ends_with(".js") || file.ends_with(".cjs") {
         oxc_span::SourceType::mjs().with_jsx(true)
+    } else if file.ends_with(".ts") || file.ends_with(".mts") || file.ends_with(".cts") {
+        // TypeScript without JSX: `<T>x` is a cast there.
+        oxc_span::SourceType::ts()
     } else {
         oxc_span::SourceType::tsx()
     }
@@ -186,7 +199,18 @@ fn specifiers_of(text: &str, file: &str) -> Vec<(String, u32)> {
     let mut out = Vec::new();
     for stmt in &ret.program.body {
         match stmt {
+            // Types only (`import type …`, `import { type X }`): no module at run
+            // time, as a bundler drops it.
+            S::ImportDeclaration(i)
+                if i.import_kind.is_type()
+                    || i.specifiers.as_ref().is_some_and(|sp| {
+                        !sp.is_empty()
+                            && sp.iter().all(|x| {
+                                matches!(x, oxc_ast::ast::ImportDeclarationSpecifier::ImportSpecifier(s) if s.import_kind.is_type())
+                            })
+                    }) => {}
             S::ImportDeclaration(i) => out.push((i.source.value.to_string(), i.span.start)),
+            S::ExportFromDeclaration(e) if e.export_kind.is_type() => {}
             S::ExportFromDeclaration(e) => out.push((e.source.value.to_string(), e.span.start)),
             S::ExportAllDeclaration(e) => out.push((e.source.value.to_string(), e.span.start)),
             _ => {}
@@ -210,6 +234,18 @@ fn specifiers_of(text: &str, file: &str) -> Vec<(String, u32)> {
         out.extend(d.0);
     }
     out
+}
+
+/// Whether an import brings only types (`import type …`, `import { type X }`):
+/// nothing at run time, as a bundler drops it.
+pub(crate) fn types_only(i: &oxc_ast::ast::ImportDeclaration<'_>) -> bool {
+    i.import_kind.is_type()
+        || i.specifiers.as_ref().is_some_and(|sp| {
+            !sp.is_empty()
+                && sp.iter().all(|x| {
+                    matches!(x, oxc_ast::ast::ImportDeclarationSpecifier::ImportSpecifier(s) if s.import_kind.is_type())
+                })
+        })
 }
 
 /// Whether a package's JavaScript is CommonJS: a `.cjs` file, or one with no
@@ -377,6 +413,17 @@ pub fn is_stylesheet(spec: &str) -> bool {
         .any(|e| spec.to_ascii_lowercase().ends_with(e))
 }
 
+/// Whether an alias applies to a specifier: a prefix ending in `/` (`@/` as a
+/// tsconfig's `paths` spells it), else a whole package name (`ra-core`, and
+/// `ra-core/…`), as a bundler's alias of a package matches.
+fn alias_matches(from: &str, spec: &str) -> bool {
+    if from.ends_with('/') {
+        spec.starts_with(from)
+    } else {
+        spec == from || spec.strip_prefix(from).is_some_and(|r| r.starts_with('/'))
+    }
+}
+
 /// Modules the island's React shim provides (never read from `node_modules`).
 pub fn is_shim_module(spec: &str) -> bool {
     matches!(
@@ -457,7 +504,8 @@ impl OrderedJson {
 }
 
 /// The conditions a production browser bundle resolves `exports` with (webpack's
-/// for `mode: production`, `target: web`, an ES import).
+/// for `mode: production`, `target: web`): for an ES import, and for a
+/// CommonJS `require`.
 const CONDITIONS: &[&str] = &[
     "webpack",
     "production",
@@ -466,30 +514,39 @@ const CONDITIONS: &[&str] = &[
     "module",
     "default",
 ];
+const REQUIRE_CONDITIONS: &[&str] = &["webpack", "production", "browser", "require", "default"];
 
 /// The target of a package.json `exports` entry: the first key, in the entry's
-/// own order, that is an active condition (Node's and the bundlers' rule); with
-/// `require` too when nothing else matches.
-fn export_target(v: &OrderedJson) -> Option<String> {
-    fn go(v: &OrderedJson, require: bool) -> Option<String> {
+/// own order, that is an active condition (Node's and the bundlers' rule): a
+/// `require`'s conditions for a CommonJS require, else an import's; the other
+/// set when nothing matches.
+fn export_target(v: &OrderedJson, require: bool) -> Option<String> {
+    fn go(v: &OrderedJson, conditions: &[&str]) -> Option<String> {
         match v {
             OrderedJson::Str(s) => Some(s.clone()),
             OrderedJson::Obj(o) => o.iter().find_map(|(k, v)| {
-                (CONDITIONS.contains(&k.as_str()) || (require && k == "require"))
-                    .then(|| go(v, require))
+                conditions
+                    .contains(&k.as_str())
+                    .then(|| go(v, conditions))
                     .flatten()
             }),
-            OrderedJson::Arr(a) => a.iter().find_map(|x| go(x, require)),
+            OrderedJson::Arr(a) => a.iter().find_map(|x| go(x, conditions)),
             OrderedJson::Other => None,
         }
     }
-    go(v, false).or_else(|| go(v, true))
+    let (first, then) = if require {
+        (REQUIRE_CONDITIONS, CONDITIONS)
+    } else {
+        (CONDITIONS, REQUIRE_CONDITIONS)
+    };
+    go(v, first).or_else(|| go(v, then))
 }
 
 /// The file a bare specifier names in `node_modules` (relative to the app's root).
 fn resolve_package(
     spec: &str,
     node_modules: &str,
+    require: bool,
     read: &mut dyn FnMut(&str) -> Option<String>,
 ) -> Option<String> {
     let (name, sub) = package_parts(spec);
@@ -508,16 +565,16 @@ fn resolve_package(
         let entry = match exports {
             OrderedJson::Obj(o) if o.iter().any(|(k, _)| k.starts_with('.')) => {
                 match o.iter().find(|(k, _)| *k == key) {
-                    Some((_, e)) => export_target(e),
+                    Some((_, e)) => export_target(e, require),
                     // A subpath pattern (`"./*": "./esm/*.mjs"`).
                     None => o.iter().find_map(|(k, v)| {
                         let (pre, post) = k.split_once('*')?;
                         let mid = key.strip_prefix(pre)?.strip_suffix(post)?;
-                        Some(export_target(v)?.replace('*', mid))
+                        Some(export_target(v, require)?.replace('*', mid))
                     }),
                 }
             }
-            other if sub.is_empty() => export_target(other),
+            other if sub.is_empty() => export_target(other, require),
             _ => None,
         };
         if let Some(t) = entry {
@@ -525,15 +582,37 @@ fn resolve_package(
         }
     }
     let base = if sub.is_empty() {
+        // A require takes the CommonJS `main`; an import the ES `module`.
+        let (first, second) = if require {
+            ("main", "module")
+        } else {
+            ("module", "main")
+        };
         let main = pkg
-            .get("module")
-            .or_else(|| pkg.get("main"))
+            .get(first)
+            .or_else(|| pkg.get(second))
             .and_then(|m| m.as_str())
             .unwrap_or("index.js");
         normalize(&format!("{dir}/{main}"))
     } else {
         normalize(&format!("{dir}/{sub}"))
     };
+    // A subpath that is a directory with a package.json of its own.
+    if let Some(pj) = read(&format!("{base}/package.json")) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&pj) {
+            let entry = if require {
+                v["main"].as_str().or(v["module"].as_str())
+            } else {
+                v["module"].as_str().or(v["main"].as_str())
+            };
+            if let Some(m) = entry {
+                let f = normalize(&format!("{base}/{m}"));
+                if read(&f).is_some() {
+                    return Some(f);
+                }
+            }
+        }
+    }
     [
         base.clone(),
         format!("{base}.mjs"),
@@ -564,12 +643,73 @@ pub fn load_with(
         /// Imports that close a cycle: the importer, its specifier, the file.
         back: Vec<(String, String, String)>,
         errors: Vec<Diagnostic>,
+        /// Modules made here rather than read (a package's `browser: false`).
+        virtual_files: BTreeMap<String, String>,
     }
     enum Found {
         Done(usize),
         Open(String),
     }
     impl Loader<'_, '_> {
+        /// What the package owning `importer` maps a module to in its package.json
+        /// `browser` field (a bundler's browser build): for a bare `spec`, or for
+        /// the file `path` in the package. `false` is an empty module.
+        fn browser_replacement(
+            &mut self,
+            importer: &str,
+            spec: &str,
+            path: Option<&str>,
+        ) -> Option<String> {
+            let nm = self.options.node_modules.clone()?;
+            let rest = importer.strip_prefix(&format!("{nm}/"))?;
+            let (name, _) = package_parts(rest);
+            let dir = format!("{nm}/{name}");
+            let pj = (self.read)(&format!("{dir}/package.json"))?;
+            let v: serde_json::Value = serde_json::from_str(&pj).ok()?;
+            let map = v.get("browser")?.as_object()?;
+            let key_of = |k: &str| -> String {
+                match path {
+                    Some(_) => normalize(&format!("{dir}/{k}")),
+                    None => k.to_owned(),
+                }
+            };
+            let want = match path {
+                Some(p) => p.to_owned(),
+                None => spec.to_owned(),
+            };
+            let (k, target) = map.iter().find(|(k, _)| {
+                let key = key_of(k);
+                key == want || (path.is_some() && format!("{key}.js") == want)
+            })?;
+            match target {
+                serde_json::Value::Bool(false) => {
+                    let f = format!(
+                        "{dir}/__cw_browser_false__/{}.js",
+                        k.trim_start_matches("./")
+                    );
+                    self.virtual_files
+                        .insert(f.clone(), "module.exports = {};\n".to_owned());
+                    Some(f)
+                }
+                serde_json::Value::String(t) => Some(normalize(&format!("{dir}/{t}"))),
+                _ => None,
+            }
+        }
+
+        /// Whether the package owning `file` declares `"sideEffects": false`.
+        fn side_effect_free(&mut self, file: &str) -> bool {
+            let Some(nm) = self.options.node_modules.clone() else {
+                return false;
+            };
+            let Some(rest) = file.strip_prefix(&format!("{nm}/")) else {
+                return false;
+            };
+            let (name, _) = package_parts(rest);
+            (self.read)(&format!("{nm}/{name}/package.json"))
+                .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+                .is_some_and(|v| v["sideEffects"] == serde_json::Value::Bool(false))
+        }
+
         /// Loads `file` and what it imports; `None` when it cannot be read.
         fn visit(&mut self, file: &str) -> Option<Found> {
             if let Some(i) = self.index.get(file) {
@@ -580,7 +720,10 @@ pub fn load_with(
                 // the file is loaded.
                 return Some(Found::Open(file.to_owned()));
             }
-            let text = (self.read)(file)?;
+            let text = match self.virtual_files.get(file) {
+                Some(t) => t.clone(),
+                None => (self.read)(file)?,
+            };
             // A JSON module is its value as a default export.
             let text = if file.ends_with(".json") {
                 format!("export default {};\n", text.trim())
@@ -630,7 +773,7 @@ pub fn load_with(
                 if !is_relative(&spec) && is_stylesheet(&spec) {
                     // A package's stylesheet (`import 'todomvc-app-css/index.css'`).
                     if let Some(nm) = self.options.node_modules.clone() {
-                        if let Some(path) = resolve_package(&spec, &nm, self.read) {
+                        if let Some(path) = resolve_package(&spec, &nm, commonjs, self.read) {
                             if let Some(css) = (self.read)(&path) {
                                 stylesheets.insert(spec.clone(), (path, css));
                                 continue;
@@ -649,13 +792,15 @@ pub fn load_with(
                     .options
                     .aliases
                     .iter()
-                    .find(|(from, _)| spec.starts_with(from.as_str()))
+                    .find(|(from, _)| alias_matches(from, &spec))
                 {
                     normalize(&format!("{to}{}", &spec[from.len()..]))
                 } else if let (Some(nm), false) =
                     (self.options.node_modules.clone(), is_shim_module(&spec))
                 {
-                    match resolve_package(&spec, &nm, self.read) {
+                    match resolve_package(&spec, &nm, commonjs, self.read)
+                        .or_else(|| self.browser_replacement(file, &spec, None))
+                    {
                         Some(f) => f,
                         None => {
                             let mut d =
@@ -692,6 +837,26 @@ pub fn load_with(
                     candidates.push(format!("{stem}.tsx"));
                     candidates.push(format!("{stem}.ts"));
                 }
+                // A directory that is a package of its own (`dom-helpers/addClass`).
+                if let Some(pj) = (self.read)(&format!("{base}/package.json")) {
+                    if let Ok(v) = serde_json::from_str::<serde_json::Value>(&pj) {
+                        // A require takes its CommonJS `main`; an import its `module`.
+                        let entry = if commonjs {
+                            v["main"].as_str().or(v["module"].as_str())
+                        } else {
+                            v["module"].as_str().or(v["main"].as_str())
+                        };
+                        if let Some(m) = entry {
+                            candidates.insert(0, normalize(&format!("{base}/{m}")));
+                        }
+                    }
+                }
+                // What the owning package's `browser` field puts in a file's place.
+                for c in candidates.iter_mut() {
+                    if let Some(r) = self.browser_replacement(file, "", Some(c.as_str())) {
+                        *c = r;
+                    }
+                }
                 let mut found = None;
                 for c in &candidates {
                     if let Some(i) = self.index.get(c) {
@@ -708,7 +873,7 @@ pub fn load_with(
                         found = Some(Found::Open(c.clone()));
                         break;
                     }
-                    if (self.read)(c).is_none() {
+                    if !self.virtual_files.contains_key(c) && (self.read)(c).is_none() {
                         continue;
                     }
                     found = self.visit(c);
@@ -732,6 +897,7 @@ pub fn load_with(
                 }
             }
             self.open.pop();
+            let pure = in_package && self.side_effect_free(file);
             let i = self.out.len();
             self.out.push(Source {
                 package: file.starts_with(&format!(
@@ -743,7 +909,12 @@ pub fn load_with(
                 imports,
                 order,
                 env: std::sync::Arc::new(self.options.env.clone()),
+                pure,
                 commonjs,
+                library: self.options.aliases.iter().any(|(from, to)| {
+                    !from.ends_with('/')
+                        && file.starts_with(&format!("{}/", to.trim_end_matches('/')))
+                }),
                 stylesheets,
             });
             self.index.insert(file.to_owned(), i);
@@ -758,6 +929,7 @@ pub fn load_with(
         open: Vec::new(),
         back: Vec::new(),
         errors: Vec::new(),
+        virtual_files: BTreeMap::new(),
     };
     let entry = normalize(entry);
     if l.visit(&entry).is_none() && l.errors.is_empty() {
@@ -849,7 +1021,7 @@ pub fn build_modules_with_island(sources: &[Source], files: &[&str]) -> Build {
     if ir.is_some() {
         let mut refused = Vec::new();
         for (i, s) in sources.iter().enumerate() {
-            if s.package {
+            if s.package || s.library {
                 island_notes.extend(island_check::check(s));
             } else if vm.contains(&i) {
                 refused.extend(island_check::check(s));
@@ -964,7 +1136,12 @@ fn lower_with_islands(
                         add.push(m);
                     }
                 }
-                _ => stuck = true,
+                _ => {
+                    if std::env::var_os("CW_TSX_DEBUG_STUCK").is_some() {
+                        eprintln!("stuck on: {:?}", x);
+                    }
+                    stuck = true
+                }
             }
         }
         if stuck || add.is_empty() {

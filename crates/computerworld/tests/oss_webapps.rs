@@ -160,6 +160,12 @@ impl Agent {
     }
 
     /// Navigates with the browser's compiled-app path as it is set on this thread.
+    /// Whether the tab's page runs its compiled app (browser.v1 says so).
+    fn runs_compiled(&self) -> bool {
+        self.world.observe(&self.session).unwrap().channels["browser.v1"][MACHINE]["compiled"]
+            == json!(true)
+    }
+
     fn navigate_here(&mut self, url: &str) {
         self.act_here("browser.v1", "navigate", json!({ "url": url }));
     }

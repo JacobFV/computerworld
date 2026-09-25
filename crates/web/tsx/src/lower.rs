@@ -12,7 +12,7 @@ use cw_ui::ir::*;
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{self as ast, Expression as E, Statement as S};
 use oxc_parser::Parser;
-use oxc_span::{GetSpan, SourceType, Span};
+use oxc_span::{GetSpan, Span};
 
 use crate::types::{self, element, non_null, property, union, union_all, widen};
 use crate::Diagnostic;
@@ -64,7 +64,7 @@ pub fn lower_modules_with(
         } else {
             src.text.as_str()
         };
-        let ret = Parser::new(&allocator, text, SourceType::tsx()).parse();
+        let ret = Parser::new(&allocator, text, crate::source_type(&src.file)).parse();
         for d in &ret.diagnostics {
             let mut d = Diagnostic::from_oxc(&src.text, d);
             d.file = src.display_file(crate::code_modules(sources));
@@ -94,6 +94,9 @@ pub fn lower_modules_with(
     l.source_files = sources.iter().map(|s| s.file.clone()).collect();
     if let Some(s) = sources.last() {
         l.env = s.env.clone();
+    }
+    if !options.vm_modules.is_empty() || sources.iter().any(|s| s.package) {
+        l.export_lists = crate::emit_js::export_names(sources);
     }
     l.swap_current(0);
     if options.islands
@@ -489,6 +492,9 @@ struct Lowerer<'a> {
     source_files: Vec<String>,
     /// The build's `process.env`.
     env: std::sync::Arc<BTreeMap<String, String>>,
+    /// Each module's exported names, read from its syntax (for `export *` from
+    /// a module on the island, which is not lowered).
+    export_lists: Vec<Vec<String>>,
     /// What compiled code imports from the island: (specifier, name), each once.
     island_imports: Vec<(String, String)>,
     /// Module-level `const r = createRoot(container)`, by (module, name): the
@@ -560,6 +566,7 @@ impl<'a> Lowerer<'a> {
             island_globals: BTreeMap::new(),
             source_files: Vec::new(),
             env: Default::default(),
+            export_lists: Vec::new(),
             island_imports: Vec::new(),
             root_vars: BTreeMap::new(),
             container_vars: BTreeMap::new(),
@@ -788,6 +795,14 @@ impl<'a> Lowerer<'a> {
                         let theirs = spec.local.name().to_string();
                         let local = format!("\u{0}re:{exported}");
                         let only_type = e.export_kind.is_type() || spec.export_kind.is_type();
+                        if self.package_mods.contains(&m) {
+                            // From the island: its value, as the island exports it.
+                            if !only_type {
+                                self.island_binding(m, &theirs, &local);
+                                self.exports.insert(exported, local);
+                            }
+                            continue;
+                        }
                         self.bind_import(&local, m, &theirs, only_type, e.span, from);
                         self.exports.insert(exported, local);
                     }
@@ -797,6 +812,37 @@ impl<'a> Lowerer<'a> {
                     let Some(m) = self.reexported_module(imports, from, e.span) else {
                         continue;
                     };
+                    if self.package_mods.contains(&m) {
+                        // `export * from` an island module: each name it exports,
+                        // as the island exports it.
+                        match &e.exported {
+                            Some(ns) => {
+                                let exported = ns.name().to_string();
+                                let local = format!("\u{0}re:{exported}");
+                                self.island_binding(m, "*", &local);
+                                self.exports.insert(exported, local);
+                            }
+                            None => {
+                                let names: Vec<String> = self
+                                    .export_lists
+                                    .get(m)
+                                    .cloned()
+                                    .unwrap_or_default()
+                                    .into_iter()
+                                    .filter(|n| n != "default")
+                                    .collect();
+                                for n in names {
+                                    if self.exports.contains_key(&n) {
+                                        continue;
+                                    }
+                                    let local = format!("\u{0}re:{n}");
+                                    self.island_binding(m, &n, &local);
+                                    self.exports.insert(n, local);
+                                }
+                            }
+                        }
+                        continue;
+                    }
                     match &e.exported {
                         Some(ns) => {
                             let exported = ns.name().to_string();
@@ -878,6 +924,18 @@ impl<'a> Lowerer<'a> {
         imports: &BTreeMap<String, usize>,
     ) {
         let module = import.source.value.as_str();
+        if crate::types_only(import) {
+            // Types only: nothing at run time (the loader does not load it, so
+            // its types resolve only when another import brought the module).
+            if let Some(&m) = imports.get(module) {
+                if m >= self.cur_mod {
+                    self.deferred_imports.push((self.cur_mod, import, m));
+                } else {
+                    self.local_import(import, m);
+                }
+            }
+            return;
+        }
         let resolved = imports.get(module).copied();
         if !self.islands && resolved.is_some_and(|m| self.package_mods.contains(&m)) {
             self.err(
@@ -1018,8 +1076,21 @@ impl<'a> Lowerer<'a> {
         };
         let specifiers = import.specifiers.as_ref();
         if specifiers.is_none_or(|s| s.is_empty()) {
-            // `import 'pkg'`: run for its effects.
-            export(self, "");
+            // `import 'pkg'`: run for its effects, at this point of the module order.
+            let k = export(self, "");
+            self.globals.push(Global {
+                name: format!("__cw_effect_{k}"),
+                init: GlobalInit::Island(k),
+                ty: Ty::Unknown,
+            });
+            self.ginfo.push(GlobalInfo {
+                slot: self.globals.len() as u32 - 1,
+                ty: Ty::Unknown,
+                func: None,
+                kind: FunctionKind::Plain,
+                reassigned: false,
+                generic: None,
+            });
             return;
         }
         for s in specifiers.into_iter().flatten() {
@@ -1189,6 +1260,35 @@ impl<'a> Lowerer<'a> {
             reassigned: false,
             generic: None,
         });
+    }
+
+    /// `local` names export `name` of island module `m` (`"*"`: its namespace).
+    fn island_binding(&mut self, m: usize, name: &str, local: &str) {
+        let key = (self.source_files[m].clone(), name.to_owned());
+        let k = match self.island_imports.iter().position(|x| *x == key) {
+            Some(i) => i as u32,
+            None => {
+                self.island_imports.push(key);
+                self.island_imports.len() as u32 - 1
+            }
+        };
+        let slot = self.globals.len() as u32;
+        self.globals.push(Global {
+            name: local.to_owned(),
+            init: GlobalInit::Island(k),
+            ty: Ty::Unknown,
+        });
+        self.add_global_name(
+            local,
+            GlobalInfo {
+                slot,
+                ty: Ty::Unknown,
+                func: None,
+                kind: FunctionKind::Plain,
+                reassigned: false,
+                generic: None,
+            },
+        );
     }
 
     /// An import from another module of the app: its values become names for the
