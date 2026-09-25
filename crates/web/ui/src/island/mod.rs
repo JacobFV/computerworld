@@ -135,7 +135,7 @@ pub struct Island {
     /// object that stands for each (weakly: when it is gone, so is the entry).
     cw_vals: Vec<Option<(Value, Weak<RefCell<ObjData>>)>>,
     cw_free: Vec<u32>,
-    cw_ids: HashMap<usize, u32>,
+    cw_ids: HashMap<Identity, u32>,
     /// The VM context objects of cw-ui's contexts, by id.
     contexts: HashMap<u32, Obj>,
     /// Ids for contexts the VM creates (after every compiled one).
@@ -897,26 +897,30 @@ fn react_prop(dom: &str) -> String {
     }
 }
 
-/// What makes a cw-ui value the same one again (its allocation).
-fn identity(v: &Value) -> Option<usize> {
+/// What makes a cw-ui value the same one again: its allocation, or for the
+/// values that are not allocations, a tag and their fields.
+type Identity = (u8, usize, usize);
+
+fn identity(v: &Value) -> Option<Identity> {
+    let at = |p: usize| (0u8, p, 0usize);
     Some(match v {
-        Value::Array(a) => Rc::as_ptr(a) as *const u8 as usize,
-        Value::Object(o) => Rc::as_ptr(o) as *const u8 as usize,
-        Value::Func(f) => Rc::as_ptr(f) as *const u8 as usize,
-        Value::Ref(r) => Rc::as_ptr(r) as *const u8 as usize,
-        Value::Event(e) => Rc::as_ptr(e) as *const u8 as usize,
-        Value::Promise(p) => Rc::as_ptr(p) as *const u8 as usize,
-        Value::Native(n) => Rc::as_ptr(n) as *const u8 as usize,
-        Value::Set(s) => Rc::as_ptr(s) as *const u8 as usize,
-        Value::Map(m) => Rc::as_ptr(m) as *const u8 as usize,
-        Value::Date(d) => Rc::as_ptr(d) as *const u8 as usize,
-        Value::Regex(r) => Rc::as_ptr(r) as *const u8 as usize,
-        Value::Error(e) => Rc::as_ptr(e) as *const u8 as usize,
-        Value::Response(r) => Rc::as_ptr(r) as *const u8 as usize,
+        Value::Array(a) => at(Rc::as_ptr(a) as *const u8 as usize),
+        Value::Object(o) => at(Rc::as_ptr(o) as *const u8 as usize),
+        Value::Func(f) => at(Rc::as_ptr(f) as *const u8 as usize),
+        Value::Ref(r) => at(Rc::as_ptr(r) as *const u8 as usize),
+        Value::Event(e) => at(Rc::as_ptr(e) as *const u8 as usize),
+        Value::Promise(p) => at(Rc::as_ptr(p) as *const u8 as usize),
+        Value::Native(n) => at(Rc::as_ptr(n) as *const u8 as usize),
+        Value::Set(s) => at(Rc::as_ptr(s) as *const u8 as usize),
+        Value::Map(m) => at(Rc::as_ptr(m) as *const u8 as usize),
+        Value::Date(d) => at(Rc::as_ptr(d) as *const u8 as usize),
+        Value::Regex(r) => at(Rc::as_ptr(r) as *const u8 as usize),
+        Value::Error(e) => at(Rc::as_ptr(e) as *const u8 as usize),
+        Value::Response(r) => at(Rc::as_ptr(r) as *const u8 as usize),
         // Nodes and setters are values, not allocations: keyed apart.
-        Value::Node(n) => (1usize << 62) | n.0 as usize,
-        Value::Setter(i, h) => (2usize << 60) | ((*i as usize) << 20) | *h as usize,
-        Value::Dispatch(i, h) => (3usize << 60) | ((*i as usize) << 20) | *h as usize,
+        Value::Node(n) => (1, n.0 as usize, 0),
+        Value::Setter(i, h) => (2, *i as usize, *h as usize),
+        Value::Dispatch(i, h) => (3, *i as usize, *h as usize),
         _ => return None,
     })
 }
