@@ -11,7 +11,7 @@
 use crate::dom::NodeId;
 use crate::geom::{Au, Edges, Point, Rect, Size};
 use crate::layout::boxes::{BoxId, BoxKind, Dim, Level, ReplacedBox};
-use crate::layout::fragment::{Fragment, FragmentKind, Replaced, StyleSource};
+use crate::layout::fragment::{ControlKind, Fragment, FragmentKind, Replaced, StyleSource};
 use crate::layout::{inline, intrinsic, scroll, table, text, LayoutContext};
 use crate::style::{
     BoxSizing, Clear, ComputedStyle, Direction, Float, LengthPercentage, LengthPercentageAuto,
@@ -501,6 +501,15 @@ pub fn block_width_in(
         Sizing::MinContent => Some((intrinsic::min_max(ctx, id).0 - edges_h).max(Au::ZERO)),
         Sizing::MaxContent => Some((intrinsic::min_max(ctx, id).1 - edges_h).max(Au::ZERO)),
         Sizing::FitContent => {
+            let (mn, mx) = intrinsic::min_max(ctx, id);
+            let ml = margin_or_zero(s.margin.left, cbw);
+            let mr = margin_or_zero(s.margin.right, cbw);
+            Some((mx.min((avail - ml - mr).max(mn)) - edges_h).max(Au::ZERO))
+        }
+        // A block-level `<button>` (`display: block` or `flex`) with `width: auto`
+        // is as wide as its content, not its container, as Blink's
+        // `AutoWidthShouldFitContent` has it for form controls.
+        Sizing::Auto if ctx.tree[id].control == Some(ControlKind::Button) => {
             let (mn, mx) = intrinsic::min_max(ctx, id);
             let ml = margin_or_zero(s.margin.left, cbw);
             let mr = margin_or_zero(s.margin.right, cbw);

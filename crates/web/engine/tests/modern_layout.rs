@@ -570,4 +570,22 @@ mod cases {
         close(p.rect("s3").y - c.y, 16.0, "20px select below the line top");
         close(p.rect("s3").height, 26.0, "20px select height");
     }
+    /// A block-level `<button>` with `width: auto` shrinks to its content instead of
+    /// filling its container (Blink's `AutoWidthShouldFitContent`): app-calendar's
+    /// month view has `display: flex` day buttons, and a `div` beside them stretches.
+    #[test]
+    fn a_block_level_button_shrinks_to_fit() {
+        let p = page(&format!(
+            "{RESET}<div style='width: 300px'>
+               <button id=flex style='display: flex; height: 24px; min-width: 24px; padding: 0 4px; border: 0; font: 12px/16px Arimo; justify-content: center'></button>
+               <button id=block style='display: block; width: auto; padding: 0; border: 0; height: 10px'><span style='display: inline-block; width: 50px'></span></button>
+               <button id=wide style='display: block; padding: 0; border: 0; height: 10px; width: 100%'></button>
+               <div id=div style='display: flex; height: 10px'></div>
+             </div>"
+        ));
+        rect_is(&p, "flex", 0.0, 0.0, 24.0, 24.0);
+        rect_is(&p, "block", 0.0, 24.0, 50.0, 10.0);
+        rect_is(&p, "wide", 0.0, 34.0, 300.0, 10.0);
+        rect_is(&p, "div", 0.0, 44.0, 300.0, 10.0);
+    }
 }
