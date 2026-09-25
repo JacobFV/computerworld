@@ -1595,6 +1595,51 @@ pub fn text_control_width(font: &crate::style::Font, size: i32) -> Au {
     Au::from_px_i32(((total + 63).div_euclid(64)).clamp(0, 100_000) as i32)
 }
 
+/// Whether a change of attribute `name` on `node` can change the box tree or
+/// layout other than through `node`'s computed style (which a restyle reports on
+/// its own): the attributes box construction and replaced sizing read, every
+/// attribute of an SVG element (its geometry is laid out), and those the
+/// element's generated content shows through `attr()`.
+pub fn attribute_affects_layout(
+    doc: &Document,
+    styles: &StyleSet,
+    node: NodeId,
+    name: &str,
+) -> bool {
+    if !doc.is_element(node) || crate::svg::is_svg(doc, node) {
+        return true;
+    }
+    let generated = [styles.before(node), styles.after(node), styles.marker(node)]
+        .into_iter()
+        .flatten()
+        .any(|s| match &s.content {
+            crate::style::Content::Items(items) => items
+                .iter()
+                .any(|i| matches!(i, crate::style::ContentItem::Attr(a) if a == name)),
+            _ => false,
+        });
+    if generated {
+        return true;
+    }
+    match name {
+        "type" | "clear" | "colspan" | "rowspan" | "span" | "width" | "height" | "reversed"
+        | "start" | "src" | "srcset" | "alt" | "data" | "controls" | "multiple" | "size"
+        | "cols" | "rows" | "label" | "poster" => true,
+        // A list item's number, and an input button's label.
+        "value" => {
+            doc.is(node, "li")
+                || (doc.is(node, "input")
+                    && doc.attr(node, "type").is_some_and(|t| {
+                        matches!(
+                            t.to_ascii_lowercase().as_str(),
+                            "submit" | "button" | "reset" | "image"
+                        )
+                    }))
+        }
+        _ => false,
+    }
+}
+
 fn attr_u32(doc: &Document, node: NodeId, name: &str, default: u32) -> u32 {
     doc.attr(node, name)
         .and_then(|v| v.trim().parse::<u32>().ok())

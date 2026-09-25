@@ -892,9 +892,15 @@ impl Inner {
             self.focus_visible,
             &self.target_id,
         );
-        // Layout reads the document, so any mutation relayouts; a style change
-        // does only when it can move a box (`Restyled::layout_changed`).
-        self.layout_dirty |= !mutations.is_empty();
+        // Layout reads the document: a mutation relayouts unless it is an
+        // attribute layout reads only through style; a style change relayouts
+        // only when it can move a box (`Restyled::layout_changed`).
+        self.layout_dirty |= mutations.iter().any(|m| match m {
+            Mutation::AttributeChanged { node, name, .. } => {
+                layout::boxes::attribute_affects_layout(&self.doc, &self.styles, *node, name)
+            }
+            _ => true,
+        });
         let restyled = match &self.style_engine {
             None => {
                 self.styles = StyleSet::new();
