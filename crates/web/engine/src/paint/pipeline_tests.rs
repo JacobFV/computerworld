@@ -979,3 +979,14 @@ fn a_style_sheet_fill_beats_the_svg_fill_attribute() {
     );
     assert_eq!(f.at(20, 100), INK, "an inline style fill");
 }
+
+/// An outer `box-shadow` is drawn only outside the border box: a button with a
+/// transparent background and Tailwind's `shadow-sm` shows the page through it,
+/// not a grey fill (app-inbox's Reply and Forward).
+#[test]
+fn an_outer_shadow_does_not_show_through_a_transparent_box() {
+    let html = "<!doctype html><body style='margin:0'><div style='margin:20px;width:100px;height:40px;box-shadow:0 4px 6px 0 rgba(0,0,0,0.5)'></div>";
+    let f = pixels(&render(html));
+    assert_eq!(f.at(70, 30), WHITE, "inside the box");
+    assert_ne!(f.at(70, 62), WHITE, "below the box, where the shadow falls");
+}

@@ -799,18 +799,41 @@ pub(crate) fn paint_box_shadows(
                 grown.width + 2 * blur,
                 grown.height + 2 * blur,
             );
-            let part = p.next_part(key);
-            let id = p.id(key, part);
-            p.emit(
-                state,
-                id,
-                bounds,
-                Primitive::Shadow {
-                    color: sh.color,
-                    radius: (radius as i64 + spread as i64).max(0) as u32,
-                    blur,
-                },
-            );
+            let shadow = Primitive::Shadow {
+                color: sh.color,
+                radius: (radius as i64 + spread as i64).max(0) as u32,
+                blur,
+            };
+            // An outer shadow is drawn only outside the border box (css-backgrounds
+            // §7.1.1). An opaque background hides the part under the box anyway;
+            // otherwise the shadow is drawn in the four bands around the box, so a
+            // transparent `shadow-sm` button is not filled grey (app-inbox's Reply).
+            // The scene has no clip-out, so a rounded box's corners inside the
+            // rect but outside the curve stay unshadowed.
+            if style.background_color.3 == 255 {
+                let part = p.next_part(key);
+                let id = p.id(key, part);
+                p.emit(state, id, bounds, shadow);
+                continue;
+            }
+            let band = |x: i32, y: i32, x2: i32, y2: i32| {
+                SRect::new(x, y, (x2 - x).max(0) as u32, (y2 - y).max(0) as u32)
+            };
+            let (bx1, by1) = (bounds.right(), bounds.bottom());
+            let bands = [
+                band(bounds.x, bounds.y, bx1, rect.y.min(by1)),
+                band(bounds.x, rect.bottom().max(bounds.y), bx1, by1),
+                band(bounds.x, rect.y, rect.x.min(bx1), rect.bottom()),
+                band(rect.right().max(bounds.x), rect.y, bx1, rect.bottom()),
+            ];
+            for b in bands {
+                if b.width == 0 || b.height == 0 {
+                    continue;
+                }
+                let part = p.next_part(key);
+                let id = p.id(key, part);
+                p.emit(&state.clipped(b), id, bounds, shadow.clone());
+            }
         } else {
             // An inset shadow darkens the ring between the box and the box moved by
             // the offset and pulled in by the spread. Unblurred and unoffset, that
