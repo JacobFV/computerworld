@@ -681,13 +681,30 @@ hooks.hover = (oldT, newT, x, y, mods, fake) => {
     }
   }
 };
+// A text field the user edited fires `change` when it loses focus (or on Enter) only
+// if its value now differs from the one at focus or at the last change; a value
+// script sets while no edit is pending becomes that baseline (Chromium, measured).
+function isTextField(el) {
+  return !!el && (el.localName === 'textarea' || (el.localName === 'input' && !['checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button', 'hidden', 'range', 'color'].includes(el.type)));
+}
+function commitChange(el) {
+  if (!el['%changePending']) return;
+  define(el, '%changePending', false);
+  if ('%changeBase' in el && el.value === el['%changeBase']) return;
+  if (isTextField(el)) define(el, '%changeBase', el.value);
+  fireSimple(el, 'change', true, false);
+}
+hooks.valueSet = (el) => { if (!el['%changePending']) define(el, '%changeBase', el.value); };
 hooks.focusChange = (oldT, newT) => {
   if (oldT) {
     fire(oldT, new C.FocusEvent('blur', { relatedTarget: newT }));
     fire(oldT, new C.FocusEvent('focusout', { bubbles: true, composed: true, relatedTarget: newT }));
-    if (oldT['%changePending']) { define(oldT, '%changePending', false); fireSimple(oldT, 'change', true, false); }
+    commitChange(oldT);
   }
   if (newT) {
+    // The value a later `change` is measured against (Blink's text as of the last
+    // form-control change event): what the field holds when it takes focus.
+    if (isTextField(newT)) { define(newT, '%changeBase', newT.value); define(newT, '%changePending', false); }
     fire(newT, new C.FocusEvent('focus', { relatedTarget: oldT }));
     fire(newT, new C.FocusEvent('focusin', { bubbles: true, composed: true, relatedTarget: oldT }));
   }
@@ -706,7 +723,10 @@ hooks.input = (target, data, inputType) => {
   fire(target, new C.InputEvent('input', { bubbles: true, composed: true, data: isCheck ? null : data, inputType: isCheck ? '' : inputType }));
   if (!isCheck && target.localName !== 'select') define(target, '%changePending', true);
 };
-hooks.change = (target) => { define(target, '%changePending', false); fireSimple(target, 'change', true, false); };
+hooks.change = (target) => { define(target, '%changePending', false); fireSimple(target, 'change', true, false); if (isTextField(target)) define(target, '%changeBase', target.value); };
+// Enter in a single-line field commits what was typed, as Chromium does before
+// implicit submission.
+hooks.commit = (target) => { commitChange(target); };
 hooks.submit = (form, submitter) => !fire(form, new C.SubmitEvent('submit', { bubbles: true, cancelable: true, submitter }));
 hooks.reset = (form) => !fireSimple(form, 'reset', true, true);
 hooks.toggle = (details) => { queueTask(() => fire(details, new C.ToggleEvent('toggle', { oldState: details.open ? 'closed' : 'open', newState: details.open ? 'open' : 'closed' }))); };

@@ -342,6 +342,25 @@ fn activate(realm: &mut Realm, target: NodeId, m: Modifiers) -> DefaultAction {
     DefaultAction::None
 }
 
+/// Whether an `<input>` of this (lower-cased) `type` counts as a field that blocks
+/// implicit submission (HTML §4.10.21.2): the text-entry types; an unknown or
+/// missing type is text.
+fn blocks_implicit_submission(ty: &str) -> bool {
+    !matches!(
+        ty,
+        "hidden"
+            | "checkbox"
+            | "radio"
+            | "file"
+            | "submit"
+            | "image"
+            | "reset"
+            | "button"
+            | "range"
+            | "color"
+    )
+}
+
 /// Blink's type-ahead timeout: keys further apart than this start a new search.
 const TYPEAHEAD_TIMEOUT_MS: f64 = 1000.0;
 
@@ -947,6 +966,12 @@ fn key_default(
             return click_node(realm, target, m, 1);
         }
         if tag == "input" {
+            if is_text {
+                // A single-line field commits its edit (`change`) before the form
+                // submits, as Chromium does.
+                let tv = wrap(realm, Some(target));
+                realm.call_hook("commit", vec![tv]);
+            }
             let form = realm.inner.borrow().form_owner(target);
             if let Some(form) = form {
                 let submitter = {
@@ -970,9 +995,33 @@ fn key_default(
                                 ))
                     })
                 };
+                // HTML's implicit submission: through the default button when the
+                // form has one; without one, only when a single field in the form
+                // blocks implicit submission (a form of several text fields and no
+                // submit button does not submit on Enter).
                 match submitter {
                     Some(s) => return activation_click(realm, s, m),
-                    None => return submit_form(realm, form, None),
+                    None => {
+                        let blocking = {
+                            let i = realm.inner.borrow();
+                            i.form_elements(form)
+                                .into_iter()
+                                .filter(|e| {
+                                    i.doc.is(*e, "input")
+                                        && blocks_implicit_submission(
+                                            &i.doc
+                                                .attr(*e, "type")
+                                                .unwrap_or("")
+                                                .to_ascii_lowercase(),
+                                        )
+                                })
+                                .count()
+                        };
+                        if blocking == 1 {
+                            return submit_form(realm, form, None);
+                        }
+                        return DefaultAction::None;
+                    }
                 }
             }
         }

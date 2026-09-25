@@ -148,7 +148,7 @@ fn checkbox_and_radio_toggle_with_change_events() {
 
 #[test]
 fn form_submission_default_action_and_prevent() {
-    let mut r = run("<form id=f action='/post' method=post enctype='multipart/form-data'><input name=a value=1><input name=b value=2 disabled><input id=s type=submit name=btn value=Go></form><form id=g><input name=q value=x><input id=t type=text></form>", "window.subs=[]; document.getElementById('f').addEventListener('submit', e=>subs.push('f:'+(e.submitter&&e.submitter.id)+':'+e.isTrusted));");
+    let mut r = run("<form id=f action='/post' method=post enctype='multipart/form-data'><input name=a value=1><input name=b value=2 disabled><input id=s type=submit name=btn value=Go></form><form id=g><input name=q value=x type=hidden><input id=t type=text></form>", "window.subs=[]; document.getElementById('f').addEventListener('submit', e=>subs.push('f:'+(e.submitter&&e.submitter.id)+':'+e.isTrusted));");
     let f = id_of(&r, "f");
     let a = click_id(&mut r, "s");
     assert_eq!(
@@ -165,7 +165,7 @@ fn form_submission_default_action_and_prevent() {
     r.eval("f.addEventListener('submit', e => e.preventDefault())")
         .unwrap();
     assert_eq!(click_id(&mut r, "s"), DefaultAction::Prevented);
-    // Enter in a text field submits implicitly.
+    // Enter in the one text field of a form without a submit button submits it.
     r.dispatch(UiEvent::Focus {
         node: Some(id_of(&r, "t")),
     });
@@ -823,3 +823,85 @@ fn css_animation_fires_start_iteration_and_end() {
 }
 check!(inline_handler_added_during_dispatch_runs_in_the_same_event, "<div id=a><p id=b></p></div>", "const a=document.getElementById('a'), b=document.getElementById('b'); window.seen=[]; b.addEventListener('click', ()=>{ seen.push('b'); a.setAttribute('onclick', 'seen.push(\"a inline\")'); }); b.dispatchEvent(new MouseEvent('click', {bubbles:true})); b.dispatchEvent(new MouseEvent('click', {bubbles:true})); console.log(seen.join());", "b,a inline,b,a inline");
 check!(inline_handler_attribute_removed_stops_running, "<div id=a onclick=\"window.n=(window.n||0)+1\"><p id=b></p></div>", "const a=document.getElementById('a'), b=document.getElementById('b'); b.dispatchEvent(new Event('click', {bubbles:true})); a.removeAttribute('onclick'); b.dispatchEvent(new Event('click', {bubbles:true})); console.log(window.n);", "1");
+
+/// Enter in a text field submits its form through the default button, or with no
+/// submit button only when one field in the form blocks implicit submission: two
+/// text fields and no button do not submit (Conduit React's article editor, whose
+/// tag field adds a tag on Enter).
+#[test]
+fn enter_submits_a_form_without_a_button_only_with_one_text_field() {
+    let mut r = run(
+        "<form id=a><input id=a1><input id=a2></form><form id=b><input id=b1><input type=checkbox><input type=hidden></form>",
+        "window.subs=[]; for (const f of document.forms) f.addEventListener('submit', e => { e.preventDefault(); subs.push(f.id); });",
+    );
+    for id in ["a1", "b1"] {
+        r.dispatch(UiEvent::Focus {
+            node: Some(id_of(&r, id)),
+        });
+        r.dispatch(UiEvent::Key {
+            key: "Enter".into(),
+            code: String::new(),
+            modifiers: Modifiers::default(),
+            repeat: false,
+        });
+    }
+    assert_eq!(r.eval("subs.join()").unwrap(), "b");
+}
+
+/// A text field fires `change` on blur (or Enter) only when its value differs from
+/// the one it had at focus or at the last change; a value script sets while no
+/// edit is pending becomes that baseline. Each case is what Chromium does (Conduit
+/// Vue clears its tag field after adding the tag, and must not add an empty one).
+#[test]
+fn change_compares_against_the_value_at_focus() {
+    let cases: &[(&str, &str, &str)] = &[
+        ("type-then-reset", "a", "i.value = 'x'"),
+        ("type-then-other", "a", "i.value = 'q'"),
+        ("script-only", "", "i.value = 'q'"),
+        ("type-then-empty", "a", "i.value = ''"),
+    ];
+    let want = ["", "change:q", "", "change:"];
+    for ((name, typed, script), want) in cases.iter().zip(want) {
+        let mut r = run(
+            "<input id=i value=x><button id=o>o</button>",
+            "window.log=[]; i.addEventListener('change', () => log.push('change:' + i.value));",
+        );
+        r.dispatch(UiEvent::Focus {
+            node: Some(id_of(&r, "i")),
+        });
+        if !typed.is_empty() {
+            r.dispatch(UiEvent::TypeText {
+                text: (*typed).into(),
+            });
+        }
+        r.eval(script).unwrap();
+        r.dispatch(UiEvent::Focus {
+            node: Some(id_of(&r, "o")),
+        });
+        assert_eq!(r.eval("log.join()").unwrap(), want, "{name}");
+    }
+    // Set by script before typing, typed, set back: no change.
+    let mut r = run(
+        "<input id=i value=x><button id=o>o</button>",
+        "window.log=[]; i.addEventListener('change', () => log.push('change:' + i.value));",
+    );
+    r.dispatch(UiEvent::Focus {
+        node: Some(id_of(&r, "i")),
+    });
+    r.eval("i.value = 'q'").unwrap();
+    r.dispatch(UiEvent::TypeText { text: "a".into() });
+    r.eval("i.value = 'q'").unwrap();
+    // Enter commits what was typed; the blur after more typing commits again.
+    r.dispatch(UiEvent::TypeText { text: "b".into() });
+    r.dispatch(UiEvent::Key {
+        key: "Enter".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
+    r.dispatch(UiEvent::TypeText { text: "c".into() });
+    r.dispatch(UiEvent::Focus {
+        node: Some(id_of(&r, "o")),
+    });
+    assert_eq!(r.eval("log.join()").unwrap(), "change:qb,change:qbc");
+}

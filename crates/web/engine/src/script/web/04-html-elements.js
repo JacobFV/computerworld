@@ -92,6 +92,7 @@ element('HTMLInputElement', ['input'], (B) => class HTMLInputElement extends B {
     if (t === 'file') { if (v !== '' && v !== null) throw domError('InvalidStateError', 'This input element accepts a filename, which may only be programmatically set to the empty string.'); return; }
     if (t === 'checkbox' || t === 'radio' || t === 'hidden' || t === 'submit' || t === 'button' || t === 'reset' || t === 'image') { this.setAttribute('value', v === null ? '' : String(v)); return; }
     W.setValue(this, v === null || v === undefined ? '' : String(v));
+    hooks.valueSet(this);
   }
   get defaultValue() { return this.getAttribute('value') || ''; }
   set defaultValue(v) { this.setAttribute('value', String(v)); }
@@ -165,7 +166,7 @@ Object.defineProperty(classes.HTMLInputElement.prototype, 'height', { get() { re
 element('HTMLTextAreaElement', ['textarea'], (B) => class HTMLTextAreaElement extends B {
   get type() { return 'textarea'; }
   get value() { return W.value(this); }
-  set value(v) { W.setValue(this, v === null || v === undefined ? '' : String(v)); }
+  set value(v) { W.setValue(this, v === null || v === undefined ? '' : String(v)); hooks.valueSet(this); }
   get defaultValue() { return this.textContent; }
   set defaultValue(v) { this.textContent = v; }
   get textLength() { return this.value.length; }

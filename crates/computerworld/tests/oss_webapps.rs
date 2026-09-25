@@ -375,9 +375,11 @@ fn conduit_react_filters_signs_in_writes_comments_edits_deletes_and_favourites()
         .unwrap()
         .to_owned();
     a.act("browser.v1", "fill", json!({"id": body_id, "value": "We measured every build for six months.\n\nThe cache paid for itself in the second week."}));
-    // No tag: this editor adds one on Enter's keyup, and the engine's implicit
-    // submission submits a form with three text fields on Enter, where browsers do
-    // not (reported for the form-controls work; see docs/oss-webapps.md).
+    // A tag: this editor adds one on Enter's keyup. Its form has three text fields
+    // and no submit button, so Enter does not submit it (implicit submission).
+    a.type_into("Enter tags", "caching");
+    a.key("Enter");
+    assert!(a.shows("caching"), "{}", a.dump());
     a.click("button", "Publish Article");
     // This frontend goes home after publishing; the article leads the global feed.
     // (Its profile pages never render: the route is "/@:username", which React
@@ -449,6 +451,7 @@ fn conduit_react_filters_signs_in_writes_comments_edits_deletes_and_favourites()
         v.to_string().contains("content-addressed build cache"),
         "{v}"
     );
+    assert!(v.to_string().contains("\"caching\""), "{v}");
     // Delete it from its page; the feed no longer lists it.
     let article = a
         .elements()
@@ -565,14 +568,16 @@ fn conduit_vue_filters_signs_in_writes_follows_and_updates_settings() {
         "http://api.realworld.show/api/articles/Flaky-tests-are-a-budget-not-a-bug-list-1",
         None,
     );
-    // Both tags; the engine also commits the emptied field on blur (a `change`
-    // Chromium does not fire, since the value is what it was on focus), which this
-    // editor turns into an empty tag. Reported for the form-controls work.
-    let tags = v["article"]["tagList"].as_array().unwrap().clone();
-    assert!(
-        tags.contains(&json!("ci")) && tags.contains(&json!("testing")),
-        "{v}"
-    );
+    // Exactly the two tags: the emptied field is not committed on blur (its value
+    // is what it was when the last tag was added), so no empty tag.
+    let mut tags: Vec<String> = v["article"]["tagList"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t.as_str().unwrap().to_owned())
+        .collect();
+    tags.sort();
+    assert_eq!(tags, ["ci", "testing"], "{v}");
     // Someone else's article: favourite it and follow its author from its page.
     a.navigate("http://vue.realworld.show/#/article/Stop-writing-ETL-start-writing-contracts-4");
     assert!(
