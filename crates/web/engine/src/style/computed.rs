@@ -979,6 +979,9 @@ pub struct Font {
     pub family: String,
     /// Absolute size in Au (CSS px * 64).
     pub size: Au,
+    /// The same size unrounded, in millionths of a px (0 when not known), which
+    /// glyphs are scaled by: see [`Font::glyph_size`].
+    pub size_micro: i64,
     /// 100..=900.
     pub weight: u16,
     pub style: FontStyle,
@@ -999,6 +1002,19 @@ impl Font {
     }
     pub fn is_italic(&self) -> bool {
         !matches!(self.style, FontStyle::Normal)
+    }
+    /// The size glyphs are scaled at, in `Au`: the unrounded size truncated to 1/64 px,
+    /// as FreeType's 26.6 character size truncates Skia's float size in Chromium
+    /// (8pt, 10.6667 px, is set at 10.65625 px while `size` rounds to 10.671875).
+    /// `size` itself when the unrounded size is unknown or does not round to it
+    /// (a size assigned directly).
+    pub fn glyph_size(&self) -> Au {
+        let fine = self.size_micro * 64;
+        if self.size_micro > 0 && (fine - i64::from(self.size.0) * 1_000_000).abs() <= 500_000 {
+            Au(fine.div_euclid(1_000_000) as i32)
+        } else {
+            self.size
+        }
     }
     /// Whether pair kerning applies: `font-kerning` unless `font-feature-settings`
     /// names `kern`. (`letter-spacing` does not turn it off: Chromium keeps the
@@ -1186,6 +1202,7 @@ impl ComputedStyle {
                 typeface: Typeface::default(),
                 family: String::new(),
                 size: Au::from_px_i32(16),
+                size_micro: 16_000_000,
                 weight: 400,
                 style: FontStyle::Normal,
                 small_caps: false,

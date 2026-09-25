@@ -114,7 +114,7 @@ pub fn advance(font: &Font, c: char) -> Au {
         None => fallback_advance(font.typeface, style, base),
     };
     let den = i64::from(REF_SIZE) * 64;
-    let one = (fine * font.size.0 as i64 + den / 2).div_euclid(den);
+    let one = (fine * font.glyph_size().0 as i64 + den / 2).div_euclid(den);
     let a = if c == '\t' { one * 4 } else { one };
     Au(a.clamp(0, Au::MAX.0 as i64) as i32)
 }
@@ -133,13 +133,12 @@ pub const FINE_PER_AU: i64 = 1024;
 pub fn advance_fine(font: &Font, c: char) -> i64 {
     let style = font.scene_style();
     let one = match metrics::advance_units(font.typeface, style, c) {
-        Some((units, upem)) => {
-            (i64::from(units) * font.size.0 as i64 * FINE_PER_AU).div_euclid(i64::from(upem))
-        }
+        Some((units, upem)) => (i64::from(units) * font.glyph_size().0 as i64 * FINE_PER_AU)
+            .div_euclid(i64::from(upem)),
         None => {
             let base = if c == '\t' { ' ' } else { c };
             let fine = fallback_advance(font.typeface, style, base);
-            (fine * font.size.0 as i64 * FINE_PER_AU).div_euclid(i64::from(REF_SIZE) * 64)
+            (fine * font.glyph_size().0 as i64 * FINE_PER_AU).div_euclid(i64::from(REF_SIZE) * 64)
         }
     };
     if c == '\t' {
@@ -157,7 +156,8 @@ pub fn kern_fine(font: &Font, left: char, right: char) -> i64 {
     metrics::kern_units(font.typeface, font.scene_style(), left, right).map_or(
         0,
         |(units, upem)| {
-            (i64::from(units) * font.size.0 as i64 * FINE_PER_AU).div_euclid(i64::from(upem))
+            (i64::from(units) * font.glyph_size().0 as i64 * FINE_PER_AU)
+                .div_euclid(i64::from(upem))
         },
     )
 }
@@ -235,7 +235,7 @@ pub fn kern(font: &Font, left: char, right: char) -> Au {
         return Au::ZERO;
     };
     let den = i64::from(upem);
-    Au((i64::from(units) * font.size.0 as i64 + den / 2).div_euclid(den) as i32)
+    Au((i64::from(units) * font.glyph_size().0 as i64 + den / 2).div_euclid(den) as i32)
 }
 
 /// Kerning between an optional previous character and `c` under `letter_spacing`,

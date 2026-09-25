@@ -1665,6 +1665,28 @@ mod tests {
     }
 
     #[test]
+    fn glyphs_are_scaled_at_the_size_truncated_to_a_64th() {
+        let (d, s) = styled(
+            r#"<p id="a">t</p><div id="b"><p id="c">t</p></div><p id="e">t</p>"#,
+            "#a { font-size: 8pt } #b { font-size: 22.4px } #c { font-size: 50% } #e { font-size: 20px }",
+        );
+        let font = |id: &str| s.get(by_id(&d, id)).unwrap().font.clone();
+        // 8pt is 10.6667 px: laid out at 10.671875 (rounded), set at 10.65625, as
+        // Chromium's FreeType does.
+        assert_eq!(font("a").size, Au(683));
+        assert_eq!(font("a").glyph_size(), Au(682));
+        assert_eq!(font("b").size, Au(1434));
+        assert_eq!(font("b").glyph_size(), Au(1433));
+        // Relative to the parent's unrounded size: 11.2 px exactly.
+        assert_eq!(font("c").glyph_size(), Au(716));
+        assert_eq!(font("e").glyph_size(), Au(1280));
+        // A size set directly, which the unrounded one no longer describes.
+        let mut f = font("a");
+        f.size = Au(1024);
+        assert_eq!(f.glyph_size(), Au(1024));
+    }
+
+    #[test]
     fn important_and_inline() {
         let (d, s) = styled(
             r#"<p id="p" style="color: blue">t</p>"#,

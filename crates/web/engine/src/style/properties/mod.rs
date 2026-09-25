@@ -301,7 +301,7 @@ use parse as p;
 longhands! {
     // Phase 0: the font.
     FontFamily, "font-family", true, 0, p::font_family, a::font_family, |d, s| { d.font.family = s.font.family.clone(); d.font.typeface = s.font.typeface; };
-    FontSize, "font-size", true, 0, p::font_size, a::font_size, |d, s| { d.font.size = s.font.size; d.font_size_keyword = s.font_size_keyword; };
+    FontSize, "font-size", true, 0, p::font_size, a::font_size, |d, s| { d.font.size = s.font.size; d.font.size_micro = s.font.size_micro; d.font_size_keyword = s.font_size_keyword; };
     FontWeight, "font-weight", true, 0, p::font_weight, a::font_weight, |d, s| d.font.weight = s.font.weight;
     FontStyle, "font-style", true, 0, p::font_style, a::font_style, |d, s| d.font.style = s.font.style;
     FontVariant, "font-variant", true, 0, p::font_variant, a::font_variant, |d, s| d.font.small_caps = s.font.small_caps;

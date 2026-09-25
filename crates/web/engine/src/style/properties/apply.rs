@@ -190,6 +190,12 @@ pub fn font_size(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
     };
     let mono = is_monospace_family(&s.font.family);
     let parent = c.parent.font.size;
+    // The parent's unrounded size, for sizes relative to it.
+    let parent_micro = if c.parent.font.size_micro > 0 {
+        c.parent.font.size_micro
+    } else {
+        i64::from(parent.0) * 15_625
+    };
     s.font_size_keyword = None;
     s.font.size = match spec {
         FontSizeSpec::Absolute(i) => {
@@ -203,6 +209,28 @@ pub fn font_size(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
             None => return false,
         },
     };
+    // The unrounded size, where it is simple to have: glyphs are scaled by it
+    // (`Font::glyph_size`); anything else falls back to the rounded size.
+    s.font.size_micro = match spec {
+        FontSizeSpec::Larger => parent_micro * 12 / 10,
+        FontSizeSpec::Smaller => parent_micro * 10 / 12,
+        FontSizeSpec::Lp(LpSpec::Length(l)) => match l.unit {
+            LengthUnit::Em => {
+                (i128::from(l.value.micro) * i128::from(parent_micro) / 1_000_000) as i64
+            }
+            LengthUnit::Rem
+            | LengthUnit::Ex
+            | LengthUnit::Ch
+            | LengthUnit::Lh
+            | LengthUnit::Rlh => i64::from(s.font.size.0) * 15_625,
+            _ => l.to_micro_px(&c.parent_lengths) as i64,
+        },
+        FontSizeSpec::Lp(LpSpec::Percent(n)) => {
+            (i128::from(n.micro) * i128::from(parent_micro) / 100_000_000) as i64
+        }
+        _ => i64::from(s.font.size.0) * 15_625,
+    }
+    .max(0);
     true
 }
 
