@@ -133,6 +133,50 @@ fn compiled_against_fallback() {
     );
 }
 
+/// What the island costs: the kanban board compiled whole, with one module and
+/// then its components' module on the island (the JS VM inside cw-ui), and as
+/// React on the Realm. Interpreted IR throughout, so only the island differs.
+#[test]
+#[ignore]
+fn island_against_compiled_and_fallback() {
+    let runs: usize = std::env::var("UI_PERF_RUNS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(15);
+    let root = dir().join("app-src/kanban");
+    let mut read = |rel: &str| std::fs::read_to_string(root.join(rel)).ok();
+    let sources = cw_tsx::load("main.tsx", &mut read).unwrap();
+    let html = std::fs::read_to_string(dir().join("app-kanban.html")).unwrap();
+    let target = "button[data-card=\"3\"]";
+    let focus = ["#new-task", "#task-title"];
+    for island in [&[][..], &["data.ts"][..], &["App.tsx"][..]] {
+        let b = cw_tsx::build_modules_with_island(&sources, island);
+        assert!(b.diagnostics.is_empty(), "{:?}", b.diagnostics);
+        let ir = serde_json::to_string(&b.ir.unwrap()).unwrap();
+        let name = if island.is_empty() {
+            "app-kanban".to_owned()
+        } else {
+            format!("app-kanban (island: {})", b.island_modules.join(", "))
+        };
+        eprintln!("{name}: IR {} KB", ir.len() / 1024);
+        measure_compiled_named(&name, "app-kanban", &html, &ir, target, &focus, runs);
+    }
+    measure_fallback("app-kanban", &html, target, &focus, runs);
+}
+
+fn measure_compiled_named(
+    label: &str,
+    name: &str,
+    html: &str,
+    ir: &str,
+    target: &str,
+    focus: &[&str],
+    runs: usize,
+) {
+    eprint!("[{label}] ");
+    measure_compiled(name, html, ir, target, focus, runs, None);
+}
+
 /// Times the compiled app: interpreted from `ir`, or as its generated `program`.
 fn measure_compiled(
     name: &str,
@@ -257,8 +301,6 @@ fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(15);
-    let url = format!("{BASE}{name}.html");
-
     // ------------------------------------------------- compiled: interpreted, generated
     let module = UiApp::parse_ir(ir).unwrap();
     let program = cw_ui_fixtures::for_module(&module).expect("a generated program for this IR");
@@ -275,7 +317,12 @@ fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
         );
     }
 
-    // ---------------------------------------------------------------- fallback
+    measure_fallback(name, html, target, focus, runs);
+}
+
+/// Times the page's React fallback (see [`measure`]).
+fn measure_fallback(name: &str, html: &str, target: &str, focus: &[&str], runs: usize) {
+    let url = format!("{BASE}{name}.html");
     let (mut boots, mut clicks, mut keys, mut mems) = (vec![], vec![], vec![], vec![]);
     let mut firsts = vec![];
     let mut agains = vec![];
