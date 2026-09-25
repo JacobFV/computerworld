@@ -230,9 +230,36 @@ state's pass rate is below its entry in `framework-parity/thresholds.json`:
 cargo test -p cw-web --features pipeline --test framework_parity -- --nocapture
 ```
 
-Every state builds the DOM Chromium builds (no node missing). What does not match is
-text measurement, not the frameworks: the engine lays DejaVu out unkerned where Chromium
-kerns pairs such as `Tr` and `To`, so "Tracker", "Total" and "To do" come out about
-2 px wide and move what follows them; and a page that names `DejaVu Sans Mono` gets the
-terminal's grid (`ceil(0.6 × size)` px per character, 8 px at 12 px where Chromium's
-advance is 7.23).
+Every state of every fixture now matches Chromium node for node (all 51 framework
+states and all 12 static fixtures at 100%). What still differs is only visible in the
+pictures (`gallery.mjs`, `compare.mjs`), and it is the environment, not layout:
+
+- **Glyph rasterisation.** Chromium draws text through Skia with FreeType hinting and
+  subpixel positioning; `cw-render` rasterises the same faces its own way. Every run of
+  text shows as a thin red outline in a difference picture even where its box, line and
+  advance widths agree to the 1/64 px. This is most of each state's 0.3-7% of differing
+  pixels (text-dense states such as app-inbox and app-chat the most).
+- **Edge antialiasing.** Rounded borders, avatar rings and 1 px hairlines land on the
+  same pixels but with different coverage, so they outline in red too.
+- **Rounded shadows on transparent boxes.** The scene has no clip-out, so an outer
+  `box-shadow` on a box whose background is not opaque is drawn in the four bands around
+  the border box; on a rounded box the small corner pieces inside the rect but outside
+  the curve are left unshadowed where Chromium shades them.
+
+Chromium defaults of the machine the dumps were taken on that the engine reproduces,
+and that would differ on another machine:
+
+- **Fonts.** fontconfig there has only Liberation and DejaVu: `Arial`/`Helvetica`/
+  `sans-serif` shape with Liberation Sans, `Times New Roman`/`serif` with Liberation
+  Serif, `Courier New` with Liberation Mono, and the generic `monospace` (and Consolas)
+  with DejaVu Sans Mono (`CSS.getPlatformFontsForNode` names it). Web fonts the page
+  loads (Inter in the React apps) are the same file on both sides.
+- **Text inputs' `size`.** A single-line control's width comes from the face's OS/2
+  average and bounding-box widths as Linux Chromium's hinted metrics report them (the
+  average goes up to a whole pixel when its fraction is a half or more; the box width
+  rounds), so `layout::boxes::text_control_width` holds the values of those faces.
+- **Closed `<select>` keys.** The steps press ArrowDown on focused selects; Chromium on
+  Linux changes a menu list's selection on the arrows, PageUp/PageDown, Home/End and
+  type-ahead and fires `input` then `change` at once (on macOS the arrows open the
+  popup instead). The engine does what Linux Chromium does.
+- **Scrollbars** are hidden (`--hide-scrollbars`), as described above.
