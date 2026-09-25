@@ -14,7 +14,6 @@ use oxc_ast::ast::{
 use oxc_ast_visit::{walk, Visit};
 use oxc_parser::Parser;
 use oxc_semantic::{Scoping, SemanticBuilder};
-use oxc_span::GetSpan;
 
 use crate::{Diagnostic, Source};
 
@@ -335,15 +334,38 @@ impl<'a> Visit<'a> for Check<'_> {
     }
 
     fn visit_class(&mut self, c: &Class<'a>) {
-        // A class component: the shim's `Component` has no state or lifecycle.
-        if let Some(sup) = c.heritage.as_ref().map(|h| &h.expression) {
-            let name = match sup.without_parentheses() {
+        // A class component runs over hooks (the shim's classHost): the phases
+        // hooks do not have are refused, an error boundary's among them.
+        let component = c.heritage.as_ref().is_some_and(|h| {
+            let name = match h.expression.without_parentheses() {
                 Expression::Identifier(id) => Some(id.name.as_str()),
                 Expression::StaticMemberExpression(m) => Some(m.property.name.as_str()),
                 _ => None,
             };
-            if matches!(name, Some("Component" | "PureComponent")) {
-                self.refuse(sup.span().start, "a class component on the island".into());
+            matches!(name, Some("Component" | "PureComponent"))
+        });
+        if component {
+            for e in &c.body.body {
+                if let oxc_ast::ast::ClassElement::MethodDefinition(m) = e {
+                    let Some(name) = m.key.static_name() else {
+                        continue;
+                    };
+                    if matches!(
+                        &*name,
+                        "getDerivedStateFromError"
+                            | "componentDidCatch"
+                            | "getSnapshotBeforeUpdate"
+                            | "componentWillMount"
+                            | "componentWillReceiveProps"
+                            | "componentWillUpdate"
+                    ) || name.starts_with("UNSAFE_")
+                    {
+                        self.refuse(
+                            m.span.start,
+                            format!("a class component's `{name}` on the island"),
+                        );
+                    }
+                }
             }
         }
         walk::walk_class(self, c);

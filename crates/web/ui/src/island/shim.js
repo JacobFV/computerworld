@@ -228,6 +228,85 @@
     ctx.Consumer = ctx;
     return ctx;
   }
+  // A class component, run as a function component over cw-ui's hooks: state
+  // updates queue and apply when it renders, as React applies them; the
+  // lifecycle methods run in layout effects, React's commit phase.
+  const hosts = new WeakMap();
+  cw.classHost = function (C) {
+    if (!(typeof C === 'function' && C.prototype && C.prototype.isReactComponent)) return C;
+    let H = hosts.get(C);
+    if (H) return H;
+    H = function (props) {
+      const ctx = C.contextType ? useContext(C.contextType) : undefined;
+      const box = useRef(null);
+      const bump = useReducer((x) => x + 1, 0)[1];
+      let b = box.current;
+      if (b === null) {
+        const inst = new C(props, ctx);
+        b = box.current = { inst, queue: [], callbacks: [], prevProps: null, prevState: null, mounted: false, last: null, skipped: false, force: false };
+        if (inst.state === undefined) inst.state = null;
+        inst.props = props;
+        inst.context = ctx;
+        inst.setState = (u, cb) => { b.queue.push(u); if (cb) b.callbacks.push(cb); bump(); };
+        inst.forceUpdate = (cb) => { b.force = true; if (cb) b.callbacks.push(cb); bump(); };
+      }
+      const inst = b.inst;
+      let next = inst.state;
+      for (const u of b.queue) {
+        const part = typeof u === 'function' ? u.call(inst, next, props) : u;
+        if (part !== null && part !== undefined) next = Object.assign({}, next, part);
+      }
+      b.queue = [];
+      if (typeof C.getDerivedStateFromProps === 'function') {
+        const d = C.getDerivedStateFromProps(props, next);
+        if (d !== null && d !== undefined) next = Object.assign({}, next, d);
+      }
+      const force = b.force;
+      b.force = false;
+      let out;
+      const shallowSame = (a, c) => {
+        if (Object.is(a, c)) return true;
+        if (typeof a !== 'object' || typeof c !== 'object' || a === null || c === null) return false;
+        const ka = Object.keys(a);
+        return ka.length === Object.keys(c).length && ka.every((k) => Object.prototype.hasOwnProperty.call(c, k) && Object.is(a[k], c[k]));
+      };
+      const skip = b.mounted && !force && (typeof inst.shouldComponentUpdate === 'function'
+        ? !inst.shouldComponentUpdate(props, next, ctx)
+        : C.prototype.isPureReactComponent === true && shallowSame(inst.props, props) && shallowSame(inst.state, next));
+      if (skip) {
+        inst.props = props;
+        inst.state = next;
+        inst.context = ctx;
+        out = b.last;
+        b.skipped = true;
+      } else {
+        b.prevProps = inst.props;
+        b.prevState = inst.state;
+        inst.props = props;
+        inst.state = next;
+        inst.context = ctx;
+        out = inst.render();
+        b.last = out;
+        b.skipped = false;
+      }
+      useLayoutEffect(() => {
+        if (!b.mounted) {
+          b.mounted = true;
+          if (typeof inst.componentDidMount === 'function') inst.componentDidMount();
+        } else if (!b.skipped && typeof inst.componentDidUpdate === 'function') {
+          inst.componentDidUpdate(b.prevProps, b.prevState);
+        }
+        const cbs = b.callbacks;
+        b.callbacks = [];
+        for (const cb of cbs) cb.call(inst);
+      });
+      useLayoutEffect(() => () => { if (typeof inst.componentWillUnmount === 'function') inst.componentWillUnmount(); }, []);
+      return out === undefined ? null : out;
+    };
+    H.displayName = C.displayName || C.name;
+    hosts.set(C, H);
+    return H;
+  };
   cw.contextOf = function (id) {
     const ctx = { $$typeof: CONTEXT, _cw: id };
     ctx.Provider = { $$typeof: PROVIDER, _context: ctx };
@@ -246,12 +325,14 @@
   function memo(type) { return type; }
   function createRef() { return { current: null }; }
   class Component {
-    constructor(props, context) { this.props = props; this.context = context; this.state = null; }
-    setState() { throw new Error('class components are not supported in an island'); }
+    constructor(props, context) { this.props = props; this.context = context; this.state = null; this.refs = {}; }
+    // Replaced per instance by the host running it (cw.classHost).
+    setState() {}
     forceUpdate() {}
   }
   Component.prototype.isReactComponent = {};
   class PureComponent extends Component {}
+  PureComponent.prototype.isPureReactComponent = true;
   function lazy() { throw new Error('React.lazy is not supported in an island'); }
 
   const React = {

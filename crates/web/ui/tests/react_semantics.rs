@@ -2417,3 +2417,76 @@ export function App() {
         ],
     );
 }
+
+#[test]
+fn class_components_run_on_the_island_with_their_lifecycle() {
+    // Classes are outside the compiled subset: widgets.tsx runs on the island,
+    // where the shim runs each class over cw-ui's hooks with React's lifecycle.
+    same_as_react(
+        r#"
+// @file main.tsx
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { Counter, Label, Pure } from './widgets';
+function App() {
+  const [shown, setShown] = useState(true);
+  const [step, setStep] = useState(1);
+  const [same, setSame] = useState(0);
+  return (
+    <div>
+      <button id="toggle" onClick={() => setShown(!shown)}>toggle</button>
+      <button id="step" onClick={() => setStep(step + 1)}>step</button>
+      <button id="same" onClick={() => setSame(same + 1)}>same</button>
+      {shown && <Counter step={step} />}
+      <Label text="fixed" />
+      <Pure value={step > 2 ? 'big' : 'small'} />
+      <p>{same}</p>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+// @file widgets.tsx
+import React, { Component, PureComponent, createContext } from 'react';
+const Theme = createContext('plain');
+interface P { step: number }
+interface S { count: number; doubled: number; clicks: number }
+export class Counter extends Component<P, S> {
+  static defaultProps = { step: 1 };
+  static contextType = Theme;
+  state: S = { count: 0, doubled: 0, clicks: 0 };
+  static getDerivedStateFromProps(props: P, state: S) {
+    return { doubled: state.count * 2 + props.step };
+  }
+  componentDidMount() { console.log('mount', this.state.count, this.context); }
+  componentDidUpdate(prev: P, prevState: S) { console.log('update', prev.step, '->', this.props.step, prevState.count, '->', this.state.count); }
+  componentWillUnmount() { console.log('unmount', this.state.count); }
+  shouldComponentUpdate(next: P, nextState: S) { return nextState.count !== 3 || next.step !== this.props.step; }
+  inc = () => {
+    this.setState((s) => ({ count: s.count + this.props.step }), () => console.log('after inc', this.state.count));
+    this.setState((s) => ({ clicks: s.clicks + 1 }));
+    console.log('still', this.state.count);
+  };
+  render() {
+    return <p><button id="inc" onClick={this.inc}>inc</button> {this.state.count} {this.state.doubled} {this.state.clicks}</p>;
+  }
+}
+export class Label extends React.Component<{ text: string }> {
+  render() { return <span id="label">{this.props.text}</span>; }
+}
+let pureRenders = 0;
+export class Pure extends PureComponent<{ value: string }> {
+  render() { pureRenders++; return <i id="pure">{this.props.value} {pureRenders}</i>; }
+}
+"#,
+        &[
+            Step::Click("#inc"),
+            Step::Click("#inc"),
+            Step::Click("#step"),
+            Step::Click("#inc"),
+            Step::Click("#same"),
+            Step::Click("#step"),
+            Step::Click("#toggle"),
+            Step::Click("#toggle"),
+        ],
+    );
+}

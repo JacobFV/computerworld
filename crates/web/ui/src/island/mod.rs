@@ -1491,6 +1491,19 @@ impl Runtime {
     }
 
     /// Whether a VM function is a `forwardRef` render function.
+    /// The function cw-ui calls to render VM component `f`: `f` itself, or for a
+    /// class component the shim's function component running it (one per class).
+    pub(crate) fn class_host(&mut self, f: &Rc<Foreign>) -> Rc<Foreign> {
+        let o = self.js_of(f);
+        match self.js_call_helper("classHost", vec![o.clone()]) {
+            Ok(h) if !js_same(&h, &o) => match self.cw_value(&h) {
+                Value::Foreign(h) => h,
+                _ => f.clone(),
+            },
+            _ => f.clone(),
+        }
+    }
+
     pub(crate) fn foreign_forward_ref(&mut self, f: &Foreign) -> bool {
         let o = self.js_of(f);
         matches!(self.js_get(&o, "__cwForwardRef"), Js::Bool(true))

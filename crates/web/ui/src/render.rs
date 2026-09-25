@@ -1735,7 +1735,11 @@ impl Runtime {
             result = match &func {
                 ComponentFn::Compiled(c) => self.call_closure(c, args, Some(inst)),
                 // A component of the island renders there, its hooks cw-ui's.
-                ComponentFn::Foreign(f) => self.foreign_call(f, args),
+                ComponentFn::Foreign(f) => {
+                    // A class component renders through the shim's host for it.
+                    let host = self.class_host(f);
+                    self.foreign_call(&host, args)
+                }
             };
             let r = self.render.last_mut().unwrap();
             if r.rerender && result.is_ok() && guard < 25 {
