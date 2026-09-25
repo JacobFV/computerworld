@@ -25,7 +25,6 @@ use oxc_ast_visit::{walk_mut, VisitMut};
 use oxc_codegen::{Codegen, CodegenOptions};
 use oxc_parser::Parser;
 use oxc_semantic::SemanticBuilder;
-use oxc_span::SourceType;
 use oxc_transformer::{JsxRuntime, TransformOptions, Transformer};
 
 use crate::{Diagnostic, Source};
@@ -43,6 +42,13 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
     let mut out = format!(
         "// Compiled by cw-tsx from {entry}: types stripped, JSX as React.createElement.\n'use strict';\n"
     );
+    if sources.iter().any(|s| {
+        s.imports.contains_key("react/jsx-runtime") || s.text.contains("react/jsx-runtime")
+    }) {
+        // The automatic JSX runtime a package was built for, over React's
+        // createElement (a key travels in the props).
+        out.push_str(JSX_RUNTIME);
+    }
     let mut errors = Vec::new();
     if !bundled {
         for src in sources.iter().filter(|s| !s.is_ambient()) {
@@ -78,13 +84,64 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
     }
 }
 
+/// `react/jsx-runtime` for a bundle whose packages import it.
+const JSX_RUNTIME: &str = "const __cw_jsx = (() => { const jsx = (type, props, key) => React.createElement(type, key === undefined ? props : Object.assign({}, props, { key })); return { jsx, jsxs: jsx, jsxDEV: jsx, Fragment: React.Fragment }; })();\n";
+
+/// The island's script: the package modules (and, in time, the app's code outside
+/// the compiled subset), bundled as `emit_modules` bundles them, then
+/// `__cw_exports`, the values `imports` name: `(specifier, name)` pairs, each
+/// resolved from a module that imports the specifier.
+pub fn emit_island(
+    sources: &[Source],
+    imports: &[(String, String)],
+) -> Result<String, Vec<Diagnostic>> {
+    let names = export_names(sources);
+    let mut out = String::from("// The island of an app compiled by cw-tsx.\n");
+    out.push_str(&format!(
+        "var __cw_m = [{}];\n",
+        vec!["{}"; sources.len()].join(", ")
+    ));
+    let mut errors = Vec::new();
+    for (i, src) in sources.iter().enumerate() {
+        if !src.package {
+            continue;
+        }
+        match emit_one(src, 2, i, &names) {
+            Ok(code) => out.push_str(&format!("// {}\n(() => {{\n{code}}})();\n", src.file)),
+            Err(e) => errors.extend(e),
+        }
+    }
+    let mut exports = Vec::new();
+    for (spec, name) in imports {
+        let module = sources.iter().find_map(|s| s.imports.get(spec).copied());
+        let Some(m) = module else {
+            errors.push(Diagnostic {
+                file: String::new(),
+                line: 1,
+                col: 1,
+                message: format!("cannot find package `{spec}`"),
+            });
+            continue;
+        };
+        exports.push(match name.as_str() {
+            "*" | "" => format!("__cw_m[{m}]"),
+            n => format!("__cw_m[{m}]{}", js_member(n)),
+        });
+    }
+    if !errors.is_empty() {
+        return Err(errors);
+    }
+    out.push_str(&format!("var __cw_exports = [{}];\n", exports.join(", ")));
+    Ok(out)
+}
+
 /// The names each module exports (values and types alike), `export *` resolved
 /// through the modules before it.
 fn export_names(sources: &[Source]) -> Vec<Vec<String>> {
     let mut out: Vec<Vec<String>> = Vec::new();
     for src in sources {
         let allocator = Allocator::default();
-        let ret = Parser::new(&allocator, &src.text, SourceType::tsx()).parse();
+        let ret = Parser::new(&allocator, &src.text, crate::source_type(&src.file)).parse();
         let mut names = Vec::new();
         for stmt in &ret.program.body {
             match stmt {
@@ -246,7 +303,7 @@ fn emit_one(
     };
     let allocator = Allocator::default();
     let b = AstBuilder::new(&allocator);
-    let ret = Parser::new(&allocator, source, SourceType::tsx()).parse();
+    let ret = Parser::new(&allocator, source, crate::source_type(&src.file)).parse();
     if !ret.diagnostics.is_empty() {
         return Err(ret.diagnostics.iter().map(from_oxc).collect());
     }
@@ -279,6 +336,7 @@ fn emit_one(
                     }
                     ("react", _) => "React".to_owned(),
                     ("react-dom" | "react-dom/client", _) => "ReactDOM".to_owned(),
+                    ("react/jsx-runtime" | "react/jsx-dev-runtime", _) => "__cw_jsx".to_owned(),
                     (other, None) => {
                         errors.push(at(
                             import.span.start,

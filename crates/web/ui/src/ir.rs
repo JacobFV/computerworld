@@ -39,10 +39,26 @@ pub struct Module {
     pub functions: Vec<Function>,
     pub templates: Vec<Template>,
     pub root: Option<Root>,
+    /// The app's code outside the compiled subset and the packages it imports,
+    /// run on the JS VM beside the compiled code (see `cw_ui::island`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub island: Option<Island>,
     /// Whether any code mutates a value that outlives the render that created it
     /// (`state.push(x)`, `props.items.sort()`, `obj.field = v` on a non-fresh
     /// object). When set, the runtime never skips a hole by identity of its inputs.
     pub mutates_shared: bool,
+}
+
+/// The island of an app: a script for the JS VM and what compiled code takes from
+/// it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Island {
+    /// A classic script. It defines `__cw_exports`, an array of the values
+    /// `GlobalInit::Island` globals are initialised with, in `imports` order.
+    pub script: String,
+    /// What each export is: a module specifier and a name (`"default"`, or `"*"`
+    /// for the namespace), for diagnostics and tools.
+    pub imports: Vec<(String, String)>,
 }
 
 /// A module-level binding, initialised in declaration order when the module loads.
@@ -68,6 +84,9 @@ pub enum GlobalInit {
     /// initialisation (function `n`, called with no arguments), such as a
     /// statement with effects or an initialiser with variables of its own.
     Run(u32),
+    /// Export `n` of the app's island (a package's value, or app code outside the
+    /// compiled subset).
+    Island(u32),
 }
 
 /// Where the module renders: `createRoot(document.getElementById(id)).render(<App/>)`.
@@ -630,6 +649,8 @@ pub enum Builtin {
     /// `Date.UTC(y, m, …)` and `Date.parse(s)`.
     DateUTC,
     DateParse,
+    /// `new C(args)` for a constructor that is not built in (an island's class).
+    Construct,
     /// `x instanceof C` for a built-in constructor named by the second argument
     /// (`Date`, `Array`, `Map`, `Set`, `RegExp`, `Promise`, `Object`, `Function`).
     IsInstance,
@@ -924,6 +945,124 @@ pub fn method_by_name(kind: MethodKind, name: &str) -> Option<Method> {
         (_, "toString") => M::ToString,
         _ => return None,
     })
+}
+
+/// The JavaScript name of a built-in method (for calling it on a value of the
+/// island, which has its own).
+pub fn method_js_name(m: Method) -> &'static str {
+    use Method as M;
+    match m {
+        M::ArrayMap => "map",
+        M::ArrayFilter => "filter",
+        M::ArrayFind => "find",
+        M::ArrayFindIndex => "findIndex",
+        M::ArrayFindLast => "findLast",
+        M::ArraySome => "some",
+        M::ArrayEvery => "every",
+        M::ArrayReduce => "reduce",
+        M::ArrayForEach => "forEach",
+        M::ArraySlice | M::StrSlice => "slice",
+        M::ArrayConcat | M::StrConcat => "concat",
+        M::ArrayIncludes | M::StrIncludes => "includes",
+        M::ArrayIndexOf | M::StrIndexOf => "indexOf",
+        M::ArrayJoin => "join",
+        M::ArraySort => "sort",
+        M::ArrayToSorted => "toSorted",
+        M::ArrayReverse => "reverse",
+        M::ArrayToReversed => "toReversed",
+        M::ArrayPush => "push",
+        M::ArrayPop => "pop",
+        M::ArrayShift => "shift",
+        M::ArrayUnshift => "unshift",
+        M::ArraySplice => "splice",
+        M::ArrayFlat => "flat",
+        M::ArrayFlatMap => "flatMap",
+        M::ArrayFill => "fill",
+        M::ArrayAt | M::StrAt => "at",
+        M::ArrayKeys | M::CollectionKeys => "keys",
+        M::ArrayEntries | M::CollectionEntries => "entries",
+        M::ArrayWith => "with",
+        M::StrTrim => "trim",
+        M::StrTrimStart => "trimStart",
+        M::StrTrimEnd => "trimEnd",
+        M::StrToUpperCase => "toUpperCase",
+        M::StrToLowerCase => "toLowerCase",
+        M::StrStartsWith => "startsWith",
+        M::StrEndsWith => "endsWith",
+        M::StrLastIndexOf => "lastIndexOf",
+        M::StrSubstring => "substring",
+        M::StrSplit => "split",
+        M::StrReplace => "replace",
+        M::StrReplaceAll => "replaceAll",
+        M::StrRepeat => "repeat",
+        M::StrPadStart => "padStart",
+        M::StrPadEnd => "padEnd",
+        M::StrCharAt => "charAt",
+        M::StrCharCodeAt => "charCodeAt",
+        M::StrLocaleCompare => "localeCompare",
+        M::StrCodePointAt => "codePointAt",
+        M::NumToFixed => "toFixed",
+        M::NumToString | M::ToString | M::DateToString => "toString",
+        M::PromiseThen => "then",
+        M::PromiseCatch => "catch",
+        M::PromiseFinally => "finally",
+        M::ResponseJson => "json",
+        M::ResponseText => "text",
+        M::HeadersGet | M::MapGet => "get",
+        M::HeadersHas | M::SetHas => "has",
+        M::NodeFocus => "focus",
+        M::NodeBlur => "blur",
+        M::NodeSelect => "select",
+        M::NodeSetSelectionRange => "setSelectionRange",
+        M::NodeGetBoundingClientRect => "getBoundingClientRect",
+        M::NodeGetClientRects => "getClientRects",
+        M::NodeScrollIntoView => "scrollIntoView",
+        M::NodeScrollTo => "scrollTo",
+        M::NodeScrollBy => "scrollBy",
+        M::NodeContains => "contains",
+        M::NodeClosest => "closest",
+        M::NodeMatches => "matches",
+        M::NodeGetAttribute => "getAttribute",
+        M::NodeHasAttribute => "hasAttribute",
+        M::NodeQuerySelector => "querySelector",
+        M::NodeQuerySelectorAll => "querySelectorAll",
+        M::EventPreventDefault => "preventDefault",
+        M::EventStopPropagation => "stopPropagation",
+        M::RegexTest => "test",
+        M::RegexExec => "exec",
+        M::StrMatch => "match",
+        M::StrSearch => "search",
+        M::SetAdd => "add",
+        M::SetDelete => "delete",
+        M::SetClear => "clear",
+        M::MapSet => "set",
+        M::CollectionForEach => "forEach",
+        M::CollectionValues => "values",
+        M::DateGetFullYear => "getFullYear",
+        M::DateGetMonth => "getMonth",
+        M::DateGetDate => "getDate",
+        M::DateGetDay => "getDay",
+        M::DateGetHours => "getHours",
+        M::DateGetMinutes => "getMinutes",
+        M::DateGetSeconds => "getSeconds",
+        M::DateGetMilliseconds => "getMilliseconds",
+        M::DateGetTime => "getTime",
+        M::DateGetTimezoneOffset => "getTimezoneOffset",
+        M::DateGetYear => "getYear",
+        M::DateSetFullYear => "setFullYear",
+        M::DateSetMonth => "setMonth",
+        M::DateSetDate => "setDate",
+        M::DateSetHours => "setHours",
+        M::DateSetMinutes => "setMinutes",
+        M::DateSetSeconds => "setSeconds",
+        M::DateSetMilliseconds => "setMilliseconds",
+        M::DateSetTime => "setTime",
+        M::DateToISOString => "toISOString",
+        M::DateToJSON => "toJSON",
+        M::DateToDateString => "toDateString",
+        M::DateToTimeString => "toTimeString",
+        M::DateToUTCString => "toUTCString",
+    }
 }
 
 /// Methods of JavaScript's built-in prototypes, by the kind they belong to.

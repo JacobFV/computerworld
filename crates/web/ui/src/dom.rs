@@ -717,19 +717,85 @@ impl Runtime {
         let info = self.templates[tid as usize].clone();
         let mut created: Vec<NodeId> = Vec::with_capacity(info.tags.len());
         let mut holes: Vec<Option<MHole>> = (0..values.len()).map(|_| None).collect();
-        let root = match program.template(tid) {
-            TemplateRef::Ir(t) => {
-                self.build(&t.root, in_svg, &info, values, &mut created, &mut holes)
+        let n = program.templates_len();
+        let root = if (tid as usize) < n {
+            match program.template(tid) {
+                TemplateRef::Ir(t) => {
+                    self.build(&t.root, in_svg, &info, values, &mut created, &mut holes)
+                }
+                TemplateRef::Static(t) => {
+                    self.build(&t.root, in_svg, &info, values, &mut created, &mut holes)
+                }
             }
-            TemplateRef::Static(t) => {
-                self.build(&t.root, in_svg, &info, values, &mut created, &mut holes)
-            }
+        } else {
+            let t = self.dyn_templates[tid as usize - n].1.clone();
+            self.build(&t.root, in_svg, &info, values, &mut created, &mut holes)
         };
         let holes = holes
             .into_iter()
             .map(|h| h.expect("every hole is placed"))
             .collect();
         (root.expect("a template's root is an element"), holes)
+    }
+
+    /// The template of one host element whose props are all dynamic, for an
+    /// island's elements of tag `tag` (made once per tag): holes are the props (a
+    /// spread), the ref and, but for a void element, the children.
+    pub(crate) fn dyn_template(&mut self, tag: &str) -> u32 {
+        let n = self.program.templates_len();
+        if let Some(i) = self.dyn_templates.iter().position(|(t, _)| t == tag) {
+            return (n + i) as u32;
+        }
+        let void = matches!(
+            tag,
+            "area"
+                | "base"
+                | "br"
+                | "col"
+                | "embed"
+                | "hr"
+                | "img"
+                | "input"
+                | "link"
+                | "meta"
+                | "source"
+                | "track"
+                | "wbr"
+        );
+        let hole = |ty| crate::ir::Hole {
+            deps: Vec::new(),
+            always: true,
+            ty,
+        };
+        let mut holes = vec![hole(crate::ir::Ty::Unknown), hole(crate::ir::Ty::Unknown)];
+        let mut children = Vec::new();
+        if !void {
+            holes.push(hole(crate::ir::Ty::Node));
+            children.push(crate::ir::TNode::Hole(2));
+        }
+        let t = crate::ir::Template {
+            root: crate::ir::TNode::Element {
+                tag: tag.to_owned(),
+                attrs: vec![crate::ir::TAttr::Spread(0), crate::ir::TAttr::Ref(1)],
+                children,
+            },
+            holes,
+        };
+        self.templates.push(template_info(TemplateRef::Ir(&t)));
+        self.dyn_templates.push((tag.to_owned(), t));
+        (n + self.dyn_templates.len() - 1) as u32
+    }
+
+    /// Template `tid`'s tree (a program's, or one made while running).
+    pub(crate) fn template_tree(&self, tid: u32) -> crate::ir::TNode {
+        let n = self.program.templates_len();
+        if (tid as usize) >= n {
+            return self.dyn_templates[tid as usize - n].1.root.clone();
+        }
+        match self.program.template(tid) {
+            TemplateRef::Ir(t) => t.root.clone(),
+            TemplateRef::Static(t) => static_to_tnode(&t.root),
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -836,6 +902,12 @@ impl Runtime {
     }
 
     pub(crate) fn apply_spread(&mut self, n: NodeId, old: &Value, new: &Value, mounting: bool) {
+        // Props an island made (`{...getRootProps()}`): its object's properties.
+        let (old, new) = (
+            self.plain_object(old).unwrap_or_default(),
+            self.plain_object(new).unwrap_or_default(),
+        );
+        let (old, new) = (&old, &new);
         let old_pairs: Vec<(Str, Value)> = match old {
             Value::Object(o) => o.borrow().clone(),
             _ => Vec::new(),
@@ -890,5 +962,33 @@ impl FormProps {
         } else {
             self.ty.to_js_string().to_ascii_lowercase()
         }
+    }
+}
+
+/// A generated program's template node as an IR one.
+fn static_to_tnode(n: &crate::program::STNode) -> crate::ir::TNode {
+    use crate::program::{STAttr, STNode};
+    match n {
+        STNode::Text(s) => crate::ir::TNode::Text((*s).to_owned()),
+        STNode::Hole(h) => crate::ir::TNode::Hole(*h),
+        STNode::Element {
+            tag,
+            attrs,
+            children,
+        } => crate::ir::TNode::Element {
+            tag: (*tag).to_owned(),
+            attrs: attrs
+                .iter()
+                .map(|a| match a {
+                    STAttr::Static(k, v) => {
+                        crate::ir::TAttr::Static((*k).to_owned(), (*v).to_owned())
+                    }
+                    STAttr::Dynamic(k, h) => crate::ir::TAttr::Dynamic((*k).to_owned(), *h),
+                    STAttr::Spread(h) => crate::ir::TAttr::Spread(*h),
+                    STAttr::Ref(h) => crate::ir::TAttr::Ref(*h),
+                })
+                .collect(),
+            children: children.iter().map(static_to_tnode).collect(),
+        },
     }
 }

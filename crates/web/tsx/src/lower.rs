@@ -29,7 +29,9 @@ pub fn lower_modules(sources: &[crate::Source]) -> Result<Module, Vec<Diagnostic
     let mut programs = Vec::with_capacity(sources.len());
     let mut errors = Vec::new();
     for src in sources {
-        let ret = Parser::new(&allocator, &src.text, SourceType::tsx()).parse();
+        // A package's module is the island's, never lowered.
+        let text = if src.package { "" } else { src.text.as_str() };
+        let ret = Parser::new(&allocator, text, SourceType::tsx()).parse();
         for d in &ret.diagnostics {
             let mut d = Diagnostic::from_oxc(&src.text, d);
             d.file = src.display_file(crate::code_modules(sources));
@@ -52,10 +54,15 @@ pub fn lower_modules(sources: &[crate::Source]) -> Result<Module, Vec<Diagnostic
     l.ambient_mods = (0..sources.len())
         .filter(|i| sources[*i].is_ambient())
         .collect();
+    l.package_mods = (0..sources.len()).filter(|i| sources[*i].package).collect();
     l.swap_current(0);
     let mut decls = Vec::with_capacity(programs.len());
     for (i, program) in programs.iter().enumerate() {
         l.enter_module(i);
+        if sources[i].package {
+            decls.push(Vec::new());
+            continue;
+        }
         decls.push(l.declare(&program.body, &sources[i].imports));
     }
     // Imports that close a cycle, now that every module is declared.
@@ -85,6 +92,10 @@ pub fn lower_modules(sources: &[crate::Source]) -> Result<Module, Vec<Diagnostic
                 .collect(),
             templates: l.templates,
             root: l.root,
+            island: (!l.island_imports.is_empty()).then(|| Island {
+                script: String::new(),
+                imports: l.island_imports.clone(),
+            }),
             mutates_shared: l.mutates_shared,
         })
     } else {
@@ -385,6 +396,10 @@ struct Lowerer<'a> {
     deferred_imports: Vec<(usize, &'a ast::ImportDeclaration<'a>, usize)>,
     /// `import * as ns` of a module of the app, by (module, name): the module.
     namespaces: BTreeMap<(usize, String), usize>,
+    /// Modules of npm packages (the island's).
+    package_mods: Vec<usize>,
+    /// What compiled code imports from the island: (specifier, name), each once.
+    island_imports: Vec<(String, String)>,
     /// Module-level `const r = createRoot(container)`, by (module, name): the
     /// container's id.
     root_vars: BTreeMap<(usize, String), String>,
@@ -449,6 +464,8 @@ impl<'a> Lowerer<'a> {
             ambient_values: BTreeMap::new(),
             deferred_imports: Vec::new(),
             namespaces: BTreeMap::new(),
+            package_mods: Vec::new(),
+            island_imports: Vec::new(),
             root_vars: BTreeMap::new(),
             container_vars: BTreeMap::new(),
         }
@@ -766,6 +783,25 @@ impl<'a> Lowerer<'a> {
         imports: &BTreeMap<String, usize>,
     ) {
         let module = import.source.value.as_str();
+        let resolved = imports.get(module).copied();
+        if resolved.is_some_and(|m| self.package_mods.contains(&m))
+            || (resolved.is_none()
+                && !module.starts_with('.')
+                && !matches!(module, "react" | "react-dom" | "react-dom/client"))
+        {
+            // A package: its values come from the island.
+            self.island_import(import);
+            return;
+        }
+        if resolved.is_none()
+            && import.specifiers.as_ref().is_none_or(|s| s.is_empty())
+            && [".css", ".scss", ".sass", ".less"]
+                .iter()
+                .any(|e| module.ends_with(e))
+        {
+            // `import './App.css'`: the page's stylesheet, loaded with the page.
+            return;
+        }
         if let Some(&m) = imports.get(module) {
             if m >= self.cur_mod {
                 self.deferred_imports.push((self.cur_mod, import, m));
@@ -818,6 +854,64 @@ impl<'a> Lowerer<'a> {
                     );
                 }
             }
+        }
+    }
+
+    /// An import from a package: each name a global the island's export initialises.
+    fn island_import(&mut self, import: &'a ast::ImportDeclaration<'a>) {
+        if import.import_kind.is_type() {
+            return;
+        }
+        let spec = import.source.value.to_string();
+        let export = |l: &mut Self, name: &str| -> u32 {
+            let key = (spec.clone(), name.to_owned());
+            match l.island_imports.iter().position(|k| *k == key) {
+                Some(i) => i as u32,
+                None => {
+                    l.island_imports.push(key);
+                    l.island_imports.len() as u32 - 1
+                }
+            }
+        };
+        let specifiers = import.specifiers.as_ref();
+        if specifiers.is_none_or(|s| s.is_empty()) {
+            // `import 'pkg'`: run for its effects.
+            export(self, "");
+            return;
+        }
+        for s in specifiers.into_iter().flatten() {
+            let (local, name) = match s {
+                ast::ImportDeclarationSpecifier::ImportSpecifier(s) => {
+                    if s.import_kind.is_type() {
+                        continue;
+                    }
+                    (s.local.name.to_string(), s.imported.name().to_string())
+                }
+                ast::ImportDeclarationSpecifier::ImportDefaultSpecifier(s) => {
+                    (s.local.name.to_string(), "default".to_owned())
+                }
+                ast::ImportDeclarationSpecifier::ImportNamespaceSpecifier(s) => {
+                    (s.local.name.to_string(), "*".to_owned())
+                }
+            };
+            let k = export(self, &name);
+            let slot = self.globals.len() as u32;
+            self.globals.push(Global {
+                name: local.clone(),
+                init: GlobalInit::Island(k),
+                ty: Ty::Unknown,
+            });
+            self.add_global_name(
+                &local,
+                GlobalInfo {
+                    slot,
+                    ty: Ty::Unknown,
+                    func: None,
+                    kind: FunctionKind::Plain,
+                    reassigned: false,
+                    generic: None,
+                },
+            );
         }
     }
 

@@ -24,7 +24,8 @@ fn main() {
                 continue;
             }
             let b = if let Some(files) = cw_tsx::virtual_files(&src) {
-                match cw_tsx::build_virtual(&files) {
+                let packages = ui.join("tests/islands/packages");
+                match cw_tsx::build_virtual_with(&files, Some(&packages)) {
                     Ok(b) => b,
                     Err(_) => continue,
                 }
@@ -72,6 +73,7 @@ fn main() {
         .collect();
     apps.sort();
     watch_dir(&app_src);
+    watch_dir(&ui.join("tests/islands"));
     for root in apps {
         let mut read = |rel: &str| std::fs::read_to_string(root.join(rel)).ok();
         if let Ok(sources) = cw_tsx::load("main.tsx", &mut read) {

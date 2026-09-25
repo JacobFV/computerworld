@@ -89,6 +89,9 @@ pub struct Source {
     pub file: String,
     pub text: String,
     pub imports: BTreeMap<String, usize>,
+    /// A module of an npm package (JavaScript, from `node_modules`): it runs on the
+    /// app's island, never compiled.
+    pub package: bool,
 }
 
 impl Source {
@@ -98,6 +101,7 @@ impl Source {
             file: file.to_owned(),
             text: text.to_owned(),
             imports: BTreeMap::new(),
+            package: false,
         }
     }
 
@@ -148,9 +152,23 @@ fn normalize(path: &str) -> String {
 
 /// The module specifiers a source imports or re-exports from.
 fn specifiers(text: &str) -> Vec<(String, u32)> {
+    specifiers_of(text, "x.tsx")
+}
+
+/// The source type a module's file name says it is (JavaScript files of packages
+/// are parsed as JavaScript).
+pub fn source_type(file: &str) -> oxc_span::SourceType {
+    if file.ends_with(".mjs") || file.ends_with(".js") || file.ends_with(".cjs") {
+        oxc_span::SourceType::mjs().with_jsx(true)
+    } else {
+        oxc_span::SourceType::tsx()
+    }
+}
+
+fn specifiers_of(text: &str, file: &str) -> Vec<(String, u32)> {
     use oxc_ast::ast::Statement as S;
     let allocator = oxc_allocator::Allocator::default();
-    let ret = oxc_parser::Parser::new(&allocator, text, oxc_span::SourceType::tsx()).parse();
+    let ret = oxc_parser::Parser::new(&allocator, text, source_type(file)).parse();
     let mut out = Vec::new();
     for stmt in &ret.program.body {
         match stmt {
@@ -209,6 +227,108 @@ pub struct LoadOptions {
     /// import starting with a key (`@/`) resolves as the path relative to the app's
     /// root that the value names (`src/`) followed by the rest of the specifier.
     pub aliases: Vec<(String, String)>,
+    /// Where npm packages are (`node_modules`, relative to the app's root): a bare
+    /// specifier resolves there as Node's ESM resolution does (`exports` with the
+    /// `import`/`module`/`default` conditions, else `module`, else `main`). `None`
+    /// leaves package imports unresolved.
+    pub node_modules: Option<String>,
+}
+
+/// Modules the island's React shim provides (never read from `node_modules`).
+pub fn is_shim_module(spec: &str) -> bool {
+    matches!(
+        spec,
+        "react" | "react-dom" | "react-dom/client" | "react/jsx-runtime" | "react/jsx-dev-runtime"
+    )
+}
+
+/// `@scope/name/sub` → (`@scope/name`, `sub`); `name/sub` → (`name`, `sub`).
+fn package_parts(spec: &str) -> (&str, &str) {
+    let first = spec.find('/');
+    let end = if spec.starts_with('@') {
+        first.and_then(|i| spec[i + 1..].find('/').map(|j| i + 1 + j))
+    } else {
+        first
+    };
+    match end {
+        Some(e) => (&spec[..e], &spec[e + 1..]),
+        None => (spec, ""),
+    }
+}
+
+/// The target of a package.json `exports` entry under the conditions an ES module
+/// bundle for a browser uses.
+fn export_target(v: &serde_json::Value) -> Option<String> {
+    match v {
+        serde_json::Value::String(s) => Some(s.clone()),
+        serde_json::Value::Object(o) => {
+            for c in ["browser", "import", "module", "default", "require"] {
+                if let Some(t) = o.get(c).and_then(export_target) {
+                    return Some(t);
+                }
+            }
+            None
+        }
+        serde_json::Value::Array(a) => a.iter().find_map(export_target),
+        _ => None,
+    }
+}
+
+/// The file a bare specifier names in `node_modules` (relative to the app's root).
+fn resolve_package(
+    spec: &str,
+    node_modules: &str,
+    read: &mut dyn FnMut(&str) -> Option<String>,
+) -> Option<String> {
+    let (name, sub) = package_parts(spec);
+    let dir = format!("{node_modules}/{name}");
+    let pkg: serde_json::Value = read(&format!("{dir}/package.json"))
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .unwrap_or(serde_json::Value::Null);
+    let key = if sub.is_empty() {
+        ".".to_owned()
+    } else {
+        format!("./{sub}")
+    };
+    if let Some(exports) = pkg.get("exports") {
+        let entry = match exports {
+            serde_json::Value::Object(o) if o.keys().any(|k| k.starts_with('.')) => {
+                match o.get(&key) {
+                    Some(e) => export_target(e),
+                    // A subpath pattern (`"./*": "./esm/*.mjs"`).
+                    None => o.iter().find_map(|(k, v)| {
+                        let (pre, post) = k.split_once('*')?;
+                        let mid = key.strip_prefix(pre)?.strip_suffix(post)?;
+                        Some(export_target(v)?.replace('*', mid))
+                    }),
+                }
+            }
+            other if sub.is_empty() => export_target(other),
+            _ => None,
+        };
+        if let Some(t) = entry {
+            return Some(normalize(&format!("{dir}/{t}")));
+        }
+    }
+    let base = if sub.is_empty() {
+        let main = pkg
+            .get("module")
+            .or_else(|| pkg.get("main"))
+            .and_then(|m| m.as_str())
+            .unwrap_or("index.js");
+        normalize(&format!("{dir}/{main}"))
+    } else {
+        normalize(&format!("{dir}/{sub}"))
+    };
+    [
+        base.clone(),
+        format!("{base}.mjs"),
+        format!("{base}.js"),
+        format!("{base}/index.mjs"),
+        format!("{base}/index.js"),
+    ]
+    .into_iter()
+    .find(|c| read(c).is_some())
 }
 
 /// [`load`] with options, lenient: an import that names no module of the app is
@@ -247,6 +367,12 @@ pub fn load_with(
                 return Some(Found::Open(file.to_owned()));
             }
             let text = (self.read)(file)?;
+            // A JSON module is its value as a default export.
+            let text = if file.ends_with(".json") {
+                format!("export default {};\n", text.trim())
+            } else {
+                text
+            };
             self.open.push(file.to_owned());
             let dir = match file.rfind('/') {
                 Some(i) => &file[..i],
@@ -262,7 +388,7 @@ pub fn load_with(
                 }
             }
             let mut imports = BTreeMap::new();
-            for (spec, at) in specifiers(&text) {
+            for (spec, at) in specifiers_of(&text, file) {
                 let base = if is_relative(&spec) {
                     normalize(&format!("{dir}/{spec}"))
                 } else if let Some((from, to)) = self
@@ -272,6 +398,19 @@ pub fn load_with(
                     .find(|(from, _)| spec.starts_with(from.as_str()))
                 {
                     normalize(&format!("{to}{}", &spec[from.len()..]))
+                } else if let (Some(nm), false) =
+                    (self.options.node_modules.clone(), is_shim_module(&spec))
+                {
+                    match resolve_package(&spec, &nm, self.read) {
+                        Some(f) => f,
+                        None => {
+                            let mut d =
+                                Diagnostic::at(&text, at, format!("cannot find package `{spec}`"));
+                            d.file = file.to_owned();
+                            self.errors.push(d);
+                            continue;
+                        }
+                    }
                 } else {
                     continue;
                 };
@@ -286,6 +425,10 @@ pub fn load_with(
                     format!("{base}.ts"),
                     format!("{base}/index.tsx"),
                     format!("{base}/index.ts"),
+                    format!("{base}.mjs"),
+                    format!("{base}.js"),
+                    format!("{base}/index.mjs"),
+                    format!("{base}/index.js"),
                 ];
                 if let Some(stem) = stem {
                     candidates.push(format!("{stem}.tsx"));
@@ -297,7 +440,10 @@ pub fn load_with(
                         found = Some(Found::Done(*i));
                         break;
                     }
-                    if !(c.ends_with(".tsx") || c.ends_with(".ts")) {
+                    let code = [".tsx", ".ts", ".mjs", ".js", ".cjs", ".jsx", ".json"]
+                        .iter()
+                        .any(|e| c.ends_with(e));
+                    if !code {
                         continue;
                     }
                     if self.open.iter().any(|f| f == c) {
@@ -330,6 +476,10 @@ pub fn load_with(
             self.open.pop();
             let i = self.out.len();
             self.out.push(Source {
+                package: file.starts_with(&format!(
+                    "{}/",
+                    self.options.node_modules.as_deref().unwrap_or("\u{0}")
+                )),
                 file: file.to_owned(),
                 text,
                 imports,
@@ -380,12 +530,35 @@ pub fn virtual_files(text: &str) -> Option<Vec<(String, String)>> {
 
 /// Loads and compiles an app given as [`virtual_files`] (the first is the entry).
 pub fn build_virtual(files: &[(String, String)]) -> Result<Build, Vec<Diagnostic>> {
+    build_virtual_with(files, None)
+}
+
+/// [`build_virtual`] with npm packages read from `packages` (a directory holding
+/// them, as `node_modules` does), which `node_modules/…` paths name.
+pub fn build_virtual_with(
+    files: &[(String, String)],
+    packages: Option<&std::path::Path>,
+) -> Result<Build, Vec<Diagnostic>> {
     let map: BTreeMap<&str, &str> = files
         .iter()
         .map(|(n, t)| (n.as_str(), t.as_str()))
         .collect();
     let entry = files.first().map(|(n, _)| n.clone()).unwrap_or_default();
-    let sources = load(&entry, &mut |f| map.get(f).map(|s| (*s).to_owned()))?;
+    let options = LoadOptions {
+        aliases: Vec::new(),
+        node_modules: packages.map(|_| "node_modules".to_owned()),
+    };
+    let mut read = |f: &str| {
+        if let Some(s) = map.get(f) {
+            return Some((*s).to_owned());
+        }
+        let rest = f.strip_prefix("node_modules/")?;
+        std::fs::read_to_string(packages?.join(rest)).ok()
+    };
+    let (sources, errors) = load_with(&entry, &mut read, &options);
+    if !errors.is_empty() {
+        return Err(errors);
+    }
     Ok(build_modules(&sources))
 }
 
@@ -395,10 +568,20 @@ pub fn build_modules(sources: &[Source]) -> Build {
         Ok(js) => (Some(js), Vec::new()),
         Err(e) => (None, e),
     };
-    let (ir, mut diagnostics) = match lower::lower_modules(sources) {
+    let (mut ir, mut diagnostics) = match lower::lower_modules(sources) {
         Ok(m) => (Some(m), Vec::new()),
         Err(d) => (None, d),
     };
+    // Packages the compiled code imports run on the app's island.
+    if let Some(island) = ir.as_mut().and_then(|m| m.island.as_mut()) {
+        match emit_js::emit_island(sources, &island.imports) {
+            Ok(script) => island.script = script,
+            Err(e) => {
+                diagnostics.extend(e);
+                ir = None;
+            }
+        }
+    }
     for e in &js_errors {
         if !diagnostics.contains(e) {
             diagnostics.push(e.clone());

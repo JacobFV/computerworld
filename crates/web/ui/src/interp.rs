@@ -187,6 +187,11 @@ fn location_part(url: &str, part: &str) -> String {
     }
 }
 
+/// Whether `v` has a built-in method `name` (as the runtime implements it).
+pub(crate) fn has_builtin_method(v: &Value, name: &str) -> bool {
+    Runtime::method_kind(v).is_some_and(|k| method_by_name(k, name).is_some())
+}
+
 /// A time value from local fields (`new Date(y, m, …)`, `Date.UTC`): years 0–99
 /// are 1900–1999, as JavaScript has them.
 fn date_fields(args: &[Value]) -> f64 {
@@ -511,6 +516,10 @@ impl Runtime {
                 let n = n.clone();
                 self.call_native(&n, args)
             }
+            Value::Foreign(f) if f.callable => {
+                let f = f.clone();
+                self.foreign_call(&f, args)
+            }
             other => type_error(format!("{} is not a function", inspect(other))),
         }
     }
@@ -752,6 +761,10 @@ impl Runtime {
                 .iter()
                 .map(|(k, v)| Value::array(vec![k.clone(), v.clone()]))
                 .collect()),
+            Value::Foreign(f) => {
+                let f = f.clone();
+                self.foreign_items(&f)
+            }
             other => type_error(format!("{} is not iterable", inspect(other))),
         }
     }
@@ -775,7 +788,10 @@ impl Runtime {
                 self.bind(frame, inner, v)?;
             }
             Pattern::Array { items, rest } => {
-                let arr = crate::gen::array_items(&v)?;
+                let arr = match &v {
+                    Value::Foreign(_) => self.iterate(&v)?,
+                    _ => crate::gen::array_items(&v)?,
+                };
                 for (i, item) in items.iter().enumerate() {
                     if let Some(p) = item {
                         self.bind(frame, p, arr.get(i).cloned().unwrap_or_default())?;
@@ -792,8 +808,9 @@ impl Runtime {
                     self.bind(frame, p, x)?;
                 }
                 if let Some(r) = rest {
+                    let whole = self.plain_object(&v)?;
                     let rest_v =
-                        crate::gen::object_rest(&v, &mut props.iter().map(|(n, _)| n.as_str()));
+                        crate::gen::object_rest(&whole, &mut props.iter().map(|(n, _)| n.as_str()));
                     self.bind(frame, r, rest_v)?;
                 }
             }
@@ -838,7 +855,8 @@ impl Runtime {
                 for (i, q) in quasis.iter().enumerate() {
                     s.push_str(q);
                     if let Some(e) = exprs.get(i) {
-                        s.push_str(&self.eval(frame, e)?.to_js_string());
+                        let v = self.eval(frame, e)?;
+                        s.push_str(&self.string_of(&v));
                     }
                 }
                 Value::str(&s)
@@ -859,6 +877,7 @@ impl Runtime {
                         }
                         Prop::Spread(v) => {
                             let v = self.eval(frame, v)?;
+                            let v = self.plain_object(&v)?;
                             crate::gen::obj_spread(&mut out, &v);
                         }
                     }
@@ -1066,6 +1085,11 @@ impl Runtime {
 
     pub(crate) fn binary(&mut self, op: BinaryOp, a: &Value, b: &Value) -> R<Value> {
         use BinaryOp as B;
+        if matches!(a, Value::Foreign(_)) || matches!(b, Value::Foreign(_)) {
+            if let Some(v) = self.foreign_binary(op, a, b)? {
+                return Ok(v);
+            }
+        }
         Ok(match op {
             B::Add => crate::gen::add(a, b),
             B::Sub => Value::Num(a.to_number() - b.to_number()),
@@ -1111,6 +1135,10 @@ impl Runtime {
     // ------------------------------------------------------------------ members
 
     pub(crate) fn get_member(&mut self, o: &Value, name: &str) -> R<Value> {
+        if let Value::Foreign(f) = o {
+            let f = f.clone();
+            return self.foreign_get(&f, name);
+        }
         Ok(match o {
             Value::Object(obj) => obj_get(&obj.borrow(), name).unwrap_or_default(),
             Value::Array(a) => match name {
@@ -1221,6 +1249,10 @@ impl Runtime {
 
     pub(crate) fn set_member(&mut self, o: &Value, name: &str, v: Value) -> R<()> {
         match o {
+            Value::Foreign(f) => {
+                let f = f.clone();
+                return self.foreign_set(&f, name, v);
+            }
             Value::Object(obj) => obj_set(&mut obj.borrow_mut(), Rc::from(name), v),
             Value::Ref(r) if name == "current" => *r.borrow_mut() = v,
             Value::Regex(r) if name == "lastIndex" => {
@@ -1436,7 +1468,13 @@ impl Runtime {
             B::MathPi => Value::Num(std::f64::consts::PI),
             B::Infinity => Value::Num(f64::INFINITY),
             B::NaN => Value::Num(f64::NAN),
-            B::Number => Value::Num(if args.is_empty() { 0.0 } else { num(0) }),
+            B::Number => match args.first() {
+                Some(Value::Foreign(f)) => {
+                    let f = f.clone();
+                    Value::Num(self.foreign_number(&f))
+                }
+                _ => Value::Num(if args.is_empty() { 0.0 } else { num(0) }),
+            },
             B::NumberIsNaN => Value::Bool(matches!(arg(&args, 0), Value::Num(n) if n.is_nan())),
             B::NumberIsInteger => Value::Bool(
                 matches!(arg(&args, 0), Value::Num(n) if n.is_finite() && n.fract() == 0.0),
@@ -1450,10 +1488,14 @@ impl Runtime {
             B::String => Value::str(&if args.is_empty() {
                 String::new()
             } else {
-                arg(&args, 0).to_js_string()
+                self.string_of(&arg(&args, 0))
             }),
             B::Boolean => Value::Bool(arg(&args, 0).truthy()),
-            B::ArrayIsArray => Value::Bool(matches!(arg(&args, 0), Value::Array(_))),
+            B::ArrayIsArray => Value::Bool(match arg(&args, 0) {
+                Value::Array(_) => true,
+                Value::Foreign(f) => f.array,
+                _ => false,
+            }),
             B::ArrayFrom => {
                 let src = arg(&args, 0);
                 let items = match &src {
@@ -1487,7 +1529,7 @@ impl Runtime {
             }
             B::ArrayOf => Value::array(args),
             B::ObjectKeys | B::ObjectValues | B::ObjectEntries => {
-                let src = arg(&args, 0);
+                let src = self.plain_object(&arg(&args, 0))?;
                 let pairs: Vec<(Str, Value)> = match &src {
                     Value::Object(o) => {
                         let o = o.borrow();
@@ -1549,6 +1591,15 @@ impl Runtime {
                     obj_set(&mut out, key_string(&k), v);
                 }
                 Value::object(out)
+            }
+            B::JsonStringify if matches!(args.first(), Some(Value::Foreign(_))) => {
+                let Some(Value::Foreign(f)) = args.first().cloned() else {
+                    unreachable!()
+                };
+                match self.foreign_json(&f) {
+                    Some(s) => Value::str(&s),
+                    None => Value::Undefined,
+                }
             }
             B::JsonStringify => match crate::json::stringify(&arg(&args, 0), &arg(&args, 2)) {
                 Some(s) => Value::str(&s),
@@ -1817,8 +1868,17 @@ impl Runtime {
             B::DateParse => Value::Num(cw_jsvm::builtins::date::parse_date(
                 &arg(&args, 0).to_js_string(),
             )),
+            B::Construct => {
+                let f = arg(&args, 0);
+                self.construct(&f, args.into_iter().skip(1).collect())?
+            }
             B::IsInstance => {
                 let v = arg(&args, 0);
+                if let Value::Foreign(f) = &v {
+                    let f = f.clone();
+                    let name = arg(&args, 1).to_js_string();
+                    return Ok(Value::Bool(self.foreign_instance(&f, &name)));
+                }
                 Value::Bool(match arg(&args, 1).to_js_string().as_str() {
                     "Date" => matches!(v, Value::Date(_)),
                     "Array" => matches!(v, Value::Array(_)),
@@ -2020,6 +2080,11 @@ impl Runtime {
 
     pub(crate) fn method(&mut self, r: &Value, m: Method, args: Vec<Value>) -> R<Value> {
         use Method as M;
+        if let Value::Foreign(f) = r {
+            // A value typed as a built-in that an island made: its own method.
+            let f = f.clone();
+            return self.foreign_invoke(&f, crate::ir::method_js_name(m), args);
+        }
         match r {
             Value::Array(a) => return self.array_method(a, r, m, args),
             Value::Str(s) => return self.string_method(s, m, args),
@@ -2232,10 +2297,34 @@ impl Runtime {
         })
     }
 
+    /// The kind of receiver built-in methods are looked up on.
+    pub(crate) fn method_kind(v: &Value) -> Option<MethodKind> {
+        use MethodKind as K;
+        Some(match v {
+            Value::Array(_) => K::Array,
+            Value::Str(_) => K::String,
+            Value::Num(_) => K::Number,
+            Value::Bool(_) => K::Boolean,
+            Value::Promise(_) => K::Promise,
+            Value::Response(_) => K::Response,
+            Value::Regex(_) => K::Regex,
+            Value::Set(_) => K::Set,
+            Value::Map(_) => K::Map,
+            Value::Node(_) => K::Node,
+            Value::Event(_) => K::Event,
+            Value::Date(_) => K::Date,
+            _ => return None,
+        })
+    }
+
     /// `recv.name(args)` looked up when it runs (see `ir::Expr::Invoke`): a built-in
     /// method of the receiver's kind, or a function-valued property.
     pub(crate) fn invoke_by_name(&mut self, r: &Value, name: &str, args: Vec<Value>) -> R<Value> {
         use MethodKind as K;
+        if let Value::Foreign(f) = r {
+            let f = f.clone();
+            return self.foreign_invoke(&f, name, args);
+        }
         let kind = match r {
             Value::Array(_) => Some(K::Array),
             Value::Str(_) => Some(K::String),
@@ -2715,7 +2804,7 @@ impl Runtime {
                 while let Some(i) = rest.find(pat.as_str()) {
                     out.push_str(&rest[..i]);
                     let matched = &rest[i..i + pat.len()];
-                    let r = if matches!(rep, Value::Func(_)) {
+                    let r = if rep.type_of() == "function" {
                         self.call_value(
                             &rep,
                             vec![
@@ -3038,7 +3127,7 @@ impl Runtime {
                 .iter()
                 .map(|g| g.map(|(x, y)| text[x..y].iter().collect()))
                 .collect();
-            let r = if matches!(rep, Value::Func(_)) {
+            let r = if rep.type_of() == "function" {
                 let mut call = vec![Value::str(&matched)];
                 call.extend(
                     groups
@@ -3278,6 +3367,10 @@ impl Runtime {
                 self.set_ref_value(r, Value::Null);
                 return Ok(Value::Undefined);
             }
+            NativeFn::BoundMethod { recv, name } => {
+                let (recv, name) = (recv.clone(), name.clone());
+                return self.invoke_by_name(&recv, &name, args);
+            }
             _ => {}
         }
         let v = args.into_iter().next().unwrap_or_default();
@@ -3326,9 +3419,8 @@ impl Runtime {
             NativeFn::CwOffEnv(id) => self.cw_off_env(*id),
             NativeFn::Builtin(_)
             | NativeFn::ImperativeSet { .. }
-            | NativeFn::ImperativeClear(_) => {
-                unreachable!("called above")
-            }
+            | NativeFn::ImperativeClear(_)
+            | NativeFn::BoundMethod { .. } => unreachable!("called above"),
         }
         Ok(Value::Undefined)
     }
@@ -3343,6 +3435,24 @@ pub(crate) fn new_promise() -> Rc<RefCell<Promise>> {
 
 impl Runtime {
     pub(crate) fn resolve_promise(&mut self, p: &Rc<RefCell<Promise>>, v: Value) {
+        if let Value::Foreign(f) = &v {
+            // A thenable of the island: adopt it through its `then`.
+            let f = f.clone();
+            if self.foreign_thenable(&f) {
+                let ok = Value::Native(Rc::new(NativeFn::Resolver {
+                    promise: p.clone(),
+                    reject: false,
+                }));
+                let bad = Value::Native(Rc::new(NativeFn::Resolver {
+                    promise: p.clone(),
+                    reject: true,
+                }));
+                if let Err(Throw::Value(e)) = self.foreign_then(&f, ok, bad) {
+                    self.reject_promise(p, e);
+                }
+                return;
+            }
+        }
         if let Value::Promise(inner) = &v {
             // Adopt the other promise's eventual state.
             let reaction = Reaction {

@@ -295,10 +295,11 @@ pub fn key_of(v: &Value) -> Option<Str> {
 }
 
 /// The component a JSX element names.
-pub fn component_callee(f: Value) -> R<Rc<Closure>> {
-    match f {
-        Value::Func(func) => Ok(func),
-        other => type_error(format!("element type is invalid: {}", inspect(&other))),
+pub fn component_callee(f: Value) -> R<ComponentFn> {
+    let shown = inspect(&f);
+    match ComponentFn::of(f) {
+        Some(c) => Ok(c),
+        None => type_error(format!("element type is invalid: {shown}")),
     }
 }
 
@@ -316,7 +317,7 @@ pub fn props_spread(out: &mut Vec<(Str, Value)>, v: &Value) {
 
 /// `<Comp {...props}>children</Comp>`.
 pub fn component_elem(
-    func: Rc<Closure>,
+    func: ComponentFn,
     mut props: Vec<(Str, Value)>,
     children: Option<Value>,
     key: Option<Str>,
@@ -384,6 +385,8 @@ impl Runtime {
         }
         match arg(self, i)? {
             Value::Array(a) => Ok(Some(a.borrow().clone())),
+            // An island's dependency list.
+            Value::Foreign(f) if f.array => Ok(Some(self.foreign_items(&f)?)),
             Value::Undefined | Value::Null => Ok(None),
             other => type_error(format!(
                 "dependency list {} is not an array",
@@ -422,7 +425,7 @@ impl Runtime {
                     Value::Undefined
                 };
                 if first {
-                    let value = if matches!(init, Value::Func(_)) {
+                    let value = if init.type_of() == "function" {
                         self.call_value(&init, vec![])?
                     } else {
                         init
@@ -442,7 +445,7 @@ impl Runtime {
                     value = match u {
                         Update::Value(v) => v,
                         Update::Fn(f) => {
-                            if matches!(f, Value::Func(_)) {
+                            if f.type_of() == "function" {
                                 self.call_value(&f, vec![value])?
                             } else {
                                 f
@@ -739,7 +742,7 @@ impl Runtime {
         };
         let update = if idle && queue_empty {
             // React's eager state: compute now, and skip the render if unchanged.
-            let new = if matches!(arg, Value::Func(_)) {
+            let new = if arg.type_of() == "function" {
                 self.call_value(&arg, vec![cur.clone()])?
             } else {
                 arg
@@ -880,6 +883,7 @@ impl Runtime {
                         }
                         Prop::Spread(v) => {
                             let v = self.eval(frame, v)?;
+                            let v = self.plain_object(&v)?;
                             props_spread(&mut out, &v);
                         }
                     }
@@ -1146,10 +1150,9 @@ impl Runtime {
             ) => true,
             (m, Value::Elem(e)) => match (m, &**e) {
                 (MNode::Template(t), Elem::Template { tid, .. }) => t.tid == *tid,
-                (MNode::Component { inst }, Elem::Component { func, .. }) => self
-                    .instances
-                    .get(inst)
-                    .is_some_and(|i| Rc::ptr_eq(&i.func, func)),
+                (MNode::Component { inst }, Elem::Component { func, .. }) => {
+                    self.instances.get(inst).is_some_and(|i| i.func.same(func))
+                }
                 (MNode::List { fragment: true, .. }, Elem::Fragment { .. }) => true,
                 (MNode::Provider { ctx, .. }, Elem::Provider { ctx: c, .. }) => ctx == c,
                 _ => false,
@@ -1166,6 +1169,16 @@ impl Runtime {
         parent: NodeId,
         anchor: Option<NodeId>,
     ) -> MNode {
+        // An island's array renders as the array it is.
+        let owned;
+        let new = match new {
+            Value::Foreign(f) if f.array => {
+                let f = f.clone();
+                owned = Value::array(self.foreign_items(&f).unwrap_or_default());
+                &owned
+            }
+            v => v,
+        };
         match new {
             v if is_empty_child(v) => {
                 self.unmount(old, true);
@@ -1210,7 +1223,7 @@ impl Runtime {
                     Elem::Component { func, .. } => {
                         if let MNode::Component { inst } = &old {
                             let same = self.instances.get(inst).is_some_and(|i| {
-                                Rc::ptr_eq(&i.func, func)
+                                i.func.same(func)
                                     && i.elem.as_ref().map(|x| x.key()) == Some(e.key())
                             });
                             if same {
@@ -1614,14 +1627,21 @@ impl Runtime {
         // `ref` on a component is the element's, not a prop: a `forwardRef`
         // render function gets it as its second argument, others never see it.
         let (props, element_ref) = split_ref(&props);
-        let forward_ref = self.program.forward_ref(func.func);
+        let forward_ref = match &func {
+            ComponentFn::Compiled(c) => self.program.forward_ref(c.func),
+            ComponentFn::Foreign(f) => self.foreign_forward_ref(f),
+        };
         loop {
             let args = if forward_ref {
                 vec![props.clone(), element_ref.clone().unwrap_or(Value::Null)]
             } else {
                 vec![props.clone()]
             };
-            result = self.call_closure(&func, args, Some(inst));
+            result = match &func {
+                ComponentFn::Compiled(c) => self.call_closure(c, args, Some(inst)),
+                // A component of the island renders there, its hooks cw-ui's.
+                ComponentFn::Foreign(f) => self.foreign_call(f, args),
+            };
             let r = self.render.last_mut().unwrap();
             if r.rerender && result.is_ok() && guard < 25 {
                 r.rerender = false;
@@ -2049,7 +2069,7 @@ impl Runtime {
             let Some(create) = create else { continue };
             match self.call_value(&create, vec![]) {
                 Ok(ret) => {
-                    let cleanup = matches!(ret, Value::Func(_)).then_some(ret);
+                    let cleanup = (ret.type_of() == "function").then_some(ret);
                     if let Some(HookState::Effect { cleanup: c, .. }) = self
                         .instances
                         .get_mut(&inst)
@@ -2115,6 +2135,10 @@ impl Runtime {
                     self.microtasks.clear();
                     break;
                 }
+            }
+            // The island's promise jobs, after cw-ui's.
+            if self.run_js_jobs() {
+                ran = true;
             }
             self.flush();
             if !ran && self.microtasks.is_empty() {

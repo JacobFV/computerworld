@@ -494,6 +494,7 @@ pub fn evaluate_with(dir: &Path, split: &str, show: &mut dyn FnMut(&str, &Diagno
                 .iter()
                 .map(|(a, b)| (a.clone(), b.clone()))
                 .collect(),
+            node_modules: None,
         };
         let result = evaluate_project(&root, p, &options, &mut report, show);
         report.modules.merge(&result.modules);

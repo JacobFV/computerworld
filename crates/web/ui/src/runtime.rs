@@ -53,6 +53,11 @@ pub enum NativeFn {
     CwOffEnv(u32),
     /// A built-in function used as a value (`xs.filter(Boolean)`, `map(Number)`).
     Builtin(crate::ir::Builtin),
+    /// A built-in method bound to its receiver (`arr.map` read by an island).
+    BoundMethod {
+        recv: crate::value::Value,
+        name: Str,
+    },
     /// A `useImperativeHandle` effect: sets `r` to `create()`, returning the
     /// cleanup that sets it back to null.
     ImperativeSet {
@@ -146,7 +151,7 @@ pub(crate) struct CacheEntry {
 
 #[derive(Debug)]
 pub(crate) struct Instance {
-    pub func: Rc<Closure>,
+    pub func: crate::value::ComponentFn,
     pub elem: Option<Rc<Elem>>,
     pub props: Value,
     pub hooks: Vec<HookState>,
@@ -338,6 +343,14 @@ pub struct Runtime {
     pub(crate) fire_depth: u32,
     /// A generated program's string literals, made once each (`gen::Runtime::lit`).
     pub(crate) lits: Vec<Option<Str>>,
+    /// The JS VM running the app's code outside the compiled subset, when it has
+    /// any (see `crate::island`).
+    pub(crate) island: Option<Box<crate::island::Island>>,
+    /// Templates made while running, one per host tag an island's element uses
+    /// (numbered after the program's).
+    pub(crate) dyn_templates: Vec<(String, crate::ir::Template)>,
+    /// A restored island's stand-ins, held until their values are paired.
+    pub(crate) island_keep: Vec<cw_jsvm::value::Obj>,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -398,6 +411,9 @@ impl Runtime {
             pure_render,
             booted: false,
             crashed: false,
+            island: None,
+            dyn_templates: Vec::new(),
+            island_keep: Vec::new(),
             regex_cache: BTreeMap::new(),
             boxed_cache: Vec::new(),
             global_listeners: Vec::new(),

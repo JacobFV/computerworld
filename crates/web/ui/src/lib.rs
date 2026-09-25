@@ -33,6 +33,7 @@ mod events;
 pub mod gen;
 mod geometry;
 mod interp;
+pub mod island;
 mod json;
 pub mod program;
 mod render;
@@ -193,6 +194,14 @@ impl UiApp {
         rt.start_micros = rt.inner.host_now_micros();
         let program = rt.program.clone();
         rt.globals = vec![Value::Undefined; program.globals_len()];
+        // The island first: compiled globals initialise from its exports.
+        if let Some(script) = program.island_script() {
+            if let Err(e) = rt.start_island(script) {
+                rt.report(e);
+                rt.crashed = true;
+                return;
+            }
+        }
         if let Err(e) = program.boot_globals(rt) {
             rt.report(e);
             rt.crashed = true;

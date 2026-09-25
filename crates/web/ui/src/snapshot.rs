@@ -36,6 +36,8 @@ pub enum V {
     Dispatch(u32, u32),
     Node(NodeId),
     Ctx(u32),
+    /// A value of the app's island, by handle (see `crate::island`).
+    Foreign(u32),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -61,6 +63,10 @@ pub enum HeapObj {
     CwOffEnv(u32),
     /// A built-in function used as a value.
     BuiltinFn(crate::ir::Builtin),
+    /// A component element of an island's component (function, props, key).
+    ComponentOf(V, V, Option<String>),
+    /// A built-in method bound to its receiver.
+    BoundMethod(V, String),
     /// A `useImperativeHandle` effect (ref, create) and its cleanup (ref).
     ImperativeSet(V, V),
     ImperativeClear(V),
@@ -208,6 +214,27 @@ pub struct UiState {
     /// The `cw` bridge, once the app used it, with the requests awaiting replies.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cw: Option<CwS>,
+    /// The island: its VM's heap image and the values crossing its boundary.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub island: Option<IslandS>,
+    /// Templates made while running (an island's host elements), by tag.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dyn_templates: Vec<String>,
+}
+
+/// An island in a snapshot. The heap image (`cw_jsvm::snapshot`, base64) is
+/// readable only by the program image that wrote it; the roots it was written with
+/// are, in order: the `__cw` object, the VM values of cw-ui's handles (`js`), the
+/// VM stand-ins of cw-ui's values (`cw`), and the VM objects of contexts.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct IslandS {
+    pub heap: String,
+    pub js: Vec<u32>,
+    pub cw: Vec<(u32, V)>,
+    pub contexts: Vec<u32>,
+    pub next_context: u32,
+    pub exports: Vec<V>,
+    pub rng: u64,
 }
 
 /// A suspended async function call (see `crate::asyncfn::encode`).
@@ -321,6 +348,7 @@ impl Enc {
 
     fn v(&mut self, v: &Value) -> V {
         match v {
+            Value::Foreign(f) => V::Foreign(f.id),
             Value::Undefined => V::U,
             Value::Null => V::Null,
             Value::Bool(b) => V::B(*b),
@@ -386,13 +414,19 @@ impl Enc {
                             key.as_ref().map(|k| k.to_string()),
                         ),
                         Elem::Component { func, props, key } => {
-                            let f = self.v(&Value::Func(func.clone()));
-                            let V::H(fi) = f else { unreachable!() };
-                            HeapObj::Component(
-                                fi,
-                                self.v(props),
-                                key.as_ref().map(|k| k.to_string()),
-                            )
+                            let f = self.v(&func.value());
+                            match f {
+                                V::H(fi) => HeapObj::Component(
+                                    fi,
+                                    self.v(props),
+                                    key.as_ref().map(|k| k.to_string()),
+                                ),
+                                f => HeapObj::ComponentOf(
+                                    f,
+                                    self.v(props),
+                                    key.as_ref().map(|k| k.to_string()),
+                                ),
+                            }
                         }
                         Elem::Fragment { children, key } => HeapObj::Fragment(
                             children.iter().map(|x| self.v(x)).collect(),
@@ -527,6 +561,9 @@ impl Enc {
                         }
                         NativeFn::CwOffEnv(id) => HeapObj::CwOffEnv(*id),
                         NativeFn::Builtin(b) => HeapObj::BuiltinFn(*b),
+                        NativeFn::BoundMethod { recv, name } => {
+                            HeapObj::BoundMethod(self.v(recv), name.to_string())
+                        }
                         NativeFn::ImperativeSet { r, create } => {
                             HeapObj::ImperativeSet(self.v(r), self.v(create))
                         }
@@ -663,7 +700,7 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         .iter()
         .map(|(id, i)| InstanceS {
             id: *id,
-            func: e.v(&Value::Func(i.func.clone())),
+            func: e.v(&i.func.value()),
             elem: i.elem.as_ref().map(|x| e.v(&Value::Elem(x.clone()))),
             props: e.v(&i.props),
             hooks: i.hooks.iter().map(|h| e.hook(h)).collect(),
@@ -735,6 +772,19 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         Some(m) => (Some((**m).clone()), None),
         None => (None, Some(rt.program.id())),
     };
+    let island = rt.island.as_ref().map(|i| {
+        let parts = i.image();
+        IslandS {
+            heap: parts.heap,
+            js: parts.js,
+            cw: parts.cw.iter().map(|(id, v)| (*id, e.v(v))).collect(),
+            contexts: parts.contexts,
+            next_context: parts.next_context,
+            exports: parts.exports.iter().map(|v| e.v(v)).collect(),
+            rng: parts.rng,
+        }
+    });
+    let dyn_templates = rt.dyn_templates.iter().map(|(t, _)| t.clone()).collect();
     UiState {
         module,
         program,
@@ -794,6 +844,8 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         crashed: rt.crashed,
         listeners,
         cw,
+        island,
+        dyn_templates,
     }
 }
 
@@ -805,6 +857,8 @@ struct Dec<'a> {
     program: Rc<dyn Program>,
     tasks: BTreeMap<u32, Rc<RefCell<Option<crate::asyncfn::Task>>>>,
     alls: BTreeMap<u32, Rc<RefCell<AllState>>>,
+    /// The island's handles, by id.
+    foreign: BTreeMap<u32, Value>,
 }
 
 impl Dec<'_> {
@@ -822,6 +876,11 @@ impl Dec<'_> {
             V::Dispatch(a, b) => Value::Dispatch(*a, *b),
             V::Node(n) => Value::Node(*n),
             V::Ctx(c) => Value::Context(*c),
+            V::Foreign(id) => self
+                .foreign
+                .get(id)
+                .cloned()
+                .ok_or("a handle of the island its snapshot does not have")?,
             V::H(i) => self.heap_value(*i)?,
         })
     }
@@ -890,7 +949,7 @@ impl Dec<'_> {
                     return Err("component element without a function".into());
                 };
                 Value::Elem(Rc::new(Elem::Component {
-                    func,
+                    func: ComponentFn::Compiled(func),
                     props: self.v(props)?,
                     key: key.as_deref().map(Rc::from),
                 }))
@@ -973,6 +1032,19 @@ impl Dec<'_> {
             })),
             HeapObj::CwOffEnv(id) => Value::Native(Rc::new(NativeFn::CwOffEnv(*id))),
             HeapObj::BuiltinFn(b) => Value::Native(Rc::new(NativeFn::Builtin(*b))),
+            HeapObj::BoundMethod(recv, name) => Value::Native(Rc::new(NativeFn::BoundMethod {
+                recv: self.v(recv)?,
+                name: Rc::from(name.as_str()),
+            })),
+            HeapObj::ComponentOf(f, props, key) => {
+                let func =
+                    ComponentFn::of(self.v(f)?).ok_or("component element without a function")?;
+                Value::Elem(Rc::new(Elem::Component {
+                    func,
+                    props: self.v(props)?,
+                    key: key.as_deref().map(Rc::from),
+                }))
+            }
             HeapObj::ImperativeSet(r, create) => Value::Native(Rc::new(NativeFn::ImperativeSet {
                 r: self.v(r)?,
                 create: self.v(create)?,
@@ -1088,11 +1160,8 @@ impl Dec<'_> {
         Ok(cell)
     }
 
-    fn func(&mut self, v: &V) -> Result<Rc<Closure>, String> {
-        match self.v(v)? {
-            Value::Func(c) => Ok(c),
-            _ => Err("expected a function".into()),
-        }
+    fn func(&mut self, v: &V) -> Result<ComponentFn, String> {
+        ComponentFn::of(self.v(v)?).ok_or_else(|| "expected a function".into())
     }
 
     fn elem(&mut self, v: &V) -> Result<Rc<Elem>, String> {
@@ -1238,13 +1307,42 @@ pub(crate) fn load(
     host: Box<dyn ScriptHostDocument>,
 ) -> Result<Runtime, String> {
     let mut rt = Runtime::new(program.clone(), host, &s.url);
+    // The island's VM first: cw-ui's values name its objects by handle.
+    let mut foreign = BTreeMap::new();
+    if let Some(is) = &s.island {
+        foreign = rt.load_island(
+            &is.heap,
+            &is.js,
+            &is.cw,
+            &is.contexts,
+            is.next_context,
+            is.rng,
+        )?;
+    }
+    for tag in &s.dyn_templates {
+        rt.dyn_template(tag);
+    }
     let mut d = Dec {
         heap: &s.heap,
         done: vec![None; s.heap.len()],
         program,
         tasks: BTreeMap::new(),
         alls: BTreeMap::new(),
+        foreign,
     };
+    if let Some(is) = &s.island {
+        let cw = is
+            .cw
+            .iter()
+            .map(|(id, v)| Ok((*id, d.v(v)?)))
+            .collect::<Result<Vec<_>, String>>()?;
+        let exports = is
+            .exports
+            .iter()
+            .map(|v| d.v(v))
+            .collect::<Result<Vec<_>, _>>()?;
+        rt.finish_island(cw, exports);
+    }
     rt.globals = s.globals.iter().map(|g| d.v(g)).collect::<Result<_, _>>()?;
     for (k, v) in &s.ctx_defaults {
         let v = d.v(v)?;

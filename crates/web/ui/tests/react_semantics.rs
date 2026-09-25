@@ -120,7 +120,11 @@ fn dom_text(
 fn compile(tsx: &str) -> (cw_ui::ir::Module, String) {
     // Several modules (`// @file <path>` lines), the first the entry; or one.
     let b = match cw_tsx::virtual_files(tsx) {
-        Some(files) => cw_tsx::build_virtual(&files).unwrap_or_else(|d| panic!("{d:?}")),
+        Some(files) => {
+            let packages =
+                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/islands/packages");
+            cw_tsx::build_virtual_with(&files, Some(&packages)).unwrap_or_else(|d| panic!("{d:?}"))
+        }
         None => cw_tsx::build(tsx, "app.tsx"),
     };
     assert!(
@@ -1595,5 +1599,52 @@ function App() {
 createRoot(document.getElementById('root')!).render(<App />);
 "#,
         &[Step::Click("#go")],
+    );
+}
+
+#[test]
+fn packages_run_on_the_island_beside_compiled_code() {
+    // clsx and zustand (real npm packages, tests/islands/packages) run on the app's
+    // island; the compiled components call them, pass them closures, and render
+    // with zustand's hook, which is cw-ui's useSyncExternalStore.
+    same_as_react(
+        r#"
+// @file main.tsx
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import clsx from 'clsx';
+import { create } from 'zustand';
+interface Counter { count: number; label: string; inc: () => void; reset: () => void }
+const useCounter = create<Counter>((set) => ({
+  count: 0,
+  label: 'none',
+  inc: () => set((s) => ({ count: s.count + 1, label: 'n' + (s.count + 1) })),
+  reset: () => set({ count: 0, label: 'reset' }),
+}));
+function Badge({ n }: { n: number }) {
+  const count = useCounter((s) => s.count);
+  return <b className={clsx('badge', { hot: count > 1, cold: count === 0 }, n > 1 && 'big')}>{n}:{count}</b>;
+}
+function App() {
+  const count = useCounter((s) => s.count);
+  const label = useCounter((s) => s.label);
+  const inc = useCounter((s) => s.inc);
+  const [n, setN] = useState(1);
+  console.log('render', count, label, clsx(['a', null, 'b'], { c: n > 1 }), typeof inc);
+  return (
+    <div>
+      <button id="go" onClick={() => { inc(); setN(n + 1); }}>go</button>
+      <button id="reset" onClick={() => useCounter.getState().reset()}>reset</button>
+      <Badge n={n} />
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[
+            Step::Click("#go"),
+            Step::Click("#go"),
+            Step::Click("#reset"),
+        ],
     );
 }

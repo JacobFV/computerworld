@@ -229,6 +229,10 @@ pub trait Program {
     fn function_ir(&self, f: u32) -> Option<&Function>;
     /// Initialises the module's globals, in declaration order.
     fn boot_globals(&self, rt: &mut Runtime) -> R<()>;
+    /// The program's island script, when it has code on the JS VM.
+    fn island_script(&self) -> Option<&str> {
+        None
+    }
     /// Calls a closure of this program; `inst` marks a component's render.
     fn call(
         &self,
@@ -292,6 +296,9 @@ impl Program for IrProgram {
     fn module(&self) -> Option<&Rc<Module>> {
         Some(&self.module)
     }
+    fn island_script(&self) -> Option<&str> {
+        self.module.island.as_ref().map(|i| i.script.as_str())
+    }
     fn globals_len(&self) -> usize {
         self.module.globals.len()
     }
@@ -349,6 +356,9 @@ impl Program for IrProgram {
                 ir::GlobalInit::Context(e) => {
                     let v = rt.eval(&mut frame, e)?;
                     rt.ctx_defaults.insert(i as u32, v);
+                }
+                ir::GlobalInit::Island(k) => {
+                    rt.globals[i] = rt.island_export(*k)?;
                 }
                 ir::GlobalInit::Run(f) => {
                     rt.call_closure(
@@ -413,6 +423,8 @@ pub struct GenProgram {
     /// time one is called; empty when there are none.
     pub async_ir: &'static str,
     pub async_cache: OnceLock<BTreeMap<u32, Function>>,
+    /// The island's script (`ir::Island::script`); empty when there is none.
+    pub island: &'static str,
 }
 
 impl GenProgram {
@@ -480,6 +492,9 @@ impl Program for GenProgram {
     fn boot_globals(&self, rt: &mut Runtime) -> R<()> {
         (self.init)(rt)
     }
+    fn island_script(&self) -> Option<&str> {
+        (!self.island.is_empty()).then_some(self.island)
+    }
     fn call(
         &self,
         rt: &mut Runtime,
@@ -545,6 +560,9 @@ impl Program for StaticProgram {
     }
     fn boot_globals(&self, rt: &mut Runtime) -> R<()> {
         self.0.boot_globals(rt)
+    }
+    fn island_script(&self) -> Option<&str> {
+        self.0.island_script()
     }
     fn call(
         &self,

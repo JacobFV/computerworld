@@ -54,6 +54,62 @@ pub enum Value {
     Map(Rc<RefCell<Vec<(Value, Value)>>>),
     /// A `Date`: its time value (milliseconds since the epoch, or NaN).
     Date(Rc<Cell<f64>>),
+    /// A value of the app's island (the JS VM running the code outside the
+    /// compiled subset): its handle, one per VM object (see `crate::island`).
+    Foreign(Rc<Foreign>),
+}
+
+/// The handle of a VM value.
+#[derive(Debug)]
+pub struct Foreign {
+    pub id: u32,
+    /// A function (for `typeof`).
+    pub callable: bool,
+    /// An array (for `Array.isArray` and rendering).
+    pub array: bool,
+    /// Where a dropped handle's id is queued for the island to free.
+    pub(crate) drops: Option<Rc<RefCell<Vec<u32>>>>,
+}
+
+impl Drop for Foreign {
+    fn drop(&mut self) {
+        if let Some(d) = &self.drops {
+            d.borrow_mut().push(self.id);
+        }
+    }
+}
+
+/// What a component element renders: a compiled function or an island's.
+#[derive(Clone, Debug)]
+pub enum ComponentFn {
+    Compiled(Rc<Closure>),
+    Foreign(Rc<Foreign>),
+}
+
+impl ComponentFn {
+    /// The component a value is (`None` for anything else).
+    pub fn of(v: Value) -> Option<ComponentFn> {
+        match v {
+            Value::Func(c) => Some(ComponentFn::Compiled(c)),
+            Value::Foreign(f) if f.callable => Some(ComponentFn::Foreign(f)),
+            _ => None,
+        }
+    }
+    /// The function as a value.
+    pub fn value(&self) -> Value {
+        match self {
+            ComponentFn::Compiled(c) => Value::Func(c.clone()),
+            ComponentFn::Foreign(f) => Value::Foreign(f.clone()),
+        }
+    }
+    /// The same function (as React compares element types).
+    pub fn same(&self, o: &ComponentFn) -> bool {
+        match (self, o) {
+            (ComponentFn::Compiled(a), ComponentFn::Compiled(b)) => Rc::ptr_eq(a, b),
+            (ComponentFn::Foreign(a), ComponentFn::Foreign(b)) => Rc::ptr_eq(a, b),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -96,7 +152,7 @@ pub enum Elem {
         key: Option<Str>,
     },
     Component {
-        func: Rc<Closure>,
+        func: ComponentFn,
         props: Value,
         key: Option<Str>,
     },
@@ -212,6 +268,7 @@ impl Value {
             Value::Func(_) | Value::Setter(..) | Value::Dispatch(..) | Value::Native(_) => {
                 "function"
             }
+            Value::Foreign(f) if f.callable => "function",
             _ => "object",
         }
     }
@@ -339,6 +396,7 @@ fn strict_equals_ref(a: &Value, b: &Value) -> bool {
         (Value::Set(x), Value::Set(y)) => Rc::ptr_eq(x, y),
         (Value::Map(x), Value::Map(y)) => Rc::ptr_eq(x, y),
         (Value::Date(x), Value::Date(y)) => Rc::ptr_eq(x, y),
+        (Value::Foreign(x), Value::Foreign(y)) => Rc::ptr_eq(x, y),
         _ => false,
     }
 }

@@ -78,6 +78,9 @@ pub fn emit(m: &Module, mod_name: &str) -> String {
     let _ = writeln!(out, "    init: init,");
     let _ = writeln!(out, "    async_ir: r{hashes}\"{async_ir}\"{hashes},");
     let _ = writeln!(out, "    async_cache: std::sync::OnceLock::new(),");
+    let island = m.island.as_ref().map(|i| i.script.as_str()).unwrap_or("");
+    let ih = "#".repeat(raw_hashes(island));
+    let _ = writeln!(out, "    island: r{ih}\"{island}\"{ih},");
     let _ = writeln!(out, "}};\n");
     // Function table.
     let _ = writeln!(out, "static FUNCS: [GenFunc; {}] = [", m.functions.len());
@@ -318,6 +321,10 @@ impl<'m> Gen<'m> {
                 }
                 GlobalInit::Run(f) => {
                     cx.line(&format!("f{f}(rt, &[], Vec::new(), None)?;"));
+                }
+                GlobalInit::Island(k) => {
+                    cx.line(&format!("let v = rt.island_export({k})?;"));
+                    cx.line(&format!("rt.set_global({i}, v);"));
                 }
                 _ => {}
             }

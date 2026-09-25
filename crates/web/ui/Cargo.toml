@@ -12,6 +12,7 @@ serde_json.workspace = true
 cw-regex = { path = "../../languages/regex" }
 # Date arithmetic and formats, shared with the JS VM so the two agree exactly.
 cw-jsvm = { path = "../../languages/jsvm" }
+cw-script-host = { path = "../../languages/script-host" }
 
 [dev-dependencies]
 cw-tsx = { path = "../tsx" }
