@@ -25,6 +25,28 @@ pub fn lower(source: &str, file_name: &str) -> Result<Module, Vec<Diagnostic>> {
 /// Lowers an app of several modules, in dependency order (each after the modules it
 /// imports, the entry last; see `crate::load`), to one IR module.
 pub fn lower_modules(sources: &[crate::Source]) -> Result<Module, Vec<Diagnostic>> {
+    lower_modules_with(sources, &LowerOptions::default())
+}
+
+/// How [`lower_modules_with`] lowers.
+#[derive(Clone, Debug)]
+pub struct LowerOptions {
+    /// Whether imports from packages run on the island. Off, a package's names are
+    /// outside the subset, as they were before islands (the corpus reports both).
+    pub islands: bool,
+}
+
+impl Default for LowerOptions {
+    fn default() -> Self {
+        LowerOptions { islands: true }
+    }
+}
+
+/// [`lower_modules`] with options.
+pub fn lower_modules_with(
+    sources: &[crate::Source],
+    options: &LowerOptions,
+) -> Result<Module, Vec<Diagnostic>> {
     let allocator = Allocator::default();
     let mut programs = Vec::with_capacity(sources.len());
     let mut errors = Vec::new();
@@ -43,6 +65,7 @@ pub fn lower_modules(sources: &[crate::Source]) -> Result<Module, Vec<Diagnostic
         return Err(errors);
     }
     let mut l = Lowerer::new("");
+    l.islands = options.islands;
     l.mods = sources
         .iter()
         .map(|s| ModNames {
@@ -398,6 +421,8 @@ struct Lowerer<'a> {
     namespaces: BTreeMap<(usize, String), usize>,
     /// Modules of npm packages (the island's).
     package_mods: Vec<usize>,
+    /// Whether package imports go to the island (`LowerOptions::islands`).
+    islands: bool,
     /// What compiled code imports from the island: (specifier, name), each once.
     island_imports: Vec<(String, String)>,
     /// Module-level `const r = createRoot(container)`, by (module, name): the
@@ -465,6 +490,7 @@ impl<'a> Lowerer<'a> {
             deferred_imports: Vec::new(),
             namespaces: BTreeMap::new(),
             package_mods: Vec::new(),
+            islands: true,
             island_imports: Vec::new(),
             root_vars: BTreeMap::new(),
             container_vars: BTreeMap::new(),
@@ -784,10 +810,20 @@ impl<'a> Lowerer<'a> {
     ) {
         let module = import.source.value.as_str();
         let resolved = imports.get(module).copied();
-        if resolved.is_some_and(|m| self.package_mods.contains(&m))
-            || (resolved.is_none()
-                && !module.starts_with('.')
-                && !matches!(module, "react" | "react-dom" | "react-dom/client"))
+        if !self.islands && resolved.is_some_and(|m| self.package_mods.contains(&m)) {
+            self.err(
+                import.span,
+                format!(
+                    "import from `{module}`: a compiled app imports only `react` and `react-dom`"
+                ),
+            );
+            return;
+        }
+        if self.islands && resolved.is_some_and(|m| self.package_mods.contains(&m))
+            || self.islands
+                && (resolved.is_none()
+                    && !module.starts_with('.')
+                    && !matches!(module, "react" | "react-dom" | "react-dom/client"))
         {
             // A package: its values come from the island.
             self.island_import(import);

@@ -102,6 +102,8 @@ pub struct ProjectResult {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Report {
     pub split: String,
+    /// Whether package imports counted as running on the island.
+    pub islands: bool,
     pub projects: usize,
     pub modules: Count,
     pub functions: Count,
@@ -129,8 +131,15 @@ impl Report {
             ));
         };
         s.push_str(&format!(
-            "split {}: {} projects, {} diagnostics\n",
-            self.split, self.projects, self.diagnostics
+            "split {}{}: {} projects, {} diagnostics\n",
+            self.split,
+            if self.islands {
+                ", with islands"
+            } else {
+                ", compiled alone (no islands)"
+            },
+            self.projects,
+            self.diagnostics
         ));
         line(&mut s, "modules", &self.modules);
         line(&mut s, "functions", &self.functions);
@@ -470,12 +479,24 @@ pub fn evaluate(dir: &Path, split: &str) -> Report {
 
 /// [`evaluate`], showing `show` every diagnostic (with its project) as it goes.
 pub fn evaluate_with(dir: &Path, split: &str, show: &mut dyn FnMut(&str, &Diagnostic)) -> Report {
+    evaluate_opts(dir, split, &crate::lower::LowerOptions::default(), show)
+}
+
+/// [`evaluate_with`], lowering with `lower` (with islands off, a package import
+/// is outside the subset and so is the code that uses it).
+pub fn evaluate_opts(
+    dir: &Path,
+    split: &str,
+    lower: &crate::lower::LowerOptions,
+    show: &mut dyn FnMut(&str, &Diagnostic),
+) -> Report {
     let manifest: Manifest = serde_json::from_str(
         &std::fs::read_to_string(dir.join("manifest.json")).expect("corpus manifest"),
     )
     .expect("manifest parse");
     let mut report = Report {
         split: split.to_owned(),
+        islands: lower.islands,
         ..Report::default()
     };
     for p in &manifest.projects {
@@ -496,7 +517,7 @@ pub fn evaluate_with(dir: &Path, split: &str, show: &mut dyn FnMut(&str, &Diagno
                 .collect(),
             node_modules: None,
         };
-        let result = evaluate_project(&root, p, &options, &mut report, show);
+        let result = evaluate_project(&root, p, &options, lower, &mut report, show);
         report.modules.merge(&result.modules);
         report.functions.merge(&result.functions);
         report.components.merge(&result.components);
@@ -513,6 +534,7 @@ fn evaluate_project(
     root: &Path,
     p: &ManifestProject,
     options: &LoadOptions,
+    lower: &crate::lower::LowerOptions,
     report: &mut Report,
     show: &mut dyn FnMut(&str, &Diagnostic),
 ) -> ProjectResult {
@@ -535,7 +557,7 @@ fn evaluate_project(
         diags.extend(load_errors.into_iter().filter(|d| d.file == *file));
         if !sources.is_empty() {
             let multi = crate::code_modules(&sources) > 1;
-            match crate::lower::lower_modules(&sources) {
+            match crate::lower::lower_modules_with(&sources, lower) {
                 Ok(_) => {}
                 Err(ds) => {
                     for d in ds {
@@ -608,7 +630,12 @@ fn evaluate_project(
     if let Some(entry) = entry {
         let mut read = |rel: &str| read_file(rel);
         let (sources, errors) = crate::load_with(entry, &mut read, options);
-        let compiled = errors.is_empty() && crate::build_modules(&sources).diagnostics.is_empty();
+        let compiled = errors.is_empty()
+            && if lower.islands {
+                crate::build_modules(&sources).diagnostics.is_empty()
+            } else {
+                crate::lower::lower_modules_with(&sources, lower).is_ok()
+            };
         result.app = Some(compiled);
         result.entry = Some(entry.clone());
     }

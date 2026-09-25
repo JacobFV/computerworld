@@ -12,7 +12,7 @@
 //!                                      `PROGRAM: cw_ui::GenProgram`) for an app
 //!                                      built into the binary
 //!     cw-tsx check app.tsx             prints the diagnostics; exit 1 if any
-//!     cw-tsx corpus <dir> [--split dev|test|all] [--json out.json] [--top n] [--grep text]
+//!     cw-tsx corpus <dir> [--split dev|test|all] [--json out.json] [--top n] [--grep text] [--no-islands]
 //!                                      evaluates the held-out corpus in <dir>
 //!                                      (crates/web/tsx/corpus): how much of it is
 //!                                      inside the compiled subset, and why not
@@ -161,6 +161,7 @@ fn corpus(rest: &[String]) -> ExitCode {
     let mut json: Option<PathBuf> = None;
     let mut top = 40usize;
     let mut grep: Option<String> = None;
+    let mut lower = cw_tsx::lower::LowerOptions::default();
     let mut it = rest.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -168,12 +169,13 @@ fn corpus(rest: &[String]) -> ExitCode {
             "--json" => json = it.next().map(PathBuf::from),
             "--top" => top = it.next().and_then(|n| n.parse().ok()).unwrap_or(top),
             "--grep" => grep = it.next().cloned(),
+            "--no-islands" => lower.islands = false,
             s if dir.is_none() => dir = Some(PathBuf::from(s)),
             _ => return usage(),
         }
     }
     let Some(dir) = dir else { return usage() };
-    let report = cw_tsx::corpus::evaluate_with(&dir, &split, &mut |project, d| {
+    let report = cw_tsx::corpus::evaluate_opts(&dir, &split, &lower, &mut |project, d| {
         if let Some(g) = &grep {
             if d.message.contains(g.as_str()) {
                 println!("{project}: {d}");

@@ -1,0 +1,81 @@
+split test, with islands: 149 projects, 356 diagnostics
+modules       400 / 530    75.5%
+functions     657 / 770    85.3%
+components    506 / 594    85.2%
+apps            0 / 39      0.0%
+functions blocked, by cause:
+     27  value imported from a module that does not resolve
+     15  `new` is outside the compiled subset
+     12  built-in method `toLocaleString` is outside the compiled subset
+     10  this React API is outside the compiled subset
+      8  method `toLocaleDateString` on Date
+      6  this expression is outside the compiled subset
+      6  unknown name `process`
+      5  class components are outside the compiled subset
+      4  unknown name `window`
+      3  a tagged template is outside the compiled subset
+      3  method `toLocaleString` on Date
+      3  method `toLocaleTimeString` on Date
+      2  `ReactDOM` from React cannot be used as a value here
+      2  `await` inside an expression is outside the compiled subset (await into a variable first)
+      2  `window.history` is outside the compiled subset
+      2  property does not exist on another type
+      2  value imported from a package
+      1  `<FilterContext.Provider>` on a value of type unknown
+      1  `Promise.withResolvers` is outside the compiled subset
+      1  `dangerouslySetInnerHTML` is outside the compiled subset
+      1  `document.getElementsByClassName` is outside the compiled subset
+      1  `instanceof` of anything but a built-in class is outside the compiled subset
+      1  `window.confirm` is outside the compiled subset
+      1  `window.matchMedia` is outside the compiled subset
+      1  generators are outside the compiled subset
+      1  method `current` on RefObject<() => void>
+      1  method `persist` on Event
+      1  unknown name `Symbol`
+      1  unknown name `TodoApp`
+      1  unknown name `afterAll`
+      1  unknown name `afterEach`
+      1  unknown name `beforeAll`
+      1  unknown name `crypto`
+      1  unknown name `navigator`
+diagnostics, by cause:
+     98  value imported from a module that does not resolve
+     72  relative import that does not resolve
+     42  `new` is outside the compiled subset
+     22  built-in method `toLocaleString` is outside the compiled subset
+     17  import of a stylesheet
+     10  this React API is outside the compiled subset
+      9  this expression is outside the compiled subset
+      8  method `toLocaleDateString` on Date
+      8  unknown name `process`
+      5  `ReactDOM` from React cannot be used as a value here
+      5  a tagged template is outside the compiled subset
+      5  class components are outside the compiled subset
+      5  imported name the subset cannot use
+      5  unknown name `window`
+      4  import of an image
+      4  unknown name `module`
+      3  `window.localStorage` is outside the compiled subset
+      3  method `toLocaleString` on Date
+      3  method `toLocaleTimeString` on Date
+      2  `await` inside an expression is outside the compiled subset (await into a variable first)
+      2  `instanceof` of anything but a built-in class is outside the compiled subset
+      2  `window.history` is outside the compiled subset
+      2  method `persist` on Event
+      2  property does not exist on another type
+      2  value imported from a package
+      1  `<FilterContext.Provider>` on a value of type unknown
+      1  `Promise.withResolvers` is outside the compiled subset
+      1  `createRoot` outside the render call is outside the compiled subset
+      1  `dangerouslySetInnerHTML` is outside the compiled subset
+      1  `document.getElementsByClassName` is outside the compiled subset
+      1  `window.confirm` is outside the compiled subset
+      1  `window.matchMedia` is outside the compiled subset
+      1  generators are outside the compiled subset
+      1  method `current` on RefObject<() => void>
+      1  unknown name `Symbol`
+      1  unknown name `TodoApp`
+      1  unknown name `afterAll`
+      1  unknown name `afterEach`
+      1  unknown name `beforeAll`
+      1  unknown name `crypto`

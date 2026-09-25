@@ -1,0 +1,3149 @@
+{
+  "split": "dev",
+  "islands": true,
+  "projects": 138,
+  "modules": {
+    "total": 532,
+    "inside": 400
+  },
+  "functions": {
+    "total": 985,
+    "inside": 867
+  },
+  "components": {
+    "total": 647,
+    "inside": 573
+  },
+  "apps": {
+    "total": 29,
+    "inside": 0
+  },
+  "diagnostics": 452,
+  "diagnostics_by_cause": {
+    "`<TooltipPrimitive.Provider>` on a value of type unknown": 1,
+    "`Object.hasOwn` is outside the compiled subset": 1,
+    "`ReactDOM` from React cannot be used as a value here": 4,
+    "`String.fromCharCode` is outside the compiled subset": 1,
+    "`await` inside an expression is outside the compiled subset (await into a variable first)": 11,
+    "`console.timeEnd` is outside the compiled subset": 1,
+    "`console.time` is outside the compiled subset": 1,
+    "`document.createElement` is outside the compiled subset": 1,
+    "`instanceof` of anything but a built-in class is outside the compiled subset": 10,
+    "`new` is outside the compiled subset": 30,
+    "`useApiClient` not at the top level": 2,
+    "`window.location` is outside the compiled subset": 2,
+    "`window.matchMedia` is outside the compiled subset": 2,
+    "`window.open` is outside the compiled subset": 1,
+    "a tagged template is outside the compiled subset": 12,
+    "a value that cannot be rendered": 1,
+    "built-in method `substr` is outside the compiled subset": 1,
+    "built-in method `toLocaleDateString` is outside the compiled subset": 1,
+    "built-in method `toLocaleString` is outside the compiled subset": 27,
+    "import of a stylesheet": 9,
+    "import of an image": 4,
+    "method `addEventListener` on HTMLElement": 1,
+    "method `attachShadow` on HTMLElement": 1,
+    "method `get` on Promise<Map<string, unknown>>": 2,
+    "method `removeEventListener` on HTMLElement": 1,
+    "method `toLocaleDateString` on Date": 1,
+    "property does not exist on a union": 4,
+    "property does not exist on another type": 10,
+    "relative import that does not resolve": 120,
+    "spread props on a Provider are outside the compiled subset": 1,
+    "this React API is outside the compiled subset": 4,
+    "this expression is outside the compiled subset": 4,
+    "this statement is outside the compiled subset": 1,
+    "unknown name `URL`": 1,
+    "unknown name `afterAll`": 1,
+    "unknown name `afterEach`": 1,
+    "unknown name `beforeAll`": 1,
+    "unknown name `cancelAnimationFrame`": 2,
+    "unknown name `crypto`": 4,
+    "unknown name `document`": 2,
+    "unknown name `encodeURIComponent`": 1,
+    "unknown name `location`": 12,
+    "unknown name `navigator`": 5,
+    "unknown name `process`": 2,
+    "unknown name `queueMicrotask`": 1,
+    "unknown name `requestAnimationFrame`": 4,
+    "unknown name `window`": 1,
+    "value imported from a module that does not resolve": 141
+  },
+  "functions_by_cause": {
+    "`<TooltipPrimitive.Provider>` on a value of type unknown": 1,
+    "`Object.hasOwn` is outside the compiled subset": 1,
+    "`ReactDOM` from React cannot be used as a value here": 1,
+    "`String.fromCharCode` is outside the compiled subset": 1,
+    "`await` inside an expression is outside the compiled subset (await into a variable first)": 11,
+    "`console.timeEnd` is outside the compiled subset": 1,
+    "`console.time` is outside the compiled subset": 1,
+    "`document.createElement` is outside the compiled subset": 1,
+    "`instanceof` of anything but a built-in class is outside the compiled subset": 5,
+    "`new` is outside the compiled subset": 18,
+    "`useApiClient` not at the top level": 2,
+    "`window.matchMedia` is outside the compiled subset": 2,
+    "`window.open` is outside the compiled subset": 1,
+    "a tagged template is outside the compiled subset": 1,
+    "a value that cannot be rendered": 1,
+    "built-in method `substr` is outside the compiled subset": 1,
+    "built-in method `toLocaleDateString` is outside the compiled subset": 1,
+    "built-in method `toLocaleString` is outside the compiled subset": 16,
+    "method `addEventListener` on HTMLElement": 1,
+    "method `get` on Promise<Map<string, unknown>>": 1,
+    "method `removeEventListener` on HTMLElement": 1,
+    "method `toLocaleDateString` on Date": 1,
+    "property does not exist on a union": 3,
+    "property does not exist on another type": 7,
+    "spread props on a Provider are outside the compiled subset": 1,
+    "this React API is outside the compiled subset": 4,
+    "this expression is outside the compiled subset": 2,
+    "this statement is outside the compiled subset": 1,
+    "unknown name `URL`": 1,
+    "unknown name `cancelAnimationFrame`": 1,
+    "unknown name `crypto`": 4,
+    "unknown name `document`": 2,
+    "unknown name `location`": 11,
+    "unknown name `navigator`": 5,
+    "unknown name `process`": 1,
+    "unknown name `queueMicrotask`": 1,
+    "unknown name `requestAnimationFrame`": 3,
+    "unknown name `window`": 1,
+    "value imported from a module that does not resolve": 24
+  },
+  "packages": {
+    "@/columns": 3,
+    "@/components": 34,
+    "@/hooks": 33,
+    "@/lib": 34,
+    "@/types": 9,
+    "@ant-design/charts": 1,
+    "@ant-design/icons": 3,
+    "@ant-design/v5-patch-for-react-19": 4,
+    "@chakra-ui/react": 39,
+    "@dnd-kit/core": 7,
+    "@dnd-kit/modifiers": 3,
+    "@dnd-kit/sortable": 9,
+    "@dnd-kit/utilities": 5,
+    "@faker-js/faker": 18,
+    "@headlessui/react": 8,
+    "@hello-pangea/dnd": 3,
+    "@hookform/resolvers": 3,
+    "@hqoss/monads": 8,
+    "@mantine/core": 11,
+    "@mantine/hooks": 2,
+    "@mantinex/mantine-logo": 2,
+    "@mswjs/data": 2,
+    "@mui/icons-material": 33,
+    "@mui/material": 109,
+    "@mui/utils": 1,
+    "@mui/x-data-grid": 1,
+    "@nivo/bar": 1,
+    "@react-native-community/netinfo": 1,
+    "@react-navigation/native": 2,
+    "@react-navigation/stack": 3,
+    "@reduxjs/toolkit": 22,
+    "@refinedev/antd": 26,
+    "@refinedev/core": 23,
+    "@refinedev/devtools": 1,
+    "@refinedev/graphql": 1,
+    "@refinedev/kbar": 1,
+    "@refinedev/mui": 5,
+    "@refinedev/react-hook-form": 2,
+    "@refinedev/react-router": 6,
+    "@refinedev/react-table": 1,
+    "@refinedev/simple-rest": 4,
+    "@refinedev/supabase": 2,
+    "@rtk-query/graphql-request-base-query": 1,
+    "@tabler/icons-react": 14,
+    "@tanstack/match-sorter-utils": 6,
+    "@tanstack/react-devtools": 5,
+    "@tanstack/react-hotkeys": 1,
+    "@tanstack/react-pacer": 3,
+    "@tanstack/react-query": 33,
+    "@tanstack/react-query-devtools": 7,
+    "@tanstack/react-store": 2,
+    "@tanstack/react-table": 36,
+    "@tanstack/react-table-devtools": 5,
+    "@tanstack/react-virtual": 2,
+    "@testing-library/jest-dom": 1,
+    "@uiw/react-md-editor": 6,
+    "@urql/core": 1,
+    "antd": 28,
+    "axios": 4,
+    "class-variance-authority": 2,
+    "clsx": 1,
+    "cmdk": 1,
+    "cn": 2,
+    "cropperjs": 1,
+    "date-fns": 13,
+    "dayjs": 1,
+    "decoders": 6,
+    "embla-carousel-autoplay": 1,
+    "faker": 2,
+    "fakerest": 1,
+    "graphql": 7,
+    "graphql-request": 1,
+    "graphql-tag": 2,
+    "graphql-ws": 1,
+    "jsonexport": 1,
+    "localforage": 1,
+    "lodash": 2,
+    "lucide-react": 44,
+    "match-sorter": 1,
+    "material-ui-popup-state": 1,
+    "msw": 7,
+    "next": 7,
+    "next-themes": 1,
+    "papaparse": 1,
+    "ra-core": 1,
+    "ra-data-simple-rest": 1,
+    "ra-i18n-polyglot": 1,
+    "ra-language-english": 1,
+    "radix-ui": 10,
+    "ramda": 4,
+    "react-admin": 82,
+    "react-aria-components": 8,
+    "react-cropper": 1,
+    "react-day-picker": 1,
+    "react-dropzone": 1,
+    "react-error-boundary": 1,
+    "react-hook-form": 21,
+    "react-icons": 7,
+    "react-native": 8,
+    "react-native-paper": 3,
+    "react-redux": 5,
+    "react-router": 12,
+    "react-router-dom": 40,
+    "react-window": 1,
+    "recharts": 7,
+    "rooks": 1,
+    "shiki": 1,
+    "sonner": 1,
+    "sort-by": 1,
+    "tailwind-merge": 1,
+    "yup": 1,
+    "zod": 2
+  },
+  "per_project": [
+    {
+      "id": "vite/packages/create-vite/template-react-ts/src",
+      "modules": {
+        "total": 2,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": false,
+      "entry": "packages/create-vite/template-react-ts/src/main.tsx",
+      "sample": [
+        "packages/create-vite/template-react-ts/src/App.tsx: packages/create-vite/template-react-ts/src/App.tsx: line 2:1: cannot find module `./assets/hero.png`",
+        "packages/create-vite/template-react-ts/src/App.tsx: packages/create-vite/template-react-ts/src/App.tsx: line 3:1: cannot find module `./assets/react.svg`",
+        "packages/create-vite/template-react-ts/src/App.tsx: packages/create-vite/template-react-ts/src/App.tsx: line 4:1: cannot find module `./assets/vite.svg`",
+        "packages/create-vite/template-react-ts/src/App.tsx: packages/create-vite/template-react-ts/src/App.tsx: line 5:1: cannot find module `./App.css`",
+        "packages/create-vite/template-react-ts/src/App.tsx: line 2:1: import from `./assets/hero.png`: a compiled app imports only `react` and `react-dom`"
+      ],
+      "outside": [
+        "packages/create-vite/template-react-ts/src/App.tsx: App: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "realworld/src",
+      "modules": {
+        "total": 44,
+        "inside": 32
+      },
+      "functions": {
+        "total": 104,
+        "inside": 84
+      },
+      "components": {
+        "total": 42,
+        "inside": 42
+      },
+      "app": false,
+      "entry": "src/index.tsx",
+      "sample": [
+        "src/components/App/App.tsx: src/components/App/App.tsx: line 74:29: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/components/ArticlesViewer/ArticlesViewer.tsx: src/components/ArticlesViewer/ArticlesViewer.tsx: line 104:7: unknown name `location`",
+        "src/components/Pages/ArticlePage/ArticlePage.tsx: src/components/Pages/ArticlePage/ArticlePage.tsx: line 343:33: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/components/Pages/ArticlePage/ArticlePage.tsx: src/components/Pages/ArticlePage/ArticlePage.tsx: line 393:31: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/components/Pages/EditArticle/EditArticle.tsx: src/components/Pages/EditArticle/EditArticle.tsx: line 26:7: unknown name `location`"
+      ],
+      "outside": [
+        "src/components/App/App.tsx: load: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/components/ArticlesViewer/ArticlesViewer.tsx: onFavoriteToggle: unknown name `location`",
+        "src/components/Pages/ArticlePage/ArticlePage.tsx: onPostComment: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/components/Pages/ArticlePage/ArticlePage.tsx: onDeleteComment: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/components/Pages/EditArticle/EditArticle.tsx: _loadArticle: unknown name `location`",
+        "src/components/Pages/EditArticle/EditArticle.tsx: onSubmit: unknown name `location`",
+        "src/components/Pages/Login/Login.tsx: signIn: unknown name `location`",
+        "src/components/Pages/NewArticle/NewArticle.tsx: onSubmit: unknown name `location`",
+        "src/components/Pages/ProfilePage/ProfilePage.tsx: onLoad: unknown name `location`",
+        "src/components/Pages/ProfilePage/ProfilePage.tsx: onTabChange: `await` inside an expression is outside the compiled subset (await into a variable first); unknown name `location`",
+        "src/components/Pages/ProfilePage/ProfilePage.tsx: onPageChange: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/components/Pages/Register/Register.tsx: onSignUp: unknown name `location`",
+        "src/components/Pages/Settings/Settings.tsx: onUpdateSettings: unknown name `location`",
+        "src/components/Pages/Settings/Settings.tsx: _logout: unknown name `location`",
+        "src/services/conduit.ts: getArticles: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/services/conduit.ts: getTags: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/services/conduit.ts: favoriteArticle: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/services/conduit.ts: unfavoriteArticle: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/services/conduit.ts: getFeed: `await` inside an expression is outside the compiled subset (await into a variable first)",
+        "src/types/location.ts: redirect: unknown name `location`"
+      ]
+    },
+    {
+      "id": "tanstack-table/examples/react/basic-use-app-table/src",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": false,
+      "entry": "examples/react/basic-use-app-table/src/main.tsx",
+      "sample": [
+        "examples/react/basic-use-app-table/src/main.tsx: examples/react/basic-use-app-table/src/main.tsx: line 9:1: cannot find module `./index.css`"
+      ],
+      "outside": []
+    },
+    {
+      "id": "tanstack-table/examples/react/column-dnd/src",
+      "modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "functions": {
+        "total": 6,
+        "inside": 6
+      },
+      "components": {
+        "total": 3,
+        "inside": 3
+      },
+      "app": false,
+      "entry": "examples/react/column-dnd/src/main.tsx",
+      "sample": [
+        "examples/react/column-dnd/src/main.tsx: examples/react/column-dnd/src/main.tsx: line 31:1: cannot find module `./index.css`"
+      ],
+      "outside": []
+    },
+    {
+      "id": "tanstack-table/examples/react/column-visibility/src",
+      "modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "functions": {
+        "total": 4,
+        "inside": 4
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": false,
+      "entry": "examples/react/column-visibility/src/main.tsx",
+      "sample": [
+        "examples/react/column-visibility/src/main.tsx: examples/react/column-visibility/src/main.tsx: line 11:1: cannot find module `./index.css`"
+      ],
+      "outside": []
+    },
+    {
+      "id": "tanstack-table/examples/react/composable-tables/src",
+      "modules": {
+        "total": 7,
+        "inside": 3
+      },
+      "functions": {
+        "total": 24,
+        "inside": 19
+      },
+      "components": {
+        "total": 19,
+        "inside": 14
+      },
+      "app": false,
+      "entry": "examples/react/composable-tables/src/main.tsx",
+      "sample": [
+        "examples/react/composable-tables/src/components/cell-components.tsx: examples/react/composable-tables/src/components/cell-components.tsx: line 51:17: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/composable-tables/src/components/cell-components.tsx: examples/react/composable-tables/src/components/cell-components.tsx: line 121:8: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/composable-tables/src/components/header-components.tsx: examples/react/composable-tables/src/components/header-components.tsx: line 80:45: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/composable-tables/src/components/table-components.tsx: examples/react/composable-tables/src/components/table-components.tsx: line 44:12: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/composable-tables/src/components/table-components.tsx: examples/react/composable-tables/src/components/table-components.tsx: line 45:12: built-in method `toLocaleString` is outside the compiled subset"
+      ],
+      "outside": [
+        "examples/react/composable-tables/src/components/cell-components.tsx: NumberCell: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/composable-tables/src/components/cell-components.tsx: PriceCell: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/composable-tables/src/components/header-components.tsx: FooterSum: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/composable-tables/src/components/table-components.tsx: PaginationControls: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/composable-tables/src/components/table-components.tsx: RowCount: built-in method `toLocaleString` is outside the compiled subset"
+      ]
+    },
+    {
+      "id": "tanstack-table/examples/react/kitchen-sink-chakra-ui/src",
+      "modules": {
+        "total": 15,
+        "inside": 10
+      },
+      "functions": {
+        "total": 64,
+        "inside": 58
+      },
+      "components": {
+        "total": 38,
+        "inside": 33
+      },
+      "app": false,
+      "entry": "examples/react/kitchen-sink-chakra-ui/src/main.tsx",
+      "sample": [
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/cell-components.tsx: line 123:16: unknown name `navigator`",
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-filter-list.tsx: line 211:19: unknown name `crypto`",
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-pagination.tsx: line 21:10: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-pagination.tsx: line 22:10: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/shared.tsx: line 42:10: `new` is outside the compiled subset"
+      ],
+      "outside": [
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/cell-components.tsx: RowActions: unknown name `navigator`",
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-filter-list.tsx: DataTableFilterList: unknown name `crypto`",
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-pagination.tsx: DataTablePagination: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/shared.tsx: formatDate: `new` is outside the compiled subset",
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/shared.tsx: MultiSelectField: property does not exist on another type",
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/shared.tsx: DropdownMenuItem: unknown name `queueMicrotask`"
+      ]
+    },
+    {
+      "id": "tanstack-table/examples/react/kitchen-sink-react-aria/src",
+      "modules": {
+        "total": 15,
+        "inside": 11
+      },
+      "functions": {
+        "total": 57,
+        "inside": 51
+      },
+      "components": {
+        "total": 29,
+        "inside": 24
+      },
+      "app": false,
+      "entry": "examples/react/kitchen-sink-react-aria/src/main.tsx",
+      "sample": [
+        "examples/react/kitchen-sink-react-aria/src/components/data-table/cell-components.tsx: line 41:10: `new` is outside the compiled subset",
+        "examples/react/kitchen-sink-react-aria/src/components/data-table/cell-components.tsx: line 154:20: unknown name `navigator`",
+        "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-filter-list.tsx: line 69:53: property `selectedOptions` does not exist on type HTMLElement",
+        "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-filter-list.tsx: line 211:19: unknown name `crypto`",
+        "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-pagination.tsx: line 37:10: built-in method `toLocaleString` is outside the compiled subset"
+      ],
+      "outside": [
+        "examples/react/kitchen-sink-react-aria/src/components/data-table/cell-components.tsx: formatDate: `new` is outside the compiled subset",
+        "examples/react/kitchen-sink-react-aria/src/components/data-table/cell-components.tsx: ActionsCell: unknown name `navigator`",
+        "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-filter-list.tsx: FilterValueInput: property does not exist on another type",
+        "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-filter-list.tsx: DataTableFilterList: unknown name `crypto`",
+        "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-pagination.tsx: DataTablePagination: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/kitchen-sink-react-aria/src/main.tsx: ModeSwitch: property does not exist on another type"
+      ]
+    },
+    {
+      "id": "tanstack-table/examples/react/kitchen-sink-shadcn-radix/src",
+      "modules": {
+        "total": 33,
+        "inside": 21
+      },
+      "functions": {
+        "total": 134,
+        "inside": 121
+      },
+      "components": {
+        "total": 101,
+        "inside": 89
+      },
+      "app": false,
+      "entry": "examples/react/kitchen-sink-shadcn-radix/src/main.tsx",
+      "sample": [
+        "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/cell-components.tsx: line 159:26: unknown name `navigator`",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-filter-list.tsx: line 133:19: unknown name `crypto`",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-filter-list.tsx: line 275:31: `instanceof` of anything but a built-in class is outside the compiled subset",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-filter-list.tsx: line 358:27: `instanceof` of anything but a built-in class is outside the compiled subset",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-filter-list.tsx: line 702:25: `instanceof` of anything but a built-in class is outside the compiled subset"
+      ],
+      "outside": [
+        "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/cell-components.tsx: ActionsCell: unknown name `navigator`",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-filter-list.tsx: DataTableFilterList: `instanceof` of anything but a built-in class is outside the compiled subset; unknown name `crypto`",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-pagination.tsx: DataTablePagination: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-sort-list.tsx: DataTableSortList: `instanceof` of anything but a built-in class is outside the compiled subset",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-view-options.tsx: DataTableViewOptions: `instanceof` of anything but a built-in class is outside the compiled subset",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/theme-provider.tsx: ThemeProvider: `window.matchMedia` is outside the compiled subset; property does not exist on another type; spread props on a Provider are outside the compiled subset",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/ui/calendar.tsx: Calendar: a tagged template is outside the compiled subset; built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/ui/calendar.tsx: CalendarDayButton: built-in method `toLocaleDateString` is outside the compiled subset",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/ui/faceted.tsx: Faceted: unknown name `requestAnimationFrame`",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/ui/faceted.tsx: FacetedTrigger: `instanceof` of anything but a built-in class is outside the compiled subset",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/ui/sortable.tsx: SortableOverlay: `ReactDOM` from React cannot be used as a value here; a value that cannot be rendered",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/ui/tooltip.tsx: TooltipProvider: `<TooltipPrimitive.Provider>` on a value of type unknown",
+        "examples/react/kitchen-sink-shadcn-radix/src/lib/utils.ts: formatDate: `new` is outside the compiled subset"
+      ]
+    },
+    {
+      "id": "tanstack-table/examples/react/lib-material-ui/src",
+      "modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "functions": {
+        "total": 5,
+        "inside": 5
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": false,
+      "entry": "examples/react/lib-material-ui/src/main.tsx",
+      "sample": [
+        "examples/react/lib-material-ui/src/main.tsx: examples/react/lib-material-ui/src/main.tsx: line 43:1: cannot find module `./index.css`"
+      ],
+      "outside": []
+    },
+    {
+      "id": "tanstack-table/examples/react/row-dnd/src",
+      "modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "functions": {
+        "total": 6,
+        "inside": 6
+      },
+      "components": {
+        "total": 3,
+        "inside": 3
+      },
+      "app": false,
+      "entry": "examples/react/row-dnd/src/main.tsx",
+      "sample": [
+        "examples/react/row-dnd/src/main.tsx: examples/react/row-dnd/src/main.tsx: line 30:1: cannot find module `./index.css`"
+      ],
+      "outside": []
+    },
+    {
+      "id": "tanstack-table/examples/react/spreadsheet/src",
+      "modules": {
+        "total": 9,
+        "inside": 2
+      },
+      "functions": {
+        "total": 49,
+        "inside": 37
+      },
+      "components": {
+        "total": 12,
+        "inside": 6
+      },
+      "app": false,
+      "entry": "examples/react/spreadsheet/src/main.tsx",
+      "sample": [
+        "examples/react/spreadsheet/src/CellContextMenu.tsx: examples/react/spreadsheet/src/CellContextMenu.tsx: line 49:10: this React API is outside the compiled subset",
+        "examples/react/spreadsheet/src/ColumnMenu.tsx: examples/react/spreadsheet/src/ColumnMenu.tsx: line 41:10: this React API is outside the compiled subset",
+        "examples/react/spreadsheet/src/Spreadsheet.tsx: examples/react/spreadsheet/src/Spreadsheet.tsx: line 529:22: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/spreadsheet/src/Spreadsheet.tsx: examples/react/spreadsheet/src/Spreadsheet.tsx: line 530:22: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/spreadsheet/src/Spreadsheet.tsx: examples/react/spreadsheet/src/Spreadsheet.tsx: line 703:24: built-in method `toLocaleString` is outside the compiled subset"
+      ],
+      "outside": [
+        "examples/react/spreadsheet/src/CellContextMenu.tsx: CellContextMenu: this React API is outside the compiled subset",
+        "examples/react/spreadsheet/src/ColumnMenu.tsx: ColumnMenu: this React API is outside the compiled subset",
+        "examples/react/spreadsheet/src/Spreadsheet.tsx: Spreadsheet: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/spreadsheet/src/Spreadsheet.tsx: formatNumber: `new` is outside the compiled subset",
+        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: SpreadsheetGrid: `new` is outside the compiled subset; method `addEventListener` on HTMLElement; method `removeEventListener` on HTMLElement; property does not exist on a union; unknown name `cancelAnimationFrame`; unknown name `requestAnimationFrame`",
+        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: SpreadsheetCell: unknown name `document`",
+        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: MergedCellView: unknown name `document`",
+        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: getColumnSize: `Object.hasOwn` is outside the compiled subset",
+        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: formatRenderedValue: `new` is outside the compiled subset",
+        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: measureTextWidth: `document.createElement` is outside the compiled subset",
+        "examples/react/spreadsheet/src/spreadsheetModel.ts: columnIndexToLetter: `String.fromCharCode` is outside the compiled subset",
+        "examples/react/spreadsheet/src/useGridInteractions.ts: useGridInteractions: `await` inside an expression is outside the compiled subset (await into a variable first); property does not exist on another type; unknown name `navigator`; unknown name `requestAnimationFrame`"
+      ]
+    },
+    {
+      "id": "tanstack-table/examples/react/virtualized-columns-experimental/src",
+      "modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "functions": {
+        "total": 13,
+        "inside": 10
+      },
+      "components": {
+        "total": 10,
+        "inside": 7
+      },
+      "app": false,
+      "entry": "examples/react/virtualized-columns-experimental/src/main.tsx",
+      "sample": [
+        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 3:1: cannot find module `./index.css`",
+        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 96:8: unknown name `process`",
+        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 103:14: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 104:14: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 144:34: property `style` does not exist on type HTMLElement | null"
+      ],
+      "outside": [
+        "examples/react/virtualized-columns-experimental/src/main.tsx: App: built-in method `toLocaleString` is outside the compiled subset; unknown name `process`",
+        "examples/react/virtualized-columns-experimental/src/main.tsx: TableContainer: property does not exist on a union",
+        "examples/react/virtualized-columns-experimental/src/main.tsx: TableBody: property does not exist on a union; property does not exist on another type; unknown name `window`"
+      ]
+    },
+    {
+      "id": "tanstack-query/examples/react/auto-refetching/src",
+      "modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "functions": {
+        "total": 3,
+        "inside": 3
+      },
+      "components": {
+        "total": 3,
+        "inside": 3
+      },
+      "app": null,
+      "sample": [
+        "examples/react/auto-refetching/src/pages/index.tsx: line 12:21: `new` is outside the compiled subset"
+      ],
+      "outside": []
+    },
+    {
+      "id": "tanstack-query/examples/react/devtools-panel/src",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 2,
+        "inside": 2
+      },
+      "components": {
+        "total": 2,
+        "inside": 2
+      },
+      "app": false,
+      "entry": "examples/react/devtools-panel/src/index.tsx",
+      "sample": [
+        "examples/react/devtools-panel/src/index.tsx: line 10:21: `new` is outside the compiled subset"
+      ],
+      "outside": []
+    },
+    {
+      "id": "tanstack-query/examples/react/eslint-plugin-demo/src",
+      "modules": {
+        "total": 3,
+        "inside": 2
+      },
+      "functions": {
+        "total": 14,
+        "inside": 12
+      },
+      "components": {
+        "total": 5,
+        "inside": 5
+      },
+      "app": null,
+      "sample": [
+        "examples/react/eslint-plugin-demo/src/allowlist-demo.tsx: line 4:15: `useApiClient` must be called at the top level of a component or hook",
+        "examples/react/eslint-plugin-demo/src/allowlist-demo.tsx: line 13:19: `useApiClient` must be called at the top level of a component or hook"
+      ],
+      "outside": [
+        "examples/react/eslint-plugin-demo/src/allowlist-demo.tsx: todosOptions: `useApiClient` not at the top level",
+        "examples/react/eslint-plugin-demo/src/allowlist-demo.tsx: todosByApiOptions: `useApiClient` not at the top level"
+      ]
+    },
+    {
+      "id": "tanstack-query/examples/react/infinite-query-with-max-pages/src",
+      "modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "functions": {
+        "total": 3,
+        "inside": 3
+      },
+      "components": {
+        "total": 3,
+        "inside": 3
+      },
+      "app": null,
+      "sample": [
+        "examples/react/infinite-query-with-max-pages/src/pages/index.tsx: line 9:21: `new` is outside the compiled subset"
+      ],
+      "outside": []
+    },
+    {
+      "id": "tanstack-query/examples/react/prefetching/src",
+      "modules": {
+        "total": 3,
+        "inside": 2
+      },
+      "functions": {
+        "total": 6,
+        "inside": 5
+      },
+      "components": {
+        "total": 3,
+        "inside": 2
+      },
+      "app": null,
+      "sample": [
+        "examples/react/prefetching/src/pages/_app.tsx: line 6:46: `new` is outside the compiled subset"
+      ],
+      "outside": [
+        "examples/react/prefetching/src/pages/_app.tsx: MyApp: `new` is outside the compiled subset"
+      ]
+    },
+    {
+      "id": "tanstack-query/examples/react/react-native/src",
+      "modules": {
+        "total": 13,
+        "inside": 13
+      },
+      "functions": {
+        "total": 14,
+        "inside": 14
+      },
+      "components": {
+        "total": 7,
+        "inside": 7
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "tanstack-query/examples/react/react-router/src",
+      "modules": {
+        "total": 9,
+        "inside": 6
+      },
+      "functions": {
+        "total": 24,
+        "inside": 21
+      },
+      "components": {
+        "total": 8,
+        "inside": 7
+      },
+      "app": false,
+      "entry": "examples/react/react-router/src/index.tsx",
+      "sample": [
+        "examples/react/react-router/src/index.tsx: examples/react/react-router/src/index.tsx: line 7:1: cannot find module `./index.css`",
+        "examples/react/react-router/src/index.tsx: examples/react/react-router/src/index.tsx: line 20:21: `new` is outside the compiled subset",
+        "examples/react/react-router/src/routes/contact.tsx: examples/react/react-router/src/routes/contact.tsx: line 14:15: `new` is outside the compiled subset",
+        "examples/react/react-router/src/routes/root.tsx: examples/react/react-router/src/routes/root.tsx: line 28:17: `new` is outside the compiled subset",
+        "examples/react/react-router/src/routes/root.tsx: examples/react/react-router/src/routes/root.tsx: line 62:53: property `form` does not exist on type HTMLElement"
+      ],
+      "outside": [
+        "examples/react/react-router/src/routes/contact.tsx: contactDetailQuery: `new` is outside the compiled subset",
+        "examples/react/react-router/src/routes/root.tsx: loader: `new` is outside the compiled subset",
+        "examples/react/react-router/src/routes/root.tsx: Root: property does not exist on another type"
+      ]
+    },
+    {
+      "id": "tanstack-query/examples/react/rick-morty/src",
+      "modules": {
+        "total": 9,
+        "inside": 8
+      },
+      "functions": {
+        "total": 15,
+        "inside": 15
+      },
+      "components": {
+        "total": 10,
+        "inside": 10
+      },
+      "app": false,
+      "entry": "examples/react/rick-morty/src/index.tsx",
+      "sample": [
+        "examples/react/rick-morty/src/App.tsx: examples/react/rick-morty/src/App.tsx: line 6:1: cannot find module `./styles.css`",
+        "examples/react/rick-morty/src/App.tsx: examples/react/rick-morty/src/App.tsx: line 8:21: `new` is outside the compiled subset"
+      ],
+      "outside": []
+    },
+    {
+      "id": "tanstack-query/examples/react/shadow-dom/src",
+      "modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": false,
+      "entry": "examples/react/shadow-dom/src/main.tsx",
+      "sample": [
+        "examples/react/shadow-dom/src/main.tsx: examples/react/shadow-dom/src/main.tsx: line 3:1: cannot find module `./index.css`",
+        "examples/react/shadow-dom/src/main.tsx: examples/react/shadow-dom/src/main.tsx: line 11:21: `new` is outside the compiled subset",
+        "examples/react/shadow-dom/src/main.tsx: examples/react/shadow-dom/src/main.tsx: line 12:20: method `attachShadow` on type HTMLElement is outside the compiled subset"
+      ],
+      "outside": []
+    },
+    {
+      "id": "redux-toolkit/examples/query/react/authentication/src",
+      "modules": {
+        "total": 12,
+        "inside": 11
+      },
+      "functions": {
+        "total": 9,
+        "inside": 9
+      },
+      "components": {
+        "total": 6,
+        "inside": 6
+      },
+      "app": false,
+      "entry": "examples/query/react/authentication/src/index.tsx",
+      "sample": [
+        "examples/query/react/authentication/src/index.tsx: examples/query/react/authentication/src/index.tsx: line 14:22: `ReactDOM` from React cannot be used as a value here"
+      ],
+      "outside": []
+    },
+    {
+      "id": "redux-toolkit/examples/query/react/basic/src",
+      "modules": {
+        "total": 5,
+        "inside": 3
+      },
+      "functions": {
+        "total": 2,
+        "inside": 2
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": false,
+      "entry": "examples/query/react/basic/src/index.tsx",
+      "sample": [
+        "examples/query/react/basic/src/App.tsx: examples/query/react/basic/src/App.tsx: line 1:1: cannot find module `./styles.css`",
+        "examples/query/react/basic/src/setupTests.ts: examples/query/react/basic/src/setupTests.ts: line 1:1: cannot find module `./test/server`",
+        "examples/query/react/basic/src/setupTests.ts: line 1:1: import from `./test/server`: a compiled app imports only `react` and `react-dom`",
+        "examples/query/react/basic/src/setupTests.ts: line 4:1: unknown name `process`",
+        "examples/query/react/basic/src/setupTests.ts: line 8:1: unknown name `beforeAll`"
+      ],
+      "outside": []
+    },
+    {
+      "id": "redux-toolkit/examples/query/react/graphql/src",
+      "modules": {
+        "total": 6,
+        "inside": 4
+      },
+      "functions": {
+        "total": 7,
+        "inside": 7
+      },
+      "components": {
+        "total": 4,
+        "inside": 4
+      },
+      "app": false,
+      "entry": "examples/query/react/graphql/src/index.tsx",
+      "sample": [
+        "examples/query/react/graphql/src/app/services/posts.ts: line 46:19: a tagged template is outside the compiled subset",
+        "examples/query/react/graphql/src/app/services/posts.ts: line 62:19: a tagged template is outside the compiled subset",
+        "examples/query/react/graphql/src/index.tsx: examples/query/react/graphql/src/index.tsx: line 13:10: `ReactDOM` from React cannot be used as a value here"
+      ],
+      "outside": []
+    },
+    {
+      "id": "redux-toolkit/examples/query/react/prefetching/src",
+      "modules": {
+        "total": 6,
+        "inside": 5
+      },
+      "functions": {
+        "total": 7,
+        "inside": 7
+      },
+      "components": {
+        "total": 4,
+        "inside": 4
+      },
+      "app": false,
+      "entry": "examples/query/react/prefetching/src/index.tsx",
+      "sample": [
+        "examples/query/react/prefetching/src/index.tsx: examples/query/react/prefetching/src/index.tsx: line 13:3: `ReactDOM` from React cannot be used as a value here"
+      ],
+      "outside": []
+    },
+    {
+      "id": "refine/examples/blog-issue-tracker/src",
+      "modules": {
+        "total": 22,
+        "inside": 21
+      },
+      "functions": {
+        "total": 14,
+        "inside": 13
+      },
+      "components": {
+        "total": 13,
+        "inside": 12
+      },
+      "app": false,
+      "entry": "examples/blog-issue-tracker/src/index.tsx",
+      "sample": [
+        "examples/blog-issue-tracker/src/contexts/color-mode/index.tsx: line 23:34: `window.matchMedia` is outside the compiled subset"
+      ],
+      "outside": [
+        "examples/blog-issue-tracker/src/contexts/color-mode/index.tsx: ColorModeContextProvider: `window.matchMedia` is outside the compiled subset"
+      ]
+    },
+    {
+      "id": "refine/examples/data-provider-graphql/src",
+      "modules": {
+        "total": 15,
+        "inside": 12
+      },
+      "functions": {
+        "total": 8,
+        "inside": 8
+      },
+      "components": {
+        "total": 8,
+        "inside": 8
+      },
+      "app": false,
+      "entry": "examples/data-provider-graphql/src/index.tsx",
+      "sample": [
+        "examples/data-provider-graphql/src/App.tsx: examples/data-provider-graphql/src/App.tsx: line 28:23: `new` is outside the compiled subset",
+        "examples/data-provider-graphql/src/pages/categories/queries.ts: line 3:41: a tagged template is outside the compiled subset",
+        "examples/data-provider-graphql/src/pages/categories/queries.ts: line 12:39: a tagged template is outside the compiled subset",
+        "examples/data-provider-graphql/src/pages/categories/queries.ts: line 21:38: a tagged template is outside the compiled subset",
+        "examples/data-provider-graphql/src/pages/posts/queries.ts: line 3:37: a tagged template is outside the compiled subset"
+      ],
+      "outside": []
+    },
+    {
+      "id": "refine/examples/form-antd-mutation-mode/src",
+      "modules": {
+        "total": 7,
+        "inside": 4
+      },
+      "functions": {
+        "total": 5,
+        "inside": 5
+      },
+      "components": {
+        "total": 5,
+        "inside": 5
+      },
+      "app": false,
+      "entry": "examples/form-antd-mutation-mode/src/index.tsx",
+      "sample": [
+        "examples/form-antd-mutation-mode/src/pages/posts/create.tsx: examples/form-antd-mutation-mode/src/pages/posts/create.tsx: line 9:1: cannot find module `../../interfaces`",
+        "examples/form-antd-mutation-mode/src/pages/posts/edit.tsx: examples/form-antd-mutation-mode/src/pages/posts/edit.tsx: line 9:1: cannot find module `../../interfaces`",
+        "examples/form-antd-mutation-mode/src/pages/posts/list.tsx: examples/form-antd-mutation-mode/src/pages/posts/list.tsx: line 13:1: cannot find module `../../interfaces`"
+      ],
+      "outside": []
+    },
+    {
+      "id": "refine/examples/table-antd-use-update-many/src",
+      "modules": {
+        "total": 7,
+        "inside": 3
+      },
+      "functions": {
+        "total": 5,
+        "inside": 5
+      },
+      "components": {
+        "total": 5,
+        "inside": 5
+      },
+      "app": false,
+      "entry": "examples/table-antd-use-update-many/src/index.tsx",
+      "sample": [
+        "examples/table-antd-use-update-many/src/pages/posts/create.tsx: examples/table-antd-use-update-many/src/pages/posts/create.tsx: line 9:1: cannot find module `../../interfaces`",
+        "examples/table-antd-use-update-many/src/pages/posts/edit.tsx: examples/table-antd-use-update-many/src/pages/posts/edit.tsx: line 9:1: cannot find module `../../interfaces`",
+        "examples/table-antd-use-update-many/src/pages/posts/list.tsx: examples/table-antd-use-update-many/src/pages/posts/list.tsx: line 14:1: cannot find module `../../interfaces`",
+        "examples/table-antd-use-update-many/src/pages/posts/show.tsx: examples/table-antd-use-update-many/src/pages/posts/show.tsx: line 7:1: cannot find module `../../interfaces`"
+      ],
+      "outside": []
+    },
+    {
+      "id": "refine/examples/table-react-table-basic/src",
+      "modules": {
+        "total": 4,
+        "inside": 2
+      },
+      "functions": {
+        "total": 2,
+        "inside": 2
+      },
+      "components": {
+        "total": 2,
+        "inside": 2
+      },
+      "app": false,
+      "entry": "examples/table-react-table-basic/src/index.tsx",
+      "sample": [
+        "examples/table-react-table-basic/src/App.tsx: examples/table-react-table-basic/src/App.tsx: line 9:1: cannot find module `./App.css`",
+        "examples/table-react-table-basic/src/pages/posts/list.tsx: examples/table-react-table-basic/src/pages/posts/list.tsx: line 6:1: cannot find module `../../interfaces`"
+      ],
+      "outside": []
+    },
+    {
+      "id": "refine/examples/theme-material-ui-demo/src",
+      "modules": {
+        "total": 10,
+        "inside": 6
+      },
+      "functions": {
+        "total": 6,
+        "inside": 6
+      },
+      "components": {
+        "total": 6,
+        "inside": 6
+      },
+      "app": false,
+      "entry": "examples/theme-material-ui-demo/src/index.tsx",
+      "sample": [
+        "examples/theme-material-ui-demo/src/authProvider.ts: line 6:7: `window.location` is outside the compiled subset",
+        "examples/theme-material-ui-demo/src/authProvider.ts: line 13:7: `window.location` is outside the compiled subset",
+        "examples/theme-material-ui-demo/src/pages/posts/create.tsx: examples/theme-material-ui-demo/src/pages/posts/create.tsx: line 10:1: cannot find module `../../interfaces`",
+        "examples/theme-material-ui-demo/src/pages/posts/edit.tsx: examples/theme-material-ui-demo/src/pages/posts/edit.tsx: line 10:1: cannot find module `../../interfaces`",
+        "examples/theme-material-ui-demo/src/pages/posts/list.tsx: examples/theme-material-ui-demo/src/pages/posts/list.tsx: line 7:1: cannot find module `../../interfaces`"
+      ],
+      "outside": []
+    },
+    {
+      "id": "react-admin/examples/crm/src",
+      "modules": {
+        "total": 139,
+        "inside": 116
+      },
+      "functions": {
+        "total": 216,
+        "inside": 195
+      },
+      "components": {
+        "total": 148,
+        "inside": 137
+      },
+      "app": false,
+      "entry": "examples/crm/src/index.tsx",
+      "sample": [
+        "examples/crm/src/companies/CompanyAside.tsx: examples/crm/src/companies/CompanyAside.tsx: line 203:27: `new` is outside the compiled subset",
+        "examples/crm/src/companies/CompanyInputs.tsx: examples/crm/src/companies/CompanyInputs.tsx: line 25:22: `new` is outside the compiled subset",
+        "examples/crm/src/companies/CompanyShow.tsx: examples/crm/src/companies/CompanyShow.tsx: line 226:42: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/crm/src/contacts/ContactImportDialog.tsx: examples/crm/src/contacts/ContactImportDialog.tsx: line 27:1: cannot find module `./contacts_export.csv?raw`",
+        "examples/crm/src/contacts/ContactImportDialog.tsx: examples/crm/src/contacts/ContactImportDialog.tsx: line 27:1: import from `./contacts_export.csv?raw`: a compiled app imports only `react` and `react-dom`"
+      ],
+      "outside": [
+        "examples/crm/src/companies/CompanyAside.tsx: AdditionalInfo: `new` is outside the compiled subset",
+        "examples/crm/src/companies/CompanyInputs.tsx: isUrl: `new` is outside the compiled subset",
+        "examples/crm/src/companies/CompanyShow.tsx: DealsIterator: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/crm/src/contacts/useContactImport.tsx: useContactImport: method `get` on Promise<Map<string, unknown>>",
+        "examples/crm/src/dashboard/DealsPipeline.tsx: DealsPipeline: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/crm/src/deals/DealArchivedList.tsx: getRelativeTimeString: `new` is outside the compiled subset",
+        "examples/crm/src/deals/DealCard.tsx: DealCardContent: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/crm/src/deals/DealColumn.tsx: DealColumn: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/crm/src/deals/DealShow.tsx: DealShowContent: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/crm/src/deals/index.ts: DealList: this React API is outside the compiled subset",
+        "examples/crm/src/misc/ImageEditorField.tsx: ImageEditorDialog: `new` is outside the compiled subset; this React API is outside the compiled subset; unknown name `URL`",
+        "examples/crm/src/misc/fetchWithTimeout.ts: fetchWithTimeout: `new` is outside the compiled subset",
+        "examples/crm/src/misc/isLinkedInUrl.ts: isLinkedinUrl: `new` is outside the compiled subset",
+        "examples/crm/src/notes/NoteAttachments.tsx: NoteAttachments: `window.open` is outside the compiled subset",
+        "examples/crm/src/providers/commons/getCompanyAvatar.ts: getFaviconUrl: `new` is outside the compiled subset",
+        "examples/crm/src/providers/commons/getContactAvatar.ts: hash: `new` is outside the compiled subset; unknown name `crypto`",
+        "examples/crm/src/providers/fakerest/dataGenerator/contacts.ts: generateContacts: built-in method `substr` is outside the compiled subset; this statement is outside the compiled subset",
+        "examples/crm/src/providers/fakerest/dataProvider.ts: processCompanyLogo: `instanceof` of anything but a built-in class is outside the compiled subset",
+        "examples/crm/src/providers/fakerest/dataProvider.ts: convertFileToBase64: `new` is outside the compiled subset",
+        "examples/crm/src/settings/SettingsPage.tsx: SettingsForm: this expression is outside the compiled subset",
+        "examples/crm/src/settings/SettingsPage.tsx: CopyPaste: this expression is outside the compiled subset; unknown name `navigator`"
+      ]
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/accordion-demo.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/breadcrumb-ellipsis.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/breadcrumb-separator.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-group-popover.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-group-select.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-group-size.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-link.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/card-with-form.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/carousel-plugin.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/empty-input-group.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/field-fieldset.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/form-rhf-switch.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/input-group-spinner.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/item-group.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/kbd-input-group.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/native-select-demo.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/native-select-groups.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/scroll-area-horizontal-demo.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/spinner-basic.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/spinner-item.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/toggle-group-demo.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/toggle-lg.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/examples/tooltip-demo.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/blocks/login-02",
+      "modules": {
+        "total": 2,
+        "inside": 2
+      },
+      "functions": {
+        "total": 2,
+        "inside": 2
+      },
+      "components": {
+        "total": 2,
+        "inside": 2
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/blocks/login-05",
+      "modules": {
+        "total": 2,
+        "inside": 2
+      },
+      "functions": {
+        "total": 2,
+        "inside": 2
+      },
+      "components": {
+        "total": 2,
+        "inside": 2
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/blocks/sidebar-02",
+      "modules": {
+        "total": 4,
+        "inside": 4
+      },
+      "functions": {
+        "total": 4,
+        "inside": 4
+      },
+      "components": {
+        "total": 4,
+        "inside": 4
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/blocks/sidebar-10",
+      "modules": {
+        "total": 8,
+        "inside": 8
+      },
+      "functions": {
+        "total": 8,
+        "inside": 8
+      },
+      "components": {
+        "total": 8,
+        "inside": 8
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/blocks/sidebar-11",
+      "modules": {
+        "total": 2,
+        "inside": 2
+      },
+      "functions": {
+        "total": 3,
+        "inside": 3
+      },
+      "components": {
+        "total": 3,
+        "inside": 3
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-bar-stacked.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-line-label.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-pie-label.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-pie-simple.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle-fill.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx: apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx: line 57:24: method `toLocaleDateString` on type Date is outside the compiled subset"
+      ],
+      "outside": [
+        "apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx: ChartTooltipLabelNone: method `toLocaleDateString` on Date"
+      ]
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/accordion-controlled.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/accordion-with-icon.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/action-bar-with-dialog.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/avatar-closed-component.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/avatar-with-random-color.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 2,
+        "inside": 2
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/checkbox-with-hook-form.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/checkbox-with-sizes.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/code-with-colors.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/color-swatch-with-badge.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/combobox-autohighlight.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/data-list-closed-component.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/data-list-with-variants.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/dialog-with-placement.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/group-with-attached.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/input-with-error-text.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/listbox-with-description.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/listbox-with-icon.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/radio-with-sizes.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/select-with-avatar.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 2,
+        "inside": 2
+      },
+      "components": {
+        "total": 2,
+        "inside": 2
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/slider-with-thumb-alignment.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/splitter-ide-layout.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 5,
+        "inside": 5
+      },
+      "components": {
+        "total": 5,
+        "inside": 5
+      },
+      "app": false,
+      "entry": "apps/compositions/src/examples/splitter-ide-layout.tsx",
+      "sample": [
+        "apps/compositions/src/examples/splitter-ide-layout.tsx: line 176:41: this expression is outside the compiled subset"
+      ],
+      "outside": []
+    },
+    {
+      "id": "chakra/apps/compositions/src/examples/tree-view-with-links.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/alert/BasicAlerts.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/autocomplete/Virtualize.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 5,
+        "inside": 5
+      },
+      "components": {
+        "total": 4,
+        "inside": 4
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/chips/ColorChips.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/dialogs/CookiesBanner.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/grid/BasicGrid.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 2,
+        "inside": 2
+      },
+      "components": {
+        "total": 2,
+        "inside": 2
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/grid/ColumnsGrid.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 2,
+        "inside": 2
+      },
+      "components": {
+        "total": 2,
+        "inside": 2
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/image-list/MasonryImageList.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/menubar/CheckboxItemsMenubar.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "docs/data/material/components/menubar/CheckboxItemsMenubar.tsx: docs/data/material/components/menubar/CheckboxItemsMenubar.tsx: line 2:1: cannot find module `./components/Menubar`",
+        "docs/data/material/components/menubar/CheckboxItemsMenubar.tsx: line 2:1: import from `./components/Menubar`: a compiled app imports only `react` and `react-dom`",
+        "docs/data/material/components/menubar/CheckboxItemsMenubar.tsx: line 23:6: unknown name `Menubar`",
+        "docs/data/material/components/menubar/CheckboxItemsMenubar.tsx: line 24:8: unknown name `MenuRoot`",
+        "docs/data/material/components/menubar/CheckboxItemsMenubar.tsx: line 25:10: unknown name `MenuTrigger`"
+      ],
+      "outside": [
+        "docs/data/material/components/menubar/CheckboxItemsMenubar.tsx: CheckboxItemsMenubar: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mui/docs/data/material/components/pagination/BasicPagination.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/popover/PopoverPopupState.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/slider/DiscreteSlider.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 2,
+        "inside": 2
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/table/SpanningTable.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 5,
+        "inside": 5
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/tabs/AccessibleTabs2.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/components/text-fields/CustomizedInputsStyled.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 3,
+        "inside": 3
+      },
+      "components": {
+        "total": 3,
+        "inside": 3
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/customization/css-layers/CssLayersCaveat.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/customization/focus-visible/FocusVisibleCustomIcons.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 5,
+        "inside": 5
+      },
+      "components": {
+        "total": 5,
+        "inside": 5
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/getting-started/templates/checkout/Checkout.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 2,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "docs/data/material/getting-started/templates/checkout/Checkout.tsx: docs/data/material/getting-started/templates/checkout/Checkout.tsx: line 15:1: cannot find module `./components/AddressForm`",
+        "docs/data/material/getting-started/templates/checkout/Checkout.tsx: docs/data/material/getting-started/templates/checkout/Checkout.tsx: line 16:1: cannot find module `./components/Info`",
+        "docs/data/material/getting-started/templates/checkout/Checkout.tsx: docs/data/material/getting-started/templates/checkout/Checkout.tsx: line 17:1: cannot find module `./components/InfoMobile`",
+        "docs/data/material/getting-started/templates/checkout/Checkout.tsx: docs/data/material/getting-started/templates/checkout/Checkout.tsx: line 18:1: cannot find module `./components/PaymentForm`",
+        "docs/data/material/getting-started/templates/checkout/Checkout.tsx: docs/data/material/getting-started/templates/checkout/Checkout.tsx: line 19:1: cannot find module `./components/Review`"
+      ],
+      "outside": [
+        "docs/data/material/getting-started/templates/checkout/Checkout.tsx: getStepContent: value imported from a module that does not resolve",
+        "docs/data/material/getting-started/templates/checkout/Checkout.tsx: Checkout: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mui/docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: line 3:1: cannot find module `./components/DashboardLayout`",
+        "docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: line 4:1: cannot find module `./components/EmployeeList`",
+        "docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: line 5:1: cannot find module `./components/EmployeeShow`",
+        "docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: line 6:1: cannot find module `./components/EmployeeCreate`",
+        "docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: line 7:1: cannot find module `./components/EmployeeEdit`"
+      ],
+      "outside": [
+        "docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx: CrudDashboard: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mui/docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: line 8:1: cannot find module `./SelectContent`",
+        "docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: line 9:1: cannot find module `./MenuContent`",
+        "docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: line 10:1: cannot find module `./CardAlert`",
+        "docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: line 11:1: cannot find module `./OptionsMenu`",
+        "docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: line 8:1: import from `./SelectContent`: a compiled app imports only `react` and `react-dom`"
+      ],
+      "outside": [
+        "docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx: SideMenu: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mui/docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 2,
+        "inside": 1
+      },
+      "components": {
+        "total": 2,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [
+        "docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx: docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx: line 13:1: cannot find module `./SitemarkIcon`",
+        "docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx: line 13:1: import from `./SitemarkIcon`: a compiled app imports only `react` and `react-dom`",
+        "docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx: line 61:14: unknown name `SitemarkIcon`"
+      ],
+      "outside": [
+        "docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx: Footer: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mui/docs/data/material/getting-started/templates/marketing-page/components/Highlights.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mui/docs/data/material/getting-started/templates/sign-in/components/ForgotPassword.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mantine-ui/lib/AuthenticationTitle",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "lib/AuthenticationTitle/AuthenticationTitle.tsx: lib/AuthenticationTitle/AuthenticationTitle.tsx: line 13:1: cannot find module `./AuthenticationTitle.module.css`",
+        "lib/AuthenticationTitle/AuthenticationTitle.tsx: line 13:1: import from `./AuthenticationTitle.module.css`: a compiled app imports only `react` and `react-dom`",
+        "lib/AuthenticationTitle/AuthenticationTitle.tsx: line 18:37: unknown name `classes`",
+        "lib/AuthenticationTitle/AuthenticationTitle.tsx: line 22:24: unknown name `classes`"
+      ],
+      "outside": [
+        "lib/AuthenticationTitle/AuthenticationTitle.tsx: AuthenticationTitle: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mantine-ui/lib/DoubleNavbar",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "lib/DoubleNavbar/DoubleNavbar.tsx: lib/DoubleNavbar/DoubleNavbar.tsx: line 13:1: cannot find module `./DoubleNavbar.module.css`",
+        "lib/DoubleNavbar/DoubleNavbar.tsx: line 13:1: import from `./DoubleNavbar.module.css`: a compiled app imports only `react` and `react-dom`",
+        "lib/DoubleNavbar/DoubleNavbar.tsx: line 53:20: unknown name `classes`",
+        "lib/DoubleNavbar/DoubleNavbar.tsx: line 64:18: unknown name `classes`",
+        "lib/DoubleNavbar/DoubleNavbar.tsx: line 78:21: unknown name `classes`"
+      ],
+      "outside": [
+        "lib/DoubleNavbar/DoubleNavbar.tsx: DoubleNavbar: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mantine-ui/lib/FaqWithImage",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "lib/FaqWithImage/FaqWithImage.tsx: lib/FaqWithImage/FaqWithImage.tsx: line 2:1: cannot find module `./image.svg`",
+        "lib/FaqWithImage/FaqWithImage.tsx: lib/FaqWithImage/FaqWithImage.tsx: line 3:1: cannot find module `./FaqWithImage.module.css`",
+        "lib/FaqWithImage/FaqWithImage.tsx: line 2:1: import from `./image.svg`: a compiled app imports only `react` and `react-dom`",
+        "lib/FaqWithImage/FaqWithImage.tsx: line 3:1: import from `./FaqWithImage.module.css`: a compiled app imports only `react` and `react-dom`",
+        "lib/FaqWithImage/FaqWithImage.tsx: line 10:21: unknown name `classes`"
+      ],
+      "outside": [
+        "lib/FaqWithImage/FaqWithImage.tsx: FaqWithImage: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mantine-ui/lib/FeaturesGrid",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 2,
+        "inside": 1
+      },
+      "components": {
+        "total": 2,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [
+        "lib/FeaturesGrid/FeaturesGrid.tsx: lib/FeaturesGrid/FeaturesGrid.tsx: line 3:1: cannot find module `./FeaturesGrid.module.css`",
+        "lib/FeaturesGrid/FeaturesGrid.tsx: line 3:1: import from `./FeaturesGrid.module.css`: a compiled app imports only `react` and `react-dom`",
+        "lib/FeaturesGrid/FeaturesGrid.tsx: line 64:27: unknown name `classes`",
+        "lib/FeaturesGrid/FeaturesGrid.tsx: line 65:25: unknown name `classes`",
+        "lib/FeaturesGrid/FeaturesGrid.tsx: line 68:36: unknown name `classes`"
+      ],
+      "outside": [
+        "lib/FeaturesGrid/FeaturesGrid.tsx: FeaturesGrid: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mantine-ui/lib/HeaderMegaMenu",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "lib/HeaderMegaMenu/HeaderMegaMenu.tsx: lib/HeaderMegaMenu/HeaderMegaMenu.tsx: line 30:1: cannot find module `./HeaderMegaMenu.module.css`",
+        "lib/HeaderMegaMenu/HeaderMegaMenu.tsx: line 30:1: import from `./HeaderMegaMenu.module.css`: a compiled app imports only `react` and `react-dom`",
+        "lib/HeaderMegaMenu/HeaderMegaMenu.tsx: line 71:32: unknown name `classes`",
+        "lib/HeaderMegaMenu/HeaderMegaMenu.tsx: line 90:26: unknown name `classes`",
+        "lib/HeaderMegaMenu/HeaderMegaMenu.tsx: line 95:36: unknown name `classes`"
+      ],
+      "outside": [
+        "lib/HeaderMegaMenu/HeaderMegaMenu.tsx: HeaderMegaMenu: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mantine-ui/lib/HeroImageRight",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "lib/HeroImageRight/HeroImageRight.tsx: lib/HeroImageRight/HeroImageRight.tsx: line 2:1: cannot find module `./HeroImageRight.module.css`",
+        "lib/HeroImageRight/HeroImageRight.tsx: line 2:1: import from `./HeroImageRight.module.css`: a compiled app imports only `react` and `react-dom`",
+        "lib/HeroImageRight/HeroImageRight.tsx: line 6:21: unknown name `classes`",
+        "lib/HeroImageRight/HeroImageRight.tsx: line 8:25: unknown name `classes`",
+        "lib/HeroImageRight/HeroImageRight.tsx: line 9:27: unknown name `classes`"
+      ],
+      "outside": [
+        "lib/HeroImageRight/HeroImageRight.tsx: HeroImageRight: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mantine-ui/lib/HeroText",
+      "modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "functions": {
+        "total": 2,
+        "inside": 1
+      },
+      "components": {
+        "total": 2,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [
+        "lib/HeroText/HeroText.tsx: lib/HeroText/HeroText.tsx: line 3:1: cannot find module `./HeroText.module.css`",
+        "lib/HeroText/HeroText.tsx: lib/HeroText/HeroText.tsx: line 3:1: import from `./HeroText.module.css`: a compiled app imports only `react` and `react-dom`",
+        "lib/HeroText/HeroText.tsx: lib/HeroText/HeroText.tsx: line 7:27: unknown name `classes`",
+        "lib/HeroText/HeroText.tsx: lib/HeroText/HeroText.tsx: line 8:24: unknown name `classes`",
+        "lib/HeroText/HeroText.tsx: lib/HeroText/HeroText.tsx: line 9:24: unknown name `classes`"
+      ],
+      "outside": [
+        "lib/HeroText/HeroText.tsx: HeroText: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mantine-ui/lib/PasswordStrength",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 3,
+        "inside": 3
+      },
+      "components": {
+        "total": 2,
+        "inside": 2
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "mantine-ui/lib/SliderMarks",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "lib/SliderMarks/SliderMarks.tsx: lib/SliderMarks/SliderMarks.tsx: line 3:1: cannot find module `./SliderMarks.module.css`",
+        "lib/SliderMarks/SliderMarks.tsx: line 3:1: import from `./SliderMarks.module.css`: a compiled app imports only `react` and `react-dom`",
+        "lib/SliderMarks/SliderMarks.tsx: line 12:19: unknown name `classes`"
+      ],
+      "outside": [
+        "lib/SliderMarks/SliderMarks.tsx: SliderMarks: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mantine-ui/lib/SplitButton",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "lib/SplitButton/SplitButton.tsx: lib/SplitButton/SplitButton.tsx: line 3:1: cannot find module `./SplitButton.module.css`",
+        "lib/SplitButton/SplitButton.tsx: line 3:1: import from `./SplitButton.module.css`: a compiled app imports only `react` and `react-dom`",
+        "lib/SplitButton/SplitButton.tsx: line 10:26: unknown name `classes`",
+        "lib/SplitButton/SplitButton.tsx: line 17:24: unknown name `classes`"
+      ],
+      "outside": [
+        "lib/SplitButton/SplitButton.tsx: SplitButton: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "mantine-ui/lib/UserInfoAction",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "headlessui/playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 2,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: line 5:1: cannot find module `../../components/button`",
+        "playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: line 6:1: cannot find module `../../utils/class-names`",
+        "playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: line 5:1: import from `../../components/button`: a compiled app imports only `react` and `react-dom`",
+        "playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: line 6:1: import from `../../utils/class-names`: a compiled app imports only `react` and `react-dom`",
+        "playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: line 70:38: unknown name `Button`"
+      ],
+      "outside": [
+        "playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx: Home: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "headlessui/playgrounds/react/page-examples/combobox/combobox-virtualized.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 2,
+        "inside": 0
+      },
+      "components": {
+        "total": 2,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: line 5:1: cannot find module `../../components/button`",
+        "playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: line 6:1: cannot find module `../../data`",
+        "playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: line 7:1: cannot find module `../../utils/class-names`",
+        "playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: line 5:1: import from `../../components/button`: a compiled app imports only `react` and `react-dom`",
+        "playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: line 6:1: import from `../../data`: a compiled app imports only `react` and `react-dom`"
+      ],
+      "outside": [
+        "playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: Home: `console.timeEnd` is outside the compiled subset; `console.time` is outside the compiled subset; value imported from a module that does not resolve",
+        "playgrounds/react/page-examples/combobox/combobox-virtualized.tsx: Example: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "headlessui/playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 2,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: line 4:1: cannot find module `../../components/button`",
+        "playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: line 5:1: cannot find module `../../utils/class-names`",
+        "playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: line 4:1: import from `../../components/button`: a compiled app imports only `react` and `react-dom`",
+        "playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: line 5:1: import from `../../utils/class-names`: a compiled app imports only `react` and `react-dom`",
+        "playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: line 68:38: unknown name `Button`"
+      ],
+      "outside": [
+        "playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx: Home: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "headlessui/playgrounds/react/page-examples/menu/multiple-elements.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 2,
+        "inside": 1
+      },
+      "components": {
+        "total": 2,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [
+        "playgrounds/react/page-examples/menu/multiple-elements.tsx: playgrounds/react/page-examples/menu/multiple-elements.tsx: line 2:1: cannot find module `../../components/button`",
+        "playgrounds/react/page-examples/menu/multiple-elements.tsx: playgrounds/react/page-examples/menu/multiple-elements.tsx: line 3:1: cannot find module `../../utils/class-names`",
+        "playgrounds/react/page-examples/menu/multiple-elements.tsx: line 2:1: import from `../../components/button`: a compiled app imports only `react` and `react-dom`",
+        "playgrounds/react/page-examples/menu/multiple-elements.tsx: line 3:1: import from `../../utils/class-names`: a compiled app imports only `react` and `react-dom`",
+        "playgrounds/react/page-examples/menu/multiple-elements.tsx: line 26:12: unknown name `classNames`"
+      ],
+      "outside": [
+        "playgrounds/react/page-examples/menu/multiple-elements.tsx: Dropdown: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "headlessui/playgrounds/react/page-examples/radio-group/radio-group.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "playgrounds/react/page-examples/radio-group/radio-group.tsx: playgrounds/react/page-examples/radio-group/radio-group.tsx: line 3:1: cannot find module `../../utils/class-names`",
+        "playgrounds/react/page-examples/radio-group/radio-group.tsx: line 3:1: import from `../../utils/class-names`: a compiled app imports only `react` and `react-dom`",
+        "playgrounds/react/page-examples/radio-group/radio-group.tsx: line 41:21: unknown name `classNames`",
+        "playgrounds/react/page-examples/radio-group/radio-group.tsx: line 56:38: unknown name `classNames`",
+        "playgrounds/react/page-examples/radio-group/radio-group.tsx: line 64:38: unknown name `classNames`"
+      ],
+      "outside": [
+        "playgrounds/react/page-examples/radio-group/radio-group.tsx: Home: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "headlessui/playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 0
+      },
+      "components": {
+        "total": 1,
+        "inside": 0
+      },
+      "app": null,
+      "sample": [
+        "playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx: playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx: line 4:1: cannot find module `../../utils/class-names`",
+        "playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx: line 4:1: import from `../../utils/class-names`: a compiled app imports only `react` and `react-dom`",
+        "playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx: line 26:13: unknown name `classNames`",
+        "playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx: line 34:26: unknown name `classNames`",
+        "playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx: line 55:17: unknown name `classNames`"
+      ],
+      "outside": [
+        "playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx: Home: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "headlessui/playgrounds/react/page-examples/transitions/component-examples/modal.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "headlessui/playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 3,
+        "inside": 2
+      },
+      "components": {
+        "total": 2,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [
+        "playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: line 4:1: cannot find module `../../../utils/class-names`",
+        "playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: line 5:1: cannot find module `../../../utils/match`",
+        "playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: line 4:1: import from `../../../utils/class-names`: a compiled app imports only `react` and `react-dom`",
+        "playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: line 5:1: import from `../../../utils/match`: a compiled app imports only `react` and `react-dom`",
+        "playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: line 48:21: unknown name `match`"
+      ],
+      "outside": [
+        "playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx: FullPageTransition: value imported from a module that does not resolve"
+      ]
+    },
+    {
+      "id": "react-hook-form/examples/V7/conditionalFields.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "react-hook-form/examples/V7/defaultValues.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "react-hook-form/examples/V7/disableNativeValidation.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "react-hook-form/examples/V7/fieldArrayMinLength.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "react-hook-form/examples/V7/initalFormState.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [
+        "examples/V7/initalFormState.tsx: examples/V7/initalFormState.tsx: line 5:1: cannot find module `./styles.css`"
+      ],
+      "outside": []
+    },
+    {
+      "id": "react-hook-form/examples/V7/triggerFieldValidation.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    },
+    {
+      "id": "react-hook-form/examples/V7/validationOnFieldBlur.tsx",
+      "modules": {
+        "total": 1,
+        "inside": 1
+      },
+      "functions": {
+        "total": 1,
+        "inside": 1
+      },
+      "components": {
+        "total": 1,
+        "inside": 1
+      },
+      "app": null,
+      "sample": [],
+      "outside": []
+    }
+  ]
+}
