@@ -633,3 +633,89 @@ fn notes_runs_on_cw_ui() {
     );
     assert_eq!(out.state.unwrap()["folder"], FOLDER);
 }
+
+/// Notes on React on the VM, from the fallback script cw-tsx builds.
+fn react_notes() -> &'static str {
+    let entry = catalog::get("notes").unwrap();
+    let WebSource::Compiled { script, style, .. } = &entry.app.source else {
+        panic!("Notes ships its IR and fallback");
+    };
+    define(cw_sdk::WebApplication {
+        kind: "notes-on-react".into(),
+        version: 1,
+        titles: Default::default(),
+        source: WebSource::Script {
+            script: script.clone(),
+            style: style.clone(),
+            react: true,
+        },
+    })
+    .unwrap();
+    "notes-on-react"
+}
+
+/// A window saved while a request it made is outstanding keeps the request and the
+/// code awaiting it: the restored window takes the machine's answer where the live
+/// one would have, on either backend.
+#[test]
+fn a_window_saved_mid_request_takes_the_answer_after_a_restore() {
+    for kind in ["notes", react_notes()] {
+        let mut disk = disk_with(&["a.txt", "b.txt"]);
+        let (mut app, effects) = WebApp::launch(kind, FOLDER, 1, 0, DesktopTheme::Macos).unwrap();
+        disk.web(&mut app, effects).unwrap();
+        let quiet = serde_json::to_value(&app).unwrap();
+        assert!(
+            quiet.get("inflight").is_none(),
+            "{kind}: nothing outstanding"
+        );
+        let effects = app.click(1, "notes:open:b.txt", 0).unwrap();
+        let [AppEffect::ReadFiles { tag, .. }] = &effects[..] else {
+            panic!("{kind}: {effects:?}");
+        };
+        // Saved with the read outstanding, and restored twice.
+        let json = serde_json::to_string(&app).unwrap();
+        assert!(json.contains("\"inflight\""), "{kind}");
+        let mut copies: Vec<WebApp> = (0..2)
+            .map(|_| serde_json::from_str(&json).unwrap())
+            .collect();
+        copies.push(app);
+        for copy in &mut copies {
+            let more = copy
+                .files_read(
+                    1,
+                    tag,
+                    vec![(format!("{FOLDER}/b.txt"), Ok("text of b".into()))],
+                )
+                .unwrap_or_else(|e| panic!("{kind}: {e}"));
+            assert!(more.is_empty());
+            assert_eq!(copy.state()["text"], "text of b", "{kind}");
+            assert_eq!(copy.text_field().as_deref(), Some("notes:body"), "{kind}");
+            let saved = serde_json::to_value(&*copy).unwrap();
+            assert!(saved.get("inflight").is_none(), "{kind}: answered");
+        }
+        assert_eq!(page_of(&copies[0]), page_of(&copies[2]), "{kind}");
+        // A clone taken mid-request and left behind keeps its own.
+        let effects = copies[0].click(1, "notes:open:a.txt", 0).unwrap();
+        let [AppEffect::ReadFiles { tag, .. }] = &effects[..] else {
+            panic!("{kind}: {effects:?}");
+        };
+        let behind = copies[0].clone();
+        copies[0]
+            .files_read(
+                1,
+                tag,
+                vec![(format!("{FOLDER}/a.txt"), Ok("first".into()))],
+            )
+            .unwrap();
+        let mut behind = behind;
+        behind
+            .files_read(
+                1,
+                tag,
+                vec![(format!("{FOLDER}/a.txt"), Ok("second".into()))],
+            )
+            .unwrap();
+        assert_eq!(copies[0].state()["text"], "first", "{kind}");
+        assert_eq!(behind.state()["text"], "second", "{kind}");
+    }
+}

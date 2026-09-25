@@ -54,7 +54,8 @@ const CONSOLE_LIMIT: usize = 200;
 const IMMEDIATE_ROUNDS: usize = 16;
 
 /// A request waiting for the machine's answer.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 enum Waiting {
     List(String),
     Write(String),
@@ -80,9 +81,25 @@ struct Cell {
 }
 unsafe impl Send for Cell {}
 
+/// A window saved while requests it made are outstanding: the runtime's complete
+/// state (the promises and the code awaiting them), which requests are waiting for
+/// which answers, and the effects not yet handed out. Declared state cannot carry a
+/// pending promise, so this is what such a window restores from, and the machine's
+/// answer then reaches the code that asked for it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Inflight {
+    runtime: Value,
+    waiting: Vec<(u64, Waiting)>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    deferred: Vec<AppEffect>,
+}
+
 struct Local {
     cell: Arc<Mutex<Cell>>,
     epoch: u64,
+    /// This handle's work in flight as of its epoch, when the shared runtime has
+    /// moved on (or was never booted here) and it had requests outstanding.
+    captured: Option<Arc<Inflight>>,
     /// The window this application runs in, and the latest world clock it was told.
     window: u64,
     clock: u64,
@@ -151,6 +168,34 @@ fn boot(
                 Err(reason) => Err(format!("{kind} cannot be restored: {reason}")),
             }
         }
+    }
+}
+
+/// Rebuilds a runtime from the state `AppRuntime::suspend` saved.
+fn resume(kind: &str, saved: &Value, env: &Env, clock: u64) -> Result<Box<dyn AppRuntime>, String> {
+    let entry = catalog::get(kind).ok_or_else(|| format!("no web application {kind}"))?;
+    let boot = Boot {
+        kind,
+        argument: "",
+        state: None,
+        env,
+    };
+    match &entry.app.source {
+        WebSource::Script {
+            script,
+            style,
+            react,
+        } => Ok(Box::new(JsRuntime::resume(
+            style, script, *react, saved, &boot, clock,
+        )?)),
+        // A compiled app's saved state is cw-ui's; one that fell back to React at
+        // launch saved the Realm's.
+        WebSource::Compiled { script, style, .. } => match UiRuntime::resume(saved, &boot, clock) {
+            Ok(runtime) => Ok(Box::new(runtime)),
+            Err(_) => Ok(Box::new(JsRuntime::resume(
+                style, script, true, saved, &boot, clock,
+            )?)),
+        },
     }
 }
 
@@ -262,6 +307,7 @@ impl WebApp {
             local: Mutex::new(Local {
                 cell: Arc::new(Mutex::new(cell)),
                 epoch: 1,
+                captured: None,
                 window,
                 clock: clock_us,
             }),
@@ -278,6 +324,7 @@ impl WebApp {
         argument: String,
         state: Value,
         chrome: Chrome,
+        inflight: Option<Inflight>,
     ) -> Result<Self, String> {
         let entry = catalog::get(kind).ok_or_else(|| format!("no web application {kind}"))?;
         if entry.app.version != version {
@@ -303,6 +350,7 @@ impl WebApp {
             local: Mutex::new(Local {
                 cell: Arc::new(Mutex::new(cell)),
                 epoch: 0,
+                captured: inflight.map(Arc::new),
                 window: 0,
                 clock: 0,
             }),
@@ -365,15 +413,27 @@ impl WebApp {
         if in_sync {
             return Ok(());
         }
-        let mut runtime = boot(kind, argument, Some(state), &env, local.clock)?;
+        let (mut runtime, waiting, deferred) = match local.captured.as_deref() {
+            // Work in flight resumes exactly where it was.
+            Some(inflight) => (
+                resume(kind, &inflight.runtime, &env, local.clock)?,
+                inflight.waiting.clone(),
+                inflight.deferred.clone(),
+            ),
+            None => (
+                boot(kind, argument, Some(state), &env, local.clock)?,
+                vec![],
+                vec![],
+            ),
+        };
         // A restore boot is silent (see the module documentation).
         let out = runtime.drain();
         let fresh = Cell {
             runtime: Some(runtime),
             epoch: local.epoch,
             env,
-            waiting: vec![],
-            deferred: vec![],
+            waiting,
+            deferred,
             console: out.logs,
         };
         if Arc::strong_count(&local.cell) == 1 {
@@ -403,6 +463,8 @@ impl WebApp {
             local.clock = local.clock.max(clock);
         }
         Self::ready(self.kind, &self.argument, &self.state, local)?;
+        // The live runtime is this handle's state from here on.
+        local.captured = None;
         let (window, now) = (local.window, local.clock);
         let cell_arc = local.cell.clone();
         let mut cell = lock(&cell_arc);
@@ -555,6 +617,8 @@ impl WebApp {
                 Ok(l) => l,
                 Err(p) => p.into_inner(),
             };
+            // A restored window's requests wait in the runtime it resumes.
+            Self::ready(self.kind, &self.argument, &self.state, local)?;
             let mut cell = lock(&local.cell);
             if cell.epoch != local.epoch {
                 return Err("the application is not waiting for that".into());
@@ -861,9 +925,38 @@ impl WebApp {
     }
 }
 
+impl WebApp {
+    /// This handle's work in flight, if requests it made are outstanding: taken from
+    /// the live runtime when this handle is the one in step with it.
+    pub fn inflight(&self) -> Option<Inflight> {
+        let local = lock(&self.local);
+        let mut cell = lock(&local.cell);
+        let cell = &mut *cell;
+        match cell.runtime.as_mut() {
+            Some(runtime) if cell.epoch == local.epoch => {
+                if cell.waiting.is_empty() && cell.deferred.is_empty() {
+                    return None;
+                }
+                Some(Inflight {
+                    runtime: runtime.suspend().ok()?,
+                    waiting: cell.waiting.clone(),
+                    deferred: cell.deferred.clone(),
+                })
+            }
+            _ => local.captured.as_deref().cloned(),
+        }
+    }
+}
+
 impl Clone for WebApp {
     fn clone(&self) -> Self {
-        let local = lock(&self.local);
+        // A copy of a window with requests outstanding keeps their state, and so does
+        // this handle, whichever of the two the live runtime then follows.
+        let captured = self.inflight().map(Arc::new);
+        let mut local = lock(&self.local);
+        if captured.is_some() {
+            local.captured = captured.clone();
+        }
         Self {
             kind: self.kind,
             version: self.version,
@@ -873,6 +966,7 @@ impl Clone for WebApp {
             local: Mutex::new(Local {
                 cell: local.cell.clone(),
                 epoch: local.epoch,
+                captured,
                 window: local.window,
                 clock: local.clock,
             }),
@@ -907,6 +1001,8 @@ struct WebAppRef<'a> {
     state: &'a Value,
     #[serde(skip_serializing_if = "is_default_chrome")]
     chrome: &'a Chrome,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    inflight: Option<Inflight>,
 }
 fn is_default_chrome(c: &&Chrome) -> bool {
     **c == Chrome::default()
@@ -920,6 +1016,8 @@ struct WebAppOwned {
     state: Value,
     #[serde(default)]
     chrome: Chrome,
+    #[serde(default)]
+    inflight: Option<Inflight>,
 }
 impl Serialize for WebApp {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -929,6 +1027,7 @@ impl Serialize for WebApp {
             argument: &self.argument,
             state: &self.state,
             chrome: &self.chrome,
+            inflight: self.inflight(),
         }
         .serialize(s)
     }
@@ -936,8 +1035,10 @@ impl Serialize for WebApp {
 impl<'de> Deserialize<'de> for WebApp {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let o = WebAppOwned::deserialize(d)?;
-        WebApp::restored(&o.kind, o.version, o.argument, o.state, o.chrome)
-            .map_err(serde::de::Error::custom)
+        WebApp::restored(
+            &o.kind, o.version, o.argument, o.state, o.chrome, o.inflight,
+        )
+        .map_err(serde::de::Error::custom)
     }
 }
 

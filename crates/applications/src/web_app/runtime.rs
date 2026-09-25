@@ -176,14 +176,19 @@ pub trait AppRuntime {
     fn drain(&mut self) -> Outbox;
     /// Reads the laid-out document.
     fn view(&mut self, f: &mut dyn FnMut(&View<'_>));
-    /// VM inputs (or the backend's equivalent) since boot: what a live runtime has
-    /// accumulated, which the host bounds by rebooting from declared state.
+    /// Entries the runtime's journal holds (VM inputs and host answers; 0 for a
+    /// backend that keeps none): what a live runtime has accumulated, which the host
+    /// bounds by rebooting from declared state.
     fn weight(&self) -> usize;
     /// The backend's own complete state, for a backend that can snapshot itself
     /// (cw-ui); `None` when the application's declared state is what a snapshot keeps.
     fn snapshot(&mut self) -> Option<Value> {
         None
     }
+    /// The runtime's complete state, work in flight included (a request awaiting its
+    /// reply, the code waiting on it): what a window saved while it has requests
+    /// outstanding keeps, since declared state cannot carry a pending promise.
+    fn suspend(&mut self) -> Result<Value, String>;
 }
 
 /// The channel between the realm's host and the `JsRuntime` driving it.
@@ -289,6 +294,13 @@ impl ScriptHostDocument for Host {
     }
 }
 
+/// The seed `Math.random` draws from: fixed by the application's kind.
+fn seed_of(kind: &str) -> u64 {
+    kind.bytes().fold(0xCBF2_9CE4_8422_2325_u64, |h, b| {
+        (h ^ u64::from(b)).wrapping_mul(0x100_0000_01B3)
+    })
+}
+
 /// The page every JS application boots into. The theme sheet comes first so the
 /// application's own styles can override it; the bridge runs before the bundle.
 fn document(style: &str, script: &str, react: bool) -> String {
@@ -323,7 +335,6 @@ fn document(style: &str, script: &str, react: bool) -> String {
 pub struct JsRuntime {
     realm: Realm,
     channel: Arc<Mutex<Channel>>,
-    inputs: usize,
 }
 
 impl JsRuntime {
@@ -335,9 +346,7 @@ impl JsRuntime {
             scale: 1,
             zoom: 100,
         };
-        let seed = boot.kind.bytes().fold(0xCBF2_9CE4_8422_2325_u64, |h, b| {
-            (h ^ u64::from(b)).wrapping_mul(0x100_0000_01B3)
-        });
+        let seed = seed_of(boot.kind);
         let channel = Arc::new(Mutex::new(Channel {
             boot: serde_json::to_string(boot).expect("boot facts serialise"),
             now_us,
@@ -357,11 +366,43 @@ impl JsRuntime {
         realm.run_document();
         realm.run_until_idle(SETTLE_MS);
         realm.set_step_budget(STEP_BUDGET);
-        Self {
-            realm,
-            channel,
-            inputs: 2,
-        }
+        Self { realm, channel }
+    }
+
+    /// Rebuilds the runtime `suspend` saved, by replaying its journal against the
+    /// same page (the page itself is not saved: it is the application's code).
+    pub fn resume(
+        style: &str,
+        script: &str,
+        react: bool,
+        saved: &Value,
+        boot: &Boot<'_>,
+        now_us: u64,
+    ) -> Result<Self, String> {
+        let mut state: cw_web::script::RealmState =
+            serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+        state.html = document(style, script, react);
+        let channel = Arc::new(Mutex::new(Channel {
+            boot: serde_json::to_string(boot).expect("boot facts serialise"),
+            now_us,
+            viewport: Viewport {
+                width: boot.env.width.max(1),
+                height: boot.env.height.max(1),
+                scale: 1,
+                zoom: 100,
+            },
+            seed: seed_of(boot.kind),
+            ..Channel::default()
+        }));
+        let realm = Realm::restore(
+            &state,
+            Box::new(Host {
+                channel: channel.clone(),
+            }),
+        );
+        // What the replay said again was said before the snapshot.
+        lock(&channel).outbox = Outbox::default();
+        Ok(Self { realm, channel })
     }
 
     fn at(&mut self, now_us: u64) {
@@ -374,7 +415,6 @@ impl AppRuntime for JsRuntime {
         self.at(now_us);
         let action = self.realm.dispatch(event);
         self.realm.run_until_idle(SETTLE_MS);
-        self.inputs += 2;
         action
     }
     fn deliver(&mut self, replies: &[Reply], now_us: u64) {
@@ -385,7 +425,6 @@ impl AppRuntime for JsRuntime {
         let json = serde_json::to_string(replies).expect("replies serialise");
         let _ = self.realm.eval(&format!("__cw_deliver({json})"));
         self.realm.run_until_idle(SETTLE_MS);
-        self.inputs += 2;
     }
     fn set_env(&mut self, env: &Env, now_us: u64) {
         self.at(now_us);
@@ -401,12 +440,10 @@ impl AppRuntime for JsRuntime {
                 width: env.width.max(1),
                 height: env.height.max(1),
             });
-            self.inputs += 1;
         }
         let json = serde_json::to_string(env).expect("environment serialises");
         let _ = self.realm.eval(&format!("__cw_env({json})"));
         self.realm.run_until_idle(SETTLE_MS);
-        self.inputs += 2;
     }
     fn drain(&mut self) -> Outbox {
         std::mem::take(&mut lock(&self.channel).outbox)
@@ -426,7 +463,13 @@ impl AppRuntime for JsRuntime {
         });
     }
     fn weight(&self) -> usize {
-        self.inputs
+        self.realm.journal_len()
+    }
+    fn suspend(&mut self) -> Result<Value, String> {
+        let mut state = self.realm.snapshot();
+        // The page is the application's code, rebuilt from the catalog on resume.
+        state.html.clear();
+        serde_json::to_value(&state).map_err(|e| e.to_string())
     }
 }
 
@@ -462,15 +505,22 @@ impl UiRuntime {
                 scale: 1,
                 zoom: 100,
             },
-            seed: boot.kind.bytes().fold(0xCBF2_9CE4_8422_2325_u64, |h, b| {
-                (h ^ u64::from(b)).wrapping_mul(0x100_0000_01B3)
-            }),
+            seed: seed_of(boot.kind),
             ..Channel::default()
         }));
         let host = Box::new(Host {
             channel: channel.clone(),
         });
         (channel, host)
+    }
+
+    /// Rebuilds the runtime `suspend` saved: cw-ui's snapshot, work in flight
+    /// included.
+    pub fn resume(saved: &Value, boot: &Boot<'_>, now_us: u64) -> Result<Self, String> {
+        let (channel, host) = Self::host(boot, now_us);
+        let state = cw_ui::UiState::from_json(&saved.to_string())?;
+        let app = cw_ui::UiApp::restore(&state, host).map_err(|e| e.to_string())?;
+        Ok(Self { app, channel })
     }
 
     /// Mounts the IR `ir` in a fresh document, or restores it from `state` (a
@@ -580,6 +630,9 @@ impl AppRuntime for UiRuntime {
     }
     fn weight(&self) -> usize {
         0
+    }
+    fn suspend(&mut self) -> Result<Value, String> {
+        serde_json::from_str(&self.app.snapshot().to_json()).map_err(|e| e.to_string())
     }
     fn snapshot(&mut self) -> Option<Value> {
         if self.app.declares_state() {

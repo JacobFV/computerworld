@@ -29,6 +29,7 @@ function render() {
     '<button id="counter:save">Save</button>' +
     '<button id="counter:fetch">Fetch</button>' +
     '<button id="counter:notes">Notes</button>' +
+    '<button id="counter:load">Load</button>' +
     '<input id="counter:name" aria-label="Name">' +
     '<p id="counter-status" role="status">' + state.status + '</p>';
 }
@@ -53,6 +54,18 @@ document.addEventListener("click", (event) => {
       break;
     case "counter:notes":
       cw.launch("notes", "/Users/alice/Counter");
+      break;
+    case "counter:load":
+      // Offline, fall back to the copy on disk: the read is asked for while the
+      // failure is answered, and goes out with the next input.
+      cw.fetch("http://nowhere.invalid/count").then(
+        (response) => change({ status: "fetched " + response.status }),
+        () =>
+          cw.fs.readFile("/Users/alice/count.txt").then(
+            (text) => change({ status: "loaded " + text }),
+            (error) => change({ status: "unreadable: " + error.message }),
+          ),
+      );
       break;
   }
 });
@@ -240,4 +253,50 @@ fn a_web_app_window_survives_a_snapshot_and_a_fork() {
     other.import_snapshot(&exported).unwrap();
     assert_eq!(other.state_hash().unwrap(), world.state_hash().unwrap());
     assert!(painted(&other, &actor, "1"));
+}
+
+/// A window saved while a request it made is still outstanding keeps it through the
+/// world's snapshot: the restored window, like the live one, gets the machine's answer.
+#[test]
+fn a_request_outstanding_at_a_snapshot_is_answered_after_the_restore() {
+    let (mut world, actor) = world();
+    act(
+        &mut world,
+        &actor,
+        "filesystem.v1",
+        "write",
+        json!({"path": "/Users/alice/count.txt", "content": "41"}),
+    );
+    act(
+        &mut world,
+        &actor,
+        "application.v1",
+        "launch",
+        json!({"kind": "counter"}),
+    );
+    // The service is unreachable, so the counter asks for its file instead; that
+    // read is outstanding when the step ends.
+    click(&mut world, &actor, "counter:load");
+    assert_eq!(counter_state(&world, &actor)["status"], "");
+    let window = windows(&world, &actor)
+        .into_iter()
+        .find(|w| w["state"]["kind"] == "counter")
+        .unwrap();
+    assert!(
+        window["state"]["inflight"].is_object(),
+        "the outstanding read is saved"
+    );
+    let snapshot = world.snapshot();
+    let mut fork = world.fork(&snapshot).unwrap();
+    assert_eq!(fork.state_hash().unwrap(), world.state_hash().unwrap());
+    let exported = world.export_snapshot().unwrap();
+    let (mut imported, _) = self::world();
+    imported.import_snapshot(&exported).unwrap();
+    for w in [&mut world, &mut fork, &mut imported] {
+        click(w, &actor, "counter:add");
+        assert_eq!(counter_state(w, &actor)["status"], "loaded 41");
+        assert_eq!(counter_state(w, &actor)["count"], 1);
+    }
+    assert_eq!(fork.state_hash().unwrap(), world.state_hash().unwrap());
+    assert_eq!(imported.state_hash().unwrap(), world.state_hash().unwrap());
 }

@@ -110,17 +110,39 @@ impl PartialEq for Notes {
 }
 impl Eq for Notes {}
 
+/// A Notes window as a snapshot holds it: the declared state, and the work in flight
+/// when requests it made were outstanding (absent otherwise, so a quiet window saves
+/// exactly the seven fields Notes always has).
+#[derive(Serialize, Deserialize)]
+struct Saved {
+    #[serde(flatten)]
+    state: NotesState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    inflight: Option<crate::web_app::Inflight>,
+}
+
 impl Serialize for Notes {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        self.state().serialize(s)
+        Saved {
+            state: self.state(),
+            inflight: self.0.inflight(),
+        }
+        .serialize(s)
     }
 }
 impl<'de> Deserialize<'de> for Notes {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let state = NotesState::deserialize(d)?;
-        let value = serde_json::to_value(&state).map_err(serde::de::Error::custom)?;
-        WebApp::restored(Self::KIND, 1, String::new(), value, Default::default())
-            .map(Self)
-            .map_err(serde::de::Error::custom)
+        let saved = Saved::deserialize(d)?;
+        let value = serde_json::to_value(&saved.state).map_err(serde::de::Error::custom)?;
+        WebApp::restored(
+            Self::KIND,
+            1,
+            String::new(),
+            value,
+            Default::default(),
+            saved.inflight,
+        )
+        .map(Self)
+        .map_err(serde::de::Error::custom)
     }
 }

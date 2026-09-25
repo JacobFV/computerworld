@@ -283,3 +283,61 @@ fn compiled_against_react() {
         );
     }
 }
+
+/// A Notes window saved while its read of a note is outstanding, on each backend:
+/// how large the saved window is, and what saving and restoring it cost.
+#[test]
+#[ignore]
+fn saved_mid_request() {
+    use cw_applications::web_app::{define, definition, WebApp};
+    let entry = definition("notes").unwrap();
+    let cw_sdk::WebSource::Compiled { script, style, .. } = &entry.app.source else {
+        panic!("Notes ships its IR");
+    };
+    define(cw_sdk::WebApplication {
+        kind: "notes-bench-react".into(),
+        version: 1,
+        titles: Default::default(),
+        source: cw_sdk::WebSource::Script {
+            script: script.clone(),
+            style: style.clone(),
+            react: true,
+        },
+    })
+    .unwrap();
+    for kind in ["notes", "notes-bench-react"] {
+        let (mut app, _) = WebApp::launch(kind, FOLDER, 1, 0, DesktopTheme::Macos).unwrap();
+        app.tree_listed(1, FOLDER, Ok(names())).unwrap();
+        let quiet = serde_json::to_string(&app).unwrap().len();
+        app.click(1, "notes:open:ideas.txt", 0).unwrap();
+        let saves: Vec<Duration> = (0..9)
+            .map(|_| {
+                let t = Instant::now();
+                let json = serde_json::to_string(&app).unwrap();
+                let d = t.elapsed();
+                assert!(json.contains("inflight"));
+                d
+            })
+            .collect();
+        let json = serde_json::to_string(&app).unwrap();
+        let restores: Vec<Duration> = (0..9)
+            .map(|_| {
+                let t = Instant::now();
+                let mut copy: WebApp = serde_json::from_str(&json).unwrap();
+                copy.files_read(
+                    1,
+                    "web:2",
+                    vec![(format!("{FOLDER}/ideas.txt"), Ok("x".into()))],
+                )
+                .unwrap();
+                t.elapsed()
+            })
+            .collect();
+        println!(
+            "{kind}: saved quiet {quiet} bytes, mid-request {} bytes; save {:?}, restore+answer {:?} (medians)",
+            json.len(),
+            median(saves),
+            median(restores)
+        );
+    }
+}
