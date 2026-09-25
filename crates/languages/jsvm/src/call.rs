@@ -107,7 +107,10 @@ impl<'h> Vm<'h> {
         }
         let n = code.nlocals as usize;
         let mut locals = self.pool.locals.pop().unwrap_or_default();
-        locals.resize(n, Local::V(Value::Undefined));
+        locals.reserve(n);
+        for _ in 0..n {
+            locals.push(Local::V(Value::Undefined));
+        }
         let mut args = args;
         if let Some(k) = code.simple_params {
             let k = (k as usize).min(args.len());

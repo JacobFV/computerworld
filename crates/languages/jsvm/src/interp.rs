@@ -789,16 +789,23 @@ impl<'h> Vm<'h> {
         match target {
             Target::Closure(fo, code, caps) => {
                 self.charge_first_run(&code);
-                let k = code.simple_params.unwrap_or(0) as usize;
+                let n = code.nlocals as usize;
+                let k = (code.simple_params.unwrap_or(0) as usize).min(argc).min(n);
                 let mut locals = self.pool.locals.pop().unwrap_or_default();
-                locals.resize(code.nlocals as usize, Local::V(Value::Undefined));
+                locals.reserve(n);
                 let this = {
                     let f = self.frames.last_mut().unwrap();
                     let at = f.stack.len() - argc;
-                    for (slot, v) in locals.iter_mut().zip(f.stack.drain(at..)).take(k) {
-                        *slot = Local::V(v);
+                    // The parameters' arguments move into their slots; the rest
+                    // of the arguments are dropped, the other slots start
+                    // undefined.
+                    if argc > 0 {
+                        locals.extend(f.stack.drain(at..at + k).map(Local::V));
+                        f.stack.truncate(at);
                     }
-                    // Arguments past the parameters were dropped with the drain.
+                    for _ in k..n {
+                        locals.push(Local::V(Value::Undefined));
+                    }
                     f.stack.pop();
                     if method {
                         f.stack.pop().unwrap_or(Value::Undefined)
@@ -2732,36 +2739,28 @@ fn plain_get(obj: &Value, name: &JsStr) -> Option<Value> {
 /// `plain_get` on an object by key identity (`Key::ident`).
 #[inline]
 fn plain_get_ident(o: &Obj, id: usize) -> Option<Value> {
-    {
-        {
-            let mut next: Option<Obj> = None;
-            let mut hops = 0;
-            loop {
-                let cur = next.as_ref().unwrap_or(o);
-                let d = cur.borrow();
-                if !d.kind.ordinary_props() {
-                    return None;
-                }
-                if let Some(i) = d.props.find_ident(id) {
-                    return match &d.props.entries[i].1.slot {
-                        Slot::Data(Value::Empty) => None,
-                        Slot::Data(v) => Some(v.clone()),
-                        Slot::Accessor(..) => None,
-                    };
-                }
-                let p = d.proto.clone();
-                drop(d);
-                match p {
-                    Some(p) => next = Some(p),
-                    None => return Some(Value::Undefined),
-                }
-                hops += 1;
-                if hops > 64 {
-                    return None;
-                }
-            }
+    let mut cur: *const Obj = o;
+    for _ in 0..64 {
+        // SAFETY: `cur` is `o` or a prototype reached from it; each is owned by
+        // the object before it in the chain, and nothing runs during the walk
+        // that could change a prototype link or drop an object.
+        let d = unsafe { &*cur }.borrow();
+        if !d.kind.ordinary_props() {
+            return None;
+        }
+        if let Some(i) = d.props.find_ident(id) {
+            return match &d.props.entries[i].1.slot {
+                Slot::Data(Value::Empty) => None,
+                Slot::Data(v) => Some(v.clone()),
+                Slot::Accessor(..) => None,
+            };
+        }
+        match &d.proto {
+            Some(p) => cur = p,
+            None => return Some(Value::Undefined),
         }
     }
+    None
 }
 
 /// A property write the fast path can do: `obj.name = v` where the ordinary
