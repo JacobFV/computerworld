@@ -10,8 +10,9 @@
 //! the walk can stop: a whole `let` initialiser, expression statement, assignment
 //! right side or `return` value.
 //!
-//! A task in flight is not part of a snapshot: a restored app carries on without the
-//! continuations of async functions that were waiting when it was saved.
+//! A task waiting on an `await` is part of a snapshot: its frame, and each
+//! continuation as the position of its statements in the function (see `encode`), so
+//! a restored app resumes it when the awaited promise settles.
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -61,21 +62,26 @@ enum Cont {
         next: usize,
     },
     ForOf {
+        stmt: &'static Stmt,
         pat: &'static Pattern,
         items: Vec<Value>,
         next: usize,
         body: &'static [Stmt],
     },
     For {
+        stmt: &'static Stmt,
         test: Option<&'static Expr>,
         update: Option<&'static Expr>,
         body: &'static [Stmt],
     },
     Switch {
+        stmt: &'static Stmt,
+        start: usize,
         bodies: Vec<&'static [Stmt]>,
         next: usize,
     },
     Try {
+        stmt: &'static Stmt,
         param: Option<&'static Pattern>,
         handler: Option<&'static [Stmt]>,
         finalizer: Option<&'static [Stmt]>,
@@ -86,7 +92,8 @@ enum Cont {
 /// A suspended (or running) async function call.
 #[derive(Debug)]
 pub struct Task {
-    _module: Rc<Module>,
+    module: Rc<Module>,
+    func: u32,
     frame: Frame,
     stack: Vec<Cont>,
     result: Rc<RefCell<Promise>>,
@@ -132,7 +139,8 @@ pub(crate) fn start(rt: &mut Runtime, module: Rc<Module>, func: u32, frame: Fram
     let body = extend(module.functions[func as usize].body.as_slice());
     let result = crate::interp::new_promise();
     let task = Task {
-        _module: module,
+        module,
+        func,
         frame,
         stack: vec![Cont::Seq {
             stmts: body,
@@ -275,6 +283,7 @@ fn run(rt: &mut Runtime, cell: &Rc<RefCell<Option<Task>>>, input: Input) {
 
 /// Starts a compound statement that contains an `await`.
 fn enter(rt: &mut Runtime, task: &mut Task, stmt: &Stmt) -> Option<Completion> {
+    let origin: &'static Stmt = extend(stmt);
     let throw = |t: Throw| match t {
         Throw::Value(v) => Some(Completion::Throw(v)),
         Throw::Short => None,
@@ -304,6 +313,7 @@ fn enter(rt: &mut Runtime, task: &mut Task, stmt: &Stmt) -> Option<Completion> {
                 Err(t) => return throw(t),
             };
             task.stack.push(Cont::ForOf {
+                stmt: origin,
                 pat: extend(p),
                 items,
                 next: 0,
@@ -324,6 +334,7 @@ fn enter(rt: &mut Runtime, task: &mut Task, stmt: &Stmt) -> Option<Completion> {
                 }
             }
             task.stack.push(Cont::For {
+                stmt: origin,
                 test: test.as_ref().map(extend),
                 update: update.as_ref().map(extend),
                 body: extend(body.as_slice()),
@@ -354,7 +365,12 @@ fn enter(rt: &mut Runtime, task: &mut Task, stmt: &Stmt) -> Option<Completion> {
                 .iter()
                 .map(|(_, b)| extend(b.as_slice()))
                 .collect();
-            task.stack.push(Cont::Switch { bodies, next: 0 });
+            task.stack.push(Cont::Switch {
+                stmt: origin,
+                start,
+                bodies,
+                next: 0,
+            });
             None
         }
         Stmt::Try {
@@ -364,6 +380,7 @@ fn enter(rt: &mut Runtime, task: &mut Task, stmt: &Stmt) -> Option<Completion> {
             finalizer,
         } => {
             task.stack.push(Cont::Try {
+                stmt: origin,
                 param: param.as_ref().map(extend),
                 handler: handler.as_ref().map(|h| extend(h.as_slice())),
                 finalizer: finalizer.as_ref().map(|f| extend(f.as_slice())),
@@ -390,6 +407,7 @@ fn next_iteration(rt: &mut Runtime, task: &mut Task) -> Option<Completion> {
         items,
         next,
         body,
+        ..
     }) = task.stack.last_mut()
     else {
         return None;
@@ -414,7 +432,10 @@ fn next_iteration(rt: &mut Runtime, task: &mut Task) -> Option<Completion> {
 /// A `for`/`while` on top of the stack: runs the update (after an iteration), then
 /// the test, and pushes the body or finishes.
 fn loop_test(rt: &mut Runtime, task: &mut Task, after_body: bool) -> Option<Completion> {
-    let Some(Cont::For { test, update, body }) = task.stack.last() else {
+    let Some(Cont::For {
+        test, update, body, ..
+    }) = task.stack.last()
+    else {
         return None;
     };
     let (test, update, body) = (*test, *update, *body);
@@ -450,7 +471,7 @@ fn child_done(rt: &mut Runtime, task: &mut Task) -> Option<Completion> {
         Cont::Seq { .. } => None,
         Cont::ForOf { .. } => next_iteration(rt, task),
         Cont::For { .. } => loop_test(rt, task, true),
-        Cont::Switch { bodies, next } => {
+        Cont::Switch { bodies, next, .. } => {
             if *next < bodies.len() {
                 let b = bodies[*next];
                 *next += 1;
@@ -570,4 +591,253 @@ fn finish(rt: &mut Runtime, task: Task, c: Completion) {
         Completion::Throw(v) => rt.reject_promise(&task.result, v),
         _ => rt.resolve_promise(&task.result, Value::Undefined),
     }
+}
+
+// ---------------------------------------------------------------------- snapshots
+
+use crate::snapshot::{CompS, ContS, FrameS, TaskS, V};
+
+/// Every statement list and statement of a function body, in one fixed pre-order:
+/// a continuation is saved as an index into these.
+fn index(body: &'static [Stmt]) -> (Vec<&'static [Stmt]>, Vec<&'static Stmt>) {
+    fn walk(s: &'static [Stmt], slices: &mut Vec<&'static [Stmt]>, stmts: &mut Vec<&'static Stmt>) {
+        slices.push(s);
+        for st in s {
+            stmts.push(st);
+            match st {
+                Stmt::If(_, a, b) => {
+                    walk(a, slices, stmts);
+                    walk(b, slices, stmts);
+                }
+                Stmt::ForOf(_, _, b) | Stmt::Block(b) => walk(b, slices, stmts),
+                Stmt::For { init, body, .. } => {
+                    walk(init, slices, stmts);
+                    walk(body, slices, stmts);
+                }
+                Stmt::Switch(_, cases) => {
+                    for (_, b) in cases {
+                        walk(b, slices, stmts);
+                    }
+                }
+                Stmt::Try {
+                    block,
+                    handler,
+                    finalizer,
+                    ..
+                } => {
+                    walk(block, slices, stmts);
+                    if let Some(h) = handler {
+                        walk(h, slices, stmts);
+                    }
+                    if let Some(f) = finalizer {
+                        walk(f, slices, stmts);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let (mut slices, mut stmts) = (Vec::new(), Vec::new());
+    walk(body, &mut slices, &mut stmts);
+    (slices, stmts)
+}
+
+fn comp_s(c: &Completion, v: &mut dyn FnMut(&Value) -> V) -> CompS {
+    match c {
+        Completion::Normal => CompS::Normal,
+        Completion::Return(x) => CompS::Return(v(x)),
+        Completion::Throw(x) => CompS::Throw(v(x)),
+        Completion::Break => CompS::Break,
+        Completion::Continue => CompS::Continue,
+    }
+}
+
+fn comp(c: &CompS, v: &mut dyn FnMut(&V) -> Result<Value, String>) -> Result<Completion, String> {
+    Ok(match c {
+        CompS::Normal | CompS::Handler => Completion::Normal,
+        CompS::Return(x) => Completion::Return(v(x)?),
+        CompS::Throw(x) => Completion::Throw(v(x)?),
+        CompS::Break => Completion::Break,
+        CompS::Continue => Completion::Continue,
+    })
+}
+
+/// A suspended task as data.
+pub(crate) fn encode(task: &Task, v: &mut dyn FnMut(&Value) -> V) -> TaskS {
+    let body = extend(task.module.functions[task.func as usize].body.as_slice());
+    let (slices, stmts) = index(body);
+    let slice_at = |s: &[Stmt]| {
+        slices
+            .iter()
+            .position(|x| std::ptr::eq(x.as_ptr(), s.as_ptr()) && x.len() == s.len())
+            .unwrap_or(0) as u32
+    };
+    let stmt_at = |s: &Stmt| stmts.iter().position(|x| std::ptr::eq(*x, s)).unwrap_or(0) as u32;
+    let f = &task.frame;
+    let frame = FrameS {
+        locals: f.locals.iter().map(&mut *v).collect(),
+        closure: v(&Value::Func(f.closure.clone())),
+        inst: f.inst,
+        occ: f.occ.iter().map(|(k, n)| (*k, *n)).collect(),
+        boxed: f.boxed.to_vec(),
+    };
+    let stack = task
+        .stack
+        .iter()
+        .map(|c| match c {
+            Cont::Seq { stmts, next } => ContS::Seq(slice_at(stmts), *next),
+            Cont::ForOf {
+                stmt, items, next, ..
+            } => ContS::ForOf(stmt_at(stmt), items.iter().map(&mut *v).collect(), *next),
+            Cont::For { stmt, .. } => ContS::For(stmt_at(stmt)),
+            Cont::Switch {
+                stmt, start, next, ..
+            } => ContS::Switch(stmt_at(stmt), *start, *next),
+            Cont::Try { stmt, phase, .. } => ContS::Try(
+                stmt_at(stmt),
+                match phase {
+                    TryPhase::Block => None,
+                    TryPhase::Handler => Some(CompS::Handler),
+                    TryPhase::Finally(c) => Some(comp_s(c, v)),
+                },
+            ),
+        })
+        .collect();
+    TaskS {
+        func: task.func,
+        frame,
+        stack,
+        result: v(&Value::Promise(task.result.clone())),
+        bind: task.bind.as_ref().map(|b| match b {
+            Bind::Let(_) => 0,
+            Bind::Assign(_) => 1,
+            Bind::Discard => 2,
+            Bind::Return => 3,
+        }),
+    }
+}
+
+/// A task back from data (`encode`).
+pub(crate) fn decode(
+    module: &Rc<Module>,
+    s: &TaskS,
+    v: &mut dyn FnMut(&V) -> Result<Value, String>,
+) -> Result<Task, String> {
+    let func = module
+        .functions
+        .get(s.func as usize)
+        .ok_or("a task of an unknown function")?;
+    let body = extend(func.body.as_slice());
+    let (slices, stmts) = index(body);
+    let slice = |i: u32| {
+        slices
+            .get(i as usize)
+            .copied()
+            .ok_or("an unknown statement list")
+    };
+    let stmt = |i: u32| stmts.get(i as usize).copied().ok_or("an unknown statement");
+    let closure = match v(&s.frame.closure)? {
+        Value::Func(c) => c,
+        _ => return Err("a task's closure is not a function".into()),
+    };
+    let frame = Frame {
+        locals: s
+            .frame
+            .locals
+            .iter()
+            .map(&mut *v)
+            .collect::<Result<_, _>>()?,
+        closure,
+        inst: s.frame.inst,
+        occ: s.frame.occ.iter().copied().collect(),
+        boxed: Rc::from(s.frame.boxed.clone()),
+    };
+    let mut stack = Vec::with_capacity(s.stack.len());
+    for c in &s.stack {
+        stack.push(match c {
+            ContS::Seq(i, next) => Cont::Seq {
+                stmts: slice(*i)?,
+                next: *next,
+            },
+            ContS::ForOf(i, items, next) => match stmt(*i)? {
+                st @ Stmt::ForOf(p, _, b) => Cont::ForOf {
+                    stmt: st,
+                    pat: p,
+                    items: items.iter().map(&mut *v).collect::<Result<_, _>>()?,
+                    next: *next,
+                    body: b.as_slice(),
+                },
+                _ => return Err("a for...of continuation off its statement".into()),
+            },
+            ContS::For(i) => match stmt(*i)? {
+                st @ Stmt::For {
+                    test, update, body, ..
+                } => Cont::For {
+                    stmt: st,
+                    test: test.as_ref(),
+                    update: update.as_ref(),
+                    body: body.as_slice(),
+                },
+                _ => return Err("a loop continuation off its statement".into()),
+            },
+            ContS::Switch(i, start, next) => match stmt(*i)? {
+                st @ Stmt::Switch(_, cases) => Cont::Switch {
+                    stmt: st,
+                    start: *start,
+                    bodies: cases
+                        .get(*start..)
+                        .ok_or("a switch continuation past its cases")?
+                        .iter()
+                        .map(|(_, b)| b.as_slice())
+                        .collect(),
+                    next: *next,
+                },
+                _ => return Err("a switch continuation off its statement".into()),
+            },
+            ContS::Try(i, phase) => match stmt(*i)? {
+                st @ Stmt::Try {
+                    param,
+                    handler,
+                    finalizer,
+                    ..
+                } => Cont::Try {
+                    stmt: st,
+                    param: param.as_ref(),
+                    handler: handler.as_ref().map(|h| h.as_slice()),
+                    finalizer: finalizer.as_ref().map(|f| f.as_slice()),
+                    phase: match phase {
+                        None => TryPhase::Block,
+                        Some(CompS::Handler) => TryPhase::Handler,
+                        Some(c) => TryPhase::Finally(comp(c, v)?),
+                    },
+                },
+                _ => return Err("a try continuation off its statement".into()),
+            },
+        });
+    }
+    // The `await` a task waits at is the statement before its sequence's cursor.
+    let awaiting = match stack.last() {
+        Some(Cont::Seq { stmts, next }) if *next > 0 => stmts.get(next - 1),
+        _ => None,
+    };
+    let bind = match (s.bind, awaiting) {
+        (None, _) => None,
+        (Some(0), Some(Stmt::Let(p, _))) => Some(Bind::Let(p)),
+        (Some(1), Some(Stmt::Expr(Expr::Assign(lv, _, _)))) => Some(Bind::Assign(lv)),
+        (Some(2), _) => Some(Bind::Discard),
+        (Some(3), _) => Some(Bind::Return),
+        _ => return Err("a task's await does not match its statement".into()),
+    };
+    let result = match v(&s.result)? {
+        Value::Promise(p) => p,
+        _ => return Err("a task's result is not a promise".into()),
+    };
+    Ok(Task {
+        module: module.clone(),
+        func: s.func,
+        frame,
+        stack,
+        result,
+        bind,
+    })
 }

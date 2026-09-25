@@ -58,6 +58,20 @@ pub enum HeapObj {
     StoreChanged(u32, u32),
     /// The function removing the `cw.onEnv` listener with this id.
     CwOffEnv(u32),
+    /// A promise: 0 pending, 1 fulfilled, 2 rejected; its value; its reactions
+    /// (kind 0 then, 1 catch, 2 finally; handlers; the promise they settle).
+    Promise(u8, Option<V>, Vec<(u8, Option<V>, Option<V>, V)>),
+    /// `resolve`/`reject` of a `new Promise`: the promise, and whether it rejects.
+    Resolver(V, bool),
+    /// A `Promise.all` in progress: values, how many remain, its promise, done.
+    AllState(Vec<V>, usize, V, bool),
+    /// Element `index` of a `Promise.all` settling, and its rejection.
+    AllSlot(V, usize),
+    AllReject(V),
+    /// An async function waiting on an `await` (none once it finished).
+    Task(Option<TaskS>),
+    /// The callbacks resuming a task: with the value, or throwing it.
+    Resume(V, bool),
     /// Promises and events do not outlive the entry that created them; a pending
     /// promise restores as one that never settles.
     Opaque,
@@ -167,10 +181,53 @@ pub struct UiState {
     /// `window`/`document` listeners: window?, type, listener, capture.
     #[serde(default)]
     pub listeners: Vec<(bool, String, V, bool)>,
-    /// The `cw` bridge, once the app used it. Requests awaiting a reply are not
-    /// kept: a restored app is never answered them.
+    /// The `cw` bridge, once the app used it, with the requests awaiting replies.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cw: Option<CwS>,
+}
+
+/// A suspended async function call (see `crate::asyncfn::encode`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TaskS {
+    pub func: u32,
+    pub frame: FrameS,
+    pub stack: Vec<ContS>,
+    pub result: V,
+    /// What the awaited value binds: 0 the `let`, 1 the assignment, 2 nothing, 3
+    /// the return value.
+    pub bind: Option<u8>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FrameS {
+    pub locals: Vec<V>,
+    pub closure: V,
+    pub inst: Option<u32>,
+    pub occ: Vec<(usize, u32)>,
+    pub boxed: Vec<bool>,
+}
+
+/// A continuation, by the index of its statement list or statement in the
+/// function's pre-order (`crate::asyncfn::index`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum ContS {
+    Seq(u32, usize),
+    ForOf(u32, Vec<V>, usize),
+    For(u32),
+    Switch(u32, usize, usize),
+    /// `None` in the block; `Handler` in the handler; else in the finalizer with the
+    /// completion it resumes after.
+    Try(u32, Option<CompS>),
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum CompS {
+    Normal,
+    Return(V),
+    Throw(V),
+    Break,
+    Continue,
+    Handler,
 }
 
 /// The `cw` bridge's state (see `crate::cw`).
@@ -185,6 +242,9 @@ pub struct CwS {
     pub next_request: u64,
     #[serde(default)]
     pub declared: bool,
+    /// Requests awaiting a reply: id, their promise, whether an HTTP response.
+    #[serde(default)]
+    pub pending: Vec<(u64, V, bool)>,
 }
 
 // ------------------------------------------------------------------ encoding
@@ -195,6 +255,36 @@ struct Enc {
 }
 
 impl Enc {
+    fn all(&mut self, state: &Rc<RefCell<AllState>>) -> V {
+        match self.reserve(Rc::as_ptr(state) as *const u8 as usize) {
+            Err(i) => V::H(i),
+            Ok(i) => {
+                let (values, remaining, result, done) = {
+                    let s = state.borrow();
+                    (s.values.clone(), s.remaining, s.result.clone(), s.done)
+                };
+                let values = values.iter().map(|v| self.v(v)).collect();
+                let result = self.v(&Value::Promise(result));
+                self.heap[i as usize] = HeapObj::AllState(values, remaining, result, done);
+                V::H(i)
+            }
+        }
+    }
+
+    fn task(&mut self, cell: &Rc<RefCell<Option<crate::asyncfn::Task>>>) -> V {
+        match self.reserve(Rc::as_ptr(cell) as *const u8 as usize) {
+            Err(i) => V::H(i),
+            Ok(i) => {
+                let t = cell
+                    .borrow()
+                    .as_ref()
+                    .map(|t| crate::asyncfn::encode(t, &mut |v| self.v(v)));
+                self.heap[i as usize] = HeapObj::Task(t);
+                V::H(i)
+            }
+        }
+    }
+
     fn reserve(&mut self, ptr: usize) -> Result<u32, u32> {
         if let Some(i) = self.seen.get(&ptr) {
             return Err(*i);
@@ -354,24 +444,61 @@ impl Enc {
                     V::H(i)
                 }
             },
-            Value::Native(n)
-                if matches!(**n, NativeFn::StoreChanged { .. } | NativeFn::CwOffEnv(_)) =>
-            {
-                match self.reserve(Rc::as_ptr(n) as *const u8 as usize) {
-                    Err(i) => V::H(i),
-                    Ok(i) => {
-                        self.heap[i as usize] = match **n {
-                            NativeFn::StoreChanged { inst, hook } => {
-                                HeapObj::StoreChanged(inst, hook)
-                            }
-                            NativeFn::CwOffEnv(id) => HeapObj::CwOffEnv(id),
-                            _ => HeapObj::Opaque,
+            Value::Promise(p) => match self.reserve(Rc::as_ptr(p) as *const u8 as usize) {
+                Err(i) => V::H(i),
+                Ok(i) => {
+                    let (state, value, reactions) = {
+                        let pb = p.borrow();
+                        let (state, value) = match &pb.state {
+                            PromiseState::Pending => (0, None),
+                            PromiseState::Fulfilled(v) => (1, Some(v.clone())),
+                            PromiseState::Rejected(v) => (2, Some(v.clone())),
                         };
-                        V::H(i)
-                    }
+                        (state, value, pb.reactions.clone())
+                    };
+                    let value = value.map(|v| self.v(&v));
+                    let reactions = reactions
+                        .iter()
+                        .map(|r| {
+                            (
+                                match r.kind {
+                                    ReactionKind::Then => 0,
+                                    ReactionKind::Catch => 1,
+                                    ReactionKind::Finally => 2,
+                                },
+                                r.on_fulfilled.as_ref().map(|f| self.v(f)),
+                                r.on_rejected.as_ref().map(|f| self.v(f)),
+                                self.v(&Value::Promise(r.result.clone())),
+                            )
+                        })
+                        .collect();
+                    self.heap[i as usize] = HeapObj::Promise(state, value, reactions);
+                    V::H(i)
                 }
-            }
-            Value::Event(_) | Value::Promise(_) | Value::Native(_) => {
+            },
+            Value::Native(n) => match self.reserve(Rc::as_ptr(n) as *const u8 as usize) {
+                Err(i) => V::H(i),
+                Ok(i) => {
+                    self.heap[i as usize] = match &**n {
+                        NativeFn::Resolver { promise, reject } => {
+                            HeapObj::Resolver(self.v(&Value::Promise(promise.clone())), *reject)
+                        }
+                        NativeFn::AllSlot { state, index } => {
+                            HeapObj::AllSlot(self.all(state), *index)
+                        }
+                        NativeFn::AllReject(state) => HeapObj::AllReject(self.all(state)),
+                        NativeFn::Resume { task, throw } => {
+                            HeapObj::Resume(self.task(task), *throw)
+                        }
+                        NativeFn::StoreChanged { inst, hook } => {
+                            HeapObj::StoreChanged(*inst, *hook)
+                        }
+                        NativeFn::CwOffEnv(id) => HeapObj::CwOffEnv(*id),
+                    };
+                    V::H(i)
+                }
+            },
+            Value::Event(_) => {
                 let i = self.heap.len() as u32;
                 self.heap.push(HeapObj::Opaque);
                 V::H(i)
@@ -555,6 +682,12 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         next_listener: rt.cw.next_listener,
         next_request: rt.cw.next_request,
         declared: rt.cw.declared,
+        pending: rt
+            .cw
+            .pending
+            .iter()
+            .map(|(id, (p, http))| (*id, e.v(&Value::Promise(p.clone())), *http))
+            .collect(),
     });
     let listeners = rt
         .global_listeners
@@ -619,6 +752,9 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
 struct Dec<'a> {
     heap: &'a [HeapObj],
     done: Vec<Option<Value>>,
+    module: Rc<Module>,
+    tasks: BTreeMap<u32, Rc<RefCell<Option<crate::asyncfn::Task>>>>,
+    alls: BTreeMap<u32, Rc<RefCell<AllState>>>,
 }
 
 impl Dec<'_> {
@@ -786,10 +922,111 @@ impl Dec<'_> {
                 hook: *hook,
             })),
             HeapObj::CwOffEnv(id) => Value::Native(Rc::new(NativeFn::CwOffEnv(*id))),
+            HeapObj::Promise(state, value, reactions) => {
+                // Registered first: reactions and values may lead back to it.
+                let p = crate::interp::new_promise();
+                self.done[idx] = Some(Value::Promise(p.clone()));
+                let value = match value {
+                    Some(v) => self.v(v)?,
+                    None => Value::Undefined,
+                };
+                let mut rs = Vec::with_capacity(reactions.len());
+                for (kind, ok, bad, result) in reactions {
+                    rs.push(Reaction {
+                        kind: match kind {
+                            0 => ReactionKind::Then,
+                            1 => ReactionKind::Catch,
+                            _ => ReactionKind::Finally,
+                        },
+                        on_fulfilled: ok.as_ref().map(|f| self.v(f)).transpose()?,
+                        on_rejected: bad.as_ref().map(|f| self.v(f)).transpose()?,
+                        result: self.promise(result)?,
+                    });
+                }
+                {
+                    let mut pb = p.borrow_mut();
+                    pb.state = match state {
+                        0 => PromiseState::Pending,
+                        1 => PromiseState::Fulfilled(value),
+                        _ => PromiseState::Rejected(value),
+                    };
+                    pb.reactions = rs;
+                }
+                return Ok(Value::Promise(p));
+            }
+            HeapObj::Resolver(p, reject) => Value::Native(Rc::new(NativeFn::Resolver {
+                promise: self.promise(p)?,
+                reject: *reject,
+            })),
+            HeapObj::AllSlot(state, index) => Value::Native(Rc::new(NativeFn::AllSlot {
+                state: self.all(state)?,
+                index: *index,
+            })),
+            HeapObj::AllReject(state) => {
+                Value::Native(Rc::new(NativeFn::AllReject(self.all(state)?)))
+            }
+            HeapObj::Resume(task, throw) => Value::Native(Rc::new(NativeFn::Resume {
+                task: self.task(task)?,
+                throw: *throw,
+            })),
+            HeapObj::AllState(..) | HeapObj::Task(_) => {
+                return Err("internal state where a value belongs".into())
+            }
             HeapObj::Opaque => Value::Promise(crate::interp::new_promise()),
         };
         self.done[idx] = Some(v.clone());
         Ok(v)
+    }
+
+    fn promise(&mut self, v: &V) -> Result<Rc<RefCell<Promise>>, String> {
+        match self.v(v)? {
+            Value::Promise(p) => Ok(p),
+            _ => Err("expected a promise".into()),
+        }
+    }
+
+    fn all(&mut self, v: &V) -> Result<Rc<RefCell<AllState>>, String> {
+        let V::H(i) = v else {
+            return Err("expected a Promise.all".into());
+        };
+        if let Some(a) = self.alls.get(i) {
+            return Ok(a.clone());
+        }
+        let Some(HeapObj::AllState(values, remaining, result, done)) = self.heap.get(*i as usize)
+        else {
+            return Err("expected a Promise.all".into());
+        };
+        let result_p = self.promise(result)?;
+        let a = Rc::new(RefCell::new(AllState {
+            values: Vec::new(),
+            remaining: *remaining,
+            result: result_p,
+            done: *done,
+        }));
+        self.alls.insert(*i, a.clone());
+        let values = values.iter().map(|x| self.v(x)).collect::<Result<_, _>>()?;
+        a.borrow_mut().values = values;
+        Ok(a)
+    }
+
+    fn task(&mut self, v: &V) -> Result<Rc<RefCell<Option<crate::asyncfn::Task>>>, String> {
+        let V::H(i) = v else {
+            return Err("expected a task".into());
+        };
+        if let Some(t) = self.tasks.get(i) {
+            return Ok(t.clone());
+        }
+        let Some(HeapObj::Task(t)) = self.heap.get(*i as usize) else {
+            return Err("expected a task".into());
+        };
+        let cell = Rc::new(RefCell::new(None));
+        self.tasks.insert(*i, cell.clone());
+        if let Some(t) = t {
+            let module = self.module.clone();
+            let task = crate::asyncfn::decode(&module, t, &mut |x| self.v(x))?;
+            *cell.borrow_mut() = Some(task);
+        }
+        Ok(cell)
     }
 
     fn func(&mut self, v: &V) -> Result<Rc<Closure>, String> {
@@ -898,10 +1135,14 @@ pub(crate) fn load(s: &UiState, host: Box<dyn ScriptHostDocument>) -> Result<Run
     if s.module.version != crate::ir::IR_VERSION {
         return Err(format!("IR version {}", s.module.version));
     }
-    let mut rt = Runtime::new(Rc::new(s.module.clone()), host, &s.url);
+    let module = Rc::new(s.module.clone());
+    let mut rt = Runtime::new(module.clone(), host, &s.url);
     let mut d = Dec {
         heap: &s.heap,
         done: vec![None; s.heap.len()],
+        module,
+        tasks: BTreeMap::new(),
+        alls: BTreeMap::new(),
     };
     rt.globals = s.globals.iter().map(|g| d.v(g)).collect::<Result<_, _>>()?;
     for (k, v) in &s.ctx_defaults {
@@ -1033,7 +1274,14 @@ pub(crate) fn load(s: &UiState, host: Box<dyn ScriptHostDocument>) -> Result<Run
             next_listener: c.next_listener,
             next_request: c.next_request,
             declared: c.declared,
-            pending: Default::default(),
+            pending: c
+                .pending
+                .iter()
+                .map(|(id, p, http)| match d.v(p)? {
+                    Value::Promise(p) => Ok((*id, (p, *http))),
+                    _ => Err("a cw request without its promise".to_owned()),
+                })
+                .collect::<Result<_, String>>()?,
         };
     }
     for (window, ty, f, capture) in &s.listeners {

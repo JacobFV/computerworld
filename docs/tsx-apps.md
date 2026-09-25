@@ -257,9 +257,12 @@ let next = app.next_timer_micros();                       // when to call it aga
 * `snapshot()` returns a `UiState` (serde; `to_json`/`from_json`): the document, the
   component tree with every hook's value, handlers, timers and form state, with
   shared values kept shared. `UiApp::restore(&state, host)` decodes it; nothing
-  replays. An async function waiting on an `await` when the snapshot is taken is not
-  in it: the restored app carries on without that continuation (the timers and
-  state are there; the suspended call is not).
+  replays. Work in flight is in it: pending promises with their reactions,
+  `Promise.all`s part way, and async functions suspended at an `await` (their
+  frames, and their place as positions in the function's statements), so a
+  restored app carries on as the original does. As on the Realm, whose snapshot
+  replays its journal to the same point, a `cw` request awaiting its reply is
+  answered after a restore.
 * The `cw` global (`cw_ui`'s `cw` module) speaks the protocol of
   `crates/applications/src/web_app/bridge.js` over the same channel, the host's
   `localStorage`: it reads `"\u{1}cw:boot"` (`{kind, argument, state, env}`) and
@@ -271,8 +274,10 @@ let next = app.next_timer_micros();                       // when to call it aga
   `onEnv` listeners (`__cw_env`; the host applies the theme itself); both settle the
   app. `declares_state()` says whether the app called `cw.state.set`: such an app's
   declared state is what a host keeps and boots it again from, as on the JS
-  backend, while an app that declares none is kept as its `snapshot()`. Requests
-  awaiting a reply are not in a snapshot.
+  backend, while an app that declares none is kept as its `snapshot()`, which
+  keeps the requests awaiting replies: `cw_deliver` answers them after a restore
+  (`crates/web/ui/tests/cw_bridge.rs`). A host must keep its own record of those
+  requests across the snapshot for the replies to come.
 
 ## Verification
 
