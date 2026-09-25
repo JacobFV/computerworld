@@ -940,7 +940,7 @@ impl<'h> Vm<'h> {
     /// either completes here with the general path's result or is handed over
     /// before it has changed anything.
     #[inline(always)]
-    fn exec_fast(&mut self) -> JsResult<Op> {
+    fn exec_fast(&mut self) -> JsResult<()> {
         let fp: *mut Frame = self.frames.last_mut().unwrap();
         // SAFETY: nothing below touches `self.frames` (the arms use the frame,
         // the step counter and the budget), so the top frame stays where it is
@@ -953,15 +953,34 @@ impl<'h> Vm<'h> {
         let mut pc = f.pc;
         let mut steps = self.steps;
         let budget = self.budget;
+        // Leaves the instruction at `pc - 1` to the general path.
         macro_rules! leave {
-            ($op:expr) => {{
+            () => {{
                 f.pc = pc;
                 self.steps = steps;
-                return Ok($op);
+                return Ok(());
+            }};
+        }
+        // A binary operator on two numbers, replacing them with the result;
+        // anything else is left to the general path.
+        macro_rules! num2 {
+            (|$x:ident, $y:ident| $r:expr) => {{
+                let n = f.stack.len();
+                let (Value::Num($x), Value::Num($y)) = (&f.stack[n - 2], &f.stack[n - 1]) else {
+                    leave!();
+                };
+                let ($x, $y) = (*$x, *$y);
+                let r = $r;
+                // SAFETY: both operands are numbers, which own nothing, so they
+                // can be overwritten and forgotten without dropping.
+                unsafe {
+                    std::ptr::write(f.stack.as_mut_ptr().add(n - 2), r);
+                    f.stack.set_len(n - 1);
+                }
             }};
         }
         loop {
-            let op = ops[pc];
+            let op = &ops[pc];
             pc += 1;
             steps += 1;
             if steps > budget {
@@ -969,7 +988,7 @@ impl<'h> Vm<'h> {
                 self.steps = steps;
                 return Err(self.step_limit());
             }
-            match op {
+            match *op {
                 Op::Undef => f.stack.push(Value::Undefined),
                 Op::Null => f.stack.push(Value::Null),
                 Op::True => f.stack.push(Value::Bool(true)),
@@ -989,7 +1008,7 @@ impl<'h> Vm<'h> {
                         Local::C(c) => c.borrow().clone(),
                     };
                     if let Value::Empty = v {
-                        leave!(op);
+                        leave!();
                     }
                     f.stack.push(v);
                 }
@@ -998,14 +1017,14 @@ impl<'h> Vm<'h> {
                     match slot {
                         Local::V(x) => {
                             if let Value::Empty = x {
-                                leave!(op);
+                                leave!();
                             }
                             *x = f.stack.pop().unwrap();
                         }
                         Local::C(c) => {
                             let mut c = c.borrow_mut();
                             if let Value::Empty = *c {
-                                leave!(op);
+                                leave!();
                             }
                             *c = f.stack.pop().unwrap();
                         }
@@ -1021,14 +1040,14 @@ impl<'h> Vm<'h> {
                 Op::LoadFree(i) => {
                     let v = f.captures[i as usize].borrow().clone();
                     if let Value::Empty = v {
-                        leave!(op);
+                        leave!();
                     }
                     f.stack.push(v);
                 }
                 Op::StoreFree(i) => {
                     let mut c = f.captures[i as usize].borrow_mut();
                     if let Value::Empty = *c {
-                        leave!(op);
+                        leave!();
                     }
                     *c = f.stack.pop().unwrap();
                 }
@@ -1054,17 +1073,17 @@ impl<'h> Vm<'h> {
                     // (accessors, the prototype chain, named elements, a
                     // ReferenceError) takes the general path.
                     let Value::Str(name) = &code.consts[c as usize] else {
-                        leave!(op);
+                        leave!();
                     };
                     if !name.is_canon() {
-                        leave!(op);
+                        leave!();
                     }
                     let id = Rc::as_ptr(&name.0) as *const u8 as usize;
                     let v = {
                         let g = self.global.borrow();
                         match g.props.find_ident(id).map(|i| &g.props.entries[i].1.slot) {
                             Some(Slot::Data(v)) => v.clone(),
-                            _ => leave!(op),
+                            _ => leave!(),
                         }
                     };
                     f.stack.push(v);
@@ -1108,15 +1127,15 @@ impl<'h> Vm<'h> {
                         f.stack.pop();
                     }
                 }
-                Op::StrictEq | Op::StrictNe => {
+                Op::StrictEq => {
                     let b = f.stack.pop().unwrap();
                     let a = f.stack.pop().unwrap();
-                    let eq = strict_equals(&a, &b);
-                    f.stack.push(Value::Bool(if matches!(op, Op::StrictEq) {
-                        eq
-                    } else {
-                        !eq
-                    }));
+                    f.stack.push(Value::Bool(strict_equals(&a, &b)));
+                }
+                Op::StrictNe => {
+                    let b = f.stack.pop().unwrap();
+                    let a = f.stack.pop().unwrap();
+                    f.stack.push(Value::Bool(!strict_equals(&a, &b)));
                 }
                 Op::Not => {
                     let v = f.stack.pop().unwrap();
@@ -1126,59 +1145,32 @@ impl<'h> Vm<'h> {
                     let v = f.stack.pop().unwrap();
                     f.stack.push(Value::Str(JsStr::intern(v.type_of())));
                 }
-                Op::Add
-                | Op::Sub
-                | Op::Mul
-                | Op::Div
-                | Op::Mod
-                | Op::BitAnd
-                | Op::BitOr
-                | Op::BitXor
-                | Op::Shl
-                | Op::Shr
-                | Op::UShr
-                | Op::Lt
-                | Op::Gt
-                | Op::Le
-                | Op::Ge => {
-                    let n = f.stack.len();
-                    let (Value::Num(x), Value::Num(y)) = (&f.stack[n - 2], &f.stack[n - 1]) else {
-                        leave!(op);
-                    };
-                    let (x, y) = (*x, *y);
-                    let r = match op {
-                        Op::Add => Value::Num(x + y),
-                        Op::Sub => Value::Num(x - y),
-                        Op::Mul => Value::Num(x * y),
-                        Op::Div => Value::Num(x / y),
-                        Op::Mod => Value::Num(crate::conv::num_arith(Arith::Mod, x, y)),
-                        Op::BitAnd => Value::Num(crate::conv::num_arith(Arith::BitAnd, x, y)),
-                        Op::BitOr => Value::Num(crate::conv::num_arith(Arith::BitOr, x, y)),
-                        Op::BitXor => Value::Num(crate::conv::num_arith(Arith::BitXor, x, y)),
-                        Op::Shl => Value::Num(crate::conv::num_arith(Arith::Shl, x, y)),
-                        Op::Shr => Value::Num(crate::conv::num_arith(Arith::Shr, x, y)),
-                        Op::UShr => Value::Num(crate::conv::num_arith(Arith::UShr, x, y)),
-                        Op::Lt => Value::Bool(x < y),
-                        Op::Gt => Value::Bool(x > y),
-                        Op::Le => Value::Bool(x <= y),
-                        _ => Value::Bool(x >= y),
-                    };
-                    // SAFETY: both operands are numbers, which own nothing, so
-                    // they can be overwritten and forgotten without dropping.
-                    unsafe {
-                        std::ptr::write(f.stack.as_mut_ptr().add(n - 2), r);
-                        f.stack.set_len(n - 1);
-                    }
-                }
-                Op::Inc | Op::Dec => {
+                Op::Add => num2!(|x, y| Value::Num(x + y)),
+                Op::Sub => num2!(|x, y| Value::Num(x - y)),
+                Op::Mul => num2!(|x, y| Value::Num(x * y)),
+                Op::Div => num2!(|x, y| Value::Num(x / y)),
+                Op::Mod => num2!(|x, y| Value::Num(crate::conv::num_arith(Arith::Mod, x, y))),
+                Op::BitAnd => num2!(|x, y| Value::Num(crate::conv::num_arith(Arith::BitAnd, x, y))),
+                Op::BitOr => num2!(|x, y| Value::Num(crate::conv::num_arith(Arith::BitOr, x, y))),
+                Op::BitXor => num2!(|x, y| Value::Num(crate::conv::num_arith(Arith::BitXor, x, y))),
+                Op::Shl => num2!(|x, y| Value::Num(crate::conv::num_arith(Arith::Shl, x, y))),
+                Op::Shr => num2!(|x, y| Value::Num(crate::conv::num_arith(Arith::Shr, x, y))),
+                Op::UShr => num2!(|x, y| Value::Num(crate::conv::num_arith(Arith::UShr, x, y))),
+                Op::Lt => num2!(|x, y| Value::Bool(x < y)),
+                Op::Gt => num2!(|x, y| Value::Bool(x > y)),
+                Op::Le => num2!(|x, y| Value::Bool(x <= y)),
+                Op::Ge => num2!(|x, y| Value::Bool(x >= y)),
+                Op::Inc => {
                     let Some(Value::Num(x)) = f.stack.last_mut() else {
-                        leave!(op);
+                        leave!();
                     };
-                    *x = if matches!(op, Op::Inc) {
-                        *x + 1.0
-                    } else {
-                        *x - 1.0
+                    *x += 1.0;
+                }
+                Op::Dec => {
+                    let Some(Value::Num(x)) = f.stack.last_mut() else {
+                        leave!();
                     };
+                    *x -= 1.0;
                 }
                 Op::EnterTry(h, fin) => {
                     let depth = f.stack.len() as u32;
@@ -1199,10 +1191,10 @@ impl<'h> Vm<'h> {
                 }
                 Op::GetProp(c) | Op::GetPropKeep(c) => {
                     let Value::Str(name) = &code.consts[c as usize] else {
-                        leave!(op);
+                        leave!();
                     };
                     let Some(v) = plain_get(f.stack.last().unwrap(), name) else {
-                        leave!(op);
+                        leave!();
                     };
                     if let Op::GetProp(_) = op {
                         *f.stack.last_mut().unwrap() = v;
@@ -1212,11 +1204,11 @@ impl<'h> Vm<'h> {
                 }
                 Op::SetProp(c) => {
                     let Value::Str(name) = &code.consts[c as usize] else {
-                        leave!(op);
+                        leave!();
                     };
                     let n = f.stack.len();
                     if !plain_set(&f.stack[n - 2], name, &f.stack[n - 1]) {
-                        leave!(op);
+                        leave!();
                     }
                     // [obj value] -> value
                     let v = f.stack.pop().unwrap();
@@ -1225,12 +1217,12 @@ impl<'h> Vm<'h> {
                 Op::GetElem => {
                     let n = f.stack.len();
                     let Some(v) = element_get(&f.stack[n - 2], &f.stack[n - 1]) else {
-                        leave!(op);
+                        leave!();
                     };
                     f.stack.truncate(n - 2);
                     f.stack.push(v);
                 }
-                _ => leave!(op),
+                _ => leave!(),
             }
         }
     }
@@ -1241,7 +1233,9 @@ impl<'h> Vm<'h> {
             let op = if self.debug.is_some() || self.prof.is_some() {
                 self.fetch_hooked()?
             } else {
-                self.exec_fast()?
+                self.exec_fast()?;
+                let f = self.frames.last().unwrap();
+                f.code.ops[f.pc - 1]
             };
             match op {
                 Op::Undef => self.push(Value::Undefined),
