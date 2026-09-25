@@ -111,6 +111,20 @@ pub fn sizing(v: Sizing) -> String {
 }
 
 /// Chromium's colour form: `rgb(r, g, b)` when opaque, else `rgba(r, g, b, a)`.
+/// An SVG paint as `getComputedStyle` gives it; `initial` when none is declared.
+fn svg_paint(p: Option<&SvgPaint>, current: Color, initial: &str) -> String {
+    match p {
+        None => initial.into(),
+        Some(SvgPaint::None) => "none".into(),
+        Some(SvgPaint::Current) => color(current),
+        Some(SvgPaint::Color(c)) => color(*c),
+        Some(SvgPaint::Url(u, f)) => match f {
+            Some(f) => format!("url(\"{u}\") {}", svg_paint(Some(f), current, initial)),
+            None => format!("url(\"{u}\")"),
+        },
+    }
+}
+
 pub fn color(c: Color) -> String {
     if c.3 == 255 {
         format!("rgb({}, {}, {})", c.0, c.1, c.2)
@@ -998,6 +1012,9 @@ impl ComputedStyle {
                 Cursor::None => "none",
             }
             .into(),
+            // Chromium's initial values: a black fill and no stroke.
+            L::Fill => svg_paint(s.fill.as_ref(), s.color, "rgb(0, 0, 0)"),
+            L::Stroke => svg_paint(s.stroke.as_ref(), s.color, "none"),
             L::PointerEvents => match s.pointer_events {
                 PointerEvents::Auto => "auto",
                 PointerEvents::None => "none",

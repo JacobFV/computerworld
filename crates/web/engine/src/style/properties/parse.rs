@@ -1732,6 +1732,21 @@ pub fn aspect_ratio(p: &mut Parser) -> Option<Specified> {
     (auto || seen_ratio).then_some(Specified::AspectRatio(AspectRatio { auto, ratio }))
 }
 
+/// SVG `fill` and `stroke`: `none`, `url(#id)` with an optional fallback, or a colour.
+pub fn svg_paint(p: &mut Parser) -> Option<Specified> {
+    fn one(p: &mut Parser) -> Option<SvgPaintSpec> {
+        if p.expect_ident_matching("none").is_some() {
+            return Some(SvgPaintSpec::None);
+        }
+        if let Some(u) = p.expect_url() {
+            let fallback = p.try_parse(one).map(Box::new);
+            return Some(SvgPaintSpec::Url(u, fallback));
+        }
+        parse_color(p).map(SvgPaintSpec::Color)
+    }
+    one(p).map(Specified::SvgPaint)
+}
+
 pub fn content(p: &mut Parser) -> Option<Specified> {
     if p.expect_ident_matching("normal").is_some() {
         return Some(Specified::Content(ContentSpec::Normal));

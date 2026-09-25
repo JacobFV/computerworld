@@ -747,6 +747,19 @@ pub enum ZIndex {
     Int(i32),
 }
 
+/// An SVG `fill` or `stroke` a style sheet or `style` attribute declares on the
+/// element itself. The SVG builder applies it over the element's presentation
+/// attribute (which it reads itself) and hands it down to the children.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum SvgPaint {
+    None,
+    /// `currentColor`, resolved against each painted element's `color`.
+    Current,
+    Color(Color),
+    /// `url(#id)` with the paint used when it does not resolve.
+    Url(String, Option<Box<SvgPaint>>),
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum PointerEvents {
     #[default]
@@ -1163,6 +1176,10 @@ pub struct ComputedStyle {
     pub aspect_ratio: AspectRatio,
     /// `-webkit-line-clamp`: the number of lines a legacy vertical box shows.
     pub line_clamp: Option<u32>,
+    /// SVG `fill` and `stroke` declared on this element (not inherited here: the
+    /// SVG builder carries paint down the SVG tree with the presentation attributes).
+    pub fill: Option<SvgPaint>,
+    pub stroke: Option<SvgPaint>,
     /// `-webkit-box-orient: vertical`.
     pub box_orient_vertical: bool,
     pub content: Content,
@@ -1296,6 +1313,8 @@ impl ComputedStyle {
             object_fit: ObjectFit::Fill,
             aspect_ratio: AspectRatio::default(),
             line_clamp: None,
+            fill: None,
+            stroke: None,
             box_orient_vertical: false,
             content: Content::Normal,
             quotes: std::rc::Rc::new(vec![

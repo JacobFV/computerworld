@@ -955,3 +955,27 @@ fn a_select_does_not_show_an_option_the_page_hides() {
     let shown = "<!doctype html><select><option>option</option></select>";
     assert_eq!(text(shown).len(), 1);
 }
+
+/// A `fill` or `stroke` from a style sheet wins over the SVG's presentation
+/// attributes, as author CSS does in Chromium: Lucide's `fill="none"` star with
+/// Tailwind's `fill-amber-400` class is filled (app-inbox's starred rows), a path's
+/// own attribute still beats paint it inherits, and `getComputedStyle` reports it.
+#[test]
+fn a_style_sheet_fill_beats_the_svg_fill_attribute() {
+    let html = r##"<!doctype html><style>body { margin: 0 } .amber { fill: #fbbf24 } svg { display: block; width: 40px; height: 40px }</style>
+        <svg class="amber" viewBox="0 0 10 10" fill="none" stroke="none"><rect width="10" height="10"/></svg>
+        <svg class="amber" viewBox="0 0 10 10" fill="none" stroke="none"><rect width="10" height="10" fill="#008800"/></svg>
+        <svg viewBox="0 0 10 10" fill="none" stroke="none"><rect width="10" height="10" style="fill: #008800"/></svg>"##;
+    let f = pixels(&render(html));
+    assert_eq!(
+        f.at(20, 20),
+        Color(0xfb, 0xbf, 0x24, 255),
+        "class fill over fill=none"
+    );
+    assert_eq!(
+        f.at(20, 60),
+        INK,
+        "the rect's own attribute over the inherited class"
+    );
+    assert_eq!(f.at(20, 100), INK, "an inline style fill");
+}

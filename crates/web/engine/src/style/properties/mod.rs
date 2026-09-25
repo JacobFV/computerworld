@@ -106,6 +106,7 @@ pub enum Specified {
     ObjectFit(ObjectFit),
     AspectRatio(AspectRatio),
     LineClamp(Option<u32>),
+    SvgPaint(SvgPaintSpec),
     BoxOrientVertical(bool),
     Content(ContentSpec),
     Quotes(Option<Vec<(String, String)>>),
@@ -117,6 +118,15 @@ pub enum Specified {
     IterationCounts(Vec<Option<i32>>),
     AnimationDirections(Vec<AnimationDirection>),
     AnimationFillModes(Vec<AnimationFillMode>),
+}
+
+/// A specified SVG paint: `none`, a colour (possibly `currentColor`), or a
+/// `url()` with an optional fallback.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum SvgPaintSpec {
+    None,
+    Color(ColorSpec),
+    Url(String, Option<Box<SvgPaintSpec>>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -435,6 +445,8 @@ longhands! {
     ObjectFit, "object-fit", false, 2, p::object_fit, a::object_fit, |d, s| d.object_fit = s.object_fit;
     AspectRatio, "aspect-ratio", false, 2, p::aspect_ratio, a::aspect_ratio, |d, s| d.aspect_ratio = s.aspect_ratio;
     LineClamp, "line-clamp", false, 2, p::line_clamp, a::line_clamp, |d, s| d.line_clamp = s.line_clamp;
+    Fill, "fill", false, 2, p::svg_paint, a::fill, |d, s| d.fill = s.fill.clone();
+    Stroke, "stroke", false, 2, p::svg_paint, a::stroke, |d, s| d.stroke = s.stroke.clone();
     BoxOrient, "-webkit-box-orient", false, 2, p::box_orient, a::box_orient, |d, s| d.box_orient_vertical = s.box_orient_vertical;
     Content, "content", false, 2, p::content, a::content, |d, s| d.content = s.content.clone();
     Quotes, "quotes", true, 2, p::quotes, a::quotes, |d, s| d.quotes = s.quotes.clone();

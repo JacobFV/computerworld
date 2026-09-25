@@ -1031,6 +1031,36 @@ simple!(justify_self, AlignSelf, |s, x| s.justify_self = x);
 
 simple!(cursor, Cursor, |s, x| s.cursor = x);
 simple!(pointer_events, PointerEvents, |s, x| s.pointer_events = x);
+
+/// A specified SVG paint as the builder uses it: colours resolved, `currentColor`
+/// kept as the keyword (each painted element resolves it against its own colour).
+fn svg_paint_value(v: &SvgPaintSpec, s: &ComputedStyle) -> SvgPaint {
+    match v {
+        SvgPaintSpec::None => SvgPaint::None,
+        SvgPaintSpec::Color(ColorSpec::CurrentColor) => SvgPaint::Current,
+        SvgPaintSpec::Color(c) => SvgPaint::Color(c.resolve(s.color)),
+        SvgPaintSpec::Url(u, f) => SvgPaint::Url(
+            u.clone(),
+            f.as_ref().map(|f| Box::new(svg_paint_value(f, s))),
+        ),
+    }
+}
+
+pub fn fill(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
+    let Specified::SvgPaint(p) = v else {
+        return false;
+    };
+    s.fill = Some(svg_paint_value(p, s));
+    true
+}
+
+pub fn stroke(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
+    let Specified::SvgPaint(p) = v else {
+        return false;
+    };
+    s.stroke = Some(svg_paint_value(p, s));
+    true
+}
 simple!(user_select, UserSelect, |s, x| s.user_select = x);
 simple!(appearance, Appearance, |s, x| s.appearance = x);
 simple!(object_fit, ObjectFit, |s, x| s.object_fit = x);

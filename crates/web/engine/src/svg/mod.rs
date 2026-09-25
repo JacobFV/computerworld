@@ -25,7 +25,7 @@ pub mod geom;
 pub mod raster;
 
 use crate::dom::{Document, Namespace, NodeId, NodeKind};
-use crate::style::computed::{Font, StyleSet};
+use crate::style::computed::{Font, StyleSet, SvgPaint};
 use crate::style::values::{parse_color, ColorSpec, Parser};
 use cw_scene::Color;
 use geom::{Affine, Flattener, Poly, Pt};
@@ -235,16 +235,40 @@ fn current_color(styles: &StyleSet, node: NodeId) -> Color {
         .unwrap_or(Color(0, 0, 0, 255))
 }
 
-/// Applies `node`'s own presentation properties to the inherited `ctx`.
-fn cascade(doc: &Document, node: NodeId, ctx: &mut Ctx) {
+/// The paint a style sheet (or the `style` attribute, through the cascade) gives.
+fn css_paint(p: &SvgPaint) -> Option<PaintSpec> {
+    Some(match p {
+        SvgPaint::None => PaintSpec::None,
+        SvgPaint::Current => PaintSpec::Current,
+        SvgPaint::Color(c) => PaintSpec::Color(*c),
+        SvgPaint::Url(u, f) => PaintSpec::Url(
+            u.strip_prefix('#')?.to_owned(),
+            f.as_deref().and_then(css_paint).map(Box::new),
+        ),
+    })
+}
+
+/// Applies `node`'s own presentation properties to the inherited `ctx`. A `fill`
+/// or `stroke` the cascade gives the element (a class such as Tailwind's
+/// `fill-amber-400`) wins over its presentation attribute, as author CSS does.
+fn cascade(doc: &Document, styles: &StyleSet, node: NodeId, ctx: &mut Ctx) {
     let p = |n: &str| prop(doc, node, n);
     if let Some(t) = doc.attr(node, "transform") {
         ctx.m = ctx.m.then(&geom::parse_transform(t));
     }
-    if let Some(v) = p("fill").and_then(|v| parse_paint(&v)) {
+    let style = styles.get(node);
+    if let Some(v) = style
+        .and_then(|s| s.fill.as_ref())
+        .and_then(css_paint)
+        .or_else(|| p("fill").and_then(|v| parse_paint(&v)))
+    {
         ctx.fill = v;
     }
-    if let Some(v) = p("stroke").and_then(|v| parse_paint(&v)) {
+    if let Some(v) = style
+        .and_then(|s| s.stroke.as_ref())
+        .and_then(css_paint)
+        .or_else(|| p("stroke").and_then(|v| parse_paint(&v)))
+    {
         ctx.stroke = v;
     }
     if let Some(v) = p("fill-opacity").and_then(|v| opacity_value(&v)) {
@@ -401,7 +425,7 @@ pub fn build_at(
     // The root's own presentation attributes (Lucide puts fill, stroke and the
     // stroke style there); its `transform` does not map its own viewport.
     let t = ctx.m;
-    cascade(doc, svg, &mut ctx);
+    cascade(doc, styles, svg, &mut ctx);
     ctx.m = t;
     let vb = doc.attr(svg, "viewBox").map(geom::numbers);
     let user_viewport = match vb.as_deref() {
@@ -506,7 +530,7 @@ impl<'a> Builder<'a> {
             return None;
         }
         let mut ctx = parent.clone();
-        cascade(self.doc, node, &mut ctx);
+        cascade(self.doc, self.styles, node, &mut ctx);
         match tag.as_str() {
             "g" | "a" | "switch" => {
                 let mut bbox: Option<BoxF> = None;
