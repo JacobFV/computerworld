@@ -12,3 +12,4 @@
 /site/docs/
 /.claude/worktrees/
 crates/web/engine/target-parity/
+/comparisons/
