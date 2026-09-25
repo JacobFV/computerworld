@@ -386,4 +386,20 @@ mod cases {
     fn app_music() {
         run_fixture("app-music");
     }
+
+    // Real open-source apps, as worlds/oss-web serves them (docs/oss-webapps.md).
+    #[test]
+    fn oss_todomvc_react() {
+        run_fixture("oss-todomvc-react");
+    }
+
+    #[test]
+    fn oss_todomvc_vue() {
+        run_fixture("oss-todomvc-vue");
+    }
+
+    #[test]
+    fn oss_json_server() {
+        run_fixture("oss-json-server");
+    }
 }

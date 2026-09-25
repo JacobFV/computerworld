@@ -1,0 +1,93 @@
+<!-- JSON Server 0.17.4's home page (typicode/json-server 78ea713, MIT), its public/ files served
+     unmodified from /vendor/oss-json-server.{css,js}; the fixture answers the page's fetches
+     inline and leaves out the Font Awesome stylesheet (see the comments below). -->
+<html>
+  <head>
+    <link rel="stylesheet" href="/vendor/oss-json-server.css" />
+    <title>JSON Server</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="container">
+        <nav>
+          <ul>
+            <li class="title">
+              JSON Server
+            </li>
+            <li>
+              <a href="https://github.com/users/typicode/sponsorship">
+                <i class="fas fa-heart"></i>GitHub Sponsors
+              </a>
+            </li>
+            <li>
+              <a href="https://my-json-server.typicode.com">
+                <i class="fas fa-burn"></i>My JSON Server
+              </a>
+            </li>
+            <li>
+              <a href="https://thanks.typicode.com">
+                <i class="far fa-laugh"></i>Supporters
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <div class="container">
+        <h1>Congrats!</h1>
+        <p>
+          You're successfully running JSON Server
+          <br />
+          ✧*｡٩(ˊᗜˋ*)و✧*｡
+        </p>
+
+        <div id="resources"></div>
+
+        <p>
+          To access and modify resources, you can use any HTTP method:
+        </p>
+        <p>
+          <code>GET</code>
+          <code>POST</code>
+          <code>PUT</code>
+          <code>PATCH</code>
+          <code>DELETE</code>
+          <code>OPTIONS</code>
+        </p>
+
+        <div id="custom-routes"></div>
+
+        <h1>Documentation</h1>
+        <p>
+          <a href="https://github.com/typicode/json-server">
+            README
+          </a>
+        </p>
+      </div>
+    </main>
+
+    <footer>
+      <div class="container">
+        <p>
+          To replace this page, create a
+          <code>./public/index.html</code> file.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+// Fixture scaffolding: the page's two requests answered with what JSON Server
+// answers in worlds/oss-web (its seeded database, no custom routes).
+(function () {
+  var answers = { db: {"books":[{"id":1,"title":"Designing Data-Intensive Applications","author":"Martin Kleppmann","year":2017,"status":"finished","rating":5},{"id":2,"title":"The Pragmatic Programmer","author":"David Thomas and Andrew Hunt","year":2019,"status":"finished","rating":4},{"id":3,"title":"Crafting Interpreters","author":"Robert Nystrom","year":2021,"status":"reading","rating":null},{"id":4,"title":"Site Reliability Engineering","author":"Betsy Beyer et al.","year":2016,"status":"to-read","rating":null},{"id":5,"title":"A Philosophy of Software Design","author":"John Ousterhout","year":2018,"status":"to-read","rating":null}],"projects":[{"id":1,"name":"build-cache","description":"Content-addressed cache for the team's CI builds","owner":"ada"},{"id":2,"name":"conduit-notes","description":"Drafts for posts on Conduit","owner":"ada"}],"tasks":[{"id":1,"projectId":1,"title":"Measure restore time of the node_modules cache","done":true,"due":"2026-09-08"},{"id":2,"projectId":1,"title":"Cache the pnpm store instead of node_modules","done":true,"due":"2026-09-09"},{"id":3,"projectId":1,"title":"Split the test job by package","done":false,"due":"2026-09-22"},{"id":4,"projectId":2,"title":"Write up the reproducible-builds investigation","done":true,"due":"2026-09-14"},{"id":5,"projectId":2,"title":"Reply to comments on the CI caching post","done":false,"due":"2026-09-18"}],"profile":{"name":"Ada Okonkwo","handle":"ada","site":"http://conduit.realworld.show/profile/ada"}}, __rules: {} };
+  window.fetch = function (url) {
+    var body = answers[String(url)];
+    return Promise.resolve({ ok: true, status: 200, json: function () { return Promise.resolve(body); } });
+  };
+})();
+</script>
+<script src="/vendor/oss-json-server.js"></script>
+  </body>
+</html>

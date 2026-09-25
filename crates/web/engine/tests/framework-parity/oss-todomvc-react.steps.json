@@ -1,0 +1,29 @@
+{
+  "initial": [],
+  "added": [
+    {"action": "click", "selector": ".new-todo"},
+    {"action": "type", "text": "Review the CI caching PR"},
+    {"action": "press", "key": "Enter"},
+    {"action": "type", "text": "Reply to Wren"},
+    {"action": "press", "key": "Enter"},
+    {"action": "type", "text": "Book the offsite room"},
+    {"action": "press", "key": "Enter"}
+  ],
+  "completed": [
+    {"action": "click", "selector": ".new-todo"},
+    {"action": "type", "text": "Review the CI caching PR"},
+    {"action": "press", "key": "Enter"},
+    {"action": "type", "text": "Reply to Wren"},
+    {"action": "press", "key": "Enter"},
+    {"action": "click", "selector": ".todo-list li:nth-child(1) .toggle"}
+  ],
+  "active": [
+    {"action": "click", "selector": ".new-todo"},
+    {"action": "type", "text": "Review the CI caching PR"},
+    {"action": "press", "key": "Enter"},
+    {"action": "type", "text": "Reply to Wren"},
+    {"action": "press", "key": "Enter"},
+    {"action": "click", "selector": ".todo-list li:nth-child(1) .toggle"},
+    {"action": "click", "selector": ".filters a[href='#/active']"}
+  ]
+}
