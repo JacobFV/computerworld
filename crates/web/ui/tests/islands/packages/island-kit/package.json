@@ -1,0 +1,7 @@
+{
+  "name": "island-kit",
+  "version": "1.0.0",
+  "description": "A package written for cw-ui's island tests: components, context, refs and element utilities, in plain ESM as a bundler would ship them.",
+  "type": "module",
+  "exports": { ".": { "import": "./index.js" } }
+}

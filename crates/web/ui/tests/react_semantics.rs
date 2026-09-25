@@ -1648,3 +1648,53 @@ createRoot(document.getElementById('root')!).render(<App />);
         ],
     );
 }
+
+#[test]
+fn package_components_render_host_elements_and_take_events_refs_and_context() {
+    // island-kit (tests/islands/packages) renders host elements with its own
+    // state, effects and handlers; compiled code gives it children, callbacks,
+    // a ref through forwardRef, and a context value, and renders its render props.
+    same_as_react(
+        r#"
+// @file main.tsx
+import { useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { Card, Counter, Emphasize, FancyInput, ThemeProvider, useTheme } from 'island-kit';
+function Themed() {
+  const theme = useTheme();
+  return <i className="themed">{theme}</i>;
+}
+function App() {
+  const [theme, setTheme] = useState('light');
+  const [log, setLog] = useState<string[]>([]);
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <ThemeProvider theme={theme}>
+      <button id="theme" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>theme</button>
+      <button id="focus" onClick={() => { input.current?.focus(); setLog([...log, 'focused ' + (document.activeElement === input.current)]); }}>focus</button>
+      <Card title="first" onToggle={(open: boolean, type: string) => setLog([...log, type + ' ' + open])}>
+        <p id="inside">{log.join(', ')}</p>
+        <Themed />
+      </Card>
+      <FancyInput id="name" label="Name" ref={input} placeholder="who" />
+      <Emphasize>
+        <span>one</span>
+        {'two'}
+        <em>three</em>
+      </Emphasize>
+      <Counter start={5} render={(n: number, inc: () => void) => <button id="count" onClick={inc}>{n}</button>} />
+    </ThemeProvider>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[
+            Step::Click("#theme"),
+            Step::Click(".toggle"),
+            Step::Click("#count"),
+            Step::Click(".toggle"),
+            Step::Click("#focus"),
+            Step::Click("#count"),
+        ],
+    );
+}
