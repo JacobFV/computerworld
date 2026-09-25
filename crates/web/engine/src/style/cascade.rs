@@ -127,7 +127,10 @@ struct Winners<'a> {
     values: Vec<(LonghandId, Cow<'a, Specified>, Level)>,
     /// The UA-level winners, for `revert`.
     ua: Vec<(LonghandId, Cow<'a, Specified>)>,
-    custom: BTreeMap<Cow<'a, str>, Cow<'a, CustomDeclared>>,
+    /// Custom property declarations in cascade order (a later one wins).
+    custom: Vec<(Cow<'a, str>, Cow<'a, CustomDeclared>)>,
+    /// Whether every entry of `custom` is borrowed from the engine.
+    custom_shared: bool,
 }
 
 impl<'a> Winners<'a> {
@@ -136,7 +139,8 @@ impl<'a> Winners<'a> {
             slot: [0; LonghandId::COUNT],
             values: Vec::new(),
             ua: Vec::new(),
-            custom: BTreeMap::new(),
+            custom: Vec::new(),
+            custom_shared: true,
         }
     }
     /// The winning value of a longhand.
@@ -201,6 +205,9 @@ pub struct StyleEngine {
     after: SelectorIndex<RuleData>,
     marker: SelectorIndex<RuleData>,
     placeholder: SelectorIndex<RuleData>,
+    /// The `::before`/`::after` selectors of rules that declare `content`.
+    before_content: SelectorIndex<()>,
+    after_content: SelectorIndex<()>,
     deps: SelectorDeps,
     inval: invalidation::InvalidationMap,
     layer_count: usize,
@@ -211,7 +218,16 @@ pub struct StyleEngine {
     keyframes: BTreeMap<String, Keyframes>,
     viewport: (Au, Au),
     fonts: crate::css::FontEnvironment,
+    custom_memo: CustomMemo,
 }
+
+const CUSTOM_MEMO_ENTRIES: usize = 4096;
+
+/// Resolved custom properties by (inherited set, declarations): see
+/// `Engine::custom_properties`.
+type CustomMemo = std::cell::RefCell<
+    std::collections::HashMap<(usize, Vec<usize>), (Rc<CustomProperties>, Rc<CustomProperties>)>,
+>;
 
 /// A cascade engine applied to one document and matching state for one pass.
 struct Engine<'a> {
@@ -249,6 +265,8 @@ impl StyleEngine {
             after: SelectorIndex::new(),
             marker: SelectorIndex::new(),
             placeholder: SelectorIndex::new(),
+            before_content: SelectorIndex::new(),
+            after_content: SelectorIndex::new(),
             deps: SelectorDeps::default(),
             inval: invalidation::InvalidationMap::default(),
             layer_count: 0,
@@ -261,6 +279,7 @@ impl StyleEngine {
                 Au::from_px_i32(media.height_px),
             ),
             fonts: media.fonts,
+            custom_memo: Default::default(),
         };
         // Global layer order: first declaration wins the position, across sheets.
         let mut layers: Vec<String> = Vec::new();
@@ -339,7 +358,20 @@ impl StyleEngine {
                     e.deps.state |= d.state;
                     e.deps.form |= d.form;
                     e.inval.add(sel);
+                    let sets_content = data.block.decls.iter().any(|(d, _)| {
+                        matches!(d, ParsedDecl::Longhands(v)
+                            if v.iter().any(|(id, _)| *id == LonghandId::Content))
+                    });
                     index.insert(sel.clone(), data);
+                    // `::before`/`::after` exist only where a rule gives them
+                    // `content`; these indexes find that out before the cascade.
+                    if sets_content {
+                        match sel.pseudo_element {
+                            Some(PseudoElement::Before) => e.before_content.insert(sel.clone(), ()),
+                            Some(PseudoElement::After) => e.after_content.insert(sel.clone(), ()),
+                            _ => 0,
+                        };
+                    }
                 }
             }
         }
@@ -548,6 +580,41 @@ impl<'a> Engine<'a> {
         };
     }
 
+    /// An element's custom properties: memoised per engine by the inherited set
+    /// and the declarations (which, borrowed from the engine, are identified by
+    /// address), since most elements repeat both.
+    fn custom_properties(
+        &self,
+        w: &Winners,
+        inherited: &Rc<CustomProperties>,
+    ) -> Rc<CustomProperties> {
+        if w.custom.is_empty() {
+            return inherited.clone();
+        }
+        if !w.custom_shared {
+            return resolve_custom(&w.custom, inherited);
+        }
+        let key: (usize, Vec<usize>) = (
+            Rc::as_ptr(inherited) as usize,
+            w.custom
+                .iter()
+                .map(|(_, v)| &**v as *const CustomDeclared as usize)
+                .collect(),
+        );
+        if let Some((_, out)) = self.data.custom_memo.borrow().get(&key) {
+            return out.clone();
+        }
+        let out = resolve_custom(&w.custom, inherited);
+        let mut memo = self.data.custom_memo.borrow_mut();
+        if memo.len() >= CUSTOM_MEMO_ENTRIES {
+            memo.clear();
+        }
+        // The inherited set is kept alive with its entry, so its address cannot
+        // be reused by another set while the entry exists.
+        memo.insert(key, (inherited.clone(), out.clone()));
+        out
+    }
+
     fn inline_block(&self, node: NodeId) -> Result<Option<Rc<ParsedBlock>>, Unsupported> {
         let Some(src) = self.doc.attr(node, "style") else {
             return Ok(None);
@@ -703,7 +770,7 @@ impl<'a> Engine<'a> {
                 }
                 (DeclRef::Shared(ParsedDecl::Custom(name, v)), _) => {
                     w.custom
-                        .insert(Cow::Borrowed(name.as_str()), Cow::Borrowed(v));
+                        .push((Cow::Borrowed(name.as_str()), Cow::Borrowed(v)));
                 }
                 (_, ParsedDecl::Longhands(v)) => {
                     for (id, s) in v {
@@ -711,8 +778,9 @@ impl<'a> Engine<'a> {
                     }
                 }
                 (_, ParsedDecl::Custom(name, v)) => {
+                    w.custom_shared = false;
                     w.custom
-                        .insert(Cow::Owned(name.clone()), Cow::Owned(v.clone()));
+                        .push((Cow::Owned(name.clone()), Cow::Owned(v.clone())));
                 }
                 (_, ParsedDecl::Logical(name, value)) => {
                     if let Some(id) = shorthands::resolve_longhand(name, dir) {
@@ -743,7 +811,7 @@ impl<'a> Engine<'a> {
         let _t = super::profile::span(super::profile::Phase::Compute);
         let mut s = ComputedStyle::inherit_from(parent);
         // Custom properties first: everything else may reference them.
-        s.custom = resolve_custom(&w.custom, &parent.custom);
+        s.custom = self.custom_properties(w, &parent.custom);
         let is_root = root_font_size.is_none();
         let root_fs = root_font_size.unwrap_or(parent.font.size);
         // `ch` and `ex` come from the font's own metrics: the advance of `0` and the
@@ -999,8 +1067,16 @@ impl<'a> Engine<'a> {
         let mut placeholder = None;
         let mut marker = None;
         if !style.display.is_none() {
-            for (index, kind) in [(&self.data.before, 0u8), (&self.data.after, 1u8)] {
-                if index.is_empty() {
+            for (index, content, kind) in [
+                (&self.data.before, &self.data.before_content, 0u8),
+                (&self.data.after, &self.data.after_content, 1u8),
+            ] {
+                // No rule giving it `content` matches: no pseudo-element.
+                if content.is_empty()
+                    || content
+                        .matching_with(self.doc, node, self.ctx, keys)
+                        .is_empty()
+                {
                     continue;
                 }
                 let pw = self.winners(node, Some(index), keys, unsupported)?;
@@ -1467,17 +1543,20 @@ fn has_var(tokens: &[ComponentValue]) -> bool {
 /// on every element under a sheet that declares the same properties everywhere
 /// (a utility sheet's `*, ::before, ::after { --tw-...: ... }`).
 fn resolve_custom(
-    declared: &BTreeMap<Cow<'_, str>, Cow<'_, CustomDeclared>>,
+    declared: &[(Cow<'_, str>, Cow<'_, CustomDeclared>)],
     inherited: &Rc<CustomProperties>,
 ) -> Rc<CustomProperties> {
-    let unchanged = declared.iter().all(|(name, v)| match &**v {
-        CustomDeclared::Tokens(t) => inherited.get(&**name).is_some_and(|i| i == t) && !has_var(t),
+    // The winning declaration of each name.
+    let declared: BTreeMap<&str, &CustomDeclared> =
+        declared.iter().map(|(n, v)| (&**n, &**v)).collect();
+    let unchanged = declared.iter().all(|(name, v)| match v {
+        CustomDeclared::Tokens(t) => inherited.get(*name).is_some_and(|i| i == t) && !has_var(t),
         CustomDeclared::Wide(_) => false,
     });
     if unchanged {
         return inherited.clone();
     }
-    let out = resolve_custom_map(declared, inherited);
+    let out = resolve_custom_map(&declared, inherited);
     if out == **inherited {
         inherited.clone()
     } else {
@@ -1486,7 +1565,7 @@ fn resolve_custom(
 }
 
 fn resolve_custom_map(
-    declared: &BTreeMap<Cow<'_, str>, Cow<'_, CustomDeclared>>,
+    declared: &BTreeMap<&str, &CustomDeclared>,
     inherited: &CustomProperties,
 ) -> CustomProperties {
     let mut out: BTreeMap<String, Vec<ComponentValue>> = inherited.clone();
@@ -1494,7 +1573,7 @@ fn resolve_custom_map(
     let mut pending: BTreeMap<&str, &Vec<ComponentValue>> = BTreeMap::new();
     for (name, v) in declared {
         let name: &str = name;
-        match &**v {
+        match v {
             CustomDeclared::Wide(CssWide::Initial) => {
                 out.remove(name);
             }
@@ -1830,7 +1909,8 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
                     }
                 }
                 ParsedDecl::Custom(n, v) => {
-                    w.custom.insert(Cow::Owned(n), Cow::Owned(v));
+                    w.custom_shared = false;
+                    w.custom.push((Cow::Owned(n), Cow::Owned(v)));
                 }
                 ParsedDecl::Logical(name, value) => {
                     if let Some(id) = shorthands::resolve_longhand(&name, Direction::Ltr) {
@@ -1863,6 +1943,8 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
         after: SelectorIndex::new(),
         marker: SelectorIndex::new(),
         placeholder: SelectorIndex::new(),
+        before_content: SelectorIndex::new(),
+        after_content: SelectorIndex::new(),
         deps: SelectorDeps::default(),
         inval: invalidation::InvalidationMap::default(),
         layer_count: 0,
@@ -1872,6 +1954,7 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
         keyframes: BTreeMap::new(),
         viewport: (Au::from_px_i32(1280), Au::from_px_i32(800)),
         fonts: crate::css::FontEnvironment::Bundled,
+        custom_memo: Default::default(),
     };
     let engine = Engine::new(&data, &doc, &ctx);
     engine.compute(Document::ROOT, &w, parent, Some(parent.font.size), true)

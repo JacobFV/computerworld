@@ -109,6 +109,54 @@ impl Invalidation {
     }
 }
 
+/// The positive class, id, type and attribute selectors of a compound: what an
+/// element must carry for the compound to match it at all.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Guard {
+    classes: Vec<String>,
+    ids: Vec<String>,
+    tags: Vec<String>,
+    attributes: Vec<String>,
+}
+
+impl Guard {
+    fn of(compound: &CompoundSelector) -> Guard {
+        let mut g = Guard::default();
+        for s in &compound.simple {
+            match s {
+                SimpleSelector::Class(c) => g.classes.push(c.clone()),
+                SimpleSelector::Id(i) => g.ids.push(i.clone()),
+                SimpleSelector::Type(t) => g.tags.push(t.to_ascii_lowercase()),
+                SimpleSelector::Attribute { name, .. } => {
+                    g.attributes.push(name.to_ascii_lowercase())
+                }
+                _ => {}
+            }
+        }
+        g
+    }
+    /// Whether `node` carries every feature (so the compound may match it).
+    fn admits(&self, doc: &Document, node: NodeId) -> bool {
+        // Case-insensitively, which admits whatever quirks-mode matching could.
+        self.classes
+            .iter()
+            .all(|c| doc.classes(node).any(|x| x.eq_ignore_ascii_case(c)))
+            && self.ids.iter().all(|i| {
+                doc.attr(node, "id")
+                    .is_some_and(|x| x.eq_ignore_ascii_case(i))
+            })
+            && self
+                .tags
+                .iter()
+                .all(|t| doc.tag(node).is_some_and(|x| x.eq_ignore_ascii_case(t)))
+            && self.attributes.iter().all(|a| {
+                doc.attrs(node)
+                    .iter()
+                    .any(|x| x.name.eq_ignore_ascii_case(a))
+            })
+    }
+}
+
 /// Features whose matching depends on element state the realm keeps outside the
 /// document (form state), for elements a caller reports as changed.
 const FORM_PSEUDOS: &[&str] = &[
@@ -132,7 +180,10 @@ pub(crate) struct InvalidationMap {
     /// Lower-cased attribute names, including those a pseudo-class reads.
     attributes: BTreeMap<String, Invalidation>,
     /// Dynamic pseudo-classes by name (`hover`, `focus-within`, `checked`, ...).
-    pseudos: BTreeMap<&'static str, Invalidation>,
+    /// By the positive features of the compound the pseudo-class sits in: a
+    /// state change on an element lacking them cannot change what it matches
+    /// there (`.group:hover .x` for an element without `group`).
+    pseudos: BTreeMap<&'static str, Vec<(Guard, Invalidation)>>,
     /// Sibling structure: compounds with a structural pseudo-class or beside a
     /// sibling combinator. Applied to every child of a parent whose children change.
     structural: Invalidation,
@@ -271,12 +322,13 @@ impl InvalidationMap {
     }
 
     fn add_compound(&mut self, compound: &CompoundSelector, inv: &Invalidation) {
+        let guard = Guard::of(compound);
         for s in &compound.simple {
-            self.add_simple(s, inv);
+            self.add_simple(s, inv, &guard);
         }
     }
 
-    fn add_simple(&mut self, s: &SimpleSelector, inv: &Invalidation) {
+    fn add_simple(&mut self, s: &SimpleSelector, inv: &Invalidation, guard: &Guard) {
         match s {
             SimpleSelector::Class(c) => {
                 self.classes.entry(c.clone()).or_default().merge(inv);
@@ -307,7 +359,11 @@ impl InvalidationMap {
                     _ => {}
                 }
                 if let Some((name, attrs)) = pseudo_name(pc) {
-                    self.pseudos.entry(name).or_default().merge(inv);
+                    let list = self.pseudos.entry(name).or_default();
+                    match list.iter_mut().find(|(g, _)| g == guard) {
+                        Some((_, i)) => i.merge(inv),
+                        None => list.push((guard.clone(), inv.clone())),
+                    }
                     for a in attrs {
                         self.attributes
                             .entry((*a).to_owned())
@@ -345,8 +401,12 @@ impl InvalidationMap {
             inv.siblings = true;
             inv.descendants = Some(Descendants::all());
         }
+        // The enclosing compound's features do not bound these.
+        let guard = Guard::default();
         for c in &sel.compounds {
-            self.add_compound(c, &inv);
+            for s in &c.simple {
+                self.add_simple(s, &inv, &guard);
+            }
         }
     }
 }
@@ -432,8 +492,10 @@ impl InvalidationMap {
     }
 
     fn apply_pseudo(&self, doc: &Document, node: NodeId, name: &str, t: &mut Targets) {
-        if let Some(inv) = self.pseudos.get(name) {
-            self.apply(doc, node, inv, t);
+        for (g, inv) in self.pseudos.get(name).into_iter().flatten() {
+            if g.admits(doc, node) {
+                self.apply(doc, node, inv, t);
+            }
         }
     }
 
@@ -446,9 +508,15 @@ impl InvalidationMap {
             self.apply(doc, parent, &self.empty, t);
         }
         if self.structural != Invalidation::default() {
+            // Every child is visited, so the following-siblings part is covered.
+            let each = Invalidation {
+                siblings: false,
+                parent_subtree: false,
+                ..self.structural.clone()
+            };
             for c in doc.children(parent) {
                 if doc.is_element(c) {
-                    self.apply(doc, c, &self.structural, t);
+                    self.apply(doc, c, &each, t);
                 }
             }
         }
