@@ -513,7 +513,7 @@ impl StyleEngine {
                 set,
                 root,
                 &initial,
-                false,
+                Own::default(),
                 false,
                 None,
                 &keys,
@@ -1184,9 +1184,15 @@ impl<'a> Engine<'a> {
         root_font_size: Option<Au>,
         keys: &AncestorKeys,
         unsupported: &mut Vec<Unsupported>,
-    ) -> Result<(bool, Delta), Unsupported> {
+    ) -> Result<(Own, Delta), Unsupported> {
         let w = self.winners(node, None, keys, unsupported)?;
         let style = self.compute(node, &w, parent, root_font_size, false);
+        // `inherit` on a property that is not inherited reads the parent's value
+        // of it, so such an element follows any change of its parent's style.
+        let explicit = w.values.iter().any(|(id, v, _)| {
+            !id.def().inherited && matches!(**v, Specified::CssWide(CssWide::Inherit))
+        });
+        set.set_explicit_inherit(node, explicit);
         let is_root = root_font_size.is_none();
         let root_fs = if is_root {
             style.font.size
@@ -1205,9 +1211,11 @@ impl<'a> Engine<'a> {
             set.quirk_table_color.remove(&node);
         }
         let mut delta = Delta::default();
+        let mut inherited = false;
         let (style, own_changed) = match set.get_rc(node) {
             Some(old) if **old == style => (old.clone(), false),
             old => {
+                inherited = old.is_none_or(|o| !o.inherited_eq(&style));
                 delta.layout = old.is_none_or(|o| !o.layout_eq(&style));
                 delta.hit = old.is_none_or(|o| !o.hit_eq(&style));
                 let style = Rc::new(style);
@@ -1299,7 +1307,13 @@ impl<'a> Engine<'a> {
         if delta.layout && !layout_before {
             set.bump(node);
         }
-        Ok((own_changed, delta))
+        Ok((
+            Own {
+                changed: own_changed,
+                inherited,
+            },
+            delta,
+        ))
     }
 
     /// Styles `node` and everything under it.
@@ -1350,7 +1364,7 @@ impl<'a> Engine<'a> {
         set: &mut StyleSet,
         node: NodeId,
         parent: &Rc<ComputedStyle>,
-        parent_changed: bool,
+        parent_change: Own,
         forced: bool,
         root_font_size: Option<Au>,
         keys: &AncestorKeys,
@@ -1359,7 +1373,8 @@ impl<'a> Engine<'a> {
     ) -> Result<Delta, Unsupported> {
         match self.doc.kind(node) {
             NodeKind::Text(_) => {
-                if forced || parent_changed || plan.subtrees.contains(&node) {
+                // A text node's style is its parent's very object.
+                if forced || parent_change.changed || plan.subtrees.contains(&node) {
                     let old = set.get_rc(node);
                     let delta = Delta {
                         any: !old.is_some_and(|o| Rc::ptr_eq(o, parent)),
@@ -1378,12 +1393,18 @@ impl<'a> Engine<'a> {
         }
         let forced = forced || plan.subtrees.contains(&node);
         let unstyled = set.get_rc(node).is_none();
-        let (own_changed, mut changed) =
-            if forced || parent_changed || unstyled || plan.rematch.contains(&node) {
+        // A child's style reads its parent's inherited properties, display, text
+        // decoration and custom properties (see `ComputedStyle::inherited_eq`),
+        // and any property it names with `inherit`.
+        let parent_matters =
+            parent_change.inherited || (parent_change.changed && set.explicit_inherit(node));
+        let (own, mut changed) =
+            if forced || parent_matters || unstyled || plan.rematch.contains(&node) {
                 self.style_element(set, node, parent, root_font_size, keys, unsupported)?
             } else {
-                (false, Delta::default())
+                (Own::default(), Delta::default())
             };
+        let own_changed = own.changed;
         if !(forced || own_changed || plan.on_path(node)) {
             return Ok(changed);
         }
@@ -1400,7 +1421,7 @@ impl<'a> Engine<'a> {
                     set,
                     c,
                     &style,
-                    own_changed,
+                    own,
                     forced,
                     Some(root_fs),
                     &child_keys,
@@ -1476,6 +1497,14 @@ impl<'a> Engine<'a> {
         t.subtrees.retain(|n| is_connected(doc, *n));
         t
     }
+}
+
+/// Whether an element's style was replaced, and whether what its children read of
+/// it changed with it.
+#[derive(Clone, Copy, Debug, Default)]
+struct Own {
+    changed: bool,
+    inherited: bool,
 }
 
 /// What an incremental restyle changed.
@@ -2962,6 +2991,14 @@ mod tests {
             ("li:nth-last-child(1 of .x) { color: red }", "c", "x"),
             ("[class~=x] span { color: red }", "s", "x"),
             (".x { --c: red } .t { color: var(--c) }", "s", "x"),
+            // A property that is not inherited, read through `inherit`.
+            (
+                ".x { border: 1px solid red; margin-top: 3px } .t { border: 1px solid; border-color: inherit; margin-top: inherit }",
+                "p",
+                "x",
+            ),
+            (".x { display: flex } .t { display: inline }", "p", "x"),
+            (".x { text-decoration: underline } .t { color: blue }", "p", "x"),
             ("html.x .t { color: red }", "root", "x"),
         ];
         for (css, target, class) in class_cases {
@@ -3054,5 +3091,47 @@ mod tests {
             d.set_attr(n, "checked", "");
             vec![n]
         });
+    }
+
+    /// A parent whose change leaves what its children inherit alone restyles
+    /// alone; one that changes an inherited property restyles its children too.
+    #[test]
+    fn a_change_children_do_not_inherit_restyles_the_parent_only() {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static T: AtomicU64 = AtomicU64::new(0);
+        fn tick() -> u64 {
+            T.fetch_add(1, Ordering::Relaxed)
+        }
+        let mut html = String::from(r#"<div id="list">"#);
+        for i in 0..50 {
+            html.push_str(&format!(r#"<p class="item">{i}</p>"#));
+        }
+        html.push_str("</div>");
+        let css = ".on { background: red } .big { font-size: 30px } .item { margin: 1px }";
+        let computes = |class: &str| {
+            let mut doc = crate::html::parse(&html);
+            doc.drain_mutations();
+            let sheets = [sheet(css)];
+            let engine =
+                StyleEngine::build(&sheets, &Media::default(), false, Strictness::Lenient).unwrap();
+            let ctx = MatchContext::new();
+            let mut set = engine.cascade(&doc, &ctx).unwrap();
+            let list = el(&doc, "list");
+            doc.set_attr(list, "class", class);
+            let muts = doc.drain_mutations();
+            super::super::profile::set_clock(Some(tick));
+            super::super::profile::take();
+            engine.update(&doc, &mut set, &muts, &[], &ctx).unwrap();
+            let n = super::super::profile::take()
+                .get(super::super::profile::Phase::Compute)
+                .1;
+            super::super::profile::set_clock(None);
+            assert!(set
+                .diff(&engine.cascade(&doc, &ctx).unwrap(), &doc)
+                .is_none());
+            n
+        };
+        assert_eq!(computes("on"), 1);
+        assert_eq!(computes("big"), 51);
     }
 }

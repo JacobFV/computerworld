@@ -1379,6 +1379,42 @@ impl ComputedStyle {
         *self == o
     }
 
+    /// Whether a child computes the same style under either parent style: they
+    /// agree on everything a child reads of its parent other than through an
+    /// explicit `inherit` (the inherited properties, `display` for blockification,
+    /// the propagated text decoration and the custom properties).
+    pub fn inherited_eq(&self, o: &ComputedStyle) -> bool {
+        self.font == o.font
+            && self.font_size_keyword == o.font_size_keyword
+            && self.color == o.color
+            && self.custom == o.custom
+            && self.display == o.display
+            && self.text_decoration_effective == o.text_decoration_effective
+            && self.direction == o.direction
+            && self.visibility == o.visibility
+            && self.line_height == o.line_height
+            && self.text_align == o.text_align
+            && self.text_indent == o.text_indent
+            && self.text_transform == o.text_transform
+            && self.white_space == o.white_space
+            && self.word_break == o.word_break
+            && self.overflow_wrap == o.overflow_wrap
+            && self.letter_spacing == o.letter_spacing
+            && self.word_spacing == o.word_spacing
+            && self.text_shadow == o.text_shadow
+            && self.tab_size == o.tab_size
+            && self.list_style_type == o.list_style_type
+            && self.list_style_position == o.list_style_position
+            && self.border_collapse == o.border_collapse
+            && self.border_spacing == o.border_spacing
+            && self.caption_side == o.caption_side
+            && self.empty_cells == o.empty_cells
+            && self.cursor == o.cursor
+            && self.pointer_events == o.pointer_events
+            && self.user_select == o.user_select
+            && self.quotes == o.quotes
+    }
+
     /// Whether hit testing sees the two styles the same: they lay out the same
     /// and agree on `pointer-events` and the corner radii (a rounded box's hit area).
     pub fn hit_eq(&self, other: &ComputedStyle) -> bool {
@@ -1487,6 +1523,9 @@ pub struct StyleSet {
     pub(crate) root_font_size_au: Au,
     /// The matching state (hover, focus, ...) the styles were computed against.
     pub(crate) match_state: Option<crate::style::invalidation::MatchState>,
+    /// Elements whose winning declarations name `inherit` for a property that is
+    /// not inherited (see `cascade::Engine::walk`).
+    explicit_inherit: Vec<bool>,
     /// Per node, a number that changes whenever its style or a pseudo-element
     /// style is replaced by one that lays out differently (unique across style
     /// sets): what layout keys reuse by.
@@ -1541,6 +1580,21 @@ impl StyleSet {
             self.epochs.resize(id.index() + 1, 0);
         }
         self.epochs[id.index()] = NEXT_EPOCH.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+    pub(crate) fn set_explicit_inherit(&mut self, id: crate::dom::NodeId, on: bool) {
+        if self.explicit_inherit.len() <= id.index() {
+            if !on {
+                return;
+            }
+            self.explicit_inherit.resize(id.index() + 1, false);
+        }
+        self.explicit_inherit[id.index()] = on;
+    }
+    pub(crate) fn explicit_inherit(&self, id: crate::dom::NodeId) -> bool {
+        self.explicit_inherit
+            .get(id.index())
+            .copied()
+            .unwrap_or(false)
     }
     /// Replaces the node's style with one that lays out the same
     /// ([`ComputedStyle::layout_eq`]), keeping its epoch.
