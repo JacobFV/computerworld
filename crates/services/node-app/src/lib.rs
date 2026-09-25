@@ -369,14 +369,21 @@ fn run_server(
     );
     if std::env::var_os("CW_NODE_APP_LOG").is_some() {
         eprintln!(
-            "[node-app {}] {} {} -> {:?} ({} steps)\n{}{}",
+            "[node-app {}] {} {} {} -> {:?} ({} steps)\n{}{}{}",
             package.manifest.id,
             req.method,
             req.url,
+            String::from_utf8_lossy(&req.body),
             served.response.as_ref().map(|r| r.status),
             served.steps,
             served.stdout,
-            served.stderr
+            served.stderr,
+            served
+                .response
+                .as_ref()
+                .filter(|r| r.status >= 400)
+                .map(|r| String::from_utf8_lossy(&r.body).into_owned())
+                .unwrap_or_default()
         );
     }
     // Whatever the program wrote under its data directory is the app's state now,

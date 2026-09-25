@@ -1,0 +1,8 @@
+{
+  "id": "workstation",
+  "profile": "ubuntu",
+  "address": "10.0.0.10",
+  "user": "ada",
+  "installed_apps": ["terminal", "browser", "files", "editor", "calculator", "notes", "code"],
+  "packages": ["coreutils", "git", "curl"]
+}

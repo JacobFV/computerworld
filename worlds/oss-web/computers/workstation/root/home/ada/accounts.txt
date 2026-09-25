@@ -1,0 +1,15 @@
+Accounts
+========
+
+Conduit (conduit.realworld.show, vue.realworld.show)
+  email:    ada@okonkwo.dev
+  password: conduit-ada-2026
+  username: ada
+
+react-admin demo (react-admin.marmelab.com)
+  username: login
+  password: password
+  (the demo's own sign-in; it signs you in as Jane Doe)
+
+JSON Server (json-server.typicode.com)
+  no account; the API is open. My reading list and side-project tasks live there.

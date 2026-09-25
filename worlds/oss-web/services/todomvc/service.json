@@ -1,0 +1,14 @@
+{
+  "id": "todomvc",
+  "kind": "node-app",
+  "node": "todomvc",
+  "domains": ["todomvc.com", "www.todomvc.com"],
+  "port": 80,
+  "place": {"address": "198.51.100.150"},
+  "initial_state": {"package": "todomvc"},
+  "search_entries": [
+    {"url": "http://todomvc.com/", "title": "TodoMVC", "snippet": "Helping you select a JavaScript framework: the same todo app written in React, Vue and more."},
+    {"url": "http://todomvc.com/examples/react/dist/", "title": "TodoMVC: React", "snippet": "A TodoMVC written in React."},
+    {"url": "http://todomvc.com/examples/vue/dist/", "title": "TodoMVC: Vue", "snippet": "A TodoMVC written in Vue."}
+  ]
+}

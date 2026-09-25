@@ -1,0 +1,125 @@
+{
+  "id": "json-server",
+  "kind": "node-app",
+  "node": "json-server",
+  "domains": [
+    "json-server.typicode.com",
+    "my-json-server.typicode.com"
+  ],
+  "port": 80,
+  "place": {
+    "address": "198.51.100.155"
+  },
+  "initial_state": {
+    "package": "json-server",
+    "files": {
+      "/data/db.json": {
+        "books": [
+          {
+            "id": 1,
+            "title": "Designing Data-Intensive Applications",
+            "author": "Martin Kleppmann",
+            "year": 2017,
+            "status": "finished",
+            "rating": 5
+          },
+          {
+            "id": 2,
+            "title": "The Pragmatic Programmer",
+            "author": "David Thomas and Andrew Hunt",
+            "year": 2019,
+            "status": "finished",
+            "rating": 4
+          },
+          {
+            "id": 3,
+            "title": "Crafting Interpreters",
+            "author": "Robert Nystrom",
+            "year": 2021,
+            "status": "reading",
+            "rating": null
+          },
+          {
+            "id": 4,
+            "title": "Site Reliability Engineering",
+            "author": "Betsy Beyer et al.",
+            "year": 2016,
+            "status": "to-read",
+            "rating": null
+          },
+          {
+            "id": 5,
+            "title": "A Philosophy of Software Design",
+            "author": "John Ousterhout",
+            "year": 2018,
+            "status": "to-read",
+            "rating": null
+          }
+        ],
+        "projects": [
+          {
+            "id": 1,
+            "name": "build-cache",
+            "description": "Content-addressed cache for the team's CI builds",
+            "owner": "ada"
+          },
+          {
+            "id": 2,
+            "name": "conduit-notes",
+            "description": "Drafts for posts on Conduit",
+            "owner": "ada"
+          }
+        ],
+        "tasks": [
+          {
+            "id": 1,
+            "projectId": 1,
+            "title": "Measure restore time of the node_modules cache",
+            "done": true,
+            "due": "2026-09-08"
+          },
+          {
+            "id": 2,
+            "projectId": 1,
+            "title": "Cache the pnpm store instead of node_modules",
+            "done": true,
+            "due": "2026-09-09"
+          },
+          {
+            "id": 3,
+            "projectId": 1,
+            "title": "Split the test job by package",
+            "done": false,
+            "due": "2026-09-22"
+          },
+          {
+            "id": 4,
+            "projectId": 2,
+            "title": "Write up the reproducible-builds investigation",
+            "done": true,
+            "due": "2026-09-14"
+          },
+          {
+            "id": 5,
+            "projectId": 2,
+            "title": "Reply to comments on the CI caching post",
+            "done": false,
+            "due": "2026-09-18"
+          }
+        ],
+        "profile": {
+          "name": "Ada Okonkwo",
+          "handle": "ada",
+          "site": "http://conduit.realworld.show/profile/ada"
+        }
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://json-server.typicode.com/",
+      "title": "JSON Server",
+      "snippet": "Get a full fake REST API with zero coding: books, projects, tasks and a profile over one JSON file."
+    }
+  ]
+}

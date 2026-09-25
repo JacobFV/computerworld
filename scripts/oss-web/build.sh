@@ -123,6 +123,9 @@ build_conduit_vue() {
 build_react_admin() {
   local src
   src=$(fetch react-admin https://github.com/marmelab/react-admin "$REACT_ADMIN")
+  # The demo's own records, with the world's people and posts in place of lorem ipsum.
+  git -C "$src" checkout -- examples/simple/src/data.tsx
+  python3 "$ROOT/scripts/oss-web/react-admin-data.py" "$src/examples/simple/src/data.tsx"
   (cd "$src" && node .yarn/releases/yarn-4.0.2.cjs install --immutable --mode=skip-build >/dev/null \
     && cd examples/simple && npx vite build >/dev/null)
   cp "$src/LICENSE.md" "$src/examples/simple/dist/LICENSE.md"

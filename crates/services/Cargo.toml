@@ -28,6 +28,11 @@ cw-service-shop = { path = "./shop" }
 cw-service-speaker = { path = "./speaker" }
 cw-service-social = { path = "./social" }
 cw-service-wiki = { path = "./wiki" }
+# Real open-source web apps as `node-app` sites (docs/oss-webapps.md). Off by default:
+# the packages are 6 MB of built JavaScript the site's Wasm bundle does not carry.
+cw-oss-web = { path = "./oss-web", optional = true }
+[features]
+oss-web = ["dep:cw-oss-web"]
 [dev-dependencies]
 serde_json.workspace = true
 cw-service-common = { path = "./common", features = ["validate"] }

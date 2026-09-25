@@ -1,0 +1,62 @@
+# Real open-source web apps on the internet, as a blueprint.
+#
+# `world.json` beside this file is generated from it and is not edited by hand:
+#
+#     cargo run -p cw-blueprint --bin cw-world -- build worlds/oss-web/world.yml
+#
+# One workstation on the built-in internet, and six public sites that are real
+# open-source web applications rather than services written for this project:
+# TodoMVC (React and Vue), the RealWorld "Conduit" frontends (React/Redux and Vue 3)
+# with the RealWorld API behind them (gothinkster's Node/Express backend, running on
+# the in-world JavaScript VM), react-admin's demo, and JSON Server. Each is a
+# `node-app` service naming a package of `cw-oss-web`, so this world boots only in a
+# build with `computerworld`'s `oss-web` feature. See docs/oss-webapps.md.
+schema_version: 1
+id: "oss-web"
+defaults:
+  place:
+    zone: "internet"
+    link: {from: "pop-west", latency_us: 1500}
+    dns:
+      internet: {ttl_us: 300000000, resolver: "dns-public"}
+profiles:
+  - id: "ubuntu"
+    name: "Ubuntu 24.04 workstation"
+    family: "linux"
+    home: "/home/{user}"
+    case_sensitive: true
+    shell: "posix"
+computers: []
+include:
+  - "computers/workstation/computer.json"
+  - "services/todomvc/service.json"
+  - "services/conduit-react/service.json"
+  - "services/conduit-vue/service.json"
+  - "services/realworld-api/service.json"
+  - "services/react-admin/service.json"
+  - "services/json-server/service.json"
+network:
+  nodes:
+    - {id: "workstation", address: "10.0.0.10", zone: "local"}
+  links: []
+  dns: []
+  routes: []
+  gateway: {allow_local: true, allow_internet: true, allow_host: false}
+metadata:
+  description: "One Ubuntu workstation on the internet, with six real open-source web apps among its public sites: TodoMVC in React and Vue, the RealWorld Conduit blogging platform (two frontends and its Node/Express API), react-admin's demo and JSON Server."
+  desktop_themes: {workstation: "ubuntu"}
+  device_presentations:
+    workstation: {kind: "laptop"}
+  actor_session:
+    actor: "ada"
+    machines: ["workstation"]
+    actions:
+      - "terminal.v1"
+      - "filesystem.v1"
+      - "application.v1"
+      - "browser.v1"
+      - "keyboard.v1"
+      - "pointer.v1"
+      - "http.v1"
+    observations: ["terminal.v1", "semantic.v1", "browser.v1"]
+    action_budget: 4096

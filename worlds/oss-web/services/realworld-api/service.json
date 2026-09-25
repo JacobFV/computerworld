@@ -1,0 +1,535 @@
+{
+  "id": "realworld-api",
+  "kind": "node-app",
+  "node": "realworld-api",
+  "domains": [
+    "api.realworld.show",
+    "api.realworld.io"
+  ],
+  "port": 80,
+  "place": {
+    "address": "198.51.100.153"
+  },
+  "initial_state": {
+    "package": "realworld-api",
+    "env": {
+      "JWT_SECRET": "conduit-in-world-signing-key"
+    },
+    "files": {
+      "/data/db.json": {
+        "User": [
+          {
+            "id": 1,
+            "email": "ada@okonkwo.dev",
+            "username": "ada",
+            "password": "$2a$04$KfEhUNxb.9/Sq8LR48A0veT/l6SFVgx4CNzr10W8oJIzAkb.6Vw1u",
+            "image": "http://api.realworld.show/images/smiley-cyrus.jpeg",
+            "bio": "Platform engineer. Writes about builds, caches and the small tools that keep a team fast.",
+            "demo": true
+          },
+          {
+            "id": 2,
+            "email": "wren@castillo.io",
+            "username": "wren",
+            "password": "$2a$04$FvA0W5rEG9EuIyW1.unLBeV7Suft0oyAmb.tIqdIqqbD0WWgA9Xny",
+            "image": "http://api.realworld.show/images/smiley-cyrus.jpeg",
+            "bio": "Payments infrastructure. Retries are a decision to not find out what went wrong.",
+            "demo": true
+          },
+          {
+            "id": 3,
+            "email": "tomas@reyes.dev",
+            "username": "tomas.reyes",
+            "password": "$2a$04$PoQjNCfRj66OqNHBJZjacOXvdYp3R6Tkt70yET.FDar2fuEPrDmnK",
+            "image": "http://api.realworld.show/images/smiley-cyrus.jpeg",
+            "bio": "Frontend lead. Forms, focus rings and the web platform.",
+            "demo": true
+          },
+          {
+            "id": 4,
+            "email": "priya@natarajan.dev",
+            "username": "priya.natarajan",
+            "password": "$2a$04$mLBZjD2R3NIc2uJb1Uy8meUd7td2Bjz1nnW5xcZVyXu8s9321O20y",
+            "image": "http://api.realworld.show/images/smiley-cyrus.jpeg",
+            "bio": "Data engineer. Postgres, queues and the occasional incident review.",
+            "demo": true
+          },
+          {
+            "id": 5,
+            "email": "jules@moreau.fr",
+            "username": "jules.moreau",
+            "password": "$2a$04$aR/RbMQx17LT3iNpHGP8Fe.kCEUHNqdt9EMSCrDGqwc.7wNz2PIEK",
+            "image": "http://api.realworld.show/images/smiley-cyrus.jpeg",
+            "bio": "Designer who ships. Type, spacing and design systems.",
+            "demo": true
+          },
+          {
+            "id": 6,
+            "email": "kenji@watanabe.jp",
+            "username": "kenji.watanabe",
+            "password": "$2a$04$hW8L5bzOF1bM6FM7uptW2eyAKDrpt8C7h1ahXFeu0C//Ui2dsl3Nq",
+            "image": "http://api.realworld.show/images/smiley-cyrus.jpeg",
+            "bio": "SRE. On-call rotations that people do not dread.",
+            "demo": true
+          },
+          {
+            "id": 7,
+            "email": "fatima@haddad.dev",
+            "username": "fatima.haddad",
+            "password": "$2a$04$Dsinn9tOB8XazgiASJDgmOIIO45Vme6ENA8XXVDCHqjGkP4SYnPp.",
+            "image": "http://api.realworld.show/images/smiley-cyrus.jpeg",
+            "bio": "Security engineer. Threat models and boring authentication.",
+            "demo": true
+          }
+        ],
+        "Article": [
+          {
+            "id": 1,
+            "slug": "I-deleted-our-retry-logic-and-the-outages-stopped-2",
+            "title": "I deleted our retry logic and the outages stopped",
+            "description": "Every retry was a small lie about why the request failed the first time.",
+            "body": "For three years our payment service retried every failed request up to five times. For three years we had an outage every six weeks that nobody could explain.\n\nThe retries hid a race in our connection pool that failed one request in four hundred. Under load the retries saturated the pool and everything fell over at once.\n\nThe fix to the pool was nine lines. Removing the retries was one. A retry is a decision to not find out what went wrong; make it on purpose.",
+            "createdAt": "2026-09-03T09:00:00.000Z",
+            "updatedAt": "2026-09-03T09:00:00.000Z",
+            "authorId": 2
+          },
+          {
+            "id": 2,
+            "slug": "Our-CI-got-four-times-faster-when-we-stopped-caching-node_modules-1",
+            "title": "Our CI got four times faster when we stopped caching node_modules",
+            "description": "The cache took longer to restore than the install it replaced.",
+            "body": "We cached node_modules between CI runs for two years because everyone does. Last month I timed it: restoring the 1.4 GB cache took 3 minutes 10 seconds; a clean install from the lockfile with a warm package store took 41 seconds.\n\nThe store is content-addressed and small; node_modules is neither. Cache the store, not the tree it produces.\n\nWe also split the test job by package, which is where the rest of the speedup came from.",
+            "createdAt": "2026-09-09T10:00:00.000Z",
+            "updatedAt": "2026-09-09T10:00:00.000Z",
+            "authorId": 1
+          },
+          {
+            "id": 3,
+            "slug": "Your-form-does-not-need-a-library-3",
+            "title": "Your form does not need a library",
+            "description": "Constraint validation, FormData and one submit handler go a long way.",
+            "body": "Most of the form libraries in our bundle re-implemented what the browser already does: required fields, patterns, lengths, and the messages that go with them.\n\nWe moved three forms back to native validation, read values with FormData, and kept one small hook for server errors. The bundle lost 38 KB and the forms got more accessible, because the browser announces its own errors.",
+            "createdAt": "2026-09-05T11:00:00.000Z",
+            "updatedAt": "2026-09-05T11:00:00.000Z",
+            "authorId": 3
+          },
+          {
+            "id": 4,
+            "slug": "The-queue-that-ate-our-Tuesdays-4",
+            "title": "The queue that ate our Tuesdays",
+            "description": "A post-incident review of a backlog that only grew on one day of the week.",
+            "body": "Every Tuesday our export queue backed up for six hours. The job that fed it ran on Tuesdays, which was the obvious suspect and the wrong one.\n\nThe real cause was a vacuum on the jobs table that the weekly job made necessary: the queue scanned millions of dead tuples until autovacuum caught up.\n\nWe partitioned the table by week and dropped old partitions instead of deleting rows. The Tuesday backlog is gone.",
+            "createdAt": "2026-09-12T12:00:00.000Z",
+            "updatedAt": "2026-09-12T12:00:00.000Z",
+            "authorId": 4
+          },
+          {
+            "id": 5,
+            "slug": "Spacing-is-a-system-not-a-set-of-numbers-5",
+            "title": "Spacing is a system, not a set of numbers",
+            "description": "Why our design tokens stopped at eight values and got better for it.",
+            "body": "We used to have twenty-three spacing tokens. Designers picked whichever looked right, engineers picked whichever was closest, and nothing lined up.\n\nWe cut to eight, named them by role (inset, stack, inline) rather than size, and wrote down when each applies. Reviews got shorter because there was less to argue about.",
+            "createdAt": "2026-08-03T13:00:00.000Z",
+            "updatedAt": "2026-08-03T13:00:00.000Z",
+            "authorId": 5
+          },
+          {
+            "id": 6,
+            "slug": "An-on-call-rotation-people-volunteer-for-6",
+            "title": "An on-call rotation people volunteer for",
+            "description": "Pages that are actionable, handoffs that are written down, and a real day off after.",
+            "body": "We deleted 60 percent of our alerts. Every remaining page has a runbook link and an owner, and any page without one is a bug filed against the team that owns the alert.\n\nHandoffs are a written note, not a meeting. And the day after a bad night is a day off, taken, not offered.",
+            "createdAt": "2026-09-15T14:00:00.000Z",
+            "updatedAt": "2026-09-15T14:00:00.000Z",
+            "authorId": 6
+          },
+          {
+            "id": 7,
+            "slug": "Passkeys-for-the-rest-of-us-7",
+            "title": "Passkeys for the rest of us",
+            "description": "What changed when we let people sign in without a password.",
+            "body": "We shipped passkeys as an option in March. By August, 41 percent of weekly sign-ins used one, and support tickets about locked accounts fell by half.\n\nThe hard part was not the cryptography. It was account recovery, and making sure every recovery path was as strong as the passkey it replaced.",
+            "createdAt": "2026-09-01T15:00:00.000Z",
+            "updatedAt": "2026-09-01T15:00:00.000Z",
+            "authorId": 7
+          },
+          {
+            "id": 8,
+            "slug": "Reproducible-builds-are-a-team-sport-1",
+            "title": "Reproducible builds are a team sport",
+            "description": "Pin everything, then find out what you forgot to pin.",
+            "body": "We pinned our compiler, our dependencies and our base image, and our builds were still not reproducible. The culprits were timestamps in archives, file ordering in a zip step, and a locale-dependent sort.\n\nThe fix for each was small. Finding them took a diff of two builds, byte by byte, and patience.",
+            "createdAt": "2026-09-14T16:00:00.000Z",
+            "updatedAt": "2026-09-14T16:00:00.000Z",
+            "authorId": 1
+          },
+          {
+            "id": 9,
+            "slug": "Idempotency-keys-explained-with-a-coffee-order-2",
+            "title": "Idempotency keys, explained with a coffee order",
+            "description": "Charge the card once, however many times the network makes you ask.",
+            "body": "If you order a coffee and the barista does not hear you, you ask again. You do not want two coffees. An idempotency key is how the second ask says \"the same order as before\".\n\nThe server stores the key with the result of the first request and returns that result to every retry. Keys expire after a day, which covers every client we have.",
+            "createdAt": "2026-08-11T09:00:00.000Z",
+            "updatedAt": "2026-08-11T09:00:00.000Z",
+            "authorId": 2
+          },
+          {
+            "id": 10,
+            "slug": "Stop-writing-ETL-start-writing-contracts-4",
+            "title": "Stop writing ETL, start writing contracts",
+            "description": "Schemas between teams catch breakage before the dashboard does.",
+            "body": "Most of our data incidents were a producer changing a column that a consumer depended on. We now publish a schema for every table another team reads, and CI fails when a change breaks it.",
+            "createdAt": "2026-09-16T10:00:00.000Z",
+            "updatedAt": "2026-09-16T10:00:00.000Z",
+            "authorId": 4
+          }
+        ],
+        "Comment": [
+          {
+            "id": 1,
+            "createdAt": "2026-09-04T12:00:00.000Z",
+            "updatedAt": "2026-09-04T12:00:00.000Z",
+            "body": "We found the same thing with our webhook sender. The retries were masking a DNS timeout.",
+            "articleId": 1,
+            "authorId": 1
+          },
+          {
+            "id": 2,
+            "createdAt": "2026-09-05T13:00:00.000Z",
+            "updatedAt": "2026-09-05T13:00:00.000Z",
+            "body": "Logging the one retry you kept is the part people skip. Good call.",
+            "articleId": 1,
+            "authorId": 6
+          },
+          {
+            "id": 3,
+            "createdAt": "2026-09-10T14:00:00.000Z",
+            "updatedAt": "2026-09-10T14:00:00.000Z",
+            "body": "Which package manager? We saw the same with pnpm but not with npm.",
+            "articleId": 2,
+            "authorId": 3
+          },
+          {
+            "id": 4,
+            "createdAt": "2026-09-10T15:00:00.000Z",
+            "updatedAt": "2026-09-10T15:00:00.000Z",
+            "body": "pnpm. The store is the thing to cache; with npm the equivalent is ~/.npm.",
+            "articleId": 2,
+            "authorId": 1
+          },
+          {
+            "id": 5,
+            "createdAt": "2026-09-06T16:00:00.000Z",
+            "updatedAt": "2026-09-06T16:00:00.000Z",
+            "body": "The accessibility point is underrated. Native errors are announced for free.",
+            "articleId": 3,
+            "authorId": 5
+          },
+          {
+            "id": 6,
+            "createdAt": "2026-09-13T17:00:00.000Z",
+            "updatedAt": "2026-09-13T17:00:00.000Z",
+            "body": "Partitioning by week is exactly what fixed ours too.",
+            "articleId": 4,
+            "authorId": 6
+          },
+          {
+            "id": 7,
+            "createdAt": "2026-09-15T12:00:00.000Z",
+            "updatedAt": "2026-09-15T12:00:00.000Z",
+            "body": "The day off after a bad night should be policy everywhere.",
+            "articleId": 6,
+            "authorId": 4
+          },
+          {
+            "id": 8,
+            "createdAt": "2026-09-02T13:00:00.000Z",
+            "updatedAt": "2026-09-02T13:00:00.000Z",
+            "body": "Recovery is always the weakest link. Thanks for writing this up.",
+            "articleId": 7,
+            "authorId": 2
+          },
+          {
+            "id": 9,
+            "createdAt": "2026-09-14T14:00:00.000Z",
+            "updatedAt": "2026-09-14T14:00:00.000Z",
+            "body": "Locale-dependent sort bit us in a release script last year.",
+            "articleId": 8,
+            "authorId": 7
+          }
+        ],
+        "Tag": [
+          {
+            "id": 1,
+            "name": "reliability"
+          },
+          {
+            "id": 2,
+            "name": "payments"
+          },
+          {
+            "id": 3,
+            "name": "ci"
+          },
+          {
+            "id": 4,
+            "name": "javascript"
+          },
+          {
+            "id": 5,
+            "name": "performance"
+          },
+          {
+            "id": 6,
+            "name": "frontend"
+          },
+          {
+            "id": 7,
+            "name": "forms"
+          },
+          {
+            "id": 8,
+            "name": "postgres"
+          },
+          {
+            "id": 9,
+            "name": "incidents"
+          },
+          {
+            "id": 10,
+            "name": "design"
+          },
+          {
+            "id": 11,
+            "name": "css"
+          },
+          {
+            "id": 12,
+            "name": "sre"
+          },
+          {
+            "id": 13,
+            "name": "on-call"
+          },
+          {
+            "id": 14,
+            "name": "culture"
+          },
+          {
+            "id": 15,
+            "name": "security"
+          },
+          {
+            "id": 16,
+            "name": "authentication"
+          },
+          {
+            "id": 17,
+            "name": "builds"
+          },
+          {
+            "id": 18,
+            "name": "api-design"
+          },
+          {
+            "id": 19,
+            "name": "data"
+          }
+        ],
+        "_links": {
+          "Article.tagList|Tag.articles": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              2,
+              4
+            ],
+            [
+              2,
+              5
+            ],
+            [
+              3,
+              6
+            ],
+            [
+              3,
+              7
+            ],
+            [
+              3,
+              4
+            ],
+            [
+              4,
+              8
+            ],
+            [
+              4,
+              9
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              5,
+              10
+            ],
+            [
+              5,
+              11
+            ],
+            [
+              6,
+              12
+            ],
+            [
+              6,
+              13
+            ],
+            [
+              6,
+              14
+            ],
+            [
+              7,
+              15
+            ],
+            [
+              7,
+              16
+            ],
+            [
+              8,
+              3
+            ],
+            [
+              8,
+              17
+            ],
+            [
+              9,
+              2
+            ],
+            [
+              9,
+              18
+            ],
+            [
+              10,
+              19
+            ],
+            [
+              10,
+              18
+            ]
+          ],
+          "UserFavorites": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              6
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              2,
+              2
+            ],
+            [
+              2,
+              4
+            ],
+            [
+              3,
+              5
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              4,
+              6
+            ],
+            [
+              6,
+              7
+            ],
+            [
+              7,
+              1
+            ],
+            [
+              7,
+              2
+            ],
+            [
+              8,
+              4
+            ]
+          ],
+          "UserFollows": [
+            [
+              2,
+              1
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              6
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              5
+            ],
+            [
+              6,
+              4
+            ]
+          ]
+        },
+        "_seq": {
+          "User": 7,
+          "Article": 10,
+          "Comment": 9,
+          "Tag": 19
+        }
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://api.realworld.show/api/articles",
+      "title": "RealWorld API",
+      "snippet": "The Conduit REST API: articles, comments, profiles and tags as JSON."
+    }
+  ]
+}

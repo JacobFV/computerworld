@@ -12,6 +12,9 @@ default = ["render", "internet"]
 # package drops its public sites, and only worlds that opt out will boot.
 internet = ["dep:cw-internet"]
 render = ["dep:cw-render", "dep:png", "dep:jpeg-decoder"]
+# The `node-app` kind with the real open-source web apps of cw-oss-web, which the
+# `worlds/oss-web` world's sites name (docs/oss-webapps.md).
+oss-web = ["cw-services/oss-web"]
 
 [dependencies]
 cw-protocol = { path = "../core/protocol" }

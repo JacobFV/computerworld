@@ -1,0 +1,12 @@
+{
+  "id": "conduit-react",
+  "kind": "node-app",
+  "node": "conduit-react",
+  "domains": ["conduit.realworld.show", "demo.realworld.show"],
+  "port": 80,
+  "place": {"address": "198.51.100.151"},
+  "initial_state": {"package": "conduit-react"},
+  "search_entries": [
+    {"url": "http://conduit.realworld.show/", "title": "Conduit", "snippet": "A place to share your knowledge. The RealWorld example app: a Medium-style blogging platform."}
+  ]
+}

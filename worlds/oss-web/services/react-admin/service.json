@@ -1,0 +1,12 @@
+{
+  "id": "react-admin",
+  "kind": "node-app",
+  "node": "react-admin",
+  "domains": ["react-admin.marmelab.com"],
+  "port": 80,
+  "place": {"address": "198.51.100.154"},
+  "initial_state": {"package": "react-admin"},
+  "search_entries": [
+    {"url": "http://react-admin.marmelab.com/", "title": "react-admin demo", "snippet": "A frontend framework for building admin applications on top of REST or GraphQL APIs: posts, comments, users and tags."}
+  ]
+}

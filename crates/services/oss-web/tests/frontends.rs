@@ -141,6 +141,12 @@ fn boot(url: &str) -> (Realm, Host, f64) {
     assert_eq!(page.status, 200, "{url}");
     let html = String::from_utf8(page.body).unwrap();
     let mut realm = Realm::new(&html, url, Box::new(host.clone()));
+    if let Some(b) = std::env::var("OSS_BUDGET")
+        .ok()
+        .and_then(|b| b.parse().ok())
+    {
+        realm.set_step_budget(b);
+    }
     realm.run_document();
     settle(&mut realm, &host);
     (realm, host, t.elapsed().as_secs_f64() * 1000.0)

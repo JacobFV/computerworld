@@ -11,4 +11,5 @@ cd "$(dirname "$0")/.."
 cargo run --quiet -p cw-blueprint --bin cw-world -- build worlds/internet/world.yml
 cargo run --quiet -p cw-blueprint --bin cw-world -- build worlds/company-2026/world.yml
 cargo run --quiet -p cw-blueprint --bin cw-world -- build worlds/agent-desktop/world.yml
+cargo run --quiet -p cw-blueprint --bin cw-world -- build worlds/oss-web/world.yml
 node scripts/content/build-live-world.mjs

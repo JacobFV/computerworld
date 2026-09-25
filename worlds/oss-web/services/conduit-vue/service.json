@@ -1,0 +1,12 @@
+{
+  "id": "conduit-vue",
+  "kind": "node-app",
+  "node": "conduit-vue",
+  "domains": ["vue.realworld.show"],
+  "port": 80,
+  "place": {"address": "198.51.100.152"},
+  "initial_state": {"package": "conduit-vue"},
+  "search_entries": [
+    {"url": "http://vue.realworld.show/", "title": "Conduit (Vue 3)", "snippet": "The RealWorld Conduit blogging platform, written in Vue 3 with the Composition API."}
+  ]
+}
