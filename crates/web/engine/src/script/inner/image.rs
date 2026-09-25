@@ -80,6 +80,8 @@ pub(crate) struct InnerImage {
     form_indeterminate: BTreeSet<u32>,
     form_selection: BTreeMap<u32, (u64, u64)>,
     form_validity: BTreeMap<u32, String>,
+    /// Each closed select's type-ahead: buffer, last key time, cycled character.
+    form_typeahead: BTreeMap<u32, (String, f64, Option<char>)>,
     /// How many of the heap roots are `wrappers` (the rest are `protos`).
     wrappers: u64,
     protos: Vec<String>,
@@ -274,6 +276,11 @@ impl Inner {
                 .iter()
                 .map(|(n, v)| (n.0, v.clone()))
                 .collect(),
+            form_typeahead: f
+                .typeahead
+                .iter()
+                .map(|(n, t)| (n.0, (t.buffer.clone(), t.last_ms, t.repeating)))
+                .collect(),
             wrappers: self.wrappers.len() as u64,
             protos: self.protos.keys().cloned().collect(),
             logs: self
@@ -409,6 +416,20 @@ impl Inner {
                 .form_validity
                 .into_iter()
                 .map(|(n, v)| (NodeId(n), v))
+                .collect(),
+            typeahead: img
+                .form_typeahead
+                .into_iter()
+                .map(|(n, (buffer, last_ms, repeating))| {
+                    (
+                        NodeId(n),
+                        super::TypeAhead {
+                            buffer,
+                            last_ms,
+                            repeating,
+                        },
+                    )
+                })
                 .collect(),
         };
         self.wrappers = roots[..nw].iter().map(obj).collect();

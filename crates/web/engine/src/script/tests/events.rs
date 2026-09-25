@@ -546,6 +546,61 @@ fn set_value_event_and_select_change() {
     assert_eq!(r.eval("s.value").unwrap(), "a");
 }
 
+/// A focused, closed select takes keys as Chromium on Linux does: the arrows
+/// step over disabled options, PageUp/PageDown move three, Home/End jump, and
+/// printable keys select by label (repeating a key cycles; a longer buffer is a
+/// prefix, reset after a second). Each change fires input then change between
+/// keydown and keyup; a prevented keydown changes nothing.
+#[test]
+fn keys_change_a_closed_select() {
+    let mut r = run(
+        "<select id=s><option>apple</option><option disabled>avocado</option><option>banana</option><option>blueberry</option><option>cherry</option><option>date</option></select>",
+        "window.ev=[]; for (const t of ['keydown','input','change','keyup']) s.addEventListener(t, e=>ev.push(t));",
+    );
+    r.dispatch(UiEvent::Focus {
+        node: Some(id_of(&r, "s")),
+    });
+    let press = |r: &mut Realm, key: &str| {
+        r.dispatch(UiEvent::Key {
+            key: key.into(),
+            code: String::new(),
+            modifiers: Modifiers::default(),
+            repeat: false,
+        });
+        r.eval("s.value").unwrap()
+    };
+    assert_eq!(press(&mut r, "ArrowDown"), "banana");
+    assert_eq!(r.eval("ev.join()").unwrap(), "keydown,input,change,keyup");
+    r.eval("ev.length = 0").unwrap();
+    assert_eq!(press(&mut r, "ArrowUp"), "apple");
+    assert_eq!(press(&mut r, "ArrowUp"), "apple");
+    assert_eq!(
+        r.eval("ev.join()").unwrap(),
+        "keydown,input,change,keyup,keydown,keyup"
+    );
+    assert_eq!(press(&mut r, "End"), "date");
+    assert_eq!(press(&mut r, "Home"), "apple");
+    assert_eq!(press(&mut r, "PageDown"), "blueberry");
+    assert_eq!(press(&mut r, "PageUp"), "apple");
+    assert_eq!(press(&mut r, "ArrowRight"), "banana");
+    assert_eq!(press(&mut r, "ArrowLeft"), "apple");
+    assert_eq!(press(&mut r, "b"), "banana");
+    assert_eq!(press(&mut r, "b"), "blueberry");
+    assert_eq!(press(&mut r, "b"), "banana");
+    r.eval("setTimeout(() => {}, 1100)").unwrap();
+    r.run_until_idle(1200);
+    // The buffer resets but Blink keeps the repeated character, so this cycles on;
+    // "ba" is then a prefix searched from the selected option on.
+    assert_eq!(press(&mut r, "b"), "blueberry");
+    assert_eq!(press(&mut r, "a"), "banana");
+    r.eval("setTimeout(() => {}, 1100)").unwrap();
+    r.run_until_idle(1200);
+    assert_eq!(press(&mut r, " "), "banana");
+    r.eval("s.addEventListener('keydown', e => e.preventDefault())")
+        .unwrap();
+    assert_eq!(press(&mut r, "ArrowDown"), "banana");
+}
+
 #[test]
 fn summary_toggles_details() {
     let mut r = run("<details id=d><summary id=s>sum</summary>body</details>", "window.n=0; document.getElementById('d').addEventListener('toggle', e=>{ n++; window.state=e.newState; });");

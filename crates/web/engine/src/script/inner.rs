@@ -69,6 +69,17 @@ pub struct FormData {
     /// Selection `(start, end)` of text controls.
     pub selection: BTreeMap<NodeId, (usize, usize)>,
     pub custom_validity: BTreeMap<NodeId, String>,
+    /// Type-to-select state of each closed select (Blink's `TypeAhead`).
+    pub typeahead: BTreeMap<NodeId, TypeAhead>,
+}
+
+/// What a closed select has been typed so far: the search buffer, when the last
+/// key came (virtual ms), and the character being cycled through, if any.
+#[derive(Clone, Debug, Default)]
+pub struct TypeAhead {
+    pub buffer: String,
+    pub last_ms: f64,
+    pub repeating: Option<char>,
 }
 
 impl FormState for FormData {
