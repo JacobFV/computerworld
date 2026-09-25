@@ -2490,3 +2490,70 @@ export class Pure extends PureComponent<{ value: string }> {
         ],
     );
 }
+
+#[test]
+fn lazy_components_load_on_the_island() {
+    // app.jsx (on the island: a generator) renders a lazily imported compiled
+    // component inside Suspense once a button asks for it.
+    same_as_react(
+        r#"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import { App } from './app';
+createRoot(document.getElementById('root')!).render(<App />);
+// @file app.tsx
+import { lazy, Suspense, useState } from 'react';
+function* g() { yield 1; }
+const Panel = lazy(() => import('./panel'));
+export function App() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button id="open" onClick={() => setOpen(true)}>open</button>
+      {open && <Suspense fallback={<p>loading</p>}><Panel title="lazy" /></Suspense>}
+    </div>
+  );
+}
+// @file panel.tsx
+export default function Panel({ title }: { title: string }) {
+  return <section id="panel">{title} panel</section>;
+}
+"#,
+        &[Step::Click("#open"), Step::Wait(20)],
+    );
+}
+
+#[test]
+fn island_code_freezes_compiled_values() {
+    // store.tsx (on the island) keeps fetched data (cw-ui values) in its state and
+    // freezes each state it makes, as Immer does; then it replaces one item.
+    same_as_react(
+        r#"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import { List } from './store';
+createRoot(document.getElementById('root')!).render(<List />);
+// @file store.tsx
+import { useEffect, useState } from 'react';
+function* g() { yield 1; }
+const deepFreeze = (o: any): any => { if (o && typeof o === 'object' && !Object.isFrozen(o)) { Object.freeze(o); for (const k of Object.keys(o)) deepFreeze(o[k]); } return o; };
+export function List() {
+  const [items, setItems] = useState<any[]>([]);
+  useEffect(() => {
+    fetch('/api/items').then((r) => r.json()).then((data) => setItems(deepFreeze(data)));
+  }, []);
+  // As Immer reads a draft's inherited method: `prop in source`, then the prototype.
+  const inherited = (o: any, k: string) => (k in o ? Object.getPrototypeOf(o)[k] : undefined);
+  const bump = () => setItems(deepFreeze(inherited(items, 'map').call(items, (it: any) => (it.id === 1 ? { ...it, tags: [...it.tags, 'new'] } : it))));
+  return (
+    <div>
+      <button id="bump" onClick={bump}>bump</button>
+      <p id="frozen">{String(items.length > 0 && Object.isFrozen(items[0]))} {items.length > 0 ? Object.keys(items[0]).join(',') : ''}</p>
+      <ul>{items.map((it) => <li key={it.id}>{it.name} {it.tags.join('+')}</li>)}</ul>
+    </div>
+  );
+}
+"#,
+        &[Step::Wait(50), Step::Click("#bump"), Step::Click("#bump")],
+    );
+}

@@ -22,9 +22,14 @@
   // A value of the compiled side is a live view: a Proxy whose traps read and
   // write it where it lives. Its target is an array for an array, so
   // Array.isArray and the array methods see one.
+  // Once frozen (or made non-extensible), a view keeps what it held then: its
+  // properties are copied onto its target, and it answers from there, as a
+  // frozen object does (Immer freezes the state it produces).
+  const sealed = (t) => !Object.isExtensible(t);
   const handler = {
     get(t, k) {
       if (k === ID) return t[ID];
+      if (sealed(t)) return Reflect.get(t, k);
       if (typeof k === 'symbol') {
         if (k === Symbol.iterator && Array.isArray(t)) return Array.prototype[Symbol.iterator];
         return undefined;
@@ -36,21 +41,28 @@
       return cw.pget(t[ID], k);
     },
     set(t, k, v) {
+      if (sealed(t)) return Reflect.set(t, k, v);
       if (typeof k === 'symbol') return false;
       return cw.pset(t[ID], k, v);
     },
     has(t, k) {
       if (k === ID) return true;
+      if (sealed(t)) return Reflect.has(t, k);
+      // `in` sees inherited properties too (`'map' in array`).
+      const proto = Array.isArray(t) ? Array.prototype : Object.prototype;
+      if (k in proto) return true;
       if (typeof k === 'symbol') return false;
       return cw.phas(t[ID], k);
     },
     ownKeys(t) {
+      if (sealed(t)) return Reflect.ownKeys(t).filter((k) => k !== ID);
       const keys = cw.pkeys(t[ID]);
       if (Array.isArray(t)) keys.push('length');
       return keys;
     },
     getOwnPropertyDescriptor(t, k) {
       if (typeof k === 'symbol') return undefined;
+      if (sealed(t)) return Reflect.getOwnPropertyDescriptor(t, k);
       if (Array.isArray(t) && k === 'length') {
         return { value: cw.pget(t[ID], 'length'), writable: true, enumerable: false, configurable: false };
       }
@@ -58,12 +70,27 @@
       return { value: cw.pget(t[ID], k), writable: true, enumerable: true, configurable: true };
     },
     deleteProperty(t, k) {
+      if (sealed(t)) return Reflect.deleteProperty(t, k);
       if (typeof k === 'symbol') return false;
       return cw.pdel(t[ID], k);
     },
     defineProperty(t, k, d) {
+      if (sealed(t)) return Reflect.defineProperty(t, k, d);
       if (typeof k === 'symbol') return false;
       return cw.pset(t[ID], k, d.value);
+    },
+    preventExtensions(t) {
+      if (!sealed(t)) {
+        const id = t[ID];
+        for (const k of cw.pkeys(id)) {
+          Object.defineProperty(t, k, { value: cw.pget(id, k), writable: true, enumerable: true, configurable: true });
+        }
+        if (Array.isArray(t)) t.length = cw.pget(id, 'length');
+      }
+      return Reflect.preventExtensions(t);
+    },
+    isExtensible(t) {
+      return Reflect.isExtensible(t);
     },
     getPrototypeOf(t) {
       return Array.isArray(t) ? Array.prototype : Object.prototype;
@@ -333,7 +360,42 @@
   Component.prototype.isReactComponent = {};
   class PureComponent extends Component {}
   PureComponent.prototype.isPureReactComponent = true;
-  function lazy() { throw new Error('React.lazy is not supported in an island'); }
+  // `lazy(() => import('./X'))`: the module is loaded when first rendered and the
+  // component renders again once it is (the bundle's import is a resolved
+  // module, so this settles in the same turn). Until then it renders nothing,
+  // where React shows the nearest Suspense fallback.
+  function lazy(factory) {
+    const st = { status: 0, value: undefined, waiters: [] };
+    const load = () => {
+      if (st.status !== 0) return;
+      st.status = 1;
+      factory().then(
+        (m) => { st.status = 2; st.value = m && m.default !== undefined ? m.default : m; st.waiters.splice(0).forEach((w) => w()); },
+        (e) => { st.status = 3; st.value = e; st.waiters.splice(0).forEach((w) => w()); },
+      );
+    };
+    const L = function (props) {
+      const bump = useReducer((x) => x + 1, 0)[1];
+      load();
+      const shown = st.status === 2;
+      useLayoutEffect(() => {
+        // Loaded since this render showed nothing (the import may settle while
+        // it renders): render again. Else wait for it.
+        if (st.status !== 1) {
+          if (!shown) bump();
+          return undefined;
+        }
+        let alive = true;
+        st.waiters.push(() => { if (alive) bump(); });
+        return () => { alive = false; };
+      });
+      if (st.status === 2) return createElement(st.value, props);
+      if (st.status === 3) throw st.value;
+      return null;
+    };
+    L.displayName = 'Lazy';
+    return L;
+  }
 
   const React = {
     createElement, cloneElement, isValidElement, Children, Fragment: FRAGMENT, StrictMode: STRICT,
@@ -353,6 +415,8 @@
   });
   const ReactDOM = {
     flushSync(f) { return f(); },
+    // Updates in one event are batched already (cw-ui renders when it ends).
+    unstable_batchedUpdates(f, a) { return f(a); },
     createPortal(children, containerInfo, key) {
       return { $$typeof: PORTAL, key: key == null ? null : '' + key, children, containerInfo, implementation: null };
     },
@@ -436,7 +500,23 @@
   globalThis.alert = (m) => B('Alert', 'alert', m === undefined ? '' : String(m));
   globalThis.confirm = (m) => B('Alert', 'confirm', m === undefined ? '' : String(m));
   globalThis.prompt = (m) => B('Alert', 'prompt', m === undefined ? '' : String(m));
-  globalThis.fetch = (url, init) => B('Fetch', String(url), init);
+  // `fetch(url, init)`: the page's fetch, through cw-ui. Headers given as a
+  // Headers object or as pairs go as a plain object.
+  globalThis.fetch = (url, init) => {
+    if (init && init.headers && typeof init.headers === 'object') {
+      const h = init.headers;
+      let plain = null;
+      if (Array.isArray(h)) {
+        plain = {};
+        for (const [k, v] of h) plain[k] = String(v);
+      } else if (typeof h.forEach === 'function') {
+        plain = {};
+        h.forEach((v, k) => { plain[k] = String(v); });
+      }
+      if (plain !== null) init = Object.assign({}, init, { headers: plain });
+    }
+    return B('Fetch', String(url), init);
+  };
   globalThis.requestAnimationFrame = (cb) => B('RequestAnimationFrame', cb);
   globalThis.cancelAnimationFrame = (id) => B('CancelAnimationFrame', id);
   globalThis.performance = { now: () => B('PerformanceNow') };

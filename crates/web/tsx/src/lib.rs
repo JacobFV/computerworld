@@ -95,6 +95,8 @@ pub struct Source {
     pub package: bool,
     /// Its import specifiers in source order (modules and stylesheets alike).
     pub order: Vec<String>,
+    /// The build's `process.env` (`LoadOptions::env`).
+    pub env: std::sync::Arc<BTreeMap<String, String>>,
     /// A CommonJS module (`require`, `module.exports`): a package's, run when first
     /// required or imported, as a bundler runs it.
     pub commonjs: bool,
@@ -111,6 +113,7 @@ impl Source {
             imports: BTreeMap::new(),
             package: false,
             order: Vec::new(),
+            env: Default::default(),
             commonjs: false,
             stylesheets: BTreeMap::new(),
         }
@@ -188,6 +191,23 @@ fn specifiers_of(text: &str, file: &str) -> Vec<(String, u32)> {
             S::ExportAllDeclaration(e) => out.push((e.source.value.to_string(), e.span.start)),
             _ => {}
         }
+    }
+    if text.contains("import(") {
+        // `import('./x')` with a literal specifier: loaded with the app, as a
+        // bundler emits its chunk.
+        use oxc_ast_visit::Visit;
+        struct D(Vec<(String, u32)>);
+        impl<'a> Visit<'a> for D {
+            fn visit_import_expression(&mut self, e: &oxc_ast::ast::ImportExpression<'a>) {
+                if let oxc_ast::ast::Expression::StringLiteral(s) = &e.source {
+                    self.0.push((s.value.to_string(), e.span.start));
+                }
+                oxc_ast_visit::walk::walk_import_expression(self, e);
+            }
+        }
+        let mut d = D(Vec::new());
+        d.visit_program(&ret.program);
+        out.extend(d.0);
     }
     out
 }
@@ -285,6 +305,10 @@ pub struct LoadOptions {
     /// `import`/`module`/`default` conditions, else `module`, else `main`). `None`
     /// leaves package imports unresolved.
     pub node_modules: Option<String>,
+    /// What the build defines as `process.env` (a bundler's DefinePlugin, as Create
+    /// React App defines `REACT_APP_*`): `process.env.NAME` is that string,
+    /// `NODE_ENV` is `production` unless set, and any other name `undefined`.
+    pub env: BTreeMap<String, String>,
 }
 
 /// What a relative import of a stylesheet or media file is, as Vite serves it: its
@@ -718,6 +742,7 @@ pub fn load_with(
                 text,
                 imports,
                 order,
+                env: std::sync::Arc::new(self.options.env.clone()),
                 commonjs,
                 stylesheets,
             });
@@ -784,6 +809,7 @@ pub fn build_virtual_with(
     let options = LoadOptions {
         aliases: Vec::new(),
         node_modules: packages.map(|_| "node_modules".to_owned()),
+        env: Default::default(),
     };
     let mut read = |f: &str| {
         if let Some(s) = map.get(f) {

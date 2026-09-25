@@ -45,6 +45,9 @@ proptest.workspace = true
 cw-network = { path = "../machines/network" }
 # `internet_links` reads the HTML the migrated sites now serve, to follow their links.
 cw-web = { path = "../web/engine" }
+# `oss_webapps` runs a page compiled and as its React build side by side
+# (`cw_browser::page_script::set_compiled_apps`).
+cw-browser = { path = "../web/browser" }
 url.workspace = true
 cw-cad = { path = "../engines/cad" }
 cw-applications = { path = "../applications" }

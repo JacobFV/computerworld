@@ -2117,13 +2117,27 @@ impl Runtime {
             body,
         });
         let p = new_promise();
-        match r {
-            Ok(resp) => self.resolve_promise(&p, Value::Response(Rc::new(resp))),
-            Err(e) => self.reject_promise(
-                &p,
+        // The transport answers at once; the page sees it in a task, as the
+        // Realm's fetch does (a zero-delay timer settles the promise).
+        let (value, reject) = match r {
+            Ok(resp) => (Value::Response(Rc::new(resp)), false),
+            Err(e) => (
                 Value::error("TypeError", &format!("Failed to fetch ({e})")),
+                true,
             ),
-        }
+        };
+        let id = self.next_timer;
+        self.next_timer += 1;
+        self.timers.push(Timer {
+            id,
+            due: self.clock_ms,
+            interval: None,
+            callback: Value::Native(Rc::new(NativeFn::Resolver {
+                promise: p.clone(),
+                reject,
+            })),
+            args: vec![value],
+        });
         Ok(Value::Promise(p))
     }
 

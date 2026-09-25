@@ -43,6 +43,7 @@ fn main() -> ExitCode {
     let mut rust = false;
     let mut mod_name: Option<String> = None;
     let mut root_arg: Option<PathBuf> = None;
+    let mut env = std::collections::BTreeMap::new();
     let mut it = rest.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -54,6 +55,13 @@ fn main() -> ExitCode {
             },
             "--mod" => mod_name = it.next().cloned(),
             "--root" => root_arg = it.next().map(PathBuf::from),
+            "--env" => {
+                // `--env NAME=VALUE`: `process.env.NAME` in the app and its packages.
+                let Some((k, v)) = it.next().and_then(|a| a.split_once('=')) else {
+                    return usage();
+                };
+                env.insert(k.to_owned(), v.to_owned());
+            }
             s if input.is_none() => input = Some(PathBuf::from(s)),
             _ => return usage(),
         }
@@ -86,6 +94,7 @@ fn main() -> ExitCode {
             .join("node_modules")
             .is_dir()
             .then(|| "node_modules".to_owned()),
+        env,
     };
     let mut read = |rel: &str| std::fs::read_to_string(root.join(rel)).ok();
     let (sources, load_errors) = cw_tsx::load_with(&file_name, &mut read, &options);

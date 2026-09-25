@@ -220,6 +220,7 @@ name = "computerworld"
 version = "0.2.0"
 dependencies = [
  "cw-applications",
+ "cw-browser",
  "cw-cad",
  "cw-eda",
  "cw-environment",

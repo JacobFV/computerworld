@@ -967,9 +967,33 @@ impl Runtime {
                                     ))
                         })
                     };
+                    // HTML's implicit submission, as the Realm does it: through the
+                    // default button when the form has one; without one, only when
+                    // a single field in the form blocks implicit submission.
                     return match submitter {
                         Some(s) => self.activation_click(s, m),
-                        None => self.submit_form(form, None),
+                        None => {
+                            let blocking = {
+                                let i = &self.inner;
+                                i.form_elements(form)
+                                    .into_iter()
+                                    .filter(|e| {
+                                        i.doc.is(*e, "input")
+                                            && blocks_implicit_submission(
+                                                &i.doc
+                                                    .attr(*e, "type")
+                                                    .unwrap_or("")
+                                                    .to_ascii_lowercase(),
+                                            )
+                                    })
+                                    .count()
+                            };
+                            if blocking == 1 {
+                                self.submit_form(form, None)
+                            } else {
+                                DefaultAction::None
+                            }
+                        }
                     };
                 }
             }
@@ -1334,4 +1358,22 @@ fn key_code(key: &str) -> String {
         (Some(' '), None) => "Space".into(),
         _ => key.to_owned(),
     }
+}
+
+/// Whether an input of type `ty` blocks implicit submission (HTML §4.10.21.2): the
+/// text-entry types, an unknown type among them (the Realm's rule).
+fn blocks_implicit_submission(ty: &str) -> bool {
+    !matches!(
+        ty,
+        "hidden"
+            | "checkbox"
+            | "radio"
+            | "file"
+            | "submit"
+            | "image"
+            | "reset"
+            | "button"
+            | "range"
+            | "color"
+    )
 }

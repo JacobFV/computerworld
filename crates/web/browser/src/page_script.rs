@@ -88,9 +88,23 @@ impl Deref for TreeRef<'_> {
     }
 }
 
+thread_local! {
+    static COMPILED_APPS: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+}
+
+/// Whether pages load on this thread run their declared compiled app (the
+/// default) or their React build: `false` is Chrome's view of the page, for
+/// comparing the two on the same URL (a single-page app's routes live there).
+pub fn set_compiled_apps(enabled: bool) {
+    COMPILED_APPS.with(|c| c.set(enabled));
+}
+
 /// The IR a page names with `data-cw-ui`, resolved against `base`, if it names
-/// exactly one.
+/// exactly one (and compiled apps are on, see [`set_compiled_apps`]).
 pub fn declared_ui(doc: &Document, base: &str) -> Option<String> {
+    if !COMPILED_APPS.with(|c| c.get()) {
+        return None;
+    }
     let mut found = doc
         .descendants(Document::ROOT)
         .filter(|n| doc.is(*n, "script"))

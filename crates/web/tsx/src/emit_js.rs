@@ -65,7 +65,10 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
             "const __cw_m = [{}];\n",
             vec!["{}"; sources.len()].join(", ")
         ));
-        if sources.iter().any(|s| s.commonjs) {
+        if sources
+            .iter()
+            .any(|s| s.commonjs || s.text.contains("import("))
+        {
             out.push_str(MODULE_RUNTIME);
         }
         let cjs: Vec<usize> = (0..sources.len())
@@ -102,6 +105,7 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
 const MODULE_RUNTIME: &str = r#"var __cw_lazy = {};
 var __cw_import_meta = { url: typeof location === 'undefined' ? '' : String(location.href) };
 function __cw_get(i) { var l = __cw_lazy[i]; if (l) { __cw_lazy[i] = null; l(); } return __cw_m[i]; }
+function __cw_import(i) { return Promise.resolve().then(function () { return __cw_get(i); }); }
 function __cw_req(map, s) {
   if (s === 'react') return React;
   if (s === 'react-dom' || s === 'react-dom/client') return ReactDOM;
@@ -131,7 +135,7 @@ fn emit_cjs(src: &Source, index: usize) -> String {
         .iter()
         .map(|(spec, m)| format!("{}: {m}", js_key_quoted(spec)))
         .collect();
-    let code = define_node_env_text(&src.text);
+    let code = define_node_env_text(&src.text, &src.env);
     format!(
         "// {file}\n__cw_lazy[{index}] = function () {{ var module = {{ exports: {{}} }}; var require = function (s) {{ return __cw_req({{ {map} }}, s); }}; (function (module, exports, require) {{\n{code}\n}}).call(module.exports, module, module.exports, require); __cw_cjs(__cw_m[{index}], module.exports); }};\n",
         file = src.file,
@@ -146,8 +150,11 @@ fn js_key_quoted(s: &str) -> String {
 
 /// `process.env.NODE_ENV` as `"production"` in a script's text (for CommonJS
 /// code, which is not re-emitted).
-fn define_node_env_text(text: &str) -> String {
-    if !text.contains("NODE_ENV") {
+fn define_node_env_text(
+    text: &str,
+    env: &std::sync::Arc<std::collections::BTreeMap<String, String>>,
+) -> String {
+    if !text.contains("process.env") {
         return text.to_owned();
     }
     let allocator = Allocator::default();
@@ -158,6 +165,8 @@ fn define_node_env_text(text: &str) -> String {
     let mut program = ret.program;
     DefineNodeEnv {
         b: AstBuilder::new(&allocator),
+        env: env.clone(),
+        alloc: &allocator,
     }
     .visit_program(&mut program);
     Codegen::new().build(&program).code
@@ -435,9 +444,11 @@ fn emit_one(
         return Err(ret.diagnostics.iter().map(from_oxc).collect());
     }
     let mut program = ret.program;
-    if source.contains("NODE_ENV") || source.contains("import.meta") {
+    if source.contains("process.env") || source.contains("import.meta") {
         DefineNodeEnv {
             b: AstBuilder::new(&allocator),
+            env: src.env.clone(),
+            alloc: &allocator,
         }
         .visit_program(&mut program);
     }
@@ -449,6 +460,7 @@ fn emit_one(
     // Names imported from modules of the app: module, name there.
     let mut imported: BTreeMap<String, (usize, String)> = BTreeMap::new();
     let mut used_modules: BTreeSet<usize> = BTreeSet::new();
+    let mut used_dynamic = false;
     let module_of = |spec: &str| src.imports.get(spec).copied();
     let alloc = &allocator;
     let body = program.body.take_in(&alloc);
@@ -585,6 +597,26 @@ fn emit_one(
                 if e.export_kind.is_type() {
                     continue;
                 }
+                let shim = match e.source.value.as_str() {
+                    "react" => Some("React"),
+                    "react-dom" | "react-dom/client" => Some("ReactDOM"),
+                    "react/jsx-runtime" | "react/jsx-dev-runtime" => Some("__cw_jsx"),
+                    _ => None,
+                };
+                if let (None, Some(global)) = (module_of(e.source.value.as_str()), shim) {
+                    // `export { unstable_batchedUpdates } from 'react-dom'`.
+                    for spec in &e.specifiers {
+                        if spec.export_kind.is_type() {
+                            continue;
+                        }
+                        let name = spec.local.name().to_string();
+                        exports.push((
+                            spec.exported.name().to_string(),
+                            format!("{global}{}", js_member(&name)),
+                        ));
+                    }
+                    continue;
+                }
                 let Some(m) = module_of(e.source.value.as_str()) else {
                     errors.push(at(
                         e.span.start,
@@ -706,6 +738,19 @@ fn emit_one(
     if !ret.diagnostics.is_empty() {
         return Err(ret.diagnostics.iter().map(from_oxc).collect());
     }
+    if source.contains("import(") && !src.imports.is_empty() {
+        // `import('./x')`: a promise of that module's exports (`__cw_import`).
+        let mut di = DynamicImports {
+            imports: &src.imports,
+            b: AstBuilder::new(&allocator),
+            alloc: &allocator,
+            used: false,
+        };
+        di.visit_program(&mut program);
+        if di.used {
+            used_dynamic = true;
+        }
+    }
     if !imported.is_empty() {
         // Uses of imported names (unbound now that the imports are gone) read the
         // exporting module's exports object.
@@ -726,6 +771,7 @@ fn emit_one(
         };
         rw.visit_program(&mut program);
     }
+    let _ = used_dynamic;
     let code = Codegen::new()
         .with_options(CodegenOptions {
             single_quote: true,
@@ -775,6 +821,47 @@ fn js_member(name: &str) -> String {
 }
 
 /// Rewrites uses of imported names into reads of the exporting module.
+/// Rewrites `import('./x')` (a module the loader resolved) to `__cw_import(i)`.
+struct DynamicImports<'a, 's> {
+    imports: &'s BTreeMap<String, usize>,
+    b: AstBuilder<'a>,
+    alloc: &'a Allocator,
+    used: bool,
+}
+
+impl<'a> VisitMut<'a> for DynamicImports<'a, '_> {
+    fn visit_expression(&mut self, it: &mut Expression<'a>) {
+        if let Expression::ImportExpression(ie) = it {
+            if let Expression::StringLiteral(lit) = &ie.source {
+                if let Some(&m) = self.imports.get(lit.value.as_str()) {
+                    let span = ie.span;
+                    let n = Expression::new_numeric_literal(
+                        span,
+                        m as f64,
+                        None,
+                        oxc_ast::ast::NumberBase::Decimal,
+                        &self.b,
+                    );
+                    *it = Expression::new_call_expression(
+                        span,
+                        Expression::new_identifier(span, "__cw_import", &self.b),
+                        None,
+                        oxc_allocator::Vec::from_iter_in(
+                            [oxc_ast::ast::Argument::from(n)],
+                            &self.alloc,
+                        ),
+                        false,
+                        &self.b,
+                    );
+                    self.used = true;
+                    return;
+                }
+            }
+        }
+        walk_mut::walk_expression(self, it);
+    }
+}
+
 struct ImportUses<'a> {
     refs: HashMap<oxc_semantic::ReferenceId, (usize, String)>,
     b: AstBuilder<'a>,
@@ -836,10 +923,24 @@ impl<'a> VisitMut<'a> for ImportUses<'a> {
     }
 }
 
-/// `process.env.NODE_ENV` is `"production"`, as a bundler defines it for the page
-/// (packages branch on it; neither a browser nor the island has `process`).
+/// `process.env` is what the build defines, as a bundler's DefinePlugin replaces
+/// it (neither a browser nor the island has `process`): `process.env.NAME` the
+/// defined string, `NODE_ENV` `"production"` unless defined, any other name
+/// `undefined`; and `import.meta` the bundle's object for it.
 struct DefineNodeEnv<'a> {
     b: AstBuilder<'a>,
+    env: std::sync::Arc<std::collections::BTreeMap<String, String>>,
+    alloc: &'a Allocator,
+}
+
+impl DefineNodeEnv<'_> {
+    fn value(&self, name: &str) -> Option<String> {
+        match self.env.get(name) {
+            Some(v) => Some(v.clone()),
+            None if name == "NODE_ENV" => Some("production".into()),
+            None => None,
+        }
+    }
 }
 
 impl<'a> VisitMut<'a> for DefineNodeEnv<'a> {
@@ -851,14 +952,21 @@ impl<'a> VisitMut<'a> for DefineNodeEnv<'a> {
             return;
         }
         if let Expression::StaticMemberExpression(m) = it {
-            if m.property.name == "NODE_ENV" {
-                if let Expression::StaticMemberExpression(inner) = &m.object {
-                    if inner.property.name == "env"
-                        && matches!(&inner.object, Expression::Identifier(p) if p.name == "process")
-                    {
-                        *it = Expression::new_string_literal(m.span, "production", None, &self.b);
-                        return;
-                    }
+            if let Expression::StaticMemberExpression(inner) = &m.object {
+                if inner.property.name == "env"
+                    && matches!(&inner.object, Expression::Identifier(p) if p.name == "process")
+                {
+                    let span = m.span;
+                    *it = match self.value(m.property.name.as_str()) {
+                        Some(v) => Expression::new_string_literal(
+                            span,
+                            self.alloc.alloc_str(&v),
+                            None,
+                            &self.b,
+                        ),
+                        None => Expression::new_identifier(span, "undefined", &self.b),
+                    };
+                    return;
                 }
             }
         }

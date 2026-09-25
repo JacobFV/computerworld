@@ -92,6 +92,9 @@ pub fn lower_modules_with(
         .filter(|i| sources[*i].package || options.vm_modules.contains(i))
         .collect();
     l.source_files = sources.iter().map(|s| s.file.clone()).collect();
+    if let Some(s) = sources.last() {
+        l.env = s.env.clone();
+    }
     l.swap_current(0);
     if options.islands
         && sources
@@ -484,6 +487,8 @@ struct Lowerer<'a> {
     island_globals: BTreeMap<String, u32>,
     /// Each source's file, by module index.
     source_files: Vec<String>,
+    /// The build's `process.env`.
+    env: std::sync::Arc<BTreeMap<String, String>>,
     /// What compiled code imports from the island: (specifier, name), each once.
     island_imports: Vec<(String, String)>,
     /// Module-level `const r = createRoot(container)`, by (module, name): the
@@ -554,6 +559,7 @@ impl<'a> Lowerer<'a> {
             islands: true,
             island_globals: BTreeMap::new(),
             source_files: Vec::new(),
+            env: Default::default(),
             island_imports: Vec::new(),
             root_vars: BTreeMap::new(),
             container_vars: BTreeMap::new(),
@@ -4368,6 +4374,22 @@ impl<'a> Lowerer<'a> {
         match m {
             ast::MemberExpression::StaticMemberExpression(s) => {
                 let name = s.property.name.as_str();
+                // `process.env.NAME`: what the build defines (`LoadOptions::env`).
+                if let E::StaticMemberExpression(inner) = strip(&s.object) {
+                    if inner.property.name == "env" {
+                        if let E::Identifier(p) = strip(&inner.object) {
+                            if p.name == "process" && self.resolve_is_free("process") {
+                                return match self.env.get(name) {
+                                    Some(v) => (Expr::Str(v.clone()), Ty::String),
+                                    None if name == "NODE_ENV" => {
+                                        (Expr::Str("production".into()), Ty::String)
+                                    }
+                                    None => (Expr::Undefined, Ty::Undefined),
+                                };
+                            }
+                        }
+                    }
+                }
                 if let E::Identifier(id) = strip(&s.object) {
                     if self.resolve_is_free(id.name.as_str()) {
                         if let Some(r) = self.namespace_member(id.name.as_str(), name, s.span) {

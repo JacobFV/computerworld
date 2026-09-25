@@ -540,6 +540,7 @@ pub fn evaluate_opts(
                 .map(|(a, b)| (a.clone(), b.clone()))
                 .collect(),
             node_modules: None,
+            env: Default::default(),
         };
         let result = evaluate_project(&root, p, &options, lower, &mut report, show);
         report.modules.merge(&result.modules);
@@ -674,6 +675,7 @@ fn evaluate_project(
             let stub_options = LoadOptions {
                 aliases: options.aliases.clone(),
                 node_modules: Some("node_modules".into()),
+                env: Default::default(),
             };
             let mut read = |rel: &str| match rel.strip_prefix("node_modules/") {
                 Some(r) if r.ends_with("package.json") => Some("{}".to_owned()),

@@ -61,14 +61,18 @@ JSON_SERVER=78ea71375666d49145734689c097654c54f90686 # v0.17.4
 compile_ui() {
   local cw_tsx=${CW_TSX:-$ROOT/target/release/cw-tsx}
   [ -x "$cw_tsx" ] || { echo "build cw-tsx first: cargo build --release -p cw-tsx" >&2; exit 1; }
+  local app=$1 entry=$2 dist=$3 script=$4 ir=${5:-app.ui.json}
+  shift 5 || shift $#
+  local env=()
+  for e in "$@"; do env+=(--env "$e"); done
   local out
   out=$(mktemp -d)
-  "$cw_tsx" build "$1/$2" --root "$1" -o "$out" --name app
-  cp "$out/app.ui.json" "$3/app.ui.json"
+  "$cw_tsx" build "$app/$entry" --root "$app" "${env[@]}" -o "$out" --name app
+  cp "$out/app.ui.json" "$dist/${ir#/}"
   rm -rf "$out"
-  cp "$3/index.html" "$3/react.html"
-  sed -i "s#src=\"$4\"#src=\"$4\" data-cw-ui=\"app.ui.json\"#" "$3/index.html"
-  grep -q 'data-cw-ui="app.ui.json"' "$3/index.html"
+  cp "$dist/index.html" "$dist/react.html"
+  sed -i "s#src=\"$script\"#src=\"$script\" data-cw-ui=\"$ir\"#" "$dist/index.html"
+  grep -q "data-cw-ui=\"$ir\"" "$dist/index.html"
 }
 
 build_todomvc() {
@@ -128,6 +132,10 @@ build_conduit_react() {
   sed -i 's#//demo.productionready.io/main.css#/main.css#' "$stage/index.html"
   cp "$(fetch conduit-vue https://github.com/mutoe/vue3-realworld-example-app "$CONDUIT_VUE")/public/main.css" "$stage/main.css"
   cp "$src/LICENSE.md" "$stage/LICENSE.md"
+  # The app compiled for cw-ui, with the build's environment (a single-page app:
+  # the IR is named from the root, as its scripts are).
+  compile_ui "$src" src/index.js "$stage" "$(grep -o '/static/js/main\.[0-9a-f]*\.js' "$stage/index.html")" \
+    /app.ui.json REACT_APP_BACKEND_URL=http://api.realworld.show/api
   publish conduit-react public "$stage"
 }
 

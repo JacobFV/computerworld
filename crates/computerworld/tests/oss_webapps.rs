@@ -26,9 +26,50 @@ fn definition() -> WorldDefinition {
 struct Agent {
     world: World,
     session: String,
+    /// The same session on the React build (the browser's compiled-app path off),
+    /// acted on alongside and compared after every action.
+    twin: Option<Box<Agent>>,
 }
 
 impl Agent {
+    /// An agent whose every action also runs on a second world where pages run
+    /// their React build; after each, the two must show the same elements.
+    fn twinned() -> Agent {
+        let mut a = Agent::new();
+        a.twin = Some(Box::new(Agent::new()));
+        a
+    }
+
+    /// The twin takes the same action, and must show what this agent shows.
+    fn mirror(&mut self, what: &str, f: impl FnOnce(&mut Agent)) {
+        let Some(twin) = self.twin.as_mut() else {
+            return;
+        };
+        cw_browser::page_script::set_compiled_apps(false);
+        f(twin);
+        cw_browser::page_script::set_compiled_apps(true);
+        let (mine, theirs) = (self.dump(), self.twin.as_ref().unwrap().dump());
+        if mine != theirs {
+            if let Some(dir) = std::env::var_os("CW_OSS_DUMPS") {
+                let dir = std::path::PathBuf::from(dir);
+                std::fs::write(dir.join("compiled.txt"), &mine).ok();
+                std::fs::write(dir.join("react.txt"), &theirs).ok();
+            }
+            let line = mine
+                .lines()
+                .zip(theirs.lines())
+                .position(|(a, b)| a != b)
+                .unwrap_or(mine.lines().count().min(theirs.lines().count()));
+            panic!(
+                "after {what}, the compiled page (left) and its React build (right) differ at line {}:\n{}\n---\n{}\n--- compiled console\n{}",
+                line + 1,
+                mine.lines().skip(line.saturating_sub(2)).take(6).collect::<Vec<_>>().join("\n"),
+                theirs.lines().skip(line.saturating_sub(2)).take(6).collect::<Vec<_>>().join("\n"),
+                self.console(),
+            );
+        }
+    }
+
     fn new() -> Agent {
         let mut world = World::new(definition(), 42).unwrap();
         let session = world
@@ -40,10 +81,23 @@ impl Agent {
                 action_budget: 1 << 20,
             })
             .unwrap();
-        Agent { world, session }
+        Agent {
+            world,
+            session,
+            twin: None,
+        }
     }
 
     fn act(&mut self, channel: &str, op: &str, payload: Value) -> Value {
+        cw_browser::page_script::set_compiled_apps(true);
+        let v = self.act_here(channel, op, payload.clone());
+        self.mirror(&format!("{op} {payload}"), |t| {
+            t.act_here(channel, op, payload);
+        });
+        v
+    }
+
+    fn act_here(&mut self, channel: &str, op: &str, payload: Value) -> Value {
         let result = self
             .world
             .step(
@@ -66,6 +120,10 @@ impl Agent {
     fn wait(&mut self, ms: u64) {
         self.world.runtime_mut().advance(ms * 1000).unwrap();
         self.world.step(&self.session, vec![]).unwrap();
+        self.mirror(&format!("waiting {ms} ms"), |t| {
+            t.world.runtime_mut().advance(ms * 1000).unwrap();
+            t.world.step(&t.session, vec![]).unwrap();
+        });
     }
 
     /// Waits in half-second steps of world time, as an agent looks again, until the
@@ -99,6 +157,11 @@ impl Agent {
             self.dump(),
             self.console()
         );
+    }
+
+    /// Navigates with the browser's compiled-app path as it is set on this thread.
+    fn navigate_here(&mut self, url: &str) {
+        self.act_here("browser.v1", "navigate", json!({ "url": url }));
     }
 
     fn navigate(&mut self, url: &str) {
@@ -397,7 +460,9 @@ fn todomvc_vue_adds_completes_filters_and_clears() {
 /// Express backend running in the world.
 #[test]
 fn conduit_react_filters_signs_in_writes_comments_edits_deletes_and_favourites() {
-    let mut a = Agent::new();
+    // Compiled (the page's app.ui.json on cw-ui), with the React build alongside:
+    // after every action both show the agent the same page.
+    let mut a = Agent::twinned();
     a.navigate("http://conduit.realworld.show/");
     assert!(a.shows("A place to share your knowledge."));
     assert!(
@@ -927,9 +992,9 @@ fn measure() {
     }
 }
 
-/// TodoMVC React compiled (cw-ui) against its React build, each in a fresh world
-/// in one process: first and second load, adding a todo (fill and Enter) and
-/// ticking it, medians of five.
+/// The compiled apps against their React builds, each in a fresh world in one
+/// process (the React build: the browser's compiled-app path off, as Chrome sees
+/// the page): first and second load and one action, medians of five.
 ///
 ///     cargo test --release -p computerworld --features oss-web --test oss_webapps -- --ignored --nocapture measure_compiled
 #[test]
@@ -939,56 +1004,64 @@ fn measure_compiled_against_react() {
         v.sort_by(|a, b| a.partial_cmp(b).unwrap());
         v[v.len() / 2]
     };
-    println!("| TodoMVC React | first load (ms) | second load (ms) | add a todo (ms) | tick it (ms) | snapshot after (bytes) |");
-    println!("|---|---|---|---|---|---|");
-    for (name, url) in [
+    type Act = fn(&mut Agent);
+    let apps: [(&str, &str, &str, &str, Act); 2] = [
         (
-            "compiled (cw-ui)",
+            "TodoMVC React",
             "http://todomvc.com/examples/react/dist/",
+            "todos",
+            "add a todo",
+            |a| {
+                a.fill("What needs to be done?", "Reply to Wren");
+                a.key("Enter");
+                assert!(a.shows("1 item left"));
+            },
         ),
         (
-            "React build",
-            "http://todomvc.com/examples/react/dist/react.html",
+            "Conduit React",
+            "http://conduit.realworld.show/",
+            "Stop writing ETL, start writing contracts",
+            "filter by a tag",
+            |a| {
+                a.click("button", "reliability");
+                assert!(a.shows("I deleted our retry logic and the outages stopped"));
+            },
         ),
-    ] {
-        let (mut first, mut second, mut add, mut tick, mut snap) =
-            (vec![], vec![], vec![], vec![], vec![]);
-        for _ in 0..5 {
-            let mut a = Agent::new();
-            let t = std::time::Instant::now();
-            a.navigate(url);
-            first.push(t.elapsed().as_secs_f64() * 1000.0);
-            assert!(a.shows("todos"));
-            let t = std::time::Instant::now();
-            a.navigate("http://todomvc.com/license.md");
-            a.navigate(url);
-            second.push(t.elapsed().as_secs_f64() * 1000.0);
-            let t = std::time::Instant::now();
-            a.fill("What needs to be done?", "Reply to Wren");
-            a.key("Enter");
-            add.push(t.elapsed().as_secs_f64() * 1000.0);
-            assert!(a.shows("1 item left"));
-            let id = a
-                .elements()
-                .into_iter()
-                .find(|e| e["text"].as_str() == Some("[ ]"))
-                .unwrap()["id"]
-                .as_str()
-                .unwrap()
-                .to_owned();
-            let t = std::time::Instant::now();
-            a.act("browser.v1", "click", json!({ "id": id }));
-            tick.push(t.elapsed().as_secs_f64() * 1000.0);
-            assert!(a.shows("0 items left"));
-            snap.push(a.world.export_snapshot().unwrap().len() as f64);
+    ];
+    println!("| App | runs | first load (ms) | second load (ms) | action | action (ms) | snapshot after (bytes) |");
+    println!("|---|---|---|---|---|---|---|");
+    for (name, url, content, action, act) in apps {
+        for compiled in [true, false] {
+            let (mut first, mut second, mut acted, mut snap) = (vec![], vec![], vec![], vec![]);
+            for _ in 0..5 {
+                cw_browser::page_script::set_compiled_apps(compiled);
+                let mut a = Agent::new();
+                let t = std::time::Instant::now();
+                a.navigate_here(url);
+                first.push(t.elapsed().as_secs_f64() * 1000.0);
+                assert!(a.shows(content), "{name}: {}", a.dump());
+                let t = std::time::Instant::now();
+                a.navigate_here("http://todomvc.com/license.md");
+                a.navigate_here(url);
+                second.push(t.elapsed().as_secs_f64() * 1000.0);
+                let t = std::time::Instant::now();
+                act(&mut a);
+                acted.push(t.elapsed().as_secs_f64() * 1000.0);
+                snap.push(a.world.export_snapshot().unwrap().len() as f64);
+            }
+            cw_browser::page_script::set_compiled_apps(true);
+            println!(
+                "| {name} | {} | {:.1} | {:.1} | {action} | {:.1} | {:.0} |",
+                if compiled {
+                    "compiled (cw-ui)"
+                } else {
+                    "React build"
+                },
+                median(first),
+                median(second),
+                median(acted),
+                median(snap)
+            );
         }
-        println!(
-            "| {name} | {:.1} | {:.1} | {:.1} | {:.1} | {:.0} |",
-            median(first),
-            median(second),
-            median(add),
-            median(tick),
-            median(snap)
-        );
     }
 }
