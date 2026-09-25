@@ -91,11 +91,12 @@ pub fn emit(m: &Module, mod_name: &str) -> String {
         };
         let _ = writeln!(
             out,
-            "    GenFunc {{ name: {:?}, arity: {}, captures: &[{}], boxed: &[{}], code: {code} }},",
+            "    GenFunc {{ name: {:?}, arity: {}, captures: &[{}], boxed: &[{}], code: {code}, forward_ref: {} }},",
             f.name,
             f.arity(),
             caps.join(", "),
-            boxed.join(", ")
+            boxed.join(", "),
+            f.forward_ref
         );
     }
     out.push_str("];\n\n");

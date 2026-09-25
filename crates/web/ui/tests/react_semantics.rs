@@ -1498,3 +1498,102 @@ createRoot(document.getElementById('root')!).render(<App />);
         &[Step::Click("#go"), Step::Click("#go")],
     );
 }
+
+#[test]
+fn forward_refs_imperative_handles_and_component_namespaces() {
+    same_as_react(
+        r#"
+import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState, useTransition, useDeferredValue, startTransition, Suspense } from 'react';
+import { createRoot } from 'react-dom/client';
+interface FieldHandle { focus: () => void; clear: () => void }
+const Field = forwardRef<FieldHandle, { label: string }>((props, ref) => {
+  const input = useRef<HTMLInputElement>(null);
+  const [v, setV] = useState('');
+  useImperativeHandle(ref, () => ({
+    focus: () => input.current!.focus(),
+    clear: () => setV(''),
+  }), []);
+  // Render counts differ with a transition or a deferred value (React renders
+  // again for them; compiled, they are synchronous), so log once.
+  useEffect(() => console.log('field mounted', props.label, 'ref' in props), []);
+  return <label>{props.label}<input id="field" ref={input} value={v} onChange={(e) => setV(e.target.value)} /></label>;
+});
+const Plain = memo(forwardRef<HTMLButtonElement, { children: string; onClick: () => void }>((p, ref) => <button ref={ref} id="plain" onClick={p.onClick}>{p.children}</button>));
+const Tabs = {
+  List: ({ children }: { children: React.ReactNode }) => <ul className="tabs">{children}</ul>,
+  Tab: ({ label }: { label: string }) => <li>{label}</li>,
+};
+function App() {
+  const field = useRef<FieldHandle>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const [count, setCount] = useState(0);
+  const [pending, start] = useTransition();
+  const deferred = useDeferredValue(count);
+  const Wrapped = memo(Tabs.Tab);
+  return (
+    <div>
+      <Field ref={field} label="Name" />
+      <Plain ref={button} onClick={() => { field.current!.focus(); start(() => setCount((c) => c + 1)); console.log('button is', button.current!.id, pending); }}>focus</Plain>
+      <button id="clear" onClick={() => { field.current!.clear(); startTransition(() => setCount(0)); }}>clear</button>
+      <Suspense fallback={<p>loading</p>}>
+        <Tabs.List><Tabs.Tab label={`count ${count}`} /><Wrapped label={`deferred ${deferred}`} /></Tabs.List>
+      </Suspense>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[
+            Step::Click("#plain"),
+            Step::Type("Ada"),
+            Step::Click("#plain"),
+            Step::Click("#clear"),
+        ],
+    );
+}
+
+#[test]
+fn logical_and_destructuring_assignments_delete_and_host_globals() {
+    same_as_react(
+        r#"
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+interface Cfg { name?: string; count?: number; tags?: string[] | null; extra?: string }
+function App() {
+  const [out, setOut] = useState('');
+  const run = () => {
+    const cfg: Cfg = { count: 0, tags: null, extra: 'x' };
+    cfg.name ??= 'anon';
+    cfg.count ||= 5;
+    cfg.tags ??= [];
+    cfg.tags.push('t');
+    let flag = true;
+    flag &&= cfg.count > 3;
+    delete cfg.extra;
+    let a = 1, b = 2;
+    [a, b] = [b, a];
+    const pair: [number, number] = [3, 4];
+    let first = 0, rest: number[] = [];
+    [first, ...rest] = [9, 8, 7];
+    let n: string | undefined, c: number;
+    ({ name: n, count: c = 1 } = cfg);
+    localStorage.setItem('k', 'v' + a);
+    window.localStorage.setItem('other', '1');
+    const stored = localStorage.getItem('k');
+    const len = localStorage.length;
+    localStorage.removeItem('other');
+    const missing = sessionStorage.getItem('nope');
+    alert('saved ' + stored);
+    const ok = confirm('sure?');
+    const line = [JSON.stringify(cfg), 'extra' in cfg, flag, a, b, pair[0], first, rest.join('+'), n, c, stored, len, localStorage.length, missing, ok,
+      location.pathname, location.origin, location.hash === '', navigator.language, navigator.userAgent.includes('Chrome')].join(' ');
+    console.log(line);
+    setOut(line);
+  };
+  return <div><button id="go" onClick={run}>run</button><p>{out}</p></div>;
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Click("#go")],
+    );
+}

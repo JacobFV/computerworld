@@ -146,6 +146,47 @@ fn arg(args: &[Value], i: usize) -> Value {
     args.get(i).cloned().unwrap_or(Value::Undefined)
 }
 
+/// A part of an http(s) URL as `location` (WHATWG `URL`) reports it.
+fn location_part(url: &str, part: &str) -> String {
+    let (scheme, rest) = url.split_once("://").unwrap_or(("", url));
+    let (before_hash, hash) = match rest.find('#') {
+        Some(i) => (&rest[..i], &rest[i..]),
+        None => (rest, ""),
+    };
+    let (before_query, search) = match before_hash.find('?') {
+        Some(i) => (&before_hash[..i], &before_hash[i..]),
+        None => (before_hash, ""),
+    };
+    let (host, path) = match before_query.find('/') {
+        Some(i) => (&before_query[..i], &before_query[i..]),
+        None => (before_query, "/"),
+    };
+    let (hostname, port) = match host.rsplit_once(':') {
+        Some((h, p)) if !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()) => (h, p),
+        _ => (host, ""),
+    };
+    let default_port = matches!((scheme, port), ("http", "80") | ("https", "443"));
+    let port = if default_port { "" } else { port };
+    let host = if port.is_empty() {
+        hostname.to_owned()
+    } else {
+        format!("{hostname}:{port}")
+    };
+    let search = if search == "?" { "" } else { search };
+    let hash = if hash == "#" { "" } else { hash };
+    match part {
+        "protocol" => format!("{scheme}:"),
+        "host" => host,
+        "hostname" => hostname.to_owned(),
+        "port" => port.to_owned(),
+        "pathname" => path.to_owned(),
+        "search" => search.to_owned(),
+        "hash" => hash.to_owned(),
+        "origin" => format!("{scheme}://{host}"),
+        _ => format!("{scheme}://{host}{path}{search}{hash}"),
+    }
+}
+
 /// A time value from local fields (`new Date(y, m, …)`, `Date.UTC`): years 0–99
 /// are 1900–1999, as JavaScript has them.
 fn date_fields(args: &[Value]) -> f64 {
@@ -1797,6 +1838,92 @@ impl Runtime {
                     _ => false,
                 })
             }
+            B::StartTransition => {
+                self.call_value(&arg(&args, 0), vec![])?;
+                Value::Undefined
+            }
+            B::Delete => {
+                let key = key_string(&arg(&args, 1));
+                match arg(&args, 0) {
+                    Value::Object(o) => o.borrow_mut().retain(|(k, _)| *k != key),
+                    Value::Array(a) => {
+                        if let Ok(i) = key.parse::<usize>() {
+                            if let Some(slot) = a.borrow_mut().get_mut(i) {
+                                *slot = Value::Undefined;
+                            }
+                        }
+                    }
+                    Value::Undefined | Value::Null => {
+                        return type_error("Cannot convert undefined or null to object")
+                    }
+                    _ => {}
+                }
+                Value::Bool(true)
+            }
+            B::StorageGet
+            | B::StorageSet
+            | B::StorageRemove
+            | B::StorageClear
+            | B::StorageKey
+            | B::StorageLength => {
+                let area = if num(0) == 1.0 {
+                    cw_web::script::StorageArea::Session
+                } else {
+                    cw_web::script::StorageArea::Local
+                };
+                let key = arg(&args, 1).to_js_string();
+                match b {
+                    B::StorageGet => match self.inner.host_storage_get(area, &key) {
+                        Some(v) => Value::str(&v),
+                        None => Value::Null,
+                    },
+                    B::StorageSet => {
+                        let v = arg(&args, 2).to_js_string();
+                        self.inner.host_storage_set(area, &key, &v);
+                        Value::Undefined
+                    }
+                    B::StorageRemove => {
+                        self.inner.host_storage_remove(area, &key);
+                        Value::Undefined
+                    }
+                    B::StorageClear => {
+                        for k in self.inner.host_storage_keys(area) {
+                            self.inner.host_storage_remove(area, &k);
+                        }
+                        Value::Undefined
+                    }
+                    B::StorageKey => {
+                        let i = num(1);
+                        let keys = self.inner.host_storage_keys(area);
+                        if i >= 0.0 && i.fract() == 0.0 {
+                            keys.get(i as usize)
+                                .map(|k| Value::str(k))
+                                .unwrap_or(Value::Null)
+                        } else {
+                            Value::Null
+                        }
+                    }
+                    _ => Value::Num(self.inner.host_storage_keys(area).len() as f64),
+                }
+            }
+            B::LocationPart => {
+                let url = self.inner.url.clone();
+                Value::str(&location_part(&url, &arg(&args, 0).to_js_string()))
+            }
+            B::Alert => {
+                let kind = arg(&args, 0).to_js_string();
+                let text = if args.len() > 1 {
+                    arg(&args, 1).to_js_string()
+                } else {
+                    String::new()
+                };
+                self.inner.alerts.push(format!("{kind}: {text}"));
+                match kind.as_str() {
+                    "confirm" => Value::Bool(true),
+                    "prompt" => Value::Null,
+                    _ => Value::Undefined,
+                }
+            }
             B::ForInKeys => match arg(&args, 0) {
                 Value::Undefined | Value::Null => Value::array(Vec::new()),
                 v @ (Value::Object(_) | Value::Array(_) | Value::Str(_)) => {
@@ -3140,8 +3267,18 @@ fn radix_string(n: f64, radix: u32) -> String {
 
 impl Runtime {
     fn call_native(&mut self, n: &NativeFn, args: Vec<Value>) -> R<Value> {
-        if let NativeFn::Builtin(b) = n {
-            return self.builtin(*b, args);
+        match n {
+            NativeFn::Builtin(b) => return self.builtin(*b, args),
+            NativeFn::ImperativeSet { r, create } => {
+                let v = self.call_value(create, vec![])?;
+                self.set_ref_value(r, v);
+                return Ok(Value::Native(Rc::new(NativeFn::ImperativeClear(r.clone()))));
+            }
+            NativeFn::ImperativeClear(r) => {
+                self.set_ref_value(r, Value::Null);
+                return Ok(Value::Undefined);
+            }
+            _ => {}
         }
         let v = args.into_iter().next().unwrap_or_default();
         match n {
@@ -3187,7 +3324,11 @@ impl Runtime {
             }
             NativeFn::StoreChanged { inst, hook } => self.store_changed(*inst, *hook)?,
             NativeFn::CwOffEnv(id) => self.cw_off_env(*id),
-            NativeFn::Builtin(_) => unreachable!("called above"),
+            NativeFn::Builtin(_)
+            | NativeFn::ImperativeSet { .. }
+            | NativeFn::ImperativeClear(_) => {
+                unreachable!("called above")
+            }
         }
         Ok(Value::Undefined)
     }

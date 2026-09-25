@@ -53,6 +53,13 @@ pub enum NativeFn {
     CwOffEnv(u32),
     /// A built-in function used as a value (`xs.filter(Boolean)`, `map(Number)`).
     Builtin(crate::ir::Builtin),
+    /// A `useImperativeHandle` effect: sets `r` to `create()`, returning the
+    /// cleanup that sets it back to null.
+    ImperativeSet {
+        r: crate::value::Value,
+        create: crate::value::Value,
+    },
+    ImperativeClear(crate::value::Value),
     /// An async function resumed after an `await` (with the value, or throwing it).
     Resume {
         task: Rc<RefCell<Option<crate::asyncfn::Task>>>,

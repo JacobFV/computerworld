@@ -106,6 +106,17 @@ enum ReactName {
     Fragment,
     StrictMode,
     Memo,
+    ForwardRef,
+    /// `useTransition()`: `[false, startTransition]` (no concurrent rendering).
+    UseTransition,
+    /// `useDeferredValue(v)`: `v`.
+    UseDeferredValue,
+    /// `useDebugValue(…)`: nothing.
+    UseDebugValue,
+    /// `startTransition(fn)`: runs `fn` now.
+    StartTransition,
+    /// `<Suspense fallback>`: its children (nothing compiled suspends).
+    Suspense,
     CreateRoot,
     HydrateRoot,
     /// React 17's `ReactDOM.render(element, container)`.
@@ -133,6 +144,16 @@ fn react_export(name: &str) -> ReactName {
         "Fragment" => ReactName::Fragment,
         "StrictMode" => ReactName::StrictMode,
         "memo" => ReactName::Memo,
+        "forwardRef" => ReactName::ForwardRef,
+        "useImperativeHandle" => ReactName::Hook(Hook::ImperativeHandle),
+        // Insertion effects run with the layout effects (nothing compiled reads
+        // styles in between).
+        "useInsertionEffect" => ReactName::Hook(Hook::LayoutEffect),
+        "useTransition" => ReactName::UseTransition,
+        "useDeferredValue" => ReactName::UseDeferredValue,
+        "useDebugValue" => ReactName::UseDebugValue,
+        "startTransition" => ReactName::StartTransition,
+        "Suspense" => ReactName::Suspense,
         "createRoot" => ReactName::CreateRoot,
         "hydrateRoot" => ReactName::HydrateRoot,
         "render" => ReactName::DomRender,
@@ -281,6 +302,8 @@ struct PendingFn<'a> {
     is_async: bool,
     generator: bool,
     kind: FunctionKind,
+    /// `forwardRef(render)`: called with the element's `ref` as its second argument.
+    forward_ref: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -921,6 +944,7 @@ impl<'a> Lowerer<'a> {
         self.add_function_global(
             &name,
             PendingFn {
+                forward_ref: false,
                 module: self.cur_mod,
                 type_params: f.type_parameters.as_deref(),
                 slot: None,
@@ -1103,6 +1127,7 @@ impl<'a> Lowerer<'a> {
     fn function_value(&self, name: &str, init: &'a E<'a>) -> Option<PendingFn<'a>> {
         match strip(init) {
             E::ArrowFunctionExpression(a) => Some(PendingFn {
+                forward_ref: false,
                 module: self.cur_mod,
                 type_params: a.type_parameters.as_deref(),
                 slot: None,
@@ -1119,6 +1144,7 @@ impl<'a> Lowerer<'a> {
                 kind: fn_kind(name),
             }),
             E::FunctionExpression(f) => Some(PendingFn {
+                forward_ref: false,
                 module: self.cur_mod,
                 type_params: f.type_parameters.as_deref(),
                 slot: None,
@@ -1136,19 +1162,26 @@ impl<'a> Lowerer<'a> {
                     E::Identifier(id) => self.react.get(id.name.as_str()).copied(),
                     E::StaticMemberExpression(m) => match strip(&m.object) {
                         E::Identifier(id)
-                            if self.react.get(id.name.as_str()) == Some(&ReactName::ReactNs)
-                                && m.property.name == "memo" =>
+                            if self.react.get(id.name.as_str()) == Some(&ReactName::ReactNs) =>
                         {
-                            Some(ReactName::Memo)
+                            Some(react_export(m.property.name.as_str()))
                         }
                         _ => None,
                     },
                     _ => None,
                 };
-                if callee == Some(ReactName::Memo) && c.arguments.len() == 1 {
-                    return self.function_value(name, c.arguments[0].as_expression()?);
+                let inner = c.arguments.first().and_then(|a| a.as_expression());
+                match (callee, inner) {
+                    // `memo(C)` is `C` (renders are pure; only render counts differ).
+                    (Some(ReactName::Memo), Some(x)) => self.function_value(name, x),
+                    (Some(ReactName::ForwardRef), Some(x)) => {
+                        let mut p = self.function_value(name, x)?;
+                        p.forward_ref = true;
+                        p.kind = FunctionKind::Component;
+                        Some(p)
+                    }
+                    _ => None,
                 }
-                None
             }
             _ => None,
         }
@@ -1243,6 +1276,7 @@ impl<'a> Lowerer<'a> {
             boxed,
             is_async: false,
             rest: None,
+            forward_ref: false,
         });
         self.globals.push(Global {
             name: "<module>".into(),
@@ -1577,6 +1611,7 @@ impl<'a> Lowerer<'a> {
             boxed: Vec::new(),
             is_async: false,
             rest: None,
+            forward_ref: false,
         });
         if self.root.is_some() {
             self.err(call.span, "the module renders twice");
@@ -2216,6 +2251,7 @@ impl<'a> Lowerer<'a> {
             boxed,
             is_async: p.is_async,
             rest,
+            forward_ref: p.forward_ref,
         }
     }
 
@@ -2524,6 +2560,7 @@ impl<'a> Lowerer<'a> {
                 let Some(body) = &f.body else { return };
                 let name = id.name.to_string();
                 let p = PendingFn {
+                    forward_ref: false,
                     module: self.cur_mod,
                     type_params: f.type_parameters.as_deref(),
                     slot: None,
@@ -2966,6 +3003,7 @@ impl<'a> Lowerer<'a> {
             E::ObjectExpression(o) => self.object(o, want),
             E::ArrowFunctionExpression(a) => {
                 let p = PendingFn {
+                    forward_ref: false,
                     module: self.cur_mod,
                     type_params: a.type_parameters.as_deref(),
                     slot: None,
@@ -2988,6 +3026,7 @@ impl<'a> Lowerer<'a> {
                     return self.unsupported(f.span, "a function without a body");
                 };
                 let p = PendingFn {
+                    forward_ref: false,
                     module: self.cur_mod,
                     type_params: f.type_parameters.as_deref(),
                     slot: None,
@@ -3084,7 +3123,25 @@ impl<'a> Lowerer<'a> {
                         let _ = t;
                         (Expr::TypeOf(Box::new(x)), Ty::String)
                     }
-                    U::Delete => self.unsupported(u.span, "`delete`"),
+                    U::Delete => {
+                        // `delete o.k` / `delete o[k]`: `true`, as for any own key.
+                        let (obj, key) = match &x {
+                            Expr::Member(o, k, _) => ((**o).clone(), Expr::Str(k.clone())),
+                            Expr::Index(o, k, _) => ((**o).clone(), (**k).clone()),
+                            _ => {
+                                return self
+                                    .unsupported(u.span, "`delete` of anything but a property")
+                            }
+                        };
+                        self.note_mutation(&obj);
+                        (
+                            Expr::Builtin(
+                                Builtin::Delete,
+                                vec![ArrayItem::Item(obj), ArrayItem::Item(key)],
+                            ),
+                            Ty::Boolean,
+                        )
+                    }
                 }
             }
             E::UpdateExpression(u) => {
@@ -3590,8 +3647,249 @@ impl<'a> Lowerer<'a> {
         self.mutates_shared = true;
     }
 
+    /// A frame slot of its own for an intermediate value.
+    fn temp(&mut self, ty: Ty) -> u32 {
+        let c = self.cur();
+        let slot = c.locals.len() as u32;
+        c.locals.push(Local {
+            ty,
+            pending: false,
+            early: false,
+            captured: false,
+            reassigned: None,
+            fresh: false,
+        });
+        slot
+    }
+
+    /// `x` in a temporary unless it reads a variable (so it is evaluated once).
+    fn stable(&mut self, x: Expr, prelude: &mut Vec<Expr>) -> Expr {
+        match x {
+            Expr::Local(_)
+            | Expr::Capture(_)
+            | Expr::Global(_)
+            | Expr::Num(_)
+            | Expr::Str(_)
+            | Expr::Bool(_) => x,
+            other => {
+                let t = self.temp(Ty::Unknown);
+                prelude.push(Expr::Assign(
+                    Box::new(LValue::Local(t)),
+                    None,
+                    Box::new(other),
+                ));
+                Expr::Local(t)
+            }
+        }
+    }
+
+    /// An assignment target read and written through stable parts.
+    fn stable_lvalue(&mut self, lv: LValue, prelude: &mut Vec<Expr>) -> (Expr, LValue) {
+        match lv {
+            LValue::Local(n) => (Expr::Local(n), LValue::Local(n)),
+            LValue::Capture(n) => (Expr::Capture(n), LValue::Capture(n)),
+            LValue::Global(n) => (Expr::Global(n), LValue::Global(n)),
+            LValue::Member(o, k) => {
+                let o = self.stable(o, prelude);
+                (
+                    Expr::Member(Box::new(o.clone()), k.clone(), false),
+                    LValue::Member(o, k),
+                )
+            }
+            LValue::Index(o, k) => {
+                let o = self.stable(o, prelude);
+                let k = self.stable(k, prelude);
+                (
+                    Expr::Index(Box::new(o.clone()), Box::new(k.clone()), false),
+                    LValue::Index(o, k),
+                )
+            }
+        }
+    }
+
+    /// `[a, b = 1, ...rest] = v` / `({ a, b: c, ...rest } = v)`: each target
+    /// assigned from `value` (a stable expression), in order.
+    fn destructure_assign(
+        &mut self,
+        target: &'a ast::AssignmentTarget<'a>,
+        value: Expr,
+        out: &mut Vec<Expr>,
+    ) {
+        match target {
+            ast::AssignmentTarget::ArrayAssignmentTarget(arr) => {
+                // Iterated into an array first, as destructuring iterates.
+                let items = self.temp(Ty::Unknown);
+                out.push(Expr::Assign(
+                    Box::new(LValue::Local(items)),
+                    None,
+                    Box::new(Expr::Builtin(
+                        Builtin::ArrayFrom,
+                        vec![ArrayItem::Item(value)],
+                    )),
+                ));
+                for (i, el) in arr.elements.iter().enumerate() {
+                    let Some(el) = el else { continue };
+                    let at = Expr::Index(
+                        Box::new(Expr::Local(items)),
+                        Box::new(Expr::Num(i as f64)),
+                        false,
+                    );
+                    self.assign_maybe_default(el, at, out);
+                }
+                if let Some(rest) = &arr.rest {
+                    let tail = Expr::Method {
+                        recv: Box::new(Expr::Local(items)),
+                        method: Method::ArraySlice,
+                        args: vec![ArrayItem::Item(Expr::Num(arr.elements.len() as f64))],
+                        optional: false,
+                    };
+                    self.assign_to(&rest.target, tail, out);
+                }
+            }
+            ast::AssignmentTarget::ObjectAssignmentTarget(obj) => {
+                let mut taken = Vec::new();
+                for p in &obj.properties {
+                    match p {
+                        ast::AssignmentTargetProperty::AssignmentTargetPropertyIdentifier(id) => {
+                            let name = id.binding.name.to_string();
+                            let v = Expr::Member(Box::new(value.clone()), name.clone(), false);
+                            let v = match &id.init {
+                                Some(d) => self.with_default(v, d, out),
+                                None => v,
+                            };
+                            if let Some((lv, _)) = self.assign_name(&name, id.binding.span) {
+                                out.push(Expr::Assign(Box::new(lv), None, Box::new(v)));
+                            }
+                            taken.push(name);
+                        }
+                        ast::AssignmentTargetProperty::AssignmentTargetPropertyProperty(pp) => {
+                            let v = if pp.computed {
+                                let key = pp.name.as_expression().expect("computed key");
+                                let (k, _) = self.expr(key, None);
+                                Expr::Index(Box::new(value.clone()), Box::new(k), false)
+                            } else {
+                                let Some(name) = property_key_name(&pp.name) else {
+                                    self.err(
+                                        pp.span,
+                                        "this property key is outside the compiled subset",
+                                    );
+                                    continue;
+                                };
+                                taken.push(name.clone());
+                                Expr::Member(Box::new(value.clone()), name, false)
+                            };
+                            self.assign_maybe_default(&pp.binding, v, out);
+                        }
+                    }
+                }
+                if let Some(rest) = &obj.rest {
+                    let mut props = vec![Prop::Spread(value.clone())];
+                    // The named keys are left out by overwriting then deleting.
+                    let rest_obj = self.temp(Ty::Unknown);
+                    props.shrink_to_fit();
+                    out.push(Expr::Assign(
+                        Box::new(LValue::Local(rest_obj)),
+                        None,
+                        Box::new(Expr::Object(props)),
+                    ));
+                    for k in taken {
+                        out.push(Expr::Builtin(
+                            Builtin::Delete,
+                            vec![
+                                ArrayItem::Item(Expr::Local(rest_obj)),
+                                ArrayItem::Item(Expr::Str(k)),
+                            ],
+                        ));
+                    }
+                    self.assign_to(&rest.target, Expr::Local(rest_obj), out);
+                }
+            }
+            other => match other.as_simple_assignment_target() {
+                Some(t) => {
+                    if let Some((lv, _)) = self.simple_target(t) {
+                        out.push(Expr::Assign(Box::new(lv), None, Box::new(value)));
+                    }
+                }
+                None => {
+                    self.err(
+                        other.span(),
+                        "this assignment target is outside the compiled subset",
+                    );
+                }
+            },
+        }
+    }
+
+    fn assign_to(&mut self, t: &'a ast::AssignmentTarget<'a>, v: Expr, out: &mut Vec<Expr>) {
+        match t {
+            ast::AssignmentTarget::ArrayAssignmentTarget(_)
+            | ast::AssignmentTarget::ObjectAssignmentTarget(_) => {
+                let tmp = self.temp(Ty::Unknown);
+                out.push(Expr::Assign(
+                    Box::new(LValue::Local(tmp)),
+                    None,
+                    Box::new(v),
+                ));
+                self.destructure_assign(t, Expr::Local(tmp), out);
+            }
+            other => self.destructure_assign(other, v, out),
+        }
+    }
+
+    fn assign_maybe_default(
+        &mut self,
+        el: &'a ast::AssignmentTargetMaybeDefault<'a>,
+        v: Expr,
+        out: &mut Vec<Expr>,
+    ) {
+        match el {
+            ast::AssignmentTargetMaybeDefault::AssignmentTargetWithDefault(d) => {
+                let v = self.with_default(v, &d.init, out);
+                self.assign_to(&d.binding, v, out);
+            }
+            other => {
+                let t = other.as_assignment_target().expect("a target");
+                self.assign_to(t, v, out);
+            }
+        }
+    }
+
+    /// `v === undefined ? default : v`, with `v` evaluated once.
+    fn with_default(&mut self, v: Expr, d: &'a E<'a>, out: &mut Vec<Expr>) -> Expr {
+        let t = self.temp(Ty::Unknown);
+        out.push(Expr::Assign(Box::new(LValue::Local(t)), None, Box::new(v)));
+        let (dx, _) = self.expr(d, None);
+        Expr::Cond(
+            Box::new(Expr::Binary(
+                BinaryOp::StrictEq,
+                Box::new(Expr::Local(t)),
+                Box::new(Expr::Undefined),
+            )),
+            Box::new(dx),
+            Box::new(Expr::Local(t)),
+        )
+    }
+
     fn assignment(&mut self, a: &'a ast::AssignmentExpression<'a>) -> Lowered {
         use ast::AssignmentOperator as A;
+        if matches!(
+            a.left,
+            ast::AssignmentTarget::ArrayAssignmentTarget(_)
+                | ast::AssignmentTarget::ObjectAssignmentTarget(_)
+        ) {
+            // Destructuring: the right side once, then each target in order; the
+            // expression's value is the right side.
+            let (v, vt) = self.expr(&a.right, None);
+            let tmp = self.temp(vt.clone());
+            let mut out = vec![Expr::Assign(
+                Box::new(LValue::Local(tmp)),
+                None,
+                Box::new(v),
+            )];
+            self.destructure_assign(&a.left, Expr::Local(tmp), &mut out);
+            out.push(Expr::Local(tmp));
+            return (Expr::Seq(out), vt);
+        }
         let target = match &a.left {
             ast::AssignmentTarget::AssignmentTargetIdentifier(id) => {
                 self.assign_name(id.name.as_str(), id.span)
@@ -3601,7 +3899,7 @@ impl<'a> Lowerer<'a> {
                 None => {
                     self.err(
                         a.span,
-                        "destructuring assignment is outside the compiled subset",
+                        "this assignment target is outside the compiled subset",
                     );
                     None
                 }
@@ -3610,6 +3908,23 @@ impl<'a> Lowerer<'a> {
         let Some((lv, t)) = target else {
             return (Expr::Undefined, Ty::Unknown);
         };
+        if matches!(a.operator, A::LogicalAnd | A::LogicalOr | A::LogicalNullish) {
+            // `a ??= b`: the target's parts once; `b` only when it is needed.
+            let mut prelude = Vec::new();
+            let (read, write) = self.stable_lvalue(lv, &mut prelude);
+            let (v, vt) = self.expr(&a.right, Some(&t));
+            let op = match a.operator {
+                A::LogicalAnd => LogicalOp::And,
+                A::LogicalOr => LogicalOp::Or,
+                _ => LogicalOp::Nullish,
+            };
+            prelude.push(Expr::Logical(
+                op,
+                Box::new(read),
+                Box::new(Expr::Assign(Box::new(write), None, Box::new(v))),
+            ));
+            return (Expr::Seq(prelude), union(t, vt));
+        }
         let (v, vt) = self.expr(&a.right, Some(&t));
         let op = match a.operator {
             A::Assign => None,
@@ -3639,6 +3954,11 @@ impl<'a> Lowerer<'a> {
                         if let Some(r) = self.namespace_member(id.name.as_str(), name, s.span) {
                             return r;
                         }
+                    }
+                }
+                if let Some(ns) = self.window_member(&s.object) {
+                    if let Some(r) = self.namespace_member(ns, name, s.span) {
+                        return r;
                     }
                 }
                 let (o, ot) = self.expr(&s.object, None);
@@ -3706,6 +4026,34 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `window.X` / `globalThis.X` for a host namespace `X` (`localStorage`,
+    /// `location`, `navigator`, `document`, …).
+    fn window_member(&self, e: &E<'a>) -> Option<&'static str> {
+        let E::StaticMemberExpression(m) = strip(e) else {
+            return None;
+        };
+        let E::Identifier(w) = strip(&m.object) else {
+            return None;
+        };
+        if !matches!(w.name.as_str(), "window" | "globalThis" | "self")
+            || !self.resolve_is_free(w.name.as_str())
+        {
+            return None;
+        }
+        [
+            "localStorage",
+            "sessionStorage",
+            "location",
+            "navigator",
+            "document",
+            "console",
+            "Math",
+            "JSON",
+        ]
+        .into_iter()
+        .find(|n| *n == m.property.name.as_str())
+    }
+
     /// Whether `name` is not a variable (so `Math` means the built-in).
     fn resolve_is_free(&self, name: &str) -> bool {
         !self.fns.iter().any(|f| f.lookup(name).is_some()) && !self.global_names.contains_key(name)
@@ -3751,6 +4099,39 @@ impl<'a> Lowerer<'a> {
                 )
             }
             ("document", "body") => (Expr::Builtin(Builtin::DocumentBody, vec![]), Ty::DomNode),
+            ("localStorage" | "sessionStorage", "length") => {
+                self.mark_always();
+                (
+                    Expr::Builtin(
+                        Builtin::StorageLength,
+                        vec![ArrayItem::Item(Expr::Num(storage_area(ns)))],
+                    ),
+                    Ty::Number,
+                )
+            }
+            (
+                "location",
+                p @ ("href" | "pathname" | "search" | "hash" | "origin" | "host" | "hostname"
+                | "protocol" | "port"),
+            ) => {
+                self.mark_always();
+                (
+                    Expr::Builtin(
+                        Builtin::LocationPart,
+                        vec![ArrayItem::Item(Expr::Str(p.into()))],
+                    ),
+                    Ty::String,
+                )
+            }
+            ("navigator", p) if navigator_constant(p).is_some() => (
+                navigator_constant(p).unwrap(),
+                match p {
+                    "onLine" | "cookieEnabled" | "webdriver" => Ty::Boolean,
+                    "hardwareConcurrency" | "maxTouchPoints" | "deviceMemory" => Ty::Number,
+                    "languages" => Ty::Array(Box::new(Ty::String)),
+                    _ => Ty::String,
+                },
+            ),
             ("document", "documentElement") => {
                 (Expr::Builtin(Builtin::DocumentElement, vec![]), Ty::DomNode)
             }
@@ -3842,6 +4223,12 @@ impl<'a> Lowerer<'a> {
                         if let Some(r) = self.namespace_call(nsn, prop, c) {
                             return r;
                         }
+                    }
+                }
+                // `window.localStorage.getItem(k)` is `localStorage.getItem(k)`.
+                if let Some(ns) = self.window_member(&m.object) {
+                    if let Some(r) = self.namespace_call(ns, prop, c) {
+                        return r;
                     }
                 }
                 let (recv, rt) = self.expr(&m.object, None);
@@ -3948,6 +4335,20 @@ impl<'a> Lowerer<'a> {
                 Ty::Promise(Box::new(Ty::Response)),
             ),
             "Array" => (Builtin::NewArray, vec![], Ty::Array(Box::new(Ty::Unknown))),
+            "alert" | "confirm" | "prompt" => {
+                // What the page's `alert` does: the host records `kind: text`;
+                // `confirm` answers true and `prompt` null.
+                let (mut args, _) = self.exprs_args(&c.arguments, &[]);
+                args.insert(0, ArrayItem::Item(Expr::Str(name.into())));
+                return Some((
+                    Expr::Builtin(Builtin::Alert, args),
+                    match name {
+                        "confirm" => Ty::Boolean,
+                        "prompt" => union(Ty::String, Ty::Null),
+                        _ => Ty::Void,
+                    },
+                ));
+            }
             _ => return None,
         };
         let (args, _) = self.exprs_args(&c.arguments, &want);
@@ -4058,6 +4459,26 @@ impl<'a> Lowerer<'a> {
                     vec![Ty::String],
                     union(Ty::DomNode, Ty::Null),
                 )
+            }
+            (
+                "localStorage" | "sessionStorage",
+                m @ ("getItem" | "setItem" | "removeItem" | "clear" | "key"),
+            ) => {
+                let b = match m {
+                    "getItem" => Builtin::StorageGet,
+                    "setItem" => Builtin::StorageSet,
+                    "removeItem" => Builtin::StorageRemove,
+                    "clear" => Builtin::StorageClear,
+                    _ => Builtin::StorageKey,
+                };
+                let ret = match m {
+                    "getItem" | "key" => union(Ty::String, Ty::Null),
+                    _ => Ty::Void,
+                };
+                self.mark_always();
+                let (mut args, _) = self.exprs_args(&c.arguments, &[]);
+                args.insert(0, ArrayItem::Item(Expr::Num(storage_area(ns))));
+                return Some((Expr::Builtin(b, args), ret));
             }
             ("document", "querySelectorAll") => {
                 self.mark_always();
@@ -4285,10 +4706,76 @@ impl<'a> Lowerer<'a> {
         c: &'a ast::CallExpression<'a>,
         want: Option<&Ty>,
     ) -> Lowered {
+        let arg0 = c.arguments.first().and_then(|a| a.as_expression());
+        match r {
+            ReactName::Memo => {
+                // `memo(C)` is `C`.
+                return match arg0 {
+                    Some(x) => self.expr(x, want),
+                    None => (Expr::Undefined, Ty::Undefined),
+                };
+            }
+            ReactName::ForwardRef => {
+                let Some(x) = arg0 else {
+                    return (Expr::Undefined, Ty::Undefined);
+                };
+                return match self.function_value("<forwardRef>", x) {
+                    Some(mut p) => {
+                        p.forward_ref = true;
+                        p.kind = FunctionKind::Component;
+                        self.closure(p, None)
+                    }
+                    None => self.unsupported(c.span, "`forwardRef` of anything but a function"),
+                };
+            }
+            ReactName::UseTransition => {
+                self.check_hook_position(c.span, "useTransition");
+                return (
+                    Expr::Array(vec![
+                        ArrayItem::Item(Expr::Bool(false)),
+                        ArrayItem::Item(Expr::BuiltinFn(Builtin::StartTransition)),
+                    ]),
+                    Ty::Tuple(vec![
+                        Ty::Boolean,
+                        Ty::Function(
+                            vec![Ty::Function(vec![], Box::new(Ty::Void))],
+                            Box::new(Ty::Void),
+                        ),
+                    ]),
+                );
+            }
+            ReactName::UseDeferredValue => {
+                self.check_hook_position(c.span, "useDeferredValue");
+                return match arg0 {
+                    Some(x) => self.expr(x, want),
+                    None => (Expr::Undefined, Ty::Undefined),
+                };
+            }
+            ReactName::UseDebugValue => {
+                self.check_hook_position(c.span, "useDebugValue");
+                let (args, _) = self.exprs_args(&c.arguments, &[]);
+                return (
+                    Expr::Seq(
+                        args.into_iter()
+                            .map(|a| match a {
+                                ArrayItem::Item(e) | ArrayItem::Spread(e) => e,
+                            })
+                            .chain([Expr::Undefined])
+                            .collect(),
+                    ),
+                    Ty::Void,
+                );
+            }
+            ReactName::StartTransition => {
+                let (args, _) =
+                    self.exprs_args(&c.arguments, &[Ty::Function(vec![], Box::new(Ty::Void))]);
+                return (Expr::Builtin(Builtin::StartTransition, args), Ty::Void);
+            }
+            _ => {}
+        }
         let ReactName::Hook(hook) = r else {
             let what = match r {
                 ReactName::CreateContext => "`createContext` inside a function",
-                ReactName::Memo => "`memo` outside a module-level `const`",
                 ReactName::CreateRoot => "`createRoot` outside the render call",
                 _ => "this React API",
             };
@@ -4389,6 +4876,20 @@ impl<'a> Lowerer<'a> {
                     None => self.cur().has_depless_effect = true,
                 }
                 (Expr::Hook(hook, hargs), Ty::Void)
+            }
+            Hook::ImperativeHandle => {
+                // `useImperativeHandle(ref, create, deps?)`: a layout effect that
+                // sets the ref to `create()` (and back to null on cleanup).
+                let args = self.arg_exprs(
+                    &c.arguments,
+                    &[Ty::Unknown, Ty::Function(vec![], Box::new(Ty::Unknown))],
+                );
+                let mut hargs: Vec<Expr> = args.into_iter().take(3).map(|(e, _)| e).collect();
+                if hargs.len() < 3 {
+                    self.cur().has_depless_effect = true;
+                }
+                hargs.resize(2.max(hargs.len()), Expr::Undefined);
+                (Expr::Hook(Hook::ImperativeHandle, hargs), Ty::Void)
             }
             Hook::Context => {
                 let args = self.arg_exprs(&c.arguments, &[]);
@@ -4973,6 +5474,26 @@ impl<'a> Lowerer<'a> {
                     Ty::Node,
                 )
             }
+            JsxKind::Suspense => {
+                // Nothing compiled suspends, so Suspense renders its children; the
+                // fallback is lowered (it is code) but never shown.
+                let mut key = None;
+                for a in &el.opening_element.attributes {
+                    if let ast::JSXAttributeItem::Attribute(a) = a {
+                        match jsx_attr_name(&a.name).as_str() {
+                            "key" => key = self.jsx_attr_value(a, None).map(|x| x.0),
+                            _ => {
+                                let _ = self.jsx_attr_value(a, None);
+                            }
+                        }
+                    }
+                }
+                let children = self.jsx_children_exprs(&el.children, false);
+                (
+                    Expr::Element(Box::new(ElementExpr::Fragment { children, key })),
+                    Ty::Node,
+                )
+            }
             JsxKind::Provider(ctx, vt) => {
                 let mut key = None;
                 let mut value = None;
@@ -5015,13 +5536,8 @@ impl<'a> Lowerer<'a> {
                                 key = self.jsx_attr_value(a, None).map(|x| x.0);
                                 continue;
                             }
-                            if name == "ref" {
-                                self.err(
-                                    a.span,
-                                    "`ref` on a component is outside the compiled subset",
-                                );
-                                continue;
-                            }
+                            // `ref` goes to the element, not the props: a `forwardRef`
+                            // component receives it as its second argument.
                             let want = props_ty.as_ref().and_then(|t| property(t, &name));
                             if let Some((x, _)) = self.jsx_attr_value(a, want.as_ref()) {
                                 props.push(Prop::KeyValue(name, x));
@@ -5065,6 +5581,7 @@ impl<'a> Lowerer<'a> {
                         Some(ReactName::Fragment | ReactName::StrictMode) => {
                             return JsxKind::Fragment
                         }
+                        Some(ReactName::Suspense) => return JsxKind::Suspense,
                         Some(_) => {
                             self.err(id.span, format!("`<{n}>` is outside the compiled subset"));
                             return JsxKind::Invalid;
@@ -5086,6 +5603,7 @@ impl<'a> Lowerer<'a> {
                     if self.resolve_is_free(on) && self.react.get(on) == Some(&ReactName::ReactNs) {
                         return match prop {
                             "Fragment" | "StrictMode" => JsxKind::Fragment,
+                            "Suspense" => JsxKind::Suspense,
                             _ => {
                                 self.err(
                                     m.span,
@@ -5112,8 +5630,14 @@ impl<'a> Lowerer<'a> {
                         };
                     }
                 }
-                self.err(m.span, "this element name is outside the compiled subset");
-                JsxKind::Invalid
+                // `<Menu.Item>`, `<ns.Comp>`: a component reached through members.
+                match self.jsx_member_callee(m) {
+                    Some(callee) => JsxKind::Component(callee, None),
+                    None => {
+                        self.err(m.span, "this element name is outside the compiled subset");
+                        JsxKind::Invalid
+                    }
+                }
             }
             ast::JSXElementName::NamespacedName(n) => {
                 self.err(
@@ -5127,6 +5651,24 @@ impl<'a> Lowerer<'a> {
                 JsxKind::Invalid
             }
         }
+    }
+
+    /// The value a member element name (`A.B.C`) reads.
+    fn jsx_member_callee(&mut self, m: &'a ast::JSXMemberExpression<'a>) -> Option<Expr> {
+        let object = match &m.object {
+            ast::JSXMemberExpressionObject::IdentifierReference(id) => {
+                self.identifier(id.name.as_str(), id.span).0
+            }
+            ast::JSXMemberExpressionObject::MemberExpression(inner) => {
+                self.jsx_member_callee(inner)?
+            }
+            ast::JSXMemberExpressionObject::ThisExpression(_) => return None,
+        };
+        Some(Expr::Member(
+            Box::new(object),
+            m.property.name.to_string(),
+            false,
+        ))
     }
 
     /// An attribute's value: a string, an expression, or `true` when absent.
@@ -5397,6 +5939,8 @@ impl<'a> Lowerer<'a> {
 enum JsxKind {
     Host(String),
     Fragment,
+    /// `<Suspense fallback>`: its children.
+    Suspense,
     Provider(Expr, Ty),
     Component(Expr, Option<Ty>),
     Invalid,
@@ -5526,6 +6070,34 @@ fn dom_rect() -> Ty {
         .map(|k| (k.to_string(), Ty::Number, false))
         .collect(),
     )
+}
+
+/// `localStorage` is area 0, `sessionStorage` area 1 (the Realm's numbering).
+fn storage_area(ns: &str) -> f64 {
+    if ns == "sessionStorage" {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+/// `navigator`'s constant properties, as the page's prelude defines them.
+fn navigator_constant(p: &str) -> Option<Expr> {
+    Some(match p {
+        "userAgent" => Expr::Str("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Computerworld/1.0".into()),
+        "language" => Expr::Str("en-US".into()),
+        "languages" => Expr::Array(vec![
+            ArrayItem::Item(Expr::Str("en-US".into())),
+            ArrayItem::Item(Expr::Str("en".into())),
+        ]),
+        "platform" => Expr::Str("Linux x86_64".into()),
+        "onLine" | "cookieEnabled" => Expr::Bool(true),
+        "webdriver" => Expr::Bool(false),
+        "hardwareConcurrency" => Expr::Num(4.0),
+        "maxTouchPoints" => Expr::Num(0.0),
+        "deviceMemory" => Expr::Num(8.0),
+        _ => return None,
+    })
 }
 
 /// The built-in function `ns.name`, for using it as a value.

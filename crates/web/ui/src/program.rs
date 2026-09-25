@@ -216,6 +216,8 @@ pub trait Program {
     fn pure_render(&self) -> bool;
     /// How many parameters function `f` declares.
     fn arity(&self, f: u32) -> usize;
+    /// Whether function `f` is a `forwardRef` render function.
+    fn forward_ref(&self, f: u32) -> bool;
     /// What a closure of function `f` copies when created.
     fn captures(&self, f: u32) -> &[Capture];
     /// Frame slots of function `f` that live in a shared cell.
@@ -305,6 +307,9 @@ impl Program for IrProgram {
     fn arity(&self, f: u32) -> usize {
         self.module.functions[f as usize].arity()
     }
+    fn forward_ref(&self, f: u32) -> bool {
+        self.module.functions[f as usize].forward_ref
+    }
     fn captures(&self, f: u32) -> &[Capture] {
         &self.module.functions[f as usize].captures
     }
@@ -387,6 +392,8 @@ pub struct GenFunc {
     pub boxed: &'static [u32],
     /// `None` for an async function, which runs on the interpreter over its IR.
     pub code: Option<GenFn>,
+    /// A `forwardRef` render function (see `ir::Function::forward_ref`).
+    pub forward_ref: bool,
 }
 
 /// A program generated ahead of time (`cw-tsx build --emit rust`): static tables
@@ -448,6 +455,9 @@ impl Program for GenProgram {
     }
     fn arity(&self, f: u32) -> usize {
         self.funcs[f as usize].arity as usize
+    }
+    fn forward_ref(&self, f: u32) -> bool {
+        self.funcs[f as usize].forward_ref
     }
     fn captures(&self, f: u32) -> &[Capture] {
         self.funcs[f as usize].captures
@@ -514,6 +524,9 @@ impl Program for StaticProgram {
     }
     fn arity(&self, f: u32) -> usize {
         self.0.arity(f)
+    }
+    fn forward_ref(&self, f: u32) -> bool {
+        self.0.forward_ref(f)
     }
     fn captures(&self, f: u32) -> &[Capture] {
         self.0.captures(f)

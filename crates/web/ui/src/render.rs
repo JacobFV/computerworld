@@ -586,6 +586,44 @@ impl Runtime {
                 }
                 Ok(Value::Undefined)
             }
+            Hook::ImperativeHandle => {
+                // A layout effect whose create sets the ref (React appends the
+                // ref to the dependencies).
+                let r = if nargs > 0 {
+                    arg(self, 0)?
+                } else {
+                    Value::Undefined
+                };
+                let create = if nargs > 1 {
+                    arg(self, 1)?
+                } else {
+                    Value::Undefined
+                };
+                let deps = self.deps_arg(nargs, arg, 2)?.map(|mut d| {
+                    d.push(r.clone());
+                    d
+                });
+                let effect = Value::Native(Rc::new(NativeFn::ImperativeSet { r, create }));
+                if first {
+                    self.instance(inst).hooks.push(HookState::Effect {
+                        layout: true,
+                        deps,
+                        pending: Some(effect),
+                        cleanup: None,
+                    });
+                    return Ok(Value::Undefined);
+                }
+                if let HookState::Effect {
+                    deps: old, pending, ..
+                } = &mut self.instance(inst).hooks[idx]
+                {
+                    if deps_changed(old, &deps) {
+                        *pending = Some(effect);
+                        *old = deps;
+                    }
+                }
+                Ok(Value::Undefined)
+            }
             Hook::Context => {
                 let c = if nargs > 0 {
                     arg(self, 0)?
@@ -1573,8 +1611,17 @@ impl Runtime {
         });
         let mut result;
         let mut guard = 0;
+        // `ref` on a component is the element's, not a prop: a `forwardRef`
+        // render function gets it as its second argument, others never see it.
+        let (props, element_ref) = split_ref(&props);
+        let forward_ref = self.program.forward_ref(func.func);
         loop {
-            result = self.call_closure(&func, vec![props.clone()], Some(inst));
+            let args = if forward_ref {
+                vec![props.clone(), element_ref.clone().unwrap_or(Value::Null)]
+            } else {
+                vec![props.clone()]
+            };
+            result = self.call_closure(&func, args, Some(inst));
             let r = self.render.last_mut().unwrap();
             if r.rerender && result.is_ok() && guard < 25 {
                 r.rerender = false;
@@ -1942,9 +1989,15 @@ impl Runtime {
     }
 
     fn set_ref(&mut self, r: &Value, v: Value) {
+        self.set_ref_value(r, v)
+    }
+
+    /// Sets a ref: an object ref's `current`, or a callback ref called with it.
+    pub(crate) fn set_ref_value(&mut self, r: &Value, v: Value) {
         match r {
             Value::Ref(cell) => *cell.borrow_mut() = v,
-            f @ Value::Func(_) => {
+            Value::Object(o) => crate::interp::obj_set(&mut o.borrow_mut(), Rc::from("current"), v),
+            f if f.type_of() == "function" => {
                 if let Err(e) = self.call_value(f, vec![v]) {
                     self.report(e);
                 }
@@ -2085,6 +2138,20 @@ impl Runtime {
         self.commit();
         self.inner.touch();
     }
+}
+
+/// A component's props without `ref`, and the `ref`.
+fn split_ref(props: &Value) -> (Value, Option<Value>) {
+    if let Value::Object(o) = props {
+        let has = o.borrow().iter().any(|(k, _)| &**k == "ref");
+        if has {
+            let mut rest = o.borrow().clone();
+            let at = rest.iter().position(|(k, _)| &**k == "ref").unwrap();
+            let (_, r) = rest.remove(at);
+            return (Value::object(rest), Some(r));
+        }
+    }
+    (props.clone(), None)
 }
 
 /// `null`, `undefined`, booleans and `''` render nothing.

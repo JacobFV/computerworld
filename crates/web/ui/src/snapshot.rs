@@ -61,6 +61,9 @@ pub enum HeapObj {
     CwOffEnv(u32),
     /// A built-in function used as a value.
     BuiltinFn(crate::ir::Builtin),
+    /// A `useImperativeHandle` effect (ref, create) and its cleanup (ref).
+    ImperativeSet(V, V),
+    ImperativeClear(V),
     /// A `Date`'s time value (`None` when invalid: JSON has no NaN).
     Date(Option<f64>),
     /// A promise: 0 pending, 1 fulfilled, 2 rejected; its value; its reactions
@@ -524,6 +527,10 @@ impl Enc {
                         }
                         NativeFn::CwOffEnv(id) => HeapObj::CwOffEnv(*id),
                         NativeFn::Builtin(b) => HeapObj::BuiltinFn(*b),
+                        NativeFn::ImperativeSet { r, create } => {
+                            HeapObj::ImperativeSet(self.v(r), self.v(create))
+                        }
+                        NativeFn::ImperativeClear(r) => HeapObj::ImperativeClear(self.v(r)),
                     };
                     V::H(i)
                 }
@@ -966,6 +973,13 @@ impl Dec<'_> {
             })),
             HeapObj::CwOffEnv(id) => Value::Native(Rc::new(NativeFn::CwOffEnv(*id))),
             HeapObj::BuiltinFn(b) => Value::Native(Rc::new(NativeFn::Builtin(*b))),
+            HeapObj::ImperativeSet(r, create) => Value::Native(Rc::new(NativeFn::ImperativeSet {
+                r: self.v(r)?,
+                create: self.v(create)?,
+            })),
+            HeapObj::ImperativeClear(r) => {
+                Value::Native(Rc::new(NativeFn::ImperativeClear(self.v(r)?)))
+            }
             HeapObj::Date(t) => Value::Date(Rc::new(Cell::new(t.unwrap_or(f64::NAN)))),
             HeapObj::Promise(state, value, reactions) => {
                 // Registered first: reactions and values may lead back to it.

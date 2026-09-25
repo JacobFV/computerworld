@@ -109,6 +109,10 @@ pub struct Function {
     /// `...rest`: bound to an array of the arguments after `params`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rest: Option<Pattern>,
+    /// A `forwardRef` render function: a component called with its element's
+    /// `ref` as the second argument.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub forward_ref: bool,
 }
 
 impl Function {
@@ -347,6 +351,9 @@ pub enum Hook {
     Id,
     /// `useSyncExternalStore(subscribe, getSnapshot)`.
     SyncExternalStore,
+    /// `useImperativeHandle(ref, create, deps?)`: a layout effect setting the ref
+    /// to `create()`, and to null when it is cleaned up.
+    ImperativeHandle,
 }
 
 /// Methods the runtime implements natively, resolved by the compiler from the
@@ -626,6 +633,22 @@ pub enum Builtin {
     /// `x instanceof C` for a built-in constructor named by the second argument
     /// (`Date`, `Array`, `Map`, `Set`, `RegExp`, `Promise`, `Object`, `Function`).
     IsInstance,
+    /// `startTransition(fn)`: calls `fn` (there is no concurrent rendering).
+    StartTransition,
+    /// `delete obj[key]`: `true`.
+    Delete,
+    /// `localStorage`/`sessionStorage` (area 0/1, the first argument): `getItem`,
+    /// `setItem`, `removeItem`, `clear`, `key`, `length`.
+    StorageGet,
+    StorageSet,
+    StorageRemove,
+    StorageClear,
+    StorageKey,
+    StorageLength,
+    /// `location.href`, `.pathname`, … (the part's name is the argument).
+    LocationPart,
+    /// `alert`/`confirm`/`prompt` (kind, message): the host records `kind: text`.
+    Alert,
     /// The keys a `for...in` visits: an object's enumerable string keys in order
     /// (an array's or string's indices), none for `null`/`undefined`.
     ForInKeys,
