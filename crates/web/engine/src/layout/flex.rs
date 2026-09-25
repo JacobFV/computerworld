@@ -1067,7 +1067,24 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
     // Step 9: `align-content: stretch` shares extra cross space among the lines.
     let n_lines = lines.len();
     let cross_gaps = cross_gap * (n_lines as i32 - 1).max(0);
-    if let Some(c) = cross_def {
+    // A multi-line row container with an indefinite height is as tall as its lines,
+    // clamped by its min- and max-height: extra height from a `min-height` is still
+    // space for `align-content: stretch` (react-admin's filter form: `flex-wrap:
+    // wrap; align-items: flex-end; min-height: 64px`, whose field sits at the bottom).
+    let clamped_cross = if a.multi && row && cross_def.is_none() {
+        let used: Au = line_cross.iter().fold(Au::ZERO, |acc, v| acc + *v) + cross_gaps;
+        let mut c = used;
+        if let Some(mx) = max_h {
+            c = c.min(mx);
+        }
+        if let Some(mn) = min_h {
+            c = c.max(mn);
+        }
+        (c > used).then_some(c)
+    } else {
+        None
+    };
+    if let Some(c) = cross_def.or(clamped_cross) {
         if matches!(
             s.align_content,
             AlignContent::Normal | AlignContent::Stretch

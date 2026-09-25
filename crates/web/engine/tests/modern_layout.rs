@@ -817,4 +817,17 @@ mod cases {
         close(p.rect("b").width, 195.09375, "#b width");
         close(p.rect("c").width, 188.140625, "#c width");
     }
+    /// A wrapping flex row whose height comes from its `min-height` stretches its
+    /// lines into that height (`align-content: normal`), so `align-items: flex-end`
+    /// puts react-admin's filter field at the bottom of its 64 px toolbar and two
+    /// lines share 100 px. Positions are Chromium's.
+    #[test]
+    fn wrapped_flex_lines_stretch_into_a_min_height() {
+        let p = page("<!DOCTYPE html><style>body{margin:0} *{box-sizing:border-box}</style><div id=f style=\"display:flex;flex-wrap:wrap;align-items:flex-end;min-height:64px;padding:0 0 4px\"><div id=a style=\"height:52px;width:100px\"></div><div id=b style=\"height:20px;width:50px\"></div></div><div id=g style=\"display:flex;flex-wrap:wrap;min-height:100px;width:120px\"><div id=c style=\"width:100px;height:20px\"></div><div id=d style=\"width:100px;height:20px\"></div></div>");
+        let y = |id: &str| p.rect(id).y;
+        close(y("a"), 8.0, "#a y");
+        close(y("b"), 40.0, "#b y");
+        close(y("c"), 64.0, "#c y");
+        close(y("d"), 114.0, "#d y");
+    }
 }
