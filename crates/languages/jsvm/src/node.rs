@@ -1225,10 +1225,11 @@ impl<'h> Vm<'h> {
         } else {
             Rc::from(file)
         };
-        self.register_source(fname.clone(), Rc::from(src));
+        let text: Rc<str> = Rc::from(src);
+        self.register_source(fname.clone(), text.clone());
         let t1 = self.prof.as_ref().map(|_| crate::profile::now_ns());
         let mut c = crate::compiler::Compiler::new(fname.clone(), &chars, is_module);
-        c.set_text(src);
+        c.set_text(text);
         c.completion = file == "[eval]" || file == "[stdin]";
         let params: Vec<&str> = if is_module {
             vec!["%ns", "%import", "%meta"]
@@ -1617,10 +1618,11 @@ impl<'h> Vm<'h> {
             }
         };
         let fname: Rc<str> = Rc::from(file);
-        self.register_source(fname.clone(), Rc::from(src));
+        let text: Rc<str> = Rc::from(src);
+        self.register_source(fname.clone(), text.clone());
         let t1 = self.prof.as_ref().map(|_| crate::profile::now_ns());
         let mut c = crate::compiler::Compiler::new(fname, &chars, false);
-        c.set_text(src);
+        c.set_text(text);
         c.global_scope = global_scope;
         let compiled = c.compile_eval(&prog);
         self.prof_source(file, src.len(), t0, t1, false);

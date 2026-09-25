@@ -231,6 +231,46 @@ pub enum Op {
     DynImport,
 }
 
+/// A function's source text: a byte range of its file's text, shared by
+/// every function of the file rather than copied into each.
+#[derive(Clone)]
+pub struct SrcText {
+    text: Rc<str>,
+    start: u32,
+    end: u32,
+}
+
+impl SrcText {
+    /// All of `text`.
+    pub fn whole(text: Rc<str>) -> SrcText {
+        let end = text.len() as u32;
+        SrcText {
+            text,
+            start: 0,
+            end,
+        }
+    }
+    /// The bytes `start..end` of `text` (on character boundaries).
+    pub fn slice(text: &Rc<str>, start: usize, end: usize) -> SrcText {
+        debug_assert!(text.is_char_boundary(start) && text.is_char_boundary(end));
+        SrcText {
+            text: text.clone(),
+            start: start as u32,
+            end: end as u32,
+        }
+    }
+    pub fn as_str(&self) -> &str {
+        &self.text[self.start as usize..self.end as usize]
+    }
+}
+
+impl std::ops::Deref for SrcText {
+    type Target = str;
+    fn deref(&self) -> &str {
+        self.as_str()
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum Capture {
     Local(u32),
@@ -264,7 +304,7 @@ pub struct Code {
     pub strict: bool,
     pub file: Rc<str>,
     /// Source text of the function (for `toString`).
-    pub source: Rc<str>,
+    pub source: SrcText,
     /// Tagged template sites: (cooked, raw).
     pub templates: Vec<(Vec<Option<JsStr>>, Vec<JsStr>)>,
     /// Module top level (frame named `Object.<anonymous>`).

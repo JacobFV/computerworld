@@ -182,7 +182,10 @@ pub struct Compiler<'a> {
     src: &'a [char],
     /// The source as text, when every character is one byte (then character
     /// positions are byte offsets and function sources are sliced from it).
-    ascii_text: Option<&'a str>,
+    ascii_text: Option<Rc<str>>,
+    /// For a source with multi-byte characters: its text and the byte offset of
+    /// each character position (and of the end).
+    text_offsets: Option<(Rc<str>, Vec<u32>)>,
     funcs: Vec<FState>,
     /// Exported bindings of an ES module: (local, exported).
     exports: Vec<(Name, Name)>,
@@ -299,6 +302,7 @@ impl<'a> Compiler<'a> {
             file,
             src,
             ascii_text: None,
+            text_offsets: None,
             funcs: vec![],
             exports: vec![],
             completion: false,
@@ -311,9 +315,13 @@ impl<'a> Compiler<'a> {
 
     /// Gives the compiler the source text `src` was collected from, so that
     /// ASCII sources are sliced rather than re-collected per function.
-    pub fn set_text(&mut self, text: &'a str) {
+    pub fn set_text(&mut self, text: Rc<str>) {
         if text.len() == self.src.len() {
             self.ascii_text = Some(text);
+        } else if text.chars().count() == self.src.len() {
+            let mut offsets: Vec<u32> = text.char_indices().map(|(b, _)| b as u32).collect();
+            offsets.push(text.len() as u32);
+            self.text_offsets = Some((text, offsets));
         }
     }
 
@@ -948,7 +956,7 @@ impl<'a> Compiler<'a> {
         name: JsStr,
         simple: Option<u32>,
         length: u32,
-        source: Rc<str>,
+        source: SrcText,
     ) -> Rc<Code> {
         // Resolve labels.
         for &i in &fs.patches {
@@ -1019,14 +1027,17 @@ impl<'a> Compiler<'a> {
         })
     }
 
-    fn source_of(&self, start: usize, end: usize) -> Rc<str> {
+    fn source_of(&self, start: usize, end: usize) -> SrcText {
         let end = end.min(self.src.len());
         let start = start.min(end);
-        if let Some(t) = self.ascii_text {
-            return Rc::from(&t[start..end]);
+        if let Some(t) = &self.ascii_text {
+            return SrcText::slice(t, start, end);
+        }
+        if let Some((t, offsets)) = &self.text_offsets {
+            return SrcText::slice(t, offsets[start] as usize, offsets[end] as usize);
         }
         let s: String = self.src[start..end].iter().collect();
-        Rc::from(s.as_str())
+        SrcText::whole(Rc::from(s.as_str()))
     }
 
     // ------------------------------------------------------------ functions
