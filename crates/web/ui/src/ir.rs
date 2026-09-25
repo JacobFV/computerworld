@@ -102,6 +102,21 @@ pub struct Function {
     /// An `async` function: calling it returns a promise, and `await` suspends it.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub is_async: bool,
+    /// `...rest`: bound to an array of the arguments after `params`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rest: Option<Pattern>,
+}
+
+impl Function {
+    /// How many arguments a caller that builds them lazily (an array method's
+    /// callback) passes: every one for a function with a rest parameter.
+    pub fn arity(&self) -> usize {
+        if self.rest.is_some() {
+            self.params.len() + 3
+        } else {
+            self.params.len()
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -229,6 +244,8 @@ pub enum Expr {
     /// runtime can suspend: a whole `let` initialiser, expression statement,
     /// assignment's right side or `return` value.
     Await(Box<Expr>),
+    /// A built-in function as a value (`Boolean` in `xs.filter(Boolean)`).
+    BuiltinFn(Builtin),
     /// `recv.name(args)` where the receiver's type does not say which method it is:
     /// resolved when it runs, by the value's kind, as JavaScript looks the method up
     /// on the receiver (a built-in's method, or an object's function property).
@@ -542,6 +559,8 @@ pub enum Builtin {
     NewSet,
     /// `new Map(entries?)`.
     NewMap,
+    /// `Array(n)` / `new Array(n)` / `new Array(a, b)`.
+    NewArray,
 }
 
 /// A JSX element expression.

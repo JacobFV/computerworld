@@ -1278,3 +1278,70 @@ createRoot(document.getElementById('root')!).render(<App />);
         &[Step::Click("#go"), Step::Wait(20)],
     );
 }
+
+#[test]
+fn bindings_hoist_as_javascript_hoists_them() {
+    // A closure may use a `const` declared below it (recursion included), a
+    // function declaration is callable from the top of its block, and each loop
+    // iteration's bindings are its own.
+    same_as_react(
+        r#"
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+interface Node { name: string; kids?: Node[] }
+function App() {
+  const [n, setN] = useState(1);
+  const total = sum(n, 2, 3);
+  const walk = (node: Node, depth: number): string =>
+    node.name + depth + (node.kids ?? []).map((k) => walk(k, depth + 1)).join('');
+  const later = () => label + '!';
+  const label = 'L' + n;
+  const fns: (() => number)[] = [];
+  for (let i = 0; i < 3; i++) {
+    const k = i * n;
+    fns.push(() => k + i);
+  }
+  function sum(...xs: number[]) {
+    return xs.reduce((a, b) => a + b, 0) + offset();
+  }
+  function offset() { return 100; }
+  const tree: Node = { name: 'a', kids: [{ name: 'b', kids: [{ name: 'c' }] }, { name: 'd' }] };
+  console.log('render', total, walk(tree, 0), later(), fns.map((f) => f()).join(','));
+  return <button id="go" onClick={() => setN(n + 1)}>{total} {later()}</button>;
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Click("#go"), Step::Click("#go")],
+    );
+}
+
+#[test]
+fn render_props_rest_parameters_and_builtins_as_values() {
+    same_as_react(
+        r#"
+import { useState, type ReactNode } from 'react';
+import { createRoot } from 'react-dom/client';
+function Toggle({ children }: { children: (on: boolean, flip: () => void) => ReactNode }) {
+  const [on, setOn] = useState(false);
+  return <div className="toggle">{children(on, () => setOn(!on))}</div>;
+}
+function join(sep: string, ...parts: (string | number)[]) {
+  return parts.filter(Boolean).map(String).join(sep);
+}
+function App() {
+  const nums = ['3', '10', 'x', '7'].map(Number).filter((v) => !Number.isNaN(v));
+  const max = nums.reduce((a, b) => Math.max(a, b), 0);
+  const parsed = ['1', '2', '3'].map(parseInt);
+  const blanks = Array(3).fill('-').join('') + new Array(2, 4).join('/') + Array.from({ length: 2 }, (_, i) => i).join('');
+  console.log('values', nums.join(','), max, parsed.join(','), blanks, [0, 1, '', 'a', null].filter(Boolean).length, [1.4, 2.6].map(Math.round).join(','));
+  return (
+    <Toggle>
+      {(on, flip) => <button id="go" onClick={flip}>{on ? 'on' : 'off'} {join('-', 'a', 0, 'b', '', 2)}</button>}
+    </Toggle>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Click("#go"), Step::Click("#go")],
+    );
+}

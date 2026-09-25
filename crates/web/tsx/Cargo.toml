@@ -11,6 +11,7 @@ description = "Ahead-of-time compiler from React-syntax TSX to cw-ui's reactive 
 cw-ui = { path = "../ui" }
 oxc_allocator = "0.151"
 oxc_ast = "0.151"
+oxc_ast_visit = "0.151"
 oxc_parser = "0.151"
 oxc_span = "0.151"
 oxc_semantic = "0.151"

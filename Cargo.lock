@@ -935,6 +935,7 @@ dependencies = [
 name = "cw-services"
 version = "0.2.0"
 dependencies = [
+ "cw-oss-web",
  "cw-protocol",
  "cw-sdk",
  "cw-service-assistant",
@@ -998,6 +999,7 @@ dependencies = [
  "cw-ui",
  "oxc_allocator",
  "oxc_ast",
+ "oxc_ast_visit",
  "oxc_codegen",
  "oxc_diagnostics",
  "oxc_parser",

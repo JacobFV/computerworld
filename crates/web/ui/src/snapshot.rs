@@ -59,6 +59,8 @@ pub enum HeapObj {
     StoreChanged(u32, u32),
     /// The function removing the `cw.onEnv` listener with this id.
     CwOffEnv(u32),
+    /// A built-in function used as a value.
+    BuiltinFn(crate::ir::Builtin),
     /// A promise: 0 pending, 1 fulfilled, 2 rejected; its value; its reactions
     /// (kind 0 then, 1 catch, 2 finally; handlers; the promise they settle).
     Promise(u8, Option<V>, Vec<(u8, Option<V>, Option<V>, V)>),
@@ -508,6 +510,7 @@ impl Enc {
                             HeapObj::StoreChanged(*inst, *hook)
                         }
                         NativeFn::CwOffEnv(id) => HeapObj::CwOffEnv(*id),
+                        NativeFn::Builtin(b) => HeapObj::BuiltinFn(*b),
                     };
                     V::H(i)
                 }
@@ -943,6 +946,7 @@ impl Dec<'_> {
                 hook: *hook,
             })),
             HeapObj::CwOffEnv(id) => Value::Native(Rc::new(NativeFn::CwOffEnv(*id))),
+            HeapObj::BuiltinFn(b) => Value::Native(Rc::new(NativeFn::Builtin(*b))),
             HeapObj::Promise(state, value, reactions) => {
                 // Registered first: reactions and values may lead back to it.
                 let p = crate::interp::new_promise();

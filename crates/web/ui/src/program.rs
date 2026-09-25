@@ -303,7 +303,7 @@ impl Program for IrProgram {
         self.pure
     }
     fn arity(&self, f: u32) -> usize {
-        self.module.functions[f as usize].params.len()
+        self.module.functions[f as usize].arity()
     }
     fn captures(&self, f: u32) -> &[Capture] {
         &self.module.functions[f as usize].captures

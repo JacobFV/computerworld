@@ -309,7 +309,7 @@ impl Runtime {
             }
             Value::Native(n) => {
                 let n = n.clone();
-                self.call_native(&n, arg(&args, 0))
+                self.call_native(&n, args)
             }
             other => type_error(format!("{} is not a function", inspect(other))),
         }
@@ -345,6 +345,9 @@ impl Runtime {
         for p in &f.params {
             let v = args.next().unwrap_or(Value::Undefined);
             self.bind(&mut frame, p, v)?;
+        }
+        if let Some(r) = &f.rest {
+            self.bind(&mut frame, r, Value::array(args.collect()))?;
         }
         if f.is_async {
             let program = self.program.clone();
@@ -384,6 +387,8 @@ impl Runtime {
     fn arity(&self, f: &Value) -> usize {
         match f {
             Value::Func(c) => self.program.arity(c.func),
+            // A built-in passed as a callback sees every argument (`map(parseInt)`).
+            Value::Native(n) if matches!(**n, NativeFn::Builtin(_)) => 3,
             _ => 1,
         }
     }
@@ -789,6 +794,7 @@ impl Runtime {
                 last
             }
             Expr::Regex(pattern, flags) => self.new_regex(pattern, flags)?,
+            Expr::BuiltinFn(b) => Value::Native(Rc::new(NativeFn::Builtin(*b))),
             Expr::Invoke {
                 recv,
                 name,
@@ -1513,6 +1519,15 @@ impl Runtime {
                 }
                 Value::Set(Rc::new(RefCell::new(out)))
             }
+            B::NewArray => match args.as_slice() {
+                [Value::Num(n)] => {
+                    if n.fract() != 0.0 || *n < 0.0 || *n > 4294967295.0 {
+                        return js_error("RangeError", "Invalid array length");
+                    }
+                    Value::array(vec![Value::Undefined; *n as usize])
+                }
+                _ => Value::array(args),
+            },
             B::NewMap => {
                 let mut out: Vec<(Value, Value)> = Vec::new();
                 let src = arg(&args, 0);
@@ -2781,7 +2796,11 @@ fn radix_string(n: f64, radix: u32) -> String {
 }
 
 impl Runtime {
-    fn call_native(&mut self, n: &NativeFn, v: Value) -> R<Value> {
+    fn call_native(&mut self, n: &NativeFn, args: Vec<Value>) -> R<Value> {
+        if let NativeFn::Builtin(b) = n {
+            return self.builtin(*b, args);
+        }
+        let v = args.into_iter().next().unwrap_or_default();
         match n {
             NativeFn::Resolver { promise, reject } => {
                 if *reject {
@@ -2825,6 +2844,7 @@ impl Runtime {
             }
             NativeFn::StoreChanged { inst, hook } => self.store_changed(*inst, *hook)?,
             NativeFn::CwOffEnv(id) => self.cw_off_env(*id),
+            NativeFn::Builtin(_) => unreachable!("called above"),
         }
         Ok(Value::Undefined)
     }

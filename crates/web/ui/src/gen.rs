@@ -26,6 +26,11 @@ pub use crate::value::{loose_equals, same_value, strict_equals, Closure, Elem, S
 
 use crate::runtime::type_error;
 
+/// A built-in function as a value (`ir::Expr::BuiltinFn`).
+pub fn builtin_fn(b: Builtin) -> Value {
+    Value::Native(Rc::new(crate::runtime::NativeFn::Builtin(b)))
+}
+
 /// A slot's value, read through its cell when it is boxed.
 #[inline]
 pub fn read(v: &Value) -> Value {

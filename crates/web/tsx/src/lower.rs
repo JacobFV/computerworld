@@ -129,6 +129,13 @@ fn react_export(name: &str) -> ReactName {
 
 struct Local {
     ty: Ty,
+    /// Declared at its block's start (a `let`/`const`/function name), not yet
+    /// initialised: reading it here is a use before its declaration, and a closure
+    /// that reads it (`const f = () => f()`) shares it through a cell.
+    pending: bool,
+    /// Captured by a closure while `pending`: the block creates its cell when it
+    /// starts, and the declaration assigns it.
+    early: bool,
     captured: bool,
     /// Offset of an assignment after the declaration.
     reassigned: Option<u32>,
@@ -178,9 +185,28 @@ impl FnCtx {
         None
     }
     fn declare(&mut self, name: &str, ty: Ty) -> u32 {
+        // The binding its block declared in advance.
+        if let Some(&(_, slot)) = self
+            .scopes
+            .last()
+            .unwrap()
+            .iter()
+            .rev()
+            .find(|(n, _)| n == name)
+        {
+            let l = &mut self.locals[slot as usize];
+            if l.pending {
+                l.fresh = false;
+                l.pending = false;
+                l.ty = ty;
+                return slot;
+            }
+        }
         let slot = self.locals.len() as u32;
         self.locals.push(Local {
             ty,
+            pending: false,
+            early: false,
             captured: false,
             reassigned: None,
             fresh: false,
@@ -192,6 +218,24 @@ impl FnCtx {
         if let Some(l) = self.later.last_mut() {
             l.remove(name);
         }
+        slot
+    }
+
+    /// Declares `name` in the innermost scope ahead of its declaration.
+    fn predeclare(&mut self, name: &str) -> u32 {
+        let slot = self.locals.len() as u32;
+        self.locals.push(Local {
+            ty: Ty::Unknown,
+            pending: true,
+            early: false,
+            captured: false,
+            reassigned: None,
+            fresh: false,
+        });
+        self.scopes
+            .last_mut()
+            .unwrap()
+            .push((name.to_owned(), slot));
         slot
     }
 }
@@ -1135,6 +1179,7 @@ impl<'a> Lowerer<'a> {
             has_depless_effect: false,
             boxed: Vec::new(),
             is_async: false,
+            rest: None,
         });
         if self.root.is_some() {
             self.err(render.span, "the module renders twice");
@@ -1638,9 +1683,13 @@ impl<'a> Lowerer<'a> {
             };
             params.push(pat);
         }
-        if let Some(rest) = &p.params.rest {
-            self.err(rest.span, "rest parameters are outside the compiled subset");
-        }
+        let rest = p.params.rest.as_ref().map(|r| {
+            let t = match &r.type_annotation {
+                Some(t) => self.ts_type(&t.type_annotation),
+                None => Ty::Array(Box::new(Ty::Unknown)),
+            };
+            self.bind_pattern(&r.rest.argument, &t)
+        });
         let body = match p.body {
             FnBody::Block(b) => {
                 for d in &b.directives {
@@ -1688,6 +1737,7 @@ impl<'a> Lowerer<'a> {
             has_depless_effect: ctx.has_depless_effect,
             boxed,
             is_async: p.is_async,
+            rest,
         }
     }
 
@@ -1740,6 +1790,21 @@ impl<'a> Lowerer<'a> {
         for level in (0..depth).rev() {
             if let Some(slot) = self.fns[level].lookup(name) {
                 let ty = self.fns[level].locals[slot as usize].ty.clone();
+                if self.fns[level].locals[slot as usize].pending {
+                    if level == depth - 1 {
+                        self.err(
+                            span,
+                            format!("`{name}` is used before its declaration (declare it above this use)"),
+                        );
+                        return Some((Expr::Undefined, Ty::Unknown));
+                    }
+                    // A closure made before the variable is initialised: it
+                    // shares the variable through a cell, which the declaration
+                    // then assigns.
+                    let l = &mut self.fns[level].locals[slot as usize];
+                    l.reassigned = Some(span.start);
+                    l.early = true;
+                }
                 if level == depth - 1 {
                     return Some((Expr::Local(slot), ty));
                 }
@@ -1883,37 +1948,59 @@ impl<'a> Lowerer<'a> {
     // ------------------------------------------------------------------ statements
 
     fn block(&mut self, stmts: &'a oxc_allocator::Vec<'a, S<'a>>) -> Vec<Stmt> {
-        let mut later = BTreeSet::new();
+        // `let`/`const` names and function declarations are bindings of the whole
+        // block: a closure may use one declared below it.
+        let later = BTreeSet::new();
+        let mut ahead = Vec::new();
         for s in stmts.iter() {
             match s {
-                S::VariableDeclaration(d) => {
+                S::VariableDeclaration(d) if d.kind != ast::VariableDeclarationKind::Var => {
                     for decl in &d.declarations {
                         let mut names = Vec::new();
                         binding_names(&decl.id, &mut names);
-                        later.extend(names.into_iter().map(|(n, _)| n));
+                        ahead.extend(names.into_iter().map(|(n, _)| n));
                     }
                 }
                 S::FunctionDeclaration(f) => {
                     if let Some(id) = &f.id {
-                        later.insert(id.name.to_string());
+                        ahead.push(id.name.to_string());
                     }
                 }
                 _ => {}
             }
         }
-        {
+        let slots: Vec<u32> = {
             let c = self.cur();
             c.scopes.push(Vec::new());
             c.later.push(later);
-        }
+            ahead.iter().map(|n| c.predeclare(n)).collect()
+        };
         let mut out = Vec::new();
+        // Function declarations are initialised when the block starts.
         for s in stmts.iter() {
-            self.statement(s, &mut out);
+            if matches!(s, S::FunctionDeclaration(_)) {
+                self.statement(s, &mut out);
+            }
+        }
+        for s in stmts.iter() {
+            if !matches!(s, S::FunctionDeclaration(_)) {
+                self.statement(s, &mut out);
+            }
         }
         let c = self.cur();
         c.scopes.pop();
         c.later.pop();
-        out
+        // The cells of variables closures captured before their declaration.
+        let early: Vec<Stmt> = slots
+            .into_iter()
+            .filter(|s| c.locals[*s as usize].early)
+            .map(|s| Stmt::Let(Pattern::Local(s), None))
+            .collect();
+        if early.is_empty() {
+            out
+        } else {
+            early.into_iter().chain(out).collect()
+        }
     }
 
     fn body_of(&mut self, s: &'a S<'a>) -> Vec<Stmt> {
@@ -1975,7 +2062,15 @@ impl<'a> Lowerer<'a> {
                 // closure captures its own slot, which is assigned once.
                 let (x, ty) = self.closure(p, None);
                 let slot = self.cur().declare(&name, ty);
-                out.push(Stmt::Let(Pattern::Local(slot), Some(x)));
+                if self.cur().locals[slot as usize].early {
+                    out.push(Stmt::Expr(Expr::Assign(
+                        Box::new(LValue::Local(slot)),
+                        None,
+                        Box::new(x),
+                    )));
+                } else {
+                    out.push(Stmt::Let(Pattern::Local(slot), Some(x)));
+                }
             }
             S::ReturnStatement(r) => {
                 let want = self.fns.last().unwrap().declared_ret.clone();
@@ -2056,7 +2151,42 @@ impl<'a> Lowerer<'a> {
                 }
                 let test = f.test.as_ref().map(|t| self.expr(t, None).0);
                 let update = f.update.as_ref().map(|u| self.expr(u, None).0);
-                let body = self.body_of(&f.body);
+                // Each iteration of a `for (let …)` has its own binding: a
+                // closure made in the body keeps that iteration's value. The
+                // body reads a copy made when the iteration starts.
+                let loop_vars: Vec<String> = match &f.init {
+                    Some(ast::ForStatementInit::VariableDeclaration(d))
+                        if d.kind != ast::VariableDeclarationKind::Var =>
+                    {
+                        let mut names = Vec::new();
+                        for decl in &d.declarations {
+                            binding_names(&decl.id, &mut names);
+                        }
+                        names.into_iter().map(|(n, _)| n).collect()
+                    }
+                    _ => Vec::new(),
+                };
+                let used = crate::scan::NameUse::of_statement(&loop_vars, &f.body);
+                let mut copies = Vec::new();
+                self.cur().scopes.push(Vec::new());
+                for name in &used.captured {
+                    if used.assigned.contains(name) {
+                        self.err(
+                            f.span,
+                            format!("`{name}` is kept by a closure and reassigned in the loop body: outside the compiled subset"),
+                        );
+                        continue;
+                    }
+                    let outer = self.cur().lookup(name).expect("loop variable");
+                    let ty = self.cur().locals[outer as usize].ty.clone();
+                    let inner = self.cur().declare(name, ty);
+                    copies.push(Stmt::Let(Pattern::Local(inner), Some(Expr::Local(outer))));
+                }
+                let mut body = self.body_of(&f.body);
+                self.cur().scopes.pop();
+                if !copies.is_empty() {
+                    body = copies.into_iter().chain(body).collect();
+                }
                 self.cur().scopes.pop();
                 self.cur().cond_depth -= 1;
                 out.push(Stmt::For {
@@ -2150,6 +2280,49 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// `p` with its early-captured slots (see `Local::early`) replaced by fresh
+    /// temporaries, and the assignments of the temporaries into them.
+    fn split_early(&mut self, p: Pattern, assigns: &mut Vec<Stmt>) -> Pattern {
+        match p {
+            Pattern::Local(slot) if self.cur().locals[slot as usize].early => {
+                let ty = self.cur().locals[slot as usize].ty.clone();
+                let tmp = self.cur().locals.len() as u32;
+                self.cur().locals.push(Local {
+                    ty,
+                    pending: false,
+                    early: false,
+                    captured: false,
+                    reassigned: None,
+                    fresh: false,
+                });
+                assigns.push(Stmt::Expr(Expr::Assign(
+                    Box::new(LValue::Local(slot)),
+                    None,
+                    Box::new(Expr::Local(tmp)),
+                )));
+                Pattern::Local(tmp)
+            }
+            Pattern::Array { items, rest } => Pattern::Array {
+                items: items
+                    .into_iter()
+                    .map(|i| i.map(|p| self.split_early(p, assigns)))
+                    .collect(),
+                rest: rest.map(|r| Box::new(self.split_early(*r, assigns))),
+            },
+            Pattern::Object { props, rest } => Pattern::Object {
+                props: props
+                    .into_iter()
+                    .map(|(k, p)| (k, self.split_early(p, assigns)))
+                    .collect(),
+                rest: rest.map(|r| Box::new(self.split_early(*r, assigns))),
+            },
+            Pattern::Default(inner, d) => {
+                Pattern::Default(Box::new(self.split_early(*inner, assigns)), d)
+            }
+            p => p,
+        }
+    }
+
     fn var_decl(&mut self, d: &'a ast::VariableDeclaration<'a>, out: &mut Vec<Stmt>) {
         if d.kind == ast::VariableDeclarationKind::Var {
             self.err(
@@ -2176,20 +2349,41 @@ impl<'a> Lowerer<'a> {
                     } else {
                         t
                     };
-                    let before = self.cur().locals.len();
                     let pat = self.bind_pattern(&decl.id, &t);
-                    if fresh {
-                        if let Pattern::Local(slot) = pat {
+                    if !matches!(pat, Pattern::Local(_)) {
+                        // Destructured bindings a closure already shares: bound to
+                        // temporaries, then assigned into their cells.
+                        let mut assigns = Vec::new();
+                        let pat = self.split_early(pat, &mut assigns);
+                        out.push(Stmt::Let(pat, Some(x)));
+                        out.extend(assigns);
+                        continue;
+                    }
+                    if let Pattern::Local(slot) = pat {
+                        if self.cur().locals[slot as usize].early {
+                            // Its cell exists already: assign it.
+                            out.push(Stmt::Expr(Expr::Assign(
+                                Box::new(LValue::Local(slot)),
+                                None,
+                                Box::new(x),
+                            )));
+                            continue;
+                        }
+                        if fresh {
                             self.cur().locals[slot as usize].fresh = true;
                         }
                     }
-                    let _ = before;
                     out.push(Stmt::Let(pat, Some(x)));
                     continue;
                 }
                 None => (None::<Expr>, declared.clone().unwrap_or(Ty::Undefined)),
             };
             let pat = self.bind_pattern(&decl.id, &ty);
+            if let Pattern::Local(slot) = pat {
+                if self.cur().locals[slot as usize].early {
+                    continue;
+                }
+            }
             out.push(Stmt::Let(pat, init));
         }
     }
@@ -2424,7 +2618,7 @@ impl<'a> Lowerer<'a> {
             }
             E::JSXElement(el) => self.jsx_element(el),
             E::JSXFragment(f) => {
-                let children = self.jsx_children_exprs(&f.children);
+                let children = self.jsx_children_exprs(&f.children, false);
                 (
                     Expr::Element(Box::new(ElementExpr::Fragment {
                         children,
@@ -2475,6 +2669,13 @@ impl<'a> Lowerer<'a> {
                             Builtin::NewMap
                         };
                         return (Expr::Builtin(b, args), t);
+                    }
+                    if id.name == "Array" && self.resolve_is_free("Array") {
+                        let (args, _) = self.exprs_args(&n.arguments, &[]);
+                        return (
+                            Expr::Builtin(Builtin::NewArray, args),
+                            Ty::Array(Box::new(Ty::Unknown)),
+                        );
                     }
                     if matches!(id.name.as_str(), "Error" | "TypeError")
                         && self.resolve_is_free(id.name.as_str())
@@ -2550,9 +2751,35 @@ impl<'a> Lowerer<'a> {
         if let Some(r) = self.resolve(name, span) {
             return r;
         }
+        let as_value = |b: Builtin, t: Ty| (Expr::BuiltinFn(b), t);
         match name {
             "Infinity" => (Expr::Builtin(Builtin::Infinity, vec![]), Ty::Number),
             "NaN" => (Expr::Builtin(Builtin::NaN, vec![]), Ty::Number),
+            // Built-in functions as values: `xs.filter(Boolean)`, `.map(Number)`.
+            "Boolean" => as_value(
+                Builtin::Boolean,
+                Ty::Function(vec![Ty::Unknown], Box::new(Ty::Boolean)),
+            ),
+            "Number" => as_value(
+                Builtin::Number,
+                Ty::Function(vec![Ty::Unknown], Box::new(Ty::Number)),
+            ),
+            "String" => as_value(
+                Builtin::String,
+                Ty::Function(vec![Ty::Unknown], Box::new(Ty::String)),
+            ),
+            "parseInt" => as_value(
+                Builtin::ParseInt,
+                Ty::Function(vec![Ty::Unknown, Ty::Unknown], Box::new(Ty::Number)),
+            ),
+            "parseFloat" => as_value(
+                Builtin::ParseFloat,
+                Ty::Function(vec![Ty::Unknown], Box::new(Ty::Number)),
+            ),
+            "isNaN" => as_value(
+                Builtin::IsNaN,
+                Ty::Function(vec![Ty::Unknown], Box::new(Ty::Boolean)),
+            ),
             _ => {
                 if self.react.contains_key(name) {
                     self.err(
@@ -2976,6 +3203,21 @@ impl<'a> Lowerer<'a> {
                 (Expr::Builtin(Builtin::Infinity, vec![]), Ty::Number)
             }
             ("Number", "NaN") => (Expr::Builtin(Builtin::NaN, vec![]), Ty::Number),
+            ("Number", "NEGATIVE_INFINITY") => (Expr::Num(f64::NEG_INFINITY), Ty::Number),
+            ("Number", "EPSILON") => (Expr::Num(f64::EPSILON), Ty::Number),
+            ("Number", "MAX_VALUE") => (Expr::Num(f64::MAX), Ty::Number),
+            ("Number", "MIN_VALUE") => (Expr::Num(5e-324), Ty::Number),
+            ("Math", "E") => (Expr::Num(std::f64::consts::E), Ty::Number),
+            ("Math", "LN2") => (Expr::Num(std::f64::consts::LN_2), Ty::Number),
+            ("Math", "LN10") => (Expr::Num(std::f64::consts::LN_10), Ty::Number),
+            ("Math", "LOG2E") => (Expr::Num(std::f64::consts::LOG2_E), Ty::Number),
+            ("Math", "LOG10E") => (Expr::Num(std::f64::consts::LOG10_E), Ty::Number),
+            ("Math", "SQRT2") => (Expr::Num(std::f64::consts::SQRT_2), Ty::Number),
+            ("Math", "SQRT1_2") => (Expr::Num(std::f64::consts::FRAC_1_SQRT_2), Ty::Number),
+            // Built-in functions as values (`xs.map(Math.round)`).
+            (ns, n) if builtin_value(ns, n).is_some() => {
+                (Expr::BuiltinFn(builtin_value(ns, n).unwrap()), Ty::Unknown)
+            }
             ("document", "title") => {
                 self.mark_always();
                 (Expr::Builtin(Builtin::DocumentTitle, vec![]), Ty::String)
@@ -3173,6 +3415,7 @@ impl<'a> Lowerer<'a> {
                 vec![Ty::String],
                 Ty::Promise(Box::new(Ty::Response)),
             ),
+            "Array" => (Builtin::NewArray, vec![], Ty::Array(Box::new(Ty::Unknown))),
             _ => return None,
         };
         let (args, _) = self.exprs_args(&c.arguments, &want);
@@ -4120,7 +4363,7 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                let children = self.jsx_children_exprs(&el.children);
+                let children = self.jsx_children_exprs(&el.children, false);
                 (
                     Expr::Element(Box::new(ElementExpr::Fragment { children, key })),
                     Ty::Node,
@@ -4146,7 +4389,7 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                let children = self.jsx_children_exprs(&el.children);
+                let children = self.jsx_children_exprs(&el.children, false);
                 (
                     Expr::Element(Box::new(ElementExpr::Provider {
                         context: ctx,
@@ -4186,7 +4429,9 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                let mut kids = self.jsx_children_exprs(&el.children);
+                // A component's children are whatever it makes of them (a render
+                // function, an object): only host children must be renderable.
+                let mut kids = self.jsx_children_exprs(&el.children, true);
                 let children = match kids.len() {
                     0 => None,
                     1 => kids.pop(),
@@ -4301,7 +4546,7 @@ impl<'a> Lowerer<'a> {
             },
             Some(ast::JSXAttributeValue::Element(e)) => Some(self.jsx_element(e)),
             Some(ast::JSXAttributeValue::Fragment(f)) => {
-                let children = self.jsx_children_exprs(&f.children);
+                let children = self.jsx_children_exprs(&f.children, false);
                 Some((
                     Expr::Element(Box::new(ElementExpr::Fragment {
                         children,
@@ -4317,6 +4562,7 @@ impl<'a> Lowerer<'a> {
     fn jsx_children_exprs(
         &mut self,
         children: &'a oxc_allocator::Vec<'a, ast::JSXChild<'a>>,
+        of_component: bool,
     ) -> Vec<Expr> {
         let mut out = Vec::new();
         for c in children {
@@ -4328,7 +4574,7 @@ impl<'a> Lowerer<'a> {
                 }
                 ast::JSXChild::Element(e) => out.push(self.jsx_element(e).0),
                 ast::JSXChild::Fragment(f) => {
-                    let children = self.jsx_children_exprs(&f.children);
+                    let children = self.jsx_children_exprs(&f.children, false);
                     out.push(Expr::Element(Box::new(ElementExpr::Fragment {
                         children,
                         key: None,
@@ -4338,8 +4584,11 @@ impl<'a> Lowerer<'a> {
                     ast::JSXExpression::EmptyExpression(_) => {}
                     other => {
                         let e = other.as_expression().expect("expression");
-                        let (x, t) = self.expr(e, Some(&Ty::Node));
-                        self.check_renderable(&t, e.span());
+                        let (x, t) =
+                            self.expr(e, if of_component { None } else { Some(&Ty::Node) });
+                        if !of_component {
+                            self.check_renderable(&t, e.span());
+                        }
                         out.push(x);
                     }
                 },
@@ -4436,7 +4685,7 @@ impl<'a> Lowerer<'a> {
                 },
                 ast::JSXChild::Fragment(f) => {
                     let hole = self.hole(tb, |l| {
-                        let children = l.jsx_children_exprs(&f.children);
+                        let children = l.jsx_children_exprs(&f.children, false);
                         (
                             Expr::Element(Box::new(ElementExpr::Fragment {
                                 children,
@@ -4661,6 +4910,36 @@ fn is_fresh_init(e: &E<'_>) -> bool {
         },
         _ => false,
     }
+}
+
+/// The built-in function `ns.name`, for using it as a value.
+fn builtin_value(ns: &str, name: &str) -> Option<Builtin> {
+    Some(match (ns, name) {
+        ("Math", "max") => Builtin::MathMax,
+        ("Math", "min") => Builtin::MathMin,
+        ("Math", "round") => Builtin::MathRound,
+        ("Math", "floor") => Builtin::MathFloor,
+        ("Math", "ceil") => Builtin::MathCeil,
+        ("Math", "abs") => Builtin::MathAbs,
+        ("Math", "trunc") => Builtin::MathTrunc,
+        ("Math", "sign") => Builtin::MathSign,
+        ("Math", "sqrt") => Builtin::MathSqrt,
+        ("Math", "pow") => Builtin::MathPow,
+        ("Number", "isNaN") => Builtin::NumberIsNaN,
+        ("Number", "isInteger") => Builtin::NumberIsInteger,
+        ("Number", "isFinite") => Builtin::NumberIsFinite,
+        ("Number", "parseInt") => Builtin::ParseInt,
+        ("Number", "parseFloat") => Builtin::ParseFloat,
+        ("Array", "isArray") => Builtin::ArrayIsArray,
+        ("Object", "keys") => Builtin::ObjectKeys,
+        ("Object", "values") => Builtin::ObjectValues,
+        ("Object", "entries") => Builtin::ObjectEntries,
+        ("JSON", "stringify") => Builtin::JsonStringify,
+        ("console", "log" | "info" | "debug") => Builtin::ConsoleLog,
+        ("console", "warn") => Builtin::ConsoleWarn,
+        ("console", "error") => Builtin::ConsoleError,
+        _ => return None,
+    })
 }
 
 /// A value the runtime models as a host object with a fixed set of properties

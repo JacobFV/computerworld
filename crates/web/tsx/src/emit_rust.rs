@@ -93,7 +93,7 @@ pub fn emit(m: &Module, mod_name: &str) -> String {
             out,
             "    GenFunc {{ name: {:?}, arity: {}, captures: &[{}], boxed: &[{}], code: {code} }},",
             f.name,
-            f.params.len(),
+            f.arity(),
             caps.join(", "),
             boxed.join(", ")
         );
@@ -605,7 +605,7 @@ impl<'g, 'm> FnCx<'g, 'm> {
     // ------------------------------------------------------------ patterns
 
     fn prologue_params(&mut self, f: &Function) {
-        if f.params.is_empty() {
+        if f.params.is_empty() && f.rest.is_none() {
             return;
         }
         self.line("let mut args = args.into_iter();");
@@ -615,6 +615,11 @@ impl<'g, 'm> FnCx<'g, 'm> {
                 "let {v} = args.next().unwrap_or(Value::Undefined);"
             ));
             self.bind(p, &v);
+        }
+        if let Some(r) = &f.rest {
+            let v = self.tmp();
+            self.line(&format!("let {v} = Value::array(args.collect());"));
+            self.bind(r, &v);
         }
     }
 
@@ -1119,6 +1124,7 @@ impl<'g, 'm> FnCx<'g, 'm> {
                 let e = self.q(&format!("rt.call_method(&{r}, Method::{method:?}, {a})"));
                 self.bind_tmp(&e)
             }
+            Expr::BuiltinFn(b) => self.bind_tmp(&format!("builtin_fn(Builtin::{b:?})")),
             Expr::Invoke {
                 recv,
                 name,

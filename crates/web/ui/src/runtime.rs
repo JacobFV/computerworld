@@ -51,6 +51,8 @@ pub enum NativeFn {
     },
     /// Removes the `cw.onEnv` listener with this id.
     CwOffEnv(u32),
+    /// A built-in function used as a value (`xs.filter(Boolean)`, `map(Number)`).
+    Builtin(crate::ir::Builtin),
     /// An async function resumed after an `await` (with the value, or throwing it).
     Resume {
         task: Rc<RefCell<Option<crate::asyncfn::Task>>>,

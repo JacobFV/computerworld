@@ -22,6 +22,7 @@ pub mod corpus;
 pub mod emit_js;
 pub mod emit_rust;
 pub mod lower;
+mod scan;
 mod types;
 
 use std::collections::BTreeMap;
