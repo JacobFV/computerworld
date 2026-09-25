@@ -9,8 +9,7 @@
 
 use oxc_allocator::Allocator;
 use oxc_ast::ast::{
-    Class, Expression, IdentifierReference, JSXAttributeItem, JSXAttributeName, JSXOpeningElement,
-    StaticMemberExpression, UnaryExpression, UnaryOperator,
+    Class, Expression, IdentifierReference, StaticMemberExpression, UnaryExpression, UnaryOperator,
 };
 use oxc_ast_visit::{walk, Visit};
 use oxc_parser::Parser;
@@ -323,31 +322,10 @@ impl<'a> Visit<'a> for Check<'_> {
         walk::walk_static_member_expression(self, m);
     }
 
-    fn visit_jsx_opening_element(&mut self, e: &JSXOpeningElement<'a>) {
-        for a in &e.attributes {
-            if let JSXAttributeItem::Attribute(a) = a {
-                if let JSXAttributeName::Identifier(n) = &a.name {
-                    if n.name == "dangerouslySetInnerHTML" {
-                        self.refuse(
-                            a.span.start,
-                            "`dangerouslySetInnerHTML` on the island".into(),
-                        );
-                    }
-                }
-            }
-        }
-        walk::walk_jsx_opening_element(self, e);
-    }
-
     fn visit_identifier_name(&mut self, n: &oxc_ast::ast::IdentifierName<'a>) {
         // A property named so, as a package's plain `createElement` code spells it.
-        match n.name.as_str() {
-            "dangerouslySetInnerHTML" => self.refuse(
-                n.span.start,
-                "`dangerouslySetInnerHTML` on the island".into(),
-            ),
-            "createPortal" => self.refuse(n.span.start, "`createPortal` on the island".into()),
-            _ => {}
+        if n.name == "createPortal" {
+            self.refuse(n.span.start, "`createPortal` on the island".into());
         }
     }
 

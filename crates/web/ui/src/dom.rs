@@ -436,9 +436,9 @@ impl Runtime {
             "children"
             | "key"
             | "ref"
-            | "dangerouslySetInnerHTML"
             | "suppressContentEditableWarning"
             | "suppressHydrationWarning" => {}
+            "dangerouslySetInnerHTML" => self.set_inner_html(n, old, new, mounting),
             "style" => {
                 // A style object the island made: its properties.
                 let old = self.plain_object(old).unwrap_or_default();
@@ -463,6 +463,42 @@ impl Runtime {
                 }
                 let (attr, value) = attribute_for(name, new);
                 self.write_attr(n, &attr, value.as_deref());
+            }
+        }
+    }
+
+    /// `dangerouslySetInnerHTML={{ __html }}`: React DOM sets `innerHTML` when the
+    /// markup changed, which the engine's fragment parser parses as the Realm's
+    /// `innerHTML` setter does (scripts inside never run).
+    fn set_inner_html(&mut self, n: NodeId, old: &Value, new: &Value, mounting: bool) {
+        let html_of = |rt: &mut Self, v: &Value| -> Option<String> {
+            let v = rt.plain_object(v).unwrap_or_default();
+            match &v {
+                Value::Object(o) => crate::interp::obj_get(&o.borrow(), "__html")
+                    .filter(|h| !h.is_nullish())
+                    .map(|h| h.to_js_string()),
+                _ => None,
+            }
+        };
+        let new_html = html_of(self, new);
+        if !mounting && html_of(self, old) == new_html {
+            return;
+        }
+        let kids: Vec<NodeId> = self.inner.doc.children(n).collect();
+        for k in kids {
+            self.detach(k);
+        }
+        if let Some(h) = new_html {
+            let nodes = cw_web::html::parse_fragment(&mut self.inner.doc, n, &h);
+            for c in nodes {
+                let scripts: Vec<NodeId> = self
+                    .inner
+                    .doc
+                    .descendants(c)
+                    .filter(|x| self.inner.doc.is(*x, "script"))
+                    .collect();
+                self.inner.executed_scripts.extend(scripts);
+                self.inner.doc.append(n, c);
             }
         }
     }

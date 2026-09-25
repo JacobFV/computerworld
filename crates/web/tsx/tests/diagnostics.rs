@@ -245,10 +245,6 @@ fn island_modules_that_need_a_page_refuse_the_build() {
             "import { Component } from 'react';\nexport class Widget extends Component { render() { return <p />; } }\n",
             "a class component on the island",
         ),
-        (
-            "function* g() { yield 1; }\nexport function Widget() { return <div dangerouslySetInnerHTML={{ __html: '<b>x</b>' }} />; }\n",
-            "`dangerouslySetInnerHTML` on the island",
-        ),
     ];
     for (widget, needle) in cases {
         let files = [("main.tsx", main), ("widget.tsx", widget)];

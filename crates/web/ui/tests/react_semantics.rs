@@ -2267,3 +2267,55 @@ export function App() {
         ],
     );
 }
+
+#[test]
+fn inner_html_is_parsed_as_the_page_parses_it() {
+    same_as_react(
+        r#"
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+
+export function App() {
+  const [n, setN] = useState(1);
+  const html = n % 3 === 0 ? null : '<b id="b' + n + '">bold ' + n + '</b> &amp; <i>it</i><script>console.log("never")</script>';
+  return (
+    <div>
+      <button id="go" onClick={() => setN(n + 1)}>go</button>
+      {html === null ? <p id="plain">plain {n}</p> : <div id="raw" className={'r' + n} dangerouslySetInnerHTML={{ __html: html }} />}
+      <table><tbody dangerouslySetInnerHTML={{ __html: '<tr><td>cell</td></tr>' }} /></table>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Click("#go"), Step::Click("#go"), Step::Click("#go")],
+    );
+}
+
+#[test]
+fn inner_html_is_parsed_as_the_page_parses_it_on_the_island() {
+    same_as_react(
+        r#"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import { App } from './raw';
+createRoot(document.getElementById('root')!).render(<App />);
+// @file raw.tsx
+import { useState } from 'react';
+function* g() { yield 1; }
+
+export function App() {
+  const [n, setN] = useState(1);
+  const html = n % 3 === 0 ? null : '<b id="b' + n + '">bold ' + n + '</b> &amp; <i>it</i><script>console.log("never")</script>';
+  return (
+    <div>
+      <button id="go" onClick={() => setN(n + 1)}>go</button>
+      {html === null ? <p id="plain">plain {n}</p> : <div id="raw" className={'r' + n} dangerouslySetInnerHTML={{ __html: html }} />}
+      <table><tbody dangerouslySetInnerHTML={{ __html: '<tr><td>cell</td></tr>' }} /></table>
+    </div>
+  );
+}
+"#,
+        &[Step::Click("#go"), Step::Click("#go"), Step::Click("#go")],
+    );
+}

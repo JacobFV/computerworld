@@ -6255,13 +6255,6 @@ impl<'a> Lowerer<'a> {
                         key = self.jsx_attr_value(a, None).map(|x| x.0);
                         continue;
                     }
-                    if name == "dangerouslySetInnerHTML" {
-                        self.err(
-                            a.span,
-                            "`dangerouslySetInnerHTML` is outside the compiled subset",
-                        );
-                        continue;
-                    }
                     if name == "ref" {
                         let hole = self.hole(tb, |l| {
                             l.jsx_attr_value(a, None)
