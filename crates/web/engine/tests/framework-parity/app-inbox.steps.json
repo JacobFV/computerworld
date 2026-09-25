@@ -1,0 +1,20 @@
+{
+ "initial": [],
+ "opened": [
+  {"action": "click", "selector": "div[data-message=\"3\"]"},
+  {"action": "click", "selector": "button[data-star=\"3\"]"}
+ ],
+ "searched": [
+  {"action": "click", "selector": "#search"},
+  {"action": "type", "text": "invoice"},
+  {"action": "click", "selector": "div[data-message=\"2\"]"}
+ ],
+ "compose-invalid": [
+  {"action": "click", "selector": "#compose"},
+  {"action": "click", "selector": "#compose-to"},
+  {"action": "type", "text": "priya@northwind"},
+  {"action": "press", "key": "Tab"},
+  {"action": "type", "text": "Q4 review dates"},
+  {"action": "click", "selector": "#compose-send"}
+ ]
+}

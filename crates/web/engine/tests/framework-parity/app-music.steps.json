@@ -1,0 +1,20 @@
+{
+ "initial": [],
+ "playing": [
+  {"action": "click", "selector": "tr[data-track=\"104\"]"},
+  {"action": "click", "selector": "button[data-like=\"104\"]"},
+  {"action": "click", "selector": "button[data-like=\"103\"]"}
+ ],
+ "filtered": [
+  {"action": "click", "selector": "button[data-playlist=\"focus\"]"},
+  {"action": "click", "selector": "#filter-tracks"},
+  {"action": "type", "text": "rain"},
+  {"action": "press", "key": "Enter"}
+ ],
+ "queue": [
+  {"action": "click", "selector": "#play-album"},
+  {"action": "click", "selector": "#queue-toggle"},
+  {"action": "click", "selector": "#volume"},
+  {"action": "press", "key": "ArrowLeft"}
+ ]
+}

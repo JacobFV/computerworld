@@ -77,7 +77,7 @@ fn every_state_has_a_chromium_dump_and_a_threshold() {
             for step in &list {
                 let action = step["action"].as_str().unwrap_or("");
                 assert!(
-                    matches!(action, "click" | "type" | "press"),
+                    matches!(action, "click" | "type" | "press" | "focus"),
                     "{name}.{state}: unknown action {action:?}"
                 );
             }
@@ -203,6 +203,12 @@ mod cases {
                     modifiers,
                     repeat: false,
                 });
+            }
+            "focus" => {
+                // What Playwright's `page.focus` does: the element's own focus().
+                let selector = step["selector"].as_str().unwrap();
+                r.eval(&format!("document.querySelector({selector:?}).focus()"))
+                    .unwrap_or_else(|e| panic!("{selector}: {e}"));
             }
             other => panic!("unknown action {other:?}"),
         }
@@ -364,5 +370,20 @@ mod cases {
     #[test]
     fn app_shop() {
         run_fixture("app-shop");
+    }
+
+    #[test]
+    fn app_inbox() {
+        run_fixture("app-inbox");
+    }
+
+    #[test]
+    fn app_calendar() {
+        run_fixture("app-calendar");
+    }
+
+    #[test]
+    fn app_music() {
+        run_fixture("app-music");
     }
 }

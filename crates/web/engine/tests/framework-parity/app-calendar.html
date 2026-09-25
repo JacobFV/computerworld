@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence — Calendar</title>
+<!-- A calendar as a coding agent writes one in React: TSX, Tailwind, Lucide icons as
+     inline SVG, a week grid whose events are positioned absolutely by time and laid
+     side by side where they overlap, a sticky day header inside a vertically scrolling
+     grid, a mini month in the sidebar, calendar toggles, a month view, and a fixed
+     modal with selects. Pinned to Thursday 24 September 2026 so it renders the same
+     every time. Sources in app-src/calendar/, built by app-src/build.sh into
+     /vendor/app-calendar.{js,css}. Steps in app-calendar.steps.json. -->
+<link rel="stylesheet" href="/vendor/app-calendar.css">
+</head>
+<body>
+<div id="root"></div>
+<script src="/vendor/react-18.3.1.production.min.js"></script>
+<script src="/vendor/react-dom-18.3.1.production.min.js"></script>
+<script src="/vendor/app-calendar.js"></script>
+</body>
+</html>

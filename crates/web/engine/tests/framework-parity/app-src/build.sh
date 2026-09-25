@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 vendor=../../vendor
 apps=("$@")
 if [ ${#apps[@]} -eq 0 ]; then
-  apps=(analytics kanban settings chat datatable shop)
+  apps=(analytics kanban settings chat datatable shop inbox calendar music)
 fi
 for app in "${apps[@]}"; do
   npx --yes esbuild@0.24.0 "$app/main.tsx" \

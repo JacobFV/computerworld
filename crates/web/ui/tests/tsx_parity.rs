@@ -483,10 +483,41 @@ fn compiled_layout_matches_chromium() {
 
 // ---------------------------------------------------------------- agent-written apps
 
+/// Agent-written apps that were added after the subset was built out and that fall
+/// outside it, so their pages run on React: inbox narrows `Record<string, string> | {}`
+/// by assignment, music has a module-level statement and reads
+/// `getBoundingClientRect`, calendar computes with `Date`. Each must still be reported
+/// as outside the subset (`fallback_apps_are_reported_as_such`); take an app off this
+/// list when the subset grows to compile it.
+const FALLBACK_APPS: &[&str] = &["calendar", "inbox", "music"];
+
 /// The React apps in `framework-parity/app-src/<name>/` (TSX, several modules, as a
 /// coding agent writes them), whose pages `app-<name>.html` run the agent's own
 /// esbuild bundle of them. Each is compiled here from its `main.tsx`.
 fn agent_apps() -> Vec<String> {
+    all_agent_apps()
+        .into_iter()
+        .filter(|a| !FALLBACK_APPS.contains(&a.as_str()))
+        .collect()
+}
+
+#[test]
+fn fallback_apps_are_reported_as_such() {
+    let all = all_agent_apps();
+    for name in FALLBACK_APPS {
+        assert!(all.iter().any(|a| a == name), "no app-src/{name}");
+        let root = fixture_dir().join("app-src").join(name);
+        let mut read = |rel: &str| std::fs::read_to_string(root.join(rel)).ok();
+        let sources =
+            cw_tsx::load("main.tsx", &mut read).unwrap_or_else(|d| panic!("{name}: {d:?}"));
+        assert!(
+            !cw_tsx::build_modules(&sources).diagnostics.is_empty(),
+            "app-src/{name} now compiles: take it off FALLBACK_APPS"
+        );
+    }
+}
+
+fn all_agent_apps() -> Vec<String> {
     let dir = fixture_dir().join("app-src");
     let mut names: Vec<String> = std::fs::read_dir(&dir)
         .expect("app-src")

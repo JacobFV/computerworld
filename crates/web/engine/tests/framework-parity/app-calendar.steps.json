@@ -1,0 +1,22 @@
+{
+ "initial": [],
+ "hidden": [
+  {"action": "click", "selector": "#cal-toggle-team"},
+  {"action": "click", "selector": "#cal-toggle-focus"}
+ ],
+ "month": [
+  {"action": "click", "selector": "#view-month"}
+ ],
+ "created": [
+  {"action": "click", "selector": "#new-event"},
+  {"action": "click", "selector": "#event-title"},
+  {"action": "type", "text": "Launch retro"},
+  {"action": "focus", "selector": "#event-day"},
+  {"action": "press", "key": "ArrowDown"},
+  {"action": "focus", "selector": "#event-start"},
+  {"action": "press", "key": "ArrowDown"},
+  {"action": "press", "key": "ArrowDown"},
+  {"action": "click", "selector": "button[data-calendar-option=\"team\"]"},
+  {"action": "click", "selector": "#save-event"}
+ ]
+}
