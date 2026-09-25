@@ -1,27 +1,23 @@
-split test, with islands: 149 projects, 307 diagnostics
-modules       421 / 530    79.4%
-functions     661 / 770    85.8%
-components    510 / 594    85.9%
+split test, with islands: 149 projects, 246 diagnostics
+modules       452 / 530    85.3%
+functions     690 / 770    89.6%
+components    533 / 594    89.7%
 apps            0 / 39      0.0%
 with the modules outside the subset on the island (packages stubbed):
   apps         38 / 39     97.4%
-  compiled    231 / 292    79.1%
+  compiled    251 / 292    86.0%
 functions blocked, by cause:
      25  value imported from a module that does not resolve
-     13  `new` is outside the compiled subset
-     12  built-in method `toLocaleString` is outside the compiled subset
      10  this React API is outside the compiled subset
-      8  method `toLocaleDateString` on Date
-      6  this expression is outside the compiled subset
+      7  this expression is outside the compiled subset
       6  unknown name `process`
       5  class components are outside the compiled subset
       4  unknown name `window`
       3  a tagged template is outside the compiled subset
-      3  method `toLocaleString` on Date
-      3  method `toLocaleTimeString` on Date
       2  `ReactDOM` from React cannot be used as a value here
       2  `await` inside an expression is outside the compiled subset (await into a variable first)
       2  `window.history` is outside the compiled subset
+      2  unknown name `Proxy`
       2  value imported from a package
       1  `<FilterContext.Provider>` on a value of type unknown
       1  `Promise.withResolvers` is outside the compiled subset
@@ -33,8 +29,12 @@ functions blocked, by cause:
       1  generators are outside the compiled subset
       1  method `current` on RefObject<() => void>
       1  method `persist` on Event
+      1  unknown name `FileReader`
+      1  unknown name `IntersectionObserver`
+      1  unknown name `RegExp`
       1  unknown name `Symbol`
       1  unknown name `TodoApp`
+      1  unknown name `URL`
       1  unknown name `afterAll`
       1  unknown name `afterEach`
       1  unknown name `beforeAll`
@@ -42,14 +42,12 @@ functions blocked, by cause:
       1  unknown name `navigator`
 diagnostics, by cause:
      94  value imported from a module that does not resolve
-     40  `new` is outside the compiled subset
      35  relative import that does not resolve
-     22  built-in method `toLocaleString` is outside the compiled subset
      17  import of a stylesheet
      10  this React API is outside the compiled subset
-      9  this expression is outside the compiled subset
-      8  method `toLocaleDateString` on Date
+     10  this expression is outside the compiled subset
       8  unknown name `process`
+      6  unknown name `URL`
       5  `ReactDOM` from React cannot be used as a value here
       5  a tagged template is outside the compiled subset
       5  class components are outside the compiled subset
@@ -57,8 +55,7 @@ diagnostics, by cause:
       5  unknown name `window`
       4  unknown name `module`
       3  `window.localStorage` is outside the compiled subset
-      3  method `toLocaleString` on Date
-      3  method `toLocaleTimeString` on Date
+      3  unknown name `Proxy`
       2  `await` inside an expression is outside the compiled subset (await into a variable first)
       2  `instanceof` of anything but a built-in class is outside the compiled subset
       2  `window.history` is outside the compiled subset
@@ -73,10 +70,14 @@ diagnostics, by cause:
       1  `window.matchMedia` is outside the compiled subset
       1  generators are outside the compiled subset
       1  method `current` on RefObject<() => void>
+      1  unknown name `FileReader`
+      1  unknown name `IntersectionObserver`
+      1  unknown name `RegExp`
       1  unknown name `Symbol`
       1  unknown name `TodoApp`
+      1  unknown name `TodoModel`
+      1  unknown name `URLSearchParams`
       1  unknown name `afterAll`
       1  unknown name `afterEach`
       1  unknown name `beforeAll`
       1  unknown name `crypto`
-      1  unknown name `navigator`

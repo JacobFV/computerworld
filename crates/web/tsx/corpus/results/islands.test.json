@@ -4,15 +4,15 @@
   "projects": 149,
   "modules": {
     "total": 530,
-    "inside": 421
+    "inside": 452
   },
   "functions": {
     "total": 770,
-    "inside": 661
+    "inside": 690
   },
   "components": {
     "total": 594,
-    "inside": 510
+    "inside": 533
   },
   "apps": {
     "total": 39,
@@ -24,9 +24,9 @@
   },
   "apps_island_modules": {
     "total": 292,
-    "inside": 231
+    "inside": 251
   },
-  "diagnostics": 307,
+  "diagnostics": 246,
   "diagnostics_by_cause": {
     "`<FilterContext.Provider>` on a value of type unknown": 1,
     "`Promise.withResolvers` is outside the compiled subset": 1,
@@ -36,27 +36,29 @@
     "`dangerouslySetInnerHTML` is outside the compiled subset": 1,
     "`document.getElementsByClassName` is outside the compiled subset": 1,
     "`instanceof` of anything but a built-in class is outside the compiled subset": 2,
-    "`new` is outside the compiled subset": 40,
     "`window.confirm` is outside the compiled subset": 1,
     "`window.history` is outside the compiled subset": 2,
     "`window.localStorage` is outside the compiled subset": 3,
     "`window.matchMedia` is outside the compiled subset": 1,
     "a tagged template is outside the compiled subset": 5,
-    "built-in method `toLocaleString` is outside the compiled subset": 22,
     "class components are outside the compiled subset": 5,
     "generators are outside the compiled subset": 1,
     "import of a stylesheet": 17,
     "imported name the subset cannot use": 5,
     "method `current` on RefObject<() => void>": 1,
     "method `persist` on Event": 2,
-    "method `toLocaleDateString` on Date": 8,
-    "method `toLocaleString` on Date": 3,
-    "method `toLocaleTimeString` on Date": 3,
     "relative import that does not resolve": 35,
     "this React API is outside the compiled subset": 10,
-    "this expression is outside the compiled subset": 9,
+    "this expression is outside the compiled subset": 10,
+    "unknown name `FileReader`": 1,
+    "unknown name `IntersectionObserver`": 1,
+    "unknown name `Proxy`": 3,
+    "unknown name `RegExp`": 1,
     "unknown name `Symbol`": 1,
     "unknown name `TodoApp`": 1,
+    "unknown name `TodoModel`": 1,
+    "unknown name `URLSearchParams`": 1,
+    "unknown name `URL`": 6,
     "unknown name `afterAll`": 1,
     "unknown name `afterEach`": 1,
     "unknown name `beforeAll`": 1,
@@ -76,23 +78,23 @@
     "`dangerouslySetInnerHTML` is outside the compiled subset": 1,
     "`document.getElementsByClassName` is outside the compiled subset": 1,
     "`instanceof` of anything but a built-in class is outside the compiled subset": 1,
-    "`new` is outside the compiled subset": 13,
     "`window.confirm` is outside the compiled subset": 1,
     "`window.history` is outside the compiled subset": 2,
     "`window.matchMedia` is outside the compiled subset": 1,
     "a tagged template is outside the compiled subset": 3,
-    "built-in method `toLocaleString` is outside the compiled subset": 12,
     "class components are outside the compiled subset": 5,
     "generators are outside the compiled subset": 1,
     "method `current` on RefObject<() => void>": 1,
     "method `persist` on Event": 1,
-    "method `toLocaleDateString` on Date": 8,
-    "method `toLocaleString` on Date": 3,
-    "method `toLocaleTimeString` on Date": 3,
     "this React API is outside the compiled subset": 10,
-    "this expression is outside the compiled subset": 6,
+    "this expression is outside the compiled subset": 7,
+    "unknown name `FileReader`": 1,
+    "unknown name `IntersectionObserver`": 1,
+    "unknown name `Proxy`": 2,
+    "unknown name `RegExp`": 1,
     "unknown name `Symbol`": 1,
     "unknown name `TodoApp`": 1,
+    "unknown name `URL`": 1,
     "unknown name `afterAll`": 1,
     "unknown name `afterEach`": 1,
     "unknown name `beforeAll`": 1,
@@ -284,7 +286,7 @@
         "examples/typescript-react/js/app.tsx: examples/typescript-react/js/app.tsx: line 13:1: `TodoFooter` from `./footer` is neither a value nor a type the compiled subset knows",
         "examples/typescript-react/js/app.tsx: examples/typescript-react/js/app.tsx: line 14:1: `TodoItem` from `./todoItem` is neither a value nor a type the compiled subset knows",
         "examples/typescript-react/js/app.tsx: examples/typescript-react/js/app.tsx: line 17:1: class components are outside the compiled subset",
-        "examples/typescript-react/js/app.tsx: examples/typescript-react/js/app.tsx: line 177:13: `new` is outside the compiled subset"
+        "examples/typescript-react/js/app.tsx: examples/typescript-react/js/app.tsx: line 177:17: unknown name `TodoModel`"
       ],
       "outside": [
         "examples/typescript-react/js/app.tsx: TodoApp: class components are outside the compiled subset",
@@ -323,34 +325,25 @@
       "id": "tanstack-table/examples/react/basic-dynamic-columns/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 13,
-        "inside": 11
+        "inside": 13
       },
       "components": {
         "total": 3,
-        "inside": 2
+        "inside": 3
       },
       "app": false,
       "app_island": true,
       "apps_island_modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
-      "island_modules": [
-        "examples/react/basic-dynamic-columns/src/main.tsx"
-      ],
       "entry": "examples/react/basic-dynamic-columns/src/main.tsx",
-      "sample": [
-        "examples/react/basic-dynamic-columns/src/main.tsx: examples/react/basic-dynamic-columns/src/main.tsx: line 160:35: method `toLocaleDateString` on type Date is outside the compiled subset",
-        "examples/react/basic-dynamic-columns/src/main.tsx: examples/react/basic-dynamic-columns/src/main.tsx: line 274:13: built-in method `toLocaleString` is outside the compiled subset"
-      ],
-      "outside": [
-        "examples/react/basic-dynamic-columns/src/main.tsx: renderValue: method `toLocaleDateString` on Date",
-        "examples/react/basic-dynamic-columns/src/main.tsx: App: built-in method `toLocaleString` is outside the compiled subset"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "tanstack-table/examples/react/cell-spanning/src",
@@ -452,15 +445,15 @@
       "id": "tanstack-table/examples/react/kitchen-sink-material-ui/src",
       "modules": {
         "total": 15,
-        "inside": 11
+        "inside": 13
       },
       "functions": {
         "total": 54,
-        "inside": 50
+        "inside": 52
       },
       "components": {
         "total": 28,
-        "inside": 25
+        "inside": 26
       },
       "app": false,
       "app_island": true,
@@ -471,173 +464,132 @@
       "entry": "examples/react/kitchen-sink-material-ui/src/main.tsx",
       "sample": [
         "examples/react/kitchen-sink-material-ui/src/components/data-table/cell-components.tsx: line 218:18: unknown name `navigator`",
-        "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-filter-list.tsx: line 197:19: unknown name `crypto`",
-        "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-pagination.tsx: line 16:10: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-pagination.tsx: line 17:10: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/kitchen-sink-material-ui/src/components/data-table/shared.tsx: line 13:10: `new` is outside the compiled subset"
+        "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-filter-list.tsx: line 197:19: unknown name `crypto`"
       ],
       "outside": [
         "examples/react/kitchen-sink-material-ui/src/components/data-table/cell-components.tsx: ActionsCell: unknown name `navigator`",
-        "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-filter-list.tsx: DataTableFilterList: unknown name `crypto`",
-        "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-pagination.tsx: DataTablePagination: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/kitchen-sink-material-ui/src/components/data-table/shared.tsx: formatDate: `new` is outside the compiled subset"
+        "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-filter-list.tsx: DataTableFilterList: unknown name `crypto`"
       ]
     },
     {
       "id": "tanstack-table/examples/react/lib-chakra-ui/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 5,
-        "inside": 4
+        "inside": 5
       },
       "components": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "app": false,
       "app_island": true,
       "apps_island_modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
-      "island_modules": [
-        "examples/react/lib-chakra-ui/src/main.tsx"
-      ],
       "entry": "examples/react/lib-chakra-ui/src/main.tsx",
-      "sample": [
-        "examples/react/lib-chakra-ui/src/main.tsx: examples/react/lib-chakra-ui/src/main.tsx: line 225:16: built-in method `toLocaleString` is outside the compiled subset"
-      ],
-      "outside": [
-        "examples/react/lib-chakra-ui/src/main.tsx: App: built-in method `toLocaleString` is outside the compiled subset"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "tanstack-table/examples/react/lib-mantine/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 5,
-        "inside": 4
+        "inside": 5
       },
       "components": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "app": false,
       "app_island": true,
       "apps_island_modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
-      "island_modules": [
-        "examples/react/lib-mantine/src/main.tsx"
-      ],
       "entry": "examples/react/lib-mantine/src/main.tsx",
-      "sample": [
-        "examples/react/lib-mantine/src/main.tsx: examples/react/lib-mantine/src/main.tsx: line 212:16: built-in method `toLocaleString` is outside the compiled subset"
-      ],
-      "outside": [
-        "examples/react/lib-mantine/src/main.tsx: App: built-in method `toLocaleString` is outside the compiled subset"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "tanstack-table/examples/react/lib-shadcn-radix/src",
       "modules": {
         "total": 7,
-        "inside": 6
+        "inside": 7
       },
       "functions": {
         "total": 26,
-        "inside": 25
+        "inside": 26
       },
       "components": {
         "total": 22,
-        "inside": 21
+        "inside": 22
       },
       "app": false,
       "app_island": true,
       "apps_island_modules": {
         "total": 7,
-        "inside": 6
+        "inside": 7
       },
-      "island_modules": [
-        "examples/react/lib-shadcn-radix/src/main.tsx"
-      ],
       "entry": "examples/react/lib-shadcn-radix/src/main.tsx",
-      "sample": [
-        "examples/react/lib-shadcn-radix/src/main.tsx: examples/react/lib-shadcn-radix/src/main.tsx: line 205:12: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/lib-shadcn-radix/src/main.tsx: examples/react/lib-shadcn-radix/src/main.tsx: line 206:12: built-in method `toLocaleString` is outside the compiled subset"
-      ],
-      "outside": [
-        "examples/react/lib-shadcn-radix/src/main.tsx: App: built-in method `toLocaleString` is outside the compiled subset"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "tanstack-table/examples/react/sorting/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 5,
-        "inside": 4
+        "inside": 5
       },
       "components": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "app": false,
       "app_island": true,
       "apps_island_modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
-      "island_modules": [
-        "examples/react/sorting/src/main.tsx"
-      ],
       "entry": "examples/react/sorting/src/main.tsx",
-      "sample": [
-        "examples/react/sorting/src/main.tsx: examples/react/sorting/src/main.tsx: line 183:13: built-in method `toLocaleString` is outside the compiled subset"
-      ],
-      "outside": [
-        "examples/react/sorting/src/main.tsx: App: built-in method `toLocaleString` is outside the compiled subset"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "tanstack-table/examples/react/sub-components/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 6,
-        "inside": 5
+        "inside": 6
       },
       "components": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "app": false,
       "app_island": true,
       "apps_island_modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
-      "island_modules": [
-        "examples/react/sub-components/src/main.tsx"
-      ],
       "entry": "examples/react/sub-components/src/main.tsx",
-      "sample": [
-        "examples/react/sub-components/src/main.tsx: examples/react/sub-components/src/main.tsx: line 156:13: built-in method `toLocaleString` is outside the compiled subset"
-      ],
-      "outside": [
-        "examples/react/sub-components/src/main.tsx: Table: built-in method `toLocaleString` is outside the compiled subset"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "tanstack-table/examples/react/virtualized-columns/src",
@@ -665,12 +617,10 @@
       "entry": "examples/react/virtualized-columns/src/main.tsx",
       "sample": [
         "examples/react/virtualized-columns/src/main.tsx: examples/react/virtualized-columns/src/main.tsx: line 95:8: unknown name `process`",
-        "examples/react/virtualized-columns/src/main.tsx: examples/react/virtualized-columns/src/main.tsx: line 102:14: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/virtualized-columns/src/main.tsx: examples/react/virtualized-columns/src/main.tsx: line 103:14: built-in method `toLocaleString` is outside the compiled subset",
         "examples/react/virtualized-columns/src/main.tsx: examples/react/virtualized-columns/src/main.tsx: line 329:14: unknown name `window`"
       ],
       "outside": [
-        "examples/react/virtualized-columns/src/main.tsx: App: built-in method `toLocaleString` is outside the compiled subset; unknown name `process`",
+        "examples/react/virtualized-columns/src/main.tsx: App: unknown name `process`",
         "examples/react/virtualized-columns/src/main.tsx: TableBody: unknown name `window`"
       ]
     },
@@ -699,21 +649,18 @@
       ],
       "entry": "examples/react/virtualized-infinite-scrolling/src/main.tsx",
       "sample": [
-        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 81:27: built-in method `toLocaleString` is outside the compiled subset",
         "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 173:14: unknown name `window`",
-        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 186:8: unknown name `process`",
-        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 193:9: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 193:47: built-in method `toLocaleString` is outside the compiled subset"
+        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 186:8: unknown name `process`"
       ],
       "outside": [
-        "examples/react/virtualized-infinite-scrolling/src/main.tsx: App: built-in method `toLocaleString` is outside the compiled subset; unknown name `process`; unknown name `window`"
+        "examples/react/virtualized-infinite-scrolling/src/main.tsx: App: unknown name `process`; unknown name `window`"
       ]
     },
     {
       "id": "tanstack-query/examples/react/algolia/src",
       "modules": {
         "total": 6,
-        "inside": 5
+        "inside": 6
       },
       "functions": {
         "total": 5,
@@ -727,15 +674,10 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 6,
-        "inside": 5
+        "inside": 6
       },
-      "island_modules": [
-        "examples/react/algolia/src/App.tsx"
-      ],
       "entry": "examples/react/algolia/src/index.tsx",
-      "sample": [
-        "examples/react/algolia/src/App.tsx: examples/react/algolia/src/App.tsx: line 6:21: `new` is outside the compiled subset"
-      ],
+      "sample": [],
       "outside": []
     },
     {
@@ -763,7 +705,6 @@
       ],
       "entry": "examples/react/basic-graphql-request/src/index.tsx",
       "sample": [
-        "examples/react/basic-graphql-request/src/index.tsx: line 14:21: `new` is outside the compiled subset",
         "examples/react/basic-graphql-request/src/index.tsx: line 55:9: a tagged template is outside the compiled subset",
         "examples/react/basic-graphql-request/src/index.tsx: line 125:9: a tagged template is outside the compiled subset"
       ],
@@ -797,7 +738,6 @@
       ],
       "entry": "examples/react/basic/src/index.tsx",
       "sample": [
-        "examples/react/basic/src/index.tsx: line 8:21: `new` is outside the compiled subset",
         "examples/react/basic/src/index.tsx: line 17:12: `window.localStorage` is outside the compiled subset"
       ],
       "outside": []
@@ -806,7 +746,7 @@
       "id": "tanstack-query/examples/react/batching/src",
       "modules": {
         "total": 2,
-        "inside": 0
+        "inside": 1
       },
       "functions": {
         "total": 6,
@@ -820,17 +760,14 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 2,
-        "inside": 0
+        "inside": 1
       },
       "island_modules": [
-        "examples/react/batching/src/character-loader.ts",
-        "examples/react/batching/src/index.tsx"
+        "examples/react/batching/src/character-loader.ts"
       ],
       "entry": "examples/react/batching/src/index.tsx",
       "sample": [
-        "examples/react/batching/src/character-loader.ts: line 37:26: `new` is outside the compiled subset",
-        "examples/react/batching/src/character-loader.ts: line 55:20: `Promise.withResolvers` is outside the compiled subset",
-        "examples/react/batching/src/index.tsx: examples/react/batching/src/index.tsx: line 12:21: `new` is outside the compiled subset"
+        "examples/react/batching/src/character-loader.ts: line 55:20: `Promise.withResolvers` is outside the compiled subset"
       ],
       "outside": [
         "examples/react/batching/src/character-loader.ts: loadCharacter: `Promise.withResolvers` is outside the compiled subset"
@@ -840,7 +777,7 @@
       "id": "tanstack-query/examples/react/chat/src",
       "modules": {
         "total": 3,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 6,
@@ -854,18 +791,16 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 3,
-        "inside": 1
+        "inside": 2
       },
       "island_modules": [
-        "examples/react/chat/src/chat.ts",
-        "examples/react/chat/src/index.tsx"
+        "examples/react/chat/src/chat.ts"
       ],
       "entry": "examples/react/chat/src/index.tsx",
       "sample": [
         "examples/react/chat/src/chat.ts: line 13:13: unknown name `Symbol`",
         "examples/react/chat/src/chat.ts: line 13:34: generators are outside the compiled subset",
-        "examples/react/chat/src/chat.ts: line 20:9: this expression is outside the compiled subset",
-        "examples/react/chat/src/index.tsx: examples/react/chat/src/index.tsx: line 14:21: `new` is outside the compiled subset"
+        "examples/react/chat/src/chat.ts: line 20:9: this expression is outside the compiled subset"
       ],
       "outside": [
         "examples/react/chat/src/chat.ts: chatAnswer: generators are outside the compiled subset; this expression is outside the compiled subset; unknown name `Symbol`"
@@ -875,7 +810,7 @@
       "id": "tanstack-query/examples/react/default-query-function/src",
       "modules": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "functions": {
         "total": 4,
@@ -889,15 +824,10 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
-      "island_modules": [
-        "examples/react/default-query-function/src/index.tsx"
-      ],
       "entry": "examples/react/default-query-function/src/index.tsx",
-      "sample": [
-        "examples/react/default-query-function/src/index.tsx: line 27:21: `new` is outside the compiled subset"
-      ],
+      "sample": [],
       "outside": []
     },
     {
@@ -925,7 +855,6 @@
       ],
       "entry": "examples/react/eslint-legacy/src/index.tsx",
       "sample": [
-        "examples/react/eslint-legacy/src/index.tsx: line 8:21: `new` is outside the compiled subset",
         "examples/react/eslint-legacy/src/index.tsx: line 17:12: `window.localStorage` is outside the compiled subset"
       ],
       "outside": []
@@ -934,7 +863,7 @@
       "id": "tanstack-query/examples/react/load-more-infinite-scroll/src",
       "modules": {
         "total": 3,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 4,
@@ -950,8 +879,7 @@
         "inside": 0
       },
       "sample": [
-        "examples/react/load-more-infinite-scroll/src/pages/about.tsx: line 6:9: `window.history` is outside the compiled subset",
-        "examples/react/load-more-infinite-scroll/src/pages/index.tsx: line 11:21: `new` is outside the compiled subset"
+        "examples/react/load-more-infinite-scroll/src/pages/about.tsx: line 6:9: `window.history` is outside the compiled subset"
       ],
       "outside": [
         "examples/react/load-more-infinite-scroll/src/pages/about.tsx: Default: `window.history` is outside the compiled subset"
@@ -961,11 +889,11 @@
       "id": "tanstack-query/examples/react/nextjs-suspense-streaming/src",
       "modules": {
         "total": 4,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 9,
-        "inside": 5
+        "inside": 6
       },
       "components": {
         "total": 5,
@@ -977,90 +905,73 @@
         "inside": 0
       },
       "sample": [
-        "examples/react/nextjs-suspense-streaming/src/app/api/wait/route.ts: line 4:28: `new` is outside the compiled subset",
+        "examples/react/nextjs-suspense-streaming/src/app/api/wait/route.ts: line 4:32: unknown name `URL`",
         "examples/react/nextjs-suspense-streaming/src/app/page.tsx: line 11:7: unknown name `process`",
         "examples/react/nextjs-suspense-streaming/src/app/page.tsx: line 12:23: unknown name `process`",
-        "examples/react/nextjs-suspense-streaming/src/app/page.tsx: line 25:9: `await` inside an expression is outside the compiled subset (await into a variable first)",
-        "examples/react/nextjs-suspense-streaming/src/app/providers.tsx: line 13:10: `new` is outside the compiled subset"
+        "examples/react/nextjs-suspense-streaming/src/app/page.tsx: line 25:9: `await` inside an expression is outside the compiled subset (await into a variable first)"
       ],
       "outside": [
-        "examples/react/nextjs-suspense-streaming/src/app/api/wait/route.ts: GET: `new` is outside the compiled subset",
+        "examples/react/nextjs-suspense-streaming/src/app/api/wait/route.ts: GET: unknown name `URL`",
         "examples/react/nextjs-suspense-streaming/src/app/page.tsx: getBaseURL: unknown name `process`",
-        "examples/react/nextjs-suspense-streaming/src/app/page.tsx: useWaitQuery: `await` inside an expression is outside the compiled subset (await into a variable first)",
-        "examples/react/nextjs-suspense-streaming/src/app/providers.tsx: makeQueryClient: `new` is outside the compiled subset"
+        "examples/react/nextjs-suspense-streaming/src/app/page.tsx: useWaitQuery: `await` inside an expression is outside the compiled subset (await into a variable first)"
       ]
     },
     {
       "id": "tanstack-query/examples/react/nextjs/src",
       "modules": {
         "total": 9,
-        "inside": 7
+        "inside": 9
       },
       "functions": {
         "total": 10,
-        "inside": 8
+        "inside": 10
       },
       "components": {
         "total": 7,
-        "inside": 6
+        "inside": 7
       },
       "app": null,
       "apps_island_modules": {
         "total": 0,
         "inside": 0
       },
-      "sample": [
-        "examples/react/nextjs/src/pages/_app.tsx: line 11:46: `new` is outside the compiled subset",
-        "examples/react/nextjs/src/pages/index.tsx: examples/react/nextjs/src/pages/index.tsx: line 17:23: `new` is outside the compiled subset"
-      ],
-      "outside": [
-        "examples/react/nextjs/src/pages/_app.tsx: MyApp: `new` is outside the compiled subset",
-        "examples/react/nextjs/src/pages/index.tsx: getStaticProps: `new` is outside the compiled subset"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "tanstack-query/examples/react/offline/src",
       "modules": {
         "total": 4,
-        "inside": 2
+        "inside": 3
       },
       "functions": {
         "total": 10,
-        "inside": 7
+        "inside": 10
       },
       "components": {
         "total": 5,
-        "inside": 3
+        "inside": 5
       },
       "app": false,
       "app_island": true,
       "apps_island_modules": {
         "total": 4,
-        "inside": 2
+        "inside": 3
       },
       "island_modules": [
-        "examples/react/offline/src/api.ts",
         "examples/react/offline/src/App.tsx"
       ],
       "entry": "examples/react/offline/src/index.tsx",
       "sample": [
-        "examples/react/offline/src/App.tsx: examples/react/offline/src/App.tsx: line 25:12: `window.localStorage` is outside the compiled subset",
-        "examples/react/offline/src/App.tsx: examples/react/offline/src/App.tsx: line 28:18: `new` is outside the compiled subset",
-        "examples/react/offline/src/App.tsx: examples/react/offline/src/App.tsx: line 30:21: `new` is outside the compiled subset",
-        "examples/react/offline/src/App.tsx: examples/react/offline/src/App.tsx: line 138:24: method `toLocaleTimeString` on type Date is outside the compiled subset",
-        "examples/react/offline/src/App.tsx: examples/react/offline/src/App.tsx: line 206:24: method `toLocaleTimeString` on type Date is outside the compiled subset"
+        "examples/react/offline/src/App.tsx: examples/react/offline/src/App.tsx: line 25:12: `window.localStorage` is outside the compiled subset"
       ],
-      "outside": [
-        "examples/react/offline/src/App.tsx: List: method `toLocaleTimeString` on Date",
-        "examples/react/offline/src/App.tsx: Detail: method `toLocaleTimeString` on Date",
-        "examples/react/offline/src/api.ts: worker: `new` is outside the compiled subset"
-      ]
+      "outside": []
     },
     {
       "id": "tanstack-query/examples/react/pagination/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 4,
@@ -1075,9 +986,7 @@
         "total": 0,
         "inside": 0
       },
-      "sample": [
-        "examples/react/pagination/src/pages/index.tsx: line 12:21: `new` is outside the compiled subset"
-      ],
+      "sample": [],
       "outside": []
     },
     {
@@ -1105,7 +1014,6 @@
       ],
       "entry": "examples/react/playground/src/index.tsx",
       "sample": [
-        "examples/react/playground/src/index.tsx: line 30:21: `new` is outside the compiled subset",
         "examples/react/playground/src/index.tsx: line 298:17: method `persist` on type Event is outside the compiled subset",
         "examples/react/playground/src/index.tsx: line 309:17: method `persist` on type Event is outside the compiled subset"
       ],
@@ -1117,7 +1025,7 @@
       "id": "tanstack-query/examples/react/simple/src",
       "modules": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "functions": {
         "total": 2,
@@ -1131,22 +1039,17 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
-      "island_modules": [
-        "examples/react/simple/src/index.tsx"
-      ],
       "entry": "examples/react/simple/src/index.tsx",
-      "sample": [
-        "examples/react/simple/src/index.tsx: line 10:21: `new` is outside the compiled subset"
-      ],
+      "sample": [],
       "outside": []
     },
     {
       "id": "tanstack-query/examples/react/star-wars/src",
       "modules": {
         "total": 9,
-        "inside": 8
+        "inside": 9
       },
       "functions": {
         "total": 15,
@@ -1160,15 +1063,10 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 9,
-        "inside": 8
+        "inside": 9
       },
-      "island_modules": [
-        "examples/react/star-wars/src/App.tsx"
-      ],
       "entry": "examples/react/star-wars/src/index.tsx",
-      "sample": [
-        "examples/react/star-wars/src/App.tsx: examples/react/star-wars/src/App.tsx: line 8:21: `new` is outside the compiled subset"
-      ],
+      "sample": [],
       "outside": []
     },
     {
@@ -1197,8 +1095,7 @@
       "entry": "examples/react/suspense/src/index.tsx",
       "sample": [
         "examples/react/suspense/src/index.tsx: examples/react/suspense/src/index.tsx: line 18:18: this React API is outside the compiled subset",
-        "examples/react/suspense/src/index.tsx: examples/react/suspense/src/index.tsx: line 19:17: this React API is outside the compiled subset",
-        "examples/react/suspense/src/index.tsx: examples/react/suspense/src/index.tsx: line 21:21: `new` is outside the compiled subset"
+        "examples/react/suspense/src/index.tsx: examples/react/suspense/src/index.tsx: line 19:17: this React API is outside the compiled subset"
       ],
       "outside": [
         "examples/react/suspense/src/index.tsx: Projects: this React API is outside the compiled subset",
@@ -1267,14 +1164,14 @@
       ],
       "entry": "examples/query/react/infinite-queries/src/main.tsx",
       "sample": [
-        "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts: line 12:41: `new` is outside the compiled subset",
-        "examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/infiniteScrollApi.ts: examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/infiniteScrollApi.ts: line 35:24: `new` is outside the compiled subset",
+        "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts: line 12:45: unknown name `IntersectionObserver`",
+        "examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/infiniteScrollApi.ts: examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/infiniteScrollApi.ts: line 35:28: unknown name `URLSearchParams`",
         "examples/query/react/infinite-queries/src/features/infinite-scroll/InfiniteScrollExample.tsx: examples/query/react/infinite-queries/src/features/infinite-scroll/InfiniteScrollExample.tsx: line 13:9: `window.history` is outside the compiled subset",
         "examples/query/react/infinite-queries/src/main.tsx: examples/query/react/infinite-queries/src/main.tsx: line 9:7: unknown name `process`",
         "examples/query/react/infinite-queries/src/main.tsx: examples/query/react/infinite-queries/src/main.tsx: line 13:28: this expression is outside the compiled subset"
       ],
       "outside": [
-        "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts: useIntersectionCallback: `new` is outside the compiled subset",
+        "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts: useIntersectionCallback: unknown name `IntersectionObserver`",
         "examples/query/react/infinite-queries/src/features/infinite-scroll/InfiniteScrollExample.tsx: InfiniteScrollAbout: `window.history` is outside the compiled subset",
         "examples/query/react/infinite-queries/src/main.tsx: enableMocking: this expression is outside the compiled subset; unknown name `process`"
       ]
@@ -1283,15 +1180,15 @@
       "id": "redux-toolkit/examples/query/react/kitchen-sink/src",
       "modules": {
         "total": 26,
-        "inside": 19
+        "inside": 20
       },
       "functions": {
         "total": 29,
-        "inside": 21
+        "inside": 22
       },
       "components": {
         "total": 21,
-        "inside": 15
+        "inside": 16
       },
       "app": false,
       "app_island": false,
@@ -1313,7 +1210,6 @@
         "examples/query/react/kitchen-sink/src/features/bundleSplitting/index.ts: PostsList: this React API is outside the compiled subset",
         "examples/query/react/kitchen-sink/src/features/bundleSplitting/index.ts: Post: this React API is outside the compiled subset",
         "examples/query/react/kitchen-sink/src/features/counter/Counter.tsx: Counter: value imported from a module that does not resolve",
-        "examples/query/react/kitchen-sink/src/features/time/TimeList.tsx: TimeDisplay: method `toLocaleTimeString` on Date",
         "examples/query/react/kitchen-sink/src/index.tsx: render: `ReactDOM` from React cannot be used as a value here; unknown name `process`",
         "examples/query/react/kitchen-sink/src/mocks/setupTests.tsx: setupTests: unknown name `afterAll`; unknown name `afterEach`; unknown name `beforeAll`"
       ]
@@ -1519,15 +1415,15 @@
       "id": "refine/examples/with-nextjs-headless/src",
       "modules": {
         "total": 23,
-        "inside": 20
+        "inside": 21
       },
       "functions": {
         "total": 24,
-        "inside": 21
+        "inside": 22
       },
       "components": {
         "total": 17,
-        "inside": 14
+        "inside": 15
       },
       "app": null,
       "apps_island_modules": {
@@ -1535,14 +1431,11 @@
         "inside": 0
       },
       "sample": [
-        "examples/with-nextjs-headless/src/app/blog-posts/page.tsx: line 82:21: method `toLocaleDateString` on type Date is outside the compiled subset",
         "examples/with-nextjs-headless/src/app/blog-posts/page.tsx: line 112:41: `window.confirm` is outside the compiled subset",
-        "examples/with-nextjs-headless/src/app/blog-posts/show/[id]/page.tsx: line 58:33: method `toLocaleDateString` on type Date is outside the compiled subset",
         "examples/with-nextjs-headless/src/i18n/request.ts: line 11:16: `await` inside an expression is outside the compiled subset (await into a variable first)"
       ],
       "outside": [
-        "examples/with-nextjs-headless/src/app/blog-posts/page.tsx: BlogPostList: `window.confirm` is outside the compiled subset; method `toLocaleDateString` on Date",
-        "examples/with-nextjs-headless/src/app/blog-posts/show/[id]/page.tsx: BlogPostShow: method `toLocaleDateString` on Date",
+        "examples/with-nextjs-headless/src/app/blog-posts/page.tsx: BlogPostList: `window.confirm` is outside the compiled subset",
         "examples/with-nextjs-headless/src/i18n/request.ts: Default: `await` inside an expression is outside the compiled subset (await into a variable first)"
       ]
     },
@@ -1550,34 +1443,29 @@
       "id": "react-admin/examples/demo/src",
       "modules": {
         "total": 97,
-        "inside": 80
+        "inside": 86
       },
       "functions": {
         "total": 135,
-        "inside": 113
+        "inside": 122
       },
       "components": {
         "total": 120,
-        "inside": 102
+        "inside": 110
       },
       "app": false,
       "app_island": true,
       "apps_island_modules": {
         "total": 91,
-        "inside": 77
+        "inside": 82
       },
       "island_modules": [
         "examples/demo/src/products/ProductList.tsx",
         "examples/demo/src/products/ProductEdit.tsx",
         "examples/demo/src/products/ProductCreate.tsx",
         "examples/demo/src/dashboard/CardWithIcon.tsx",
-        "examples/demo/src/dashboard/PendingOrder.tsx",
         "examples/demo/src/dashboard/Dashboard.tsx",
         "examples/demo/src/dataProvider/index.ts",
-        "examples/demo/src/orders/Basket.tsx",
-        "examples/demo/src/invoices/InvoiceShow.tsx",
-        "examples/demo/src/orders/Totals.tsx",
-        "examples/demo/src/visitors/Aside.tsx",
         "examples/demo/src/App.tsx",
         "examples/demo/src/fakeServer/index.ts",
         "examples/demo/src/index.tsx"
@@ -1588,57 +1476,46 @@
         "examples/demo/src/App.tsx: examples/demo/src/App.tsx: line 53:17: unknown name `process`",
         "examples/demo/src/dashboard/CardWithIcon.tsx: line 60:22: this React API is outside the compiled subset",
         "examples/demo/src/dashboard/Dashboard.tsx: examples/demo/src/dashboard/Dashboard.tsx: line 46:20: this React API is outside the compiled subset",
-        "examples/demo/src/dashboard/Dashboard.tsx: examples/demo/src/dashboard/Dashboard.tsx: line 86:22: built-in method `toLocaleString` is outside the compiled subset"
+        "examples/demo/src/dataProvider/graphql.ts: line 41:24: a tagged template is outside the compiled subset"
       ],
       "outside": [
         "examples/demo/src/App.tsx: i18nProvider: this expression is outside the compiled subset",
         "examples/demo/src/App.tsx: App: unknown name `process`",
         "examples/demo/src/dashboard/CardWithIcon.tsx: CardWithIcon: this React API is outside the compiled subset",
         "examples/demo/src/dashboard/Dashboard.tsx: OrderChart: this React API is outside the compiled subset",
-        "examples/demo/src/dashboard/Dashboard.tsx: Dashboard: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/demo/src/dashboard/OrderChart.tsx: dateFormatter: method `toLocaleDateString` on Date",
-        "examples/demo/src/dashboard/OrderChart.tsx: OrderChart: `new` is outside the compiled subset",
-        "examples/demo/src/dashboard/PendingOrder.tsx: PendingOrder: method `toLocaleString` on Date",
         "examples/demo/src/dataProvider/graphql.ts: customBuildQuery: a tagged template is outside the compiled subset",
-        "examples/demo/src/dataProvider/graphql.ts: Default: `new` is outside the compiled subset",
-        "examples/demo/src/dataProvider/index.ts: Default: `new` is outside the compiled subset",
+        "examples/demo/src/dataProvider/graphql.ts: Default: unknown name `Proxy`",
+        "examples/demo/src/dataProvider/index.ts: Default: this expression is outside the compiled subset; unknown name `Proxy`",
         "examples/demo/src/dataProvider/index.ts: getDataProvider: this expression is outside the compiled subset",
         "examples/demo/src/fakeServer/index.ts: Default: this expression is outside the compiled subset",
-        "examples/demo/src/fakeServer/rest.ts: Default: `new` is outside the compiled subset; unknown name `window`",
-        "examples/demo/src/invoices/InvoiceShow.tsx: InvoiceShow: method `toLocaleDateString` on Date",
-        "examples/demo/src/orders/Basket.tsx: Basket: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/demo/src/orders/Totals.tsx: Totals: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/demo/src/fakeServer/rest.ts: Default: unknown name `window`",
         "examples/demo/src/products/ProductCreate.tsx: RichTextInput: this React API is outside the compiled subset",
         "examples/demo/src/products/ProductEdit.tsx: RichTextInput: this React API is outside the compiled subset",
-        "examples/demo/src/products/ProductList.tsx: ProductList: `<FilterContext.Provider>` on a value of type unknown",
-        "examples/demo/src/visitors/Aside.tsx: Order: method `toLocaleString` on Date",
-        "examples/demo/src/visitors/Aside.tsx: Review: method `toLocaleString` on Date"
+        "examples/demo/src/products/ProductList.tsx: ProductList: `<FilterContext.Provider>` on a value of type unknown"
       ]
     },
     {
       "id": "react-admin/examples/simple/src",
       "modules": {
         "total": 43,
-        "inside": 37
+        "inside": 39
       },
       "functions": {
         "total": 66,
-        "inside": 60
+        "inside": 62
       },
       "components": {
         "total": 57,
-        "inside": 54
+        "inside": 56
       },
       "app": false,
       "app_island": true,
       "apps_island_modules": {
         "total": 40,
-        "inside": 34
+        "inside": 36
       },
       "island_modules": [
-        "examples/simple/src/comments/CommentList.tsx",
         "examples/simple/src/addUploadFeature.tsx",
-        "examples/simple/src/queryClient.ts",
         "examples/simple/src/dataProvider.tsx",
         "examples/simple/src/i18nProvider.tsx",
         "examples/simple/src/posts/PostList.tsx"
@@ -1647,16 +1524,14 @@
       "sample": [
         "examples/simple/src/addUploadFeature.tsx: line 16:18: `instanceof` of anything but a built-in class is outside the compiled subset",
         "examples/simple/src/addUploadFeature.tsx: line 19:20: `instanceof` of anything but a built-in class is outside the compiled subset",
-        "examples/simple/src/addUploadFeature.tsx: line 51:24: `new` is outside the compiled subset",
-        "examples/simple/src/comments/CommentList.tsx: line 144:13: method `toLocaleDateString` on type Date is outside the compiled subset",
-        "examples/simple/src/dataProvider.tsx: examples/simple/src/dataProvider.tsx: line 53:38: `new` is outside the compiled subset"
+        "examples/simple/src/addUploadFeature.tsx: line 51:28: unknown name `FileReader`",
+        "examples/simple/src/dataProvider.tsx: examples/simple/src/dataProvider.tsx: line 53:42: unknown name `RegExp`",
+        "examples/simple/src/dataProvider.tsx: examples/simple/src/dataProvider.tsx: line 85:40: unknown name `Proxy`"
       ],
       "outside": [
         "examples/simple/src/addUploadFeature.tsx: addUploadCapabilities: `instanceof` of anything but a built-in class is outside the compiled subset",
-        "examples/simple/src/addUploadFeature.tsx: convertFileToBase64: `new` is outside the compiled subset",
-        "examples/simple/src/comments/CommentList.tsx: CommentMobileList: method `toLocaleDateString` on Date",
-        "examples/simple/src/dataProvider.tsx: addTagsSearchSupport: `new` is outside the compiled subset",
-        "examples/simple/src/posts/PostList.tsx: PostListMobile: method `toLocaleDateString` on Date",
+        "examples/simple/src/addUploadFeature.tsx: convertFileToBase64: unknown name `FileReader`",
+        "examples/simple/src/dataProvider.tsx: addTagsSearchSupport: unknown name `RegExp`",
         "examples/simple/src/posts/PostList.tsx: PostPanel: `dangerouslySetInnerHTML` is outside the compiled subset"
       ]
     },
@@ -2412,27 +2287,23 @@
       "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-tooltip-default.tsx",
       "modules": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "functions": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "components": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "app": null,
       "apps_island_modules": {
         "total": 0,
         "inside": 0
       },
-      "sample": [
-        "apps/v4/registry/new-york-v4/charts/chart-tooltip-default.tsx: apps/v4/registry/new-york-v4/charts/chart-tooltip-default.tsx: line 62:24: method `toLocaleDateString` on type Date is outside the compiled subset"
-      ],
-      "outside": [
-        "apps/v4/registry/new-york-v4/charts/chart-tooltip-default.tsx: ChartTooltipDefault: method `toLocaleDateString` on Date"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "chakra/apps/compositions/src/examples/blockquote-with-variants.tsx",

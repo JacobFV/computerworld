@@ -4,15 +4,15 @@
   "projects": 138,
   "modules": {
     "total": 532,
-    "inside": 426
+    "inside": 448
   },
   "functions": {
     "total": 985,
-    "inside": 868
+    "inside": 891
   },
   "components": {
     "total": 647,
-    "inside": 574
+    "inside": 591
   },
   "apps": {
     "total": 29,
@@ -24,9 +24,9 @@
   },
   "apps_island_modules": {
     "total": 187,
-    "inside": 148
+    "inside": 157
   },
-  "diagnostics": 407,
+  "diagnostics": 362,
   "diagnostics_by_cause": {
     "`<TooltipPrimitive.Provider>` on a value of type unknown": 1,
     "`Object.hasOwn` is outside the compiled subset": 1,
@@ -37,7 +37,6 @@
     "`console.time` is outside the compiled subset": 1,
     "`document.createElement` is outside the compiled subset": 1,
     "`instanceof` of anything but a built-in class is outside the compiled subset": 10,
-    "`new` is outside the compiled subset": 30,
     "`useApiClient` not at the top level": 2,
     "`window.location` is outside the compiled subset": 2,
     "`window.matchMedia` is outside the compiled subset": 2,
@@ -45,14 +44,11 @@
     "a tagged template is outside the compiled subset": 12,
     "a value that cannot be rendered": 1,
     "built-in method `substr` is outside the compiled subset": 1,
-    "built-in method `toLocaleDateString` is outside the compiled subset": 1,
-    "built-in method `toLocaleString` is outside the compiled subset": 27,
     "import of a stylesheet": 9,
     "method `addEventListener` on HTMLElement": 1,
     "method `attachShadow` on HTMLElement": 1,
     "method `get` on Promise<Map<string, unknown>>": 2,
     "method `removeEventListener` on HTMLElement": 1,
-    "method `toLocaleDateString` on Date": 1,
     "property does not exist on a union": 4,
     "property does not exist on another type": 10,
     "relative import that does not resolve": 85,
@@ -60,7 +56,15 @@
     "this React API is outside the compiled subset": 4,
     "this expression is outside the compiled subset": 4,
     "this statement is outside the compiled subset": 1,
-    "unknown name `URL`": 1,
+    "unknown name `AbortController`": 1,
+    "unknown name `FileReader`": 1,
+    "unknown name `File`": 1,
+    "unknown name `MouseEvent`": 1,
+    "unknown name `RegExp`": 3,
+    "unknown name `Response`": 1,
+    "unknown name `TextEncoder`": 1,
+    "unknown name `URL`": 5,
+    "unknown name `Uint8Array`": 1,
     "unknown name `afterAll`": 1,
     "unknown name `afterEach`": 1,
     "unknown name `beforeAll`": 1,
@@ -86,26 +90,30 @@
     "`console.time` is outside the compiled subset": 1,
     "`document.createElement` is outside the compiled subset": 1,
     "`instanceof` of anything but a built-in class is outside the compiled subset": 5,
-    "`new` is outside the compiled subset": 18,
     "`useApiClient` not at the top level": 2,
     "`window.matchMedia` is outside the compiled subset": 2,
     "`window.open` is outside the compiled subset": 1,
     "a tagged template is outside the compiled subset": 1,
     "a value that cannot be rendered": 1,
     "built-in method `substr` is outside the compiled subset": 1,
-    "built-in method `toLocaleDateString` is outside the compiled subset": 1,
-    "built-in method `toLocaleString` is outside the compiled subset": 16,
     "method `addEventListener` on HTMLElement": 1,
     "method `get` on Promise<Map<string, unknown>>": 1,
     "method `removeEventListener` on HTMLElement": 1,
-    "method `toLocaleDateString` on Date": 1,
     "property does not exist on a union": 3,
     "property does not exist on another type": 7,
     "spread props on a Provider are outside the compiled subset": 1,
     "this React API is outside the compiled subset": 4,
     "this expression is outside the compiled subset": 2,
     "this statement is outside the compiled subset": 1,
-    "unknown name `URL`": 1,
+    "unknown name `AbortController`": 1,
+    "unknown name `FileReader`": 1,
+    "unknown name `File`": 1,
+    "unknown name `MouseEvent`": 1,
+    "unknown name `RegExp`": 1,
+    "unknown name `Response`": 1,
+    "unknown name `TextEncoder`": 1,
+    "unknown name `URL`": 5,
+    "unknown name `Uint8Array`": 1,
     "unknown name `cancelAnimationFrame`": 1,
     "unknown name `crypto`": 4,
     "unknown name `document`": 2,
@@ -396,57 +404,39 @@
       "id": "tanstack-table/examples/react/composable-tables/src",
       "modules": {
         "total": 7,
-        "inside": 4
+        "inside": 7
       },
       "functions": {
         "total": 24,
-        "inside": 19
+        "inside": 24
       },
       "components": {
         "total": 19,
-        "inside": 14
+        "inside": 19
       },
       "app": false,
       "app_island": true,
       "apps_island_modules": {
         "total": 7,
-        "inside": 3
+        "inside": 7
       },
-      "island_modules": [
-        "examples/react/composable-tables/src/components/table-components.tsx",
-        "examples/react/composable-tables/src/components/cell-components.tsx",
-        "examples/react/composable-tables/src/components/header-components.tsx",
-        "examples/react/composable-tables/src/hooks/table.ts"
-      ],
       "entry": "examples/react/composable-tables/src/main.tsx",
-      "sample": [
-        "examples/react/composable-tables/src/components/cell-components.tsx: examples/react/composable-tables/src/components/cell-components.tsx: line 51:17: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/composable-tables/src/components/cell-components.tsx: examples/react/composable-tables/src/components/cell-components.tsx: line 121:8: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/composable-tables/src/components/header-components.tsx: examples/react/composable-tables/src/components/header-components.tsx: line 80:45: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/composable-tables/src/components/table-components.tsx: examples/react/composable-tables/src/components/table-components.tsx: line 44:12: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/composable-tables/src/components/table-components.tsx: examples/react/composable-tables/src/components/table-components.tsx: line 45:12: built-in method `toLocaleString` is outside the compiled subset"
-      ],
-      "outside": [
-        "examples/react/composable-tables/src/components/cell-components.tsx: NumberCell: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/composable-tables/src/components/cell-components.tsx: PriceCell: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/composable-tables/src/components/header-components.tsx: FooterSum: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/composable-tables/src/components/table-components.tsx: PaginationControls: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/composable-tables/src/components/table-components.tsx: RowCount: built-in method `toLocaleString` is outside the compiled subset"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "tanstack-table/examples/react/kitchen-sink-chakra-ui/src",
       "modules": {
         "total": 15,
-        "inside": 11
+        "inside": 12
       },
       "functions": {
         "total": 64,
-        "inside": 58
+        "inside": 60
       },
       "components": {
         "total": 38,
-        "inside": 33
+        "inside": 34
       },
       "app": false,
       "app_island": true,
@@ -458,15 +448,12 @@
       "sample": [
         "examples/react/kitchen-sink-chakra-ui/src/components/data-table/cell-components.tsx: line 123:16: unknown name `navigator`",
         "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-filter-list.tsx: line 211:19: unknown name `crypto`",
-        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-pagination.tsx: line 21:10: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-pagination.tsx: line 22:10: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/shared.tsx: line 42:10: `new` is outside the compiled subset"
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/shared.tsx: line 193:44: property `selectedOptions` does not exist on type HTMLElement",
+        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/shared.tsx: line 342:5: unknown name `queueMicrotask`"
       ],
       "outside": [
         "examples/react/kitchen-sink-chakra-ui/src/components/data-table/cell-components.tsx: RowActions: unknown name `navigator`",
         "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-filter-list.tsx: DataTableFilterList: unknown name `crypto`",
-        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-pagination.tsx: DataTablePagination: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/kitchen-sink-chakra-ui/src/components/data-table/shared.tsx: formatDate: `new` is outside the compiled subset",
         "examples/react/kitchen-sink-chakra-ui/src/components/data-table/shared.tsx: MultiSelectField: property does not exist on another type",
         "examples/react/kitchen-sink-chakra-ui/src/components/data-table/shared.tsx: DropdownMenuItem: unknown name `queueMicrotask`"
       ]
@@ -475,15 +462,15 @@
       "id": "tanstack-table/examples/react/kitchen-sink-react-aria/src",
       "modules": {
         "total": 15,
-        "inside": 11
+        "inside": 12
       },
       "functions": {
         "total": 57,
-        "inside": 51
+        "inside": 53
       },
       "components": {
         "total": 29,
-        "inside": 24
+        "inside": 25
       },
       "app": false,
       "app_island": true,
@@ -496,18 +483,16 @@
       ],
       "entry": "examples/react/kitchen-sink-react-aria/src/main.tsx",
       "sample": [
-        "examples/react/kitchen-sink-react-aria/src/components/data-table/cell-components.tsx: line 41:10: `new` is outside the compiled subset",
         "examples/react/kitchen-sink-react-aria/src/components/data-table/cell-components.tsx: line 154:20: unknown name `navigator`",
         "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-filter-list.tsx: line 69:53: property `selectedOptions` does not exist on type HTMLElement",
         "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-filter-list.tsx: line 211:19: unknown name `crypto`",
-        "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-pagination.tsx: line 37:10: built-in method `toLocaleString` is outside the compiled subset"
+        "examples/react/kitchen-sink-react-aria/src/main.tsx: line 76:30: property `classList` does not exist on type HTMLElement",
+        "examples/react/kitchen-sink-react-aria/src/main.tsx: line 80:30: property `classList` does not exist on type HTMLElement"
       ],
       "outside": [
-        "examples/react/kitchen-sink-react-aria/src/components/data-table/cell-components.tsx: formatDate: `new` is outside the compiled subset",
         "examples/react/kitchen-sink-react-aria/src/components/data-table/cell-components.tsx: ActionsCell: unknown name `navigator`",
         "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-filter-list.tsx: FilterValueInput: property does not exist on another type",
         "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-filter-list.tsx: DataTableFilterList: unknown name `crypto`",
-        "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-pagination.tsx: DataTablePagination: built-in method `toLocaleString` is outside the compiled subset",
         "examples/react/kitchen-sink-react-aria/src/main.tsx: ModeSwitch: property does not exist on another type"
       ]
     },
@@ -515,15 +500,15 @@
       "id": "tanstack-table/examples/react/kitchen-sink-shadcn-radix/src",
       "modules": {
         "total": 33,
-        "inside": 22
+        "inside": 24
       },
       "functions": {
         "total": 134,
-        "inside": 121
+        "inside": 124
       },
       "components": {
         "total": 101,
-        "inside": 89
+        "inside": 91
       },
       "app": false,
       "app_island": true,
@@ -542,17 +527,14 @@
       "outside": [
         "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/cell-components.tsx: ActionsCell: unknown name `navigator`",
         "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-filter-list.tsx: DataTableFilterList: `instanceof` of anything but a built-in class is outside the compiled subset; unknown name `crypto`",
-        "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-pagination.tsx: DataTablePagination: built-in method `toLocaleString` is outside the compiled subset",
         "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-sort-list.tsx: DataTableSortList: `instanceof` of anything but a built-in class is outside the compiled subset",
         "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-view-options.tsx: DataTableViewOptions: `instanceof` of anything but a built-in class is outside the compiled subset",
         "examples/react/kitchen-sink-shadcn-radix/src/components/theme-provider.tsx: ThemeProvider: `window.matchMedia` is outside the compiled subset; property does not exist on another type; spread props on a Provider are outside the compiled subset",
-        "examples/react/kitchen-sink-shadcn-radix/src/components/ui/calendar.tsx: Calendar: a tagged template is outside the compiled subset; built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/kitchen-sink-shadcn-radix/src/components/ui/calendar.tsx: CalendarDayButton: built-in method `toLocaleDateString` is outside the compiled subset",
+        "examples/react/kitchen-sink-shadcn-radix/src/components/ui/calendar.tsx: Calendar: a tagged template is outside the compiled subset",
         "examples/react/kitchen-sink-shadcn-radix/src/components/ui/faceted.tsx: Faceted: unknown name `requestAnimationFrame`",
         "examples/react/kitchen-sink-shadcn-radix/src/components/ui/faceted.tsx: FacetedTrigger: `instanceof` of anything but a built-in class is outside the compiled subset",
         "examples/react/kitchen-sink-shadcn-radix/src/components/ui/sortable.tsx: SortableOverlay: `ReactDOM` from React cannot be used as a value here; a value that cannot be rendered",
-        "examples/react/kitchen-sink-shadcn-radix/src/components/ui/tooltip.tsx: TooltipProvider: `<TooltipPrimitive.Provider>` on a value of type unknown",
-        "examples/react/kitchen-sink-shadcn-radix/src/lib/utils.ts: formatDate: `new` is outside the compiled subset"
+        "examples/react/kitchen-sink-shadcn-radix/src/components/ui/tooltip.tsx: TooltipProvider: `<TooltipPrimitive.Provider>` on a value of type unknown"
       ]
     },
     {
@@ -607,48 +589,44 @@
       "id": "tanstack-table/examples/react/spreadsheet/src",
       "modules": {
         "total": 9,
-        "inside": 3
+        "inside": 4
       },
       "functions": {
         "total": 49,
-        "inside": 37
+        "inside": 40
       },
       "components": {
         "total": 12,
-        "inside": 6
+        "inside": 7
       },
       "app": false,
       "app_island": true,
       "apps_island_modules": {
         "total": 9,
-        "inside": 3
+        "inside": 4
       },
       "island_modules": [
         "examples/react/spreadsheet/src/spreadsheetModel.ts",
         "examples/react/spreadsheet/src/useGridInteractions.ts",
         "examples/react/spreadsheet/src/CellContextMenu.tsx",
         "examples/react/spreadsheet/src/ColumnMenu.tsx",
-        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx",
-        "examples/react/spreadsheet/src/Spreadsheet.tsx"
+        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx"
       ],
       "entry": "examples/react/spreadsheet/src/main.tsx",
       "sample": [
         "examples/react/spreadsheet/src/CellContextMenu.tsx: examples/react/spreadsheet/src/CellContextMenu.tsx: line 49:10: this React API is outside the compiled subset",
         "examples/react/spreadsheet/src/ColumnMenu.tsx: examples/react/spreadsheet/src/ColumnMenu.tsx: line 41:10: this React API is outside the compiled subset",
-        "examples/react/spreadsheet/src/Spreadsheet.tsx: examples/react/spreadsheet/src/Spreadsheet.tsx: line 529:22: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/spreadsheet/src/Spreadsheet.tsx: examples/react/spreadsheet/src/Spreadsheet.tsx: line 530:22: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/spreadsheet/src/Spreadsheet.tsx: examples/react/spreadsheet/src/Spreadsheet.tsx: line 703:24: built-in method `toLocaleString` is outside the compiled subset"
+        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: examples/react/spreadsheet/src/SpreadsheetGrid.tsx: line 228:13: property `style` does not exist on type HTMLElement | null",
+        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: examples/react/spreadsheet/src/SpreadsheetGrid.tsx: line 234:5: method `addEventListener` on type HTMLElement is outside the compiled subset",
+        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: examples/react/spreadsheet/src/SpreadsheetGrid.tsx: line 235:18: method `removeEventListener` on type HTMLElement is outside the compiled subset"
       ],
       "outside": [
         "examples/react/spreadsheet/src/CellContextMenu.tsx: CellContextMenu: this React API is outside the compiled subset",
         "examples/react/spreadsheet/src/ColumnMenu.tsx: ColumnMenu: this React API is outside the compiled subset",
-        "examples/react/spreadsheet/src/Spreadsheet.tsx: Spreadsheet: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/spreadsheet/src/Spreadsheet.tsx: formatNumber: `new` is outside the compiled subset",
-        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: SpreadsheetGrid: `new` is outside the compiled subset; method `addEventListener` on HTMLElement; method `removeEventListener` on HTMLElement; property does not exist on a union; unknown name `cancelAnimationFrame`; unknown name `requestAnimationFrame`",
+        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: SpreadsheetGrid: method `addEventListener` on HTMLElement; method `removeEventListener` on HTMLElement; property does not exist on a union; unknown name `MouseEvent`; unknown name `cancelAnimationFrame`; unknown name `requestAnimationFrame`",
         "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: SpreadsheetCell: unknown name `document`",
         "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: MergedCellView: unknown name `document`",
         "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: getColumnSize: `Object.hasOwn` is outside the compiled subset",
-        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: formatRenderedValue: `new` is outside the compiled subset",
         "examples/react/spreadsheet/src/SpreadsheetGrid.tsx: measureTextWidth: `document.createElement` is outside the compiled subset",
         "examples/react/spreadsheet/src/spreadsheetModel.ts: columnIndexToLetter: `String.fromCharCode` is outside the compiled subset",
         "examples/react/spreadsheet/src/useGridInteractions.ts: useGridInteractions: `await` inside an expression is outside the compiled subset (await into a variable first); property does not exist on another type; unknown name `navigator`; unknown name `requestAnimationFrame`"
@@ -680,13 +658,13 @@
       "entry": "examples/react/virtualized-columns-experimental/src/main.tsx",
       "sample": [
         "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 96:8: unknown name `process`",
-        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 103:14: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 104:14: built-in method `toLocaleString` is outside the compiled subset",
         "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 144:34: property `style` does not exist on type HTMLElement | null",
-        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 148:34: property `style` does not exist on type HTMLElement | null"
+        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 148:34: property `style` does not exist on type HTMLElement | null",
+        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 352:14: unknown name `window`",
+        "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 359:29: property `style` does not exist on type HTMLElement"
       ],
       "outside": [
-        "examples/react/virtualized-columns-experimental/src/main.tsx: App: built-in method `toLocaleString` is outside the compiled subset; unknown name `process`",
+        "examples/react/virtualized-columns-experimental/src/main.tsx: App: unknown name `process`",
         "examples/react/virtualized-columns-experimental/src/main.tsx: TableContainer: property does not exist on a union",
         "examples/react/virtualized-columns-experimental/src/main.tsx: TableBody: property does not exist on a union; property does not exist on another type; unknown name `window`"
       ]
@@ -695,7 +673,7 @@
       "id": "tanstack-query/examples/react/auto-refetching/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 3,
@@ -710,16 +688,14 @@
         "total": 0,
         "inside": 0
       },
-      "sample": [
-        "examples/react/auto-refetching/src/pages/index.tsx: line 12:21: `new` is outside the compiled subset"
-      ],
+      "sample": [],
       "outside": []
     },
     {
       "id": "tanstack-query/examples/react/devtools-panel/src",
       "modules": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "functions": {
         "total": 2,
@@ -733,15 +709,10 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
-      "island_modules": [
-        "examples/react/devtools-panel/src/index.tsx"
-      ],
       "entry": "examples/react/devtools-panel/src/index.tsx",
-      "sample": [
-        "examples/react/devtools-panel/src/index.tsx: line 10:21: `new` is outside the compiled subset"
-      ],
+      "sample": [],
       "outside": []
     },
     {
@@ -776,7 +747,7 @@
       "id": "tanstack-query/examples/react/infinite-query-with-max-pages/src",
       "modules": {
         "total": 2,
-        "inside": 1
+        "inside": 2
       },
       "functions": {
         "total": 3,
@@ -791,36 +762,30 @@
         "total": 0,
         "inside": 0
       },
-      "sample": [
-        "examples/react/infinite-query-with-max-pages/src/pages/index.tsx: line 9:21: `new` is outside the compiled subset"
-      ],
+      "sample": [],
       "outside": []
     },
     {
       "id": "tanstack-query/examples/react/prefetching/src",
       "modules": {
         "total": 3,
-        "inside": 2
+        "inside": 3
       },
       "functions": {
         "total": 6,
-        "inside": 5
+        "inside": 6
       },
       "components": {
         "total": 3,
-        "inside": 2
+        "inside": 3
       },
       "app": null,
       "apps_island_modules": {
         "total": 0,
         "inside": 0
       },
-      "sample": [
-        "examples/react/prefetching/src/pages/_app.tsx: line 6:46: `new` is outside the compiled subset"
-      ],
-      "outside": [
-        "examples/react/prefetching/src/pages/_app.tsx: MyApp: `new` is outside the compiled subset"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "tanstack-query/examples/react/react-native/src",
@@ -848,7 +813,7 @@
       "id": "tanstack-query/examples/react/react-router/src",
       "modules": {
         "total": 9,
-        "inside": 6
+        "inside": 7
       },
       "functions": {
         "total": 24,
@@ -862,23 +827,21 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 9,
-        "inside": 6
+        "inside": 7
       },
       "island_modules": [
         "examples/react/react-router/src/routes/root.tsx",
-        "examples/react/react-router/src/routes/contact.tsx",
-        "examples/react/react-router/src/index.tsx"
+        "examples/react/react-router/src/routes/contact.tsx"
       ],
       "entry": "examples/react/react-router/src/index.tsx",
       "sample": [
-        "examples/react/react-router/src/index.tsx: examples/react/react-router/src/index.tsx: line 20:21: `new` is outside the compiled subset",
-        "examples/react/react-router/src/routes/contact.tsx: examples/react/react-router/src/routes/contact.tsx: line 14:15: `new` is outside the compiled subset",
-        "examples/react/react-router/src/routes/root.tsx: examples/react/react-router/src/routes/root.tsx: line 28:17: `new` is outside the compiled subset",
+        "examples/react/react-router/src/routes/contact.tsx: examples/react/react-router/src/routes/contact.tsx: line 14:19: unknown name `Response`",
+        "examples/react/react-router/src/routes/root.tsx: examples/react/react-router/src/routes/root.tsx: line 28:21: unknown name `URL`",
         "examples/react/react-router/src/routes/root.tsx: examples/react/react-router/src/routes/root.tsx: line 62:53: property `form` does not exist on type HTMLElement"
       ],
       "outside": [
-        "examples/react/react-router/src/routes/contact.tsx: contactDetailQuery: `new` is outside the compiled subset",
-        "examples/react/react-router/src/routes/root.tsx: loader: `new` is outside the compiled subset",
+        "examples/react/react-router/src/routes/contact.tsx: contactDetailQuery: unknown name `Response`",
+        "examples/react/react-router/src/routes/root.tsx: loader: unknown name `URL`",
         "examples/react/react-router/src/routes/root.tsx: Root: property does not exist on another type"
       ]
     },
@@ -886,7 +849,7 @@
       "id": "tanstack-query/examples/react/rick-morty/src",
       "modules": {
         "total": 9,
-        "inside": 8
+        "inside": 9
       },
       "functions": {
         "total": 15,
@@ -900,15 +863,10 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 9,
-        "inside": 8
+        "inside": 9
       },
-      "island_modules": [
-        "examples/react/rick-morty/src/App.tsx"
-      ],
       "entry": "examples/react/rick-morty/src/index.tsx",
-      "sample": [
-        "examples/react/rick-morty/src/App.tsx: examples/react/rick-morty/src/App.tsx: line 8:21: `new` is outside the compiled subset"
-      ],
+      "sample": [],
       "outside": []
     },
     {
@@ -936,7 +894,6 @@
       ],
       "entry": "examples/react/shadow-dom/src/main.tsx",
       "sample": [
-        "examples/react/shadow-dom/src/main.tsx: examples/react/shadow-dom/src/main.tsx: line 11:21: `new` is outside the compiled subset",
         "examples/react/shadow-dom/src/main.tsx: examples/react/shadow-dom/src/main.tsx: line 12:20: method `attachShadow` on type HTMLElement is outside the compiled subset"
       ],
       "outside": []
@@ -1096,7 +1053,7 @@
       "id": "refine/examples/data-provider-graphql/src",
       "modules": {
         "total": 15,
-        "inside": 12
+        "inside": 13
       },
       "functions": {
         "total": 8,
@@ -1110,20 +1067,19 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 13,
-        "inside": 10
+        "inside": 11
       },
       "island_modules": [
         "examples/data-provider-graphql/src/pages/posts/queries.ts",
-        "examples/data-provider-graphql/src/pages/categories/queries.ts",
-        "examples/data-provider-graphql/src/App.tsx"
+        "examples/data-provider-graphql/src/pages/categories/queries.ts"
       ],
       "entry": "examples/data-provider-graphql/src/index.tsx",
       "sample": [
-        "examples/data-provider-graphql/src/App.tsx: examples/data-provider-graphql/src/App.tsx: line 28:23: `new` is outside the compiled subset",
         "examples/data-provider-graphql/src/pages/categories/queries.ts: line 3:41: a tagged template is outside the compiled subset",
         "examples/data-provider-graphql/src/pages/categories/queries.ts: line 12:39: a tagged template is outside the compiled subset",
         "examples/data-provider-graphql/src/pages/categories/queries.ts: line 21:38: a tagged template is outside the compiled subset",
-        "examples/data-provider-graphql/src/pages/posts/queries.ts: line 3:37: a tagged template is outside the compiled subset"
+        "examples/data-provider-graphql/src/pages/posts/queries.ts: line 3:37: a tagged template is outside the compiled subset",
+        "examples/data-provider-graphql/src/pages/posts/queries.ts: line 17:35: a tagged template is outside the compiled subset"
       ],
       "outside": []
     },
@@ -1233,15 +1189,15 @@
       "id": "react-admin/examples/crm/src",
       "modules": {
         "total": 139,
-        "inside": 116
+        "inside": 122
       },
       "functions": {
         "total": 216,
-        "inside": 195
+        "inside": 201
       },
       "components": {
         "total": 148,
-        "inside": 137
+        "inside": 142
       },
       "app": false,
       "app_island": false,
@@ -1251,32 +1207,26 @@
       },
       "entry": "examples/crm/src/index.tsx",
       "sample": [
-        "examples/crm/src/companies/CompanyAside.tsx: examples/crm/src/companies/CompanyAside.tsx: line 203:27: `new` is outside the compiled subset",
-        "examples/crm/src/companies/CompanyInputs.tsx: examples/crm/src/companies/CompanyInputs.tsx: line 25:22: `new` is outside the compiled subset",
-        "examples/crm/src/companies/CompanyShow.tsx: examples/crm/src/companies/CompanyShow.tsx: line 226:42: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/crm/src/companies/CompanyAside.tsx: examples/crm/src/companies/CompanyAside.tsx: line 203:31: unknown name `URL`",
+        "examples/crm/src/companies/CompanyInputs.tsx: examples/crm/src/companies/CompanyInputs.tsx: line 25:26: unknown name `RegExp`",
         "examples/crm/src/contacts/ContactImportDialog.tsx: examples/crm/src/contacts/ContactImportDialog.tsx: line 27:1: cannot find module `./contacts_export.csv?raw`",
-        "examples/crm/src/contacts/ContactImportDialog.tsx: examples/crm/src/contacts/ContactImportDialog.tsx: line 27:1: import from `./contacts_export.csv?raw`: a compiled app imports only `react` and `react-dom`"
+        "examples/crm/src/contacts/ContactImportDialog.tsx: examples/crm/src/contacts/ContactImportDialog.tsx: line 27:1: import from `./contacts_export.csv?raw`: a compiled app imports only `react` and `react-dom`",
+        "examples/crm/src/contacts/ContactImportDialog.tsx: examples/crm/src/contacts/ContactImportDialog.tsx: line 29:80: unknown name `encodeURIComponent`"
       ],
       "outside": [
-        "examples/crm/src/companies/CompanyAside.tsx: AdditionalInfo: `new` is outside the compiled subset",
-        "examples/crm/src/companies/CompanyInputs.tsx: isUrl: `new` is outside the compiled subset",
-        "examples/crm/src/companies/CompanyShow.tsx: DealsIterator: built-in method `toLocaleString` is outside the compiled subset",
+        "examples/crm/src/companies/CompanyAside.tsx: AdditionalInfo: unknown name `URL`",
+        "examples/crm/src/companies/CompanyInputs.tsx: isUrl: unknown name `RegExp`",
         "examples/crm/src/contacts/useContactImport.tsx: useContactImport: method `get` on Promise<Map<string, unknown>>",
-        "examples/crm/src/dashboard/DealsPipeline.tsx: DealsPipeline: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/crm/src/deals/DealArchivedList.tsx: getRelativeTimeString: `new` is outside the compiled subset",
-        "examples/crm/src/deals/DealCard.tsx: DealCardContent: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/crm/src/deals/DealColumn.tsx: DealColumn: built-in method `toLocaleString` is outside the compiled subset",
-        "examples/crm/src/deals/DealShow.tsx: DealShowContent: built-in method `toLocaleString` is outside the compiled subset",
         "examples/crm/src/deals/index.ts: DealList: this React API is outside the compiled subset",
-        "examples/crm/src/misc/ImageEditorField.tsx: ImageEditorDialog: `new` is outside the compiled subset; this React API is outside the compiled subset; unknown name `URL`",
-        "examples/crm/src/misc/fetchWithTimeout.ts: fetchWithTimeout: `new` is outside the compiled subset",
-        "examples/crm/src/misc/isLinkedInUrl.ts: isLinkedinUrl: `new` is outside the compiled subset",
+        "examples/crm/src/misc/ImageEditorField.tsx: ImageEditorDialog: this React API is outside the compiled subset; unknown name `File`; unknown name `URL`",
+        "examples/crm/src/misc/fetchWithTimeout.ts: fetchWithTimeout: unknown name `AbortController`",
+        "examples/crm/src/misc/isLinkedInUrl.ts: isLinkedinUrl: unknown name `URL`",
         "examples/crm/src/notes/NoteAttachments.tsx: NoteAttachments: `window.open` is outside the compiled subset",
-        "examples/crm/src/providers/commons/getCompanyAvatar.ts: getFaviconUrl: `new` is outside the compiled subset",
-        "examples/crm/src/providers/commons/getContactAvatar.ts: hash: `new` is outside the compiled subset; unknown name `crypto`",
+        "examples/crm/src/providers/commons/getCompanyAvatar.ts: getFaviconUrl: unknown name `URL`",
+        "examples/crm/src/providers/commons/getContactAvatar.ts: hash: unknown name `TextEncoder`; unknown name `Uint8Array`; unknown name `crypto`",
         "examples/crm/src/providers/fakerest/dataGenerator/contacts.ts: generateContacts: built-in method `substr` is outside the compiled subset; this statement is outside the compiled subset",
         "examples/crm/src/providers/fakerest/dataProvider.ts: processCompanyLogo: `instanceof` of anything but a built-in class is outside the compiled subset",
-        "examples/crm/src/providers/fakerest/dataProvider.ts: convertFileToBase64: `new` is outside the compiled subset",
+        "examples/crm/src/providers/fakerest/dataProvider.ts: convertFileToBase64: unknown name `FileReader`",
         "examples/crm/src/settings/SettingsPage.tsx: SettingsForm: this expression is outside the compiled subset",
         "examples/crm/src/settings/SettingsPage.tsx: CopyPaste: this expression is outside the compiled subset; unknown name `navigator`"
       ]
@@ -2033,27 +1983,23 @@
       "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx",
       "modules": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "functions": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "components": {
         "total": 1,
-        "inside": 0
+        "inside": 1
       },
       "app": null,
       "apps_island_modules": {
         "total": 0,
         "inside": 0
       },
-      "sample": [
-        "apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx: apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx: line 57:24: method `toLocaleDateString` on type Date is outside the compiled subset"
-      ],
-      "outside": [
-        "apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx: ChartTooltipLabelNone: method `toLocaleDateString` on Date"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "chakra/apps/compositions/src/examples/accordion-controlled.tsx",

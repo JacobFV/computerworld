@@ -285,6 +285,8 @@
   // ------------------------------------------------------------ the host
   globalThis.window = globalThis;
   globalThis.self = globalThis;
+  // `x.toLocaleString(…)` for compiled code: the VM's own (jsvm's Intl).
+  globalThis.__cw_locale = (x, m, ...a) => x[m](...a);
   // The page, through cw-ui's own builtins (the same the compiled code uses).
   const B = (name, ...a) => cw.builtin(name, a);
   globalThis.document = {

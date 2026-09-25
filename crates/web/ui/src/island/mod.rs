@@ -389,6 +389,9 @@ impl Runtime {
                 if let Some(e) = self.js_element(o) {
                     return e;
                 }
+                if let Kind::Date(t) = o.borrow().kind {
+                    return Value::Date(Rc::new(Cell::new(t)));
+                }
                 self.foreign(v.clone())
             }
             other => self.foreign(other.clone()),
@@ -487,6 +490,12 @@ impl Runtime {
             }
             Value::Elem(e) => self.elem_to_js(e),
             Value::Context(id) => Js::Obj(self.js_context(*id)),
+            // A date crosses as a date (a copy: its time, not its identity).
+            Value::Date(d) => {
+                let t = d.get();
+                let vm = self.vm();
+                Js::Obj(vm.obj_with(Some(vm.intr.date_proto.clone()), Kind::Date(t)))
+            }
             v => self.wrap_cw(v),
         }
     }

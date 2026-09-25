@@ -1922,3 +1922,34 @@ export function List() {
         ],
     );
 }
+
+#[test]
+fn intl_locale_methods_and_package_classes_run_on_the_island() {
+    // Intl and the toLocale… methods are the island VM's (the jsvm Intl the
+    // fallback runs too); `new` of a package's class constructs it there.
+    same_as_react(
+        r#"
+// @file main.tsx
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { Tally } from 'island-kit';
+const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+const day = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' });
+function App() {
+  const [n, setN] = useState(1234.5);
+  const [t] = useState(() => new Tally(3));
+  const when = new Date(Date.UTC(2024, 1, 29, 13, 5));
+  return (
+    <div>
+      <p id="a">{money.format(n)} | {n.toLocaleString()} | {n.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
+      <p id="b">{day.format(when)} | {when.toLocaleDateString('en-US', { timeZone: 'UTC' })} | {when.toLocaleTimeString('en-US', { timeZone: 'UTC' })}</p>
+      <p id="c">{t.total} {t.doubled}</p>
+      <button id="go" onClick={() => { t.add(2); setN(n * 3); }}>go</button>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Click("#go"), Step::Click("#go")],
+    );
+}

@@ -146,6 +146,11 @@ pub fn emit_island(
     }
     let mut exports = Vec::new();
     for (spec, name) in &island.imports {
+        if spec == "!global" {
+            // A global of the VM itself (`Intl`, the shim's `__cw_locale`).
+            exports.push(format!("() => globalThis{}", js_member(name)));
+            continue;
+        }
         let module =
             file_index(spec).or_else(|| sources.iter().find_map(|s| s.imports.get(spec).copied()));
         let Some(m) = module else {

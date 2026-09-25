@@ -61,3 +61,16 @@ export function Counter({ start, render }) {
   ref.current += 1;
   return render(n, () => setN('inc'), ref.current);
 }
+
+export class Tally {
+  constructor(start) {
+    this.total = start;
+  }
+  add(n) {
+    this.total += n;
+    return this;
+  }
+  get doubled() {
+    return this.total * 2;
+  }
+}

@@ -93,6 +93,16 @@ pub fn lower_modules_with(
         .collect();
     l.source_files = sources.iter().map(|s| s.file.clone()).collect();
     l.swap_current(0);
+    if options.islands
+        && sources
+            .iter()
+            .any(|s| !s.package && (s.text.contains("Intl") || s.text.contains("toLocale")))
+    {
+        // `Intl` and the `toLocale…` methods are the island VM's own (the same
+        // jsvm Intl the fallback's page runs); first, so any code can use them.
+        l.island_global("Intl");
+        l.island_global("__cw_locale");
+    }
     let mut decls = Vec::with_capacity(programs.len());
     for (i, program) in programs.iter().enumerate() {
         l.enter_module(i);
@@ -466,6 +476,8 @@ struct Lowerer<'a> {
     package_mods: Vec<usize>,
     /// Whether package imports go to the island (`LowerOptions::islands`).
     islands: bool,
+    /// Globals of the island VM compiled code uses (`Intl`), by name: slots.
+    island_globals: BTreeMap<String, u32>,
     /// Each source's file, by module index.
     source_files: Vec<String>,
     /// What compiled code imports from the island: (specifier, name), each once.
@@ -536,6 +548,7 @@ impl<'a> Lowerer<'a> {
             namespaces: BTreeMap::new(),
             package_mods: Vec::new(),
             islands: true,
+            island_globals: BTreeMap::new(),
             source_files: Vec::new(),
             island_imports: Vec::new(),
             root_vars: BTreeMap::new(),
@@ -1086,6 +1099,56 @@ impl<'a> Lowerer<'a> {
             container_id,
             element: fidx,
         });
+    }
+
+    /// A global the island VM defines (`globalThis[name]`), as a global slot.
+    fn island_global(&mut self, name: &str) -> u32 {
+        if let Some(&slot) = self.island_globals.get(name) {
+            return slot;
+        }
+        let key = ("!global".to_owned(), name.to_owned());
+        self.island_imports.push(key);
+        let k = self.island_imports.len() as u32 - 1;
+        let slot = self.globals.len() as u32;
+        self.globals.push(Global {
+            name: format!("__cw_island_{name}"),
+            init: GlobalInit::Island(k),
+            ty: Ty::Unknown,
+        });
+        self.ginfo.push(GlobalInfo {
+            slot,
+            ty: Ty::Unknown,
+            func: None,
+            kind: FunctionKind::Plain,
+            reassigned: false,
+            generic: None,
+        });
+        self.island_globals.insert(name.to_owned(), slot);
+        slot
+    }
+
+    /// `x.toLocaleString(…)` and the other `toLocale…` methods, on any receiver:
+    /// the island VM's (`__cw_locale(x, name, …args)`), so they format as the
+    /// fallback's jsvm does.
+    fn island_locale(&mut self, recv: Expr, name: &str, c: &'a ast::CallExpression<'a>) -> Lowered {
+        let slot = self.island_global("__cw_locale");
+        let (args, _) = self.exprs_args(&c.arguments, &[]);
+        let mut items = vec![
+            ArrayItem::Item(recv),
+            ArrayItem::Item(Expr::Str(name.to_owned())),
+        ];
+        items.extend(args);
+        let ret = if name == "toLocaleString"
+            || name.starts_with("toLocaleDate")
+            || name.starts_with("toLocaleTime")
+            || name.starts_with("toLocaleUpper")
+            || name.starts_with("toLocaleLower")
+        {
+            Ty::String
+        } else {
+            Ty::Unknown
+        };
+        (Expr::Call(Box::new(Expr::Global(slot)), items, false), ret)
     }
 
     /// Module `m` of the app runs on the island: a global whose initialisation, at
@@ -3572,6 +3635,17 @@ impl<'a> Lowerer<'a> {
                         );
                     }
                 }
+                // `new C(…)` of a value whose type says nothing (a package's class,
+                // `Intl.NumberFormat`): constructed where it lives, on the island.
+                if self.islands {
+                    let (callee, ty) = self.expr(&n.callee, None);
+                    if ty == Ty::Unknown {
+                        let (args, _) = self.exprs_args(&n.arguments, &[]);
+                        let mut items = vec![ArrayItem::Item(callee)];
+                        items.extend(args);
+                        return (Expr::Builtin(Builtin::Construct, items), Ty::Unknown);
+                    }
+                }
                 self.unsupported(n.span, "`new`")
             }
             E::AwaitExpression(a) => {
@@ -3638,6 +3712,10 @@ impl<'a> Lowerer<'a> {
                 Builtin::IsNaN,
                 Ty::Function(vec![Ty::Unknown], Box::new(Ty::Boolean)),
             ),
+            "Intl" if self.islands && self.island_globals.contains_key("Intl") => {
+                let slot = self.island_global("Intl");
+                (Expr::Global(slot), Ty::Unknown)
+            }
             _ => {
                 if self.react.contains_key(name) {
                     self.err(
@@ -5230,6 +5308,9 @@ impl<'a> Lowerer<'a> {
         c: &'a ast::CallExpression<'a>,
         want: Option<&Ty>,
     ) -> Lowered {
+        if self.islands && name.starts_with("toLocale") {
+            return self.island_locale(recv, name, c);
+        }
         let base = non_null(&rt);
         // A function-valued property: `props.onToggle(id)`.
         if let Ty::Object(_) = &base {
@@ -5687,6 +5768,9 @@ impl<'a> Lowerer<'a> {
         optional: bool,
         c: &'a ast::CallExpression<'a>,
     ) -> Lowered {
+        if self.islands && name.starts_with("toLocale") {
+            return self.island_locale(recv, name, c);
+        }
         if cw_ui::ir::unimplemented_builtin(name) {
             self.err(
                 c.span,
