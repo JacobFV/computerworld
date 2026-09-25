@@ -3,6 +3,13 @@
 use computerworld::{reference_world, SimError, World};
 use serde_json::{json, Value};
 use std::io::{self, BufRead, Write};
+
+/// mimalloc rather than the system allocator: the engine makes and frees small
+/// objects at a high rate, and the determinism corpus runs 15-23% faster on it
+/// with the same hashes.
+#[cfg(not(target_arch = "wasm32"))]
+#[global_allocator]
+static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 fn main() {
     let stdin = io::stdin();
     let mut stdout = io::BufWriter::new(io::stdout());

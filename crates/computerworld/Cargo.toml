@@ -33,6 +33,10 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 
+# The `cw` binary's allocator (see `src/bin/cw.rs`); native builds only.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+mimalloc = { version = "0.1", default-features = false }
+
 [dev-dependencies]
 proptest.workspace = true
 cw-network = { path = "../machines/network" }

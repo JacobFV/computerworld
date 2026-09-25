@@ -16,3 +16,5 @@ cw = { package = "computerworld", path = "../../computerworld", default-features
 serde.workspace = true
 serde_json.workspace = true
 pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }
+# The allocator (see `lib.rs`): the engine allocates small objects at a high rate.
+mimalloc = { version = "0.1", default-features = false }
