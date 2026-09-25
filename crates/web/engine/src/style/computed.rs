@@ -1037,6 +1037,14 @@ impl Font {
     }
 }
 
+/// Custom properties by name (with the `--`): value tokens after `var()` substitution.
+pub type CustomProperties =
+    std::collections::BTreeMap<String, Vec<crate::css::token::ComponentValue>>;
+
+thread_local! {
+    static INITIAL: std::rc::Rc<ComputedStyle> = std::rc::Rc::new(ComputedStyle::build_initial());
+}
+
 /// Everything about one element's style that layout and paint read.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ComputedStyle {
@@ -1165,7 +1173,8 @@ pub struct ComputedStyle {
 
     // Custom properties (inherited): the declared value tokens after `var()`
     // substitution, keyed by the full name including `--`.
-    pub custom: std::collections::BTreeMap<String, Vec<crate::css::token::ComponentValue>>,
+    /// Shared: most elements inherit their parent's set unchanged.
+    pub custom: std::rc::Rc<CustomProperties>,
 
     // Transitions and animations (parsed in M1; M2 runs them on the world clock).
     pub transitions: TransitionList,
@@ -1175,6 +1184,15 @@ pub struct ComputedStyle {
 impl ComputedStyle {
     /// The initial value of every property, with the UA's root font (16 px sans).
     pub fn initial() -> ComputedStyle {
+        INITIAL.with(|s| (**s).clone())
+    }
+
+    /// [`ComputedStyle::initial`], shared.
+    pub fn initial_rc() -> std::rc::Rc<ComputedStyle> {
+        INITIAL.with(|s| s.clone())
+    }
+
+    fn build_initial() -> ComputedStyle {
         ComputedStyle {
             display: Display::Inline,
             inline_origin: false,
@@ -1286,7 +1304,7 @@ impl ComputedStyle {
             ],
             counter_reset: Vec::new(),
             counter_increment: Vec::new(),
-            custom: std::collections::BTreeMap::new(),
+            custom: Default::default(),
             transitions: TransitionList::default(),
             animations: AnimationList::default(),
         }

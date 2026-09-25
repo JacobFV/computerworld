@@ -7,6 +7,7 @@
 //! inline `style`. For `!important`: author (layers reversed, unlayered first),
 //! inline, user-agent. Within a level: specificity, then source order.
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
@@ -95,56 +96,94 @@ struct SortKey {
     order: u32,
 }
 
-struct Candidate<'a> {
+/// A declaration in the cascade: one of the engine's (borrowed for the winners) or
+/// one parsed for this element alone (hints, `style=""`; copied into the winners).
+struct Candidate<'a, 'l> {
     key: SortKey,
-    decl: &'a ParsedDecl,
+    decl: DeclRef<'a, 'l>,
 }
 
-/// The winning declared value of every longhand and custom property on one element.
-#[derive(Default)]
-struct Winners {
-    longhands: Vec<Option<Specified>>,
-    /// The UA-level winner per longhand, for `revert`.
-    ua: Vec<Option<Specified>>,
-    /// The highest level that set each longhand.
-    level: Vec<Option<Level>>,
-    custom: BTreeMap<String, CustomDeclared>,
+#[derive(Clone, Copy)]
+enum DeclRef<'a, 'l> {
+    Shared(&'a ParsedDecl),
+    Local(&'l ParsedDecl),
 }
 
-impl Winners {
-    fn new() -> Winners {
+impl DeclRef<'_, '_> {
+    fn get(&self) -> &ParsedDecl {
+        match self {
+            DeclRef::Shared(d) => d,
+            DeclRef::Local(d) => d,
+        }
+    }
+}
+
+/// The winning declared value of every longhand and custom property on one element,
+/// borrowed from the parsed declarations where possible.
+struct Winners<'a> {
+    /// Per longhand, 1 + its index in `values` (0: undeclared).
+    slot: [u16; LonghandId::COUNT],
+    values: Vec<(LonghandId, Cow<'a, Specified>, Level)>,
+    /// The UA-level winners, for `revert`.
+    ua: Vec<(LonghandId, Cow<'a, Specified>)>,
+    custom: BTreeMap<Cow<'a, str>, Cow<'a, CustomDeclared>>,
+}
+
+impl<'a> Winners<'a> {
+    fn new() -> Winners<'a> {
         Winners {
-            longhands: vec![None; LonghandId::COUNT],
-            ua: vec![None; LonghandId::COUNT],
-            level: vec![None; LonghandId::COUNT],
+            slot: [0; LonghandId::COUNT],
+            values: Vec::new(),
+            ua: Vec::new(),
             custom: BTreeMap::new(),
         }
     }
-    fn set(&mut self, id: LonghandId, v: Specified, level: Level) {
-        let i = id as usize;
-        let v = match v {
+    /// The winning value of a longhand.
+    fn get(&self, id: LonghandId) -> Option<&Specified> {
+        match self.slot[id as usize] {
+            0 => None,
+            i => Some(&self.values[i as usize - 1].1),
+        }
+    }
+    /// The level of the winning declaration of a longhand.
+    fn level(&self, id: LonghandId) -> Option<Level> {
+        match self.slot[id as usize] {
+            0 => None,
+            i => Some(self.values[i as usize - 1].2),
+        }
+    }
+    fn set(&mut self, id: LonghandId, v: Cow<'a, Specified>, level: Level) {
+        let v = match &*v {
             Specified::CssWide(CssWide::Revert) => {
                 if level.is_ua() {
-                    Specified::CssWide(CssWide::Unset)
+                    Cow::Owned(Specified::CssWide(CssWide::Unset))
                 } else {
-                    self.ua[i]
-                        .clone()
-                        .unwrap_or(Specified::CssWide(CssWide::Unset))
+                    self.ua
+                        .iter()
+                        .rev()
+                        .find(|(i, _)| *i == id)
+                        .map(|(_, v)| v.clone())
+                        .unwrap_or(Cow::Owned(Specified::CssWide(CssWide::Unset)))
                 }
             }
             // The winner so far is the strongest declaration below this one; close to
             // `revert-layer`, which rolls back to the previous layer's value.
-            Specified::CssWide(CssWide::RevertLayer) => match self.longhands[i].clone() {
-                Some(v) => v,
-                None => Specified::CssWide(CssWide::Unset),
+            Specified::CssWide(CssWide::RevertLayer) => match self.get(id) {
+                Some(_) => self.values[self.slot[id as usize] as usize - 1].1.clone(),
+                None => Cow::Owned(Specified::CssWide(CssWide::Unset)),
             },
-            v => v,
+            _ => v,
         };
         if level.is_ua() {
-            self.ua[i] = Some(v.clone());
+            self.ua.push((id, v.clone()));
         }
-        self.longhands[i] = Some(v);
-        self.level[i] = Some(level);
+        match self.slot[id as usize] {
+            0 => {
+                self.values.push((id, v, level));
+                self.slot[id as usize] = self.values.len() as u16;
+            }
+            i => self.values[i as usize - 1] = (id, v, level),
+        }
     }
 }
 
@@ -523,13 +562,13 @@ impl<'a> Engine<'a> {
     fn winners(
         &self,
         node: NodeId,
-        pseudo: Option<&SelectorIndex<RuleData>>,
+        pseudo: Option<&'a SelectorIndex<RuleData>>,
         keys: &AncestorKeys,
         unsupported: &mut Vec<Unsupported>,
-    ) -> Result<Winners, Unsupported> {
+    ) -> Result<Winners<'a>, Unsupported> {
         let _t = super::profile::span(super::profile::Phase::Match);
-        let index = pseudo.unwrap_or(&self.elements);
-        let mut cands: Vec<Candidate> = Vec::new();
+        let index = pseudo.unwrap_or(&self.data.elements);
+        let mut cands: Vec<Candidate<'a, '_>> = Vec::new();
         for entry in index.matching_with(self.doc, node, self.ctx, keys) {
             let r = &entry.data;
             for (decl, important) in &r.block.decls {
@@ -549,7 +588,7 @@ impl<'a> Engine<'a> {
                         spec: r.spec,
                         order: r.order,
                     },
-                    decl,
+                    decl: DeclRef::Shared(decl),
                 });
             }
         }
@@ -583,7 +622,7 @@ impl<'a> Engine<'a> {
                         spec: Specificity::ZERO,
                         order: i as u32,
                     },
-                    decl,
+                    decl: DeclRef::Local(decl),
                 });
             }
             inline_block = self.inline_block(node)?;
@@ -611,7 +650,7 @@ impl<'a> Engine<'a> {
                             spec: Specificity::ZERO,
                             order: i as u32,
                         },
-                        decl,
+                        decl: DeclRef::Local(decl),
                     });
                 }
             }
@@ -627,7 +666,7 @@ impl<'a> Engine<'a> {
         }
         let _ = parent_dir;
         for c in &cands {
-            if let ParsedDecl::Longhands(v) = c.decl {
+            if let ParsedDecl::Longhands(v) = c.decl.get() {
                 for (id, s) in v {
                     if *id == LonghandId::Direction {
                         if let Specified::Direction(d) = s {
@@ -639,27 +678,37 @@ impl<'a> Engine<'a> {
         }
         let mut w = Winners::new();
         for c in cands {
-            match c.decl {
-                ParsedDecl::Longhands(v) => {
+            match (c.decl, c.decl.get()) {
+                (DeclRef::Shared(ParsedDecl::Longhands(v)), _) => {
                     for (id, s) in v {
-                        w.set(*id, s.clone(), c.key.level);
+                        w.set(*id, Cow::Borrowed(s), c.key.level);
                     }
                 }
-                ParsedDecl::Custom(name, v) => {
-                    w.custom.insert(name.clone(), v.clone());
+                (DeclRef::Shared(ParsedDecl::Custom(name, v)), _) => {
+                    w.custom
+                        .insert(Cow::Borrowed(name.as_str()), Cow::Borrowed(v));
                 }
-                ParsedDecl::Logical(name, value) => {
+                (_, ParsedDecl::Longhands(v)) => {
+                    for (id, s) in v {
+                        w.set(*id, Cow::Owned(s.clone()), c.key.level);
+                    }
+                }
+                (_, ParsedDecl::Custom(name, v)) => {
+                    w.custom
+                        .insert(Cow::Owned(name.clone()), Cow::Owned(v.clone()));
+                }
+                (_, ParsedDecl::Logical(name, value)) => {
                     if let Some(id) = shorthands::resolve_longhand(name, dir) {
                         if let Some(s) = parse_longhand(id, value) {
-                            w.set(id, s, c.key.level);
+                            w.set(id, Cow::Owned(s), c.key.level);
                         }
                     } else if let Ok(v) = shorthands::expand(name, value, dir) {
                         for (id, s) in v {
-                            w.set(id, s, c.key.level);
+                            w.set(id, Cow::Owned(s), c.key.level);
                         }
                     }
                 }
-                ParsedDecl::Invalid => {}
+                (_, ParsedDecl::Invalid) => {}
             }
         }
         Ok(w)
@@ -696,10 +745,11 @@ impl<'a> Engine<'a> {
             fonts: self.fonts,
             web_fonts: &self.web_fonts,
         };
+        let initial = ComputedStyle::initial_rc();
         let apply_phase = |s: &mut ComputedStyle, ctx: &ComputeCtx, phase: u8| {
             for def in LONGHANDS.iter().filter(|d| d.phase == phase) {
-                if let Some(v) = &w.longhands[def.id as usize] {
-                    apply_value(s, def, v, ctx, parent);
+                if let Some(v) = w.get(def.id) {
+                    apply_value(s, def, v, ctx, parent, &initial);
                 }
             }
         };
@@ -737,7 +787,7 @@ impl<'a> Engine<'a> {
     ) {
         // The initial value of every colour but `color` is `currentcolor`: undeclared,
         // they compute to this element's own colour, not to black.
-        let undeclared = |id: LonghandId| w.longhands[id as usize].is_none();
+        let undeclared = |id: LonghandId| w.get(id).is_none();
         for (id, side) in [
             (LonghandId::BorderTopColor, &mut s.border.top),
             (LonghandId::BorderRightColor, &mut s.border.right),
@@ -824,7 +874,7 @@ impl<'a> Engine<'a> {
         }
         // Quirks: tables take the document text colour unless the author says otherwise.
         if self.quirks && !is_pseudo && self.doc.is(node, "table") {
-            let author_set = w.level[LonghandId::Color as usize].is_some_and(|l| !l.is_ua());
+            let author_set = w.level(LonghandId::Color).is_some_and(|l| !l.is_ua());
             if !author_set {
                 s.color = self.body_text_color;
             }
@@ -914,7 +964,7 @@ impl<'a> Engine<'a> {
         }
         if self.quirks
             && self.doc.is(node, "table")
-            && !w.level[LonghandId::Color as usize].is_some_and(|l| !l.is_ua())
+            && !w.level(LonghandId::Color).is_some_and(|l| !l.is_ua())
         {
             set.quirk_table_color.insert(node);
         } else {
@@ -924,12 +974,12 @@ impl<'a> Engine<'a> {
         set.set(node, style.clone());
         set.clear_pseudos(node);
         if !style.display.is_none() {
-            for (index, kind) in [(&self.before, 0u8), (&self.after, 1u8)] {
+            for (index, kind) in [(&self.data.before, 0u8), (&self.data.after, 1u8)] {
                 if index.is_empty() {
                     continue;
                 }
                 let pw = self.winners(node, Some(index), keys, unsupported)?;
-                if pw.longhands[LonghandId::Content as usize].is_none() {
+                if pw.get(LonghandId::Content).is_none() {
                     continue;
                 }
                 let ps = self.compute(node, &pw, &style, Some(root_fs), true);
@@ -945,18 +995,18 @@ impl<'a> Engine<'a> {
             // when it is empty, which the UA sheet gives a grey and an author rule
             // can recolour.
             if matches!(self.doc.tag(node), Some("input" | "textarea")) {
-                let pw = self.winners(node, Some(&self.placeholder), keys, unsupported)?;
+                let pw = self.winners(node, Some(&self.data.placeholder), keys, unsupported)?;
                 let ps = self.compute(node, &pw, &style, Some(root_fs), true);
                 set.set_placeholder(node, Rc::new(ps));
             }
             if matches!(style.display, Display::ListItem) {
-                let mw = self.winners(node, Some(&self.marker), keys, unsupported)?;
+                let mw = self.winners(node, Some(&self.data.marker), keys, unsupported)?;
                 let mut ms = self.compute(node, &mw, &style, Some(root_fs), true);
                 ms.display = Display::Inline;
-                if mw.longhands[LonghandId::WhiteSpace as usize].is_none() {
+                if mw.get(LonghandId::WhiteSpace).is_none() {
                     ms.white_space = WhiteSpace::Pre;
                 }
-                if mw.longhands[LonghandId::TextTransform as usize].is_none() {
+                if mw.get(LonghandId::TextTransform).is_none() {
                     ms.text_transform = TextTransform::None;
                 }
                 set.set_marker(node, Rc::new(ms));
@@ -1221,17 +1271,17 @@ fn apply_value(
     v: &Specified,
     ctx: &ComputeCtx,
     parent: &ComputedStyle,
+    initial: &ComputedStyle,
 ) {
-    let initial = ComputedStyle::initial();
     let unset = |s: &mut ComputedStyle| {
         if def.inherited {
             (def.copy)(s, parent);
         } else {
-            (def.copy)(s, &initial);
+            (def.copy)(s, initial);
         }
     };
     match v {
-        Specified::CssWide(CssWide::Initial) => (def.copy)(s, &initial),
+        Specified::CssWide(CssWide::Initial) => (def.copy)(s, initial),
         Specified::CssWide(CssWide::Inherit) => (def.copy)(s, parent),
         Specified::CssWide(_) => unset(s),
         Specified::Pending { property, value } => {
@@ -1252,7 +1302,7 @@ fn apply_value(
             };
             match resolved {
                 Some(Specified::Pending { .. }) | None => unset(s),
-                Some(r) => apply_value(s, def, &r, ctx, parent),
+                Some(r) => apply_value(s, def, &r, ctx, parent, initial),
             }
         }
         other => {
@@ -1263,23 +1313,57 @@ fn apply_value(
     }
 }
 
+/// Whether a value references `var()` anywhere.
+fn has_var(tokens: &[ComponentValue]) -> bool {
+    tokens.iter().any(|t| match t {
+        ComponentValue::Function { name, args } => {
+            name.eq_ignore_ascii_case("var") || has_var(args)
+        }
+        ComponentValue::Block { contents, .. } => has_var(contents),
+        _ => false,
+    })
+}
+
 /// Resolves the declared custom properties against the inherited ones, substituting
-/// `var()` references among them and invalidating cycles.
+/// `var()` references among them and invalidating cycles. The inherited set itself
+/// is returned (shared) when the declarations leave it as it is, which is the case
+/// on every element under a sheet that declares the same properties everywhere
+/// (a utility sheet's `*, ::before, ::after { --tw-...: ... }`).
 fn resolve_custom(
-    declared: &BTreeMap<String, CustomDeclared>,
-    inherited: &BTreeMap<String, Vec<ComponentValue>>,
-) -> BTreeMap<String, Vec<ComponentValue>> {
+    declared: &BTreeMap<Cow<'_, str>, Cow<'_, CustomDeclared>>,
+    inherited: &Rc<CustomProperties>,
+) -> Rc<CustomProperties> {
+    let unchanged = declared.iter().all(|(name, v)| match &**v {
+        CustomDeclared::Tokens(t) => inherited.get(&**name).is_some_and(|i| i == t) && !has_var(t),
+        CustomDeclared::Wide(_) => false,
+    });
+    if unchanged {
+        return inherited.clone();
+    }
+    let out = resolve_custom_map(declared, inherited);
+    if out == **inherited {
+        inherited.clone()
+    } else {
+        Rc::new(out)
+    }
+}
+
+fn resolve_custom_map(
+    declared: &BTreeMap<Cow<'_, str>, Cow<'_, CustomDeclared>>,
+    inherited: &CustomProperties,
+) -> CustomProperties {
     let mut out: BTreeMap<String, Vec<ComponentValue>> = inherited.clone();
     // Keywords first.
     let mut pending: BTreeMap<&str, &Vec<ComponentValue>> = BTreeMap::new();
     for (name, v) in declared {
-        match v {
+        let name: &str = name;
+        match &**v {
             CustomDeclared::Wide(CssWide::Initial) => {
                 out.remove(name);
             }
             CustomDeclared::Wide(_) => {
                 match inherited.get(name) {
-                    Some(v) => out.insert(name.clone(), v.clone()),
+                    Some(v) => out.insert(name.to_owned(), v.clone()),
                     None => out.remove(name),
                 };
             }
@@ -1614,20 +1698,20 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
             match p {
                 ParsedDecl::Longhands(v) => {
                     for (id, s) in v {
-                        w.set(id, s, Level::Author);
+                        w.set(id, Cow::Owned(s), Level::Author);
                     }
                 }
                 ParsedDecl::Custom(n, v) => {
-                    w.custom.insert(n, v);
+                    w.custom.insert(Cow::Owned(n), Cow::Owned(v));
                 }
                 ParsedDecl::Logical(name, value) => {
                     if let Some(id) = shorthands::resolve_longhand(&name, Direction::Ltr) {
                         if let Some(s) = parse_longhand(id, &value) {
-                            w.set(id, s, Level::Author);
+                            w.set(id, Cow::Owned(s), Level::Author);
                         }
                     } else if let Ok(v) = shorthands::expand(&name, &value, Direction::Ltr) {
                         for (id, s) in v {
-                            w.set(id, s, Level::Author);
+                            w.set(id, Cow::Owned(s), Level::Author);
                         }
                     }
                 }
