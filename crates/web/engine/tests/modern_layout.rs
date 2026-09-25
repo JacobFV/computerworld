@@ -588,4 +588,25 @@ mod cases {
         rect_is(&p, "wide", 0.0, 34.0, 300.0, 10.0);
         rect_is(&p, "div", 0.0, 44.0, 300.0, 10.0);
     }
+    /// `text-overflow: ellipsis` keeps each prefix whose width, measured as the run
+    /// is, plus the ellipsis's own width fits the line, as Blink's truncator does:
+    /// "heads-" + "…" is 186.75 + 12.109375, a sixty-fourth over 198.84375, so the
+    /// hyphen goes; and trailing spaces stay before the ellipsis. Widths are
+    /// Chromium's for these pages.
+    #[test]
+    fn ellipsis_cuts_where_chromium_does() {
+        let p = page(
+            "<!DOCTYPE html><style>@font-face { font-family: Inter; src: url(/vendor/inter-regular.ttf) format('truetype') }
+             body { margin: 0; font: 14px Inter } p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }</style>
+             <p id=a style='width: 198.84375px'>Great, thanks for the heads-up!</p>
+             <p id=b style='width: 199px'>Great, thanks for the heads-up!</p>
+             <p id=c style='width: 34px'>ab  cd</p>
+             <p id=d style='width: 28px'>ab  cd</p>",
+        );
+        let w = |id: &str| p.text_lines(id).last().unwrap().width;
+        close(w("a"), 180.3125, "#a kept text");
+        close(w("b"), 186.75, "#b kept text");
+        close(w("c"), 20.375, "#c keeps the space");
+        close(w("d"), 7.875, "#d");
+    }
 }

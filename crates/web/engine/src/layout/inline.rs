@@ -1892,7 +1892,7 @@ fn ellipsize_children(
     // The cut is at `edge` less the ellipsis, which Blink measures in the block's
     // font (`LineTruncator`): a run that ends inside that margin is cut too, so that
     // what stays plus the ellipsis fits the box.
-    let cut = edge - text::advance(&cs.font, '\u{2026}');
+    let cut = edge - text::measure(&cs.font, "\u{2026}", Au::ZERO, Au::ZERO);
     let mut keep = kids.len();
     for (i, k) in kids.iter_mut().enumerate() {
         if *done {
@@ -1918,22 +1918,9 @@ fn ellipsize_children(
                     src => ctx.styles.get(src.node()),
                 }
                 .unwrap_or(cs);
-                let ell = text::advance(&s.font, '\u{2026}');
-                let room = edge - left - ell;
-                let mut w = Au::ZERO;
-                let mut out = String::new();
-                for c in text.chars() {
-                    let a = text::kern_spaced(&s.font, out.chars().last(), c, s.letter_spacing)
-                        + text::advance(&s.font, c)
-                        + s.letter_spacing;
-                    if w + a > room {
-                        break;
-                    }
-                    w += a;
-                    out.push(c);
-                }
-                let out = out.trim_end().to_owned();
-                let w = text::measure(&s.font, &out, s.letter_spacing, s.word_spacing);
+                let ell = text::measure(&s.font, "\u{2026}", Au::ZERO, Au::ZERO);
+                let out = truncate_to_fit(s, text, edge - left, ell);
+                let w = text::measure(&s.font, out, s.letter_spacing, s.word_spacing);
                 *text = format!("{out}\u{2026}");
                 *ellipsis = true;
                 k.rect.size.width = w + ell;
@@ -1959,6 +1946,62 @@ fn ellipsize_children(
         }
     }
     kids.truncate(keep);
+}
+
+/// The longest prefix of `text`, in whole clusters, that leaves room for the
+/// ellipsis within `avail`, as Blink's `NGLineTruncator` cuts: each prefix is
+/// measured as the run would be (kerning, spacing, the total rounded up) and kept
+/// while it plus the ellipsis's own rounded width fits. Trailing spaces stay,
+/// so "about the" cut after the space keeps it before the `…`.
+fn truncate_to_fit<'t>(s: &ComputedStyle, text: &'t str, avail: Au, ell: Au) -> &'t str {
+    use crate::layout::text::{advance_fine, kern_fine, Pen, FINE_PER_AU};
+    let mut fine = 0i64;
+    let mut prev = None;
+    let mut keep = 0;
+    let mut chars = text.char_indices().peekable();
+    while let Some((_, c)) = chars.next() {
+        fine += prev.map_or(0, |p| kern_fine(&s.font, p, c))
+            + advance_fine(&s.font, c)
+            + i64::from(s.letter_spacing.0) * FINE_PER_AU;
+        if c == ' ' {
+            fine += i64::from(s.word_spacing.0) * FINE_PER_AU;
+        }
+        prev = Some(c);
+        // A cut never separates a base from the marks and joiners that extend it.
+        if chars
+            .peek()
+            .is_some_and(|&(_, n)| extends_cluster(n) || c == '\u{200D}')
+        {
+            continue;
+        }
+        if Pen::default().advance(fine) + ell > avail {
+            break;
+        }
+        keep = chars.peek().map_or(text.len(), |&(i, _)| i);
+    }
+    &text[..keep]
+}
+
+/// Characters that belong to the grapheme cluster of the character before them:
+/// combining marks, variation selectors, joiners, emoji modifiers and tags.
+fn extends_cluster(c: char) -> bool {
+    matches!(c as u32,
+        0x0300..=0x036F
+        | 0x0483..=0x0489
+        | 0x0591..=0x05BD
+        | 0x0610..=0x061A
+        | 0x064B..=0x065F
+        | 0x0900..=0x0903
+        | 0x093A..=0x094F
+        | 0x1AB0..=0x1AFF
+        | 0x1DC0..=0x1DFF
+        | 0x200C..=0x200D
+        | 0x20D0..=0x20FF
+        | 0xFE00..=0xFE0F
+        | 0xFE20..=0xFE2F
+        | 0x1F3FB..=0x1F3FF
+        | 0xE0020..=0xE007F
+        | 0xE0100..=0xE01EF)
 }
 
 /// Intrinsic widths of an inline formatting context: the longest unbreakable run and
