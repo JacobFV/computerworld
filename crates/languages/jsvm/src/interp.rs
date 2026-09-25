@@ -6,6 +6,7 @@ use crate::call::Invoked;
 use crate::conv::Arith;
 use crate::value::*;
 use crate::vm::*;
+use std::cell::Cell;
 use std::rc::Rc;
 
 macro_rules! top {
@@ -1201,7 +1202,7 @@ impl<'h> Vm<'h> {
                         leave!();
                     };
                     let recv = f.stack.last().unwrap();
-                    let v = match plain_get(recv, name) {
+                    let v = match plain_get(recv, name, &code.hints[pc - 1]) {
                         Some(v) => v,
                         None => {
                             // A method of a primitive (`s.charCodeAt`, `n.toFixed`):
@@ -1215,7 +1216,7 @@ impl<'h> Vm<'h> {
                                 Value::Bool(_) => &self.intr.boolean_proto,
                                 _ => leave!(),
                             };
-                            match proto_get(proto, name) {
+                            match proto_get(proto, name, &code.hints[pc - 1]) {
                                 Some(v) => v,
                                 None => leave!(),
                             }
@@ -1232,7 +1233,7 @@ impl<'h> Vm<'h> {
                         leave!();
                     };
                     let n = f.stack.len();
-                    if !plain_set(&f.stack[n - 2], name, &f.stack[n - 1]) {
+                    if !plain_set(&f.stack[n - 2], name, &f.stack[n - 1], &code.hints[pc - 1]) {
                         leave!();
                     }
                     // [obj value] -> value
@@ -1241,7 +1242,9 @@ impl<'h> Vm<'h> {
                 }
                 Op::GetElem => {
                     let n = f.stack.len();
-                    let Some(v) = element_get(&f.stack[n - 2], &f.stack[n - 1]) else {
+                    let Some(v) =
+                        element_get(&f.stack[n - 2], &f.stack[n - 1], &code.hints[pc - 1])
+                    else {
                         leave!();
                     };
                     f.stack.truncate(n - 2);
@@ -1250,7 +1253,12 @@ impl<'h> Vm<'h> {
                 Op::SetElem => {
                     // [obj key value] -> value
                     let n = f.stack.len();
-                    if !element_set(&f.stack[n - 3], &f.stack[n - 2], &f.stack[n - 1]) {
+                    if !element_set(
+                        &f.stack[n - 3],
+                        &f.stack[n - 2],
+                        &f.stack[n - 1],
+                        &code.hints[pc - 1],
+                    ) {
                         leave!();
                     }
                     let v = f.stack.pop().unwrap();
@@ -2780,7 +2788,7 @@ impl<'h> Vm<'h> {
 /// answers everything else (getters, exotic objects, proxies, primitives'
 /// prototypes, errors' lazy stacks) and raises the errors.
 #[inline]
-fn plain_get(obj: &Value, name: &JsStr) -> Option<Value> {
+fn plain_get(obj: &Value, name: &JsStr, hint: &Cell<u16>) -> Option<Value> {
     if !name.is_canon() {
         return None;
     }
@@ -2792,7 +2800,7 @@ fn plain_get(obj: &Value, name: &JsStr) -> Option<Value> {
                     _ => None,
                 };
             }
-            plain_get_ident(o, std::rc::Rc::as_ptr(&name.0) as *const u8 as usize)
+            plain_get_ident(o, std::rc::Rc::as_ptr(&name.0) as *const u8 as usize, hint)
         }
         Value::Str(s) if name.as_str() == "length" => Some(Value::Num(s.len16() as f64)),
         _ => None,
@@ -2804,13 +2812,13 @@ fn plain_get(obj: &Value, name: &JsStr) -> Option<Value> {
 /// the prototype, or the ordinary chain above it. `None` for getters and
 /// anything exotic.
 #[inline]
-fn proto_get(proto: &Obj, name: &JsStr) -> Option<Value> {
+fn proto_get(proto: &Obj, name: &JsStr, hint: &Cell<u16>) -> Option<Value> {
     if !name.is_canon() {
         return None;
     }
     let id = std::rc::Rc::as_ptr(&name.0) as *const u8 as usize;
     let d = proto.borrow();
-    if let Some(i) = d.props.find_ident(id) {
+    if let Some(i) = d.props.find_hinted(id, hint) {
         return match &d.props.entries[i].1.slot {
             Slot::Data(Value::Empty) => None,
             Slot::Data(v) => Some(v.clone()),
@@ -2818,14 +2826,14 @@ fn proto_get(proto: &Obj, name: &JsStr) -> Option<Value> {
         };
     }
     match &d.proto {
-        Some(p) => plain_get_ident(p, id),
+        Some(p) => plain_get_ident(p, id, hint),
         None => Some(Value::Undefined),
     }
 }
 
 /// `plain_get` on an object by key identity (`Key::ident`).
 #[inline]
-fn plain_get_ident(o: &Obj, id: usize) -> Option<Value> {
+fn plain_get_ident(o: &Obj, id: usize, hint: &Cell<u16>) -> Option<Value> {
     let mut cur: *const Obj = o;
     for _ in 0..64 {
         // SAFETY: `cur` is `o` or a prototype reached from it; each is owned by
@@ -2835,7 +2843,7 @@ fn plain_get_ident(o: &Obj, id: usize) -> Option<Value> {
         if !d.kind.ordinary_props() {
             return None;
         }
-        if let Some(i) = d.props.find_ident(id) {
+        if let Some(i) = d.props.find_hinted(id, hint) {
             return match &d.props.entries[i].1.slot {
                 Slot::Data(Value::Empty) => None,
                 Slot::Data(v) => Some(v.clone()),
@@ -2853,7 +2861,7 @@ fn plain_get_ident(o: &Obj, id: usize) -> Option<Value> {
 /// A property write the fast path can do: `obj.name = v` where the ordinary
 /// object or function already has `name` as its own writable data property.
 #[inline]
-fn plain_set(obj: &Value, name: &JsStr, v: &Value) -> bool {
+fn plain_set(obj: &Value, name: &JsStr, v: &Value, hint: &Cell<u16>) -> bool {
     let Value::Obj(o) = obj else {
         return false;
     };
@@ -2865,7 +2873,7 @@ fn plain_set(obj: &Value, name: &JsStr, v: &Value) -> bool {
         return false;
     }
     let id = std::rc::Rc::as_ptr(&name.0) as *const u8 as usize;
-    let Some(i) = d.props.find_ident(id) else {
+    let Some(i) = d.props.find_hinted(id, hint) else {
         // A new property: added here when the object is extensible and no
         // prototype has the name (a setter or a read-only property there
         // would decide otherwise, which the general path handles).
@@ -2950,7 +2958,7 @@ fn define_field(obj: &Value, name: &JsStr, v: &Value) -> bool {
 /// index within (or just past) a plain array, or a canonical string key on an
 /// ordinary object (as `plain_set`).
 #[inline]
-fn element_set(obj: &Value, key: &Value, v: &Value) -> bool {
+fn element_set(obj: &Value, key: &Value, v: &Value, hint: &Cell<u16>) -> bool {
     match (obj, key) {
         (Value::Obj(o), Value::Num(n)) => {
             let i = *n as usize;
@@ -2976,7 +2984,7 @@ fn element_set(obj: &Value, key: &Value, v: &Value) -> bool {
         (Value::Obj(o), Value::Str(s)) => {
             !matches!(o.borrow().kind, Kind::Array(_))
                 && crate::numconv::array_index(s).is_none()
-                && plain_set(obj, s, v)
+                && plain_set(obj, s, v, hint)
         }
         _ => false,
     }
@@ -3009,15 +3017,15 @@ fn absent_from_prototypes(proto: Option<&Obj>, id: usize) -> bool {
 /// An element read the fast path can answer: a present element of an array
 /// by an integer index, or a symbol-keyed data property of a plain object.
 #[inline]
-fn element_get(obj: &Value, key: &Value) -> Option<Value> {
+fn element_get(obj: &Value, key: &Value, hint: &Cell<u16>) -> Option<Value> {
     if let (Value::Obj(o), Value::Sym(s)) = (obj, key) {
-        return plain_get_ident(o, std::rc::Rc::as_ptr(s) as *const u8 as usize);
+        return plain_get_ident(o, std::rc::Rc::as_ptr(s) as *const u8 as usize, hint);
     }
     if let (Value::Obj(o), Value::Str(s)) = (obj, key) {
         // A canonical name (a key from `for…in` or `Object.keys`, a literal);
         // an array's `length` and its index strings are the general path's.
         if s.is_canon() && !matches!(o.borrow().kind, Kind::Array(_)) {
-            return plain_get_ident(o, std::rc::Rc::as_ptr(&s.0) as *const u8 as usize);
+            return plain_get_ident(o, std::rc::Rc::as_ptr(&s.0) as *const u8 as usize, hint);
         }
         return None;
     }

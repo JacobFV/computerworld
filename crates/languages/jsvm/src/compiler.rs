@@ -993,6 +993,7 @@ impl<'a> Compiler<'a> {
             .map(|(i, _)| i as u32)
             .collect();
         let own_bytes = source.len().saturating_sub(nested) as u32;
+        let hints = hints_for(fs.ops.len());
         Rc::new(Code {
             name,
             ops: fs.ops,
@@ -1024,6 +1025,7 @@ impl<'a> Compiler<'a> {
             uid: crate::codecache::next_id(),
             compiled_by: std::cell::Cell::new(0),
             own_bytes,
+            hints,
         })
     }
 

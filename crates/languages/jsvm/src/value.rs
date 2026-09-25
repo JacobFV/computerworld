@@ -505,11 +505,20 @@ impl Prop {
 
 /// An object's own properties in insertion order. Keys are canonical
 /// (`Key::canonical`), so a key is found by comparing addresses: a scan for a
-/// few properties, a pointer-keyed index beyond that.
+/// few properties, a pointer-keyed index beyond that. A 64-bit mask of the
+/// keys' identities answers most lookups of an absent key (a method looked up
+/// on its receiver before its prototype) without either.
 #[derive(Default)]
 pub struct PropMap {
     pub entries: Vec<(Key, Prop)>,
     index: Option<FastMap<usize, usize>>,
+    mask: u64,
+}
+
+/// The bit of `PropMap::mask` for the key with identity `id` (an address).
+#[inline(always)]
+fn mask_bit(id: usize) -> u64 {
+    1u64 << (((id >> 4) ^ (id >> 10)) & 63)
 }
 
 const INDEX_AT: usize = 12;
@@ -532,10 +541,40 @@ impl PropMap {
     /// The position of the key with identity `id` (see `Key::ident`).
     #[inline]
     pub fn find_ident(&self, id: usize) -> Option<usize> {
+        if self.mask & mask_bit(id) == 0 {
+            return None;
+        }
+        self.find_unmasked(id)
+    }
+    #[inline]
+    fn find_unmasked(&self, id: usize) -> Option<usize> {
         if let Some(ix) = &self.index {
             return ix.get(&id).copied();
         }
         self.entries.iter().position(|(k, _)| key_addr(k) == id)
+    }
+    /// `find_ident`, trying first the position `hint` remembers (where a
+    /// property access site last found its key) and remembering where it
+    /// found this one: objects built alike keep their properties at the same
+    /// positions, so a site usually finds its key without a search.
+    #[inline]
+    pub fn find_hinted(&self, id: usize, hint: &std::cell::Cell<u16>) -> Option<usize> {
+        if self.mask & mask_bit(id) == 0 {
+            return None;
+        }
+        let h = hint.get() as usize;
+        if let Some((k, _)) = self.entries.get(h) {
+            if key_addr(k) == id {
+                return Some(h);
+            }
+        }
+        let r = self.find_unmasked(id);
+        if let Some(i) = r {
+            if i <= u16::MAX as usize {
+                hint.set(i as u16);
+            }
+        }
+        r
     }
     pub fn find_str(&self, k: &str) -> Option<usize> {
         let c = JsStr::lookup_canon(k)?;
@@ -564,6 +603,7 @@ impl PropMap {
             self.entries[i].1 = p;
             return;
         }
+        self.mask |= mask_bit(id);
         if let Some(ix) = &mut self.index {
             ix.insert(id, self.entries.len());
         }
@@ -586,9 +626,13 @@ impl PropMap {
             Key::Str(s) => s.is_canon(),
             Key::Sym(_) => true,
         }));
+        let mask = entries
+            .iter()
+            .fold(0, |m, (k, _)| m | mask_bit(key_addr(k)));
         let mut m = PropMap {
             entries,
             index: None,
+            mask,
         };
         if m.entries.len() > INDEX_AT {
             m.rebuild();
@@ -599,6 +643,7 @@ impl PropMap {
     pub fn push_absent(&mut self, k: Key, p: Prop) {
         debug_assert!(self.find(&k).is_none());
         let k = k.canonical();
+        self.mask |= mask_bit(key_addr(&k));
         if let Some(ix) = &mut self.index {
             ix.insert(key_addr(&k), self.entries.len());
         }
@@ -613,6 +658,10 @@ impl PropMap {
         if self.index.is_some() {
             self.rebuild();
         }
+        self.mask = self
+            .entries
+            .iter()
+            .fold(0, |m, (k, _)| m | mask_bit(key_addr(k)));
         Some(p)
     }
     pub fn set_value(&mut self, k: &str, v: Value) {

@@ -328,6 +328,15 @@ pub struct Code {
     /// Bytes of source that belong to this body alone (nested functions carry
     /// their own), which is what that charge is proportional to.
     pub own_bytes: u32,
+    /// Per instruction, where a property access last found its key in the
+    /// object that had it (`PropMap::find_hinted`). A cache, shared by every
+    /// realm running the body: it never changes what an access finds.
+    pub hints: Box<[std::cell::Cell<u16>]>,
+}
+
+/// Fresh property-position hints for `n` instructions.
+pub fn hints_for(n: usize) -> Box<[std::cell::Cell<u16>]> {
+    (0..n).map(|_| std::cell::Cell::new(0)).collect()
 }
 
 impl Code {
@@ -366,6 +375,7 @@ impl Code {
             uid: crate::codecache::next_id(),
             compiled_by: std::cell::Cell::new(0),
             own_bytes: self.own_bytes,
+            hints: hints_for(self.ops.len()),
         })
     }
 }
