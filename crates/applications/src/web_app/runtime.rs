@@ -402,6 +402,7 @@ impl JsRuntime {
             seed: seed_of(boot.kind),
             ..Channel::default()
         }));
+        state.image = recalled_image(&state.html, saved);
         let realm = Realm::restore(
             &state,
             Box::new(Host {
@@ -481,10 +482,67 @@ impl AppRuntime for JsRuntime {
     }
     fn suspend(&mut self) -> Result<Value, String> {
         let mut state = self.realm.snapshot();
+        let image = std::mem::take(&mut state.image);
+        let html = std::mem::take(&mut state.html);
         // The page is the application's code, rebuilt from the catalog on resume.
-        state.html.clear();
-        serde_json::to_value(&state).map_err(|e| e.to_string())
+        let saved = serde_json::to_value(&state).map_err(|e| e.to_string())?;
+        remember_image(&html, &saved, image);
+        Ok(saved)
     }
+}
+
+/// Heap images of the runtimes suspended in this process, newest last, by a digest
+/// of the page and the state they were saved as: a resume of the same state reads
+/// the image and replays only the inputs after it (see `RealmState::image`) instead
+/// of the whole journal. Images are never part of the saved state, so a state from
+/// another process (or one this cache has let go) replays as before.
+static IMAGES: Mutex<Vec<(u128, cw_web::script::HeapImage)>> = Mutex::new(Vec::new());
+/// Images the cache keeps.
+const IMAGES_KEPT: usize = 16;
+
+fn image_key(html: &str, saved: &Value) -> u128 {
+    use std::hash::Hasher;
+    // SipHash and FNV-1a over the same bytes: two independent 64-bit digests.
+    struct Both(std::hash::DefaultHasher, u64);
+    impl std::io::Write for Both {
+        fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
+            self.0.write(b);
+            for x in b {
+                self.1 = (self.1 ^ *x as u64).wrapping_mul(0x100_0000_01B3);
+            }
+            Ok(b.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut h = Both(std::hash::DefaultHasher::new(), 0xCBF2_9CE4_8422_2325);
+    std::io::Write::write_all(&mut h, html.as_bytes()).expect("hashing");
+    serde_json::to_writer(&mut h, saved).expect("a saved state serialises");
+    ((h.0.finish() as u128) << 64) | h.1 as u128
+}
+
+fn remember_image(html: &str, saved: &Value, image: cw_web::script::HeapImage) {
+    if image.0.is_none() {
+        return;
+    }
+    let key = image_key(html, saved);
+    let mut images = lock(&IMAGES);
+    images.retain(|(k, _)| *k != key);
+    images.push((key, image));
+    if images.len() > IMAGES_KEPT {
+        images.remove(0);
+    }
+}
+
+fn recalled_image(html: &str, saved: &Value) -> cw_web::script::HeapImage {
+    let key = image_key(html, saved);
+    lock(&IMAGES)
+        .iter()
+        .rev()
+        .find(|(k, _)| *k == key)
+        .map(|(_, i)| i.clone())
+        .unwrap_or_default()
 }
 
 /// The page shell a compiled application renders into: the theme sheet, its own
