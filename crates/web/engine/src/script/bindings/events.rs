@@ -512,6 +512,21 @@ fn click_at(
         if changed {
             focused_now = ft;
         }
+        // Pressing in a text control puts the caret at the character boundary
+        // under the pointer (Chromium's mousedown default).
+        let caret = {
+            let mut i = realm.inner.borrow_mut();
+            if i.is_text_control(target) && i.focused == Some(target) {
+                i.caret_from_point(target, x, y)
+            } else {
+                None
+            }
+        };
+        if let Some(c) = caret {
+            let mut i = realm.inner.borrow_mut();
+            i.form.selection.insert(target, (c, c));
+            i.touch_state(target);
+        }
     }
     {
         let mut i = realm.inner.borrow_mut();

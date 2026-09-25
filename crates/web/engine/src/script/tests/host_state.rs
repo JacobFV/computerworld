@@ -193,3 +193,55 @@ fn journaling_can_be_turned_off() {
     // The page runs the same either way.
     assert_eq!(on.eval("typeof t").unwrap(), off.eval("typeof t").unwrap());
 }
+
+const CARET_PAGE: &str = r#"<!DOCTYPE html><html><head><style>
+  body { margin: 0 }
+  input, textarea { display: block; margin: 0; padding: 0 0 0 10px; border: 0; font: 16px 'DejaVu Sans Mono', monospace; width: 300px }
+  textarea { height: 100px }
+</style></head><body><input id=i value="hello world"><textarea id=t>first line
+second</textarea></body></html>"#;
+
+fn click(r: &mut Realm, x: i32, y: i32) {
+    r.dispatch(UiEvent::Click {
+        x,
+        y,
+        button: 0,
+        modifiers: Modifiers::default(),
+        detail: 1,
+    });
+}
+
+#[test]
+fn clicking_in_a_text_control_puts_the_caret_at_the_point() {
+    let mut r = realm(CARET_PAGE);
+    // The width of one character of the monospace font.
+    let em: f64 = r
+        .eval("(() => { const c = document.createElement('canvas').getContext('2d'); c.font = \"16px 'DejaVu Sans Mono'\"; return String(c.measureText('hello').width / 5); })()")
+        .unwrap()
+        .parse()
+        .unwrap();
+    let at = |chars: f64| (10.0 + chars * em).round() as i32;
+    let caret = |r: &mut Realm, id: &str| {
+        r.eval(&format!(
+            "(() => {{ const e = document.getElementById('{id}'); return e.selectionStart + ',' + e.selectionEnd; }})()"
+        ))
+        .unwrap()
+    };
+    // Between "hello" and " world" (a little right of the boundary).
+    click(&mut r, at(5.2), 8);
+    assert_eq!(caret(&mut r, "i"), "5,5");
+    assert_eq!(r.eval("document.activeElement.id").unwrap(), "i");
+    // Before the first character, and past the end.
+    click(&mut r, at(0.3), 8);
+    assert_eq!(caret(&mut r, "i"), "0,0");
+    click(&mut r, 290, 8);
+    assert_eq!(caret(&mut r, "i"), "11,11");
+    // The textarea's second line starts at offset 11; its third character.
+    let top: i32 = r
+        .eval("String(document.getElementById('t').getBoundingClientRect().top)")
+        .unwrap()
+        .parse::<f64>()
+        .unwrap() as i32;
+    click(&mut r, at(2.4), top + 25);
+    assert_eq!(caret(&mut r, "t"), "13,13");
+}

@@ -180,8 +180,8 @@ pub struct Inner {
     /// tree was laid out with.
     laid_out: Option<(Viewport, ScrollState, ImageSizeMap, bool)>,
     /// Bumped when the fragment tree is replaced, and when a style flush changed
-    /// a style hit testing reads: the key of the hit-test list.
-    hit_epoch: u64,
+    /// any style: the key of the hit-test list.
+    paint_epoch: u64,
     hit_list: Option<(u64, crate::paint::hit::HitList)>,
     /// Elements whose matching state (hover, focus, active) changed since the last
     /// restyle.
@@ -349,7 +349,7 @@ impl Inner {
             style_engine: None,
             layout_dirty: true,
             laid_out: None,
-            hit_epoch: 0,
+            paint_epoch: 0,
             hit_list: None,
             state_changed: Vec::new(),
             tree: None,
@@ -901,7 +901,6 @@ impl Inner {
                 style::Restyled {
                     changed: true,
                     layout_changed: true,
-                    hits_changed: true,
                 }
             }
             Some(engine) if !self.styles_valid => {
@@ -911,7 +910,6 @@ impl Inner {
                 style::Restyled {
                     changed: true,
                     layout_changed: true,
-                    hits_changed: true,
                 }
             }
             Some(engine) => engine
@@ -919,12 +917,11 @@ impl Inner {
                 .unwrap_or(style::Restyled {
                     changed: true,
                     layout_changed: true,
-                    hits_changed: true,
                 }),
         };
         self.layout_dirty |= restyled.layout_changed;
-        if restyled.hits_changed {
-            self.hit_epoch += 1;
+        if restyled.changed {
+            self.paint_epoch += 1;
         }
         self.styles_valid = true;
         self.styles_generation = self.generation;
@@ -1107,7 +1104,7 @@ impl Inner {
             self.images.clone(),
             self.layout_cache.overlay_scrollbars,
         ));
-        self.hit_epoch += 1;
+        self.paint_epoch += 1;
         if style::profile::verifying() {
             self.verify_incremental();
         }
@@ -1228,14 +1225,9 @@ impl Inner {
                     .insert(*n, crate::geom::Point { x: *ox, y: *oy });
             }
         }
-        if self.hit_list.as_ref().map(|(e, _)| *e) != Some(self.hit_epoch) {
+        if self.hit_list.as_ref().map(|(e, _)| *e) != Some(self.paint_epoch) {
             let list = crate::paint::hit::HitList::build(tree, &self.styles, self.viewport, &ctx);
-            self.hit_list = Some((self.hit_epoch, list));
-        } else if style::profile::verifying() {
-            let fresh = crate::paint::hit::HitList::build(tree, &self.styles, self.viewport, &ctx);
-            if self.hit_list.as_ref().map(|(_, l)| l) != Some(&fresh) {
-                panic!("a reused hit list differs from a fresh one at {}", self.url);
-            }
+            self.hit_list = Some((self.paint_epoch, list));
         }
         let hit = self.hit_list.as_ref().and_then(|(_, l)| l.at(x, y));
         match hit {
