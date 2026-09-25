@@ -763,3 +763,88 @@ fn json_server_serves_browses_searches_and_writes_its_resources() {
     let (_, books) = a.http("GET", "http://json-server.typicode.com/books", None);
     assert_eq!(books.as_array().unwrap().len(), 4, "{books}");
 }
+
+fn rss_kib() -> u64 {
+    std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|s| {
+            s.lines()
+                .find(|l| l.starts_with("VmRSS:"))
+                .and_then(|l| l.split_whitespace().nth(1))
+                .and_then(|n| n.parse().ok())
+        })
+        .unwrap_or(0)
+}
+
+/// Per-app numbers for docs/oss-webapps.md, in a fresh world each: the wall time of
+/// the navigation and of the world time it then takes for the first screen's content
+/// to show, the process's resident memory before and after, and the exported
+/// snapshot's size before the visit and after it. Run in release:
+///
+///     cargo test --release -p computerworld --features oss-web --test oss_webapps measure -- --ignored --nocapture --test-threads 1
+#[test]
+#[ignore]
+fn measure() {
+    let apps = [
+        (
+            "TodoMVC React",
+            "http://todomvc.com/examples/react/dist/",
+            "Double-click to edit a todo",
+        ),
+        (
+            "TodoMVC Vue",
+            "http://todomvc.com/examples/vue/dist/",
+            "Double-click to edit a todo",
+        ),
+        (
+            "Conduit React",
+            "http://conduit.realworld.show/",
+            "Stop writing ETL, start writing contracts",
+        ),
+        (
+            "Conduit Vue",
+            "http://vue.realworld.show/",
+            "Stop writing ETL, start writing contracts",
+        ),
+        (
+            "react-admin",
+            "http://react-admin.marmelab.com/",
+            "Writing incident reviews people read",
+        ),
+        ("JSON Server", "http://json-server.typicode.com/", "/books"),
+    ];
+    println!("| App | first load: navigate (ms) | first load: until content (ms) | world time waited (ms) | second load: until content (ms) | RSS before → after (MiB) | snapshot before → after (bytes) |");
+    println!("|---|---|---|---|---|---|---|");
+    for (name, url, content) in apps {
+        let mut a = Agent::new();
+        let before_snapshot = a.world.export_snapshot().unwrap().len();
+        let rss_before = rss_kib();
+        let t = std::time::Instant::now();
+        a.navigate(url);
+        let nav = t.elapsed().as_secs_f64() * 1000.0;
+        let mut waited = 0;
+        while !a.shows(content) && waited < 10_000 {
+            a.wait(100);
+            waited += 100;
+        }
+        assert!(a.shows(content), "{name}: {}", a.dump());
+        let total = t.elapsed().as_secs_f64() * 1000.0;
+        let rss_after = rss_kib();
+        let after_snapshot = a.world.export_snapshot().unwrap().len();
+        // The same page again in the same process: the scripts' compiled code is cached.
+        let t = std::time::Instant::now();
+        a.navigate("http://todomvc.com/license.md");
+        a.navigate(url);
+        let mut waited_again = 0;
+        while !a.shows(content) && waited_again < 10_000 {
+            a.wait(100);
+            waited_again += 100;
+        }
+        let again = t.elapsed().as_secs_f64() * 1000.0;
+        println!(
+            "| {name} | {nav:.0} | {total:.0} | {waited} | {again:.0} | {:.0} → {:.0} | {before_snapshot} → {after_snapshot} |",
+            rss_before as f64 / 1024.0,
+            rss_after as f64 / 1024.0
+        );
+    }
+}
