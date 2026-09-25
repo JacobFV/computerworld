@@ -107,12 +107,10 @@ pub fn wrap_flex_items(
             }
         });
         if has_content {
-            let mut st = ComputedStyle::inherit_from(&parent_style);
-            st.display = Display::Block;
             let id = BoxId(boxes.len() as u32);
             boxes.push(LayoutBox {
                 kind: BoxKind::Block,
-                style: Rc::new(st),
+                style: crate::layout::boxes::anon_style(&parent_style, Display::Block),
                 source: anon,
                 node: None,
                 level: Level::Block,

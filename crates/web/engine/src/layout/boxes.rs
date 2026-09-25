@@ -344,10 +344,32 @@ pub fn build(doc: &Document, styles: &StyleSet, images: &dyn ImageSizes) -> BoxT
     }
 }
 
-fn anon_style(parent: &ComputedStyle, display: Display) -> Rc<ComputedStyle> {
+/// The style of an anonymous box of `display` in a box styled `parent`: its
+/// inherited properties. Remembered per thread by the parent style's address (the
+/// entry keeps it alive), so every layout of an unchanged page gives its anonymous
+/// boxes the same style objects, and builds them once.
+pub(crate) fn anon_style(parent: &Rc<ComputedStyle>, display: Display) -> Rc<ComputedStyle> {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    type Memo = HashMap<(usize, Display), (Rc<ComputedStyle>, Rc<ComputedStyle>)>;
+    thread_local! {
+        static ANON: RefCell<Memo> = RefCell::new(HashMap::new());
+    }
+    let key = (Rc::as_ptr(parent) as usize, display);
+    if let Some((_, s)) = ANON.with(|m| m.borrow().get(&key).cloned()) {
+        return s;
+    }
     let mut s = ComputedStyle::inherit_from(parent);
     s.display = display;
-    Rc::new(s)
+    let s = Rc::new(s);
+    ANON.with(|m| {
+        let mut m = m.borrow_mut();
+        if m.len() >= 4096 {
+            m.clear();
+        }
+        m.insert(key, (parent.clone(), s.clone()));
+    });
+    s
 }
 
 impl<'a> Builder<'a> {

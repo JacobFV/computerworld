@@ -109,7 +109,12 @@ const REF_SIZE: u16 = 4096;
 pub fn advance(font: &Font, c: char) -> Au {
     let style = font.scene_style();
     let base = if c == '\t' { ' ' } else { c };
-    let fine = match metrics::tabulated_advance(font.typeface, style, base, REF_SIZE) {
+    let tabulated = if (base as u32) < 128 {
+        with_ascii(font.typeface, style, |a| a.tabulated[base as usize])
+    } else {
+        metrics::tabulated_advance(font.typeface, style, base, REF_SIZE)
+    };
+    let fine = match tabulated {
         Some(f) => f,
         None => fallback_advance(font.typeface, style, base),
     };
@@ -303,6 +308,8 @@ fn face_key_uncached(typeface: Typeface, style: cw_scene::Style, c: char) -> u8 
 struct AsciiFace {
     units: [Option<(u16, u32)>; 128],
     face: [u8; 128],
+    /// `metrics::tabulated_advance` at `REF_SIZE`.
+    tabulated: [Option<i64>; 128],
 }
 
 type AsciiEntry = ((Typeface, cw_scene::Style), Box<AsciiFace>);
@@ -321,11 +328,14 @@ fn with_ascii<R>(typeface: Typeface, style: cw_scene::Style, f: impl FnOnce(&Asc
                 let mut a = Box::new(AsciiFace {
                     units: [None; 128],
                     face: [0; 128],
+                    tabulated: [None; 128],
                 });
                 for b in 0..128u8 {
                     let c = b as char;
                     a.units[b as usize] = metrics::advance_units(typeface, style, c);
                     a.face[b as usize] = face_key_uncached(typeface, style, c);
+                    a.tabulated[b as usize] =
+                        metrics::tabulated_advance(typeface, style, c, REF_SIZE);
                 }
                 faces.push(((typeface, style), a));
                 faces.len() - 1
