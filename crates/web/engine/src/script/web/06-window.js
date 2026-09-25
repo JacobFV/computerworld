@@ -512,6 +512,9 @@ function navigateTo(href) {
     if (target === cur) { scrollToFragment(); return; }
     W.history('push', null, target);
     scrollToFragment();
+    // A fragment navigation changes the session history entry, so it fires
+    // popstate (what React Router's hash history listens for) before hashchange.
+    fire(globalThis, new C.PopStateEvent('popstate', { state: null }));
     fire(globalThis, new C.HashChangeEvent('hashchange', { oldURL: cur, newURL: target }));
     return;
   }
@@ -524,7 +527,7 @@ function scrollToFragment() {
   if (el) W.scrollIntoView(el, true, '');
 }
 define(location, 'assign', (url) => navigateTo(String(url)));
-define(location, 'replace', (url) => { const target = W.resolveUrl(String(url), document.baseURI); const cur = W.url(); if (target.split('#')[0] === cur.split('#')[0] && (target.includes('#') || cur.includes('#'))) { W.history('replace', null, target); scrollToFragment(); fire(globalThis, new C.HashChangeEvent('hashchange', { oldURL: cur, newURL: target })); return; } W.navigate(target); });
+define(location, 'replace', (url) => { const target = W.resolveUrl(String(url), document.baseURI); const cur = W.url(); if (target.split('#')[0] === cur.split('#')[0] && (target.includes('#') || cur.includes('#'))) { W.history('replace', null, target); scrollToFragment(); fire(globalThis, new C.PopStateEvent('popstate', { state: null })); fire(globalThis, new C.HashChangeEvent('hashchange', { oldURL: cur, newURL: target })); return; } W.navigate(target); });
 define(location, 'reload', () => W.navigate(W.url()));
 define(location, 'toString', () => W.url());
 define(location, 'ancestorOrigins', { length: 0, item: () => null, contains: () => false });

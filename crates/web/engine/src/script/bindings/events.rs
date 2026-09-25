@@ -574,6 +574,8 @@ fn change_hash(realm: &mut Realm, old_url: &str, new_url: &str, push: bool) {
             i.set_scroll(Document::ROOT, sx, y);
         }
     }
+    // Popstate first, as a fragment navigation fires it (HashRouter listens for it).
+    realm.call_hook("popstate", vec![Value::Null]);
     realm.call_hook("hashchange", vec![Value::str(old_url), Value::str(new_url)]);
 }
 
@@ -887,7 +889,11 @@ fn key_default(
                 .to_ascii_lowercase(),
         )
     };
-    if printable {
+    // Enter produces a keypress too (charCode 13), as in Chromium: Vue's
+    // `@keypress.enter.prevent` is how an editor keeps Enter in a tag field from
+    // submitting its form.
+    let enter = key == "Enter" && !m.ctrl && !m.meta && !m.alt;
+    if printable || enter {
         let prevented = hook_bool(
             realm,
             "key",

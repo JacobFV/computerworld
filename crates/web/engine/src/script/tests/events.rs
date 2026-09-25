@@ -510,7 +510,47 @@ fn resize_hashchange_popstate_visibility_unload() {
         r.dispatch(UiEvent::Unload),
         DefaultAction::ConfirmUnload("stay".into())
     );
-    assert_eq!(r.eval("ev.join()").unwrap(), "show,mq:true,resize500,hash:#t:page.html,pop:{\"p\":1},vis:hidden,show,bu,vis:hidden,unload");
+    assert_eq!(r.eval("ev.join()").unwrap(), "show,mq:true,resize500,pop:null,hash:#t:page.html,pop:{\"p\":1},vis:hidden,show,bu,vis:hidden,unload");
+}
+
+/// Enter fires keypress (charCode 13) before its default action, and preventing
+/// that keypress keeps the form from being submitted implicitly.
+#[test]
+fn enter_keypress_can_prevent_implicit_submission() {
+    let mut r = run("<form id=f><input id=tag><button>Publish</button></form>", "window.ev=[]; f.addEventListener('submit', e=>{ e.preventDefault(); ev.push('submit'); }); tag.addEventListener('keypress', e=>{ ev.push('keypress:'+e.key+':'+e.charCode+':'+e.keyCode); if (tag.value==='ci') e.preventDefault(); }); tag.focus();");
+    r.eval("tag.value='ci'").unwrap();
+    r.dispatch(UiEvent::Key {
+        key: "Enter".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
+    r.eval("tag.value='x'").unwrap();
+    r.dispatch(UiEvent::Key {
+        key: "Enter".into(),
+        code: String::new(),
+        modifiers: Modifiers::default(),
+        repeat: false,
+    });
+    assert_eq!(
+        r.eval("ev.join()").unwrap(),
+        "keypress:Enter:13:13,keypress:Enter:13:13,submit"
+    );
+}
+
+/// A fragment navigation (a `#/active` link, `location.hash`, `location.replace`)
+/// fires popstate and then hashchange, as browsers do: React Router's HashRouter
+/// (TodoMVC's React example) re-renders on popstate alone.
+#[test]
+fn fragment_navigation_fires_popstate_then_hashchange() {
+    let mut r = run("<a id=l href='#/active'>Active</a>", "window.ev=[]; addEventListener('popstate', e=>ev.push('pop:'+e.state+':'+location.hash)); addEventListener('hashchange', e=>ev.push('hash:'+location.hash));");
+    click_id(&mut r, "l");
+    r.eval("location.hash='#/completed'; location.replace('#/');")
+        .unwrap();
+    assert_eq!(
+        r.eval("ev.join() + ' ' + history.length").unwrap(),
+        "pop:null:#/active,hash:#/active,pop:null:#/completed,hash:#/completed,pop:null:#/,hash:#/ 3"
+    );
 }
 
 #[test]

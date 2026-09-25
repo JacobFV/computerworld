@@ -189,7 +189,7 @@ class KeyboardEvent extends UIEvent {
     this.location = init.location | 0;
     this.repeat = !!init.repeat;
     this.isComposing = !!init.isComposing;
-    this.charCode = init.charCode !== undefined ? init.charCode : (type === 'keypress' && this.key.length === 1 ? this.key.charCodeAt(0) : 0);
+    this.charCode = init.charCode !== undefined ? init.charCode : (type === 'keypress' ? (this.key.length === 1 ? this.key.charCodeAt(0) : this.key === 'Enter' ? 13 : 0) : 0);
     this.keyCode = init.keyCode !== undefined ? init.keyCode : (type === 'keypress' && this.key.length === 1 ? this.charCode : keyCodeOf(this.key));
     this.which = init.which !== undefined ? init.which : this.keyCode;
     copyModifiers(this, init);
