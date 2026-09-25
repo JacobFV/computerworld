@@ -1,0 +1,6 @@
+{
+ "url": "http://vue.realworld.show/",
+ "static": {"vue.realworld.show": "crates/services/oss-web/packages/conduit-vue"},
+ "api_hosts": ["api.realworld.show"],
+ "api": "oss-conduit-vue.api.json"
+}

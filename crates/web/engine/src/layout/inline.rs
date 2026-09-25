@@ -939,14 +939,10 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
                         continue;
                     }
                     UnitKind::Space { collapsible, .. } => {
-                        if !has_content
-                            && collapsible
-                            && !placed.iter().any(|p| {
-                                matches!(self.units[p.unit].kind, UnitKind::Open(_))
-                                    && self.units[p.unit].width > Au::ZERO
-                            })
-                        {
-                            // Leading collapsible space is removed.
+                        if !has_content && collapsible {
+                            // Leading collapsible space is removed, even after an empty
+                            // inline box with a margin, padding or border (Chromium:
+                            // `<i style="margin-left: 8px"></i> X` puts X at 8 px).
                             j += 1;
                             continue;
                         }
@@ -2048,6 +2044,8 @@ pub fn intrinsic_widths(ctx: &LayoutContext, container: BoxId) -> (Au, Au) {
     let mut float_sum = Au::ZERO;
     let mut first = true;
     let mut pending_spaces = Au::ZERO;
+    // Whether the current line has had text or an atomic inline yet.
+    let mut line_content = false;
     for u in &content.units {
         match u.kind {
             UnitKind::Newline | UnitKind::Br(_) => {
@@ -2061,7 +2059,9 @@ pub fn intrinsic_widths(ctx: &LayoutContext, container: BoxId) -> (Au, Au) {
                 first = false;
             }
             UnitKind::Space { .. } => {
-                if line.is_zero() && first && indent.is_zero() || line == indent && first {
+                // Spaces before the first content of the line are removed, even
+                // after an empty inline box with a margin (the line layout's rule).
+                if first && !line_content {
                     continue;
                 }
                 line += u.width;
@@ -2122,6 +2122,9 @@ pub fn intrinsic_widths(ctx: &LayoutContext, container: BoxId) -> (Au, Au) {
                     }
                 };
                 line += w;
+                if !matches!(u.kind, UnitKind::Open(_) | UnitKind::Close(_)) {
+                    line_content = true;
+                }
                 // An inline box's edge does not end a run of trailing spaces: in
                 // `<a>Sponsors </a>` the space still hangs at the line's end and is
                 // not part of the max-content width (JSON Server's nav items).

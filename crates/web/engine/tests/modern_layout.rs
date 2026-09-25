@@ -743,4 +743,26 @@ mod cases {
         rect_is(&p, "c", 0.0, 25.0, 60.0, 20.0);
         rect_is(&p, "f", 0.0, 50.0, 1280.0, 40.0);
     }
+    /// A collapsible space before the line's first content is removed even after an
+    /// empty inline box with a margin or padding, in layout and in max-content width
+    /// (Conduit Vue's favourite button: an icon `<i>` with a margin, then text).
+    /// Positions and widths are Chromium's.
+    #[test]
+    fn a_space_after_an_empty_inline_box_at_line_start_is_removed() {
+        let p = page(
+            "<!DOCTYPE html><body style='margin: 0; font: 16px Arimo'>
+             <div><i style='margin-right: 8px'></i> <b id=a>X</b></div>
+             <div><i style='padding-right: 8px'></i> <b id=b>X</b></div>
+             <div><i></i> <b id=d>X</b></div>
+             <div><i style='margin-left: 8px'></i> <b id=e>X</b></div>
+             <div><i style='margin-right: 8px'>i</i> <b id=f>X</b></div>
+             <button id=g style='font: 16px Arimo; padding: 0; border: 0'><i style='margin-right: 8px'></i> X</button>",
+        );
+        close(p.rect("a").x, 8.0, "#a x");
+        close(p.rect("b").x, 8.0, "#b x");
+        close(p.rect("d").x, 0.0, "#d x");
+        close(p.rect("e").x, 8.0, "#e x");
+        close(p.rect("f").x, 16.015625, "#f x");
+        close(p.rect("g").width, 18.671875, "#g width");
+    }
 }

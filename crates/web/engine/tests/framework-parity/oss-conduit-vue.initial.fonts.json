@@ -1,0 +1,27 @@
+[
+ {
+  "family": "\"Times New Roman\"",
+  "first": "html",
+  "chromium": []
+ },
+ {
+  "family": "\"Source Sans Pro\", sans-serif",
+  "first": "html>body>div:nth-child(1)>nav:nth-child(1)>div:nth-child(1)>ul:nth-child(2)>li:nth-child(1)>a:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 4
+   }
+  ]
+ },
+ {
+  "family": "Lora, serif",
+  "first": "html>body>div:nth-child(1)>nav:nth-child(1)>div:nth-child(1)>a:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Serif",
+    "glyphs": 7
+   }
+  ]
+ }
+]

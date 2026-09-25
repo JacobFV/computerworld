@@ -514,4 +514,9 @@ mod cases {
     fn oss_conduit_react() {
         run_fixture("oss-conduit-react");
     }
+
+    #[test]
+    fn oss_conduit_vue() {
+        run_fixture("oss-conduit-vue");
+    }
 }

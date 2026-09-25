@@ -1,0 +1,14 @@
+{
+  "initial": [],
+  "tag": [
+    {"action": "click", "selector": ".sidebar .tag-list a:nth-child(3)"}
+  ],
+  "article": [
+    {"action": "click", "selector": ".article-preview .preview-link h1"}
+  ],
+  "signin": [
+    {"action": "click", "selector": "a.nav-link[href='#/login']"},
+    {"action": "click", "selector": "input[type=email]"},
+    {"action": "type", "text": "ada@example.com"}
+  ]
+}
