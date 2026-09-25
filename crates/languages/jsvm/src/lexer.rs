@@ -2,15 +2,56 @@
 //! (with nesting), regular-expression literals and punctuators. Each token
 //! records whether a line terminator preceded it, for automatic semicolons.
 
+/// A name or string token's text, shared: the parser keeps it as the AST's
+/// `Name` and clones tokens freely, and a source repeats the same names.
+#[derive(Clone, PartialEq)]
+pub struct Atom(pub std::rc::Rc<str>);
+
+impl Atom {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+    /// The text as the AST's shared name.
+    pub fn name(&self) -> std::rc::Rc<str> {
+        self.0.clone()
+    }
+}
+impl std::ops::Deref for Atom {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+impl PartialEq<str> for Atom {
+    fn eq(&self, o: &str) -> bool {
+        &*self.0 == o
+    }
+}
+impl PartialEq<&str> for Atom {
+    fn eq(&self, o: &&str) -> bool {
+        &*self.0 == *o
+    }
+}
+impl std::fmt::Debug for Atom {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", &*self.0)
+    }
+}
+impl std::fmt::Display for Atom {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Tok {
-    Ident(String),
+    Ident(Atom),
     /// An identifier written with escapes (never a keyword).
-    EscapedIdent(String),
-    PrivateName(String),
+    EscapedIdent(Atom),
+    PrivateName(Atom),
     Num(f64),
     BigInt(String),
-    Str(String),
+    Str(Atom),
     /// Complete template with no substitutions: (cooked, raw).
     Template(Option<String>, String),
     TemplateHead(Option<String>, String),
@@ -68,6 +109,13 @@ pub struct Lexer<'a> {
     out: Vec<Token>,
     /// Brace stack: true marks a `${` opened inside a template.
     braces: Vec<bool>,
+    /// The atoms made so far, by a hash of their text: a name that recurs is
+    /// shared rather than allocated again.
+    atoms: std::collections::HashMap<
+        u64,
+        Vec<Atom>,
+        std::hash::BuildHasherDefault<crate::value::FastHash>,
+    >,
 }
 
 impl<'a> Lexer<'a> {
@@ -79,7 +127,22 @@ impl<'a> Lexer<'a> {
             line_start: 0,
             out: vec![],
             braces: vec![],
+            atoms: Default::default(),
         }
+    }
+
+    /// The atom for `text`.
+    fn atom(&mut self, text: &str) -> Atom {
+        use std::hash::Hasher;
+        let mut h = crate::value::FastHash::default();
+        h.write(text.as_bytes());
+        let list = self.atoms.entry(h.finish()).or_default();
+        if let Some(a) = list.iter().find(|a| a.as_str() == text) {
+            return a.clone();
+        }
+        let a = Atom(std::rc::Rc::from(text));
+        list.push(a.clone());
+        a
     }
     fn peek(&self, off: usize) -> char {
         *self.c.get(self.pos + off).unwrap_or(&'\0')
@@ -218,6 +281,7 @@ impl<'a> Lexer<'a> {
             let ch = self.c[self.pos];
             let tok = if is_id_start(ch) || ch == '\\' {
                 let (name, escaped) = self.ident()?;
+                let name = self.atom(&name);
                 if escaped {
                     Tok::EscapedIdent(name)
                 } else {
@@ -226,7 +290,7 @@ impl<'a> Lexer<'a> {
             } else if ch == '#' && is_id_start(self.peek(1)) {
                 self.pos += 1;
                 let (name, _) = self.ident()?;
-                Tok::PrivateName(name)
+                Tok::PrivateName(self.atom(&name))
             } else if ch.is_ascii_digit() || (ch == '.' && self.peek(1).is_ascii_digit()) {
                 self.number()?
             } else if ch == '"' || ch == '\'' {
@@ -596,7 +660,7 @@ impl<'a> Lexer<'a> {
             let ch = self.c[self.pos];
             if ch == q {
                 self.pos += 1;
-                return Ok(Tok::Str(s));
+                return Ok(Tok::Str(self.atom(&s)));
             }
             if ch == '\\' {
                 self.pos += 1;

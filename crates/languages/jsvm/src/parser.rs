@@ -289,9 +289,9 @@ impl<'a> Parser<'a> {
                 if s == "yield" && self.ctx.is_generator {
                     return None;
                 }
-                Some(Rc::from(s.as_str()))
+                Some(s.name())
             }
-            Tok::EscapedIdent(s) => Some(Rc::from(s.as_str())),
+            Tok::EscapedIdent(s) => Some(s.name()),
             _ => None,
         }
     }
@@ -314,7 +314,7 @@ impl<'a> Parser<'a> {
         match self.tok().clone() {
             Tok::Ident(s) | Tok::EscapedIdent(s) => {
                 self.advance();
-                Ok(Rc::from(s.as_str()))
+                Ok(s.name())
             }
             _ => Err(self.unexpected()),
         }
@@ -553,11 +553,11 @@ impl<'a> Parser<'a> {
         match self.tok().clone() {
             Tok::Ident(s) | Tok::EscapedIdent(s) => {
                 self.advance();
-                Ok(PropKey::Lit(Rc::from(s.as_str())))
+                Ok(PropKey::Lit(s.name()))
             }
             Tok::Str(s) => {
                 self.advance();
-                Ok(PropKey::Lit(Rc::from(s.as_str())))
+                Ok(PropKey::Lit(s.name()))
             }
             Tok::Num(n) => {
                 self.advance();
@@ -571,7 +571,7 @@ impl<'a> Parser<'a> {
             }
             Tok::PrivateName(s) => {
                 self.advance();
-                Ok(PropKey::Private(Rc::from(s.as_str())))
+                Ok(PropKey::Private(s.name()))
             }
             Tok::Punct("[") => {
                 self.advance();
@@ -1003,7 +1003,7 @@ impl<'a> Parser<'a> {
             self.advance();
             self.consume_semicolon()?;
             return Ok(Stmt {
-                kind: StmtKind::Import(names, Rc::from(s.as_str())),
+                kind: StmtKind::Import(names, s.name()),
                 pos,
             });
         }
@@ -1025,7 +1025,7 @@ impl<'a> Parser<'a> {
                 let imported = match self.tok().clone() {
                     Tok::Str(s) => {
                         self.advance();
-                        Rc::from(s.as_str())
+                        s.name()
                     }
                     _ => self.ident_name_any()?,
                 };
@@ -1061,7 +1061,7 @@ impl<'a> Parser<'a> {
         }
         self.consume_semicolon()?;
         Ok(Stmt {
-            kind: StmtKind::Import(names, Rc::from(s.as_str())),
+            kind: StmtKind::Import(names, s.name()),
             pos,
         })
     }
@@ -1117,7 +1117,7 @@ impl<'a> Parser<'a> {
             };
             self.advance();
             self.consume_semicolon()?;
-            ExportKind::All(alias, Rc::from(s.as_str()))
+            ExportKind::All(alias, s.name())
         } else if self.eat("{") {
             let mut names = vec![];
             while !self.eat("}") {
@@ -1137,7 +1137,7 @@ impl<'a> Parser<'a> {
                     return Err(self.unexpected());
                 };
                 self.advance();
-                Some(Rc::from(s.as_str()))
+                Some(s.name())
             } else {
                 None
             };
@@ -1933,7 +1933,7 @@ impl<'a> Parser<'a> {
                 self.advance();
                 let right = self.binary(9, no_in)?;
                 Expr {
-                    kind: ExprKind::PrivateIn(Rc::from(n.as_str()), Box::new(right)),
+                    kind: ExprKind::PrivateIn(n.name(), Box::new(right)),
                     pos,
                 }
             } else {
@@ -2223,7 +2223,7 @@ impl<'a> Parser<'a> {
                 let p = self.pos();
                 let prop = if let Tok::PrivateName(n) = self.tok().clone() {
                     self.advance();
-                    MemberProp::Private(Rc::from(n.as_str()), p)
+                    MemberProp::Private(n.name(), p)
                 } else {
                     MemberProp::Name(self.ident_name_any()?, p)
                 };
@@ -2265,7 +2265,7 @@ impl<'a> Parser<'a> {
                     let p = self.pos();
                     let prop = if let Tok::PrivateName(n) = self.tok().clone() {
                         self.advance();
-                        MemberProp::Private(Rc::from(n.as_str()), p)
+                        MemberProp::Private(n.name(), p)
                     } else {
                         MemberProp::Name(self.ident_name_any()?, p)
                     };
@@ -2369,7 +2369,7 @@ impl<'a> Parser<'a> {
                 let p = self.pos();
                 let prop = if let Tok::PrivateName(n) = self.tok().clone() {
                     self.advance();
-                    MemberProp::Private(Rc::from(n.as_str()), p)
+                    MemberProp::Private(n.name(), p)
                 } else {
                     MemberProp::Name(self.ident_name_any()?, p)
                 };
@@ -2458,7 +2458,7 @@ impl<'a> Parser<'a> {
             }
             Tok::Str(s) => {
                 self.advance();
-                ExprKind::Str(Rc::from(s.as_str()))
+                ExprKind::Str(s.name())
             }
             Tok::Template(..) | Tok::TemplateHead(..) => {
                 let (cooked, _raw, exprs) = self.template_parts(false)?;
@@ -2549,7 +2549,7 @@ impl<'a> Parser<'a> {
             },
             Tok::EscapedIdent(s) => {
                 self.advance();
-                ExprKind::Ident(Rc::from(s.as_str()))
+                ExprKind::Ident(s.name())
             }
             _ => return Err(self.unexpected()),
         };
@@ -2647,7 +2647,7 @@ impl<'a> Parser<'a> {
                             format!(
                                 "Unexpected token '{}'",
                                 match &key_tok.tok {
-                                    Tok::Ident(s) => s.clone(),
+                                    Tok::Ident(s) => s.to_string(),
                                     _ => String::new(),
                                 }
                             ),
