@@ -600,11 +600,20 @@ pub fn build_virtual_with(
 
 /// Compiles an app of several modules (from `load`) both ways.
 pub fn build_modules(sources: &[Source]) -> Build {
+    build_modules_with_island(sources, &[])
+}
+
+/// [`build_modules`], with the modules `files` names on the island from the start
+/// (whether or not they compile), for measuring what the island costs.
+pub fn build_modules_with_island(sources: &[Source], files: &[&str]) -> Build {
     let (js, js_errors) = match emit_js::emit_modules(sources) {
         Ok(js) => (Some(js), Vec::new()),
         Err(e) => (None, e),
     };
-    let (mut ir, mut diagnostics, vm, outside) = lower_with_islands(sources);
+    let forced: Vec<usize> = (0..sources.len())
+        .filter(|&i| files.contains(&sources[i].file.as_str()))
+        .collect();
+    let (mut ir, mut diagnostics, vm, outside) = lower_with_islands(sources, forced);
     // Packages the compiled code imports, and the app's modules outside the
     // subset, run on the app's island.
     if let Some(island) = ir.as_mut().and_then(|m| m.island.as_mut()) {
@@ -655,6 +664,7 @@ fn renders(text: &str) -> bool {
 #[allow(clippy::type_complexity)]
 fn lower_with_islands(
     sources: &[Source],
+    forced: Vec<usize>,
 ) -> (
     Option<cw_ui::ir::Module>,
     Vec<Diagnostic>,
@@ -663,10 +673,27 @@ fn lower_with_islands(
 ) {
     let code = code_modules(sources);
     let entry = sources.len().saturating_sub(1);
-    let mut options = lower::LowerOptions::default();
+    let mut options = lower::LowerOptions {
+        vm_modules: forced,
+        ..lower::LowerOptions::default()
+    };
     let mut outside: Vec<Diagnostic> = Vec::new();
     loop {
-        let d = match lower::lower_modules_with(sources, &options) {
+        close_over_cycles(sources, &mut options.vm_modules);
+        let result = lower::lower_modules_with(sources, &options);
+        if options.vm_modules.contains(&entry) && !renders(&sources[entry].text) {
+            // A cycle took along an entry that cannot render from the island.
+            let mut all = outside;
+            all.extend(result.err().unwrap_or_default());
+            all.push(Diagnostic {
+                file: sources[entry].display_file(code),
+                line: 1,
+                col: 1,
+                message: "the entry is in an import cycle with code outside the subset, and renders only compiled".into(),
+            });
+            return (None, all, Vec::new(), Vec::new());
+        }
+        let d = match result {
             Ok(m) => return (Some(m), Vec::new(), options.vm_modules, outside),
             Err(d) => d,
         };
@@ -699,28 +726,40 @@ fn lower_with_islands(
         }
         outside.extend(d);
         options.vm_modules.extend(add);
-        // A module on the island that imports one later in the order (a cycle)
-        // takes it along.
-        loop {
-            let mut more = Vec::new();
-            for &v in &options.vm_modules {
-                for &m in sources[v].imports.values() {
-                    if m > v
-                        && !sources[m].package
-                        && !options.vm_modules.contains(&m)
-                        && !more.contains(&m)
-                    {
-                        more.push(m);
-                    }
+    }
+}
+
+/// Grows `vm` over import cycles: a module on the island runs when its place in
+/// the order comes, so one that imports a module later in the order, or is
+/// imported by a compiled module earlier in it (either way, across a cycle),
+/// would be read before it runs. Both ends go to the island.
+fn close_over_cycles(sources: &[Source], vm: &mut Vec<usize>) {
+    loop {
+        let mut more = Vec::new();
+        for (c, src) in sources.iter().enumerate() {
+            if src.package {
+                continue;
+            }
+            for &m in src.imports.values() {
+                if m <= c || sources[m].package {
+                    continue;
+                }
+                // `c` imports `m`, which comes later: a back edge of a cycle.
+                let (c_vm, m_vm) = (vm.contains(&c), vm.contains(&m));
+                if c_vm && !m_vm && !more.contains(&m) {
+                    more.push(m);
+                }
+                if m_vm && !c_vm && !more.contains(&c) {
+                    more.push(c);
                 }
             }
-            if more.is_empty() {
-                break;
-            }
-            options.vm_modules.extend(more);
         }
-        options.vm_modules.sort_unstable();
+        if more.is_empty() {
+            break;
+        }
+        vm.extend(more);
     }
+    vm.sort_unstable();
 }
 
 /// What `build` produced for one module.

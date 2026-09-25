@@ -1518,6 +1518,27 @@ impl Runtime {
             }
         };
         let fresh = old_children.is_empty();
+        // An island's array among the items (`[header, rows.map(…)]` built on the
+        // VM) is a nested list, as a compiled one is.
+        let converted: Vec<Value>;
+        let items = if items
+            .iter()
+            .any(|v| matches!(v, Value::Foreign(f) if f.array))
+        {
+            converted = items
+                .iter()
+                .map(|v| match v {
+                    Value::Foreign(f) if f.array => {
+                        let f = f.clone();
+                        Value::array(self.foreign_items(&f).unwrap_or_default())
+                    }
+                    v => v.clone(),
+                })
+                .collect();
+            &converted[..]
+        } else {
+            items
+        };
         let mut index: BTreeMap<ListKey, usize> = BTreeMap::new();
         for (i, (k, _)) in old_children.iter().enumerate() {
             index.entry(k.clone()).or_insert(i);
@@ -1661,7 +1682,8 @@ impl Runtime {
         let value = match result {
             Ok(v) => v,
             Err(Throw::Value(v)) => {
-                self.crash(&inspect(&v));
+                let text = self.thrown_text(&v);
+                self.crash(&text);
                 Value::Null
             }
             Err(Throw::Short) => Value::Undefined,

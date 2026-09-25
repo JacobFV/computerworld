@@ -28,6 +28,10 @@
         if (k === Symbol.iterator && Array.isArray(t)) return Array.prototype[Symbol.iterator];
         return undefined;
       }
+      // What the value inherits is the VM's own: an array's methods are
+      // Array.prototype's, working through these traps, as on any array-like.
+      const proto = Array.isArray(t) ? Array.prototype : Object.prototype;
+      if (k !== 'length' && k in proto && !cw.phas(t[ID], k)) return proto[k];
       return cw.pget(t[ID], k);
     },
     set(t, k, v) {

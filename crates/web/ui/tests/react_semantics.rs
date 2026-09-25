@@ -1819,3 +1819,106 @@ export function App({ subscribe, items, add }: { subscribe: (f: () => void) => (
         &[Step::Click("#add"), Step::Click("#add")],
     );
 }
+
+#[test]
+fn island_code_uses_compiled_arrays_and_objects_as_its_own() {
+    // list.tsx runs on the island (its generator is outside the subset) and works
+    // over data.ts's compiled arrays and objects with the array methods,
+    // spreads, destructuring, iteration, JSON and Object's statics.
+    same_as_react(
+        r#"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import { List } from './list';
+createRoot(document.getElementById('root')!).render(<List />);
+// @file data.ts
+export interface Row { id: string; n: number; tags: string[]; meta: { a: number } }
+export const rows: Row[] = [
+  { id: 'a', n: 2, tags: ['x'], meta: { a: 1 } },
+  { id: 'b', n: 5, tags: [], meta: { a: 2 } },
+  { id: 'c', n: 1, tags: ['y', 'z'], meta: { a: 3 } },
+];
+// @file list.tsx
+import { useState } from 'react';
+import { rows } from './data';
+function* ids() { for (const r of rows) yield r.id; }
+export function List() {
+  const [items, setItems] = useState(rows);
+  const total = items.reduce((n, c) => n + c.n, 0);
+  const right = items.reduceRight((s, c) => s + c.id, '');
+  const big = items.filter((r) => r.n > 1).map((r) => r.id).join('');
+  const found = items.find((r) => r.tags.includes('z'))?.id;
+  const idx = items.findIndex((r) => r.id === 'b');
+  const some = items.some((r) => r.n > 4) && items.every((r) => r.n > 0);
+  const sorted = [...items].sort((a, b) => a.n - b.n).map((r) => r.id).join('');
+  const flat = items.flatMap((r) => r.tags).join('');
+  const [first, ...rest] = items;
+  const { meta: { a } } = first;
+  const keys = Object.keys(first).join(',');
+  const entries = Object.entries(first.meta).map(([k, v]) => k + v).join('');
+  const copy = { ...first, n: 10 };
+  const all = [...ids()].join('');
+  const json = JSON.stringify(items[2]);
+  const slice = items.slice(1).map((r) => r.id).join('') + items.indexOf(items[1]) + items.length;
+  return (
+    <div>
+      <p id="out">{total} {right} {big} {found} {idx} {String(some)} {sorted} {flat} {rest.length} {a} {keys} {entries} {copy.n} {first.n} {all} {slice}</p>
+      <p id="json">{json}</p>
+      <button id="bump" onClick={() => setItems(items.map((r) => (r.id === 'c' ? { ...r, n: r.n + 10 } : r)))}>bump</button>
+      <ul>{items.map((r) => <li key={r.id}>{r.id}:{r.n}</li>)}</ul>
+    </div>
+  );
+}
+"#,
+        &[Step::Click("#bump")],
+    );
+}
+
+#[test]
+fn island_elements_update_in_place() {
+    // Children the island builds as `[header, rows.map(…)]` nest a VM array in a
+    // list; a re-render must update those rows, not mount them again (a mount
+    // would lose focus and set `checked` as an attribute). A style object from
+    // the VM is applied like a compiled one. The callback ref logs whether the
+    // button stayed the same node.
+    same_as_react(
+        r#"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import { List } from './list';
+createRoot(document.getElementById('root')!).render(<List />);
+// @file list.tsx
+import { useState } from 'react';
+function* ids() { yield 1; }
+let prev: any = null;
+const track = (el: any) => { if (el) { console.log('button', el === prev ? 'same' : 'new'); prev = el; } };
+export function List() {
+  const [on, setOn] = useState<number[]>([]);
+  const [w, setW] = useState(10);
+  const rows = [1, 2, 3];
+  return (
+    <div>
+      <button id="go" ref={track} onClick={() => setW(w + 5)}>go</button>
+      <ul>
+        {[
+          <li key="head" style={{ width: w + '%', color: 'red' }}>head</li>,
+          rows.map((r) => (
+            <li key={r}>
+              <input type="checkbox" data-row={r} checked={on.includes(r)} onChange={() => setOn(on.includes(r) ? on.filter((x) => x !== r) : [...on, r])} />
+            </li>
+          )),
+        ]}
+      </ul>
+    </div>
+  );
+}
+"#,
+        &[
+            Step::Click("input[data-row=\"2\"]"),
+            Step::Click("#go"),
+            Step::Click("input[data-row=\"3\"]"),
+            Step::Click("input[data-row=\"2\"]"),
+            Step::Click("#go"),
+        ],
+    );
+}

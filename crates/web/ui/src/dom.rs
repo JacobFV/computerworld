@@ -439,7 +439,12 @@ impl Runtime {
             | "dangerouslySetInnerHTML"
             | "suppressContentEditableWarning"
             | "suppressHydrationWarning" => {}
-            "style" => self.set_style(n, old, new),
+            "style" => {
+                // A style object the island made: its properties.
+                let old = self.plain_object(old).unwrap_or_default();
+                let new = self.plain_object(new).unwrap_or_default();
+                self.set_style(n, &old, &new)
+            }
             "autoFocus" => {
                 if mounting && new.truthy() {
                     self.autofocus.push(n);

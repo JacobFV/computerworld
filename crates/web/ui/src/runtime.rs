@@ -430,12 +430,23 @@ impl Runtime {
     /// Reports an uncaught exception to the console, as a browser does.
     pub fn report(&mut self, t: Throw) {
         if let Throw::Value(v) = t {
-            let text = match &v {
-                Value::Str(s) if s.contains("Error") => s.to_string(),
-                Value::Error(_) => v.to_js_string(),
-                other => crate::interp::inspect(other),
-            };
+            let text = self.thrown_text(&v);
             self.log(LogLevel::Error, &format!("Uncaught {text}"));
+        }
+    }
+
+    /// How the console prints a thrown value.
+    pub(crate) fn thrown_text(&mut self, v: &Value) -> String {
+        match v {
+            Value::Str(s) if s.contains("Error") => s.to_string(),
+            Value::Error(_) => v.to_js_string(),
+            // A value the island threw: its `String()` (an Error's name and
+            // message), as the VM would print it.
+            Value::Foreign(f) => {
+                let f = f.clone();
+                self.foreign_string(&f)
+            }
+            other => crate::interp::inspect(other),
         }
     }
 

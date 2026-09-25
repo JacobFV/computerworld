@@ -860,3 +860,54 @@ fn generated_code_matches_the_interpreter_after_every_step() {
     eprintln!("{runs} sessions run interpreted and generated");
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
+
+/// The agent apps again, with their components' module (`App.tsx`) forced onto
+/// the island, the JS VM inside cw-ui: the documents after every step must still
+/// be React's. This runs nearly all of each app's code through the island's React
+/// shim, so it tests the island on real apps.
+#[test]
+fn agent_apps_with_their_components_on_the_island_match_react() {
+    let mut failures = Vec::new();
+    for app in agent_apps() {
+        let fixture = format!("app-{app}");
+        let Ok(html) = std::fs::read_to_string(fixture_dir().join(format!("{fixture}.html")))
+        else {
+            continue;
+        };
+        let html = as_dumped(&html);
+        let root = fixture_dir().join("app-src").join(&app);
+        let mut read = |rel: &str| std::fs::read_to_string(root.join(rel)).ok();
+        let sources =
+            cw_tsx::load("main.tsx", &mut read).unwrap_or_else(|d| panic!("{app}: {d:?}"));
+        let b = cw_tsx::build_modules_with_island(&sources, &["App.tsx"]);
+        assert!(b.diagnostics.is_empty(), "{app}: {:?}", b.diagnostics);
+        assert!(
+            b.island_modules.iter().any(|m| m == "App.tsx"),
+            "{app}: {:?}",
+            b.island_modules
+        );
+        let module = b.ir.expect("ir");
+        for (state, list) in steps(&fixture) {
+            let key = format!("{fixture}.{state}");
+            let (mut app_ui, t) = run_compiled(&module, &html, &fixture, &list);
+            let mut react = run_realm_page(&html, &fixture, &list, host());
+            let a = compiled_dom(&mut app_ui);
+            let b = fallback_dom(&mut react);
+            eprintln!(
+                "{key} (App.tsx on the island): boot {:.2} ms, steps {:?} ms",
+                ms(t.boot),
+                t.steps
+                    .iter()
+                    .map(|d| (ms(*d) * 100.0).round() / 100.0)
+                    .collect::<Vec<_>>(),
+            );
+            if a != b {
+                failures.push(format!(
+                    "{key}: island vs React: {}",
+                    first_difference(&a, &b)
+                ));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}

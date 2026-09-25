@@ -910,7 +910,7 @@ fn flatten(vm: &mut Vm, out: &mut Vec<Value>, v: &Value, depth: f64) -> JsResult
             continue;
         }
         let x = vm.get(v, &k)?;
-        if depth > 0.0 && matches!(&x, Value::Obj(xo) if xo.is_array()) {
+        if depth > 0.0 && matches!(&x, Value::Obj(xo) if xo.is_array_or_proxy()) {
             flatten(vm, out, &x, depth - 1.0)?;
         } else {
             out.push(x);
@@ -941,7 +941,7 @@ fn flat_map(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     for i in 0..len {
         if let Some(v) = live_get(vm, &o, i)? {
             let r = vm.call(&f, t.clone(), vec![v, Value::Num(i as f64), ov.clone()])?;
-            if matches!(&r, Value::Obj(ro) if ro.is_array()) {
+            if matches!(&r, Value::Obj(ro) if ro.is_array_or_proxy()) {
                 flatten(vm, &mut out, &r, 0.0)?;
             } else {
                 out.push(r);

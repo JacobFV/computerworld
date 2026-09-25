@@ -1035,7 +1035,7 @@ fn n_pset(vm: &mut Vm, a: &mut Args) -> JsResult<Js> {
     let rt = rt_of(vm);
     let target = rt.cw_by_id(id);
     let v = rt.cw_value(&v);
-    match rt.set_index(&target, &Value::str(&k), v) {
+    match rt.set_index(&target, &proxy_key(&target, &k), v) {
         Ok(()) => Ok(Js::Bool(true)),
         Err(t) => Err(throw_to_js(rt, t)),
     }
@@ -1075,6 +1075,19 @@ fn n_pdel(vm: &mut Vm, a: &mut Args) -> JsResult<Js> {
         Ok(_) => Ok(Js::Bool(true)),
         Err(t) => Err(throw_to_js(rt, t)),
     }
+}
+
+/// A property key from the VM as cw-ui indexes `target` with it: an array's
+/// element by its number (the VM spells every key as a string, `"0"`).
+fn proxy_key(target: &Value, k: &str) -> Value {
+    if matches!(target, Value::Array(_)) {
+        if let Ok(i) = k.parse::<u32>() {
+            if i.to_string() == k {
+                return Value::Num(i as f64);
+            }
+        }
+    }
+    Value::str(k)
 }
 
 /// A hook of the component cw-ui is rendering: `__cw.hook(kind, ...args)`.
@@ -1200,7 +1213,7 @@ impl Runtime {
     /// A property of a cw-ui value, read through a VM proxy (`get` trap): a
     /// method is a function bound to the value.
     fn proxy_get(&mut self, target: &Value, k: &str) -> R<Value> {
-        let v = self.get_index(target, &Value::str(k))?;
+        let v = self.get_index(target, &proxy_key(target, k))?;
         if matches!(v, Value::Undefined) && !matches!(target, Value::Object(_)) {
             // A built-in method (`arr.map`, `el.focus`): a function invoking it.
             if crate::interp::has_builtin_method(target, k) {
