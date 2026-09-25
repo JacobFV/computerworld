@@ -312,6 +312,7 @@ pub fn show(t: &Ty) -> String {
         Ty::CwResponse => "CwResponse".into(),
         Ty::Headers => "Headers".into(),
         Ty::Regex => "RegExp".into(),
+        Ty::Date => "Date".into(),
         Ty::Error => "Error".into(),
         Ty::Set(t) => format!("Set<{}>", show(t)),
         Ty::Map(k, v) => format!("Map<{}, {}>", show(k), show(v)),

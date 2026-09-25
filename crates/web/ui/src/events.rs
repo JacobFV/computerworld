@@ -541,6 +541,121 @@ impl Runtime {
         DefaultAction::None
     }
 
+    /// A key on a focused, closed select (a menu list), as Chromium on Linux and
+    /// the Realm (`cw_web::script::bindings::events::select_key`) handle it: the
+    /// arrows step to the next or previous enabled option, PageUp/PageDown three,
+    /// Home/End to the first or last, and a printable key selects by the options'
+    /// labels (type-ahead). A change fires `input` then `change` at once. List
+    /// boxes (`multiple` or `size` > 1) are left alone.
+    fn select_key(&mut self, select: NodeId, key: &str) -> DefaultAction {
+        const TYPEAHEAD_TIMEOUT_MS: f64 = 1000.0;
+        let (options, current, labels, valid) = {
+            let i = &self.inner;
+            let size = i
+                .doc
+                .attr(select, "size")
+                .and_then(|v| v.trim().parse::<u32>().ok())
+                .unwrap_or(0);
+            if i.doc.has_attr(select, "multiple") || size > 1 || i.is_disabled(select) {
+                return DefaultAction::None;
+            }
+            let options = i.options_of(select);
+            let current = i
+                .selected_options(select)
+                .first()
+                .and_then(|c| options.iter().position(|o| o == c));
+            let valid: Vec<bool> = options.iter().map(|o| !i.is_disabled(*o)).collect();
+            let labels: Vec<String> = options
+                .iter()
+                .map(
+                    |o| match i.doc.attr(*o, "label").filter(|l| !l.is_empty()) {
+                        Some(l) => l.to_owned(),
+                        None => cw_web::script::inner::collapse_ws(&i.doc.text_content(*o)),
+                    },
+                )
+                .collect();
+            (options, current, labels, valid)
+        };
+        let n = options.len() as isize;
+        // Blink's `NextValidOption`.
+        let next_valid = |from: isize, dir: isize, mut skip: isize| -> Option<usize> {
+            let mut good = None;
+            let mut at = from + dir;
+            while at >= 0 && at < n {
+                skip -= 1;
+                if valid[at as usize] {
+                    good = Some(at as usize);
+                    if skip <= 0 {
+                        break;
+                    }
+                }
+                at += dir;
+            }
+            good
+        };
+        let cur = current.map(|c| c as isize).unwrap_or(-1);
+        let mut chars = key.chars();
+        let single = match (chars.next(), chars.next()) {
+            (Some(c), None) => Some(c),
+            _ => None,
+        };
+        let pick = match key {
+            "ArrowDown" | "ArrowRight" => next_valid(cur, 1, 1),
+            "ArrowUp" | "ArrowLeft" => next_valid(cur, -1, 1),
+            "PageDown" => next_valid(cur, 1, 3),
+            "PageUp" => next_valid(cur, -1, 3),
+            "Home" => next_valid(-1, 1, 1),
+            "End" => next_valid(n, -1, 1),
+            _ => match single {
+                Some(c) => {
+                    let now = self.clock_ms;
+                    let ta = self.inner.form.typeahead.entry(select).or_default();
+                    let fresh = now - ta.last_ms > TYPEAHEAD_TIMEOUT_MS;
+                    if fresh {
+                        ta.buffer.clear();
+                    }
+                    if c == ' ' && ta.buffer.is_empty() {
+                        return DefaultAction::None;
+                    }
+                    ta.last_ms = now;
+                    ta.buffer.push(c);
+                    let (prefix, offset) = if ta.repeating == Some(c) {
+                        (c.to_string(), 1)
+                    } else if ta.buffer.chars().count() > 1 {
+                        ta.repeating = None;
+                        (ta.buffer.clone(), 0)
+                    } else {
+                        ta.repeating = Some(c);
+                        (ta.buffer.clone(), 1)
+                    };
+                    let prefix = prefix.to_lowercase();
+                    if n == 0 {
+                        None
+                    } else {
+                        let start = (current.unwrap_or(0) + offset) % n as usize;
+                        (0..n as usize)
+                            .map(|k| (start + k) % n as usize)
+                            .find(|&k| {
+                                valid[k]
+                                    && labels[k].trim_start().to_lowercase().starts_with(&prefix)
+                            })
+                    }
+                }
+                None => return DefaultAction::None,
+            },
+        };
+        match pick {
+            Some(p) if Some(p) != current => {
+                self.inner.set_option_selected(options[p], true);
+                let init = Init::default();
+                self.fire("input", select, &init);
+                self.fire("change", select, &init);
+                DefaultAction::Toggle(select)
+            }
+            _ => DefaultAction::None,
+        }
+    }
+
     pub(crate) fn submit_form(&mut self, form: NodeId, submitter: Option<NodeId>) -> DefaultAction {
         let prevented = self.fire("submit", form, &Init::default());
         if prevented {
@@ -775,6 +890,9 @@ impl Runtime {
             .to_ascii_lowercase();
         if printable && self.fire("keypress", target, init) {
             return DefaultAction::Prevented;
+        }
+        if tag == "select" && !m.ctrl && !m.meta && !m.alt && key != "Tab" {
+            return self.select_key(target, key);
         }
         if key == "Tab" {
             let order = self.inner.focus_order();

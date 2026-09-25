@@ -146,6 +146,144 @@ fn arg(args: &[Value], i: usize) -> Value {
     args.get(i).cloned().unwrap_or(Value::Undefined)
 }
 
+/// A time value from local fields (`new Date(y, m, …)`, `Date.UTC`): years 0–99
+/// are 1900–1999, as JavaScript has them.
+fn date_fields(args: &[Value]) -> f64 {
+    let mut n = [f64::NAN, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0];
+    for (i, v) in args.iter().take(7).enumerate() {
+        n[i] = v.to_number();
+    }
+    let y = if n[0].is_finite() && (0.0..=99.0).contains(&n[0].trunc()) {
+        1900.0 + n[0].trunc()
+    } else {
+        n[0]
+    };
+    cw_jsvm::builtins::date::make_time(y, n[1], n[2], n[3], n[4], n[5], n[6])
+}
+
+/// A `Date` method, as the JS VM's `Date.prototype` does it (the local time zone
+/// is UTC); `None` when `m` is no `Date` method.
+fn date_method(t: &Rc<std::cell::Cell<f64>>, m: Method, args: &[Value]) -> R<Option<Value>> {
+    use cw_jsvm::builtins::date as d;
+    use Method as M;
+    let time = t.get();
+    let field = |f: fn(&d::Parts) -> i64| {
+        if time.is_nan() {
+            Value::Num(f64::NAN)
+        } else {
+            Value::Num(f(&d::parts(time)) as f64)
+        }
+    };
+    // Setters: the field index they start at and how many arguments they read.
+    let set = |first: usize, max: usize| -> f64 {
+        let base = if time.is_nan() && first == 0 {
+            0.0
+        } else {
+            time
+        };
+        if base.is_nan() {
+            return f64::NAN;
+        }
+        let p = d::parts(base);
+        let mut f = [
+            p.year as f64,
+            p.month as f64,
+            p.day as f64,
+            p.hour as f64,
+            p.minute as f64,
+            p.second as f64,
+            p.ms as f64,
+        ];
+        for i in 0..max.min(args.len().max(1)) {
+            f[first + i] = arg(args, i).to_number();
+        }
+        d::make_time(f[0], f[1], f[2], f[3], f[4], f[5], f[6])
+    };
+    let invalid = || Value::str("Invalid Date");
+    Ok(Some(match m {
+        M::DateGetFullYear => field(|p| p.year),
+        M::DateGetMonth => field(|p| p.month),
+        M::DateGetDate => field(|p| p.day),
+        M::DateGetDay => field(|p| p.weekday),
+        M::DateGetHours => field(|p| p.hour),
+        M::DateGetMinutes => field(|p| p.minute),
+        M::DateGetSeconds => field(|p| p.second),
+        M::DateGetMilliseconds => field(|p| p.ms),
+        M::DateGetYear => field(|p| p.year - 1900),
+        M::DateGetTime => Value::Num(time),
+        M::DateGetTimezoneOffset => Value::Num(if time.is_nan() { f64::NAN } else { 0.0 }),
+        M::DateSetFullYear
+        | M::DateSetMonth
+        | M::DateSetDate
+        | M::DateSetHours
+        | M::DateSetMinutes
+        | M::DateSetSeconds
+        | M::DateSetMilliseconds
+        | M::DateSetTime => {
+            let nt = match m {
+                M::DateSetFullYear => set(0, 3),
+                M::DateSetMonth => set(1, 2),
+                M::DateSetDate => set(2, 1),
+                M::DateSetHours => set(3, 4),
+                M::DateSetMinutes => set(4, 3),
+                M::DateSetSeconds => set(5, 2),
+                M::DateSetMilliseconds => set(6, 1),
+                _ => d::time_clip(arg(args, 0).to_number()),
+            };
+            t.set(nt);
+            Value::Num(nt)
+        }
+        M::DateToISOString => {
+            if time.is_nan() {
+                return js_error("RangeError", "Invalid time value");
+            }
+            Value::str(&d::iso_string(time))
+        }
+        M::DateToJSON => {
+            if time.is_finite() {
+                Value::str(&d::iso_string(time))
+            } else {
+                Value::Null
+            }
+        }
+        M::DateToString | M::ToString => Value::str(&d::date_to_string(time)),
+        M::DateToDateString | M::DateToTimeString | M::DateToUTCString => {
+            if time.is_nan() {
+                invalid()
+            } else {
+                let p = d::parts(time);
+                let yr = if p.year < 0 {
+                    format!("-{:06}", -p.year)
+                } else {
+                    format!("{:04}", p.year)
+                };
+                Value::str(&match m {
+                    M::DateToDateString => format!(
+                        "{} {} {:02} {yr}",
+                        d::DAYS[p.weekday as usize],
+                        d::MONTHS[p.month as usize],
+                        p.day
+                    ),
+                    M::DateToTimeString => format!(
+                        "{:02}:{:02}:{:02} GMT+0000 (Coordinated Universal Time)",
+                        p.hour, p.minute, p.second
+                    ),
+                    _ => format!(
+                        "{}, {:02} {} {yr} {:02}:{:02}:{:02} GMT",
+                        d::DAYS[p.weekday as usize],
+                        p.day,
+                        d::MONTHS[p.month as usize],
+                        p.hour,
+                        p.minute,
+                        p.second
+                    ),
+                })
+            }
+        }
+        _ => return Ok(None),
+    }))
+}
+
 /// `scrollTo(x, y)` / `scrollTo({ left, top })`: each axis, when given.
 fn scroll_args(args: &[Value]) -> (Option<f64>, Option<f64>) {
     let num = |v: Option<Value>| match v {
@@ -1619,6 +1757,46 @@ impl Runtime {
                 }
                 Value::Set(Rc::new(RefCell::new(out)))
             }
+            B::NewDate => {
+                let t = match args.as_slice() {
+                    [] => self.now_ms().floor(),
+                    [v] => match v {
+                        Value::Date(t) => t.get(),
+                        Value::Str(s) => cw_jsvm::builtins::date::parse_date(s),
+                        Value::Array(_) | Value::Object(_) => {
+                            cw_jsvm::builtins::date::parse_date(&v.to_js_string())
+                        }
+                        v => cw_jsvm::builtins::date::time_clip(v.to_number()),
+                    },
+                    many => date_fields(many),
+                };
+                Value::Date(Rc::new(std::cell::Cell::new(t)))
+            }
+            B::DateUTC => Value::Num(date_fields(&args)),
+            B::DateParse => Value::Num(cw_jsvm::builtins::date::parse_date(
+                &arg(&args, 0).to_js_string(),
+            )),
+            B::IsInstance => {
+                let v = arg(&args, 0);
+                Value::Bool(match arg(&args, 1).to_js_string().as_str() {
+                    "Date" => matches!(v, Value::Date(_)),
+                    "Array" => matches!(v, Value::Array(_)),
+                    "Map" => matches!(v, Value::Map(_)),
+                    "Set" => matches!(v, Value::Set(_)),
+                    "RegExp" => matches!(v, Value::Regex(_)),
+                    "Promise" => matches!(v, Value::Promise(_)),
+                    "Function" => v.type_of() == "function",
+                    "Object" => !matches!(
+                        v,
+                        Value::Undefined
+                            | Value::Null
+                            | Value::Bool(_)
+                            | Value::Num(_)
+                            | Value::Str(_)
+                    ),
+                    _ => false,
+                })
+            }
             B::ForInKeys => match arg(&args, 0) {
                 Value::Undefined | Value::Null => Value::array(Vec::new()),
                 v @ (Value::Object(_) | Value::Array(_) | Value::Str(_)) => {
@@ -1723,6 +1901,11 @@ impl Runtime {
             Value::Regex(re) => {
                 let re = re.clone();
                 return self.regex_method(&re, m, args);
+            }
+            Value::Date(t) => {
+                if let Some(v) = date_method(t, m, &args)? {
+                    return Ok(v);
+                }
             }
             _ => {}
         }
@@ -1938,6 +2121,7 @@ impl Runtime {
             Value::Map(_) => Some(K::Map),
             Value::Node(_) => Some(K::Node),
             Value::Event(_) => Some(K::Event),
+            Value::Date(_) => Some(K::Date),
             Value::Cell(c) => {
                 let inner = c.borrow().clone();
                 return self.invoke_by_name(&inner, name, args);

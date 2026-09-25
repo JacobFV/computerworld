@@ -61,6 +61,8 @@ pub enum HeapObj {
     CwOffEnv(u32),
     /// A built-in function used as a value.
     BuiltinFn(crate::ir::Builtin),
+    /// A `Date`'s time value (`None` when invalid: JSON has no NaN).
+    Date(Option<f64>),
     /// A promise: 0 pending, 1 fulfilled, 2 rejected; its value; its reactions
     /// (kind 0 then, 1 catch, 2 finally; handlers; the promise they settle).
     Promise(u8, Option<V>, Vec<(u8, Option<V>, Option<V>, V)>),
@@ -175,6 +177,9 @@ pub struct UiState {
     pub checked: Vec<(NodeId, bool)>,
     pub indeterminate: Vec<NodeId>,
     pub selection: Vec<(NodeId, (usize, usize))>,
+    /// Closed selects' type-ahead: buffer, when the last key came, the cycled key.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub typeahead: Vec<(NodeId, String, f64, Option<char>)>,
     pub scroll: Vec<(NodeId, i32, i32)>,
     pub images: Vec<(String, u32, u32)>,
     pub heap: Vec<HeapObj>,
@@ -441,6 +446,14 @@ impl Enc {
                         r.flags.to_string(),
                         r.last_index.get(),
                     );
+                    V::H(i)
+                }
+            },
+            Value::Date(t) => match self.reserve(Rc::as_ptr(t) as *const u8 as usize) {
+                Err(i) => V::H(i),
+                Ok(i) => {
+                    let v = t.get();
+                    self.heap[i as usize] = HeapObj::Date(v.is_finite().then_some(v));
                     V::H(i)
                 }
             },
@@ -735,6 +748,12 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         checked: i.form.checked.iter().map(|(k, v)| (*k, *v)).collect(),
         indeterminate: i.form.indeterminate.iter().copied().collect(),
         selection: i.form.selection.iter().map(|(k, v)| (*k, *v)).collect(),
+        typeahead: i
+            .form
+            .typeahead
+            .iter()
+            .map(|(k, t)| (*k, t.buffer.clone(), t.last_ms, t.repeating))
+            .collect(),
         scroll: i.scroll.iter().map(|(k, (x, y))| (*k, x.0, y.0)).collect(),
         images: i
             .images
@@ -947,6 +966,7 @@ impl Dec<'_> {
             })),
             HeapObj::CwOffEnv(id) => Value::Native(Rc::new(NativeFn::CwOffEnv(*id))),
             HeapObj::BuiltinFn(b) => Value::Native(Rc::new(NativeFn::Builtin(*b))),
+            HeapObj::Date(t) => Value::Date(Rc::new(Cell::new(t.unwrap_or(f64::NAN)))),
             HeapObj::Promise(state, value, reactions) => {
                 // Registered first: reactions and values may lead back to it.
                 let p = crate::interp::new_promise();
@@ -1377,6 +1397,20 @@ pub(crate) fn load(
     i.form.checked = s.checked.iter().cloned().collect();
     i.form.indeterminate = s.indeterminate.iter().copied().collect();
     i.form.selection = s.selection.iter().cloned().collect();
+    i.form.typeahead = s
+        .typeahead
+        .iter()
+        .map(|(k, b, t, r)| {
+            (
+                *k,
+                cw_web::script::inner::TypeAhead {
+                    buffer: b.clone(),
+                    last_ms: *t,
+                    repeating: *r,
+                },
+            )
+        })
+        .collect();
     i.scroll = s
         .scroll
         .iter()

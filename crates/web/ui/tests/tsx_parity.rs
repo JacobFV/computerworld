@@ -174,7 +174,28 @@ fn ui_event(step: &Value, at: Option<(i32, i32)>) -> Vec<UiEvent> {
             modifiers,
             repeat: false,
         }],
+        // Handled by the runners: `focus_step`.
+        "focus" => vec![],
         other => panic!("unknown action {other:?}"),
+    }
+}
+
+/// A `focus` step on a compiled app: what Playwright's `page.focus` does.
+fn focus_app(app: &mut UiApp, step: &Value) {
+    if step["action"] == "focus" {
+        let sel = step["selector"].as_str().unwrap();
+        let node = app.query_selector(sel);
+        assert!(node.is_some(), "{sel}: no element");
+        app.dispatch(UiEvent::Focus { node });
+    }
+}
+
+/// A `focus` step on a Realm page: the element's own `focus()`.
+fn focus_realm(r: &mut Realm, step: &Value) {
+    if step["action"] == "focus" {
+        let sel = step["selector"].as_str().unwrap();
+        r.eval(&format!("document.querySelector({sel:?}).focus()"))
+            .unwrap_or_else(|e| panic!("{sel}: {e}"));
     }
 }
 
@@ -208,6 +229,7 @@ fn run_compiled(
             app.centre_of(n).expect("laid out")
         });
         let t = Instant::now();
+        focus_app(&mut app, step);
         for ev in ui_event(step, at) {
             app.dispatch(ev);
         }
@@ -246,6 +268,7 @@ fn run_fallback(html: &str, name: &str, list: &[Value]) -> (Realm, Timing) {
     for step in list {
         let at = click_step(step).map(|sel| realm_centre(&mut r, sel));
         let t = Instant::now();
+        focus_realm(&mut r, step);
         for ev in ui_event(step, at) {
             r.dispatch(ev);
         }
@@ -489,7 +512,7 @@ fn compiled_layout_matches_chromium() {
 /// `getBoundingClientRect`, calendar computes with `Date`. Each must still be reported
 /// as outside the subset (`fallback_apps_are_reported_as_such`); take an app off this
 /// list when the subset grows to compile it.
-const FALLBACK_APPS: &[&str] = &["calendar"];
+const FALLBACK_APPS: &[&str] = &[];
 
 /// The React apps in `framework-parity/app-src/<name>/` (TSX, several modules, as a
 /// coding agent writes them), whose pages `app-<name>.html` run the agent's own
@@ -553,6 +576,7 @@ fn run_realm_page(html: &str, name: &str, list: &[Value], host: MemoryHost) -> R
     settle(&mut r, 50);
     for step in list {
         let at = click_step(step).map(|sel| realm_centre(&mut r, sel));
+        focus_realm(&mut r, step);
         for ev in ui_event(step, at) {
             r.dispatch(ev);
         }
@@ -747,6 +771,7 @@ fn lockstep(module: &cw_ui::ir::Module, html: &str, name: &str, list: &[Value]) 
                     .unwrap_or_else(|| panic!("{sel}: no element"));
                 app.centre_of(n).expect("laid out")
             });
+            focus_app(app, step);
             for ev in ui_event(step, at) {
                 app.dispatch(ev);
             }

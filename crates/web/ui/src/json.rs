@@ -294,6 +294,14 @@ fn write(v: &Value, gap: &str, depth: usize, out: &mut String) -> bool {
             }
             out.push('}');
         }
+        // `Date.prototype.toJSON`: its ISO string, or `null` when invalid.
+        Value::Date(t) => {
+            if t.get().is_finite() {
+                quote(&cw_jsvm::builtins::date::iso_string(t.get()), out)
+            } else {
+                out.push_str("null")
+            }
+        }
         Value::Ref(r) => {
             // A ref is `{ current }`; an `undefined` member is left out.
             let obj = Value::object(vec![(std::rc::Rc::from("current"), r.borrow().clone())]);

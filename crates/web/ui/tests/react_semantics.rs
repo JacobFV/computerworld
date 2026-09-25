@@ -1456,3 +1456,45 @@ createRoot(document.getElementById('root')!).render(<App />);
         &[Step::Click("#go"), Step::Click("#go")],
     );
 }
+
+#[test]
+fn dates_compute_and_print_as_the_page_does() {
+    // `Date` on the world clock, the local time zone being the VM's (UTC).
+    same_as_react(
+        r#"
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+const DAY = 24 * 60 * 60 * 1000;
+function addDays(d: Date, n: number) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+}
+function isoWeek(d: Date) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const yearStart = Date.UTC(t.getUTCFullYear(), 0, 1);
+  return Math.ceil(((t.getTime() - yearStart) / DAY + 1) / 7);
+}
+function App() {
+  const [anchor, setAnchor] = useState(new Date(2026, 8, 24, 9, 30));
+  const end = addDays(anchor, 10);
+  const parsed = new Date('2026-02-28T12:00:00Z');
+  const copy = new Date(anchor);
+  copy.setHours(23, 59);
+  console.log(anchor.toISOString(), end.toDateString(), isoWeek(anchor), end > anchor, end.getTime() - anchor.getTime(),
+    parsed.getMonth(), parsed.getDay(), copy.toString(), JSON.stringify({ at: anchor }), anchor instanceof Date,
+    new Date(NaN).getTime(), String(new Date(0)), Date.parse('2026-01-02'), new Date(2026, 0, 31).getDate(),
+    new Date(99, 1, 1).getFullYear(), anchor.valueOf() === +anchor, new Date(anchor.getTime() + DAY).getDate(),
+    typeof Date.now(), new Date(0).toUTCString(), anchor.getTimezoneOffset());
+  return (
+    <div>
+      <p id="out">{anchor.toDateString()} → {end.getMonth() + 1}/{end.getDate()} week {isoWeek(end)}</p>
+      <button id="go" onClick={() => setAnchor((a) => addDays(a, 40))}>next</button>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Click("#go"), Step::Click("#go")],
+    );
+}

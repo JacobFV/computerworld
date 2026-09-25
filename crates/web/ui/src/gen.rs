@@ -190,8 +190,9 @@ pub fn add(a: &Value, b: &Value) -> Value {
     match (a, b) {
         (Value::Num(x), Value::Num(y)) => Value::Num(x + y),
         _ => {
+            // ToPrimitive with no hint: a Date is its string.
             let prim = |v: &Value| match v {
-                Value::Array(_) | Value::Object(_) | Value::Func(_) => {
+                Value::Array(_) | Value::Object(_) | Value::Func(_) | Value::Date(_) => {
                     Value::str(&v.to_js_string())
                 }
                 other => other.clone(),

@@ -1876,6 +1876,7 @@ impl<'a> Lowerer<'a> {
             "Set" | "ReadonlySet" => Ty::Set(Box::new(arg(0))),
             "Map" | "ReadonlyMap" => Ty::Map(Box::new(arg(0)), Box::new(arg(1))),
             "RegExp" => Ty::Regex,
+            "Date" => Ty::Date,
             "Error" | "TypeError" | "RangeError" | "SyntaxError" => Ty::Error,
             "ReactNode" | "ReactElement" | "Element" | "ReactChild" | "ReactPortal" => Ty::Node,
             "PropsWithChildren" => match arg(0) {
@@ -3173,6 +3174,10 @@ impl<'a> Lowerer<'a> {
                         };
                         return (Expr::Builtin(b, args), t);
                     }
+                    if id.name == "Date" && self.resolve_is_free("Date") {
+                        let (args, _) = self.exprs_args(&n.arguments, &[]);
+                        return (Expr::Builtin(Builtin::NewDate, args), Ty::Date);
+                    }
                     if id.name == "Array" && self.resolve_is_free("Array") {
                         let (args, _) = self.exprs_args(&n.arguments, &[]);
                         return (
@@ -3417,8 +3422,21 @@ impl<'a> Lowerer<'a> {
                 E::Identifier(id) if self.resolve_is_free(id.name.as_str()) => id.name.as_str(),
                 _ => "",
             };
+            if matches!(
+                ctor,
+                "Date" | "Array" | "Map" | "Set" | "RegExp" | "Promise" | "Object" | "Function"
+            ) {
+                let (l, _) = self.expr(&b.left, None);
+                return (
+                    Expr::Builtin(
+                        Builtin::IsInstance,
+                        vec![ArrayItem::Item(l), ArrayItem::Item(Expr::Str(ctor.into()))],
+                    ),
+                    Ty::Boolean,
+                );
+            }
             if !matches!(ctor, "Error" | "TypeError" | "RangeError" | "SyntaxError") {
-                return self.unsupported(b.span, "`instanceof` of anything but an error class");
+                return self.unsupported(b.span, "`instanceof` of anything but a built-in class");
             }
             let (l, _) = self.expr(&b.left, None);
             return (
@@ -4097,6 +4115,8 @@ impl<'a> Lowerer<'a> {
                 self.mark_always();
                 (Builtin::DateNow, vec![], num)
             }
+            ("Date", "UTC") => (Builtin::DateUTC, vec![], num),
+            ("Date", "parse") => (Builtin::DateParse, vec![Ty::String], num),
             ("console", "log") | ("console", "info") | ("console", "debug") => {
                 (Builtin::ConsoleLog, vec![], Ty::Void)
             }
@@ -4804,6 +4824,35 @@ impl<'a> Lowerer<'a> {
                     };
                     if matches!(m, M::NodeGetBoundingClientRect | M::NodeGetClientRects) {
                         self.mark_always();
+                    }
+                    (m, vec![], ret)
+                }
+                (Ty::Date, n)
+                    if cw_ui::ir::method_by_name(cw_ui::ir::MethodKind::Date, n).is_some() =>
+                {
+                    let m = cw_ui::ir::method_by_name(cw_ui::ir::MethodKind::Date, n).unwrap();
+                    let ret = match m {
+                        M::DateToISOString
+                        | M::DateToString
+                        | M::DateToDateString
+                        | M::DateToTimeString
+                        | M::DateToUTCString
+                        | M::ToString => Ty::String,
+                        M::DateToJSON => union(Ty::String, Ty::Null),
+                        _ => Ty::Number,
+                    };
+                    if matches!(
+                        m,
+                        M::DateSetFullYear
+                            | M::DateSetMonth
+                            | M::DateSetDate
+                            | M::DateSetHours
+                            | M::DateSetMinutes
+                            | M::DateSetSeconds
+                            | M::DateSetMilliseconds
+                            | M::DateSetTime
+                    ) {
+                        self.note_mutation(&recv);
                     }
                     (m, vec![], ret)
                 }
@@ -5515,6 +5564,7 @@ fn is_host_type(t: &Ty) -> bool {
     matches!(
         t,
         Ty::Response
+            | Ty::Date
             | Ty::CwResponse
             | Ty::Headers
             | Ty::Event

@@ -52,6 +52,8 @@ pub enum Value {
     Set(Arr),
     /// A `Map`: its entries in insertion order.
     Map(Rc<RefCell<Vec<(Value, Value)>>>),
+    /// A `Date`: its time value (milliseconds since the epoch, or NaN).
+    Date(Rc<Cell<f64>>),
 }
 
 #[derive(Debug)]
@@ -227,6 +229,7 @@ impl Value {
                 }
             }
             Value::Num(n) => *n,
+            Value::Date(t) => t.get(),
             Value::Str(s) => string_to_number(s),
             Value::Array(a) => {
                 let a = a.borrow();
@@ -275,6 +278,7 @@ impl Value {
             Value::Cell(c) => c.borrow().to_js_string(),
             Value::Native(_) => "function () { [native code] }".into(),
             Value::Set(_) => "[object Set]".into(),
+            Value::Date(t) => cw_jsvm::builtins::date::date_to_string(t.get()),
             Value::Map(_) => "[object Map]".into(),
             Value::Response(_) => "[object Response]".into(),
             _ => "[object Object]".into(),
@@ -334,6 +338,7 @@ fn strict_equals_ref(a: &Value, b: &Value) -> bool {
         (Value::Native(x), Value::Native(y)) => Rc::ptr_eq(x, y),
         (Value::Set(x), Value::Set(y)) => Rc::ptr_eq(x, y),
         (Value::Map(x), Value::Map(y)) => Rc::ptr_eq(x, y),
+        (Value::Date(x), Value::Date(y)) => Rc::ptr_eq(x, y),
         _ => false,
     }
 }
@@ -348,10 +353,10 @@ pub fn loose_equals(a: &Value, b: &Value) -> bool {
         }
         (Value::Bool(_), _) => loose_equals(&Value::Num(a.to_number()), b),
         (_, Value::Bool(_)) => loose_equals(a, &Value::Num(b.to_number())),
-        (Value::Array(_) | Value::Object(_), Value::Num(_) | Value::Str(_)) => {
+        (Value::Array(_) | Value::Object(_) | Value::Date(_), Value::Num(_) | Value::Str(_)) => {
             loose_equals(&Value::str(&a.to_js_string()), b)
         }
-        (Value::Num(_) | Value::Str(_), Value::Array(_) | Value::Object(_)) => {
+        (Value::Num(_) | Value::Str(_), Value::Array(_) | Value::Object(_) | Value::Date(_)) => {
             loose_equals(a, &Value::str(&b.to_js_string()))
         }
         _ => strict_equals(a, b),
