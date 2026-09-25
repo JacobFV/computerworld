@@ -28,7 +28,14 @@
 // (two animation frames and a task, and any finite transition or animation finished)
 // after loading and after every step, so a framework that commits asynchronously has
 // committed, and a transition has reached its end state, before anything is read.
-import {readFile, writeFile} from 'node:fs/promises';
+//
+// --baseline-fonts runs Chromium with a fontconfig that knows only the Liberation and
+// DejaVu families, the stock Linux desktop the engine's `FontEnvironment::LinuxBaseline`
+// models. A page whose font stack names a face this machine happens to have (JSON
+// Server's system stack reaches Ubuntu here) is then shaped with what the engine
+// resolves it to, not with a font the engine cannot know about.
+import {mkdtemp, readFile, writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
 import {basename, dirname, extname, join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {PROPERTIES} from './common.mjs';
@@ -45,7 +52,8 @@ const flag = (name, fallback) => {
   const i = args.indexOf(name);
   return i < 0 ? fallback : args[i + 1];
 };
-const positional = args.filter((a, i) => !a.startsWith('--') && !(args[i - 1]?.startsWith('--') && args[i - 1] !== '--full'));
+const BOOLEAN_FLAGS = ['--full', '--baseline-fonts'];
+const positional = args.filter((a, i) => !a.startsWith('--') && !(args[i - 1]?.startsWith('--') && !BOOLEAN_FLAGS.includes(args[i - 1])));
 const [fixture] = positional;
 if (!fixture) {
   console.error('usage: dump.mjs <fixture.html> [--width 1280] [--height 800] [--dpr 1] [--out file.json] [--full] [--props a,b] [--state states.json]');
@@ -123,7 +131,24 @@ function collect(properties) {
 }
 
 const {chromium} = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright').then(m => m.default ?? m);
-const browser = await chromium.launch({executablePath: process.env.CHROME_BIN});
+const launchEnv = {...process.env};
+if (args.includes('--baseline-fonts')) {
+  const dir = await mkdtemp(join(tmpdir(), 'parity-fonts-'));
+  const conf = join(dir, 'fonts.conf');
+  await writeFile(conf, `<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>/usr/share/fonts/truetype/liberation</dir>
+  <dir>/usr/share/fonts/truetype/dejavu</dir>
+  <cachedir>${join(dir, 'cache')}</cachedir>
+  <!-- The system's rendering settings (hinting, antialiasing) and generic aliases, so
+       only the set of faces differs from an ordinary dump. -->
+  <include ignore_missing="yes">/etc/fonts/conf.d</include>
+</fontconfig>
+`);
+  launchEnv.FONTCONFIG_FILE = conf;
+}
+const browser = await chromium.launch({executablePath: process.env.CHROME_BIN, env: launchEnv});
 try {
   const context = await browser.newContext({viewport: {width, height}, deviceScaleFactor: dpr, reducedMotion: 'reduce'});
   const page = await context.newPage();

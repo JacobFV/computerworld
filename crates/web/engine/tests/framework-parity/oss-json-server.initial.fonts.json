@@ -9,7 +9,7 @@
   "first": "html>body>header:nth-child(1)>div:nth-child(1)>nav:nth-child(1)>ul:nth-child(1)>li:nth-child(1)",
   "chromium": [
    {
-    "family": "Ubuntu",
+    "family": "Liberation Sans",
     "glyphs": 11
    }
   ]
