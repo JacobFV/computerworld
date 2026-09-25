@@ -1,0 +1,67 @@
+split test: 149 projects, 4776 diagnostics
+modules        74 / 530    14.0%
+functions     162 / 770    21.0%
+components     70 / 594    11.8%
+apps            0 / 39      0.0%
+functions blocked, by cause:
+    543  value imported from a package
+     82  this element name is outside the compiled subset
+     24  value imported from a module that does not resolve
+     15  `new` is outside the compiled subset
+     13  this React API is outside the compiled subset
+     12  built-in method `toLocaleString` is outside the compiled subset
+      8  method `toLocaleDateString` on Date
+      6  `<Suspense>` is outside the compiled subset
+      6  this expression is outside the compiled subset
+      6  unknown name `alert`
+      6  unknown name `process`
+      5  class components are outside the compiled subset
+      4  unknown name `window`
+      3  a tagged template is outside the compiled subset
+      3  method `toLocaleString` on Date
+      3  method `toLocaleTimeString` on Date
+      3  unknown name `navigator`
+      2  `<React.Suspense>` is outside the compiled subset
+      2  `ReactDOM` from React cannot be used as a value here
+      2  `await` inside an expression is outside the compiled subset (await into a variable first)
+      2  `window.history` is outside the compiled subset
+      2  property does not exist on another type
+      2  unknown name `localStorage`
+      1  `<FilterContext.Provider>` on a value of type unknown
+      1  `Promise.withResolvers` is outside the compiled subset
+      1  `dangerouslySetInnerHTML` is outside the compiled subset
+      1  `document.getElementsByClassName` is outside the compiled subset
+      1  `instanceof` of anything but a built-in class is outside the compiled subset
+      1  `ref` on a component is outside the compiled subset
+      1  `window.confirm` is outside the compiled subset
+diagnostics, by cause:
+   3103  value imported from a package
+   1050  import from a package
+    192  this element name is outside the compiled subset
+     78  value imported from a module that does not resolve
+     72  relative import that does not resolve
+     42  `new` is outside the compiled subset
+     42  import of a stylesheet
+     41  unknown name `localStorage`
+     22  built-in method `toLocaleString` is outside the compiled subset
+     14  `<Suspense>` is outside the compiled subset
+     13  this React API is outside the compiled subset
+      9  this expression is outside the compiled subset
+      8  method `toLocaleDateString` on Date
+      8  unknown name `process`
+      6  unknown name `alert`
+      5  `ReactDOM` from React cannot be used as a value here
+      5  a tagged template is outside the compiled subset
+      5  class components are outside the compiled subset
+      5  imported name the subset cannot use
+      5  unknown name `window`
+      4  `window.localStorage` is outside the compiled subset
+      4  import of an image
+      4  unknown name `module`
+      3  `<React.Suspense>` is outside the compiled subset
+      3  method `toLocaleString` on Date
+      3  method `toLocaleTimeString` on Date
+      3  unknown name `navigator`
+      2  `await` inside an expression is outside the compiled subset (await into a variable first)
+      2  `instanceof` of anything but a built-in class is outside the compiled subset
+      2  `window.history` is outside the compiled subset
