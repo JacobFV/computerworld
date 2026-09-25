@@ -18,6 +18,7 @@
 //! valid module, not only for the subset; it is pure Rust and builds for wasm32. See
 //! docs/tsx-apps.md.
 
+pub mod corpus;
 pub mod emit_js;
 pub mod emit_rust;
 pub mod lower;
@@ -192,9 +193,37 @@ pub fn load(
     entry: &str,
     read: &mut dyn FnMut(&str) -> Option<String>,
 ) -> Result<Vec<Source>, Vec<Diagnostic>> {
+    let (sources, errors) = load_with(entry, read, &LoadOptions::default());
+    if errors.is_empty() {
+        Ok(sources)
+    } else {
+        Err(errors)
+    }
+}
+
+/// How [`load_with`] resolves imports.
+#[derive(Clone, Debug, Default)]
+pub struct LoadOptions {
+    /// Path aliases, as a `tsconfig.json`'s `paths` spells them for a bundler: an
+    /// import starting with a key (`@/`) resolves as the path relative to the app's
+    /// root that the value names (`src/`) followed by the rest of the specifier.
+    pub aliases: Vec<(String, String)>,
+}
+
+/// [`load`] with options, lenient: an import that names no module of the app is
+/// reported and left out of the source's `imports` (the lowerer then treats it as
+/// the package import it cannot compile), and every module that could be read is
+/// returned, so the parts of an app that do resolve can still be lowered.
+pub fn load_with(
+    entry: &str,
+    read: &mut dyn FnMut(&str) -> Option<String>,
+    options: &LoadOptions,
+) -> (Vec<Source>, Vec<Diagnostic>) {
+    #[allow(clippy::too_many_arguments)]
     fn visit(
         file: &str,
         read: &mut dyn FnMut(&str) -> Option<String>,
+        options: &LoadOptions,
         out: &mut Vec<Source>,
         index: &mut BTreeMap<String, usize>,
         stack: &mut Vec<String>,
@@ -226,7 +255,7 @@ pub fn load(
         // Declaration files a module references come before it, like its imports.
         for (path, at) in references(&text) {
             let target = normalize(&format!("{dir}/{path}"));
-            if visit(&target, read, out, index, stack, errors).is_none() {
+            if visit(&target, read, options, out, index, stack, errors).is_none() {
                 let mut d = Diagnostic::at(&text, at, format!("cannot find `{path}`"));
                 d.file = file.to_owned();
                 errors.push(d);
@@ -234,10 +263,17 @@ pub fn load(
         }
         let mut imports = BTreeMap::new();
         for (spec, at) in specifiers(&text) {
-            if !is_relative(&spec) {
+            let base = if is_relative(&spec) {
+                normalize(&format!("{dir}/{spec}"))
+            } else if let Some((from, to)) = options
+                .aliases
+                .iter()
+                .find(|(from, _)| spec.starts_with(from.as_str()))
+            {
+                normalize(&format!("{to}{}", &spec[from.len()..]))
+            } else {
                 continue;
-            }
-            let base = normalize(&format!("{dir}/{spec}"));
+            };
             let candidates = [
                 base.clone(),
                 format!("{base}.tsx"),
@@ -252,7 +288,7 @@ pub fn load(
                 if c.ends_with(".tsx") || c.ends_with(".ts") {
                     let probe = read(c)?;
                     drop(probe);
-                    visit(c, read, out, index, stack, errors)
+                    visit(c, read, options, out, index, stack, errors)
                 } else {
                     None
                 }
@@ -285,6 +321,7 @@ pub fn load(
     if visit(
         &entry,
         read,
+        options,
         &mut out,
         &mut index,
         &mut Vec::new(),
@@ -300,11 +337,7 @@ pub fn load(
             message: "cannot read the entry module".into(),
         });
     }
-    if errors.is_empty() {
-        Ok(out)
-    } else {
-        Err(errors)
-    }
+    (out, errors)
 }
 
 /// Compiles an app of several modules (from `load`) both ways.

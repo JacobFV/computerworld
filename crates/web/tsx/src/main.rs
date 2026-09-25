@@ -12,6 +12,10 @@
 //!                                      `PROGRAM: cw_ui::GenProgram`) for an app
 //!                                      built into the binary
 //!     cw-tsx check app.tsx             prints the diagnostics; exit 1 if any
+//!     cw-tsx corpus <dir> [--split dev|test|all] [--json out.json] [--top n]
+//!                                      evaluates the held-out corpus in <dir>
+//!                                      (crates/web/tsx/corpus): how much of it is
+//!                                      inside the compiled subset, and why not
 //!
 //! Exit status of `build`: 0 when both outputs were written, 3 when only the fallback
 //! was (the module runs on React), 1 when neither could be.
@@ -30,6 +34,9 @@ fn main() -> ExitCode {
         Some((c, r)) => (c.as_str(), r),
         None => return usage(),
     };
+    if cmd == "corpus" {
+        return corpus(rest);
+    }
     let mut input: Option<PathBuf> = None;
     let mut out: Option<PathBuf> = None;
     let mut name: Option<String> = None;
@@ -146,6 +153,34 @@ fn main() -> ExitCode {
         }
         _ => usage(),
     }
+}
+
+fn corpus(rest: &[String]) -> ExitCode {
+    let mut dir: Option<PathBuf> = None;
+    let mut split = "dev".to_owned();
+    let mut json: Option<PathBuf> = None;
+    let mut top = 40usize;
+    let mut it = rest.iter();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--split" => split = it.next().cloned().unwrap_or_default(),
+            "--json" => json = it.next().map(PathBuf::from),
+            "--top" => top = it.next().and_then(|n| n.parse().ok()).unwrap_or(top),
+            s if dir.is_none() => dir = Some(PathBuf::from(s)),
+            _ => return usage(),
+        }
+    }
+    let Some(dir) = dir else { return usage() };
+    let report = cw_tsx::corpus::evaluate(&dir, &split);
+    print!("{}", report.summary(top));
+    if let Some(p) = json {
+        let text = serde_json::to_string_pretty(&report).expect("report") + "\n";
+        if let Err(e) = std::fs::write(&p, text) {
+            eprintln!("cw-tsx: {}: {e}", p.display());
+            return ExitCode::from(1);
+        }
+    }
+    ExitCode::SUCCESS
 }
 
 /// A Rust module name for an output stem (`tsx-tasks` → `tsx_tasks`).

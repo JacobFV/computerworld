@@ -1,0 +1,67 @@
+split test: 149 projects, 6646 diagnostics
+modules        18 / 530     3.4%
+functions      77 / 770    10.0%
+components     34 / 594     5.7%
+apps            0 / 39      0.0%
+functions blocked, by cause:
+    531  value imported from a package
+    240  method call on a value of unknown type
+    172  parameter with implicit type any
+     73  this element name is outside the compiled subset
+     70  type imported from a package
+     44  the component has no such prop
+     38  `new` is outside the compiled subset
+     35  type `React.ComponentProps`
+     34  cannot destructure a value of type unknown
+     28  value of type any
+     27  property does not exist on another type
+     24  value imported from a module that does not resolve
+     18  this `typeof` type is outside the compiled subset
+     13  this React API is outside the compiled subset
+     11  a value that cannot be rendered
+     11  rest parameters are outside the compiled subset
+     10  name used before its declaration
+     10  unknown name `lens`
+      9  cannot spread a value of unknown
+      6  `<Suspense>` is outside the compiled subset
+      6  `instanceof` of anything but an error class is outside the compiled subset
+      6  unknown name `alert`
+      6  unknown name `process`
+      5  class components are outside the compiled subset
+      5  method `getTime` on null
+      5  this expression is outside the compiled subset
+      5  unknown name `PostList`
+      5  unknown name `segments`
+      4  property does not exist on unknown
+      4  type `Date`
+diagnostics, by cause:
+   2874  value imported from a package
+   1050  import from a package
+    791  method call on a value of unknown type
+    314  parameter with implicit type any
+    149  type imported from a package
+    148  this element name is outside the compiled subset
+    147  the component has no such prop
+     82  `new` is outside the compiled subset
+     80  property does not exist on another type
+     78  value imported from a module that does not resolve
+     72  relative import that does not resolve
+     66  name not exported by the imported module
+     56  this module-level statement is outside the compiled subset
+     55  value of type any
+     42  import of a stylesheet
+     41  unknown name `localStorage`
+     38  cannot destructure a value of type unknown
+     38  this `typeof` type is outside the compiled subset
+     36  a module-level statement other than the render call is outside the compiled subset
+     36  type `React.ComponentProps`
+     29  `export default` of an expression: export a named function
+     25  the render container must be `document.getElementById('<id>')`
+     24  cannot spread a value of unknown
+     19  unknown name `lens`
+     16  `export *` is outside the compiled subset
+     14  `<Suspense>` is outside the compiled subset
+     13  a value that cannot be rendered
+     13  this React API is outside the compiled subset
+     13  type `Date`
+     12  property does not exist on unknown

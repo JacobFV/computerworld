@@ -1,0 +1,67 @@
+split dev: 138 projects, 8578 diagnostics
+modules        38 / 532     7.1%
+functions     141 / 985    14.3%
+components     42 / 647     6.5%
+apps            0 / 29      0.0%
+functions blocked, by cause:
+    584  value imported from a package
+    394  method call on a value of unknown type
+    165  parameter with implicit type any
+    131  this element name is outside the compiled subset
+    107  type imported from a package
+     81  type `React.ComponentProps`
+     73  property does not exist on another type
+     68  this `typeof` type is outside the compiled subset
+     59  `new` is outside the compiled subset
+     36  value of type any
+     32  the component has no such prop
+     25  cannot spread a value of unknown
+     23  cannot destructure a value of type unknown
+     21  value imported from a module that does not resolve
+     20  property does not exist on unknown
+     17  a value that cannot be rendered
+     16  method `getTime` on null
+     15  `instanceof` of anything but an error class is outside the compiled subset
+     15  property does not exist on a union
+     12  rest parameters are outside the compiled subset
+     11  unknown name `Array`
+     10  `ref` on a component is outside the compiled subset
+     10  name used before its declaration
+      9  type `Date`
+      8  this React API is outside the compiled subset
+      8  unknown name `lens`
+      6  `Date.parse` is outside the compiled subset
+      6  `await` inside an expression is outside the compiled subset (await into a variable first)
+      6  method `toISOString` on void
+      6  unknown name `location`
+diagnostics, by cause:
+   3498  value imported from a package
+   1239  method call on a value of unknown type
+   1127  import from a package
+    364  parameter with implicit type any
+    276  type imported from a package
+    219  this element name is outside the compiled subset
+    191  property does not exist on another type
+    121  relative import that does not resolve
+    116  `new` is outside the compiled subset
+    116  the component has no such prop
+    107  value imported from a module that does not resolve
+     87  this `typeof` type is outside the compiled subset
+     84  type `React.ComponentProps`
+     73  property does not exist on unknown
+     60  cannot spread a value of unknown
+     59  a module-level statement other than the render call is outside the compiled subset
+     53  name not exported by the imported module
+     53  value of type any
+     49  this module-level statement is outside the compiled subset
+     35  import cycle
+     31  property does not exist on a union
+     29  import of a stylesheet
+     28  method `getTime` on null
+     25  cannot destructure a value of type unknown
+     22  type `Date`
+     21  `export *` is outside the compiled subset
+     21  `instanceof` of anything but an error class is outside the compiled subset
+     19  `export default` of an expression: export a named function
+     18  a value that cannot be rendered
+     17  unknown name `String`
