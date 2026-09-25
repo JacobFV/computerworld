@@ -1,0 +1,16 @@
+{
+  "files": {
+    "main.js": "/static/js/main.093652bf.js",
+    "Article.js": "/static/js/Article.af02c879.chunk.js",
+    "Editor.js": "/static/js/Editor.c3feaff2.chunk.js",
+    "AuthScreen.js": "/static/js/AuthScreen.63a40c37.chunk.js",
+    "Profile.js": "/static/js/Profile.5732da4c.chunk.js",
+    "SettingsScreen.js": "/static/js/SettingsScreen.72c2df72.chunk.js",
+    "CommentSection.js": "/static/js/CommentSection.40271f4e.chunk.js",
+    "static/js/558.28c3a3eb.chunk.js": "/static/js/558.28c3a3eb.chunk.js",
+    "index.html": "/index.html"
+  },
+  "entrypoints": [
+    "static/js/main.093652bf.js"
+  ]
+}

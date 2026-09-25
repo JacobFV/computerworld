@@ -482,6 +482,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-oss-web"
+version = "0.2.0"
+dependencies = [
+ "cw-protocol",
+ "cw-sdk",
+ "cw-service-node-app",
+ "serde_json",
+]
+
+[[package]]
 name = "cw-protocol"
 version = "0.2.0"
 dependencies = [
@@ -787,6 +797,21 @@ dependencies = [
  "png",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "cw-service-node-app"
+version = "0.2.0"
+dependencies = [
+ "cw-jsvm",
+ "cw-protocol",
+ "cw-script-host",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-service-static-site",
+ "serde",
+ "serde_json",
+ "url",
 ]
 
 [[package]]

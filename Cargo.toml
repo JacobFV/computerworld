@@ -27,6 +27,8 @@ members = [
     "crates/services/mail",
     "crates/services/media",
     "crates/services/messages",
+    "crates/services/node-app",
+    "crates/services/oss-web",
     "crates/services/press",
     "crates/services/search",
     "crates/services/shop",

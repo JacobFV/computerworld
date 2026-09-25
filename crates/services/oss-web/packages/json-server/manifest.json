@@ -1,0 +1,10 @@
+{
+  "id": "json-server",
+  "name": "JSON Server 0.17.4: a full REST API over one JSON file",
+  "server": {
+    "main": "/app/server.js",
+    "args": ["/data/db.json", "--port", "3000", "--host", "0.0.0.0"],
+    "port": 3000,
+    "data": "/data"
+  }
+}

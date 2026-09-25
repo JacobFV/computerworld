@@ -1,0 +1,15 @@
+[package]
+name = "cw-oss-web"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Real open-source web apps (TodoMVC, RealWorld, react-admin, JSON Server) packaged for the node-app service kind"
+build = "build.rs"
+
+[dependencies]
+cw-protocol = { path = "../../core/protocol" }
+cw-sdk = { path = "../../core/sdk" }
+cw-service-node-app = { path = "../node-app" }
+
+[dev-dependencies]
+serde_json.workspace = true

@@ -1,0 +1,5 @@
+{
+  "id": "conduit-react",
+  "name": "Conduit, the RealWorld React + Redux frontend",
+  "spa_fallback": "/index.html"
+}

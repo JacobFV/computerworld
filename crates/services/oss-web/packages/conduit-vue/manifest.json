@@ -1,0 +1,5 @@
+{
+  "id": "conduit-vue",
+  "name": "Conduit, the RealWorld Vue 3 frontend",
+  "spa_fallback": "/index.html"
+}

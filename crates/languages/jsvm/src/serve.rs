@@ -56,18 +56,20 @@ pub struct Served {
 pub const BOOT_DEADLINE_MS: f64 = 30_000.0;
 pub const ANSWER_DEADLINE_MS: f64 = 30_000.0;
 
-/// Boots `main` (an absolute path on the host) with `env`, and answers `request`
-/// with the server listening on `port`. `budget` caps the instructions the whole
-/// exchange may execute.
+/// Boots `main` (an absolute path on the host) with `args` after it and `env`,
+/// and answers `request` with the server listening on `port`. `budget` caps the
+/// instructions the whole exchange may execute.
 pub fn serve(
     host: &mut dyn ScriptHost,
     main: &str,
+    args: Vec<String>,
     env: Vec<(String, String)>,
     port: u16,
     request: &ServeRequest,
     budget: u64,
 ) -> Served {
-    let argv = vec!["/usr/bin/node".to_string(), main.to_string()];
+    let mut argv = vec!["/usr/bin/node".to_string(), main.to_string()];
+    argv.extend(args);
     let mut vm = Vm::new(host, argv, env, Some(String::new()));
     vm.budget = budget;
     let result = exchange(&mut vm, main, port, request);

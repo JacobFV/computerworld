@@ -1,0 +1,10 @@
+{
+  "id": "realworld-api",
+  "name": "The RealWorld API: gothinkster's Node/Express backend, its Prisma queries on a JSON-file Prisma Client",
+  "server": {
+    "main": "/app/server.js",
+    "port": 3000,
+    "env": {"CW_PRISMA_STORE": "/data/db.json"},
+    "data": "/data"
+  }
+}
