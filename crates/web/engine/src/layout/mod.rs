@@ -103,16 +103,19 @@ pub struct LayoutCache {
     pub overlay_scrollbars: bool,
     /// Results of `block::layout_block_box` for formatting-context roots within one
     /// pass, by box and constraints (see there).
-    pub block_memo: std::collections::HashMap<BlockMemoKey, (Au, block::BlockResult)>,
+    pub block_memo: std::collections::HashMap<BlockMemoKey, block::MemoEntry>,
     /// Lay every box out every time it is asked for (for checks of the memo).
     pub no_memo: bool,
     /// Results of `block::layout_block_box` kept from earlier passes, by the digest
     /// of everything the box's layout reads (see `digests`) and its constraints:
     /// a formatting-context root whose subtree did not change is not laid out
     /// again. Entries not used by a pass are dropped after it.
-    pub kept: std::collections::HashMap<KeptKey, (Au, block::BlockResult)>,
+    pub kept: std::collections::HashMap<KeptKey, block::MemoEntry>,
     /// The entries this pass used or made, which become `kept` after it.
-    pub kept_next: std::collections::HashMap<KeptKey, (Au, block::BlockResult)>,
+    pub kept_next: std::collections::HashMap<KeptKey, block::MemoEntry>,
+    /// Keep results across passes (a host that lays the same document out again
+    /// and again sets this; a one-off layout has nothing to reuse them for).
+    pub keep_across_passes: bool,
     /// Per box of this pass, the digest of its subtree's layout inputs.
     pub digests: Vec<u128>,
 }
@@ -292,7 +295,7 @@ pub fn layout_with(
     let bt = crate::style::profile::span(crate::style::profile::Phase::BoxTree);
     let mut tree = boxes::build(doc, styles, opts.images);
     let root_overflow = scroll::propagate_root_overflow(doc, &mut tree);
-    cache.digests = if cache.no_memo {
+    cache.digests = if cache.no_memo || !cache.keep_across_passes {
         Vec::new()
     } else {
         digests(

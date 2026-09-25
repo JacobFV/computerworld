@@ -1225,11 +1225,14 @@ pub fn layout_block_box(
                     crate::layout::flex::forced_height(ctx, id),
                 )
             });
+    let moved = |e: &MemoEntry| {
+        let mut r = e.1.clone();
+        r.fragment.rect.origin.y += y_in - e.0;
+        r
+    };
     if let Some(k) = &memo_key {
-        if let Some((y0, r)) = ctx.cache.borrow().block_memo.get(k) {
-            let mut r = r.clone();
-            r.fragment.rect.origin.y += y_in - *y0;
-            return r;
+        if let Some(e) = ctx.cache.borrow().block_memo.get(k) {
+            return moved(e);
         }
     }
     // A result from an earlier pass, for the same subtree and constraints.
@@ -1243,25 +1246,27 @@ pub fn layout_block_box(
             Some(e) => Some(e),
             None => cache.kept_next.get(k).cloned(),
         };
-        if let Some((y0, r)) = hit {
-            cache.kept_next.insert(*k, (y0, r.clone()));
-            cache.block_memo.insert(memo_key.unwrap(), (y0, r.clone()));
-            let mut r = r;
-            r.fragment.rect.origin.y += y_in - y0;
-            return r;
+        if let Some(e) = hit {
+            cache.kept_next.insert(*k, e.clone());
+            cache.block_memo.insert(memo_key.unwrap(), e.clone());
+            return moved(&e);
         }
     }
     let r = layout_block_box_uncached(ctx, id, cb, bfc, cb_origin, y_in, forced_width);
     if let Some(k) = memo_key {
+        let e = std::rc::Rc::new((y_in, r.clone()));
         let mut cache = ctx.cache.borrow_mut();
-        cache.block_memo.insert(k, (y_in, r.clone()));
         // Absolutely positioned boxes still to place refer to this pass's boxes.
         if let Some(kk) = kept_key.filter(|_| r.abs.is_empty()) {
-            cache.kept_next.insert(kk, (y_in, r.clone()));
+            cache.kept_next.insert(kk, e.clone());
         }
+        cache.block_memo.insert(k, e);
     }
     r
 }
+
+/// A kept layout result and the block position it was laid out at.
+pub type MemoEntry = std::rc::Rc<(Au, BlockResult)>;
 
 fn layout_block_box_uncached(
     ctx: &LayoutContext,

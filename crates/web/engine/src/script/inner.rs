@@ -356,7 +356,10 @@ impl Inner {
             tree_generation: u64::MAX,
             styles_generation: u64::MAX,
             generation: 1,
-            layout_cache: LayoutCache::default(),
+            layout_cache: LayoutCache {
+                keep_across_passes: true,
+                ..LayoutCache::default()
+            },
             images: ImageSizeMap::default(),
             scroll: ScrollState::new(),
             hovered: None,
