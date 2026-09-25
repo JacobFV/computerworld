@@ -331,28 +331,81 @@ TypeScript: 287 projects from 15 repositories. `manifest.json` records each
 project's source, commit and license. `assemble.mjs` pins them and splits them 138
 DEV / 149 TEST with a fixed seed before any compiler change; work on the
 subset looks at DEV only. `cw-tsx corpus crates/web/tsx/corpus --split dev|test
-[--no-islands] [--json out.json] [--top n] [--grep text]` reports modules,
-functions and components inside the subset, whole apps, and the functions blocked
-and diagnostics by cause. With islands, a function that uses a package counts as
-inside the subset. `--no-islands` counts code compiled alone. The apps line under
-"packages stubbed" builds each app with empty modules for its packages (the
-corpus has none) and its modules outside the subset on the island. The results
-are in `corpus/results` (`baseline.*` before this work, `islands.*` and
-`islands-off.*` now):
+[--no-islands] [--installs dir] [--json out.json] [--top n] [--grep text]` reports
+modules, functions and components inside the subset, whole apps, and the functions
+blocked and diagnostics by cause. With islands, a function that uses a package
+counts as inside the subset. `--no-islands` counts code compiled alone.
+
+The apps line under "packages stubbed" builds each app with empty modules for its
+packages (the corpus has none) and its modules outside the subset on the island.
+`--installs dir` also builds each app against its real packages: `dir/<source id>`
+is a checkout of the source at the manifest's commit with its dependencies
+installed from its own lockfile (`npm ci`, or the repository's yarn install), and
+`dir/<source id>.json` may give the aliases its bundler config makes
+(`{"aliases": [["from", "to"], ...]}`). The corpus's copy of each file it holds
+is read first, then the checkout. Three sources have installs: realworld (`npm
+ci`), todomvc (its `examples/typescript-react` commits its `node_modules`) and
+react-admin (yarn; aliases from the examples' Vite config: each monorepo package
+to its `src`, `data-generator-retail` to `examples/data-generator/src`,
+`@mui/icons-material/` to its `esm/`). The results are in `corpus/results`
+(`baseline.*` before this work, `islands.*` and `islands-off.*` now):
 
 | | DEV baseline | DEV now | TEST baseline | TEST now |
 |---|---|---|---|---|
-| functions, compiled alone | 141 / 985 | 302 / 985 | 77 / 770 | 177 / 770 |
-| modules, compiled alone | 38 / 532 | 101 / 532 | 18 / 530 | 84 / 530 |
-| components, compiled alone | 42 / 647 | 97 / 647 | 34 / 594 | 85 / 594 |
-| functions, with islands | — | 891 / 985 | — | 690 / 770 |
-| modules, with islands | — | 448 / 532 | — | 452 / 530 |
+| functions, compiled alone | 141 / 985 | 302 / 985 | 77 / 770 | 173 / 770 |
+| modules, compiled alone | 38 / 532 | 99 / 532 | 18 / 530 | 80 / 530 |
+| components, compiled alone | 42 / 647 | 88 / 647 | 34 / 594 | 81 / 594 |
+| functions, with islands | — | 906 / 985 | — | 696 / 770 |
+| modules, with islands | — | 449 / 532 | — | 452 / 530 |
 | apps compiled whole | 0 / 29 | 1 / 29 | 0 / 39 | 0 / 39 |
-| apps that build with islands (packages stubbed) | — | 23 / 29 | — | 25 / 39 |
-| modules of those apps compiled | — | 90 / 101 | — | 85 / 92 |
+| apps that build with islands (packages stubbed) | — | 27 / 29 | — | 36 / 39 |
+| modules of those apps compiled | — | 154 / 177 | — | 237 / 277 |
+| apps that build with islands (their own packages installed) | — | 1 / 2 | — | 2 / 3 |
+| modules of those apps compiled | — | 39 / 43 | — | 124 / 138 |
 
-The largest cause left is packages: 638 DEV functions use one, and they compile
-only with an island.
+Compiled alone, the counts fell by a few components (DEV 97 to 88, TEST 85 to
+81) as the loader came to resolve more of each module (`.jsx`, stylesheets,
+declaration files, `process.env`): refine's pages, for one, now resolve far
+enough that their calls to refine's hooks count as package uses.
+
+With real packages, the apps that do not build stop on these:
+
+* react-admin's `examples/crm` (DEV) calls `window.open` in app code (opening a
+  note's attachment in a new tab). The island has no way to open a tab, so the
+  build is refused.
+* todomvc's `examples/typescript-react` (TEST) is a React 16 app. It renders with
+  `ReactDOM.render` into `document.getElementsByClassName('todoapp')[0]`, and the
+  island has neither.
+
+Building against real packages rather than empty ones took the loader closer to
+a bundler's:
+
+* Node's `node_modules` lookup, walking up from the importing file, so a
+  package's nested dependency (react-redux's own `react-is`) is the one it
+  installed.
+* Node built-ins that no package provides become empty modules, as Vite
+  externalises them for the browser.
+* `?raw` imports.
+* An `exports` pattern whose `x/index.js` is `x.js` on disk is resolved to that
+  file, as Vite does for MUI 7's `@mui/material/colors/green`.
+* An entry that renders somewhere the subset does not follow (inside a promise's
+  callback) renders from the island.
+
+### Apps verified to run
+
+"Builds" is not "runs". An app counts as verified to run when it boots on cw-ui
+in the world's browser and its document matches its React build after every
+step of a scripted flow (`crates/computerworld/tests/oss_webapps.rs`, run with
+`--features oss-web`; see docs/oss-webapps.md):
+
+| app | builds | verified to run |
+|---|---|---|
+| TodoMVC React | yes | yes: add, complete, filter, clear; matches after every action |
+| Conduit React (Redux) | yes | yes: tag filter, sign in, write and comment, edit, delete, favourite; matches after every action |
+| react-admin demo | yes (316 modules on the island, 8.1 MB IR) | no: its packages need a real DOM on the island (element `style`, element listeners, ProseMirror, Popper) |
+
+That is 2 of 3 real OSS React apps verified to run. None of the corpus apps is
+run: the corpus has no flows to script.
 
 ## Embedding: the `cw_ui::UiApp` API
 

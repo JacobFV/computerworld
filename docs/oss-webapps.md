@@ -217,11 +217,29 @@ for root-level absolutes, cyclic percentages in intrinsic sizes, table cells'
 min/max-width, wrapped flex lines stretching into min-height, zero-height lines for
 empty inline boxes and fractional letter spacing in paint.
 
-**The compiled TSX path.** None of the React apps compiles with `cw-tsx`: TodoMVC's
-and Conduit's modules are `.js`/`.jsx` files it does not resolve
-(`cannot find module './todo/app'`), and react-admin imports MUI and react-admin
-itself (`a compiled app imports only react and react-dom`) and CSS. They run on the
-React fallback (the real React on the VM), which is what they are measured on above.
+**The compiled TSX path.** TodoMVC React and Conduit React also run compiled on
+cw-ui (docs/tsx-apps.md). `scripts/oss-web/build.sh` compiles each from its
+sources and its installed `node_modules` with `cw-tsx`: the modules inside the
+subset go to the UI IR, and the rest, with the packages, run on the island. The
+IR is `app.ui.json` beside the React build. The page names it on the app's script
+with `data-cw-ui`, so the world's browser runs the compiled app, and `react.html`
+is the React build's page unchanged. `todomvc_react_compiled_shows_what_its_react_build_shows`
+and `conduit_react_filters_signs_in_writes_comments_edits_deletes_and_favourites`
+drive the compiled page and the React page in lockstep. Their documents match
+after every action. Measured with `measure_compiled_against_react` (release,
+`--ignored`):
+
+| App | runs | first load (ms) | second load (ms) | action | action (ms) | snapshot after (bytes) |
+|---|---|---|---|---|---|---|
+| TodoMVC React | compiled (cw-ui) | 13.2 | 17.4 | add a todo | 5.2 | 11,145,402 |
+| TodoMVC React | React build | 10.3 | 12.7 | add a todo | 5.9 | 7,906,779 |
+| Conduit React | compiled (cw-ui) | 79.2 | 97.1 | filter by a tag | 34.6 | 14,673,552 |
+| Conduit React | React build | 88.2 | 91.8 | filter by a tag | 33.4 | 9,256,250 |
+
+react-admin builds (316 modules on the island, an 8.1 MB IR) but does not run.
+Its packages (MUI's `el.style`, element event listeners, ProseMirror, Popper)
+need a real DOM on the island, and the island has only React's shim. The page
+keeps its React build.
 
 ## What the engine needed
 

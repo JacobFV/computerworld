@@ -95,6 +95,11 @@ pub struct ProjectResult {
     pub app_island: Option<bool>,
     #[serde(default)]
     pub apps_island_modules: Count,
+    /// For an app whose packages are installed: whether it builds against them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_real: Option<bool>,
+    #[serde(default)]
+    pub apps_real_modules: Count,
     /// For an app that builds so: its modules on the island.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub island_modules: Vec<String>,
@@ -125,6 +130,13 @@ pub struct Report {
     pub apps_island: Count,
     #[serde(default)]
     pub apps_island_modules: Count,
+    /// Apps whose own packages are installed (`evaluate_installed`: a checkout
+    /// at the pinned commit, installed from its lockfile) that build against
+    /// them, and of those apps' modules, how many are compiled.
+    #[serde(default)]
+    pub apps_real: Count,
+    #[serde(default)]
+    pub apps_real_modules: Count,
     pub diagnostics: usize,
     pub diagnostics_by_cause: BTreeMap<String, usize>,
     pub functions_by_cause: BTreeMap<String, usize>,
@@ -168,6 +180,11 @@ impl Report {
             );
             line(&mut s, "  apps", &self.apps_island);
             line(&mut s, "  compiled", &self.apps_island_modules);
+            if self.apps_real.total > 0 {
+                s.push_str("with the apps' own packages, installed from their lockfiles:\n");
+                line(&mut s, "  apps", &self.apps_real);
+                line(&mut s, "  compiled", &self.apps_real_modules);
+            }
         }
         fn ranked(m: &BTreeMap<String, usize>, top: usize) -> Vec<(&String, &usize)> {
             let mut v: Vec<(&String, &usize)> = m.iter().collect();
@@ -514,6 +531,21 @@ pub fn evaluate_opts(
     lower: &crate::lower::LowerOptions,
     show: &mut dyn FnMut(&str, &Diagnostic),
 ) -> Report {
+    evaluate_installed(dir, split, lower, None, show)
+}
+
+/// [`evaluate_opts`], also building each app whose source has an install under
+/// `installs` (`<installs>/<source id>`: a checkout at the pinned commit with
+/// its dependencies installed from its lockfile; `<source id>.json` may give
+/// the aliases its bundler config makes, as `{"aliases": [[from, to], ...]}`)
+/// against its own packages.
+pub fn evaluate_installed(
+    dir: &Path,
+    split: &str,
+    lower: &crate::lower::LowerOptions,
+    installs: Option<&Path>,
+    show: &mut dyn FnMut(&str, &Diagnostic),
+) -> Report {
     let manifest: Manifest = serde_json::from_str(
         &std::fs::read_to_string(dir.join("manifest.json")).expect("corpus manifest"),
     )
@@ -542,7 +574,22 @@ pub fn evaluate_opts(
             node_modules: None,
             env: Default::default(),
         };
-        let result = evaluate_project(&root, p, &options, lower, &mut report, show);
+        let mut result = evaluate_project(&root, p, &options, lower, &mut report, show);
+        if let (Some(installs), Some(entry), true) = (installs, result.entry.clone(), lower.islands)
+        {
+            let iroot = installs.join(&source.id);
+            if iroot.is_dir() {
+                evaluate_installed_app(
+                    &root,
+                    &iroot,
+                    installs,
+                    &source.id,
+                    &entry,
+                    &options,
+                    &mut result,
+                );
+            }
+        }
         report.modules.merge(&result.modules);
         report.functions.merge(&result.functions);
         report.components.merge(&result.components);
@@ -552,6 +599,10 @@ pub fn evaluate_opts(
         if let Some(c) = result.app_island {
             report.apps_island.add(c);
         }
+        if let Some(c) = result.app_real {
+            report.apps_real.add(c);
+        }
+        report.apps_real_modules.merge(&result.apps_real_modules);
         report
             .apps_island_modules
             .merge(&result.apps_island_modules);
@@ -559,6 +610,69 @@ pub fn evaluate_opts(
         report.per_project.push(result);
     }
     report
+}
+
+/// Builds the app at `entry` from its install at `iroot`, with the packages its
+/// lockfile installed, recording the result on `result`.
+fn evaluate_installed_app(
+    root: &Path,
+    iroot: &Path,
+    installs: &Path,
+    id: &str,
+    entry: &str,
+    options: &LoadOptions,
+    result: &mut ProjectResult,
+) {
+    let mut aliases = options.aliases.clone();
+    if let Some(v) = std::fs::read_to_string(installs.join(format!("{id}.json")))
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+    {
+        for a in v["aliases"].as_array().into_iter().flatten() {
+            if let (Some(f), Some(t)) = (a[0].as_str(), a[1].as_str()) {
+                aliases.push((f.to_owned(), t.to_owned()));
+            }
+        }
+    }
+    // The nearest node_modules above the entry that has React.
+    let node_modules = Path::new(entry).ancestors().skip(1).find_map(|d| {
+        let nm = d.join("node_modules");
+        iroot
+            .join(&nm)
+            .join("react/package.json")
+            .is_file()
+            .then(|| nm.to_string_lossy().into_owned())
+    });
+    let real = LoadOptions {
+        aliases,
+        node_modules,
+        env: Default::default(),
+    };
+    // The corpus's copy of a file it holds (the pinned source), else the install's.
+    let mut read = |rel: &str| {
+        std::fs::read_to_string(root.join(rel))
+            .or_else(|_| std::fs::read_to_string(iroot.join(rel)))
+            .ok()
+    };
+    let (sources, errors) = crate::load_with(entry, &mut read, &real);
+    let b = crate::build_modules(&sources);
+    let builds = errors.is_empty() && b.diagnostics.is_empty();
+    if !builds && std::env::var_os("CW_TSX_SHOW_APPS").is_some() {
+        for d in errors.iter().chain(&b.diagnostics).rev().take(3) {
+            eprintln!("installed app {}: {}: {d}", result.id, d.file);
+        }
+    }
+    result.app_real = Some(builds);
+    if builds {
+        for s in sources
+            .iter()
+            .filter(|s| !s.package && !s.is_ambient() && !s.library)
+        {
+            result
+                .apps_real_modules
+                .add(!b.island_modules.contains(&s.file));
+        }
+    }
 }
 
 fn evaluate_project(

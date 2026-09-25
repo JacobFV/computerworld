@@ -12,7 +12,7 @@
 //!                                      `PROGRAM: cw_ui::GenProgram`) for an app
 //!                                      built into the binary
 //!     cw-tsx check app.tsx             prints the diagnostics; exit 1 if any
-//!     cw-tsx corpus <dir> [--split dev|test|all] [--json out.json] [--top n] [--grep text] [--no-islands]
+//!     cw-tsx corpus <dir> [--split dev|test|all] [--json out.json] [--top n] [--grep text] [--no-islands] [--installs dir]
 //!                                      evaluates the held-out corpus in <dir>
 //!                                      (crates/web/tsx/corpus): how much of it is
 //!                                      inside the compiled subset, and why not
@@ -86,6 +86,12 @@ fn main() -> ExitCode {
             .find(|a| a.join("node_modules/react/package.json").is_file())
             .map(Path::to_path_buf)
             .unwrap_or_else(|| dir.clone()),
+    };
+    // The working directory, when that is the root.
+    let root = if root.as_os_str().is_empty() {
+        PathBuf::from(".")
+    } else {
+        root
     };
     let abs = |p: &Path| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
     let file_name = abs(&input)
@@ -224,6 +230,7 @@ fn corpus(rest: &[String]) -> ExitCode {
     let mut top = 40usize;
     let mut grep: Option<String> = None;
     let mut lower = cw_tsx::lower::LowerOptions::default();
+    let mut installs: Option<PathBuf> = None;
     let mut it = rest.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -232,18 +239,25 @@ fn corpus(rest: &[String]) -> ExitCode {
             "--top" => top = it.next().and_then(|n| n.parse().ok()).unwrap_or(top),
             "--grep" => grep = it.next().cloned(),
             "--no-islands" => lower.islands = false,
+            "--installs" => installs = it.next().map(PathBuf::from),
             s if dir.is_none() => dir = Some(PathBuf::from(s)),
             _ => return usage(),
         }
     }
     let Some(dir) = dir else { return usage() };
-    let report = cw_tsx::corpus::evaluate_opts(&dir, &split, &lower, &mut |project, d| {
-        if let Some(g) = &grep {
-            if d.message.contains(g.as_str()) {
-                println!("{project}: {d}");
+    let report = cw_tsx::corpus::evaluate_installed(
+        &dir,
+        &split,
+        &lower,
+        installs.as_deref(),
+        &mut |project, d| {
+            if let Some(g) = &grep {
+                if d.message.contains(g.as_str()) {
+                    println!("{project}: {d}");
+                }
             }
-        }
-    });
+        },
+    );
     print!("{}", report.summary(top));
     if let Some(p) = json {
         let text = serde_json::to_string_pretty(&report).expect("report") + "\n";

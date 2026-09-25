@@ -8,11 +8,11 @@
   },
   "functions": {
     "total": 770,
-    "inside": 690
+    "inside": 696
   },
   "components": {
     "total": 594,
-    "inside": 533
+    "inside": 538
   },
   "apps": {
     "total": 39,
@@ -20,37 +20,47 @@
   },
   "apps_island": {
     "total": 39,
-    "inside": 25
+    "inside": 36
   },
   "apps_island_modules": {
-    "total": 92,
-    "inside": 85
+    "total": 277,
+    "inside": 237
   },
-  "diagnostics": 246,
+  "apps_real": {
+    "total": 3,
+    "inside": 2
+  },
+  "apps_real_modules": {
+    "total": 138,
+    "inside": 124
+  },
+  "diagnostics": 225,
   "diagnostics_by_cause": {
     "`<FilterContext.Provider>` on a value of type unknown": 1,
     "`Promise.withResolvers` is outside the compiled subset": 1,
     "`ReactDOM` from React cannot be used as a value here": 5,
     "`await` inside an expression is outside the compiled subset (await into a variable first)": 2,
     "`createRoot` outside the render call is outside the compiled subset": 1,
-    "`dangerouslySetInnerHTML` is outside the compiled subset": 1,
     "`document.getElementsByClassName` is outside the compiled subset": 1,
     "`instanceof` of anything but a built-in class is outside the compiled subset": 2,
     "`window.confirm` is outside the compiled subset": 1,
-    "`window.history` is outside the compiled subset": 2,
     "`window.localStorage` is outside the compiled subset": 3,
-    "`window.matchMedia` is outside the compiled subset": 1,
     "a tagged template is outside the compiled subset": 5,
+    "cannot find stylesheet `@mantine/core/styles.css`": 1,
+    "cannot find stylesheet `@refinedev/antd/dist/reset.css`": 1,
+    "cannot find stylesheet `flatpickr/dist/themes/light.css`": 1,
+    "cannot find stylesheet `font-awesome/css/font-awesome.min.css`": 1,
+    "cannot find stylesheet `index.css`": 1,
     "class components are outside the compiled subset": 5,
     "generators are outside the compiled subset": 1,
-    "import of a stylesheet": 17,
     "imported name the subset cannot use": 5,
     "method `current` on RefObject<() => void>": 1,
     "method `persist` on Event": 2,
+    "property does not exist on another type": 2,
     "relative import that does not resolve": 35,
-    "this React API is outside the compiled subset": 10,
+    "this React API is outside the compiled subset": 9,
     "this expression is outside the compiled subset": 10,
-    "unknown name `FileReader`": 1,
+    "unknown name `FileReader`": 3,
     "unknown name `IntersectionObserver`": 1,
     "unknown name `Proxy`": 3,
     "unknown name `RegExp`": 1,
@@ -65,7 +75,6 @@
     "unknown name `crypto`": 1,
     "unknown name `module`": 4,
     "unknown name `navigator`": 1,
-    "unknown name `process`": 8,
     "unknown name `window`": 5,
     "value imported from a module that does not resolve": 94,
     "value imported from a package": 2
@@ -75,20 +84,18 @@
     "`Promise.withResolvers` is outside the compiled subset": 1,
     "`ReactDOM` from React cannot be used as a value here": 2,
     "`await` inside an expression is outside the compiled subset (await into a variable first)": 2,
-    "`dangerouslySetInnerHTML` is outside the compiled subset": 1,
     "`document.getElementsByClassName` is outside the compiled subset": 1,
     "`instanceof` of anything but a built-in class is outside the compiled subset": 1,
     "`window.confirm` is outside the compiled subset": 1,
-    "`window.history` is outside the compiled subset": 2,
-    "`window.matchMedia` is outside the compiled subset": 1,
     "a tagged template is outside the compiled subset": 3,
     "class components are outside the compiled subset": 5,
     "generators are outside the compiled subset": 1,
     "method `current` on RefObject<() => void>": 1,
     "method `persist` on Event": 1,
-    "this React API is outside the compiled subset": 10,
+    "property does not exist on another type": 2,
+    "this React API is outside the compiled subset": 9,
     "this expression is outside the compiled subset": 7,
-    "unknown name `FileReader`": 1,
+    "unknown name `FileReader`": 3,
     "unknown name `IntersectionObserver`": 1,
     "unknown name `Proxy`": 2,
     "unknown name `RegExp`": 1,
@@ -100,7 +107,6 @@
     "unknown name `beforeAll`": 1,
     "unknown name `crypto`": 1,
     "unknown name `navigator`": 1,
-    "unknown name `process`": 6,
     "unknown name `window`": 4,
     "value imported from a module that does not resolve": 25,
     "value imported from a package": 2
@@ -109,9 +115,8 @@
     ".": 2,
     "@/columns": 1,
     "@/components": 7,
-    "@/hooks": 11,
-    "@/lib": 5,
-    "@/types": 3,
+    "@/hooks": 10,
+    "@/lib": 4,
     "@algolia/client-search": 1,
     "@ant-design/icons": 1,
     "@ant-design/v5-patch-for-react-19": 1,
@@ -146,11 +151,11 @@
     "@react-aria/overlays": 1,
     "@react-aria/textfield": 1,
     "@react-spring/web": 1,
-    "@react-stately/overlays": 2,
+    "@react-stately/overlays": 1,
     "@reduxjs/toolkit": 21,
     "@refinedev/antd": 5,
     "@refinedev/chakra-ui": 6,
-    "@refinedev/core": 34,
+    "@refinedev/core": 27,
     "@refinedev/devtools": 1,
     "@refinedev/inferencer": 8,
     "@refinedev/kbar": 3,
@@ -173,13 +178,12 @@
     "@tanstack/react-query-devtools": 16,
     "@tanstack/react-query-next-experimental": 1,
     "@tanstack/react-query-persist-client": 3,
-    "@tanstack/react-table": 27,
+    "@tanstack/react-table": 20,
     "@tanstack/react-table-devtools": 2,
     "@tanstack/react-virtual": 2,
     "@testing-library/jest-dom": 3,
     "@testing-library/react": 2,
     "@testing-library/user-event": 1,
-    "@types/": 4,
     "@uiw/react-md-editor": 2,
     "antd": 6,
     "app": 2,
@@ -209,9 +213,9 @@
     "json-graphql-server": 1,
     "jsonexport": 2,
     "lodash": 2,
-    "lucide-react": 35,
+    "lucide-react": 34,
     "msw": 13,
-    "next": 14,
+    "next": 10,
     "next-intl": 3,
     "node:util": 1,
     "pages": 1,
@@ -221,12 +225,12 @@
     "ra-data-graphql-simple": 1,
     "ra-data-simple-rest": 1,
     "ra-i18n-polyglot": 2,
-    "ra-input-rich-text": 2,
+    "ra-input-rich-text": 4,
     "ra-language-english": 2,
     "ra-language-french": 2,
-    "radix-ui": 3,
+    "radix-ui": 2,
     "react-admin": 109,
-    "react-aria": 4,
+    "react-aria": 1,
     "react-error-boundary": 1,
     "react-flatpickr": 1,
     "react-hook-form": 16,
@@ -273,6 +277,11 @@
         "total": 0,
         "inside": 0
       },
+      "app_real": false,
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/typescript-react/js/app.tsx",
       "sample": [
         "examples/typescript-react/js/app.tsx: examples/typescript-react/js/app.tsx: line 12:1: `TodoModel` from `./todoModel` is neither a value nor a type the compiled subset knows",
@@ -310,6 +319,10 @@
         "total": 1,
         "inside": 1
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/starter/src/index.tsx",
       "sample": [],
       "outside": []
@@ -332,8 +345,15 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 2,
-        "inside": 2
+        "inside": 1
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/basic-dynamic-columns/src/main.tsx"
+      ],
       "entry": "examples/react/basic-dynamic-columns/src/main.tsx",
       "sample": [],
       "outside": []
@@ -357,6 +377,10 @@
       "apps_island_modules": {
         "total": 2,
         "inside": 2
+      },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
       },
       "entry": "examples/react/cell-spanning/src/main.tsx",
       "sample": [],
@@ -382,6 +406,10 @@
         "total": 2,
         "inside": 2
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/column-ordering/src/main.tsx",
       "sample": [],
       "outside": []
@@ -404,8 +432,15 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 2,
-        "inside": 2
+        "inside": 1
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/column-pinning-sticky/src/main.tsx"
+      ],
       "entry": "examples/react/column-pinning-sticky/src/main.tsx",
       "sample": [],
       "outside": []
@@ -430,6 +465,10 @@
         "total": 2,
         "inside": 2
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/column-sizing/src/main.tsx",
       "sample": [],
       "outside": []
@@ -452,8 +491,15 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 1,
-        "inside": 1
+        "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/kitchen-sink-material-ui/src/main.tsx"
+      ],
       "entry": "examples/react/kitchen-sink-material-ui/src/main.tsx",
       "sample": [
         "examples/react/kitchen-sink-material-ui/src/components/data-table/cell-components.tsx: line 218:18: unknown name `navigator`",
@@ -484,6 +530,10 @@
         "total": 2,
         "inside": 2
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/lib-chakra-ui/src/main.tsx",
       "sample": [],
       "outside": []
@@ -492,7 +542,7 @@
       "id": "tanstack-table/examples/react/lib-mantine/src",
       "modules": {
         "total": 2,
-        "inside": 2
+        "inside": 1
       },
       "functions": {
         "total": 5,
@@ -508,8 +558,14 @@
         "total": 2,
         "inside": 2
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/lib-mantine/src/main.tsx",
-      "sample": [],
+      "sample": [
+        "examples/react/lib-mantine/src/main.tsx: examples/react/lib-mantine/src/main.tsx: line 18:1: cannot find stylesheet `@mantine/core/styles.css`"
+      ],
       "outside": []
     },
     {
@@ -530,8 +586,16 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 7,
-        "inside": 7
+        "inside": 5
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/lib-shadcn-radix/src/lib/utils.ts",
+        "examples/react/lib-shadcn-radix/src/components/ui/button.tsx"
+      ],
       "entry": "examples/react/lib-shadcn-radix/src/main.tsx",
       "sample": [],
       "outside": []
@@ -554,8 +618,15 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 2,
-        "inside": 2
+        "inside": 1
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/sorting/src/main.tsx"
+      ],
       "entry": "examples/react/sorting/src/main.tsx",
       "sample": [],
       "outside": []
@@ -578,8 +649,15 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 2,
-        "inside": 2
+        "inside": 1
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/sub-components/src/main.tsx"
+      ],
       "entry": "examples/react/sub-components/src/main.tsx",
       "sample": [],
       "outside": []
@@ -592,25 +670,30 @@
       },
       "functions": {
         "total": 11,
-        "inside": 9
+        "inside": 10
       },
       "components": {
         "total": 8,
-        "inside": 6
+        "inside": 7
       },
       "app": false,
-      "app_island": false,
+      "app_island": true,
       "apps_island_modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
+      "island_modules": [
+        "examples/react/virtualized-columns/src/main.tsx"
+      ],
       "entry": "examples/react/virtualized-columns/src/main.tsx",
       "sample": [
-        "examples/react/virtualized-columns/src/main.tsx: examples/react/virtualized-columns/src/main.tsx: line 95:8: unknown name `process`",
         "examples/react/virtualized-columns/src/main.tsx: examples/react/virtualized-columns/src/main.tsx: line 329:14: unknown name `window`"
       ],
       "outside": [
-        "examples/react/virtualized-columns/src/main.tsx: App: unknown name `process`",
         "examples/react/virtualized-columns/src/main.tsx: TableBody: unknown name `window`"
       ]
     },
@@ -629,18 +712,24 @@
         "inside": 0
       },
       "app": false,
-      "app_island": false,
+      "app_island": true,
       "apps_island_modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
+      "island_modules": [
+        "examples/react/virtualized-infinite-scrolling/src/main.tsx"
+      ],
       "entry": "examples/react/virtualized-infinite-scrolling/src/main.tsx",
       "sample": [
-        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 173:14: unknown name `window`",
-        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 186:8: unknown name `process`"
+        "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 173:14: unknown name `window`"
       ],
       "outside": [
-        "examples/react/virtualized-infinite-scrolling/src/main.tsx: App: unknown name `process`; unknown name `window`"
+        "examples/react/virtualized-infinite-scrolling/src/main.tsx: App: unknown name `window`"
       ]
     },
     {
@@ -661,8 +750,15 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 6,
-        "inside": 6
+        "inside": 5
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/algolia/src/algolia.ts"
+      ],
       "entry": "examples/react/algolia/src/index.tsx",
       "sample": [],
       "outside": []
@@ -685,6 +781,10 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 1,
+        "inside": 0
+      },
+      "apps_real_modules": {
+        "total": 0,
         "inside": 0
       },
       "island_modules": [
@@ -715,11 +815,18 @@
         "inside": 3
       },
       "app": false,
-      "app_island": false,
+      "app_island": true,
       "apps_island_modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
+      "island_modules": [
+        "examples/react/basic/src/index.tsx"
+      ],
       "entry": "examples/react/basic/src/index.tsx",
       "sample": [
         "examples/react/basic/src/index.tsx: line 17:12: `window.localStorage` is outside the compiled subset"
@@ -741,11 +848,18 @@
         "inside": 3
       },
       "app": false,
-      "app_island": false,
+      "app_island": true,
       "apps_island_modules": {
+        "total": 2,
+        "inside": 1
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
+      "island_modules": [
+        "examples/react/batching/src/character-loader.ts"
+      ],
       "entry": "examples/react/batching/src/index.tsx",
       "sample": [
         "examples/react/batching/src/character-loader.ts: line 55:20: `Promise.withResolvers` is outside the compiled subset"
@@ -773,6 +887,10 @@
       "apps_island_modules": {
         "total": 3,
         "inside": 2
+      },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
       },
       "island_modules": [
         "examples/react/chat/src/chat.ts"
@@ -805,8 +923,15 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 1,
-        "inside": 1
+        "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "island_modules": [
+        "examples/react/default-query-function/src/index.tsx"
+      ],
       "entry": "examples/react/default-query-function/src/index.tsx",
       "sample": [],
       "outside": []
@@ -826,11 +951,18 @@
         "inside": 3
       },
       "app": false,
-      "app_island": false,
+      "app_island": true,
       "apps_island_modules": {
+        "total": 1,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
+      "island_modules": [
+        "examples/react/eslint-legacy/src/index.tsx"
+      ],
       "entry": "examples/react/eslint-legacy/src/index.tsx",
       "sample": [
         "examples/react/eslint-legacy/src/index.tsx: line 17:12: `window.localStorage` is outside the compiled subset"
@@ -841,27 +973,27 @@
       "id": "tanstack-query/examples/react/load-more-infinite-scroll/src",
       "modules": {
         "total": 3,
-        "inside": 2
+        "inside": 3
       },
       "functions": {
         "total": 4,
-        "inside": 3
+        "inside": 4
       },
       "components": {
         "total": 4,
-        "inside": 3
+        "inside": 4
       },
       "app": null,
       "apps_island_modules": {
         "total": 0,
         "inside": 0
       },
-      "sample": [
-        "examples/react/load-more-infinite-scroll/src/pages/about.tsx: line 6:9: `window.history` is outside the compiled subset"
-      ],
-      "outside": [
-        "examples/react/load-more-infinite-scroll/src/pages/about.tsx: Default: `window.history` is outside the compiled subset"
-      ]
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "sample": [],
+      "outside": []
     },
     {
       "id": "tanstack-query/examples/react/nextjs-suspense-streaming/src",
@@ -871,7 +1003,7 @@
       },
       "functions": {
         "total": 9,
-        "inside": 6
+        "inside": 7
       },
       "components": {
         "total": 5,
@@ -882,15 +1014,16 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/react/nextjs-suspense-streaming/src/app/api/wait/route.ts: line 4:32: unknown name `URL`",
-        "examples/react/nextjs-suspense-streaming/src/app/page.tsx: line 11:7: unknown name `process`",
-        "examples/react/nextjs-suspense-streaming/src/app/page.tsx: line 12:23: unknown name `process`",
         "examples/react/nextjs-suspense-streaming/src/app/page.tsx: line 25:9: `await` inside an expression is outside the compiled subset (await into a variable first)"
       ],
       "outside": [
         "examples/react/nextjs-suspense-streaming/src/app/api/wait/route.ts: GET: unknown name `URL`",
-        "examples/react/nextjs-suspense-streaming/src/app/page.tsx: getBaseURL: unknown name `process`",
         "examples/react/nextjs-suspense-streaming/src/app/page.tsx: useWaitQuery: `await` inside an expression is outside the compiled subset (await into a variable first)"
       ]
     },
@@ -910,6 +1043,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -935,6 +1072,10 @@
       "apps_island_modules": {
         "total": 4,
         "inside": 3
+      },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
       },
       "island_modules": [
         "examples/react/offline/src/App.tsx"
@@ -964,6 +1105,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -985,6 +1130,10 @@
       "app_island": true,
       "apps_island_modules": {
         "total": 1,
+        "inside": 0
+      },
+      "apps_real_modules": {
+        "total": 0,
         "inside": 0
       },
       "island_modules": [
@@ -1019,6 +1168,10 @@
         "total": 1,
         "inside": 1
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/simple/src/index.tsx",
       "sample": [],
       "outside": []
@@ -1043,6 +1196,10 @@
         "total": 9,
         "inside": 9
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/react/star-wars/src/index.tsx",
       "sample": [],
       "outside": []
@@ -1062,13 +1219,21 @@
         "inside": 6
       },
       "app": false,
-      "app_island": false,
+      "app_island": true,
       "apps_island_modules": {
+        "total": 6,
+        "inside": 5
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
+      "island_modules": [
+        "examples/react/suspense/src/index.tsx"
+      ],
       "entry": "examples/react/suspense/src/index.tsx",
       "sample": [
+        "examples/react/suspense/src/index.tsx: examples/react/suspense/src/index.tsx: line 1:1: cannot find stylesheet `font-awesome/css/font-awesome.min.css`",
         "examples/react/suspense/src/index.tsx: examples/react/suspense/src/index.tsx: line 18:18: this React API is outside the compiled subset",
         "examples/react/suspense/src/index.tsx: examples/react/suspense/src/index.tsx: line 19:17: this React API is outside the compiled subset"
       ],
@@ -1092,11 +1257,19 @@
         "inside": 4
       },
       "app": false,
-      "app_island": false,
+      "app_island": true,
       "apps_island_modules": {
+        "total": 8,
+        "inside": 6
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
+      "island_modules": [
+        "examples/query/react/graphql-codegen/src/features/posts/GetPosts.generated.ts",
+        "examples/query/react/graphql-codegen/src/index.tsx"
+      ],
       "entry": "examples/query/react/graphql-codegen/src/index.tsx",
       "sample": [
         "examples/query/react/graphql-codegen/src/features/posts/GetPost.generated.ts: examples/query/react/graphql-codegen/src/features/posts/GetPost.generated.ts: line 15:1: unknown name `module`",
@@ -1111,15 +1284,15 @@
       "id": "redux-toolkit/examples/query/react/infinite-queries/src",
       "modules": {
         "total": 24,
-        "inside": 19
+        "inside": 20
       },
       "functions": {
         "total": 19,
-        "inside": 16
+        "inside": 17
       },
       "components": {
         "total": 11,
-        "inside": 10
+        "inside": 11
       },
       "app": false,
       "app_island": false,
@@ -1127,18 +1300,21 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/query/react/infinite-queries/src/main.tsx",
       "sample": [
         "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts: line 12:45: unknown name `IntersectionObserver`",
         "examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/infiniteScrollApi.ts: examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/infiniteScrollApi.ts: line 35:28: unknown name `URLSearchParams`",
-        "examples/query/react/infinite-queries/src/features/infinite-scroll/InfiniteScrollExample.tsx: examples/query/react/infinite-queries/src/features/infinite-scroll/InfiniteScrollExample.tsx: line 13:9: `window.history` is outside the compiled subset",
-        "examples/query/react/infinite-queries/src/main.tsx: examples/query/react/infinite-queries/src/main.tsx: line 9:7: unknown name `process`",
-        "examples/query/react/infinite-queries/src/main.tsx: examples/query/react/infinite-queries/src/main.tsx: line 13:28: this expression is outside the compiled subset"
+        "examples/query/react/infinite-queries/src/main.tsx: examples/query/react/infinite-queries/src/main.tsx: line 13:28: this expression is outside the compiled subset",
+        "examples/query/react/infinite-queries/src/main.tsx: examples/query/react/infinite-queries/src/main.tsx: line 22:18: `createRoot` outside the render call is outside the compiled subset",
+        "examples/query/react/infinite-queries/src/mocks/handlers.ts: line 16:21: unknown name `URL`"
       ],
       "outside": [
         "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts: useIntersectionCallback: unknown name `IntersectionObserver`",
-        "examples/query/react/infinite-queries/src/features/infinite-scroll/InfiniteScrollExample.tsx: InfiniteScrollAbout: `window.history` is outside the compiled subset",
-        "examples/query/react/infinite-queries/src/main.tsx: enableMocking: this expression is outside the compiled subset; unknown name `process`"
+        "examples/query/react/infinite-queries/src/main.tsx: enableMocking: this expression is outside the compiled subset"
       ]
     },
     {
@@ -1161,6 +1337,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/query/react/kitchen-sink/src/index.tsx",
       "sample": [
         "examples/query/react/kitchen-sink/src/features/bundleSplitting/Lazy.tsx: line 2:1: import from `.`: a compiled app imports only `react` and `react-dom`",
@@ -1175,7 +1355,7 @@
         "examples/query/react/kitchen-sink/src/features/bundleSplitting/index.ts: PostsList: this React API is outside the compiled subset",
         "examples/query/react/kitchen-sink/src/features/bundleSplitting/index.ts: Post: this React API is outside the compiled subset",
         "examples/query/react/kitchen-sink/src/features/counter/Counter.tsx: Counter: value imported from a module that does not resolve",
-        "examples/query/react/kitchen-sink/src/index.tsx: render: `ReactDOM` from React cannot be used as a value here; unknown name `process`",
+        "examples/query/react/kitchen-sink/src/index.tsx: render: `ReactDOM` from React cannot be used as a value here",
         "examples/query/react/kitchen-sink/src/mocks/setupTests.tsx: setupTests: unknown name `afterAll`; unknown name `afterEach`; unknown name `beforeAll`"
       ]
     },
@@ -1198,6 +1378,10 @@
       "apps_island_modules": {
         "total": 8,
         "inside": 7
+      },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
       },
       "island_modules": [
         "examples/query/react/mutations/src/index.tsx"
@@ -1228,6 +1412,10 @@
         "total": 7,
         "inside": 6
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "island_modules": [
         "examples/query/react/optimistic-update/src/index.tsx"
       ],
@@ -1241,7 +1429,7 @@
       "id": "refine/examples/auth-otp/src",
       "modules": {
         "total": 9,
-        "inside": 9
+        "inside": 8
       },
       "functions": {
         "total": 6,
@@ -1257,8 +1445,14 @@
         "total": 9,
         "inside": 9
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/auth-otp/src/index.tsx",
-      "sample": [],
+      "sample": [
+        "examples/auth-otp/src/App.tsx: examples/auth-otp/src/App.tsx: line 24:1: cannot find stylesheet `@refinedev/antd/dist/reset.css`"
+      ],
       "outside": []
     },
     {
@@ -1281,6 +1475,10 @@
         "total": 12,
         "inside": 12
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "entry": "examples/blog-ra-chakra-tutorial/src/index.tsx",
       "sample": [],
       "outside": []
@@ -1289,7 +1487,7 @@
       "id": "refine/examples/blog-react-aria/src",
       "modules": {
         "total": 11,
-        "inside": 10
+        "inside": 9
       },
       "functions": {
         "total": 10,
@@ -1305,11 +1503,16 @@
         "total": 3,
         "inside": 2
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "island_modules": [
         "examples/blog-react-aria/src/reportWebVitals.ts"
       ],
       "entry": "examples/blog-react-aria/src/index.tsx",
       "sample": [
+        "examples/blog-react-aria/src/App.tsx: examples/blog-react-aria/src/App.tsx: line 10:1: cannot find stylesheet `index.css`",
         "examples/blog-react-aria/src/reportWebVitals.ts: line 5:5: this expression is outside the compiled subset"
       ],
       "outside": [
@@ -1320,53 +1523,69 @@
       "id": "refine/examples/inferencer-material-ui/src",
       "modules": {
         "total": 20,
-        "inside": 19
+        "inside": 20
       },
       "functions": {
         "total": 14,
-        "inside": 13
+        "inside": 14
       },
       "components": {
         "total": 14,
-        "inside": 13
+        "inside": 14
       },
       "app": false,
-      "app_island": false,
+      "app_island": true,
       "apps_island_modules": {
+        "total": 19,
+        "inside": 19
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
       "entry": "examples/inferencer-material-ui/src/index.tsx",
-      "sample": [
-        "examples/inferencer-material-ui/src/contexts/color-mode/index.tsx: line 23:34: `window.matchMedia` is outside the compiled subset"
-      ],
-      "outside": [
-        "examples/inferencer-material-ui/src/contexts/color-mode/index.tsx: ColorModeContextProvider: `window.matchMedia` is outside the compiled subset"
-      ]
+      "sample": [],
+      "outside": []
     },
     {
       "id": "refine/examples/upload-material-ui-base64/src",
       "modules": {
         "total": 6,
-        "inside": 6
+        "inside": 4
       },
       "functions": {
         "total": 4,
-        "inside": 4
+        "inside": 2
       },
       "components": {
         "total": 4,
-        "inside": 4
+        "inside": 2
       },
       "app": false,
-      "app_island": false,
+      "app_island": true,
       "apps_island_modules": {
+        "total": 6,
+        "inside": 4
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
+      "island_modules": [
+        "examples/upload-material-ui-base64/src/pages/posts/create.tsx",
+        "examples/upload-material-ui-base64/src/pages/posts/edit.tsx"
+      ],
       "entry": "examples/upload-material-ui-base64/src/index.tsx",
-      "sample": [],
-      "outside": []
+      "sample": [
+        "examples/upload-material-ui-base64/src/pages/posts/create.tsx: line 38:30: unknown name `FileReader`",
+        "examples/upload-material-ui-base64/src/pages/posts/create.tsx: line 58:34: property `files` does not exist on type HTMLElement",
+        "examples/upload-material-ui-base64/src/pages/posts/edit.tsx: line 40:30: unknown name `FileReader`",
+        "examples/upload-material-ui-base64/src/pages/posts/edit.tsx: line 60:34: property `files` does not exist on type HTMLElement"
+      ],
+      "outside": [
+        "examples/upload-material-ui-base64/src/pages/posts/create.tsx: PostCreate: property does not exist on another type; unknown name `FileReader`",
+        "examples/upload-material-ui-base64/src/pages/posts/edit.tsx: PostEdit: property does not exist on another type; unknown name `FileReader`"
+      ]
     },
     {
       "id": "refine/examples/with-nextjs-headless/src",
@@ -1387,6 +1606,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "examples/with-nextjs-headless/src/app/blog-posts/page.tsx: line 112:41: `window.confirm` is outside the compiled subset",
         "examples/with-nextjs-headless/src/i18n/request.ts: line 11:16: `await` inside an expression is outside the compiled subset (await into a variable first)"
@@ -1400,33 +1623,50 @@
       "id": "react-admin/examples/demo/src",
       "modules": {
         "total": 97,
-        "inside": 86
+        "inside": 87
       },
       "functions": {
         "total": 135,
-        "inside": 122
+        "inside": 123
       },
       "components": {
         "total": 120,
-        "inside": 110
+        "inside": 111
       },
       "app": false,
-      "app_island": false,
+      "app_island": true,
       "apps_island_modules": {
-        "total": 0,
-        "inside": 0
+        "total": 97,
+        "inside": 86
       },
+      "app_real": true,
+      "apps_real_modules": {
+        "total": 97,
+        "inside": 86
+      },
+      "island_modules": [
+        "examples/demo/src/products/ProductList.tsx",
+        "examples/demo/src/products/ProductEdit.tsx",
+        "examples/demo/src/products/ProductCreate.tsx",
+        "examples/demo/src/dashboard/CardWithIcon.tsx",
+        "examples/demo/src/dashboard/Dashboard.tsx",
+        "examples/demo/src/dataProvider/graphql.ts",
+        "examples/demo/src/dataProvider/index.ts",
+        "examples/demo/src/App.tsx",
+        "examples/demo/src/fakeServer/rest.ts",
+        "examples/demo/src/fakeServer/index.ts",
+        "examples/demo/src/index.tsx"
+      ],
       "entry": "examples/demo/src/index.tsx",
       "sample": [
         "examples/demo/src/App.tsx: examples/demo/src/App.tsx: line 29:20: this expression is outside the compiled subset",
-        "examples/demo/src/App.tsx: examples/demo/src/App.tsx: line 53:17: unknown name `process`",
         "examples/demo/src/dashboard/CardWithIcon.tsx: line 60:22: this React API is outside the compiled subset",
         "examples/demo/src/dashboard/Dashboard.tsx: examples/demo/src/dashboard/Dashboard.tsx: line 46:20: this React API is outside the compiled subset",
-        "examples/demo/src/dataProvider/graphql.ts: line 41:24: a tagged template is outside the compiled subset"
+        "examples/demo/src/dataProvider/graphql.ts: line 41:24: a tagged template is outside the compiled subset",
+        "examples/demo/src/dataProvider/graphql.ts: line 59:24: a tagged template is outside the compiled subset"
       ],
       "outside": [
         "examples/demo/src/App.tsx: i18nProvider: this expression is outside the compiled subset",
-        "examples/demo/src/App.tsx: App: unknown name `process`",
         "examples/demo/src/dashboard/CardWithIcon.tsx: CardWithIcon: this React API is outside the compiled subset",
         "examples/demo/src/dashboard/Dashboard.tsx: OrderChart: this React API is outside the compiled subset",
         "examples/demo/src/dataProvider/graphql.ts: customBuildQuery: a tagged template is outside the compiled subset",
@@ -1444,22 +1684,32 @@
       "id": "react-admin/examples/simple/src",
       "modules": {
         "total": 43,
-        "inside": 39
+        "inside": 40
       },
       "functions": {
         "total": 66,
-        "inside": 62
+        "inside": 63
       },
       "components": {
         "total": 57,
-        "inside": 56
+        "inside": 57
       },
       "app": false,
-      "app_island": false,
+      "app_island": true,
       "apps_island_modules": {
-        "total": 0,
-        "inside": 0
+        "total": 41,
+        "inside": 38
       },
+      "app_real": true,
+      "apps_real_modules": {
+        "total": 41,
+        "inside": 38
+      },
+      "island_modules": [
+        "examples/simple/src/addUploadFeature.tsx",
+        "examples/simple/src/dataProvider.tsx",
+        "examples/simple/src/i18nProvider.tsx"
+      ],
       "entry": "examples/simple/src/index.tsx",
       "sample": [
         "examples/simple/src/addUploadFeature.tsx: line 16:18: `instanceof` of anything but a built-in class is outside the compiled subset",
@@ -1471,8 +1721,7 @@
       "outside": [
         "examples/simple/src/addUploadFeature.tsx: addUploadCapabilities: `instanceof` of anything but a built-in class is outside the compiled subset",
         "examples/simple/src/addUploadFeature.tsx: convertFileToBase64: unknown name `FileReader`",
-        "examples/simple/src/dataProvider.tsx: addTagsSearchSupport: unknown name `RegExp`",
-        "examples/simple/src/posts/PostList.tsx: PostPanel: `dangerouslySetInnerHTML` is outside the compiled subset"
+        "examples/simple/src/dataProvider.tsx: addTagsSearchSupport: unknown name `RegExp`"
       ]
     },
     {
@@ -1491,6 +1740,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -1516,6 +1769,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1535,6 +1792,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -1560,6 +1821,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1579,6 +1844,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -1604,6 +1873,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1623,6 +1896,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -1648,6 +1925,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1667,6 +1948,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -1692,6 +1977,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1711,6 +2000,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -1736,6 +2029,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1755,6 +2052,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -1780,6 +2081,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1799,6 +2104,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -1824,6 +2133,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1843,6 +2156,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -1868,6 +2185,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1887,6 +2208,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -1912,6 +2237,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1931,6 +2260,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -1956,6 +2289,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -1975,6 +2312,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2000,6 +2341,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2019,6 +2364,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2044,6 +2393,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2063,6 +2416,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2088,6 +2445,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2107,6 +2468,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2132,6 +2497,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2151,6 +2520,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2176,6 +2549,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2195,6 +2572,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2220,6 +2601,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2239,6 +2624,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2264,6 +2653,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2283,6 +2676,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2308,6 +2705,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2327,6 +2728,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2352,6 +2757,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2371,6 +2780,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2396,6 +2809,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2415,6 +2832,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2440,6 +2861,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2459,6 +2884,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2484,6 +2913,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2503,6 +2936,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2528,6 +2965,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2547,6 +2988,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2572,6 +3017,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2591,6 +3040,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2616,6 +3069,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2635,6 +3092,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2660,6 +3121,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2679,6 +3144,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2704,6 +3173,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2723,6 +3196,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2748,6 +3225,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2770,6 +3251,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2789,6 +3274,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2818,6 +3307,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2837,6 +3330,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2862,6 +3359,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2881,6 +3382,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2906,6 +3411,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2925,6 +3434,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2950,6 +3463,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -2969,6 +3486,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -2996,6 +3517,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3015,6 +3540,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -3048,6 +3577,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "docs/data/material/integrations/routing/LinkRouter.tsx: line 23:14: unknown name `window`"
       ],
@@ -3074,6 +3607,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3096,9 +3633,12 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/CheckboxCard/CheckboxCard.tsx: lib/CheckboxCard/CheckboxCard.tsx: line 3:1: cannot find module `./CheckboxCard.module.css`",
-        "lib/CheckboxCard/CheckboxCard.tsx: line 3:1: import from `./CheckboxCard.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/CheckboxCard/CheckboxCard.tsx: line 9:50: unknown name `classes`"
       ],
       "outside": [
@@ -3124,12 +3664,16 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/DndListHandle/DndListHandle.tsx: lib/DndListHandle/DndListHandle.tsx: line 21:1: cannot find module `./DndListHandle.module.css`",
-        "lib/DndListHandle/DndListHandle.tsx: line 21:1: import from `./DndListHandle.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/DndListHandle/DndListHandle.tsx: line 47:21: unknown name `classes`",
         "lib/DndListHandle/DndListHandle.tsx: line 47:38: unknown name `classes`",
-        "lib/DndListHandle/DndListHandle.tsx: line 52:23: unknown name `classes`"
+        "lib/DndListHandle/DndListHandle.tsx: line 52:23: unknown name `classes`",
+        "lib/DndListHandle/DndListHandle.tsx: line 55:24: unknown name `classes`"
       ],
       "outside": [
         "lib/DndListHandle/DndListHandle.tsx: SortableItem: value imported from a module that does not resolve"
@@ -3154,12 +3698,16 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/DoubleHeader/DoubleHeader.tsx: lib/DoubleHeader/DoubleHeader.tsx: line 5:1: cannot find module `./DoubleHeader.module.css`",
-        "lib/DoubleHeader/DoubleHeader.tsx: line 5:1: import from `./DoubleHeader.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/DoubleHeader/DoubleHeader.tsx: line 29:18: unknown name `classes`",
         "lib/DoubleHeader/DoubleHeader.tsx: line 45:18: unknown name `classes`",
-        "lib/DoubleHeader/DoubleHeader.tsx: line 52:24: unknown name `classes`"
+        "lib/DoubleHeader/DoubleHeader.tsx: line 52:24: unknown name `classes`",
+        "lib/DoubleHeader/DoubleHeader.tsx: line 53:29: unknown name `classes`"
       ],
       "outside": [
         "lib/DoubleHeader/DoubleHeader.tsx: DoubleHeader: value imported from a module that does not resolve"
@@ -3184,12 +3732,16 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/DropzoneButton/DropzoneButton.tsx: lib/DropzoneButton/DropzoneButton.tsx: line 5:1: cannot find module `./DropzoneButton.module.css`",
-        "lib/DropzoneButton/DropzoneButton.tsx: line 5:1: import from `./DropzoneButton.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/DropzoneButton/DropzoneButton.tsx: line 12:21: unknown name `classes`",
         "lib/DropzoneButton/DropzoneButton.tsx: line 16:20: unknown name `classes`",
-        "lib/DropzoneButton/DropzoneButton.tsx: line 31:66: unknown name `classes`"
+        "lib/DropzoneButton/DropzoneButton.tsx: line 31:66: unknown name `classes`",
+        "lib/DropzoneButton/DropzoneButton.tsx: line 41:28: unknown name `classes`"
       ],
       "outside": [
         "lib/DropzoneButton/DropzoneButton.tsx: DropzoneButton: method `current` on RefObject<() => void>; value imported from a module that does not resolve"
@@ -3214,12 +3766,16 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/EmailBanner/EmailBanner.tsx: lib/EmailBanner/EmailBanner.tsx: line 3:1: cannot find module `./EmailBanner.module.css`",
-        "lib/EmailBanner/EmailBanner.tsx: line 3:1: import from `./EmailBanner.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/EmailBanner/EmailBanner.tsx: line 7:21: unknown name `classes`",
         "lib/EmailBanner/EmailBanner.tsx: line 8:23: unknown name `classes`",
-        "lib/EmailBanner/EmailBanner.tsx: line 9:27: unknown name `classes`"
+        "lib/EmailBanner/EmailBanner.tsx: line 9:27: unknown name `classes`",
+        "lib/EmailBanner/EmailBanner.tsx: line 18:25: unknown name `classes`"
       ],
       "outside": [
         "lib/EmailBanner/EmailBanner.tsx: EmailBanner: value imported from a module that does not resolve"
@@ -3244,12 +3800,16 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/FaqSimple/FaqSimple.tsx: lib/FaqSimple/FaqSimple.tsx: line 2:1: cannot find module `./FaqSimple.module.css`",
-        "lib/FaqSimple/FaqSimple.tsx: line 2:1: import from `./FaqSimple.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/FaqSimple/FaqSimple.tsx: line 9:37: unknown name `classes`",
         "lib/FaqSimple/FaqSimple.tsx: line 10:37: unknown name `classes`",
-        "lib/FaqSimple/FaqSimple.tsx: line 15:36: unknown name `classes`"
+        "lib/FaqSimple/FaqSimple.tsx: line 15:36: unknown name `classes`",
+        "lib/FaqSimple/FaqSimple.tsx: line 20:36: unknown name `classes`"
       ],
       "outside": [
         "lib/FaqSimple/FaqSimple.tsx: FaqSimple: value imported from a module that does not resolve"
@@ -3274,9 +3834,12 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/FooterSimple/FooterSimple.tsx: lib/FooterSimple/FooterSimple.tsx: line 3:1: cannot find module `./FooterSimple.module.css`",
-        "lib/FooterSimple/FooterSimple.tsx: line 3:1: import from `./FooterSimple.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/FooterSimple/FooterSimple.tsx: line 26:21: unknown name `classes`",
         "lib/FooterSimple/FooterSimple.tsx: line 27:29: unknown name `classes`",
         "lib/FooterSimple/FooterSimple.tsx: line 29:27: unknown name `classes`"
@@ -3304,12 +3867,16 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/GetInTouch/ContactIcons.tsx: lib/GetInTouch/ContactIcons.tsx: line 3:1: cannot find module `./ContactIcons.module.css`",
-        "lib/GetInTouch/ContactIcons.tsx: line 3:1: import from `./ContactIcons.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/GetInTouch/ContactIcons.tsx: line 13:21: unknown name `classes`",
         "lib/GetInTouch/ContactIcons.tsx: line 19:36: unknown name `classes`",
-        "lib/GetInTouch/ContactIcons.tsx: line 22:26: unknown name `classes`"
+        "lib/GetInTouch/ContactIcons.tsx: line 22:26: unknown name `classes`",
+        "lib/GetInTouch/GetInTouch.tsx: lib/GetInTouch/GetInTouch.tsx: line 4:1: cannot find module `./GetInTouch.module.css`"
       ],
       "outside": [
         "lib/GetInTouch/ContactIcons.tsx: ContactIcon: value imported from a module that does not resolve",
@@ -3335,12 +3902,16 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/HeaderMenu/HeaderMenu.tsx: lib/HeaderMenu/HeaderMenu.tsx: line 16:1: cannot find module `./HeaderMenu.module.css`",
-        "lib/HeaderMenu/HeaderMenu.tsx: line 16:1: import from `./HeaderMenu.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/HeaderMenu/HeaderMenu.tsx: line 57:26: unknown name `classes`",
         "lib/HeaderMenu/HeaderMenu.tsx: line 61:34: unknown name `classes`",
-        "lib/HeaderMenu/HeaderMenu.tsx: line 75:20: unknown name `classes`"
+        "lib/HeaderMenu/HeaderMenu.tsx: line 75:20: unknown name `classes`",
+        "lib/HeaderMenu/HeaderMenu.tsx: line 84:24: unknown name `classes`"
       ],
       "outside": [
         "lib/HeaderMenu/HeaderMenu.tsx: HeaderMenu: value imported from a module that does not resolve",
@@ -3366,6 +3937,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3388,12 +3963,16 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/ServerError/ServerError.tsx: lib/ServerError/ServerError.tsx: line 2:1: cannot find module `./ServerError.module.css`",
-        "lib/ServerError/ServerError.tsx: line 2:1: import from `./ServerError.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/ServerError/ServerError.tsx: line 6:21: unknown name `classes`",
         "lib/ServerError/ServerError.tsx: line 8:25: unknown name `classes`",
-        "lib/ServerError/ServerError.tsx: line 9:27: unknown name `classes`"
+        "lib/ServerError/ServerError.tsx: line 9:27: unknown name `classes`",
+        "lib/ServerError/ServerError.tsx: line 10:48: unknown name `classes`"
       ],
       "outside": [
         "lib/ServerError/ServerError.tsx: ServerError: value imported from a module that does not resolve"
@@ -3418,12 +3997,16 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/ServerOverload/ServerOverload.tsx: lib/ServerOverload/ServerOverload.tsx: line 3:1: cannot find module `./ServerOverload.module.css`",
-        "lib/ServerOverload/ServerOverload.tsx: lib/ServerOverload/ServerOverload.tsx: line 3:1: import from `./ServerOverload.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/ServerOverload/ServerOverload.tsx: lib/ServerOverload/ServerOverload.tsx: line 7:21: unknown name `classes`",
         "lib/ServerOverload/ServerOverload.tsx: lib/ServerOverload/ServerOverload.tsx: line 9:25: unknown name `classes`",
-        "lib/ServerOverload/ServerOverload.tsx: lib/ServerOverload/ServerOverload.tsx: line 10:36: unknown name `classes`"
+        "lib/ServerOverload/ServerOverload.tsx: lib/ServerOverload/ServerOverload.tsx: line 10:36: unknown name `classes`",
+        "lib/ServerOverload/ServerOverload.tsx: lib/ServerOverload/ServerOverload.tsx: line 11:27: unknown name `classes`"
       ],
       "outside": [
         "lib/ServerOverload/ServerOverload.tsx: ServerOverload: value imported from a module that does not resolve"
@@ -3448,9 +4031,12 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/SliderLabel/SliderLabel.tsx: lib/SliderLabel/SliderLabel.tsx: line 2:1: cannot find module `./SliderLabel.module.css`",
-        "lib/SliderLabel/SliderLabel.tsx: line 2:1: import from `./SliderLabel.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/SliderLabel/SliderLabel.tsx: line 9:19: unknown name `classes`"
       ],
       "outside": [
@@ -3476,9 +4062,12 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/SliderWhite/SliderWhite.tsx: lib/SliderWhite/SliderWhite.tsx: line 3:1: cannot find module `./SliderWhite.module.css`",
-        "lib/SliderWhite/SliderWhite.tsx: line 3:1: import from `./SliderWhite.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/SliderWhite/SliderWhite.tsx: line 8:19: unknown name `classes`"
       ],
       "outside": [
@@ -3504,6 +4093,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3526,9 +4119,12 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/TableSort/TableSort.tsx: lib/TableSort/TableSort.tsx: line 13:1: cannot find module `./TableSort.module.css`",
-        "lib/TableSort/TableSort.tsx: line 13:1: import from `./TableSort.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/TableSort/TableSort.tsx: line 31:26: unknown name `classes`",
         "lib/TableSort/TableSort.tsx: line 32:51: unknown name `classes`",
         "lib/TableSort/TableSort.tsx: line 37:30: unknown name `classes`"
@@ -3556,9 +4152,12 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "lib/UserCardImage/UserCardImage.tsx: lib/UserCardImage/UserCardImage.tsx: line 2:1: cannot find module `./UserCardImage.module.css`",
-        "lib/UserCardImage/UserCardImage.tsx: line 2:1: import from `./UserCardImage.module.css`: a compiled app imports only `react` and `react-dom`",
         "lib/UserCardImage/UserCardImage.tsx: line 23:58: unknown name `classes`",
         "lib/UserCardImage/UserCardImage.tsx: line 37:20: unknown name `classes`"
       ],
@@ -3585,6 +4184,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3604,6 +4207,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -3638,12 +4245,16 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [
         "playgrounds/react/page-examples/dialog/dialog.tsx: playgrounds/react/page-examples/dialog/dialog.tsx: line 4:1: cannot find module `../../components/button`",
         "playgrounds/react/page-examples/dialog/dialog.tsx: playgrounds/react/page-examples/dialog/dialog.tsx: line 5:1: cannot find module `../../utils/class-names`",
         "playgrounds/react/page-examples/dialog/dialog.tsx: playgrounds/react/page-examples/dialog/dialog.tsx: line 6:1: cannot find module `../../utils/hooks/use-popper`",
-        "playgrounds/react/page-examples/dialog/dialog.tsx: line 4:1: import from `../../components/button`: a compiled app imports only `react` and `react-dom`",
-        "playgrounds/react/page-examples/dialog/dialog.tsx: line 5:1: import from `../../utils/class-names`: a compiled app imports only `react` and `react-dom`"
+        "playgrounds/react/page-examples/dialog/dialog.tsx: playgrounds/react/page-examples/dialog/dialog.tsx: line 8:1: cannot find stylesheet `flatpickr/dist/themes/light.css`",
+        "playgrounds/react/page-examples/dialog/dialog.tsx: line 4:1: import from `../../components/button`: a compiled app imports only `react` and `react-dom`"
       ],
       "outside": [
         "playgrounds/react/page-examples/dialog/dialog.tsx: resolveClass: value imported from a module that does not resolve",
@@ -3670,6 +4281,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3692,6 +4307,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3703,14 +4322,18 @@
       },
       "functions": {
         "total": 2,
-        "inside": 0
+        "inside": 1
       },
       "components": {
         "total": 2,
-        "inside": 0
+        "inside": 1
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -3722,8 +4345,7 @@
         "playgrounds/react/page-examples/menu/menu-with-floating-ui.tsx: line 17:12: unknown name `classNames`"
       ],
       "outside": [
-        "playgrounds/react/page-examples/menu/menu-with-floating-ui.tsx: Home: value imported from a module that does not resolve",
-        "playgrounds/react/page-examples/menu/menu-with-floating-ui.tsx: Portal: this React API is outside the compiled subset"
+        "playgrounds/react/page-examples/menu/menu-with-floating-ui.tsx: Home: value imported from a module that does not resolve"
       ]
     },
     {
@@ -3742,6 +4364,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -3767,6 +4393,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3786,6 +4416,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -3811,6 +4445,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3830,6 +4468,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -3855,6 +4497,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3874,6 +4520,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
@@ -3899,6 +4549,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3921,6 +4575,10 @@
         "total": 0,
         "inside": 0
       },
+      "apps_real_modules": {
+        "total": 0,
+        "inside": 0
+      },
       "sample": [],
       "outside": []
     },
@@ -3940,6 +4598,10 @@
       },
       "app": null,
       "apps_island_modules": {
+        "total": 0,
+        "inside": 0
+      },
+      "apps_real_modules": {
         "total": 0,
         "inside": 0
       },
