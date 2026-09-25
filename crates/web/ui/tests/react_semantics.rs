@@ -1082,3 +1082,37 @@ createRoot(document.getElementById('root')!).render(<App />);
         ],
     );
 }
+
+#[test]
+fn responses_have_status_headers_text_and_typed_json() {
+    same_as_react(
+        r#"
+import { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+interface Item { id: number; name: string; tags: string[] }
+function App() {
+  const [out, setOut] = useState<string[]>([]);
+  useEffect(() => {
+    async function run() {
+      const lines: string[] = [];
+      const r = await fetch('/api/items');
+      lines.push(r.ok + ' ' + r.status + ' ' + r.statusText.length + ' ' + (r.url.length > 0));
+      lines.push(String(r.headers.get('Content-Type')) + ' ' + r.headers.has('content-type') + ' ' + r.headers.get('x-missing'));
+      const items = await r.json<Item[]>();
+      lines.push(items.map((i) => i.name + i.tags.length).join(','));
+      const again = await fetch('/api/user/1');
+      const text = await again.text();
+      lines.push(text.length > 0 ? 'text ' + text.includes('Ada') : 'empty');
+      const missing = await fetch('/api/nothing-here');
+      lines.push('missing ' + missing.ok + ' ' + missing.status);
+      setOut(lines);
+    }
+    run();
+  }, []);
+  return <ul>{out.map((l, i) => <li key={i}>{l}</li>)}</ul>;
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Wait(50)],
+    );
+}

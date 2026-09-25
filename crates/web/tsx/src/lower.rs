@@ -1398,6 +1398,8 @@ impl<'a> Lowerer<'a> {
             "Context" => Ty::Context(Box::new(arg(0))),
             "Promise" => Ty::Promise(Box::new(arg(0))),
             "Response" => Ty::Response,
+            "CwResponse" => Ty::CwResponse,
+            "Headers" => Ty::Headers,
             "CSSProperties" => Ty::Dict(Box::new(union(Ty::String, Ty::Number))),
             n if n.starts_with("HTML") && n.ends_with("Element") => Ty::DomNode,
             "Node" | "EventTarget" => Ty::DomNode,
@@ -3542,7 +3544,7 @@ impl<'a> Lowerer<'a> {
             ("", "now") => (Builtin::CwNow, vec![], Ty::Number),
             ("", "fetch") => {
                 let init = self.ambient_type("CwFetchInit", c.span);
-                (Builtin::CwFetch, vec![s, init], promise(Ty::Response))
+                (Builtin::CwFetch, vec![s, init], promise(Ty::CwResponse))
             }
             ("", "launch") => (Builtin::CwLaunch, vec![s.clone(), s], promise(Ty::Void)),
             ("", "emit") => (Builtin::CwEmit, vec![s, Ty::Unknown], promise(Ty::Void)),
@@ -4048,12 +4050,21 @@ impl<'a> Lowerer<'a> {
                     vec![Ty::Function(vec![], Box::new(Ty::Void))],
                     Ty::Promise(t.clone()),
                 ),
-                (Ty::Response, "json") => {
-                    (M::ResponseJson, vec![], Ty::Promise(Box::new(Ty::Unknown)))
+                (Ty::Response | Ty::CwResponse, "json") => {
+                    // `json<T>()` promises a T, as TypeScript's typings let it.
+                    let t = match c.type_arguments.as_ref().and_then(|a| a.params.first()) {
+                        Some(t) => self.ts_type(t),
+                        None => Ty::Unknown,
+                    };
+                    (M::ResponseJson, vec![], Ty::Promise(Box::new(t)))
                 }
-                (Ty::Response, "text") => {
+                (Ty::Response | Ty::CwResponse, "text") => {
                     (M::ResponseText, vec![], Ty::Promise(Box::new(Ty::String)))
                 }
+                (Ty::Headers, "get") => {
+                    (M::HeadersGet, vec![Ty::String], union(Ty::String, Ty::Null))
+                }
+                (Ty::Headers, "has") => (M::HeadersHas, vec![Ty::String], Ty::Boolean),
                 (Ty::Regex, "test") => (M::RegexTest, vec![s.clone()], Ty::Boolean),
                 (Ty::Regex, "exec") => (
                     M::RegexExec,

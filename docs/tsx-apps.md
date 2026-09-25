@@ -131,7 +131,12 @@ regular expressions (literals; `test`, `exec`; `match`, `search`, `replace`,
 `replaceAll`, `split` with a regex; JavaScript syntax and flags on cw-regex, the JS
 VM's engine), `console.*`, `Date.now()` on the world clock, timers
 (`setTimeout`, `setInterval`) on the world clock, `fetch` with `.then`/`.catch`/
-`.finally`, `response.json()`/`text()`, `Promise.resolve`, `Promise.reject`,
+`.finally`, a response's `ok`, `status`, `statusText`, `url`,
+`headers.get(name)`/`has(name)`, `text()` and `json()` (`json<T>()` promises a
+`T`; unannotated it is `unknown`, so give the result a type), and on a `cw.fetch`
+reply also `body`, its text (a `fetch` response's `body` is a stream and outside
+the subset; `r.headers` evaluates to the response itself, so only `get` and `has`
+read it), `Promise.resolve`, `Promise.reject`,
 `Promise.all`, `new Promise((resolve, reject) => …)`.
 
 **Outside the subset** (the page runs its React fallback): `any` and values of

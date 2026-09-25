@@ -391,6 +391,9 @@ pub enum Method {
     // A `fetch` response.
     ResponseJson,
     ResponseText,
+    /// `response.headers.get(name)` / `.has(name)`.
+    HeadersGet,
+    HeadersHas,
     // A DOM node reached through a ref or `event.target`.
     NodeFocus,
     NodeBlur,
@@ -633,6 +636,10 @@ pub enum Ty {
     DomNode,
     Promise(Box<Ty>),
     Response,
+    /// A `cw.fetch` response: a `Response` whose `body` is its text.
+    CwResponse,
+    /// `response.headers` (evaluates to the response itself; `get`/`has` read it).
+    Headers,
     Regex,
     Error,
     Set(Box<Ty>),

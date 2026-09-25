@@ -149,3 +149,60 @@ fn a_rejected_request_after_a_restore_reaches_the_catch() {
     assert_eq!(text(&app), want);
     assert_eq!(text(&restored), want);
 }
+
+#[test]
+fn a_cw_fetch_reply_has_its_body_text_and_json() {
+    let app_src = r#"/// <reference path="./cw.d.ts" />
+import { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+interface Doc { title: string }
+function App() {
+  const [s, setS] = useState('');
+  useEffect(() => {
+    async function run() {
+      const r = await cw.fetch('https://svc.test/doc', { method: 'post', body: 'q' });
+      const d = await r.json<Doc>();
+      const t = await r.text();
+      setS(r.ok + ' ' + r.status + ' ' + r.body + ' ' + d.title + ' ' + t.length);
+    }
+    run();
+  }, []);
+  return <p id="s">{s}</p>;
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#;
+    let files: BTreeMap<&str, &str> = [("app.tsx", app_src), ("cw.d.ts", CW_D_TS)].into();
+    let sources = cw_tsx::load("app.tsx", &mut |f| files.get(f).map(|s| (*s).to_owned())).unwrap();
+    let b = cw_tsx::build_modules(&sources);
+    assert!(b.diagnostics.is_empty(), "{:?}", b.diagnostics);
+    let mut app = UiApp::new(b.ir.unwrap(), SHELL, "cw-app://t/", Box::new(host())).unwrap();
+    app.boot();
+    app.run_until_idle(20);
+    let out = last_out(&mut app);
+    assert!(
+        out.contains(r#""kind":"http""#)
+            && out.contains(r#""method":"POST""#)
+            && out.contains(r#""body":"q""#),
+        "{out}"
+    );
+    reply(
+        &mut app,
+        r#"[{"id":1,"value":{"status":201,"body":"{\"title\":\"T\"}"}}]"#,
+    );
+    assert_eq!(text(&app), r#"true 201 {"title":"T"} T 13"#);
+}
+
+#[test]
+fn a_fetch_body_is_outside_the_subset() {
+    let b = cw_tsx::build(
+        "async function f() { const r = await fetch('/x'); return r.body; }\nfunction App() { return <p />; }",
+        "app.tsx",
+    );
+    assert!(
+        b.diagnostics
+            .iter()
+            .any(|d| d.message.contains("`body` does not exist on type Response")),
+        "{:?}",
+        b.diagnostics
+    );
+}

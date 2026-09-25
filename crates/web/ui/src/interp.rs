@@ -1024,6 +1024,9 @@ impl Runtime {
                 "status" => Value::Num(r.status as f64),
                 "statusText" => Value::str(&r.status_text),
                 "url" => Value::str(&r.url),
+                "headers" => o.clone(),
+                // Only a `cw.fetch` reply's `body` is in the subset: its text.
+                "body" => Value::str(&String::from_utf8_lossy(&r.body)),
                 _ => Value::Undefined,
             },
             Value::Undefined | Value::Null => {
@@ -1650,6 +1653,22 @@ impl Runtime {
                     Err(e) => self.reject_promise(&p, Value::error("SyntaxError", &e)),
                 }
                 Value::Promise(p)
+            }
+            (M::HeadersGet | M::HeadersHas, Value::Response(resp)) => {
+                let name = arg(&args, 0).to_js_string().to_ascii_lowercase();
+                let values: Vec<&str> = resp
+                    .headers
+                    .iter()
+                    .filter(|(k, _)| k.eq_ignore_ascii_case(&name))
+                    .map(|(_, v)| v.as_str())
+                    .collect();
+                if m == M::HeadersHas {
+                    Value::Bool(!values.is_empty())
+                } else if values.is_empty() {
+                    Value::Null
+                } else {
+                    Value::str(&values.join(", "))
+                }
             }
             (M::ResponseText, Value::Response(resp)) => {
                 let p = new_promise();

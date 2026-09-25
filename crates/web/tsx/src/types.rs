@@ -186,10 +186,13 @@ pub fn property(t: &Ty, name: &str) -> Option<Ty> {
             "lastIndex" => Some(Ty::Number),
             _ => None,
         },
-        Ty::Response => match name {
+        Ty::Response | Ty::CwResponse => match name {
             "ok" => Some(Ty::Boolean),
             "status" => Some(Ty::Number),
             "statusText" | "url" => Some(Ty::String),
+            "headers" => Some(Ty::Headers),
+            // A fetch's body is a stream; a `cw.fetch` reply's is its text.
+            "body" if matches!(t, Ty::CwResponse) => Some(Ty::String),
             _ => None,
         },
         Ty::Union(ts) => {
@@ -297,6 +300,8 @@ pub fn show(t: &Ty) -> String {
         Ty::DomNode => "HTMLElement".into(),
         Ty::Promise(t) => format!("Promise<{}>", show(t)),
         Ty::Response => "Response".into(),
+        Ty::CwResponse => "CwResponse".into(),
+        Ty::Headers => "Headers".into(),
         Ty::Regex => "RegExp".into(),
         Ty::Error => "Error".into(),
         Ty::Set(t) => format!("Set<{}>", show(t)),
