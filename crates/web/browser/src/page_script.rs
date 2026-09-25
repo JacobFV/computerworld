@@ -149,15 +149,16 @@ impl PageScript {
     }
 
     pub fn animation_frame(&mut self) {
-        if let PageScript::Js(r) = self {
-            r.animation_frame();
+        match self {
+            PageScript::Js(r) => r.animation_frame(),
+            PageScript::Ui(a) => a.animation_frame(),
         }
     }
 
     pub fn wants_animation_frame(&self) -> bool {
         match self {
             PageScript::Js(r) => r.wants_animation_frame(),
-            PageScript::Ui(_) => false,
+            PageScript::Ui(a) => a.wants_animation_frame(),
         }
     }
 

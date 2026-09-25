@@ -254,6 +254,18 @@ impl UiApp {
         r
     }
 
+    /// Runs the `requestAnimationFrame` callbacks for one painted frame. A host
+    /// that paints calls it once per frame while `wants_animation_frame`.
+    pub fn animation_frame(&mut self) {
+        self.rt.animation_frame();
+        self.rt.trim_journal();
+    }
+
+    /// Whether `requestAnimationFrame` callbacks wait for a frame.
+    pub fn wants_animation_frame(&self) -> bool {
+        !self.rt.raf.is_empty()
+    }
+
     /// World-clock microseconds of the earliest pending timer.
     pub fn next_timer_micros(&self) -> Option<i64> {
         self.rt

@@ -319,6 +319,9 @@ pub struct Runtime {
     pub(crate) autofocus: Vec<NodeId>,
     pub(crate) timers: Vec<Timer>,
     pub(crate) next_timer: u32,
+    /// `requestAnimationFrame` callbacks waiting for a frame, by id.
+    pub(crate) raf: Vec<(u32, Value)>,
+    pub(crate) next_raf: u32,
     /// Virtual milliseconds since boot (timers are due on this clock).
     pub(crate) clock_ms: f64,
     pub(crate) start_micros: i64,
@@ -403,6 +406,8 @@ impl Runtime {
             autofocus: Vec::new(),
             timers: Vec::new(),
             next_timer: 1,
+            raf: Vec::new(),
+            next_raf: 0,
             clock_ms: 0.0,
             start_micros: 0,
             microtasks: VecDeque::new(),
@@ -463,6 +468,27 @@ impl Runtime {
 
     /// Fires the timers due on the world clock, then advances the virtual clock by
     /// up to `advance_ms` to fire later ones (as the Realm's `run_until_idle`).
+    /// Runs the `requestAnimationFrame` callbacks for one frame (those asked for
+    /// during it wait for the next), then settles.
+    pub fn animation_frame(&mut self) {
+        let t = self.performance_now();
+        let cbs = std::mem::take(&mut self.raf);
+        for (_, f) in cbs {
+            if let Err(e) = self.call_value(&f, vec![Value::Num(t)]) {
+                self.report(e);
+            }
+        }
+        self.settle();
+        if self.refresh_hover() {
+            self.settle();
+        }
+    }
+
+    /// `performance.now()`, as the Realm's VM gives it.
+    pub(crate) fn performance_now(&self) -> f64 {
+        30.0 + self.clock_ms
+    }
+
     pub fn run_timers(&mut self, advance_ms: u32) -> bool {
         let now = self.inner.host_now_micros();
         let world_ms = (now - self.start_micros) as f64 / 1000.0;
@@ -471,6 +497,7 @@ impl Runtime {
         }
         let deadline = self.clock_ms + advance_ms as f64;
         let mut ran = false;
+        let mut next_frame = self.clock_ms + 16.0;
         self.settle();
         loop {
             loop {
@@ -503,9 +530,22 @@ impl Runtime {
                 .iter()
                 .map(|t| t.due)
                 .fold(None, |m: Option<f64>, d| Some(m.map_or(d, |m| m.min(d))));
-            match next {
-                Some(n) if n <= deadline => self.clock_ms = self.clock_ms.max(n),
+            // Frames as the Realm's run_until_idle has them: one per 16 ms the
+            // clock advances while callbacks wait.
+            let has_frames = !self.raf.is_empty();
+            let mut target = match next {
+                Some(n) if n <= deadline => n,
+                _ if has_frames && next_frame <= deadline => next_frame,
                 _ => break,
+            };
+            if has_frames && next_frame < target {
+                target = next_frame;
+            }
+            self.clock_ms = self.clock_ms.max(target);
+            if has_frames && target >= next_frame {
+                self.animation_frame();
+                next_frame = target + 16.0;
+                ran = true;
             }
         }
         // Content that moved under a still pointer takes `:hover` with it (and

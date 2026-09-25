@@ -203,6 +203,11 @@ pub struct UiState {
     pub form_props: Vec<(NodeId, [V; 5])>,
     pub timers: Vec<TimerS>,
     pub next_timer: u32,
+    /// `requestAnimationFrame` callbacks waiting, and the last id given.
+    #[serde(default)]
+    pub raf: Vec<(u32, V)>,
+    #[serde(default)]
+    pub next_raf: u32,
     pub clock_ms: f64,
     pub start_micros: i64,
     pub id_counter: u32,
@@ -735,6 +740,7 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
             )
         })
         .collect();
+    let raf: Vec<(u32, V)> = rt.raf.iter().map(|(i, f)| (*i, e.v(f))).collect();
     let timers = rt
         .timers
         .iter()
@@ -837,6 +843,8 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         form_props,
         timers,
         next_timer: rt.next_timer,
+        raf,
+        next_raf: rt.next_raf,
         clock_ms: rt.clock_ms,
         start_micros: rt.start_micros,
         id_counter: rt.id_counter,
@@ -1453,6 +1461,10 @@ pub(crate) fn load(
         });
     }
     rt.next_timer = s.next_timer;
+    for (i, f) in &s.raf {
+        rt.raf.push((*i, d.v(f)?));
+    }
+    rt.next_raf = s.next_raf;
     rt.clock_ms = s.clock_ms;
     rt.start_micros = s.start_micros;
     rt.id_counter = s.id_counter;

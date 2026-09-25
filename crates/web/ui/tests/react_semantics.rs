@@ -2123,3 +2123,75 @@ export function App() {
         ],
     );
 }
+
+#[test]
+fn animation_frames_run_on_the_world_clock() {
+    same_as_react(
+        r#"
+import { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+
+export function App() {
+  const [frames, setFrames] = useState(0);
+  const [running, setRunning] = useState(false);
+  useEffect(() => {
+    if (!running) return;
+    let n = 0;
+    let first = -1;
+    let id = requestAnimationFrame(function step(t: number) {
+      if (first < 0) first = t;
+      n += 1;
+      setFrames(n);
+      console.log('frame', n, Math.floor((t - first) / 16));
+      if (n < 5) id = requestAnimationFrame(step);
+      else setRunning(false);
+    });
+    const never = requestAnimationFrame(() => console.log('never'));
+    cancelAnimationFrame(never);
+    return () => cancelAnimationFrame(id);
+  }, [running]);
+  return <div><p id="n">{frames} {String(running)}</p><button id="go" onClick={() => setRunning(true)}>go</button></div>;
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Click("#go"), Step::Wait(40), Step::Wait(100)],
+    );
+}
+
+#[test]
+fn animation_frames_run_on_the_world_clock_on_the_island() {
+    same_as_react(
+        r#"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import { App } from './anim';
+createRoot(document.getElementById('root')!).render(<App />);
+// @file anim.tsx
+import { useEffect, useState } from 'react';
+function* g() { yield 1; }
+
+export function App() {
+  const [frames, setFrames] = useState(0);
+  const [running, setRunning] = useState(false);
+  useEffect(() => {
+    if (!running) return;
+    let n = 0;
+    let first = -1;
+    let id = requestAnimationFrame(function step(t: number) {
+      if (first < 0) first = t;
+      n += 1;
+      setFrames(n);
+      console.log('frame', n, Math.floor((t - first) / 16));
+      if (n < 5) id = requestAnimationFrame(step);
+      else setRunning(false);
+    });
+    const never = requestAnimationFrame(() => console.log('never'));
+    cancelAnimationFrame(never);
+    return () => cancelAnimationFrame(id);
+  }, [running]);
+  return <div><p id="n">{frames} {String(running)}</p><button id="go" onClick={() => setRunning(true)}>go</button></div>;
+}
+"#,
+        &[Step::Click("#go"), Step::Wait(40), Step::Wait(100)],
+    );
+}

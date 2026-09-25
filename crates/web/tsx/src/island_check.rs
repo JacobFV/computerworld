@@ -137,6 +137,8 @@ const GLOBALS: &[&str] = &[
     "prompt",
     "fetch",
     "history",
+    "requestAnimationFrame",
+    "cancelAnimationFrame",
 ];
 
 /// Node's globals, which a browser lacks too: `typeof process` is `"undefined"`

@@ -4749,6 +4749,15 @@ impl<'a> Lowerer<'a> {
             ),
             "clearTimeout" => (Builtin::ClearTimeout, vec![Ty::Number], Ty::Void),
             "clearInterval" => (Builtin::ClearInterval, vec![Ty::Number], Ty::Void),
+            "requestAnimationFrame" => {
+                self.mark_always();
+                (
+                    Builtin::RequestAnimationFrame,
+                    vec![Ty::Function(vec![Ty::Number], Box::new(Ty::Void))],
+                    Ty::Number,
+                )
+            }
+            "cancelAnimationFrame" => (Builtin::CancelAnimationFrame, vec![Ty::Number], Ty::Void),
             "fetch" => (
                 Builtin::Fetch,
                 vec![Ty::String],
@@ -4997,6 +5006,19 @@ impl<'a> Lowerer<'a> {
                 return Some((Expr::Builtin(Builtin::SetTimeout, args), Ty::Number));
             }
             ("window", "clearTimeout") => (Builtin::ClearTimeout, vec![], Ty::Void),
+            ("window", "requestAnimationFrame") => {
+                self.mark_always();
+                let (args, _) = self.exprs_args(
+                    &c.arguments,
+                    &[Ty::Function(vec![num.clone()], Box::new(Ty::Void))],
+                );
+                return Some((Expr::Builtin(Builtin::RequestAnimationFrame, args), num));
+            }
+            ("window", "cancelAnimationFrame") => (Builtin::CancelAnimationFrame, vec![], Ty::Void),
+            ("performance", "now") => {
+                self.mark_always();
+                (Builtin::PerformanceNow, vec![], num)
+            }
             ("window", "setInterval") => {
                 let (args, _) = self.exprs_args(
                     &c.arguments,

@@ -1972,6 +1972,18 @@ impl Runtime {
                     _ => Value::Num(self.inner.host_storage_keys(area).len() as f64),
                 }
             }
+            B::RequestAnimationFrame => {
+                self.next_raf += 1;
+                let id = self.next_raf;
+                self.raf.push((id, arg(&args, 0)));
+                Value::Num(id as f64)
+            }
+            B::CancelAnimationFrame => {
+                let id = arg(&args, 0).to_number();
+                self.raf.retain(|(i, _)| *i as f64 != id);
+                Value::Undefined
+            }
+            B::PerformanceNow => Value::Num(self.performance_now()),
             B::HistoryPush
             | B::HistoryReplace
             | B::HistoryGo

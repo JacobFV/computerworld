@@ -349,6 +349,9 @@
   globalThis.confirm = (m) => B('Alert', 'confirm', m === undefined ? '' : String(m));
   globalThis.prompt = (m) => B('Alert', 'prompt', m === undefined ? '' : String(m));
   globalThis.fetch = (url, init) => B('Fetch', String(url), init);
+  globalThis.requestAnimationFrame = (cb) => B('RequestAnimationFrame', cb);
+  globalThis.cancelAnimationFrame = (id) => B('CancelAnimationFrame', id);
+  globalThis.performance = { now: () => B('PerformanceNow') };
   globalThis.addEventListener = (t, f, o) => B('WindowAddListener', t, f, o);
   globalThis.removeEventListener = (t, f, o) => B('WindowRemoveListener', t, f, o);
   globalThis.setTimeout = (f, ms, ...args) => cw.timer(0, f, ms, args);

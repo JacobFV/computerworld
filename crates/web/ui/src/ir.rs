@@ -694,6 +694,12 @@ pub enum Builtin {
     LocationAssign,
     LocationReplace,
     LocationReload,
+    /// `requestAnimationFrame(cb)` / `cancelAnimationFrame(id)`: callbacks run
+    /// once per 16 ms of the world clock, as the Realm runs them.
+    RequestAnimationFrame,
+    CancelAnimationFrame,
+    /// `performance.now()`: the Realm's (virtual milliseconds, plus its boot offset).
+    PerformanceNow,
 }
 
 /// A JSX element expression.
