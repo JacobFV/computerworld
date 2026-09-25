@@ -895,14 +895,15 @@ fn required_ancestor_classes(selector: &ComplexSelector) -> Vec<String> {
     out
 }
 
-/// Whether the first combinator that leads up from the subject (past sibling
-/// combinators, whose elements share the subject's parent) is a child combinator:
-/// the compound left of it is then the subject's parent.
-fn first_step_up_is_child(selector: &ComplexSelector) -> bool {
-    for c in selector.combinators.iter().rev() {
+/// Whether `class` must be on the subject's parent: the first combinator that
+/// leads up from the subject (past sibling combinators, whose elements share the
+/// subject's parent) is a child combinator and the compound left of it has the
+/// class.
+fn class_is_on_parent(selector: &ComplexSelector, class: &str) -> bool {
+    for (i, c) in selector.combinators.iter().enumerate().rev() {
         match c {
             Combinator::NextSibling | Combinator::SubsequentSibling => {}
-            Combinator::Child => return true,
+            Combinator::Child => return selector.compounds[i].classes().any(|x| x == class),
             Combinator::Descendant => return false,
         }
     }
@@ -1005,7 +1006,7 @@ impl<T> SelectorIndex<T> {
         } else if let Some(t) = right.type_name() {
             self.tags.entry(t.to_ascii_lowercase()).or_default().push(i);
         } else if let Some(c) = required_ancestor_classes(&selector).into_iter().next() {
-            let parent = first_step_up_is_child(&selector);
+            let parent = class_is_on_parent(&selector, &c);
             match self
                 .ancestor_classes
                 .iter_mut()
@@ -1817,5 +1818,40 @@ mod tests {
         assert!(!d.structural && !d.state && !d.form && !d.has);
         let d = sel("li ~ li").dependencies();
         assert!(d.structural);
+    }
+
+    /// A rule keyed on an ancestor class is a candidate for exactly the elements
+    /// it can match, whether the class is required on the parent or further up.
+    #[test]
+    fn ancestor_class_candidates() {
+        let doc = build("div.a{div#mid{p#p{} span#s{}}} div.b{p#q{}}");
+        let mut index = SelectorIndex::new();
+        for s in [
+            ".a > div > :not(.x)",
+            ".a :not(.x)",
+            ".a > * ~ :not(.x)",
+            "#mid > :not(.x)",
+        ] {
+            index.insert(sel(s), s);
+        }
+        let got = |id: &str| -> Vec<&str> {
+            let n = find(&doc, id);
+            let keys = AncestorKeys::of(&doc, n);
+            index
+                .matching_with(&doc, n, &MatchContext::new(), &keys)
+                .into_iter()
+                .map(|e| e.data)
+                .collect()
+        };
+        assert_eq!(
+            got("p"),
+            vec![".a > div > :not(.x)", ".a :not(.x)", "#mid > :not(.x)"]
+        );
+        assert_eq!(
+            got("s"),
+            vec![".a > div > :not(.x)", ".a :not(.x)", "#mid > :not(.x)"]
+        );
+        assert_eq!(got("mid"), vec![".a :not(.x)"]);
+        assert!(got("q").is_empty());
     }
 }
