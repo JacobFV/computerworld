@@ -10,7 +10,7 @@ use crate::paint::RgbaImage;
 use crate::style::values::{parse_color, ColorSpec, Parser};
 use cw_scene::Color;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Paint {
     Solid(Color),
     Linear {
@@ -92,7 +92,7 @@ fn stop_color(stops: &[(f64, Color)], t: f64) -> Color {
     stops[stops.len() - 1].1
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct DrawState {
     pub fill: Paint,
     pub stroke: Paint,
@@ -150,7 +150,7 @@ impl Default for DrawState {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct CanvasState {
     pub width: u32,
     pub height: u32,

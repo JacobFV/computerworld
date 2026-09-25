@@ -1043,3 +1043,23 @@ fn every_bundle_loads_with_a_clean_console_and_a_known_set_of_feature_misses() {
         "the feature detections that come up empty changed"
     );
 }
+
+/// Every framework test again with the snapshot check on: before each entry point
+/// the realm is written to a heap image, a second realm restored from it runs the
+/// same entry point, and both must answer and end the same (see
+/// `set_verify_snapshots`).
+#[test]
+fn every_framework_survives_a_heap_snapshot_at_every_step() {
+    crate::script::set_verify_snapshots(true);
+    react18_create_root_hooks_events_and_concurrent_features();
+    react17_legacy_render_class_components_and_forms();
+    react18_hydrate_root_adopts_server_markup();
+    vue3_global_build_compiles_templates_and_drives_the_dom();
+    styled_components_6_inserts_rules_at_runtime_and_the_cascade_follows();
+    emotion_11_inserts_rules_at_runtime_and_the_cascade_follows();
+    svelte4_compiled_components_run_stores_events_and_transitions();
+    crate::script::set_verify_snapshots(false);
+    let (checked, skipped) = crate::script::verified_snapshots();
+    assert!(checked > 100, "{checked} entry points checked");
+    assert_eq!(skipped, 0, "entry points whose realm could not be imaged");
+}

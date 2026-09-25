@@ -580,6 +580,21 @@ impl PropMap {
         }
         self.index = Some(ix);
     }
+    /// A map of `entries`, whose keys are canonical and distinct, indexed at once.
+    pub fn from_entries(entries: Vec<(Key, Prop)>) -> PropMap {
+        debug_assert!(entries.iter().all(|(k, _)| match k {
+            Key::Str(s) => s.is_canon(),
+            Key::Sym(_) => true,
+        }));
+        let mut m = PropMap {
+            entries,
+            index: None,
+        };
+        if m.entries.len() > INDEX_AT {
+            m.rebuild();
+        }
+        m
+    }
     /// Adds a property known to be absent (skips the lookup `insert` makes).
     pub fn push_absent(&mut self, k: Key, p: Prop) {
         debug_assert!(self.find(&k).is_none());

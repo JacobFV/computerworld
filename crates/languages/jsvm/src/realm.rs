@@ -187,6 +187,8 @@ impl<'h> Vm<'h> {
             id: crate::codecache::next_id(),
             compiled: Default::default(),
             templates: Default::default(),
+            units: Vec::new(),
+            units_pruned_at: 0,
             cache_seen: Default::default(),
             pool: Default::default(),
             prof: None,

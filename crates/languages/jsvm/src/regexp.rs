@@ -39,6 +39,11 @@ fn compile(pattern: &str, flags: &str) -> Result<Regex, String> {
     })
 }
 
+/// Compiles the regex of a restored `RegExp` object (see `snapshot`).
+pub(crate) fn compile_for_restore(pattern: &str, flags: &str) -> Result<Regex, String> {
+    compile(pattern, flags)
+}
+
 /// Parse-time validation of a regex literal.
 pub fn validate(pattern: &str, flags: &str) -> Result<(), String> {
     for (i, c) in flags.chars().enumerate() {

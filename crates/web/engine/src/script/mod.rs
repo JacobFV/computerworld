@@ -512,6 +512,62 @@ pub struct RealmState {
     /// them; see `Realm::set_overlay_scrollbars`.
     #[serde(default)]
     pub overlay_scrollbars: bool,
+    /// A heap snapshot of the realm this state describes (`Realm::heap_image`),
+    /// when one was taken: `Realm::restore` reads it instead of replaying the
+    /// inputs. It is a cache of what replay would rebuild, held in memory only
+    /// (never serialised, and ignored by comparisons), since it is readable only
+    /// by the program image that wrote it.
+    #[serde(skip)]
+    pub image: HeapImage,
+}
+
+/// The bytes of a realm's heap snapshot, shared between the copies of a state.
+#[derive(Clone, Default)]
+pub struct HeapImage(pub Option<std::sync::Arc<[u8]>>);
+
+impl PartialEq for HeapImage {
+    fn eq(&self, _: &HeapImage) -> bool {
+        true
+    }
+}
+impl Eq for HeapImage {}
+impl std::fmt::Debug for HeapImage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.0 {
+            Some(b) => write!(f, "HeapImage({} bytes)", b.len()),
+            None => f.write_str("HeapImage(none)"),
+        }
+    }
+}
+
+/// What `Realm::heap_image` writes: the VM heap and the state outside it, as the
+/// heap's length (8 bytes, little-endian), the heap, and the outside state in
+/// postcard.
+struct RealmImage {
+    heap: Vec<u8>,
+    inner: inner::image::InnerImage,
+}
+
+impl RealmImage {
+    fn write(heap: &[u8], inner: &inner::image::InnerImage) -> Result<Vec<u8>, String> {
+        let tail = postcard::to_allocvec(inner).map_err(|e| e.to_string())?;
+        let mut out = Vec::with_capacity(8 + heap.len() + tail.len());
+        out.extend_from_slice(&(heap.len() as u64).to_le_bytes());
+        out.extend_from_slice(heap);
+        out.extend_from_slice(&tail);
+        Ok(out)
+    }
+
+    /// The heap's bytes and the outside state.
+    fn read(bytes: &[u8]) -> Result<(&[u8], inner::image::InnerImage), String> {
+        let n = bytes
+            .get(..8)
+            .map(|b| u64::from_le_bytes(b.try_into().unwrap()) as usize)
+            .ok_or("not a realm image")?;
+        let heap = bytes.get(8..8 + n).ok_or("realm image truncated")?;
+        let inner = postcard::from_bytes(&bytes[8 + n..]).map_err(|e| e.to_string())?;
+        Ok((heap, inner))
+    }
 }
 
 /// One document's script environment. See the module documentation.
@@ -524,6 +580,9 @@ pub struct Realm {
     /// Frees the realm's cyclic garbage once everything above (the VM and the
     /// document's handles on JS values) has dropped.
     _reclaim: Option<cw_jsvm::gc::Reclaim>,
+    /// This realm is the second half of a snapshot check (see
+    /// `set_verify_snapshots`), not itself checked.
+    verifying: bool,
 }
 
 const PRELUDE: &str = concat!(
@@ -541,9 +600,21 @@ impl Realm {
         Self::build(html, url, host, Journal::recording(), Vec::new())
     }
 
-    /// Rebuilds a realm from a snapshot, replaying its inputs against the journal;
+    /// Rebuilds a realm from a snapshot: from its heap image when it carries one
+    /// this program can read, else by replaying its inputs against the journal;
     /// afterwards the realm is live on `host`.
     pub fn restore(state: &RealmState, host: Box<dyn ScriptHostDocument>) -> Realm {
+        match &state.image.0 {
+            Some(bytes) => match Self::from_image(state, bytes, host) {
+                Ok(realm) => realm,
+                Err((_, host)) => Self::replay(state, host),
+            },
+            None => Self::replay(state, host),
+        }
+    }
+
+    /// Rebuilds a realm from a snapshot by replaying its inputs.
+    pub fn replay(state: &RealmState, host: Box<dyn ScriptHostDocument>) -> Realm {
         let inputs = state.inputs.clone();
         let mut realm = Self::build(
             &state.html,
@@ -608,11 +679,109 @@ impl Realm {
                 journal: Vec::new(),
                 step_budget: 0,
                 overlay_scrollbars: false,
+                image: HeapImage::default(),
             },
             _reclaim: reclaim,
+            verifying: false,
         };
         realm.run_prelude();
         realm
+    }
+
+    /// Writes the realm, between two entry points, as a heap snapshot: the VM
+    /// heap (`cw_jsvm::snapshot`) and the realm state outside it (the document,
+    /// stylesheet sources, interaction, form and loader state; styles and layout
+    /// are recomputed after a restore). Deterministic: the same realm writes the
+    /// same bytes, and a realm restored from them writes them again. `Err` when
+    /// the realm holds something a snapshot cannot carry (a stylesheet script
+    /// edited through the CSSOM); its state then restores by replay.
+    pub fn heap_image(&self) -> Result<Vec<u8>, String> {
+        let (img, roots) = self.inner.borrow().image()?;
+        let heap = self
+            .vm
+            .heap_snapshot(&roots, bindings::snapshot_options())
+            .map_err(|e| e.to_string())?;
+        RealmImage::write(&heap, &img)
+    }
+
+    /// The realm's snapshot with its heap image attached (see `RealmState::image`),
+    /// or without one when the realm cannot be imaged.
+    pub fn snapshot_with_image(&self) -> RealmState {
+        let mut s = self.snapshot();
+        if let Ok(b) = self.heap_image() {
+            s.image = HeapImage(Some(b.into()));
+        }
+        s
+    }
+
+    /// Rebuilds a realm from `state` and its heap image `bytes` (no script runs,
+    /// and the host is not asked anything it would not be by replay). `Err` gives
+    /// the host back when the image cannot be read.
+    #[allow(clippy::result_large_err)]
+    pub fn from_image(
+        state: &RealmState,
+        bytes: &[u8],
+        host: Box<dyn ScriptHostDocument>,
+    ) -> Result<Realm, (String, Box<dyn ScriptHostDocument>)> {
+        let (heap, image_inner) = match RealmImage::read(bytes) {
+            Ok(i) => i,
+            Err(e) => return Err((e, host)),
+        };
+        let journal = Journal {
+            entries: state.journal.clone(),
+            replay_pos: 0,
+            replaying: false,
+            recording: true,
+        };
+        let inner = Rc::new(RefCell::new(Inner::new(host, journal, &state.url)));
+        let mut bridge = Box::new(bridge::Bridge {
+            inner: inner.clone(),
+        });
+        // SAFETY: as in `build`.
+        let host_ref: &'static mut bridge::Bridge =
+            unsafe { &mut *(&mut *bridge as *mut bridge::Bridge) };
+        let give_back = |e: String, inner: Rc<RefCell<Inner>>| {
+            let host = std::mem::replace(&mut inner.borrow_mut().host, Box::new(MemoryHost::new()));
+            (e, host)
+        };
+        let (mut vm, roots) =
+            match Vm::from_heap_snapshot(host_ref, heap, bindings::snapshot_options()) {
+                Ok(v) => v,
+                Err(e) => {
+                    drop(bridge);
+                    return Err(give_back(e.to_string(), inner));
+                }
+            };
+        let any: Rc<dyn std::any::Any> = inner.clone();
+        vm.embedder = Some(any);
+        let applied = inner.borrow_mut().apply_image(image_inner, &roots);
+        drop(roots);
+        if let Err(e) = applied {
+            drop(vm);
+            drop(bridge);
+            return Err(give_back(e, inner));
+        }
+        {
+            let mut i = inner.borrow_mut();
+            i.layout_cache.overlay_scrollbars = state.overlay_scrollbars;
+        }
+        let reclaim = vm.reclaim.take();
+        Ok(Realm {
+            vm,
+            _bridge: bridge,
+            inner,
+            state: RealmState {
+                html: state.html.clone(),
+                url: state.url.clone(),
+                inputs: state.inputs.clone(),
+                journal: Vec::new(),
+                step_budget: state.step_budget,
+                overlay_scrollbars: state.overlay_scrollbars,
+                image: HeapImage::default(),
+            },
+            _reclaim: reclaim,
+            verifying: false,
+        })
     }
 
     fn run_prelude(&mut self) {
@@ -705,7 +874,7 @@ impl Realm {
 
     /// Tells layout the intrinsic sizes of pictures the browser fetched, keyed by
     /// the `src` as written. Recorded as an input, so a restore sees the same layout.
-    pub fn set_image_sizes(&mut self, sizes: Vec<(String, u32, u32)>) {
+    fn set_image_sizes_step(&mut self, sizes: Vec<(String, u32, u32)>) {
         self.record_input(Input::ImageSizes(sizes.clone()));
         let mut inner = self.inner.borrow_mut();
         for (src, w, h) in sizes {
@@ -824,7 +993,7 @@ impl Realm {
     /// Parses the page, running its scripts as the parser reaches them (`defer`
     /// after the parse, `async` after that, modules through the VM's loader), then
     /// fires `DOMContentLoaded` and `load`.
-    pub fn run_document(&mut self) {
+    fn run_document_step(&mut self) {
         self.record_input(Input::RunDocument);
         self.arm();
         let html = self.state.html.clone();
@@ -1004,7 +1173,7 @@ impl Realm {
     }
 
     /// Evaluates a classic script in the realm's global scope.
-    pub fn eval(&mut self, source: &str) -> Result<String, String> {
+    fn eval_step(&mut self, source: &str) -> Result<String, String> {
         self.record_input(Input::Eval(source.to_owned()));
         self.arm();
         let r = self.vm.eval_source_with(source, "eval", false, true);
@@ -1138,7 +1307,7 @@ impl Realm {
     /// queued script tasks; then, while `advance_ms` of virtual time remain, advances
     /// the clock to the next timer and fires it (`requestAnimationFrame` callbacks
     /// run once per 16ms of advancement). Returns true when work ran.
-    pub fn run_until_idle(&mut self, advance_ms: u32) -> bool {
+    fn run_until_idle_step(&mut self, advance_ms: u32) -> bool {
         self.record_input(Input::RunUntilIdle { advance_ms });
         self.arm();
         self.sync_clock();
@@ -1304,7 +1473,7 @@ impl Realm {
 
     /// Runs the `requestAnimationFrame` callbacks for one painted frame, then drains
     /// microtasks. The browser calls this once per frame it paints.
-    pub fn animation_frame(&mut self) {
+    fn animation_frame_step(&mut self) {
         self.record_input(Input::AnimationFrame);
         self.arm();
         self.sync_clock();
@@ -1323,7 +1492,7 @@ impl Realm {
 
     /// Delivers `ResizeObserver` and `IntersectionObserver` records against the
     /// current layout. The browser calls this after it laid out and painted.
-    pub fn after_layout(&mut self) {
+    fn after_layout_step(&mut self) {
         self.record_input(Input::AfterLayout);
         self.arm();
         {
@@ -1337,7 +1506,7 @@ impl Realm {
     }
 
     /// Dispatches a browser action as DOM events and reports the default action.
-    pub fn dispatch(&mut self, event: UiEvent) -> DefaultAction {
+    fn dispatch_step(&mut self, event: UiEvent) -> DefaultAction {
         self.record_input(Input::Dispatch(event.clone()));
         self.arm();
         self.sync_clock();
@@ -1353,6 +1522,246 @@ impl Realm {
     pub(crate) fn vm(&mut self) -> &mut Vm<'static> {
         &mut self.vm
     }
+}
+
+// ---------------------------------------------------------------- entry points
+
+thread_local! {
+    static VERIFY_SNAPSHOTS: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
+    /// Entry points checked, and entry points not checked because the realm could
+    /// not be imaged, on this thread.
+    static VERIFIED: std::cell::Cell<(u64, u64)> = const { std::cell::Cell::new((0, 0)) };
+}
+
+/// How many entry points the snapshot check has checked on this thread, and how
+/// many it skipped because the realm could not be written (see `Realm::heap_image`).
+pub fn verified_snapshots() -> (u64, u64) {
+    VERIFIED.with(|v| v.get())
+}
+
+/// Turns the snapshot check on or off for this thread (it starts on when the
+/// environment has `CW_WEB_VERIFY_SNAPSHOTS=1`): every entry point of every realm
+/// then writes the realm's heap image before it runs, restores a second realm from
+/// it, runs the same entry point there (answering its host calls from the first
+/// realm's journal), and panics unless both return the same and write the same
+/// image afterwards.
+pub fn set_verify_snapshots(on: bool) {
+    VERIFY_SNAPSHOTS.with(|v| v.set(Some(on)));
+}
+
+fn verify_snapshots() -> bool {
+    VERIFY_SNAPSHOTS.with(|v| match v.get() {
+        Some(on) => on,
+        None => {
+            let on = std::env::var("CW_WEB_VERIFY_SNAPSHOTS").is_ok_and(|v| v == "1");
+            v.set(Some(on));
+            on
+        }
+    })
+}
+
+/// A realm's image before an entry point, for the snapshot check.
+struct Verify {
+    image: Vec<u8>,
+    state: RealmState,
+    journal_at: usize,
+}
+
+impl Realm {
+    /// Parses the page, running its scripts as the parser reaches them (`defer`
+    /// after the parse, `async` after that, modules through the VM's loader), then
+    /// fires `DOMContentLoaded` and `load`.
+    pub fn run_document(&mut self) {
+        let v = self.verify_begin();
+        self.run_document_step();
+        self.verify_end(v, Input::RunDocument, String::new());
+    }
+
+    /// Evaluates a classic script in the realm's global scope.
+    pub fn eval(&mut self, source: &str) -> Result<String, String> {
+        let v = self.verify_begin();
+        let r = self.eval_step(source);
+        self.verify_end(v, Input::Eval(source.to_owned()), format!("{r:?}"));
+        r
+    }
+
+    /// Drains microtasks and runs the timers due within `advance_ms` of the world
+    /// clock; returns whether anything ran.
+    pub fn run_until_idle(&mut self, advance_ms: u32) -> bool {
+        let v = self.verify_begin();
+        let r = self.run_until_idle_step(advance_ms);
+        self.verify_end(v, Input::RunUntilIdle { advance_ms }, format!("{r}"));
+        r
+    }
+
+    /// Runs the `requestAnimationFrame` callbacks for one painted frame.
+    pub fn animation_frame(&mut self) {
+        let v = self.verify_begin();
+        self.animation_frame_step();
+        self.verify_end(v, Input::AnimationFrame, String::new());
+    }
+
+    /// Delivers `ResizeObserver` and `IntersectionObserver` records after a layout.
+    pub fn after_layout(&mut self) {
+        let v = self.verify_begin();
+        self.after_layout_step();
+        self.verify_end(v, Input::AfterLayout, String::new());
+    }
+
+    /// Turns a browser action into its DOM event sequence; returns the default
+    /// action left for the browser.
+    pub fn dispatch(&mut self, event: UiEvent) -> DefaultAction {
+        let v = self.verify_begin();
+        let r = self.dispatch_step(event.clone());
+        self.verify_end(v, Input::Dispatch(event), format!("{r:?}"));
+        r
+    }
+
+    /// Tells layout the intrinsic sizes of pictures the browser fetched, keyed by
+    /// the `src` as written. Recorded as an input, so a restore sees the same layout.
+    pub fn set_image_sizes(&mut self, sizes: Vec<(String, u32, u32)>) {
+        let v = self.verify_begin();
+        self.set_image_sizes_step(sizes.clone());
+        self.verify_end(v, Input::ImageSizes(sizes), String::new());
+    }
+
+    fn verify_begin(&self) -> Option<Verify> {
+        if self.verifying || !verify_snapshots() {
+            return None;
+        }
+        let inner = self.inner.borrow();
+        if inner.journal.replaying || !inner.journal.recording {
+            return None;
+        }
+        let journal_at = inner.journal.entries.len();
+        drop(inner);
+        // A realm that cannot be imaged is not checked (but counted).
+        let image = self.heap_image();
+        VERIFIED.with(|v| {
+            let (a, b) = v.get();
+            v.set(if image.is_ok() {
+                (a + 1, b)
+            } else {
+                (a, b + 1)
+            })
+        });
+        let image = image.ok()?;
+        Some(Verify {
+            image,
+            state: self.snapshot(),
+            journal_at,
+        })
+    }
+
+    fn verify_end(&mut self, v: Option<Verify>, input: Input, out: String) {
+        let Some(v) = v else {
+            return;
+        };
+        let mut shadow = match Realm::from_image(&v.state, &v.image, Box::new(MemoryHost::new())) {
+            Ok(r) => r,
+            Err((e, _)) => panic!("snapshot check: the image does not restore: {e}"),
+        };
+        shadow.verifying = true;
+        {
+            let entries = self.inner.borrow().journal.entries.clone();
+            let mut j = Journal::replay(entries);
+            j.replay_pos = v.journal_at;
+            shadow.inner.borrow_mut().journal = j;
+        }
+        let what = format!("{input:?}");
+        let what = &what[..what.len().min(120)];
+        let out2 = match input {
+            Input::RunDocument => {
+                shadow.run_document_step();
+                String::new()
+            }
+            Input::RunUntilIdle { advance_ms } => {
+                format!("{}", shadow.run_until_idle_step(advance_ms))
+            }
+            Input::Dispatch(ev) => format!("{:?}", shadow.dispatch_step(ev)),
+            Input::AfterLayout => {
+                shadow.after_layout_step();
+                String::new()
+            }
+            Input::AnimationFrame => {
+                shadow.animation_frame_step();
+                String::new()
+            }
+            Input::Eval(src) => format!("{:?}", shadow.eval_step(&src)),
+            Input::ImageSizes(sizes) => {
+                shadow.set_image_sizes_step(sizes);
+                String::new()
+            }
+        };
+        assert_eq!(
+            out, out2,
+            "snapshot check: {what} returned differently after a restore"
+        );
+        {
+            let j = &shadow.inner.borrow().journal;
+            assert_eq!(
+                j.replay_pos,
+                j.entries.len(),
+                "snapshot check: {what} asked the host differently after a restore"
+            );
+        }
+        let a = self.heap_image();
+        let b = shadow.heap_image();
+        match (a, b) {
+            (Ok(a), Ok(b)) => {
+                if a != b {
+                    panic!(
+                        "snapshot check: {what} left a different realm after a restore: {}",
+                        image_difference(&a, &b)
+                    );
+                }
+            }
+            (Err(_), Err(_)) => {}
+            (a, b) => panic!(
+                "snapshot check: {what}: one realm images and the other does not ({:?} / {:?})",
+                a.err(),
+                b.err()
+            ),
+        }
+    }
+}
+
+/// Where two realm images first differ, for the snapshot check's report.
+fn image_difference(a: &[u8], b: &[u8]) -> String {
+    let (Ok(x), Ok(y)) = (RealmImage::read(a), RealmImage::read(b)) else {
+        return "undecodable".into();
+    };
+    let x = RealmImage {
+        heap: x.0.to_vec(),
+        inner: x.1,
+    };
+    let y = RealmImage {
+        heap: y.0.to_vec(),
+        inner: y.1,
+    };
+    let first = |p: &[u8], q: &[u8]| p.iter().zip(q).position(|(m, n)| m != n);
+    if x.heap != y.heap {
+        return format!(
+            "heaps differ ({} / {} bytes) from byte {:?}",
+            x.heap.len(),
+            y.heap.len(),
+            first(&x.heap, &y.heap)
+        );
+    }
+    let xi = serde_json::to_value(&x.inner).unwrap_or_default();
+    let yi = serde_json::to_value(&y.inner).unwrap_or_default();
+    if let (serde_json::Value::Object(xm), serde_json::Value::Object(ym)) = (&xi, &yi) {
+        for (k, v) in xm {
+            if ym.get(k) != Some(v) {
+                let s = |v: Option<&serde_json::Value>| {
+                    let t = v.map(|v| v.to_string()).unwrap_or_default();
+                    t[..t.len().min(300)].to_owned()
+                };
+                return format!("`{k}` differs: {} / {}", s(Some(v)), s(ym.get(k)));
+            }
+        }
+    }
+    "the realm states differ".into()
 }
 
 /// Parses the page and runs its scripts; see [`Realm::run_document`].

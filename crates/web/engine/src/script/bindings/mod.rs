@@ -180,6 +180,34 @@ pub fn install(vm: &mut Vm) {
     }
 }
 
+/// Every host-object kind the bindings make, for heap snapshots (which write a
+/// host object's hooks as its position here).
+pub static ALL_HOOKS: [&HostHooks; 14] = [
+    &PLAIN_HOOKS,
+    &dom::NODE_HOOKS,
+    &dom::FORM_HOOKS,
+    &dom::SELECT_HOOKS,
+    &dom_forms::DATASET_HOOKS,
+    &dom_forms::TOKENS_HOOKS,
+    &dom_forms::ATTRS_HOOKS,
+    &dom_query::COLLECTION_HOOKS,
+    &dom_query::STATIC_LIST_HOOKS,
+    &dom_query::GLOBAL_HOOKS,
+    &style::COMPUTED_HOOKS,
+    &style::INLINE_HOOKS,
+    &style::RULE_STYLE_HOOKS,
+    &misc::STORAGE_HOOKS,
+];
+
+/// The heap-snapshot options of a realm's VM: its hooks, and a fingerprint of this
+/// crate's natives.
+pub fn snapshot_options() -> cw_jsvm::snapshot::Options<'static> {
+    cw_jsvm::snapshot::Options {
+        hooks: &ALL_HOOKS,
+        fingerprint: cw_jsvm::snapshot::fingerprint_of(&[host_call, register_protos]),
+    }
+}
+
 /// `__cw_host(name, payload)`: the page's call to its embedder
 /// (`ScriptHostDocument::host_call`); returns the answer, throws its refusal.
 fn host_call(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {

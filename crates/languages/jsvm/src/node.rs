@@ -1173,6 +1173,7 @@ impl<'h> Vm<'h> {
                 Rc::from(file)
             };
             self.register_source(fname, Rc::from(src));
+            self.note_program(src, file, force_module, &params, &code);
             self.prof_source(file, src.len(), t0, t0, true);
             self.prof_leave(pk);
             return Ok((code, is_module));
@@ -1181,9 +1182,98 @@ impl<'h> Vm<'h> {
         if let Ok((code, is_module)) = &r {
             let k = crate::codecache::put(&parts, code.clone(), *is_module);
             self.cache_seen.insert(k);
+            self.note_program(src, file, force_module, &params, code);
         }
         self.prof_leave(pk);
         r
+    }
+
+    fn note_program(
+        &mut self,
+        src: &str,
+        file: &str,
+        force_module: Option<bool>,
+        params: &str,
+        code: &Rc<crate::bytecode::Code>,
+    ) {
+        let kind = crate::snapshot::UnitKind::Program {
+            force_module,
+            params: params.to_owned(),
+            file: file.to_owned(),
+        };
+        self.note_unit(kind, src, code);
+    }
+
+    /// Compiles a unit a heap snapshot names, as the compile that made it
+    /// did: from the cache when it is there (shared the first time this VM
+    /// asks for it, a fresh copy after that, as `first_use`), else afresh.
+    pub(crate) fn restore_unit(
+        &mut self,
+        kind: &crate::snapshot::UnitKind,
+        src: &str,
+        seen: &mut std::collections::HashSet<crate::codecache::CacheKey>,
+    ) -> Result<Rc<crate::bytecode::Code>, String> {
+        use crate::snapshot::UnitKind;
+        let (head, force, params, file): (&[u8], &str, &str, &str) = match kind {
+            UnitKind::Program {
+                force_module,
+                params,
+                file,
+            } => (
+                b"program",
+                match force_module {
+                    None => "auto",
+                    Some(true) => "module",
+                    Some(false) => "script",
+                },
+                params,
+                file,
+            ),
+            UnitKind::Eval { global, file } => {
+                (b"eval", if *global { "global" } else { "local" }, "", file)
+            }
+        };
+        let program: [&[u8]; 5] = [
+            head,
+            force.as_bytes(),
+            params.as_bytes(),
+            file.as_bytes(),
+            src.as_bytes(),
+        ];
+        let eval: [&[u8]; 4] = [head, force.as_bytes(), file.as_bytes(), src.as_bytes()];
+        let parts: &[&[u8]] = match kind {
+            UnitKind::Program { .. } => &program,
+            UnitKind::Eval { .. } => &eval,
+        };
+        if let Some((k, code, _)) = crate::codecache::get(parts) {
+            return Ok(if seen.insert(k) {
+                code
+            } else {
+                code.fresh_copy()
+            });
+        }
+        let failed = |_: Ctl| format!("{file} no longer compiles");
+        match kind {
+            UnitKind::Program { force_module, .. } => {
+                let ps: Vec<&str> = if params.is_empty() {
+                    Vec::new()
+                } else {
+                    params.split(',').collect()
+                };
+                let (code, is_module) = self
+                    .compile_source_inner(src, file, *force_module, &ps)
+                    .map_err(failed)?;
+                seen.insert(crate::codecache::put(parts, code.clone(), is_module));
+                Ok(code)
+            }
+            UnitKind::Eval { global, .. } => {
+                let code = self
+                    .compile_eval_source(src, file, *global, None, 0)
+                    .map_err(failed)?;
+                seen.insert(crate::codecache::put(parts, code.clone(), false));
+                Ok(code)
+            }
+        }
     }
 
     fn compile_source_inner(
@@ -1581,6 +1671,11 @@ impl<'h> Vm<'h> {
                 code
             }
         };
+        let kind = crate::snapshot::UnitKind::Eval {
+            global: global_scope,
+            file: file.to_owned(),
+        };
+        self.note_unit(kind, src, &code);
         let caps: Rc<[CellRef]> = Rc::from(Vec::new());
         let f = self.make_closure(code, caps);
         self.call(&Value::Obj(f), Value::Obj(self.global.clone()), vec![])

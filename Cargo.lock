@@ -1043,6 +1043,7 @@ dependencies = [
  "cw-render",
  "cw-scene",
  "cw-script-host",
+ "postcard",
  "serde",
  "serde_json",
 ]

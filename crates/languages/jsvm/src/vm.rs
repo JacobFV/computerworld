@@ -402,6 +402,11 @@ pub struct Vm<'h> {
     pub cache_seen: std::collections::HashSet<crate::codecache::CacheKey>,
     /// Tagged-template objects, by code body and site: one per realm.
     pub templates: FnvMap<(u64, u32), Obj>,
+    /// Every compile this VM made whose code may still be alive, so a heap
+    /// snapshot can name code by the compile that made it (`snapshot`).
+    pub units: Vec<crate::snapshot::Unit>,
+    /// The length `units` had when dead entries were last dropped.
+    pub units_pruned_at: usize,
     /// Reusable frame buffers.
     pub pool: FramePool,
     /// The profiler, while one is running (see `profile`).

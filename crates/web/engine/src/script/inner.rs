@@ -18,6 +18,8 @@ use crate::layout::{self, FragmentTree, ImageSizeMap, LayoutCache, LayoutOptions
 use crate::style::{self, StyleSet};
 use crate::{Strictness, Viewport};
 
+pub(crate) mod image;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LogLevel {
     Log,

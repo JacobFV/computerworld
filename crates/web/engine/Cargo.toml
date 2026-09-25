@@ -12,6 +12,10 @@ cw-jsvm = { path = "../../languages/jsvm" }
 cw-script-host = { path = "../../languages/script-host" }
 serde.workspace = true
 serde_json.workspace = true
+# The compact, deterministic binary form of the realm state a heap snapshot carries
+# besides the VM heap (the document and the rest of `Inner`); already in the lock
+# through other crates.
+postcard = { version = "1.1", default-features = false, features = ["alloc"] }
 
 [features]
 # The parity and reftest runners in `tests/` call `html::parse`, `css::parse_stylesheet`
