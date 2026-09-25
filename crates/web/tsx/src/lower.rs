@@ -1151,13 +1151,8 @@ impl<'a> Lowerer<'a> {
     fn ts_type(&mut self, t: &'a ast::TSType<'a>) -> Ty {
         use ast::TSType as T;
         match t {
-            T::TSAnyKeyword(k) => {
-                self.err(
-                    k.span,
-                    "value of type any: the compiled subset needs a concrete type",
-                );
-                Ty::Unknown
-            }
+            // Types are hints: a value of type any is resolved when it runs.
+            T::TSAnyKeyword(_) => Ty::Unknown,
             T::TSStringKeyword(_) => Ty::String,
             T::TSNumberKeyword(_) => Ty::Number,
             T::TSBooleanKeyword(_) => Ty::Boolean,
@@ -1186,10 +1181,8 @@ impl<'a> Lowerer<'a> {
                 ast::TSLiteral::StringLiteral(s) => Ty::Lit(s.value.to_string()),
                 ast::TSLiteral::NumericLiteral(n) => Ty::NumLit(n.value),
                 ast::TSLiteral::BooleanLiteral(_) => Ty::Boolean,
-                _ => {
-                    self.err(l.span, "this literal type is outside the compiled subset");
-                    Ty::Unknown
-                }
+                ast::TSLiteral::TemplateLiteral(_) => Ty::String,
+                _ => Ty::Unknown,
             },
             T::TSTypeLiteral(lit) => self.members(&lit.members),
             T::TSFunctionType(f) => {
@@ -1225,13 +1218,8 @@ impl<'a> Lowerer<'a> {
                     ast::TSTypeQueryExprName::IdentifierReference(id) => Some(id.name.to_string()),
                     _ => None,
                 };
-                match name.and_then(|n| self.value_type_of(&n)) {
-                    Some(t) => t,
-                    None => {
-                        self.err(q.span, "this `typeof` type is outside the compiled subset");
-                        Ty::Unknown
-                    }
-                }
+                name.and_then(|n| self.value_type_of(&n))
+                    .unwrap_or(Ty::Unknown)
             }
             T::TSIndexedAccessType(ia) => {
                 let o = self.ts_type(&ia.object_type);
@@ -1239,10 +1227,12 @@ impl<'a> Lowerer<'a> {
                 types::index(&o, &k).unwrap_or(Ty::Unknown)
             }
             T::TSTypeReference(r) => self.type_reference(r),
-            other => {
-                self.err(other.span(), "this type is outside the compiled subset");
-                Ty::Unknown
-            }
+            T::TSTemplateLiteralType(_) => Ty::String,
+            T::TSObjectKeyword(_) => Ty::Unknown,
+            // Mapped, conditional, `infer`, constructor and other type-level
+            // constructs: only hints, and the values they describe are resolved
+            // when the code runs.
+            _ => Ty::Unknown,
         }
     }
 
@@ -1251,13 +1241,7 @@ impl<'a> Lowerer<'a> {
             ast::TSTupleElement::TSOptionalType(o) => {
                 union(self.ts_type(&o.type_annotation), Ty::Undefined)
             }
-            ast::TSTupleElement::TSRestType(r) => {
-                self.err(
-                    r.span,
-                    "rest elements in tuple types are outside the compiled subset",
-                );
-                Ty::Unknown
-            }
+            ast::TSTupleElement::TSRestType(_) => Ty::Unknown,
             other => match other.as_ts_type() {
                 Some(ast::TSType::TSNamedTupleMember(m)) => self.tuple_element(&m.element_type),
                 Some(t) => self.ts_type(t),
@@ -1272,10 +1256,6 @@ impl<'a> Lowerer<'a> {
             match m {
                 ast::TSSignature::TSPropertySignature(p) => {
                     let Some(name) = property_key_name(&p.key) else {
-                        self.err(
-                            p.span,
-                            "a computed property key in a type is outside the compiled subset",
-                        );
                         continue;
                     };
                     let t = match &p.type_annotation {
@@ -1308,9 +1288,8 @@ impl<'a> Lowerer<'a> {
                     self.type_params.pop();
                     fields.push((name, Ty::Function(ps, Box::new(r)), ms.optional));
                 }
-                other => {
-                    self.err(other.span(), "this member is outside the compiled subset");
-                }
+                // Call and construct signatures: hints only.
+                _ => {}
             }
         }
         Ty::Object(fields)
@@ -1404,13 +1383,9 @@ impl<'a> Lowerer<'a> {
             n if n.starts_with("HTML") && n.ends_with("Element") => Ty::DomNode,
             "Node" | "EventTarget" => Ty::DomNode,
             "FC" | "FunctionComponent" => Ty::Function(vec![arg(0)], Box::new(Ty::Node)),
-            _ => {
-                self.err(
-                    r.span,
-                    format!("type `{full}` is outside the compiled subset"),
-                );
-                Ty::Unknown
-            }
+            // A type the compiler does not model (a package's, `Date`, React's
+            // prop helpers): values of it are resolved when the code runs.
+            _ => Ty::Unknown,
         }
     }
 
@@ -1475,10 +1450,6 @@ impl<'a> Lowerer<'a> {
         };
         let args = self.type_args(r);
         if !self.type_busy.insert((m, local.clone())) {
-            self.err(
-                r.span,
-                format!("recursive type `{name}` is outside the compiled subset"),
-            );
             return Some(Ty::Unknown);
         }
         let prev = self.enter_module(m);
@@ -1502,7 +1473,7 @@ impl<'a> Lowerer<'a> {
         Some(t)
     }
 
-    fn named_type(&mut self, name: &str, span: Span) -> Option<Ty> {
+    fn named_type(&mut self, name: &str, _span: Span) -> Option<Ty> {
         for scope in self.type_params.iter().rev() {
             if let Some(t) = scope.get(name) {
                 return Some(t.clone());
@@ -1517,30 +1488,21 @@ impl<'a> Lowerer<'a> {
                 // Or one a declaration file declares.
                 let m = self.ambient_decl(name)?;
                 let prev = self.enter_module(m);
-                let t = self.named_type(name, span);
+                let t = self.named_type(name, _span);
                 self.enter_module(prev);
                 return t;
             };
             let prev = self.enter_module(m);
             let local = self.exports.get(&exported).cloned();
             let t = match local {
-                Some(local) => self.named_type(&local, span),
+                Some(local) => self.named_type(&local, _span),
                 None => None,
             };
             self.enter_module(prev);
-            if t.is_none() {
-                self.err(
-                    span,
-                    format!("`{name}` is not a type the imported module exports"),
-                );
-            }
-            return t;
+            // A value imported as a type (`typeof`-less class or re-export): a hint.
+            return Some(t.unwrap_or(Ty::Unknown));
         }
         if !self.type_busy.insert((self.cur_mod, name.to_owned())) {
-            self.err(
-                span,
-                format!("recursive type `{name}` is outside the compiled subset"),
-            );
             return Some(Ty::Unknown);
         }
         let t = match self.type_decls.get(name) {
@@ -1654,20 +1616,11 @@ impl<'a> Lowerer<'a> {
                 .map(|t| self.ts_type(&t.type_annotation));
             let ty = match annotated {
                 Some(t) => t,
+                // Typed by context when there is one; an implicitly `any`
+                // parameter is resolved when the code runs.
                 None => match param_hint.get(i) {
-                    // Typed by context, if only as `unknown` (a rejection reason).
                     Some(t) if !matches!(t, Ty::Param(n) if n.is_empty()) => t.clone(),
-                    _ => {
-                        // A parameter nobody reads needs no type.
-                        if !self.pattern_is_unused(&param.pattern) {
-                            let name = pattern_display(&param.pattern);
-                            self.err(
-                                param.span,
-                                format!("parameter `{name}` has implicit type any: annotate it"),
-                            );
-                        }
-                        Ty::Unknown
-                    }
+                    _ => Ty::Unknown,
                 },
             };
             let ty = if param.optional {
@@ -1736,10 +1689,6 @@ impl<'a> Lowerer<'a> {
             boxed,
             is_async: p.is_async,
         }
-    }
-
-    fn pattern_is_unused(&self, p: &ast::BindingPattern<'a>) -> bool {
-        matches!(p, ast::BindingPattern::BindingIdentifier(id) if id.name.starts_with('_'))
     }
 
     /// A closure: an arrow or function expression inside a function.
@@ -1876,16 +1825,7 @@ impl<'a> Lowerer<'a> {
                                     Ty::Tuple(_) => t,
                                     _ => non_null(&t),
                                 })
-                                .unwrap_or_else(|| {
-                                    self.err(
-                                        a.span,
-                                        format!(
-                                            "cannot destructure a value of type {}",
-                                            types::show(ty)
-                                        ),
-                                    );
-                                    Ty::Unknown
-                                });
+                                .unwrap_or(Ty::Unknown);
                             items.push(Some(self.bind_pattern(el, &t)));
                         }
                         None => items.push(None),
@@ -1909,21 +1849,7 @@ impl<'a> Lowerer<'a> {
                         self.err(prop.span, "a computed key in a destructuring pattern is outside the compiled subset");
                         continue;
                     };
-                    let t = match property(ty, &key) {
-                        Some(t) => t,
-                        None => {
-                            if !matches!(ty, Ty::Unknown) {
-                                self.err(
-                                    prop.span,
-                                    format!(
-                                        "property `{key}` does not exist on type {}",
-                                        types::show(ty)
-                                    ),
-                                );
-                            }
-                            Ty::Unknown
-                        }
-                    };
+                    let t = property(ty, &key).unwrap_or(Ty::Unknown);
                     // `{a = 1}` narrows away `undefined`.
                     let t = if matches!(prop.value, ast::BindingPattern::AssignmentPattern(_)) {
                         non_null(&t)
@@ -2095,16 +2021,7 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
                 let (iter, ity) = self.expr(&f.right, None);
-                let ety = match element(&ity) {
-                    Some(t) => t,
-                    None => {
-                        self.err(
-                            f.right.span(),
-                            format!("cannot iterate a value of type {}", types::show(&ity)),
-                        );
-                        Ty::Unknown
-                    }
-                };
+                let ety = element(&ity).unwrap_or(Ty::Unknown);
                 self.cur().cond_depth += 1;
                 self.cur().scopes.push(Vec::new());
                 let pat = match &f.left {
@@ -2747,12 +2664,7 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                         Ty::Dict(v) => dict = Some(union(dict.unwrap_or(Ty::Unknown), *v)),
-                        other => {
-                            self.err(
-                                s.span,
-                                format!("cannot spread a value of type {}", types::show(&other)),
-                            );
-                        }
+                        _ => dict = Some(Ty::Unknown),
                     }
                     props.push(Prop::Spread(x));
                 }
@@ -2902,16 +2814,7 @@ impl<'a> Lowerer<'a> {
                         ));
                     }
                 }
-                let t = property(&ot, &name).unwrap_or_else(|| {
-                    self.err(
-                        s.span,
-                        format!(
-                            "property `{name}` does not exist on type {}",
-                            types::show(&ot)
-                        ),
-                    );
-                    Ty::Unknown
-                });
+                let t = property(&ot, &name).unwrap_or(Ty::Unknown);
                 Some((LValue::Member(o, name), t))
             }
             ast::MemberExpression::ComputedMemberExpression(c) => {
@@ -3010,7 +2913,8 @@ impl<'a> Lowerer<'a> {
                 }
                 match property(&base, name) {
                     Some(t) => (Expr::Member(Box::new(o), name.to_owned(), s.optional), t),
-                    None => {
+                    // A host object's property the runtime does not model.
+                    None if is_host_type(&non_null(&base)) => {
                         self.err(
                             s.property.span,
                             format!(
@@ -3019,6 +2923,15 @@ impl<'a> Lowerer<'a> {
                             ),
                         );
                         (Expr::Undefined, Ty::Unknown)
+                    }
+                    // Not in the static type (a union the compiler does not narrow,
+                    // a type it does not model): read when it runs.
+                    None => {
+                        self.mark_always();
+                        (
+                            Expr::Member(Box::new(o), name.to_owned(), s.optional),
+                            Ty::Unknown,
+                        )
                     }
                 }
             }
@@ -3033,12 +2946,7 @@ impl<'a> Lowerer<'a> {
                 let t = match types::index(&base, &kt) {
                     Some(t) => t,
                     None => {
-                        if !matches!(ot, Ty::Unknown) {
-                            self.err(
-                                c.span,
-                                format!("cannot index a value of type {}", types::show(&ot)),
-                            );
-                        }
+                        self.mark_always();
                         Ty::Unknown
                     }
                 };
@@ -3229,14 +3137,8 @@ impl<'a> Lowerer<'a> {
                 Ty::Void,
             ),
             Ty::Dispatch(a) => (vec![(**a).clone()], Ty::Void),
-            Ty::Unknown => (Vec::new(), Ty::Unknown),
-            other => {
-                self.err(
-                    c.span,
-                    format!("cannot call a value of type {}", types::show(other)),
-                );
-                (Vec::new(), Ty::Unknown)
-            }
+            // Called as it is when it runs (a `TypeError` if it is no function).
+            _ => (Vec::new(), Ty::Unknown),
         };
         let (args, _) = self.exprs_args(&c.arguments, &params);
         if self.mutable_globals && matches!(f, Expr::Global(_)) {
@@ -3423,13 +3325,7 @@ impl<'a> Lowerer<'a> {
                 ));
             }
             ("JSON", "stringify") => (Builtin::JsonStringify, vec![], Ty::String),
-            ("JSON", "parse") => {
-                self.err(
-                    c.span,
-                    "`JSON.parse` returns any: the compiled subset needs a concrete type",
-                );
-                return Some((Expr::Undefined, Ty::Unknown));
-            }
+            ("JSON", "parse") => (Builtin::JsonParse, vec![Ty::String], Ty::Unknown),
             ("Date", "now") => {
                 self.mark_always();
                 (Builtin::DateNow, vec![], num)
@@ -3715,13 +3611,7 @@ impl<'a> Lowerer<'a> {
                     .unwrap_or((Expr::Undefined, Ty::Unknown));
                 let t = match ct {
                     Ty::Context(t) => *t,
-                    other => {
-                        self.err(
-                            c.span,
-                            format!("`useContext` of a value of type {}", types::show(&other)),
-                        );
-                        Ty::Unknown
-                    }
+                    _ => Ty::Unknown,
                 };
                 // A context read cannot be tracked by frame identity.
                 (Expr::Hook(Hook::Context, vec![ctx]), t)
@@ -3939,13 +3829,7 @@ impl<'a> Lowerer<'a> {
                 ),
                 "with" => (M::ArrayWith, vec![num, elem.clone()], arr()),
                 "toString" => (M::ToString, vec![], s),
-                _ => {
-                    self.err(
-                        c.span,
-                        format!("array method `{name}` is outside the compiled subset"),
-                    );
-                    return (Expr::Undefined, Ty::Unknown);
-                }
+                _ => return self.dynamic_invoke(recv, name, optional, c),
             }
         } else if is_str {
             match name {
@@ -4001,13 +3885,7 @@ impl<'a> Lowerer<'a> {
                 ),
                 "search" => (M::StrSearch, vec![Ty::Regex], num),
                 "toString" => (M::ToString, vec![], s),
-                _ => {
-                    self.err(
-                        c.span,
-                        format!("string method `{name}` is outside the compiled subset"),
-                    );
-                    return (Expr::Undefined, Ty::Unknown);
-                }
+                _ => return self.dynamic_invoke(recv, name, optional, c),
             }
         } else {
             match (&base, name) {
@@ -4144,23 +4022,8 @@ impl<'a> Lowerer<'a> {
                 ),
                 (Ty::Event, "preventDefault") => (M::EventPreventDefault, vec![], Ty::Void),
                 (Ty::Event, "stopPropagation") => (M::EventStopPropagation, vec![], Ty::Void),
-                (Ty::Unknown, _) => {
-                    self.err(
-                        c.span,
-                        format!("calling `.{name}` on a value of type unknown"),
-                    );
-                    return (Expr::Undefined, Ty::Unknown);
-                }
-                (t, _) => {
-                    self.err(
-                        c.span,
-                        format!(
-                            "method `{name}` on type {} is outside the compiled subset",
-                            types::show(t)
-                        ),
-                    );
-                    return (Expr::Undefined, Ty::Unknown);
-                }
+                // A receiver whose type does not say which method this is.
+                _ => return self.dynamic_invoke(recv, name, optional, c),
             }
         };
         let (args, _) = self.exprs_args(&c.arguments, &want_args);
@@ -4172,6 +4035,51 @@ impl<'a> Lowerer<'a> {
                 optional,
             },
             ret,
+        )
+    }
+
+    /// `recv.name(args)` looked up when it runs (`Expr::Invoke`).
+    fn dynamic_invoke(
+        &mut self,
+        recv: Expr,
+        name: &str,
+        optional: bool,
+        c: &'a ast::CallExpression<'a>,
+    ) -> Lowered {
+        if cw_ui::ir::unimplemented_builtin(name) {
+            self.err(
+                c.span,
+                format!("built-in method `{name}` is outside the compiled subset"),
+            );
+            return (Expr::Undefined, Ty::Unknown);
+        }
+        if matches!(
+            name,
+            "push"
+                | "pop"
+                | "shift"
+                | "unshift"
+                | "splice"
+                | "sort"
+                | "reverse"
+                | "fill"
+                | "copyWithin"
+                | "set"
+                | "add"
+                | "delete"
+                | "clear"
+        ) {
+            self.note_mutation(&recv);
+        }
+        let (args, _) = self.exprs_args(&c.arguments, &[]);
+        (
+            Expr::Invoke {
+                recv: Box::new(recv),
+                name: name.to_owned(),
+                args,
+                optional,
+            },
+            Ty::Unknown,
         )
     }
 
@@ -4268,13 +4176,6 @@ impl<'a> Lowerer<'a> {
                                 continue;
                             }
                             let want = props_ty.as_ref().and_then(|t| property(t, &name));
-                            if props_ty
-                                .as_ref()
-                                .is_some_and(|t| matches!(t, Ty::Object(_)))
-                                && want.is_none()
-                            {
-                                self.err(a.span, format!("the component has no prop `{name}`"));
-                            }
                             if let Some((x, _)) = self.jsx_attr_value(a, want.as_ref()) {
                                 props.push(Prop::KeyValue(name, x));
                             }
@@ -4325,17 +4226,7 @@ impl<'a> Lowerer<'a> {
                 let (callee, ty) = self.identifier(n, id.span);
                 let props = match &ty {
                     Ty::Function(ps, _) => ps.first().cloned(),
-                    Ty::Unknown => None,
-                    other => {
-                        self.err(
-                            id.span,
-                            format!(
-                                "`<{n}>`: a value of type {} is not a component",
-                                types::show(other)
-                            ),
-                        );
-                        return JsxKind::Invalid;
-                    }
+                    _ => None,
                 };
                 JsxKind::Component(callee, props.filter(|p| !matches!(p, Ty::Unknown)))
             }
@@ -4707,15 +4598,6 @@ fn binding_names(p: &ast::BindingPattern<'_>, out: &mut Vec<(String, Vec<PathSte
     go(p, &mut Vec::new(), out)
 }
 
-fn pattern_display(p: &ast::BindingPattern<'_>) -> String {
-    match p {
-        ast::BindingPattern::BindingIdentifier(id) => id.name.to_string(),
-        ast::BindingPattern::ObjectPattern(_) => "{...}".into(),
-        ast::BindingPattern::ArrayPattern(_) => "[...]".into(),
-        ast::BindingPattern::AssignmentPattern(a) => pattern_display(&a.left),
-    }
-}
-
 fn property_key_name(k: &ast::PropertyKey<'_>) -> Option<String> {
     match k {
         ast::PropertyKey::StaticIdentifier(id) => Some(id.name.to_string()),
@@ -4779,6 +4661,25 @@ fn is_fresh_init(e: &E<'_>) -> bool {
         },
         _ => false,
     }
+}
+
+/// A value the runtime models as a host object with a fixed set of properties
+/// (reading another one would not be what JavaScript reads).
+fn is_host_type(t: &Ty) -> bool {
+    matches!(
+        t,
+        Ty::Response
+            | Ty::CwResponse
+            | Ty::Headers
+            | Ty::Event
+            | Ty::DomNode
+            | Ty::Regex
+            | Ty::Error
+            | Ty::Set(_)
+            | Ty::Map(_, _)
+            | Ty::Promise(_)
+            | Ty::Ref(_)
+    )
 }
 
 /// The function type inside a (possibly union) expected type.
@@ -4990,7 +4891,7 @@ pub(crate) fn walk_expr(x: &Expr, f: &mut impl FnMut(&Expr)) {
             walk_expr(c, f);
             items(args, &mut |e| walk_expr(e, f));
         }
-        Expr::Method { recv, args, .. } => {
+        Expr::Method { recv, args, .. } | Expr::Invoke { recv, args, .. } => {
             walk_expr(recv, f);
             items(args, &mut |e| walk_expr(e, f));
         }

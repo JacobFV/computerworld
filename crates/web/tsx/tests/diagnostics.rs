@@ -43,20 +43,21 @@ fn a_typed_component_compiles() {
 }
 
 #[test]
-fn any_is_refused_with_its_position() {
-    assert_refused(
-        "function App() { const x: any = 1; return <p>{x}</p>; }",
-        3,
-        "value of type any",
+fn types_are_hints_so_any_and_untyped_parameters_compile() {
+    // What TypeScript leaves open (`any`, an unannotated parameter, a type the
+    // compiler does not model) is resolved when the code runs, as in JavaScript.
+    let src = module(
+        "function show(v) { return String(v).trim(); }\nfunction first(xs: any) { return xs.at(0).label.toUpperCase(); }\nfunction App() { const x: any = { a: [{ label: 'b' }] }; const d: Date | undefined = undefined; return <p title={show(d)}>{first(x.a)}{show(1)}</p>; }",
     );
+    assert_eq!(diags(&src), Vec::<String>::new());
 }
 
 #[test]
-fn untyped_parameters_are_refused() {
+fn a_builtin_method_the_runtime_lacks_is_refused_on_any_receiver() {
     assert_refused(
-        "function show(v) { return String(v); }\nfunction App() { return <p>{show(1)}</p>; }",
+        "function f(s: any) { return s.normalize('NFD'); }\nfunction App() { return <p>{f('x')}</p>; }",
         3,
-        "implicit type any",
+        "built-in method `normalize`",
     );
 }
 
@@ -187,7 +188,7 @@ fn an_app_of_several_modules_compiles_into_one() {
 fn module_errors_name_their_file() {
     let files = [
         ("main.tsx", "import { createRoot } from 'react-dom/client';\nimport { Missing } from './a';\nimport './nowhere';\ncreateRoot(document.getElementById('root')!).render(<Missing />);\n"),
-        ("a.tsx", "export function Other() { const x: any = 1; return <p>{x}</p>; }\n"),
+        ("a.tsx", "export function Other() { const x = 1n; return <p>{String(x)}</p>; }\n"),
     ];
     let err = load_virtual(&files, "main.tsx").unwrap_err();
     assert!(

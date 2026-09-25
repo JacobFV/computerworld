@@ -163,6 +163,12 @@ pub struct UiState {
     pub focused: Option<NodeId>,
     pub focus_visible: bool,
     pub hovered: Option<NodeId>,
+    /// Where the pointer last was, and whether the content changed since `hovered`
+    /// was hit-tested there (so the next idle point re-hit-tests it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pointer: Option<(i32, i32)>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub hover_stale: bool,
     pub values: Vec<(NodeId, String)>,
     pub checked: Vec<(NodeId, bool)>,
     pub indeterminate: Vec<NodeId>,
@@ -720,6 +726,8 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         focused: i.focused,
         focus_visible: i.focus_visible,
         hovered: i.hovered,
+        pointer: i.pointer,
+        hover_stale: i.pointer.is_some() && i.hover_generation != i.generation,
         values: i.form.values.iter().map(|(k, v)| (*k, v.clone())).collect(),
         checked: i.form.checked.iter().map(|(k, v)| (*k, *v)).collect(),
         indeterminate: i.form.indeterminate.iter().copied().collect(),
@@ -1360,6 +1368,7 @@ pub(crate) fn load(
     i.focused = s.focused;
     i.focus_visible = s.focus_visible;
     i.hovered = s.hovered;
+    i.pointer = s.pointer;
     i.form.values = s.values.iter().cloned().collect();
     i.form.checked = s.checked.iter().cloned().collect();
     i.form.indeterminate = s.indeterminate.iter().copied().collect();
@@ -1373,6 +1382,13 @@ pub(crate) fn load(
         i.images.0.insert(src.clone(), (*w, *h));
     }
     i.touch();
+    // A stale hover is hit-tested again at the next idle point, as it would have
+    // been had the app not been snapshotted.
+    i.hover_generation = if s.hover_stale {
+        u64::MAX
+    } else {
+        i.generation
+    };
     let _ = Cell::new(0);
     Ok(rt)
 }

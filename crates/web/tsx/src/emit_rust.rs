@@ -1119,6 +1119,26 @@ impl<'g, 'm> FnCx<'g, 'm> {
                 let e = self.q(&format!("rt.call_method(&{r}, Method::{method:?}, {a})"));
                 self.bind_tmp(&e)
             }
+            Expr::Invoke {
+                recv,
+                name,
+                args,
+                optional,
+            } => {
+                let later: Vec<&Expr> = args
+                    .iter()
+                    .map(|a| match a {
+                        ArrayItem::Item(e) | ArrayItem::Spread(e) => e,
+                    })
+                    .collect();
+                let r = self.operand(recv, &later);
+                if *optional {
+                    self.short_if_nullish(&r);
+                }
+                let a = self.items(args);
+                let e = self.q(&format!("rt.invoke(&{r}, {}, {a})", str_lit(name)));
+                self.bind_tmp(&e)
+            }
             Expr::Builtin(b, args) => {
                 let a = self.items(args);
                 let e = self.q(&format!("rt.call_builtin(Builtin::{b:?}, {a})"));
@@ -1746,7 +1766,7 @@ fn walk(e: &Expr, f: &mut impl FnMut(&Expr)) {
             walk(c, f);
             items(args, f);
         }
-        Expr::Method { recv, args, .. } => {
+        Expr::Method { recv, args, .. } | Expr::Invoke { recv, args, .. } => {
             walk(recv, f);
             items(args, f);
         }

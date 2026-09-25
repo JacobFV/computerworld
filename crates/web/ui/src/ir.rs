@@ -229,6 +229,15 @@ pub enum Expr {
     /// runtime can suspend: a whole `let` initialiser, expression statement,
     /// assignment's right side or `return` value.
     Await(Box<Expr>),
+    /// `recv.name(args)` where the receiver's type does not say which method it is:
+    /// resolved when it runs, by the value's kind, as JavaScript looks the method up
+    /// on the receiver (a built-in's method, or an object's function property).
+    Invoke {
+        recv: Box<Expr>,
+        name: String,
+        args: Vec<ArrayItem>,
+        optional: bool,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -651,4 +660,239 @@ pub enum Ty {
     /// A generic function's type parameter, in the signature its callers
     /// instantiate (never in a lowered value's type).
     Param(String),
+}
+
+/// The kinds of receiver a built-in method is looked up on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MethodKind {
+    Array,
+    String,
+    Number,
+    Boolean,
+    Promise,
+    /// A `fetch` response (also standing for its `headers`).
+    Response,
+    Regex,
+    Set,
+    Map,
+    /// A DOM element.
+    Node,
+    Event,
+}
+
+/// The built-in method `name` on a receiver of kind `kind`, as the runtime
+/// implements it; `None` when there is none (the method is not a built-in of that
+/// kind, or the runtime lacks it: see [`unimplemented_builtin`]).
+pub fn method_by_name(kind: MethodKind, name: &str) -> Option<Method> {
+    use Method as M;
+    use MethodKind as K;
+    Some(match (kind, name) {
+        (K::Array, "map") => M::ArrayMap,
+        (K::Array, "filter") => M::ArrayFilter,
+        (K::Array, "find") => M::ArrayFind,
+        (K::Array, "findIndex") => M::ArrayFindIndex,
+        (K::Array, "findLast") => M::ArrayFindLast,
+        (K::Array, "some") => M::ArraySome,
+        (K::Array, "every") => M::ArrayEvery,
+        (K::Array, "reduce") => M::ArrayReduce,
+        (K::Array, "forEach") => M::ArrayForEach,
+        (K::Array, "slice") => M::ArraySlice,
+        (K::Array, "concat") => M::ArrayConcat,
+        (K::Array, "includes") => M::ArrayIncludes,
+        (K::Array, "indexOf") => M::ArrayIndexOf,
+        (K::Array, "join") => M::ArrayJoin,
+        (K::Array, "sort") => M::ArraySort,
+        (K::Array, "toSorted") => M::ArrayToSorted,
+        (K::Array, "reverse") => M::ArrayReverse,
+        (K::Array, "toReversed") => M::ArrayToReversed,
+        (K::Array, "push") => M::ArrayPush,
+        (K::Array, "pop") => M::ArrayPop,
+        (K::Array, "shift") => M::ArrayShift,
+        (K::Array, "unshift") => M::ArrayUnshift,
+        (K::Array, "splice") => M::ArraySplice,
+        (K::Array, "flat") => M::ArrayFlat,
+        (K::Array, "flatMap") => M::ArrayFlatMap,
+        (K::Array, "fill") => M::ArrayFill,
+        (K::Array, "at") => M::ArrayAt,
+        (K::Array, "keys") => M::ArrayKeys,
+        (K::Array, "entries") => M::ArrayEntries,
+        (K::Array, "with") => M::ArrayWith,
+        (K::String, "trim") => M::StrTrim,
+        (K::String, "trimStart") => M::StrTrimStart,
+        (K::String, "trimEnd") => M::StrTrimEnd,
+        (K::String, "toUpperCase" | "toLocaleUpperCase") => M::StrToUpperCase,
+        (K::String, "toLowerCase" | "toLocaleLowerCase") => M::StrToLowerCase,
+        (K::String, "includes") => M::StrIncludes,
+        (K::String, "startsWith") => M::StrStartsWith,
+        (K::String, "endsWith") => M::StrEndsWith,
+        (K::String, "indexOf") => M::StrIndexOf,
+        (K::String, "lastIndexOf") => M::StrLastIndexOf,
+        (K::String, "slice") => M::StrSlice,
+        (K::String, "substring") => M::StrSubstring,
+        (K::String, "split") => M::StrSplit,
+        (K::String, "replace") => M::StrReplace,
+        (K::String, "replaceAll") => M::StrReplaceAll,
+        (K::String, "repeat") => M::StrRepeat,
+        (K::String, "padStart") => M::StrPadStart,
+        (K::String, "padEnd") => M::StrPadEnd,
+        (K::String, "charAt") => M::StrCharAt,
+        (K::String, "charCodeAt") => M::StrCharCodeAt,
+        (K::String, "codePointAt") => M::StrCodePointAt,
+        (K::String, "at") => M::StrAt,
+        (K::String, "localeCompare") => M::StrLocaleCompare,
+        (K::String, "concat") => M::StrConcat,
+        (K::String, "match") => M::StrMatch,
+        (K::String, "search") => M::StrSearch,
+        (K::Number, "toFixed") => M::NumToFixed,
+        (K::Number, "toString") => M::NumToString,
+        (K::Promise, "then") => M::PromiseThen,
+        (K::Promise, "catch") => M::PromiseCatch,
+        (K::Promise, "finally") => M::PromiseFinally,
+        (K::Response, "json") => M::ResponseJson,
+        (K::Response, "text") => M::ResponseText,
+        (K::Response, "get") => M::HeadersGet,
+        (K::Response, "has") => M::HeadersHas,
+        (K::Regex, "test") => M::RegexTest,
+        (K::Regex, "exec") => M::RegexExec,
+        (K::Set, "has") => M::SetHas,
+        (K::Set, "add") => M::SetAdd,
+        (K::Set | K::Map, "delete") => M::SetDelete,
+        (K::Set | K::Map, "clear") => M::SetClear,
+        (K::Map, "has") => M::SetHas,
+        (K::Map, "get") => M::MapGet,
+        (K::Map, "set") => M::MapSet,
+        (K::Set | K::Map, "forEach") => M::CollectionForEach,
+        (K::Set | K::Map, "keys") => M::CollectionKeys,
+        (K::Set | K::Map, "values") => M::CollectionValues,
+        (K::Set | K::Map, "entries") => M::CollectionEntries,
+        (K::Node, "focus") => M::NodeFocus,
+        (K::Node, "blur") => M::NodeBlur,
+        (K::Node, "select") => M::NodeSelect,
+        (K::Node, "setSelectionRange") => M::NodeSetSelectionRange,
+        (K::Event, "preventDefault") => M::EventPreventDefault,
+        (K::Event, "stopPropagation") => M::EventStopPropagation,
+        (_, "toString") => M::ToString,
+        _ => return None,
+    })
+}
+
+/// Methods of JavaScript's built-in prototypes, by the kind they belong to.
+const BUILTIN_METHODS: &[(MethodKind, &[&str])] = &[
+    (
+        MethodKind::Array,
+        &[
+            "at",
+            "concat",
+            "copyWithin",
+            "entries",
+            "every",
+            "fill",
+            "filter",
+            "find",
+            "findIndex",
+            "findLast",
+            "findLastIndex",
+            "flat",
+            "flatMap",
+            "forEach",
+            "includes",
+            "indexOf",
+            "join",
+            "keys",
+            "lastIndexOf",
+            "map",
+            "pop",
+            "push",
+            "reduce",
+            "reduceRight",
+            "reverse",
+            "shift",
+            "slice",
+            "some",
+            "sort",
+            "splice",
+            "toLocaleString",
+            "toReversed",
+            "toSorted",
+            "toSpliced",
+            "toString",
+            "unshift",
+            "values",
+            "with",
+        ],
+    ),
+    (
+        MethodKind::String,
+        &[
+            "at",
+            "charAt",
+            "charCodeAt",
+            "codePointAt",
+            "concat",
+            "endsWith",
+            "includes",
+            "indexOf",
+            "isWellFormed",
+            "lastIndexOf",
+            "localeCompare",
+            "match",
+            "matchAll",
+            "normalize",
+            "padEnd",
+            "padStart",
+            "repeat",
+            "replace",
+            "replaceAll",
+            "search",
+            "slice",
+            "split",
+            "startsWith",
+            "substr",
+            "substring",
+            "toLocaleLowerCase",
+            "toLocaleUpperCase",
+            "toLowerCase",
+            "toString",
+            "toUpperCase",
+            "toWellFormed",
+            "trim",
+            "trimEnd",
+            "trimStart",
+            "valueOf",
+        ],
+    ),
+    (
+        MethodKind::Number,
+        &[
+            "toExponential",
+            "toFixed",
+            "toLocaleString",
+            "toPrecision",
+            "toString",
+            "valueOf",
+        ],
+    ),
+    (MethodKind::Promise, &["then", "catch", "finally"]),
+    (MethodKind::Regex, &["exec", "test", "toString"]),
+    (
+        MethodKind::Set,
+        &[
+            "add", "clear", "delete", "entries", "forEach", "has", "keys", "values",
+        ],
+    ),
+    (
+        MethodKind::Map,
+        &[
+            "clear", "delete", "entries", "forEach", "get", "has", "keys", "set", "values",
+        ],
+    ),
+];
+
+/// Whether `name` is a method of some built-in prototype that the runtime does not
+/// implement for that kind: a call of it on a receiver whose kind is not known
+/// until run time cannot be compiled, since it would fail where JavaScript works.
+pub fn unimplemented_builtin(name: &str) -> bool {
+    BUILTIN_METHODS
+        .iter()
+        .any(|(k, names)| names.contains(&name) && method_by_name(*k, name).is_none())
 }

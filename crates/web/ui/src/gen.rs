@@ -284,6 +284,11 @@ impl Runtime {
         self.method(r, m, args)
     }
 
+    /// `recv.name(args)` resolved when it runs (`ir::Expr::Invoke`).
+    pub fn invoke(&mut self, r: &Value, name: &str, args: Vec<Value>) -> R<Value> {
+        self.invoke_by_name(r, name, args)
+    }
+
     /// A built-in function or constant.
     #[inline]
     pub fn call_builtin(&mut self, b: Builtin, args: Vec<Value>) -> R<Value> {

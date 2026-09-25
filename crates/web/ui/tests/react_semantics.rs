@@ -1213,3 +1213,68 @@ createRoot(document.getElementById('root')!).render(<App />);
         &[Step::Wait(50)],
     );
 }
+
+#[test]
+fn untyped_and_any_typed_code_runs_as_javascript_does() {
+    // Types are hints: `any`, unannotated parameters, unions the compiler does not
+    // narrow and types it does not model all resolve when the code runs.
+    same_as_react(
+        r#"
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+type Draft = Record<string, string> | {};
+function label(item) {
+  return item.name.trim().toUpperCase() + ':' + item.tags.map((t) => t.toLowerCase()).join('|');
+}
+function total(rows: any) {
+  return rows.filter((r) => r.n > 1).reduce((a, r) => a + r.n, 0).toFixed(1);
+}
+const api: any = {
+  count: 0,
+  bump(by) { return by * 2; },
+};
+function App() {
+  const [n, setN] = useState(0);
+  const [draft, setDraft] = useState<Draft>({});
+  const data: any = JSON.parse('[{"name":" Ada ","tags":["X","Y"],"n":1},{"name":"bo","tags":[],"n":2.5}]');
+  const errs: Draft = n > 1 ? { to: 'required' } : {};
+  const owned = (errs as any).hasOwnProperty('to');
+  const called = api.bump.call(null, n) + api.bump.apply(null, [n + 1]);
+  console.log('render', n, data.length, label(data[0]), total(data), owned, called);
+  return (
+    <div>
+      <p id="out">{data.map((d) => label(d)).join(' / ')} {(errs as Record<string, string>).to ?? 'ok'} {draft.subject ?? '-'}</p>
+      <button id="go" onClick={() => { setN(n + 1); setDraft({ subject: 'S' + n }); }}>more {String(n).padStart(3, '0')}</button>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Click("#go"), Step::Click("#go"), Step::Click("#go")],
+    );
+}
+
+#[test]
+fn hover_follows_content_that_moves_under_a_still_pointer() {
+    // A click that inserts content above the button moves the button out from
+    // under the pointer: hover leaves it, with the boundary events and no moves,
+    // as Chromium and the Realm do after a layout.
+    same_as_react(
+        r#"
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+function App() {
+  const [shown, setShown] = useState(false);
+  return (
+    <div>
+      {shown && <p id="msg" style={{ height: 80 }}>An error appeared</p>}
+      <button id="go" onMouseEnter={() => console.log('enter go')} onMouseLeave={() => console.log('leave go')} onMouseMove={() => console.log('move go')} onClick={() => setShown(true)}>show</button>
+      <div id="below" onMouseEnter={() => console.log('enter below')} style={{ height: 200 }}>below</div>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Click("#go"), Step::Wait(20)],
+    );
+}

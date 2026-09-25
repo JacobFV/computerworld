@@ -472,6 +472,15 @@ impl Runtime {
                 _ => break,
             }
         }
+        // Content that moved under a still pointer takes `:hover` with it (and
+        // whatever its boundary events set off runs too).
+        for _ in 0..4 {
+            if !self.refresh_hover() {
+                break;
+            }
+            self.settle();
+            ran = true;
+        }
         ran
     }
 }

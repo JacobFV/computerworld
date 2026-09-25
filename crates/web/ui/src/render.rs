@@ -194,7 +194,7 @@ fn walk(e: &Expr, f: &mut impl FnMut(&Expr)) {
             walk(c, f);
             items(args, &mut |e| walk(e, f));
         }
-        Expr::Method { recv, args, .. } => {
+        Expr::Method { recv, args, .. } | Expr::Invoke { recv, args, .. } => {
             walk(recv, f);
             items(args, &mut |e| walk(e, f));
         }

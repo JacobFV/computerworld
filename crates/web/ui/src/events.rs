@@ -288,6 +288,38 @@ impl Runtime {
     }
 
     fn update_hover(&mut self, target: Option<NodeId>, x: i32, y: i32, m: Modifiers) {
+        // `target` was hit-tested just now.
+        self.inner.pointer = Some((x, y));
+        self.inner.hover_generation = self.inner.generation;
+        self.hover_to(target, x, y, m, true);
+    }
+
+    /// Re-hit-tests the pointer where it last was, after the content under it may
+    /// have changed (a list that re-rendered, an error message that pushed the
+    /// button down): when another element is now under it, `:hover` moves and the
+    /// boundary events fire with no move events, as Chromium updates hover after a
+    /// layout and as the JS `Realm` does. Returns whether the hovered element
+    /// changed.
+    pub(crate) fn refresh_hover(&mut self) -> bool {
+        let Some((x, y)) = self.inner.pointer else {
+            return false;
+        };
+        if self.inner.doc.document_element().is_none()
+            || self.inner.hover_generation == self.inner.generation
+        {
+            return false;
+        }
+        let target = self.target_at(x, y);
+        self.inner.hover_generation = self.inner.generation;
+        if self.inner.hovered == target {
+            return false;
+        }
+        self.hover_to(target, x, y, Modifiers::default(), false);
+        self.inner.hover_generation = self.inner.generation;
+        true
+    }
+
+    fn hover_to(&mut self, target: Option<NodeId>, x: i32, y: i32, m: Modifiers, moved: bool) {
         let old = self.inner.hovered;
         let init = Self::pointer_init(x, y, 0, m, 0);
         if old != target {
@@ -342,11 +374,13 @@ impl Runtime {
                         self.fire("pointerenter", *c, &init);
                         self.fire("mouseenter", *c, &init);
                     }
-                    self.fire("pointermove", t, &init);
-                    self.fire("mousemove", t, &init);
+                    if moved {
+                        self.fire("pointermove", t, &init);
+                        self.fire("mousemove", t, &init);
+                    }
                 }
             }
-        } else if let Some(t) = target {
+        } else if let (Some(t), true) = (target, moved) {
             if !self.handlers.is_empty() {
                 self.fire("pointermove", t, &init);
                 self.fire("mousemove", t, &init);

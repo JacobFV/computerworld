@@ -789,6 +789,19 @@ impl Runtime {
                 last
             }
             Expr::Regex(pattern, flags) => self.new_regex(pattern, flags)?,
+            Expr::Invoke {
+                recv,
+                name,
+                args,
+                optional,
+            } => {
+                let r = self.eval(frame, recv)?;
+                if *optional && r.is_nullish() {
+                    return Err(Throw::Short);
+                }
+                let args = self.items(frame, args)?;
+                self.invoke_by_name(&r, name, args)?
+            }
             Expr::Await(_) => {
                 return js_error("SyntaxError", "await is only valid in an async function")
             }
@@ -1681,6 +1694,70 @@ impl Runtime {
                 return type_error(format!("{m:?} is not a function on {}", inspect(v)));
             }
         })
+    }
+
+    /// `recv.name(args)` looked up when it runs (see `ir::Expr::Invoke`): a built-in
+    /// method of the receiver's kind, or a function-valued property.
+    pub(crate) fn invoke_by_name(&mut self, r: &Value, name: &str, args: Vec<Value>) -> R<Value> {
+        use MethodKind as K;
+        let kind = match r {
+            Value::Array(_) => Some(K::Array),
+            Value::Str(_) => Some(K::String),
+            Value::Num(_) => Some(K::Number),
+            Value::Bool(_) => Some(K::Boolean),
+            Value::Promise(_) => Some(K::Promise),
+            Value::Response(_) => Some(K::Response),
+            Value::Regex(_) => Some(K::Regex),
+            Value::Set(_) => Some(K::Set),
+            Value::Map(_) => Some(K::Map),
+            Value::Node(_) => Some(K::Node),
+            Value::Event(_) => Some(K::Event),
+            Value::Cell(c) => {
+                let inner = c.borrow().clone();
+                return self.invoke_by_name(&inner, name, args);
+            }
+            Value::Undefined | Value::Null => {
+                return type_error(format!(
+                    "Cannot read properties of {} (reading '{name}')",
+                    r.to_js_string()
+                ))
+            }
+            _ => None,
+        };
+        if let Some(k) = kind {
+            if let Some(m) = method_by_name(k, name) {
+                return self.method(r, m, args);
+            }
+        }
+        let f = self.get_member(r, name)?;
+        match (&f, name) {
+            (Value::Func(_) | Value::Setter(..) | Value::Dispatch(..) | Value::Native(_), _) => {
+                self.call_value(&f, args)
+            }
+            // `Object.prototype`'s methods, when the object has no own function.
+            (Value::Undefined, "toString") => Ok(Value::str(&r.to_js_string())),
+            (Value::Undefined, "valueOf") => Ok(r.clone()),
+            (Value::Undefined, "hasOwnProperty") => {
+                let k = key_string(&arg(&args, 0));
+                Ok(Value::Bool(match r {
+                    Value::Object(o) => o.borrow().iter().any(|(n, _)| *n == k),
+                    Value::Array(a) => k.parse::<usize>().is_ok_and(|i| i < a.borrow().len()),
+                    _ => false,
+                }))
+            }
+            // `Function.prototype.call` / `apply` (functions here have no `this`).
+            (Value::Undefined, "call") if r.type_of() == "function" => {
+                self.call_value(r, args.into_iter().skip(1).collect())
+            }
+            (Value::Undefined, "apply") if r.type_of() == "function" => {
+                let list = match arg(&args, 1) {
+                    Value::Undefined | Value::Null => Vec::new(),
+                    v => self.iterate(&v)?,
+                };
+                self.call_value(r, list)
+            }
+            _ => type_error(format!("{}.{name} is not a function", inspect(r))),
+        }
     }
 
     fn array_method(&mut self, a: &Arr, whole: &Value, m: Method, args: Vec<Value>) -> R<Value> {
