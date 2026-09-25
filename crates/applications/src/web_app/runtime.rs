@@ -483,11 +483,13 @@ impl UiRuntime {
         now_us: u64,
     ) -> Result<Self, String> {
         let (channel, host) = Self::host(boot, now_us);
-        let app = match state.filter(|s| !s.is_null()) {
-            Some(state) => {
-                let state = cw_ui::UiState::from_json(&state.to_string())?;
-                cw_ui::UiApp::restore(&state, host).map_err(|e| e.to_string())?
-            }
+        // cw-ui's own snapshot restores; state the app declared boots it afresh
+        // with that state in its boot facts, as on the JS backend.
+        let own = state
+            .filter(|s| !s.is_null())
+            .and_then(|s| cw_ui::UiState::from_json(&s.to_string()).ok());
+        let app = match own {
+            Some(state) => cw_ui::UiApp::restore(&state, host).map_err(|e| e.to_string())?,
             None => {
                 let module = cw_ui::UiApp::parse_ir(ir).map_err(|e| e.to_string())?;
                 let mut app = cw_ui::UiApp::new(
@@ -513,8 +515,14 @@ impl AppRuntime for UiRuntime {
         self.app.run_until_idle(SETTLE_MS);
         action
     }
-    fn deliver(&mut self, _replies: &[Reply], _now_us: u64) {
-        // A compiled application makes no `cw` requests, so nothing is ever owed it.
+    fn deliver(&mut self, replies: &[Reply], now_us: u64) {
+        if replies.is_empty() {
+            return;
+        }
+        lock(&self.channel).now_us = now_us;
+        let json = serde_json::to_string(replies).expect("replies serialise");
+        let _ = self.app.cw_deliver(&json);
+        self.app.run_until_idle(SETTLE_MS);
     }
     fn set_env(&mut self, env: &Env, now_us: u64) {
         lock(&self.channel).now_us = now_us;
@@ -548,6 +556,9 @@ impl AppRuntime for UiRuntime {
                 height: env.height.max(1),
             });
         }
+        let json = serde_json::to_string(env).expect("environment serialises");
+        let _ = self.app.cw_env(&json);
+        self.app.run_until_idle(SETTLE_MS);
     }
     fn drain(&mut self) -> Outbox {
         std::mem::take(&mut lock(&self.channel).outbox)
@@ -571,6 +582,9 @@ impl AppRuntime for UiRuntime {
         0
     }
     fn snapshot(&mut self) -> Option<Value> {
+        if self.app.declares_state() {
+            return None;
+        }
         serde_json::from_str(&self.app.snapshot().to_json()).ok()
     }
 }

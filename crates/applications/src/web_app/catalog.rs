@@ -48,10 +48,10 @@ fn builtin() -> Vec<WebApplication> {
         .into_iter()
         .map(|(k, v)| (k.to_owned(), v.to_owned()))
         .collect(),
-        source: WebSource::Script {
+        source: WebSource::Compiled {
+            ir: include_str!("../../web/notes/notes.ui.json").into(),
             script: include_str!("../../web/notes/notes.js").into(),
             style: include_str!("../../web/notes/notes.css").into(),
-            react: true,
         },
     }]
 }

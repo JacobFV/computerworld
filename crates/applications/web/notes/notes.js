@@ -1,7 +1,7 @@
 // Compiled by cw-tsx from Notes.tsx: types stripped, JSX as React.createElement.
 'use strict';
 // ../sdk/cw.ts
-const __cw_mod_0 = (() => {
+const __cw_mod_1 = (() => {
 const { useEffect, useState, useSyncExternalStore } = React;
 function declaredStore(init) {
 	const saved = cw.state.get();
@@ -42,7 +42,7 @@ return { declaredStore, useStore, useEnv };
 (() => {
 const { useEffect, useLayoutEffect, useRef } = React;
 const { createRoot } = ReactDOM;
-const { declaredStore, useEnv, useStore } = __cw_mod_0;
+const { declaredStore, useEnv, useStore } = __cw_mod_1;
 /** A note is bounded like every field the desktop keeps. */
 const TEXT_LIMIT = 64 * 1024;
 const store = declaredStore(() => ({

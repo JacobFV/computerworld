@@ -296,3 +296,104 @@ fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
         stats(restores).1,
     );
 }
+
+/// Where a compiled Notes entry's time goes (crates/applications' Notes on its
+/// `cw` channel, stubbed): the event with its render, the restyle, the layout.
+#[test]
+#[ignore]
+fn notes_phases() {
+    use cw_web::script::{ScriptHostDocument, StorageArea};
+    let web =
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../applications/web/notes");
+    let ir = std::fs::read_to_string(web.join("notes.ui.json")).unwrap();
+    let css = std::fs::read_to_string(web.join("notes.css")).unwrap();
+    let html = format!(
+        "<!DOCTYPE html><html data-platform=\"macos\"><head><meta charset=\"utf-8\">\
+         <style id=\"cw-theme\"></style><style>{css}</style></head>\
+         <body><div id=\"root\"></div></body></html>"
+    );
+    let mut host = MemoryHost::new();
+    host.storage_set(
+        StorageArea::Local,
+        "\u{1}cw:boot",
+        r#"{"kind":"notes","argument":"/n","state":null,"env":{"platform":"macos","mobile":false,"width":900,"height":600,"css":""}}"#,
+    );
+    let module = UiApp::parse_ir(&ir).unwrap();
+    let mut app = UiApp::new(module, &html, "cw-app://application/", Box::new(host)).unwrap();
+    app.boot();
+    app.run_until_idle(20);
+    app.cw_deliver(r#"[{"id":1,"value":["a.txt","b.txt","c.txt"]}]"#)
+        .unwrap();
+    app.inner().ensure_layout();
+    let phase = |app: &mut UiApp, label: &str, f: &mut dyn FnMut(&mut UiApp)| {
+        let t = Instant::now();
+        f(app);
+        let script = t.elapsed();
+        let t = Instant::now();
+        app.inner().ensure_styles();
+        let styles = t.elapsed();
+        let t = Instant::now();
+        app.inner().ensure_layout();
+        let layout = t.elapsed();
+        println!("{label}: script {script:?}, restyle {styles:?}, layout {layout:?}");
+    };
+    for (next, name) in (2..).zip(["a", "b", "c"]) {
+        let sel = format!("[id=\"notes:open:{name}.txt\"]");
+        phase(&mut app, &format!("open {name}"), &mut |app| {
+            let n = app.query_selector(&sel).unwrap();
+            let (x, y) = app.centre_of(n).unwrap();
+            app.dispatch(UiEvent::Click {
+                x,
+                y,
+                button: 0,
+                modifiers: Modifiers::default(),
+                detail: 1,
+            });
+            app.run_until_idle(20);
+        });
+        phase(&mut app, "  read", &mut |app| {
+            app.cw_deliver(&format!(r#"[{{"id":{next},"value":"text"}}]"#))
+                .unwrap();
+        });
+        for k in ["x", "y"] {
+            phase(&mut app, &format!("  type {k}"), &mut |app| {
+                app.dispatch(UiEvent::TypeText { text: k.into() });
+                app.run_until_idle(20);
+            });
+        }
+    }
+    // The fixed cost of a flush: building the cascade engine from the sheets, which
+    // a restyle with no mutations does and nothing else.
+    let inner = app.inner();
+    let sheets: Vec<_> = inner.sheets.iter().map(|e| e.sheet.clone()).collect();
+    let media = inner.media();
+    let mut styles = inner.styles.clone();
+    let ctx = cw_web::css::MatchContext::new();
+    let mut times = Vec::new();
+    for _ in 0..15 {
+        let t = Instant::now();
+        let _ = cw_web::style::restyle(
+            &inner.doc,
+            &mut styles,
+            &[],
+            &sheets,
+            &media,
+            &ctx,
+            cw_web::Strictness::Lenient,
+        );
+        times.push(t.elapsed());
+    }
+    times.sort();
+    println!(
+        "restyle of nothing: {:?} (median of 15) over {} sheets",
+        times[7],
+        sheets.len()
+    );
+    println!(
+        "{} elements",
+        app.document()
+            .descendants(cw_web::dom::Document::ROOT)
+            .filter(|n| app.document().is_element(*n))
+            .count()
+    );
+}

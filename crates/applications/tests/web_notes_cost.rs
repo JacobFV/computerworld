@@ -147,67 +147,65 @@ fn web_notes_costs() {
     measure("web", web);
 }
 
-/// Where one web entry's time goes: the event, the settle after it, and layout.
+/// Where one web entry's time goes: the event, the settle after it, and layout, on
+/// cw-ui and on the React fallback compiled from the same source.
 #[test]
 #[ignore]
 fn where_a_web_entry_spends_its_time() {
     use cw_applications::web_app::{definition, env_for, runtime::*};
     use cw_web::script::{Modifiers, UiEvent};
     let def = definition("notes").unwrap();
-    let cw_sdk::WebSource::Script {
-        script,
-        style,
-        react,
-    } = &def.app.source
-    else {
-        panic!("Notes is a script on React");
+    let cw_sdk::WebSource::Compiled { ir, script, style } = &def.app.source else {
+        panic!("Notes is compiled for cw-ui");
     };
     let env = env_for(DesktopTheme::Macos, 900, 600);
-    let t = Instant::now();
-    let mut rt = JsRuntime::boot(
-        style,
-        script,
-        *react,
-        &Boot {
-            kind: "notes",
-            argument: FOLDER,
-            state: None,
-            env: &env,
-        },
-        0,
-    );
-    println!("boot {:?}", t.elapsed());
-    let out = rt.drain();
-    let id = out.requests[0].0;
-    let t = Instant::now();
-    rt.deliver(&[Reply::ok(id, serde_json::json!(NAMES))], 0);
-    println!("deliver listing {:?}", t.elapsed());
-    let mut node = None;
-    let t = Instant::now();
-    rt.view(&mut |v| node = v.doc.by_id("notes:new").first().copied());
-    println!("layout {:?}", t.elapsed());
-    for round in 0..3 {
+    let boot = Boot {
+        kind: "notes",
+        argument: FOLDER,
+        state: None,
+        env: &env,
+    };
+    for backend in ["cw-ui", "react"] {
+        println!("{backend}:");
         let t = Instant::now();
-        rt.dispatch(
-            UiEvent::ClickNode {
-                node: node.unwrap(),
-                modifiers: Modifiers::default(),
-                detail: 1,
-            },
-            round * 2_000_000,
-        );
-        let click = t.elapsed();
+        let mut rt: Box<dyn AppRuntime> = if backend == "cw-ui" {
+            Box::new(UiRuntime::boot(ir, style, &boot, None, 0).unwrap())
+        } else {
+            Box::new(JsRuntime::boot(style, script, true, &boot, 0))
+        };
+        println!("boot {:?}", t.elapsed());
+        let out = rt.drain();
+        let id = out.requests[0].0;
+        let t = Instant::now();
+        rt.deliver(&[Reply::ok(id, serde_json::json!(NAMES))], 0);
+        println!("deliver listing {:?}", t.elapsed());
+        let mut node = None;
         let t = Instant::now();
         rt.view(&mut |v| node = v.doc.by_id("notes:new").first().copied());
-        println!("click+settle {click:?}, layout after {:?}", t.elapsed());
-    }
-    for text in ["a", "b", "c"] {
-        let t = Instant::now();
-        rt.dispatch(UiEvent::TypeText { text: text.into() }, 9_000_000);
-        let typed = t.elapsed();
-        let t = Instant::now();
-        rt.view(&mut |_| {});
-        println!("type+settle {typed:?}, layout after {:?}", t.elapsed());
+        println!("layout {:?}", t.elapsed());
+        for round in 0..3 {
+            let t = Instant::now();
+            rt.dispatch(
+                UiEvent::ClickNode {
+                    node: node.unwrap(),
+                    modifiers: Modifiers::default(),
+                    detail: 1,
+                },
+                round * 2_000_000,
+            );
+            let click = t.elapsed();
+            let t = Instant::now();
+            rt.view(&mut |v| node = v.doc.by_id("notes:new").first().copied());
+            println!("click+settle {click:?}, layout after {:?}", t.elapsed());
+        }
+        for text in ["a", "b", "c"] {
+            let t = Instant::now();
+            rt.dispatch(UiEvent::TypeText { text: text.into() }, 9_000_000);
+            let typed = t.elapsed();
+            let t = Instant::now();
+            rt.view(&mut |_| {});
+            println!("type+settle {typed:?}, layout after {:?}", t.elapsed());
+        }
     }
 }
 

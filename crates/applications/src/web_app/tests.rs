@@ -607,3 +607,29 @@ fn a_restored_phone_window_takes_the_focus_the_live_one_has() {
     restored.click(1, "notes:body", 0).unwrap();
     assert_eq!(restored.text_field().as_deref(), Some("notes:body"));
 }
+
+/// Notes is inside cw-tsx's compiled subset and its IR mounts on cw-ui, so the
+/// desktop runs it with no VM; the React fallback is only for a cw-ui that cannot
+/// load it, and would otherwise hide a Notes that stopped compiling.
+#[test]
+fn notes_runs_on_cw_ui() {
+    let entry = catalog::get("notes").unwrap();
+    let WebSource::Compiled { ir, style, .. } = &entry.app.source else {
+        panic!("Notes ships without its IR");
+    };
+    let e = env_for(DesktopTheme::Macos, 900, 600);
+    let boot = Boot {
+        kind: "notes",
+        argument: FOLDER,
+        state: None,
+        env: &e,
+    };
+    let mut runtime = UiRuntime::boot(ir, style, &boot, None, 0).unwrap();
+    let out = runtime.drain();
+    assert!(
+        matches!(&out.requests[..], [(1, Request::List { path })] if path == FOLDER),
+        "{:?}",
+        out.requests
+    );
+    assert_eq!(out.state.unwrap()["folder"], FOLDER);
+}

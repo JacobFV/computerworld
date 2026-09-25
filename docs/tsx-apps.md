@@ -76,7 +76,18 @@ selects (`value`, `checked`, `defaultValue`, `defaultChecked`), `autoFocus`.
 handlers, bubbling ones after, and `stopPropagation` in either stops the rest),
 `resize` on `window`, `document.getElementById`, `document.querySelector`,
 `document.activeElement`, `document.body`, `document.title`,
-`window.innerWidth`/`innerHeight`.
+`window.innerWidth`/`innerHeight`, `el.focus()`, `blur()`, `select()`,
+`setSelectionRange(start, end)`. An element leaving the document takes focus and
+hover with it, with no events, as the document's removal steps do.
+
+**Host globals.** A module may reference declaration files (`/// <reference
+path="../types/cw.d.ts" />`); their types are visible to every module and they
+emit no code. The one host global the subset knows is computerworld's `cw` (the
+desktop web-app host's, typed by `crates/applications/web/types/cw.d.ts`):
+`cw.kind`, `argument`, `env`, `onEnv`, `now()`, `state.get<T>()`/`set`,
+`fs.readFile`/`writeFile`/`list`/`mkdir`, `fetch`, `launch`, `emit`, `refuse`,
+`window.set`. cw-ui implements it over the channel the host's JS bridge uses (see
+Embedding).
 
 **Modules.** Relative imports resolve as a bundler resolves them (`./x`, `x.tsx`,
 `x.ts`, `x/index.tsx`, `x/index.ts`); named, default and `type` imports; `export`
@@ -86,7 +97,9 @@ declarations, `export default function`, `export { a as b }`.
 intersections, arrays and tuples, object types (optional members, index
 signatures), `Record<K, V>`, `Partial`, `Pick`, `Omit`, `Exclude`, `Extract`,
 `keyof`, `typeof x` in a type, indexed access (`T['k']`, `T[number]`), `as const`,
-generic functions (a type parameter stands for its constraint), function types,
+generic functions and generic `type`/`interface` declarations (a call binds the
+type parameters from its explicit type arguments, then from its arguments' types;
+inside the body a parameter stands for its constraint), function types,
 `Set<T>`, `Map<K, V>`, `RegExp`, React's types (`ReactNode`, `FormEvent`, `ChangeEvent<…>`, `Dispatch<…>`,
 `RefObject<…>`, `CSSProperties`, …), DOM element types. Unannotated callback
 parameters take their type from context (an array method's element, a setter's
@@ -127,7 +140,8 @@ inside a larger expression (`f(await g())`: await into a variable first), `for
 await`, generators, classes and class components, packages other than React
 (an app bundles its own modules only), re-exports (`export … from`), `import * as`
 of a module of the app, `enum`, `delete`, `this`, `new` (except `Set`, `Map`,
-`Error`, `Promise`), `instanceof` of anything but an error class,
+`Error`, `Promise`), `instanceof` of anything but an error class, ambient
+declarations other than `declare const` and types, host globals other than `cw`,
 `dangerouslySetInnerHTML`,
 portals and the React APIs not listed above (`forwardRef`, `useTransition`, …).
 
@@ -246,6 +260,19 @@ let next = app.next_timer_micros();                       // when to call it aga
   replays. An async function waiting on an `await` when the snapshot is taken is not
   in it: the restored app carries on without that continuation (the timers and
   state are there; the suspended call is not).
+* The `cw` global (`cw_ui`'s `cw` module) speaks the protocol of
+  `crates/applications/src/web_app/bridge.js` over the same channel, the host's
+  `localStorage`: it reads `"\u{1}cw:boot"` (`{kind, argument, state, env}`) and
+  `"\u{1}cw:now"`, and writes each message (`{op: "request", id, kind, …}`,
+  `{op: "state", value}`, `{op: "refuse", message}`, `{op: "chrome", chrome}`) to
+  `"\u{1}cw:out"`, so one host serves an app on either backend.
+  `cw_deliver(replies_json)` settles requests (`[{"id", "value"} | {"id", "error"}]`,
+  bridge.js's `__cw_deliver`) and `cw_env(env_json)` updates `cw.env` and runs the
+  `onEnv` listeners (`__cw_env`; the host applies the theme itself); both settle the
+  app. `declares_state()` says whether the app called `cw.state.set`: such an app's
+  declared state is what a host keeps and boots it again from, as on the JS
+  backend, while an app that declares none is kept as its `snapshot()`. Requests
+  awaiting a reply are not in a snapshot.
 
 ## Verification
 
@@ -310,6 +337,28 @@ forces once the hover state changes (a full restyle and layout is 1.65 ms for th
 tracker, 17.9 ms for the kanban page's Tailwind sheet); handlers, render and commit
 take 57 µs and 209 µs. `cw-ui` added 799 KB raw, 207 KB gzipped, to the site's
 Wasm module when the browser first linked it (fef4e40).
+
+Notes, the desktop's notes app (`crates/applications/web/notes`, 51 KB of IR), in
+its host, through the host's own harness (`cargo test --release -p cw-applications
+--test web_notes_cost -- --ignored --nocapture web_notes_costs`), medians, the
+fallback being the same source's React bundle on the Realm (measured in the same
+session):
+
+| | compiled (cw-ui) | fallback (React 18 on the Realm) |
+|---|---|---|
+| launch, listing delivered | 0.24 ms | 9.8 ms |
+| open a note, type, save | 4.0 ms | 12.2 ms |
+| memory held by the window | 908 KB | 5,511 KB |
+| restore and first paint | 2.5 ms | 14.2 ms |
+| paint of a fresh clone | 1.26 ms | 0.25 ms |
+
+The paint row is not like for like: the Realm restyles and lays out while it
+settles an input, so its paint only builds the scene, while cw-ui leaves style and
+layout to the first read. Per entry cw-ui's script (handlers, render, commit, the
+`cw` bridge) takes 20–210 µs; the rest is the engine's style flush, about 0.9 ms
+for Notes' 24 elements, of which building the cascade engine from the sheets is
+360 µs before anything is restyled (`crates/web/ui/tests/perf.rs`, `notes_phases`).
+The Realm pays the same flush on every input.
 
 ## Later: Rust code generation
 
