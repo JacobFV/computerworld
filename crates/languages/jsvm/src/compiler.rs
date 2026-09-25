@@ -34,11 +34,34 @@ struct Scope {
     /// The hidden binding holding the object of a `with` statement whose body
     /// this scope is.
     with_name: Option<Name>,
+    /// The last binding of each name, once the scope is large (a bundle's
+    /// top-level function declares hundreds of names, and every reference
+    /// resolves through it).
+    index: Option<crate::value::FastMap<Name, usize>>,
 }
+
+const SCOPE_INDEX_AT: usize = 16;
 
 impl Scope {
     fn find(&self, n: &str) -> Option<&Binding> {
+        if let Some(ix) = &self.index {
+            return ix.get(n).map(|&i| &self.binds[i]);
+        }
         self.binds.iter().rev().find(|b| &*b.name == n)
+    }
+    fn push(&mut self, b: Binding) {
+        if let Some(ix) = &mut self.index {
+            ix.insert(b.name.clone(), self.binds.len());
+        }
+        self.binds.push(b);
+        if self.index.is_none() && self.binds.len() > SCOPE_INDEX_AT {
+            let mut ix = crate::value::FastMap::default();
+            ix.reserve(self.binds.len() * 2);
+            for (i, b) in self.binds.iter().enumerate() {
+                ix.insert(b.name.clone(), i);
+            }
+            self.index = Some(ix);
+        }
     }
 }
 
@@ -391,7 +414,7 @@ impl<'a> Compiler<'a> {
         }
         let _ = top;
         let slot = f.alloc(name);
-        f.scopes.last_mut().unwrap().binds.push(Binding {
+        f.scopes.last_mut().unwrap().push(Binding {
             name: name.clone(),
             slot,
             kind,
@@ -413,7 +436,7 @@ impl<'a> Compiler<'a> {
             return Ok(b.slot);
         }
         let slot = f.alloc(name);
-        f.scopes[0].binds.push(Binding {
+        f.scopes[0].push(Binding {
             name: name.clone(),
             slot,
             kind: BKind::Var,
@@ -1068,7 +1091,7 @@ impl<'a> Compiler<'a> {
                     // Duplicate simple params (sloppy) share the later slot.
                     let slot = self.f().alloc(n);
                     let f2 = self.f();
-                    f2.scopes[0].binds.push(Binding {
+                    f2.scopes[0].push(Binding {
                         name: n.clone(),
                         slot,
                         kind: BKind::Var,
@@ -3156,7 +3179,7 @@ impl<'a> Compiler<'a> {
                     self.emit(Op::ToPropertyKey);
                     let slot = self.f().alloc("%fieldkey");
                     let hn: Name = Rc::from(format!("%fieldkey{}", slot).as_str());
-                    self.f().scopes.last_mut().unwrap().binds.push(Binding {
+                    self.f().scopes.last_mut().unwrap().push(Binding {
                         name: hn,
                         slot,
                         kind: BKind::Hidden,

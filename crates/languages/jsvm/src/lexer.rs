@@ -144,6 +144,23 @@ impl<'a> Lexer<'a> {
         list.push(a.clone());
         a
     }
+
+    /// The atom for the ASCII characters `c[start..end]`, allocating only for a
+    /// text not seen before.
+    fn atom_ascii(&mut self, start: usize, end: usize) -> Atom {
+        let mut buf = [0u8; 64];
+        let n = end - start;
+        if n > buf.len() {
+            let s: String = self.c[start..end].iter().collect();
+            return self.atom(&s);
+        }
+        for (b, ch) in buf.iter_mut().zip(&self.c[start..end]) {
+            *b = *ch as u8;
+        }
+        // SAFETY: the characters are ASCII.
+        let text = unsafe { std::str::from_utf8_unchecked(&buf[..n]) };
+        self.atom(text)
+    }
     fn peek(&self, off: usize) -> char {
         *self.c.get(self.pos + off).unwrap_or(&'\0')
     }
@@ -280,8 +297,7 @@ impl<'a> Lexer<'a> {
             }
             let ch = self.c[self.pos];
             let tok = if is_id_start(ch) || ch == '\\' {
-                let (name, escaped) = self.ident()?;
-                let name = self.atom(&name);
+                let (name, escaped) = self.ident_atom()?;
                 if escaped {
                     Tok::EscapedIdent(name)
                 } else {
@@ -289,8 +305,8 @@ impl<'a> Lexer<'a> {
                 }
             } else if ch == '#' && is_id_start(self.peek(1)) {
                 self.pos += 1;
-                let (name, _) = self.ident()?;
-                Tok::PrivateName(self.atom(&name))
+                let (name, _) = self.ident_atom()?;
+                Tok::PrivateName(name)
             } else if ch.is_ascii_digit() || (ch == '.' && self.peek(1).is_ascii_digit()) {
                 self.number()?
             } else if ch == '"' || ch == '\'' {
@@ -348,6 +364,27 @@ impl<'a> Lexer<'a> {
             });
             nl = false;
         }
+    }
+
+    /// An identifier's atom and whether it was written with escapes.
+    fn ident_atom(&mut self) -> Result<(Atom, bool), SyntaxErr> {
+        let start = self.pos;
+        let mut end = start;
+        while end < self.c.len() {
+            let ch = self.c[end];
+            if ch.is_ascii_alphanumeric() || ch == '_' || ch == '$' {
+                end += 1;
+            } else {
+                break;
+            }
+        }
+        let next = self.c.get(end).copied().unwrap_or('\0');
+        if end > start && !self.c[start].is_ascii_digit() && next.is_ascii() && next != '\\' {
+            self.pos = end;
+            return Ok((self.atom_ascii(start, end), false));
+        }
+        let (name, escaped) = self.ident()?;
+        Ok((self.atom(&name), escaped))
     }
 
     fn ident(&mut self) -> Result<(String, bool), SyntaxErr> {
