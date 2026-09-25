@@ -162,6 +162,9 @@ pub struct Inner {
     /// Where the pointer last was (viewport CSS pixels), so `:hover` can follow
     /// content that moves under a pointer that stays still.
     pub pointer: Option<(i32, i32)>,
+    /// The generation `hovered` was last hit-tested at: while nothing has changed
+    /// since, the element under a still pointer cannot have changed either.
+    pub hover_generation: u64,
     /// Whether any element has an `on*` content attribute, with the
     /// (generation, node count) it was computed at (`W.inlineHandlers`).
     pub inline_handlers: (u64, usize, bool),
@@ -317,6 +320,7 @@ impl Inner {
             scroll: ScrollState::new(),
             hovered: None,
             pointer: None,
+            hover_generation: u64::MAX,
             inline_handlers: (u64::MAX, 0, true),
             active: None,
             focused: None,

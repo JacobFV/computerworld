@@ -49,7 +49,12 @@ fn target_at(realm: &mut Realm, x: i32, y: i32) -> Option<NodeId> {
 
 /// Updates `:hover` and fires the mouse transition events.
 fn update_hover(realm: &mut Realm, target: Option<NodeId>, x: i32, y: i32, m: Modifiers) {
-    realm.inner.borrow_mut().pointer = Some((x, y));
+    {
+        // `target` was hit-tested just now.
+        let mut i = realm.inner.borrow_mut();
+        i.pointer = Some((x, y));
+        i.hover_generation = i.generation;
+    }
     let old = realm.inner.borrow().hovered;
     if old != target {
         {
@@ -67,6 +72,7 @@ fn update_hover(realm: &mut Realm, target: Option<NodeId>, x: i32, y: i32, m: Mo
             for c in changed {
                 i.touch_state(c);
             }
+            i.hover_generation = i.generation;
         }
         let ov = wrap(realm, old);
         let nv = wrap(realm, target);
@@ -110,12 +116,17 @@ pub fn refresh_hover(realm: &mut Realm) -> bool {
     let Some((x, y)) = realm.inner.borrow().pointer else {
         return false;
     };
-    if realm.inner.borrow().doc.document_element().is_none() {
-        return false;
+    {
+        let i = realm.inner.borrow();
+        if i.doc.document_element().is_none() || i.hover_generation == i.generation {
+            return false;
+        }
     }
     let target = target_at(realm, x, y);
     let old = realm.inner.borrow().hovered;
     if old == target {
+        let mut i = realm.inner.borrow_mut();
+        i.hover_generation = i.generation;
         return false;
     }
     {
@@ -133,6 +144,10 @@ pub fn refresh_hover(realm: &mut Realm) -> bool {
         for c in changed {
             i.touch_state(c);
         }
+    }
+    {
+        let mut i = realm.inner.borrow_mut();
+        i.hover_generation = i.generation;
     }
     let ov = wrap(realm, old);
     let nv = wrap(realm, target);
