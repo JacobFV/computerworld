@@ -996,13 +996,17 @@ impl<'h> Vm<'h> {
             Kind::Error(ed) => ed.frames.clone(),
             _ => vec![],
         };
-        let header = self.error_header(e)?;
-        let mut s = header;
-        for f in frames {
-            s.push_str("\n    at ");
-            s.push_str(&f);
-        }
-        let v = Value::string(s);
+        let v = match crate::builtins::error::prepared_stack(self, e, &frames)? {
+            Some(v) => v,
+            None => {
+                let mut s = self.error_header(e)?;
+                for f in frames {
+                    s.push_str("\n    at ");
+                    s.push_str(&f);
+                }
+                Value::string(s)
+            }
+        };
         if let Some(p) = e.borrow_mut().props.get_mut(&Key::str("stack")) {
             p.slot = Slot::Data(v.clone());
         }

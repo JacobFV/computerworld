@@ -28,9 +28,64 @@ fn flags_of(f: &str) -> Result<Flags, String> {
     Ok(fl)
 }
 
+/// Strings in this VM are UTF-8, so a lone surrogate is stored as U+FFFD and an
+/// astral character as one code point. A pattern that names surrogates with
+/// `\uXXXX` escapes (Express's `encodeurl`, `punycode`, every "unmatched
+/// surrogate" check) is rewritten to match that representation: an escaped
+/// pair becomes the character it encodes, and a lone surrogate escape becomes
+/// U+FFFD itself. Patterns without surrogate escapes are returned untouched.
+fn surrogate_escapes(pattern: &str) -> std::borrow::Cow<'_, str> {
+    fn unit(c: &[char], i: usize) -> Option<u32> {
+        if c.get(i) != Some(&'\\') || c.get(i + 1) != Some(&'u') {
+            return None;
+        }
+        let hex: String = c.get(i + 2..i + 6)?.iter().collect();
+        u32::from_str_radix(&hex, 16)
+            .ok()
+            .filter(|_| hex.len() == 4)
+    }
+    let c: Vec<char> = pattern.chars().collect();
+    if !(0..c.len()).any(|i| unit(&c, i).is_some_and(|u| (0xd800..0xe000).contains(&u))) {
+        return std::borrow::Cow::Borrowed(pattern);
+    }
+    let mut out = String::with_capacity(pattern.len());
+    let mut i = 0;
+    while i < c.len() {
+        if c[i] == '\\' && c.get(i + 1).is_some_and(|n| *n != 'u') {
+            out.push(c[i]);
+            out.push(c[i + 1]);
+            i += 2;
+            continue;
+        }
+        match unit(&c, i) {
+            Some(hi @ 0xd800..=0xdbff) => match unit(&c, i + 6) {
+                Some(lo @ 0xdc00..=0xdfff) => {
+                    let cp = 0x10000 + ((hi - 0xd800) << 10) + (lo - 0xdc00);
+                    out.push(char::from_u32(cp).unwrap_or('\u{fffd}'));
+                    i += 12;
+                }
+                _ => {
+                    out.push('\u{fffd}');
+                    i += 6;
+                }
+            },
+            Some(0xdc00..=0xdfff) => {
+                out.push('\u{fffd}');
+                i += 6;
+            }
+            _ => {
+                out.push(c[i]);
+                i += 1;
+            }
+        }
+    }
+    std::borrow::Cow::Owned(out)
+}
+
 fn compile(pattern: &str, flags: &str) -> Result<Regex, String> {
     let fl = flags_of(flags)?;
-    Regex::new(pattern, Flavor::JavaScript, fl).map_err(|e| {
+    let rewritten = surrogate_escapes(pattern);
+    Regex::new(&rewritten, Flavor::JavaScript, fl).map_err(|e| {
         let prefix = format!("Invalid regular expression: /{pattern}/: ");
         match e.message.strip_prefix(&prefix) {
             Some(rest) => format!("Invalid regular expression: /{pattern}/{flags}: {rest}"),

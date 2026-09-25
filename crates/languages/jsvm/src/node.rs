@@ -50,6 +50,24 @@ pub const BUILTINS: &[&str] = &[
     "sys",
 ];
 
+/// `require('buffer')`: the global `Buffer` and what Node 24 exports beside it.
+/// `SlowBuffer` is deprecated but still there, and `jwa` (every JWT library)
+/// patches its prototype when it loads.
+const BUFFER_MODULE: &str = "'use strict';
+const kMaxLength = 2 ** 32;
+function SlowBuffer(size) { return Buffer.allocUnsafeSlow(size); }
+Object.setPrototypeOf(SlowBuffer.prototype, Uint8Array.prototype);
+Object.setPrototypeOf(SlowBuffer, Uint8Array);
+module.exports = {
+  Buffer, SlowBuffer, kMaxLength, kStringMaxLength: 2 ** 29 - 24, INSPECT_MAX_BYTES: 50,
+  constants: { MAX_LENGTH: kMaxLength, MAX_STRING_LENGTH: 2 ** 29 - 24 },
+  Blob: globalThis.Blob, File: globalThis.File, atob: globalThis.atob, btoa: globalThis.btoa,
+  isUtf8: (b) => { try { new TextDecoder('utf-8', { fatal: true }).decode(b); return true; } catch { return false; } },
+  isAscii: (b) => { for (const x of new Uint8Array(b.buffer || b, b.byteOffset || 0, b.byteLength)) if (x > 127) return false; return true; },
+  transcode: (b) => Buffer.from(b),
+};
+";
+
 /// JS sources of built-in modules implemented in JavaScript.
 fn js_module_source(name: &str) -> Option<&'static str> {
     Some(match name {
@@ -71,8 +89,10 @@ fn js_module_source(name: &str) -> Option<&'static str> {
         "internal/fetch" => include_str!("../js/fetch.js"),
         "internal/intl" => include_str!("../js/intl.js"),
         "internal/httpwire" => include_str!("../js/httpwire.js"),
+        "internal/serve" => include_str!("../js/serve.js"),
         "zlib" => include_str!("../js/zlib.js"),
         "worker_threads" => include_str!("../js/worker_threads.js"),
+        "tty" => include_str!("../js/tty.js"),
         _ => return None,
     })
 }
@@ -1749,11 +1769,7 @@ impl<'h> Vm<'h> {
                     .unwrap_or(Value::Undefined))
             }
             "buffer" => {
-                let b = self.get_str(&Value::Obj(self.global.clone()), "Buffer")?;
-                let o = self.new_object();
-                o.set_prop("Buffer", b, ALL);
-                o.set_prop("constants", Value::Obj(self.new_object()), ALL);
-                return Ok(Value::Obj(o));
+                return self.load_internal_js("node:buffer", BUFFER_MODULE, "buffer");
             }
             "timers" => {
                 let g = Value::Obj(self.global.clone());
@@ -1844,6 +1860,19 @@ impl<'h> Vm<'h> {
     /// Runs microtasks, timers and immediates until nothing is pending,
     /// phase by phase like libuv: due timers, I/O completions, immediates.
     pub fn event_loop(&mut self) -> JsResult<()> {
+        self.event_loop_until(&mut |_| false, f64::INFINITY)
+            .map(|_| ())
+    }
+
+    /// The event loop, stopping early: once `done` holds at a turn with nothing
+    /// left to run at the current time (the clock is not moved on for work
+    /// further off), or before the clock would pass `deadline_ms`. Returns
+    /// whether `done` held. What is still scheduled stays scheduled.
+    pub fn event_loop_until(
+        &mut self,
+        done: &mut dyn FnMut(&mut Vm) -> bool,
+        deadline_ms: f64,
+    ) -> JsResult<bool> {
         loop {
             self.drain_after(None)?;
             // Between tasks: a safe point to reclaim cyclic garbage.
@@ -1935,6 +1964,9 @@ impl<'h> Vm<'h> {
             if ran {
                 continue;
             }
+            if done(self) {
+                return Ok(true);
+            }
             let mut next = self
                 .timers
                 .iter()
@@ -1951,6 +1983,7 @@ impl<'h> Vm<'h> {
                 }
             }
             match next {
+                Some(w) if w > deadline_ms => return Ok(false),
                 Some(w) => self.elapsed_ms = self.clock().max(w),
                 None => {
                     // Nothing anywhere can run: a worker left waiting for a
@@ -1963,7 +1996,7 @@ impl<'h> Vm<'h> {
                 }
             }
         }
-        Ok(())
+        Ok(done(self))
     }
 
     pub fn next_due_timer(&self, now: f64) -> Option<usize> {

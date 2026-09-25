@@ -89,6 +89,10 @@ fn capture_stack_trace(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
             .insert(Key::str("stack"), Prop::data(Value::Empty, HIDDEN));
         return Ok(Value::Undefined);
     }
+    if let Some(v) = prepared_stack(vm, &o, &frames)? {
+        o.set_hidden("stack", v);
+        return Ok(Value::Undefined);
+    }
     let header = vm.error_header(&o)?;
     let mut s = header;
     for f in frames {
@@ -97,6 +101,114 @@ fn capture_stack_trace(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     }
     o.set_hidden("stack", Value::string(s));
     Ok(Value::Undefined)
+}
+
+/// `Error.prepareStackTrace(error, callSites)`, when a program installed one:
+/// what V8 hands it is an array of `CallSite` objects, which `depd` (every
+/// Express app loads it) and `callsites`-style libraries read. `None` when no
+/// hook is installed and the stack is formatted as text.
+pub(crate) fn prepared_stack(vm: &mut Vm, e: &Obj, frames: &[String]) -> JsResult<Option<Value>> {
+    let Some(ctor) = vm.intr.error_ctors.first().cloned() else {
+        return Ok(None);
+    };
+    let hook = vm.get_str(&Value::Obj(ctor), "prepareStackTrace")?;
+    if !matches!(&hook, Value::Obj(o) if o.is_callable()) {
+        return Ok(None);
+    }
+    thread_local! {
+        /// A hook that reads `error.stack` itself gets the plain text, as in V8.
+        static PREPARING: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    }
+    if PREPARING.with(|p| p.replace(true)) {
+        return Ok(None);
+    }
+    let sites = frames.iter().map(|f| call_site(vm, f)).collect();
+    let sites = vm.arr(sites);
+    let r = vm.call(&hook, Value::Undefined, vec![Value::Obj(e.clone()), sites]);
+    PREPARING.with(|p| p.set(false));
+    r.map(Some)
+}
+
+/// One `CallSite`, from a formatted frame (`[async ][new ]name (file:line:col)`
+/// or a bare `file:line:col`).
+fn call_site(vm: &mut Vm, frame: &str) -> Value {
+    let mut rest = frame;
+    let is_async = rest.starts_with("async ");
+    if is_async {
+        rest = &rest[6..];
+    }
+    let is_ctor = rest.starts_with("new ");
+    if is_ctor {
+        rest = &rest[4..];
+    }
+    let (name, loc) = match rest.strip_suffix(')').and_then(|r| r.rsplit_once(" (")) {
+        Some((n, l)) => (Some(n.to_string()), l.to_string()),
+        None => (None, rest.to_string()),
+    };
+    let native = loc == "native";
+    let mut parts = loc.rsplitn(3, ':');
+    let (col, line, file) = match (parts.next(), parts.next(), parts.next()) {
+        (Some(c), Some(l), Some(f)) if c.parse::<u32>().is_ok() && l.parse::<u32>().is_ok() => (
+            Value::Num(c.parse::<f64>().unwrap()),
+            Value::Num(l.parse::<f64>().unwrap()),
+            Value::string(f.to_string()),
+        ),
+        _ => (
+            Value::Null,
+            Value::Null,
+            if native {
+                Value::Undefined
+            } else {
+                Value::string(loc.clone())
+            },
+        ),
+    };
+    let (type_name, method) = match name.as_deref().and_then(|n| n.split_once('.')) {
+        Some((t, m)) => (Value::string(t.to_string()), Value::string(m.to_string())),
+        None => (Value::Null, Value::Null),
+    };
+    let fn_name = match &name {
+        Some(n) if n != "<anonymous>" => Value::string(n.clone()),
+        _ => Value::Null,
+    };
+    let site = vm.new_object();
+    let fields: [(&str, Value); 12] = [
+        ("getFileName", file.clone()),
+        ("getScriptNameOrSourceURL", file),
+        ("getLineNumber", line),
+        ("getColumnNumber", col),
+        ("getFunctionName", fn_name),
+        ("getTypeName", type_name.clone()),
+        ("getMethodName", method),
+        ("isNative", Value::Bool(native)),
+        ("isConstructor", Value::Bool(is_ctor)),
+        ("isAsync", Value::Bool(is_async)),
+        (
+            "isToplevel",
+            Value::Bool(
+                matches!(&type_name, Value::Null)
+                    || matches!(&type_name, Value::Str(s) if s.to_string() == "Object"),
+            ),
+        ),
+        ("toString", Value::string(frame.to_string())),
+    ];
+    for (method, v) in fields {
+        let f = vm.native_fn_slots(method, 0, call_site_field, vec![v]);
+        site.set_hidden(method, Value::Obj(f));
+    }
+    for method in ["isEval", "isPromiseAll"] {
+        let f = vm.native_fn_slots(method, 0, call_site_field, vec![Value::Bool(false)]);
+        site.set_hidden(method, Value::Obj(f));
+    }
+    for method in ["getThis", "getFunction", "getEvalOrigin", "getPromiseIndex"] {
+        let f = vm.native_fn_slots(method, 0, call_site_field, vec![Value::Undefined]);
+        site.set_hidden(method, Value::Obj(f));
+    }
+    Value::Obj(site)
+}
+
+fn call_site_field(_vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
+    Ok(crate::promise::slots(a)[0].clone())
 }
 
 fn stack_limit_get(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {

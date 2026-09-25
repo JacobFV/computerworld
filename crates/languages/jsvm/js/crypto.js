@@ -29,8 +29,57 @@ function createHash(alg) {
   return new Hash(alg);
 }
 
+// Key objects. Only secret (symmetric) keys hold material here: what HMAC
+// signing needs, and what `jsonwebtoken` wraps every string secret in. There
+// are no asymmetric algorithms, so parsing a public or private key refuses,
+// which is how a library learns a string is a shared secret.
+class KeyObject {
+  constructor(type, material) {
+    if (type !== 'secret' && type !== 'public' && type !== 'private') {
+      throw new TypeError(`The argument 'type' is invalid. Received '${type}'`);
+    }
+    Object.defineProperty(this, '_type', { value: type });
+    Object.defineProperty(this, '_material', { value: material });
+  }
+  get type() { return this._type; }
+  get symmetricKeySize() { return this._type === 'secret' ? this._material.length : undefined; }
+  get asymmetricKeyType() { return undefined; }
+  get asymmetricKeyDetails() { return undefined; }
+  export(options) {
+    if (options && options.format === 'jwk') {
+      return { kty: 'oct', k: this._material.toString('base64url') };
+    }
+    return Buffer.from(this._material);
+  }
+  equals(other) {
+    return other instanceof KeyObject && other._type === this._type
+      && Buffer.compare(this._material, other._material) === 0;
+  }
+  static from(key) { return key; }
+}
+
+function keyMaterial(key, encoding) {
+  if (key instanceof KeyObject) return key._material;
+  if (typeof key === 'string') return Buffer.from(key, encoding || 'utf8');
+  if (ArrayBuffer.isView(key)) return Buffer.from(key.buffer, key.byteOffset, key.byteLength);
+  if (key instanceof ArrayBuffer) return Buffer.from(key);
+  const e = new TypeError('The "key" argument must be of type string or an instance of ArrayBuffer, Buffer, TypedArray, DataView, KeyObject, or CryptoKey.');
+  e.code = 'ERR_INVALID_ARG_TYPE';
+  throw e;
+}
+
+function createSecretKey(key, encoding) {
+  return new KeyObject('secret', Buffer.from(keyMaterial(key, encoding)));
+}
+
+function unsupportedKey() {
+  const e = new Error('error:1E08010C:DECODER routines::unsupported');
+  e.code = 'ERR_OSSL_UNSUPPORTED';
+  throw e;
+}
+
 function createHmac(alg, key) {
-  return new Hash(alg, typeof key === 'string' ? Buffer.from(key) : key);
+  return new Hash(alg, keyMaterial(key));
 }
 
 function hash(alg, data, enc = 'hex') {
@@ -52,6 +101,10 @@ module.exports = {
   getRandomValues: (a) => binding.getRandomValues(a),
   randomFillSync: (a) => binding.getRandomValues(a),
   timingSafeEqual: (a, b) => binding.timingSafeEqual(a, b),
+  KeyObject,
+  createSecretKey,
+  createPublicKey: unsupportedKey,
+  createPrivateKey: unsupportedKey,
   getHashes: () => binding.getHashes(),
   webcrypto: { getRandomValues: (a) => binding.getRandomValues(a), randomUUID: () => binding.randomUUID(), subtle: {} },
   constants: {},

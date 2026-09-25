@@ -1,0 +1,16 @@
+--- exit: 0
+--- stdout
+unmatched plain ascii
+pair true false
+sites true true
+site0 caller true number number false false
+prepared lazy @ thrower
+plain Error: text
+isatty function false false
+slowbuffer function false true
+decoder €
+key true secret 11 undefined
+hmac true
+export superSecret
+private refused
+--- stderr

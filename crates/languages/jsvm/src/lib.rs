@@ -33,6 +33,7 @@ pub mod props;
 pub mod realm;
 pub mod regexp;
 pub mod repl;
+pub mod serve;
 pub mod snapshot;
 pub mod value;
 pub mod vm;

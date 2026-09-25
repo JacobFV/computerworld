@@ -20,7 +20,7 @@ fn string_list(vm: &mut Vm, v: &Value) -> JsResult<Vec<String>> {
     }
     Ok(out)
 }
-fn pairs(vm: &mut Vm, v: &Value) -> JsResult<Vec<(String, String)>> {
+pub(crate) fn pairs(vm: &mut Vm, v: &Value) -> JsResult<Vec<(String, String)>> {
     let flat = string_list(vm, v)?;
     Ok(flat
         .chunks(2)
@@ -28,7 +28,7 @@ fn pairs(vm: &mut Vm, v: &Value) -> JsResult<Vec<(String, String)>> {
         .map(|c| (c[0].clone(), c[1].clone()))
         .collect())
 }
-fn bytes_arg(vm: &mut Vm, v: &Value) -> JsResult<Vec<u8>> {
+pub(crate) fn bytes_arg(vm: &mut Vm, v: &Value) -> JsResult<Vec<u8>> {
     match v {
         Value::Undefined | Value::Null => Ok(vec![]),
         Value::Str(s) => Ok(s.to_string().into_bytes()),

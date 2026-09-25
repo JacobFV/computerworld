@@ -84,6 +84,7 @@ programs!("js":
     strings_regex,
     text_pipeline,
     util_events,
+    web_app_deps,
     web_fetch_classes,
     workers,
     zlib_streams,
