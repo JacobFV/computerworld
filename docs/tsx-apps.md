@@ -162,6 +162,8 @@ app.tsx:line 52:3: `useEffect` must be called at the top level of a component or
 
 ```
 cw-tsx build main.tsx -o out/ [--name app]   # out/app.ui.json, out/app.js, out/app.diagnostics.json
+cw-tsx build main.tsx -o out/ --emit rust [--mod app]
+                                             # also out/app.ui.rs: the IR as Rust (see below)
 cw-tsx check main.tsx                        # diagnostics only; exit 1 if any
 ```
 
@@ -238,7 +240,8 @@ use cw_web::script::{ScriptHostDocument, UiEvent};
 
 let module = UiApp::parse_ir(&ir_json)?;                 // IR version checked
 let mut app = UiApp::new(module, &html_shell, url, Box::new(host))?;
-// or UiApp::with_document(module, document, url, host) to render into a Document
+// or UiApp::with_document(module, document, url, host) to render into a Document,
+// or UiApp::generated(&app_rs::PROGRAM, &html_shell, url, host) for generated Rust
 app.boot();                                               // globals, first render, effects
 let action = app.dispatch(UiEvent::Click { x, y, button: 0, modifiers, detail: 1 });
 app.run_until_idle(16);                                   // timers due on the world clock
@@ -308,6 +311,14 @@ let next = app.next_timer_micros();                       // when to call it aga
   reorders with state, controlled inputs and carets, context, reducers, memos, refs,
   intervals, forms, attributes, snapshot/restore).
 * `crates/web/tsx/tests/diagnostics.rs`: what is refused, and where.
+* Generated Rust: `crates/web/ui/fixtures` (`cw-ui-fixtures`) generates, at build
+  time, every app the tests above run (31 programs). `react_semantics` runs each app
+  interpreted, generated and on React; `tsx_parity` runs tsx-tasks and the six
+  agent apps (31 sessions) interpreted and generated in lockstep. After boot and
+  every step the documents (with form values, checkedness, focus), logs and render
+  counters must be identical, the final states equal, and each form's snapshot must
+  restore on the other. `cw_bridge` runs on both forms and restores a snapshot with
+  suspended async functions and requests in flight on the other form.
 * `crates/web/browser/tests/compiled_app.rs`: a served page runs compiled when its IR
   is there and on React when not, showing the same thing through the same actions,
   and snapshots and restores.
@@ -372,9 +383,88 @@ for Notes' 24 elements, of which building the cascade engine from the sheets is
 360 µs before anything is restyled (`crates/web/ui/tests/perf.rs`, `notes_phases`).
 The Realm pays the same flush on every input.
 
-## Later: Rust code generation
+## Ahead-of-time Rust for built-in apps
 
-The IR carries the static type of every function parameter, frame slot and template
-hole, and addresses variables by slot, so a later stage can translate a module into
-Rust source for built-in apps: each slot a typed local, each template a function that
-builds its DOM, each hole an update guarded by its dependencies.
+An app built into the binary need not ship IR for an interpreter: `cw-tsx build
+--emit rust` (`cw_tsx::emit_rust`) translates the IR into a Rust module defining
+`pub static PROGRAM: cw_ui::GenProgram`, which `UiApp::generated` runs. Apps loaded
+at run time (a served page, a world's own application) keep the IR: there is no
+rustc in the world or in Wasm.
+
+**One runtime, two forms.** `cw_ui::Program` is what a runtime runs; `IrProgram`
+(the interpreter) and `GenProgram` (generated code) both implement it and keep the
+IR's numbering (function `n`, template `t`, global `g`, hook order), so the
+reconciler, hooks, events, commit, `cw` bridge and snapshots are shared and a
+document, a log or a snapshot does not depend on the form. Generated code calls
+the same helpers the interpreter does (`cw_ui::gen`), in the same order.
+
+**What the generator does.** Each function is a Rust `fn`; frame slots are Rust
+locals; expressions are flattened into temporaries, so evaluation order is the
+source's; `try`, optional chains, `switch` and loops are labelled blocks. Templates
+are `static` data built by the runtime's one template builder (static code per
+template would add Wasm size for no measurable gain: instantiating is DOM work).
+Hole dependencies are named in the code, and a template all of whose holes read
+the same slots is decided with one comparison. Calls to module functions nobody
+reassigns are direct calls. String literals and property keys are made once per
+runtime; comparisons feed conditions as Rust `bool`s; `===` against a string
+literal, `+` with one, and arithmetic or comparison with a number literal need no
+temporary value. Async function bodies stay IR (JSON in the module, parsed on
+first call) and run on the interpreter's suspendable walk, whose continuations are
+positions in those bodies; everything they call is generated.
+
+**What it does not do.** State is not typed Rust structs: hook state, props and
+every object stay the runtime's dynamic `Value`s. The reconciler's bailouts compare
+by identity, a spread copies keys in order, closures see mutations, and the
+snapshot format and cross-form restore need one representation; TypeScript's types
+are also unsound where it matters (an index past the end is `undefined` typed as the
+element), so a typed field would still need checks. The measurements below show why
+it would not pay: script is a small part of an interaction, and the interpreter's
+walk was a fraction of that.
+
+**Snapshots.** A generated app's `UiState` names its program (`program:
+ProgramId`, the name and FNV-1a 64 of the IR's canonical JSON) instead of carrying
+the IR in `module`. `UiApp::restore` finds it among programs registered with
+`cw_ui::program::register`; `UiApp::restore_with(state, program, host)` restores any
+snapshot on either form of the same IR (checked by that hash): an interpreted
+app's snapshot on its generated program, a generated app's on the interpreter
+given the IR, suspended async functions and requests in flight included. A
+snapshot of different IR is refused.
+
+**Notes.** `crates/applications/web/build.mjs` writes `notes/notes.ui.rs` beside
+`notes.ui.json` and `--check` fails when it is stale. It is checked in rather than
+generated by a build script so building the world never needs cw-tsx (oxc) and the
+code is reviewable. The catalog pairs the program with the IR it came from and
+the web-app host runs it when booting exactly that IR (a unit test checks the
+pairing); Notes snapshots taken before carry their IR and restore interpreted.
+
+**Measured** (release, median of 15, `cargo test --release -p cw-ui --test perf --
+--ignored --nocapture`; Notes on a stubbed `cw` channel, its React side from
+`web_notes_cost`'s `where_a_web_entry_spends_its_time`; one session, machine shared
+with other builds):
+
+| | interpreted IR | generated Rust | React 18 on the Realm |
+|---|---|---|---|
+| tsx-tasks boot | 0.278 ms (0.109 IR parse) | 0.155 ms | 8.36 ms (37.1 first load) |
+| tsx-tasks click: total / script | 0.229 / 0.0536 ms | 0.213 / 0.0427 ms | 3.06 ms |
+| tsx-tasks keystroke: total / script | 0.0171 / 0.0144 ms | 0.0132 / 0.0111 ms | 1.90 ms |
+| tsx-tasks heap after boot | 1,009 KB | 871 KB | 5,446 KB |
+| tsx-tasks snapshot / restore | 82 KB / 1.82 ms | 50 KB / 1.60 ms | 520 KB / 20.7 ms |
+| kanban boot | 0.700 ms (0.318 IR parse) | 0.359 ms | 17.5 ms (44.2 first load) |
+| kanban click: total / script | 0.853 / 0.155 ms | 0.842 / 0.145 ms | 11.6 ms |
+| kanban keystroke: total / script | 0.0191 / 0.0157 ms | 0.0185 / 0.0152 ms | 2.36 ms |
+| kanban heap after boot | 3,351 KB | 2,928 KB | 8,145 KB |
+| kanban snapshot / restore | 288 KB / 8.67 ms | 196 KB / 8.27 ms | 656 KB / 62.1 ms |
+| Notes launch, listing delivered | 0.459 ms | 0.325 ms | 32.5 ms boot |
+| Notes session script (open, read, type, save, list) | 0.164 ms | 0.123 ms | — |
+| Notes keystroke script | 0.0237 ms | 0.0169 ms | 0.66–0.74 ms type+settle |
+| Notes heap after launch | 758 KB | 534 KB | — |
+| Notes snapshot / restore+layout | 71.6 KB / 1.02 ms | 21.7 KB / 0.80 ms | — |
+
+Plainly: generated code wins where the IR itself cost something — boot (no parse:
+44–49% less), heap (the IR is gone: 138–423 KB), snapshots (no IR: 32–70% smaller)
+and restore (5–21%). On interactions it barely matters: script falls 3–29% (the
+kanban click by 7%, 10 µs), because most script time is the shared runtime
+(reconciling, committing, DOM writes), not the walk over the IR, and a click's total
+is the engine's style and layout, which neither form touches. Generated Notes adds
+95,854 bytes raw, 26,041 bytes gzipped, to the Wasm module (40,560,922 → 40,656,776,
+cargo's `cw_wasm.wasm` with `scripts/build-wasm.sh`'s settings), 0.24% and 0.17%.
