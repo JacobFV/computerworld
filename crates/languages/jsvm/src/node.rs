@@ -2283,6 +2283,10 @@ fn performance_now(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
     Ok(Value::Num(vm.perf_now()))
 }
 
+fn performance_time_origin(vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
+    Ok(Value::Num(vm.start_micros as f64 / 1000.0))
+}
+
 pub fn install(vm: &mut Vm) {
     let g = vm.global.clone();
     // console
@@ -2331,11 +2335,9 @@ pub fn install(vm: &mut Vm) {
     // performance
     let perf = vm.new_object();
     vm.method(&perf, "now", 0, performance_now);
-    perf.set_prop(
-        "timeOrigin",
-        Value::Num(vm.start_micros as f64 / 1000.0),
-        ALL,
-    );
+    // A getter (as Node's is, on the prototype): the heap does not hold the
+    // clock's origin, so a heap image of a booted VM serves any start time.
+    vm.getter(&perf, "timeOrigin", performance_time_origin);
     vm.method(&perf, "mark", 1, noop);
     vm.method(&perf, "measure", 1, noop);
     vm.set_global("performance", Value::Obj(perf));

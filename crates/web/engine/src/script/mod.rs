@@ -706,11 +706,22 @@ impl Realm {
         // and it is reached only through `vm.host` from here on.
         let host_ref: &'static mut bridge::Bridge =
             unsafe { &mut *(&mut *bridge as *mut bridge::Bridge) };
-        let mut vm = Vm::new(host_ref, vec!["/usr/bin/browser".into()], Vec::new(), None);
-        vm.stack_limit = 20;
+        let (mut vm, booted) = match Self::from_template(host_ref, &inner) {
+            Some(vm) => (vm, true),
+            None => {
+                // SAFETY: as above; `from_template` gave its reference up.
+                let host_ref: &'static mut bridge::Bridge =
+                    unsafe { &mut *(&mut *bridge as *mut bridge::Bridge) };
+                let mut vm = Vm::new(host_ref, vec!["/usr/bin/browser".into()], Vec::new(), None);
+                vm.stack_limit = 20;
+                (vm, false)
+            }
+        };
         let any: Rc<dyn std::any::Any> = inner.clone();
         vm.embedder = Some(any);
-        bindings::install(&mut vm);
+        if !booted {
+            bindings::install(&mut vm);
+        }
         let reclaim = vm.reclaim.take();
         let mut realm = Realm {
             vm,
@@ -730,9 +741,43 @@ impl Realm {
             image: RefCell::new((None, 0)),
             shared_sources: RefCell::new(Vec::new()),
         };
-        realm.run_prelude();
+        if !booted {
+            realm.run_prelude();
+        }
         realm.image.borrow_mut().1 = realm.vm.steps;
         realm
+    }
+
+    /// A VM booted with the prelude, read from this thread's template (see
+    /// `set_realm_templates`) instead of running it: the heap the prelude leaves
+    /// does not depend on the page, its URL or its host, so one image of it serves
+    /// every realm. The host is asked what `Vm::new` would ask it (the clock, then
+    /// entropy), in that order, and the prelude's handles are put into `inner`.
+    fn from_template(
+        host_ref: &'static mut bridge::Bridge,
+        inner: &Rc<RefCell<Inner>>,
+    ) -> Option<Vm<'static>> {
+        let t = template()?;
+        let mut opts = bindings::snapshot_options();
+        opts.sources_in = &t.sources;
+        let (mut vm, roots) = Vm::from_heap_snapshot(host_ref, &t.heap, opts).ok()?;
+        let mut i = inner.borrow_mut();
+        vm.start_micros = i.host_now_micros();
+        vm.rng_state = i.host_random_u64() | 1;
+        let obj = |v: &Value| match v {
+            Value::Obj(o) => Some(o.clone()),
+            _ => None,
+        };
+        i.wrappers = roots[..t.wrappers].iter().map(obj).collect();
+        i.protos = t
+            .protos
+            .iter()
+            .cloned()
+            .zip(&roots[t.wrappers..])
+            .filter_map(|(k, v)| obj(v).map(|o| (k, o)))
+            .collect();
+        drop(i);
+        Some(vm)
     }
 
     /// Writes the realm, between two entry points, as a heap snapshot: the VM
@@ -1640,6 +1685,60 @@ impl Realm {
     pub(crate) fn vm(&mut self) -> &mut Vm<'static> {
         &mut self.vm
     }
+}
+
+// ---------------------------------------------------------------- templates
+
+/// A realm's VM just after the prelude, as a heap snapshot (see
+/// `Realm::from_template`).
+struct Template {
+    heap: Vec<u8>,
+    sources: Vec<Rc<str>>,
+    /// Names of the prelude's prototypes, and how many node wrappers it made: the
+    /// heap roots, wrappers first.
+    protos: Vec<String>,
+    wrappers: usize,
+}
+
+thread_local! {
+    static TEMPLATE: RefCell<Option<Rc<Template>>> = const { RefCell::new(None) };
+    static TEMPLATES: std::cell::Cell<bool> = const { std::cell::Cell::new(true) };
+}
+
+/// Whether new realms on this thread start from a template of the booted prelude
+/// (on by default) or run the prelude themselves. Either way they are the same
+/// realm; the template is made by running it once, on first use.
+pub fn set_realm_templates(on: bool) {
+    TEMPLATES.with(|t| t.set(on));
+}
+
+fn template() -> Option<Rc<Template>> {
+    if !TEMPLATES.with(|t| t.get()) {
+        return None;
+    }
+    if let Some(t) = TEMPLATE.with(|t| t.borrow().clone()) {
+        return Some(t);
+    }
+    TEMPLATES.with(|t| t.set(false));
+    let r = Realm::new("", "about:blank", Box::new(MemoryHost::new()));
+    TEMPLATES.with(|t| t.set(true));
+    let (_, roots) = r.inner.borrow().image().ok()?;
+    let sources = RefCell::new(Vec::new());
+    let mut opts = bindings::snapshot_options();
+    opts.sources_out = Some(&sources);
+    let heap = r.vm.heap_snapshot(&roots, opts).ok()?;
+    let (protos, wrappers) = {
+        let i = r.inner.borrow();
+        (i.protos.keys().cloned().collect(), i.wrappers.len())
+    };
+    let t = Rc::new(Template {
+        heap,
+        sources: sources.into_inner(),
+        protos,
+        wrappers,
+    });
+    TEMPLATE.with(|s| *s.borrow_mut() = Some(t.clone()));
+    Some(t)
 }
 
 // ---------------------------------------------------------------- entry points

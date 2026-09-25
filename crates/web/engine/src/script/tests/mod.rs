@@ -10,6 +10,7 @@ mod fixtures;
 mod frameworks;
 mod host_state;
 mod more;
+mod snapshots;
 mod support;
 mod window;
 

@@ -615,7 +615,9 @@ define(perf, 'clearMeasures', (n) => { for (let i = perfEntries.length - 1; i >=
 define(perf, 'clearResourceTimings', () => {});
 define(perf, 'setResourceTimingBufferSize', () => {});
 define(perf, 'toJSON', () => ({ timeOrigin: perf.timeOrigin }));
-define(perf, 'timing', { navigationStart: Math.floor(perf.timeOrigin), fetchStart: Math.floor(perf.timeOrigin), domLoading: Math.floor(perf.timeOrigin), domContentLoadedEventStart: 0, domContentLoadedEventEnd: 0, loadEventStart: 0, loadEventEnd: 0, responseEnd: Math.floor(perf.timeOrigin), domInteractive: 0, domComplete: 0 });
+// Made on first use, from the realm's clock origin (which the booted prelude does
+// not hold, so one heap image of it serves every realm).
+Object.defineProperty(perf, 'timing', { configurable: true, enumerable: false, get() { const o = Math.floor(perf.timeOrigin); const t = { navigationStart: o, fetchStart: o, domLoading: o, domContentLoadedEventStart: 0, domContentLoadedEventEnd: 0, loadEventStart: 0, loadEventEnd: 0, responseEnd: o, domInteractive: 0, domComplete: 0 }; define(perf, 'timing', t); return t; } });
 define(perf, 'navigation', { type: 0, redirectCount: 0 });
 define(perf, 'memory', { usedJSHeapSize: 10000000, totalJSHeapSize: 20000000, jsHeapSizeLimit: 2000000000 });
 define(perf, 'eventCounts', new Map());
