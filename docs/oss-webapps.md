@@ -198,19 +198,24 @@ smaller apps and 11.7 MB for react-admin.
 The process's resident memory went from 52 MiB to 411 MiB over the six visits in one
 process (+46 MiB for TodoMVC React, the first; +171 MiB for react-admin).
 
-**Fidelity against Chromium.** Framework-parity fixtures run TodoMVC's React and Vue
-builds and JSON Server's home page (`oss-*` in
-`crates/web/engine/tests/framework-parity`): TodoMVC passes 83.6-92.5 % of nodes per
-state and JSON Server 5.9 %, with 1.07-2.93 % of pixels differing
+**Fidelity against Chromium.** Framework-parity fixtures run every app here
+(`oss-*` in `crates/web/engine/tests/framework-parity`): TodoMVC's React and Vue builds
+and JSON Server's home as pages, and Conduit React, Conduit Vue and react-admin as
+sites, served from their packages with the API's answers recorded from this world's
+own services (scripts/web-parity/README.md, "Real apps served as sites"). Every state
+passes every node except two: JSON Server's home, 84/85 (a kaomoji with Arabic letters,
+which Chromium reports as one rect per bidi run), and react-admin's posts list,
+940/941. Pixels differ by 0.6-4.5% per state, glyph rasterisation and antialiasing
 (`node scripts/web-parity/gallery.mjs comparisons/oss-webapps oss-todomvc-react
-oss-todomvc-vue oss-json-server`). The misses are in layout and style, not script:
-TodoMVC's `appearance: none` checkbox between `top: 0` and `bottom: 0` is 13 px tall
-where Chromium stretches it to 40; its `h1` keeps the old h1-in-section 0.83em
-margins where Chromium uses 0.67em; the new-todo field computes font-weight 300 where
-Chromium has 400; JSON Server's system font stack resolves to Ubuntu in Chromium on
-the machine that dumped it. The Conduit frontends and react-admin have no fixture:
-their bundles are ES modules (or load their route chunks from root-relative paths)
-and need their API, which `dump.mjs`'s `file:` pages can load neither of.
+oss-todomvc-vue oss-json-server oss-conduit-react oss-conduit-vue oss-react-admin`).
+Getting there took, in the engine: WebKit's `-webkit-*device-pixel-ratio` media
+features, Chromium's form-control UA details (font reset, checkbox margins, disabled
+colours, no h1-in-section rules), quirks-mode flex bodies, sub/super shifts, hanging
+spaces in max-content, nowrap atomics wrapping, fieldsets containing floats, fixed
+boxes inside fixed boxes and inside stacking contexts, the initial containing block
+for root-level absolutes, cyclic percentages in intrinsic sizes, table cells'
+min/max-width, wrapped flex lines stretching into min-height, zero-height lines for
+empty inline boxes and fractional letter spacing in paint.
 
 **The compiled TSX path.** None of the React apps compiles with `cw-tsx`: TodoMVC's
 and Conduit's modules are `.js`/`.jsx` files it does not resolve
@@ -238,14 +243,11 @@ Each gap was found by an app failing and is covered by a test:
 - **The browser** allows a page 250 million VM steps per task (react-admin's first
   render is one task of 60-100 million).
 
-Left for the form-controls work, with the flows that show them:
-
-- Enter in a text field of a form with no submit button and more than one text field
-  submits the form; browsers do not (Conduit React's editor, where the tests add no
-  tag for that reason).
-- A text field fires `change` on blur whenever it was typed in, even when script has
-  since set its value back to what it was on focus; browsers compare values (Conduit
-  Vue's tag field, where it adds an empty tag).
+Two form-control differences the apps showed are fixed: Enter in a form with several
+text fields and no submit button no longer submits it (HTML's implicit submission), so
+Conduit React's editor test adds a tag; and a text field fires `change` on blur only
+when its value differs from the one at focus or the last change, so Conduit Vue no
+longer adds an empty tag (both checked in `oss_webapps.rs`).
 
 Behaviour of the apps themselves, the same in Chromium: Conduit React's profile pages
 never render (its route is `/@:username`, which React Router 6 does not read as a

@@ -230,9 +230,53 @@ state's pass rate is below its entry in `framework-parity/thresholds.json`:
 cargo test -p cw-web --features pipeline --test framework_parity -- --nocapture
 ```
 
-Every state of every fixture now matches Chromium node for node (all 51 framework
-states and all 12 static fixtures at 100%). What still differs is only visible in the
-pictures (`gallery.mjs`, `compare.mjs`), and it is the environment, not layout:
+### Real apps served as sites
+
+The `oss-*` fixtures are real open-source apps as `worlds/oss-web` serves them
+(docs/oss-webapps.md). TodoMVC and JSON Server's home load from a page like the others;
+Conduit (React and Vue) and react-admin cannot (ES modules, chunks loaded from
+root-relative paths, an API on another host), so each is a **site**:
+`<name>.site.json` names the URL to open, the node-app package whose `public/` each
+static host serves (with its SPA fallback), the API hosts, `<name>.api.json` (the
+API's answers) and, for an app with its own timers, `settle_ms`:
+
+```sh
+D=crates/web/engine/tests/framework-parity
+node scripts/web-parity/dump.mjs $D/oss-conduit-react.site.json \
+  --state $D/oss-conduit-react.steps.json --state-name tag --out $D/oss-conduit-react.tag.chromium.json
+```
+
+dump.mjs answers every request from the package and the recording (anything else fails,
+as offline in the world), waits for the network to go quiet and `settle_ms` after load
+and each step, and runs Chromium's clock in UTC, as the world's is. An API request that
+is not in the recording is listed and fails the dump: add it to `<name>.api.json`'s
+list and record the answers from the world's own services (a fresh `worlds/oss-web`
+world, the app's backend on the in-world VM):
+
+```sh
+cargo test -p computerworld --features oss-web --test oss_parity_record -- --ignored
+```
+
+`framework_parity.rs` serves the same files and recording to the realm and advances
+`settle_ms` of virtual time. Development aids: `PARITY_HTML=<file>` makes dump.mjs write
+the page's DOM after the steps (for choosing selectors), and `PARITY_EVAL=<js>` /
+`CW_PARITY_EVAL=<js>` print what an expression evaluates to after the steps in Chromium
+and in the engine, the quickest way to compare a computed style or a probe of intrinsic
+sizes on both sides.
+
+`--baseline-fonts` runs Chromium with a fontconfig that knows only the Liberation and
+DejaVu directories (and includes the system's `conf.d` for hinting and aliases). JSON
+Server's home asks for a system stack that reaches Ubuntu on the dump machine, a face
+no stock desktop and not the engine has; its dump is taken with this flag.
+
+### What still differs
+
+Every framework-parity state matches Chromium node for node except two: JSON Server's
+home (84/85: a text node with Arabic letters, which Chromium reports as one rect per
+bidi run and the engine as one) and react-admin's posts list (940/941: one hidden
+popover's input background). All 12 static fixtures are at 100%. What still differs is
+visible only in the pictures (`gallery.mjs`, `compare.mjs`), and it is the
+environment, not layout:
 
 - **Glyph rasterisation.** Chromium draws text through Skia with FreeType hinting and
   subpixel positioning; `cw-render` rasterises the same faces its own way. Every run of
@@ -246,7 +290,9 @@ pictures (`gallery.mjs`, `compare.mjs`), and it is the environment, not layout:
   the border box; on a rounded box the small corner pieces inside the rect but outside
   the curve are left unshadowed where Chromium shades them.
 
-Chromium defaults of the machine the dumps were taken on that the engine reproduces,
+Chromium defaults of the machine the dumps were taken on that the engine reproduces
+(the framework harness runs every realm with `FontEnvironment::LinuxBaseline`, like
+the static runner),
 and that would differ on another machine:
 
 - **Fonts.** fontconfig there has only Liberation and DejaVu: `Arial`/`Helvetica`/
