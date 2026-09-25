@@ -55,7 +55,10 @@ use crate::page_script::{PageScript, ScriptState};
 use crate::{cookie_path_matches, parse_cookie, Cookie, MAX_TEXT_RESOURCE_BYTES};
 
 /// VM steps a document's load (each `<script>`) and each later entry may spend.
-pub const STEP_BUDGET: u64 = 30_000_000;
+/// A real app's first render is one task and can be large: react-admin's post list
+/// (MUI, react-query) commits in one scheduler task of 60-100 million steps, so the
+/// budget is what that needs with room to spare (about 2.5 s of virtual time).
+pub const STEP_BUDGET: u64 = 250_000_000;
 /// Virtual milliseconds the event loop is given to settle after every event: zero
 /// and near-zero timers (`$(fn)`, a framework's scheduler, a resolved `fetch`) and
 /// one animation frame run before the next paint, as they would in a browser, even
