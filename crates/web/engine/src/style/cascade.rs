@@ -395,7 +395,7 @@ impl StyleEngine {
     /// elements in `changed`, and whatever changed in `ctx` since the set was last
     /// computed (hover, focus, active, target): only the elements those changes can
     /// affect are rematched (see `invalidation`), and a child is recomputed when its
-    /// parent's style changed. Returns whether any computed style changed.
+    /// parent's style changed.
     pub fn update(
         &self,
         doc: &Document,
@@ -403,7 +403,7 @@ impl StyleEngine {
         mutations: &[Mutation],
         changed: &[NodeId],
         ctx: &MatchContext,
-    ) -> Result<bool, Unsupported> {
+    ) -> Result<Restyled, Unsupported> {
         let engine = Engine::new(self, doc, ctx);
         engine.fill_set(set);
         let targets = {
@@ -412,14 +412,17 @@ impl StyleEngine {
         };
         set.match_state = Some(invalidation::MatchState::of(ctx));
         let Some(root) = doc.document_element() else {
-            return Ok(false);
+            return Ok(Restyled::default());
         };
         let mut unsupported = Vec::new();
         let any = if targets.whole {
             engine.style_subtree(set, root, &mut unsupported)?;
-            true
+            Delta {
+                any: true,
+                layout: true,
+            }
         } else if targets.is_empty() {
-            false
+            Delta::default()
         } else {
             let root_fs = set.root_font_size_au;
             let plan = Plan::new(doc, targets);
@@ -445,7 +448,10 @@ impl StyleEngine {
         for u in unsupported {
             set.record_unsupported(u);
         }
-        Ok(any)
+        Ok(Restyled {
+            changed: any.any,
+            layout_changed: any.layout,
+        })
     }
 
     fn record(&mut self, u: Unsupported) {
@@ -954,7 +960,7 @@ impl<'a> Engine<'a> {
         root_font_size: Option<Au>,
         keys: &AncestorKeys,
         unsupported: &mut Vec<Unsupported>,
-    ) -> Result<(bool, bool), Unsupported> {
+    ) -> Result<(bool, Delta), Unsupported> {
         let w = self.winners(node, None, keys, unsupported)?;
         let style = self.compute(node, &w, parent, root_font_size, false);
         let is_root = root_font_size.is_none();
@@ -974,14 +980,17 @@ impl<'a> Engine<'a> {
         } else {
             set.quirk_table_color.remove(&node);
         }
+        let mut delta = Delta::default();
         let (style, own_changed) = match set.get_rc(node) {
             Some(old) if **old == style => (old.clone(), false),
-            _ => {
+            old => {
+                delta.layout = old.is_none_or(|o| !o.layout_eq(&style));
                 let style = Rc::new(style);
                 set.set(node, style.clone());
                 (style, true)
             }
         };
+        delta.any = own_changed;
         let mut before = None;
         let mut after = None;
         let mut placeholder = None;
@@ -1024,7 +1033,6 @@ impl<'a> Engine<'a> {
                 marker = Some(ms);
             }
         }
-        let mut changed = own_changed;
         for (map, new) in [
             (&mut set.before, before),
             (&mut set.after, after),
@@ -1032,16 +1040,23 @@ impl<'a> Engine<'a> {
             (&mut set.marker, marker),
         ] {
             match new {
-                None => changed |= map.remove(&node).is_some(),
+                None => {
+                    if map.remove(&node).is_some() {
+                        delta.any = true;
+                        delta.layout = true;
+                    }
+                }
                 Some(n) => {
-                    if map.get(&node).is_none_or(|o| **o != n) {
+                    let old = map.get(&node);
+                    if old.is_none_or(|o| **o != n) {
+                        delta.any = true;
+                        delta.layout |= old.is_none_or(|o| !o.layout_eq(&n));
                         map.insert(node, Rc::new(n));
-                        changed = true;
                     }
                 }
             }
         }
-        Ok((own_changed, changed))
+        Ok((own_changed, delta))
     }
 
     /// Styles `node` and everything under it.
@@ -1085,7 +1100,7 @@ impl<'a> Engine<'a> {
 
     /// The incremental walk: from `node` down, rematching the targets, recomputing
     /// the children of every element whose style changed, and descending only
-    /// where a target lies below. Returns whether any style changed.
+    /// where a target lies below. Returns what changed.
     #[allow(clippy::too_many_arguments)]
     fn walk(
         &self,
@@ -1098,18 +1113,24 @@ impl<'a> Engine<'a> {
         keys: &AncestorKeys,
         plan: &Plan,
         unsupported: &mut Vec<Unsupported>,
-    ) -> Result<bool, Unsupported> {
+    ) -> Result<Delta, Unsupported> {
         match self.doc.kind(node) {
             NodeKind::Text(_) => {
                 if forced || parent_changed || plan.subtrees.contains(&node) {
-                    let same = set.get_rc(node).is_some_and(|o| Rc::ptr_eq(o, parent));
+                    let old = set.get_rc(node);
+                    let delta = Delta {
+                        any: !old.is_some_and(|o| Rc::ptr_eq(o, parent)),
+                        // A text node's style is its parent's, whose change is
+                        // counted there; a newly styled one is new content.
+                        layout: old.is_none(),
+                    };
                     set.set(node, parent.clone());
-                    return Ok(!same);
+                    return Ok(delta);
                 }
-                return Ok(false);
+                return Ok(Delta::default());
             }
             NodeKind::Element { .. } => {}
-            _ => return Ok(false),
+            _ => return Ok(Delta::default()),
         }
         let forced = forced || plan.subtrees.contains(&node);
         let unstyled = set.get_rc(node).is_none();
@@ -1117,7 +1138,7 @@ impl<'a> Engine<'a> {
             if forced || parent_changed || unstyled || plan.rematch.contains(&node) {
                 self.style_element(set, node, parent, root_font_size, keys, unsupported)?
             } else {
-                (false, false)
+                (false, Delta::default())
             };
         if !(forced || own_changed || plan.on_path(node)) {
             return Ok(changed);
@@ -1130,17 +1151,18 @@ impl<'a> Engine<'a> {
         }
         let child_keys = keys.under(self.doc, node);
         for c in children {
-            changed |= self.walk(
-                set,
-                c,
-                &style,
-                own_changed,
-                forced,
-                Some(root_fs),
-                &child_keys,
-                plan,
-                unsupported,
-            )?;
+            changed = changed
+                | self.walk(
+                    set,
+                    c,
+                    &style,
+                    own_changed,
+                    forced,
+                    Some(root_fs),
+                    &child_keys,
+                    plan,
+                    unsupported,
+                )?;
         }
         Ok(changed)
     }
@@ -1209,6 +1231,32 @@ impl<'a> Engine<'a> {
         t.rematch.retain(|n| is_connected(doc, *n));
         t.subtrees.retain(|n| is_connected(doc, *n));
         t
+    }
+}
+
+/// What an incremental restyle changed.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Restyled {
+    /// Some computed style (of an element, pseudo-element or text node) changed.
+    pub changed: bool,
+    /// Some change can move or resize boxes (see `ComputedStyle::layout_eq`); when
+    /// false, and the document did not change, the last layout still stands.
+    pub layout_changed: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct Delta {
+    any: bool,
+    layout: bool,
+}
+
+impl std::ops::BitOr for Delta {
+    type Output = Delta;
+    fn bitor(self, o: Delta) -> Delta {
+        Delta {
+            any: self.any | o.any,
+            layout: self.layout | o.layout,
+        }
     }
 }
 

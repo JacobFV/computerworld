@@ -1343,6 +1343,42 @@ impl ComputedStyle {
         s
     }
 
+    /// Whether the two styles lay out the same: equal but for properties only
+    /// paint and hit testing read (colours, backgrounds, shadows, outlines, cursor,
+    /// `pointer-events`, custom properties, transitions), with opacity compared only
+    /// as far as it makes a stacking context.
+    pub fn layout_eq(&self, other: &ComputedStyle) -> bool {
+        let mut o = other.clone();
+        o.color = self.color;
+        o.background_color = self.background_color;
+        o.background.clone_from(&self.background);
+        o.box_shadow.clone_from(&self.box_shadow);
+        o.text_shadow.clone_from(&self.text_shadow);
+        o.outline = self.outline;
+        o.outline_offset = self.outline_offset;
+        for (a, b) in [
+            (&mut o.border.top, &self.border.top),
+            (&mut o.border.right, &self.border.right),
+            (&mut o.border.bottom, &self.border.bottom),
+            (&mut o.border.left, &self.border.left),
+        ] {
+            a.color = b.color;
+        }
+        o.border_radius = self.border_radius;
+        o.text_decoration = self.text_decoration;
+        o.text_decoration_effective = self.text_decoration_effective;
+        o.cursor = self.cursor;
+        o.pointer_events = self.pointer_events;
+        o.user_select = self.user_select;
+        o.custom = self.custom.clone();
+        o.transitions.clone_from(&self.transitions);
+        o.animations.clone_from(&self.animations);
+        if (o.opacity < 255) == (self.opacity < 255) {
+            o.opacity = self.opacity;
+        }
+        *self == o
+    }
+
     pub fn is_positioned(&self) -> bool {
         !matches!(self.position, Position::Static)
     }

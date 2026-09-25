@@ -61,7 +61,7 @@ impl ImageSizes for NoImages {
 }
 
 /// Image sizes from a map, for tests and simple hosts.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ImageSizeMap(pub BTreeMap<String, (u32, u32)>);
 
 impl ImageSizes for ImageSizeMap {

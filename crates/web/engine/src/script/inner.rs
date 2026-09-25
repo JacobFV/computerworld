@@ -173,6 +173,16 @@ pub struct Inner {
     styles_valid: bool,
     /// The cascade engine built from the current sheets (see `ensure_styles`).
     style_engine: Option<style::StyleEngine>,
+    /// Whether the document or a style layout reads changed since the last layout
+    /// (see `ensure_layout`).
+    layout_dirty: bool,
+    /// The viewport, scroll offsets, image sizes and scrollbar mode the current
+    /// tree was laid out with.
+    laid_out: Option<(Viewport, ScrollState, ImageSizeMap, bool)>,
+    /// Bumped when the fragment tree is replaced, and when a style flush changed
+    /// any style: the key of the hit-test list.
+    paint_epoch: u64,
+    hit_list: Option<(u64, crate::paint::hit::HitList)>,
     /// Elements whose matching state (hover, focus, active) changed since the last
     /// restyle.
     state_changed: Vec<NodeId>,
@@ -337,6 +347,10 @@ impl Inner {
             styles: StyleSet::new(),
             styles_valid: false,
             style_engine: None,
+            layout_dirty: true,
+            laid_out: None,
+            paint_epoch: 0,
+            hit_list: None,
             state_changed: Vec::new(),
             tree: None,
             tree_generation: u64::MAX,
@@ -878,21 +892,36 @@ impl Inner {
             self.focus_visible,
             &self.target_id,
         );
-        match &self.style_engine {
-            None => self.styles = StyleSet::new(),
+        // Layout reads the document, so any mutation relayouts; a style change
+        // does only when it can move a box (`Restyled::layout_changed`).
+        self.layout_dirty |= !mutations.is_empty();
+        let restyled = match &self.style_engine {
+            None => {
+                self.styles = StyleSet::new();
+                style::Restyled {
+                    changed: true,
+                    layout_changed: true,
+                }
+            }
             Some(engine) if !self.styles_valid => {
                 self.styles = engine
                     .cascade(&self.doc, &ctx)
                     .unwrap_or_else(|_| StyleSet::new());
-            }
-            Some(engine) => {
-                if !mutations.is_empty() {
-                    let _ = engine.restyle(&self.doc, &mut self.styles, &mutations, &ctx);
-                }
-                if !changed.is_empty() {
-                    let _ = engine.restyle_state(&self.doc, &mut self.styles, &changed, &ctx);
+                style::Restyled {
+                    changed: true,
+                    layout_changed: true,
                 }
             }
+            Some(engine) => engine
+                .update(&self.doc, &mut self.styles, &mutations, &changed, &ctx)
+                .unwrap_or(style::Restyled {
+                    changed: true,
+                    layout_changed: true,
+                }),
+        };
+        self.layout_dirty |= restyled.layout_changed;
+        if restyled.changed {
+            self.paint_epoch += 1;
         }
         self.styles_valid = true;
         self.styles_generation = self.generation;
@@ -1037,6 +1066,21 @@ impl Inner {
         if self.tree.is_some() && self.tree_generation == self.generation {
             return;
         }
+        // Nothing layout reads changed (a hover or focus change that restyled
+        // nothing, or only colours): the tree stands.
+        let same_inputs = self.laid_out.as_ref().is_some_and(|(v, s, i, o)| {
+            *v == self.viewport
+                && *s == self.scroll
+                && *i == self.images
+                && *o == self.layout_cache.overlay_scrollbars
+        });
+        if self.tree.is_some() && !self.layout_dirty && same_inputs {
+            self.tree_generation = self.generation;
+            if style::profile::verifying() {
+                self.verify_incremental();
+            }
+            return;
+        }
         let opts = LayoutOptions {
             images: &self.images,
             scroll: &self.scroll,
@@ -1053,6 +1097,14 @@ impl Inner {
             self.tree = Some(tree);
             self.tree_generation = self.generation;
         }
+        self.layout_dirty = false;
+        self.laid_out = Some((
+            self.viewport,
+            self.scroll.clone(),
+            self.images.clone(),
+            self.layout_cache.overlay_scrollbars,
+        ));
+        self.paint_epoch += 1;
         if style::profile::verifying() {
             self.verify_incremental();
         }
@@ -1173,7 +1225,11 @@ impl Inner {
                     .insert(*n, crate::geom::Point { x: *ox, y: *oy });
             }
         }
-        let hit = crate::paint::hit::hit_test_with(tree, &self.styles, self.viewport, &ctx, x, y);
+        if self.hit_list.as_ref().map(|(e, _)| *e) != Some(self.paint_epoch) {
+            let list = crate::paint::hit::HitList::build(tree, &self.styles, self.viewport, &ctx);
+            self.hit_list = Some((self.paint_epoch, list));
+        }
+        let hit = self.hit_list.as_ref().and_then(|(_, l)| l.at(x, y));
         match hit {
             Some(n) => {
                 // Text nodes map to their element.

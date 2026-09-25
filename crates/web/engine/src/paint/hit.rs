@@ -34,12 +34,37 @@ pub fn hit_test_with(
     x_px: i32,
     y_px: i32,
 ) -> Option<NodeId> {
-    let _t = crate::style::profile::span(crate::style::profile::Phase::HitTest);
-    let mut p = Painter::new(None, styles, tree, viewport, ctx);
-    p.run();
-    p.hits
-        .iter()
-        .rev()
-        .find(|h| !h.pointer_none && h.covers(x_px, y_px))
-        .map(|h| h.node)
+    HitList::build(tree, styles, viewport, ctx).at(x_px, y_px)
+}
+
+/// Every painted box and text run in painting order, with its clips: what hit
+/// testing walks. Built once per layout (and style change), it answers any number
+/// of points, so a host that hit-tests a pointer move and then a click on the same
+/// layout pays for one traversal.
+#[derive(Debug, Default)]
+pub struct HitList {
+    hits: Vec<super::HitItem>,
+}
+
+impl HitList {
+    pub fn build(
+        tree: &FragmentTree,
+        styles: &StyleSet,
+        viewport: Viewport,
+        ctx: &PaintContext,
+    ) -> HitList {
+        let _t = crate::style::profile::span(crate::style::profile::Phase::HitTest);
+        let mut p = Painter::new(None, styles, tree, viewport, ctx);
+        p.run();
+        HitList { hits: p.hits }
+    }
+
+    /// The topmost node at `(x, y)` in scene pixels.
+    pub fn at(&self, x_px: i32, y_px: i32) -> Option<NodeId> {
+        self.hits
+            .iter()
+            .rev()
+            .find(|h| !h.pointer_none && h.covers(x_px, y_px))
+            .map(|h| h.node)
+    }
 }
