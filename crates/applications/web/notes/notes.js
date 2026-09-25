@@ -1,7 +1,9 @@
 // Compiled by cw-tsx from Notes.tsx: types stripped, JSX as React.createElement.
 'use strict';
+const __cw_m = [{}, {}, {}];
 // ../sdk/cw.ts
-const __cw_mod_1 = (() => {
+(() => {
+Object.defineProperties(__cw_m[1], { declaredStore: { enumerable: true, get: () => declaredStore }, useStore: { enumerable: true, get: () => useStore }, useEnv: { enumerable: true, get: () => useEnv } });
 const { useEffect, useState, useSyncExternalStore } = React;
 function declaredStore(init) {
 	const saved = cw.state.get();
@@ -36,16 +38,15 @@ function useEnv() {
 	useEffect(() => cw.onEnv(setEnv), []);
 	return env;
 }
-return { declaredStore, useStore, useEnv };
 })();
 // Notes.tsx
 (() => {
+const __cw_i1 = __cw_m[1];
 const { useEffect, useLayoutEffect, useRef } = React;
 const { createRoot } = ReactDOM;
-const { declaredStore, useEnv, useStore } = __cw_mod_1;
 /** A note is bounded like every field the desktop keeps. */
 const TEXT_LIMIT = 64 * 1024;
-const store = declaredStore(() => ({
+const store = __cw_i1.declaredStore(() => ({
 	folder: cw.argument ? cw.argument.replace(/\/+$/, '') : 'Notes',
 	entries: [],
 	open: null,
@@ -300,8 +301,8 @@ function Note(props) {
 	}, s.dirty ? 'Save •' : 'Save'));
 }
 function Notes() {
-	const s = useStore(store);
-	const env = useEnv();
+	const s = __cw_i1.useStore(store);
+	const env = __cw_i1.useEnv();
 	const narrow = env.mobile || env.width < 480;
 	const heading = title(env.platform);
 	const body = useRef(null);
