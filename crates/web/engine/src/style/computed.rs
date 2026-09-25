@@ -1441,6 +1441,8 @@ pub struct StyleSet {
     pub(crate) quirk_table_color: std::collections::BTreeSet<crate::dom::NodeId>,
     /// The root element's computed font size; zero until a cascade ran.
     pub(crate) root_font_size_au: Au,
+    /// The matching state (hover, focus, ...) the styles were computed against.
+    pub(crate) match_state: Option<crate::style::invalidation::MatchState>,
 }
 
 impl StyleSet {

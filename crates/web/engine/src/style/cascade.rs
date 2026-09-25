@@ -13,6 +13,7 @@ use std::rc::Rc;
 
 use super::computed::*;
 use super::hints;
+use super::invalidation;
 use super::properties::*;
 use super::shorthands;
 use super::ua;
@@ -201,6 +202,7 @@ pub struct StyleEngine {
     marker: SelectorIndex<RuleData>,
     placeholder: SelectorIndex<RuleData>,
     deps: SelectorDeps,
+    inval: invalidation::InvalidationMap,
     layer_count: usize,
     unsupported: Vec<Unsupported>,
     font_faces: Vec<FontFace>,
@@ -248,6 +250,7 @@ impl StyleEngine {
             marker: SelectorIndex::new(),
             placeholder: SelectorIndex::new(),
             deps: SelectorDeps::default(),
+            inval: invalidation::InvalidationMap::default(),
             layer_count: 0,
             unsupported: Vec::new(),
             font_faces: Vec::new(),
@@ -335,6 +338,7 @@ impl StyleEngine {
                     e.deps.has |= d.has;
                     e.deps.state |= d.state;
                     e.deps.form |= d.form;
+                    e.inval.add(sel);
                     index.insert(sel.clone(), data);
                 }
             }
@@ -354,6 +358,7 @@ impl StyleEngine {
         let engine = Engine::new(self, doc, ctx);
         let mut set = StyleSet::new();
         engine.fill_set(&mut set);
+        set.match_state = Some(invalidation::MatchState::of(ctx));
         let mut unsupported = Vec::new();
         if let Some(root) = doc.document_element() {
             engine.style_subtree(&mut set, root, &mut unsupported)?;
@@ -372,27 +377,7 @@ impl StyleEngine {
         mutations: &[Mutation],
         ctx: &MatchContext,
     ) -> Result<(), Unsupported> {
-        let engine = Engine::new(self, doc, ctx);
-        engine.fill_set(set);
-        let mut unsupported = Vec::new();
-        match engine.invalidation_roots(set, mutations) {
-            None => {
-                if let Some(root) = doc.document_element() {
-                    engine.style_subtree(set, root, &mut unsupported)?;
-                }
-            }
-            Some(roots) => {
-                for r in roots {
-                    if is_connected(doc, r) {
-                        engine.style_subtree(set, r, &mut unsupported)?;
-                    }
-                }
-            }
-        }
-        for u in unsupported {
-            set.record_unsupported(u);
-        }
-        Ok(())
+        self.update(doc, set, mutations, &[], ctx).map(|_| ())
     }
 
     /// Restyles after matching-state changes (see [`restyle_state`]).
@@ -403,40 +388,64 @@ impl StyleEngine {
         changed: &[NodeId],
         ctx: &MatchContext,
     ) -> Result<(), Unsupported> {
+        self.update(doc, set, &[], changed, ctx).map(|_| ())
+    }
+
+    /// Brings `set` up to date after `mutations`, the form-state changes of the
+    /// elements in `changed`, and whatever changed in `ctx` since the set was last
+    /// computed (hover, focus, active, target): only the elements those changes can
+    /// affect are rematched (see `invalidation`), and a child is recomputed when its
+    /// parent's style changed. Returns whether any computed style changed.
+    pub fn update(
+        &self,
+        doc: &Document,
+        set: &mut StyleSet,
+        mutations: &[Mutation],
+        changed: &[NodeId],
+        ctx: &MatchContext,
+    ) -> Result<bool, Unsupported> {
         let engine = Engine::new(self, doc, ctx);
-        if !engine.deps.state && !engine.deps.form {
-            return Ok(());
-        }
+        engine.fill_set(set);
+        let targets = {
+            let _t = super::profile::span(super::profile::Phase::Invalidation);
+            engine.targets(set, mutations, changed, ctx)
+        };
+        set.match_state = Some(invalidation::MatchState::of(ctx));
+        let Some(root) = doc.document_element() else {
+            return Ok(false);
+        };
         let mut unsupported = Vec::new();
-        if engine.deps.has {
-            if let Some(root) = doc.document_element() {
+        let any = if targets.whole {
+            engine.style_subtree(set, root, &mut unsupported)?;
+            true
+        } else if targets.is_empty() {
+            false
+        } else {
+            let root_fs = set.root_font_size_au;
+            let plan = Plan::new(doc, targets);
+            let initial = Rc::new(ComputedStyle::initial());
+            let keys = AncestorKeys::of(doc, root);
+            let any = engine.walk(
+                set,
+                root,
+                &initial,
+                false,
+                false,
+                None,
+                &keys,
+                &plan,
+                &mut unsupported,
+            )?;
+            // `rem` everywhere follows the root's font size.
+            if set.root_font_size_au != root_fs {
                 engine.style_subtree(set, root, &mut unsupported)?;
             }
-        } else {
-            let mut roots: Vec<NodeId> = Vec::new();
-            for c in changed {
-                if !is_connected(doc, *c) {
-                    continue;
-                }
-                let r = if engine.deps.structural {
-                    doc.parent(*c).filter(|p| doc.is_element(*p)).unwrap_or(*c)
-                } else {
-                    *c
-                };
-                if doc.ancestors(r).any(|a| roots.contains(&a)) || roots.contains(&r) {
-                    continue;
-                }
-                roots.retain(|o| !doc.ancestors(*o).any(|a| a == r));
-                roots.push(r);
-            }
-            for r in roots {
-                engine.style_subtree(set, r, &mut unsupported)?;
-            }
-        }
+            any
+        };
         for u in unsupported {
             set.record_unsupported(u);
         }
-        Ok(())
+        Ok(any)
     }
 
     fn record(&mut self, u: Unsupported) {
@@ -934,25 +943,20 @@ impl<'a> Engine<'a> {
         set.get_rc(p).cloned()
     }
 
-    fn style_node(
+    /// Computes one element's style and pseudo-element styles into `set`, keeping
+    /// the previous `Rc`s of whatever came out equal. Returns whether the element's
+    /// own style changed (its children inherit from it) and whether anything did.
+    fn style_element(
         &self,
         set: &mut StyleSet,
         node: NodeId,
-        parent: Rc<ComputedStyle>,
+        parent: &Rc<ComputedStyle>,
         root_font_size: Option<Au>,
         keys: &AncestorKeys,
         unsupported: &mut Vec<Unsupported>,
-    ) -> Result<(), Unsupported> {
-        match self.doc.kind(node) {
-            NodeKind::Text(_) => {
-                set.set(node, parent);
-                return Ok(());
-            }
-            NodeKind::Element { .. } => {}
-            _ => return Ok(()),
-        }
+    ) -> Result<(bool, bool), Unsupported> {
         let w = self.winners(node, None, keys, unsupported)?;
-        let style = self.compute(node, &w, &parent, root_font_size, false);
+        let style = self.compute(node, &w, parent, root_font_size, false);
         let is_root = root_font_size.is_none();
         let root_fs = if is_root {
             style.font.size
@@ -970,9 +974,18 @@ impl<'a> Engine<'a> {
         } else {
             set.quirk_table_color.remove(&node);
         }
-        let style = Rc::new(style);
-        set.set(node, style.clone());
-        set.clear_pseudos(node);
+        let (style, own_changed) = match set.get_rc(node) {
+            Some(old) if **old == style => (old.clone(), false),
+            _ => {
+                let style = Rc::new(style);
+                set.set(node, style.clone());
+                (style, true)
+            }
+        };
+        let mut before = None;
+        let mut after = None;
+        let mut placeholder = None;
+        let mut marker = None;
         if !style.display.is_none() {
             for (index, kind) in [(&self.data.before, 0u8), (&self.data.after, 1u8)] {
                 if index.is_empty() {
@@ -985,9 +998,9 @@ impl<'a> Engine<'a> {
                 let ps = self.compute(node, &pw, &style, Some(root_fs), true);
                 if matches!(ps.content, Content::Items(_)) && !ps.display.is_none() {
                     if kind == 0 {
-                        set.set_before(node, Rc::new(ps));
+                        before = Some(ps);
                     } else {
-                        set.set_after(node, Rc::new(ps));
+                        after = Some(ps);
                     }
                 }
             }
@@ -996,8 +1009,7 @@ impl<'a> Engine<'a> {
             // can recolour.
             if matches!(self.doc.tag(node), Some("input" | "textarea")) {
                 let pw = self.winners(node, Some(&self.data.placeholder), keys, unsupported)?;
-                let ps = self.compute(node, &pw, &style, Some(root_fs), true);
-                set.set_placeholder(node, Rc::new(ps));
+                placeholder = Some(self.compute(node, &pw, &style, Some(root_fs), true));
             }
             if matches!(style.display, Display::ListItem) {
                 let mw = self.winners(node, Some(&self.data.marker), keys, unsupported)?;
@@ -1009,11 +1021,52 @@ impl<'a> Engine<'a> {
                 if mw.get(LonghandId::TextTransform).is_none() {
                     ms.text_transform = TextTransform::None;
                 }
-                set.set_marker(node, Rc::new(ms));
+                marker = Some(ms);
             }
         }
-        let children: Vec<NodeId> = self.doc.children(node).collect();
-        if children.is_empty() {
+        let mut changed = own_changed;
+        for (map, new) in [
+            (&mut set.before, before),
+            (&mut set.after, after),
+            (&mut set.placeholder, placeholder),
+            (&mut set.marker, marker),
+        ] {
+            match new {
+                None => changed |= map.remove(&node).is_some(),
+                Some(n) => {
+                    if map.get(&node).is_none_or(|o| **o != n) {
+                        map.insert(node, Rc::new(n));
+                        changed = true;
+                    }
+                }
+            }
+        }
+        Ok((own_changed, changed))
+    }
+
+    /// Styles `node` and everything under it.
+    fn style_node(
+        &self,
+        set: &mut StyleSet,
+        node: NodeId,
+        parent: Rc<ComputedStyle>,
+        root_font_size: Option<Au>,
+        keys: &AncestorKeys,
+        unsupported: &mut Vec<Unsupported>,
+    ) -> Result<(), Unsupported> {
+        match self.doc.kind(node) {
+            NodeKind::Text(_) => {
+                set.set(node, parent);
+                return Ok(());
+            }
+            NodeKind::Element { .. } => {}
+            _ => return Ok(()),
+        }
+        self.style_element(set, node, &parent, root_font_size, keys, unsupported)?;
+        let style = set.get_rc(node).unwrap().clone();
+        let root_fs = root_font_size.unwrap_or(style.font.size);
+        let mut children = self.doc.children(node).peekable();
+        if children.peek().is_none() {
             return Ok(());
         }
         let child_keys = keys.under(self.doc, node);
@@ -1030,34 +1083,92 @@ impl<'a> Engine<'a> {
         Ok(())
     }
 
-    /// The subtree roots an incremental restyle must recompute, or `None` for the
-    /// whole document.
-    fn invalidation_roots(
+    /// The incremental walk: from `node` down, rematching the targets, recomputing
+    /// the children of every element whose style changed, and descending only
+    /// where a target lies below. Returns whether any style changed.
+    #[allow(clippy::too_many_arguments)]
+    fn walk(
+        &self,
+        set: &mut StyleSet,
+        node: NodeId,
+        parent: &Rc<ComputedStyle>,
+        parent_changed: bool,
+        forced: bool,
+        root_font_size: Option<Au>,
+        keys: &AncestorKeys,
+        plan: &Plan,
+        unsupported: &mut Vec<Unsupported>,
+    ) -> Result<bool, Unsupported> {
+        match self.doc.kind(node) {
+            NodeKind::Text(_) => {
+                if forced || parent_changed || plan.subtrees.contains(&node) {
+                    let same = set.get_rc(node).is_some_and(|o| Rc::ptr_eq(o, parent));
+                    set.set(node, parent.clone());
+                    return Ok(!same);
+                }
+                return Ok(false);
+            }
+            NodeKind::Element { .. } => {}
+            _ => return Ok(false),
+        }
+        let forced = forced || plan.subtrees.contains(&node);
+        let unstyled = set.get_rc(node).is_none();
+        let (own_changed, mut changed) =
+            if forced || parent_changed || unstyled || plan.rematch.contains(&node) {
+                self.style_element(set, node, parent, root_font_size, keys, unsupported)?
+            } else {
+                (false, false)
+            };
+        if !(forced || own_changed || plan.on_path(node)) {
+            return Ok(changed);
+        }
+        let style = set.get_rc(node).unwrap().clone();
+        let root_fs = root_font_size.unwrap_or(style.font.size);
+        let mut children = self.doc.children(node).peekable();
+        if children.peek().is_none() {
+            return Ok(changed);
+        }
+        let child_keys = keys.under(self.doc, node);
+        for c in children {
+            changed |= self.walk(
+                set,
+                c,
+                &style,
+                own_changed,
+                forced,
+                Some(root_fs),
+                &child_keys,
+                plan,
+                unsupported,
+            )?;
+        }
+        Ok(changed)
+    }
+
+    /// What an incremental restyle must rematch.
+    fn targets(
         &self,
         set: &mut StyleSet,
         mutations: &[Mutation],
-    ) -> Option<Vec<NodeId>> {
-        let _t = super::profile::span(super::profile::Phase::Invalidation);
+        changed: &[NodeId],
+        ctx: &MatchContext,
+    ) -> invalidation::Targets {
         let doc = self.doc;
-        let mut roots: BTreeSet<NodeId> = BTreeSet::new();
-        let mut whole = false;
-        let structural = self.deps.structural;
-        let parent_or_self = |n: NodeId| -> NodeId {
-            match doc.parent(n) {
-                Some(p) if doc.is_element(p) && structural => p,
-                _ => n,
-            }
-        };
+        let map = &self.inval;
+        let mut t = invalidation::Targets::default();
+        if map.has && (!mutations.is_empty() || !changed.is_empty()) {
+            t.whole = true;
+        }
         for m in mutations {
             match m {
                 Mutation::Inserted(n) => {
                     if !is_connected(doc, *n) {
                         continue;
                     }
-                    if self.deps.has {
-                        whole = true;
+                    t.subtrees.insert(*n);
+                    if let Some(p) = doc.parent(*n) {
+                        map.children_changed(doc, p, &mut t);
                     }
-                    roots.insert(parent_or_self(*n));
                 }
                 Mutation::Removed { node, old_parent } => {
                     if !is_connected(doc, *node) {
@@ -1065,101 +1176,69 @@ impl<'a> Engine<'a> {
                             set.clear(d);
                         }
                     }
-                    if self.deps.has {
-                        whole = true;
-                    }
-                    if is_connected(doc, *old_parent)
-                        && doc.is_element(*old_parent)
-                        && (structural || set.get(*old_parent).is_none())
-                    {
-                        roots.insert(*old_parent);
-                    } else if is_connected(doc, *old_parent) && !structural {
-                        // Text-node siblings of the removed node keep the parent's style;
-                        // nothing else changes without structural selectors.
+                    if is_connected(doc, *old_parent) {
+                        map.children_changed(doc, *old_parent, &mut t);
                     }
                 }
                 Mutation::AttributeChanged { node, name, old } => {
-                    if !is_connected(doc, *node) || !doc.is_element(*node) {
-                        continue;
-                    }
-                    let affects =
-                        match name.as_str() {
-                            "style" => true,
-                            "class" => {
-                                let mut names: BTreeSet<&str> = doc.classes(*node).collect();
-                                if let Some(o) = old {
-                                    names.extend(o.split_ascii_whitespace());
-                                }
-                                names.iter().any(|c| self.deps.classes.contains(*c))
-                                    || self.deps.attributes.contains("class")
-                            }
-                            "id" => {
-                                let mut ids: Vec<&str> = Vec::new();
-                                if let Some(i) = doc.attr(*node, "id") {
-                                    ids.push(i);
-                                }
-                                if let Some(o) = old {
-                                    ids.push(o);
-                                }
-                                ids.iter().any(|i| self.deps.ids.contains(*i))
-                                    || self.deps.attributes.contains("id")
-                            }
-                            n => {
-                                self.deps.attributes.contains(n)
-                                    || hints::is_hint_attribute(doc, *node, n)
-                                    || n == "lang"
-                                    || n == "xml:lang"
-                                    || (n == "href"
-                                        && self.deps.pseudo_classes.iter().any(|p| {
-                                            p == "link" || p == "any-link" || p == "visited"
-                                        }))
-                            }
-                        };
-                    if affects {
-                        if self.deps.has {
-                            whole = true;
-                        }
-                        roots.insert(parent_or_self(*node));
+                    if invalidation::connected_element(doc, *node) {
+                        map.attribute_changed(doc, *node, name, old.as_deref(), &mut t);
                     }
                 }
                 Mutation::TextChanged(n) => {
                     if !is_connected(doc, *n) {
                         continue;
                     }
-                    if self.deps.has {
-                        whole = true;
-                    }
-                    if self.deps.pseudo_classes.contains("empty") {
-                        if let Some(p) = doc.parent(*n) {
-                            if doc.is_element(p) {
-                                roots.insert(parent_or_self(p));
-                            }
-                        }
+                    if let Some(p) = doc.parent(*n) {
+                        map.children_changed(doc, p, &mut t);
                     }
                 }
             }
         }
-        if whole {
-            return None;
+        for c in changed {
+            if invalidation::connected_element(doc, *c) {
+                map.form_state_changed(doc, *c, &mut t);
+            }
         }
-        // Drop roots inside other roots; restyle the nearest styled ancestor when a
-        // root's parent has no style yet (it was inserted in the same batch).
-        let mut out: Vec<NodeId> = Vec::new();
-        for r in roots {
-            let mut r = r;
-            while let Some(p) = doc.parent(r) {
-                if !doc.is_element(p) || set.get(p).is_some() {
+        let new = invalidation::MatchState::of(ctx);
+        match &set.match_state {
+            Some(old) => map.state_changed(doc, old, &new, &mut t),
+            None => t.whole = true,
+        }
+        // Targets that left the document take nothing with them.
+        t.rematch.retain(|n| is_connected(doc, *n));
+        t.subtrees.retain(|n| is_connected(doc, *n));
+        t
+    }
+}
+
+/// An incremental restyle's targets, with every ancestor of one marked so the walk
+/// knows where to descend.
+struct Plan {
+    rematch: BTreeSet<NodeId>,
+    subtrees: BTreeSet<NodeId>,
+    path: Vec<bool>,
+}
+
+impl Plan {
+    fn new(doc: &Document, t: invalidation::Targets) -> Plan {
+        let mut path = vec![false; doc.len()];
+        for n in t.rematch.iter().chain(t.subtrees.iter()) {
+            for a in doc.ancestors(*n) {
+                if path[a.index()] {
                     break;
                 }
-                r = p;
+                path[a.index()] = true;
             }
-            if doc.ancestors(r).any(|a| out.contains(&a)) {
-                continue;
-            }
-            out.retain(|o| !doc.ancestors(*o).any(|a| a == r));
-            out.push(r);
         }
-        Some(out)
+        Plan {
+            rematch: t.rematch,
+            subtrees: t.subtrees,
+            path,
+        }
+    }
+    fn on_path(&self, n: NodeId) -> bool {
+        self.path.get(n.index()).copied().unwrap_or(false)
     }
 }
 
@@ -1634,15 +1713,6 @@ fn font_face(decls: &[Declaration]) -> Option<FontFace> {
     })
 }
 
-impl StyleSet {
-    fn clear_pseudos(&mut self, id: NodeId) {
-        self.before.remove(&id);
-        self.after.remove(&id);
-        self.marker.remove(&id);
-        self.placeholder.remove(&id);
-    }
-}
-
 /// Computes the style of every element in the document.
 pub fn cascade(
     doc: &Document,
@@ -1736,6 +1806,7 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
         marker: SelectorIndex::new(),
         placeholder: SelectorIndex::new(),
         deps: SelectorDeps::default(),
+        inval: invalidation::InvalidationMap::default(),
         layer_count: 0,
         unsupported: Vec::new(),
         font_faces: Vec::new(),
@@ -2520,5 +2591,148 @@ mod tests {
             s.get(by_id(&d, "a")).unwrap().font.typeface,
             cw_scene::Typeface::Arimo
         );
+    }
+
+    /// Applies `change` to the document (and the matching state), updates the set
+    /// incrementally, and requires the result to equal a full cascade.
+    fn check_update(
+        html: &str,
+        css: &str,
+        change: impl FnOnce(&mut Document, &mut MatchContext<'static>) -> Vec<NodeId>,
+    ) {
+        let mut doc = crate::html::parse(html);
+        doc.drain_mutations();
+        let sheets = [sheet(css)];
+        let engine =
+            StyleEngine::build(&sheets, &Media::default(), false, Strictness::Lenient).unwrap();
+        let mut ctx = MatchContext::new();
+        let mut set = engine.cascade(&doc, &ctx).unwrap();
+        let changed = change(&mut doc, &mut ctx);
+        let muts = doc.drain_mutations();
+        engine
+            .update(&doc, &mut set, &muts, &changed, &ctx)
+            .unwrap();
+        let fresh = engine.cascade(&doc, &ctx).unwrap();
+        if let Some(d) = set.diff(&fresh, &doc) {
+            panic!("incremental != full for {css:?}: {d}");
+        }
+    }
+
+    fn el(doc: &Document, id: &str) -> NodeId {
+        doc.by_id(id)[0]
+    }
+
+    #[test]
+    fn update_matches_a_full_cascade() {
+        let html = r#"<div id="root"><ul id="list" class="l"><li id="a" class="i">a</li><li id="b" class="i">b</li><li id="c">c</li></ul><section id="s"><p id="p"><span id="sp" class="t">x</span></p></section><p id="e"></p><input id="in"><select id="sel"><option id="o1">1</option><option id="o2">2</option></select></div>"#;
+        let class_cases: &[(&str, &str, &str)] = &[
+            (".x .t { color: red }", "s", "x"),
+            (
+                ".x > p { color: red } .x span { font-size: 30px }",
+                "s",
+                "x",
+            ),
+            (".x ~ li { color: red }", "a", "x"),
+            (".x + li span, .x ~ section .t { color: red }", "list", "x"),
+            (".x { font-size: 20px } .t { font-size: 2em }", "s", "x"),
+            (".x .t { color: red } .y .t { color: blue }", "p", "x y"),
+            (":is(.x .t) { color: red }", "s", "x"),
+            (":not(.x) > .t { color: red }", "p", "x"),
+            ("li:nth-child(2 of .x) { color: red }", "a", "x"),
+            ("li:nth-last-child(1 of .x) { color: red }", "c", "x"),
+            ("[class~=x] span { color: red }", "s", "x"),
+            (".x { --c: red } .t { color: var(--c) }", "s", "x"),
+            ("html.x .t { color: red }", "root", "x"),
+        ];
+        for (css, target, class) in class_cases {
+            check_update(html, css, |d, _| {
+                let n = el(d, target);
+                d.set_attr(n, "class", class);
+                vec![]
+            });
+            // And removing a class the element has.
+            check_update(html, css, |d, _| {
+                let n = el(d, "sp");
+                d.remove_attr(n, "class");
+                vec![]
+            });
+        }
+        let structural = [
+            "li:first-child { color: red }",
+            "li:last-child span { color: red }",
+            "li:nth-child(2n) { color: red }",
+            "li + li { color: red }",
+            ".i ~ li { color: blue }",
+            "p:empty { color: red } :empty + p { color: blue }",
+            "li:only-of-type { color: red }",
+        ];
+        for css in structural {
+            check_update(html, css, |d, _| {
+                let list = el(d, "list");
+                let li = d.create_element("li", vec![]);
+                let a = el(d, "a");
+                d.insert_before(list, li, Some(a));
+                vec![]
+            });
+            check_update(html, css, |d, _| {
+                let b = el(d, "b");
+                d.detach(b);
+                vec![]
+            });
+            check_update(html, css, |d, _| {
+                let e = el(d, "e");
+                let t = d.create_text("now");
+                d.append(e, t);
+                vec![]
+            });
+        }
+        let attr_cases: &[(&str, &str, &str, &str)] = &[
+            ("[data-on] .t { color: red }", "s", "data-on", "1"),
+            ("[data-on=yes] ~ p { color: red }", "s", "data-on", "yes"),
+            ("#q .t { color: red }", "p", "id", "q"),
+            ("[hidden] { display: none }", "p", "hidden", ""),
+            (":lang(fr) span { color: red }", "s", "lang", "fr"),
+            ("span { color: red }", "s", "style", "color: blue"),
+            ("span { color: red }", "p", "style", "font-size: 40px"),
+            ("option:checked { color: red }", "o2", "selected", ""),
+            ("input:disabled { color: red }", "in", "disabled", ""),
+            (
+                "input:placeholder-shown { color: red }",
+                "in",
+                "placeholder",
+                "x",
+            ),
+        ];
+        for (css, target, name, value) in attr_cases {
+            check_update(html, css, |d, _| {
+                let n = el(d, target);
+                d.set_attr(n, name, value);
+                vec![]
+            });
+        }
+        let state_css = ".group:hover .t { color: red } p:hover { color: blue } \
+             section:focus-within { color: green } #in:focus { color: red } \
+             li:active { color: red } :hover > span { font-size: 20px }";
+        check_update(html, state_css, |d, c| {
+            let sp = el(d, "sp");
+            let s = el(d, "s");
+            d.set_attr(s, "class", "group");
+            d.drain_mutations();
+            c.set_hovered(d, Some(sp));
+            vec![]
+        });
+        check_update(html, state_css, |d, c| {
+            let n = el(d, "in");
+            c.focused = Some(n);
+            let a = el(d, "a");
+            c.set_active(d, Some(a));
+            vec![]
+        });
+        check_update(html, "input:checked + span { color: red }", |d, _| {
+            let n = el(d, "in");
+            d.set_attr(n, "type", "checkbox");
+            d.set_attr(n, "checked", "");
+            vec![n]
+        });
     }
 }

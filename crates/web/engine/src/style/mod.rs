@@ -14,6 +14,7 @@ pub mod cascade;
 pub mod computed;
 pub mod fonts;
 pub mod hints;
+pub(crate) mod invalidation;
 pub mod profile;
 pub mod properties;
 pub mod serialize;
