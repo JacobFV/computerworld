@@ -132,7 +132,7 @@ pub const FINE_PER_AU: i64 = 1024;
 /// was 182.453 px against Chromium's 182.281).
 pub fn advance_fine(font: &Font, c: char) -> i64 {
     let style = font.scene_style();
-    let one = match metrics::advance_units(font.typeface, style, c) {
+    let one = match ascii_units(font.typeface, style, c) {
         Some((units, upem)) => (i64::from(units) * font.glyph_size().0 as i64 * FINE_PER_AU)
             .div_euclid(i64::from(upem)),
         None => {
@@ -280,13 +280,67 @@ pub fn ch_unit(font: &Font) -> Au {
 /// 0 = the family's own face, 1 = the family's slanted face, 2/3 = DejaVu fallback,
 /// 4 = only the rasteriser's own fallback.
 pub fn face_key(font: &Font, c: char) -> u8 {
-    match metrics::table_face(font.typeface, font.scene_style(), c) {
+    let style = font.scene_style();
+    if (c as u32) < 128 {
+        return with_ascii(font.typeface, style, |a| a.face[c as usize]);
+    }
+    face_key_uncached(font.typeface, style, c)
+}
+
+fn face_key_uncached(typeface: Typeface, style: cw_scene::Style, c: char) -> u8 {
+    match metrics::table_face(typeface, style, c) {
         Some((face, slanted)) => {
-            let base = if face == font.typeface { 0 } else { 2 };
+            let base = if face == typeface { 0 } else { 2 };
             base + slanted as u8
         }
         None => 4,
     }
+}
+
+/// The metrics tables' answers for the ASCII characters of one face and style,
+/// looked up once: layout measures every character of every run on every pass,
+/// and each lookup is a binary search or two.
+struct AsciiFace {
+    units: [Option<(u16, u32)>; 128],
+    face: [u8; 128],
+}
+
+type AsciiEntry = ((Typeface, cw_scene::Style), Box<AsciiFace>);
+
+fn with_ascii<R>(typeface: Typeface, style: cw_scene::Style, f: impl FnOnce(&AsciiFace) -> R) -> R {
+    use std::cell::RefCell;
+    thread_local! {
+        static FACES: RefCell<Vec<AsciiEntry>> =
+            const { RefCell::new(Vec::new()) };
+    }
+    FACES.with(|faces| {
+        let mut faces = faces.borrow_mut();
+        let i = match faces.iter().position(|(k, _)| *k == (typeface, style)) {
+            Some(i) => i,
+            None => {
+                let mut a = Box::new(AsciiFace {
+                    units: [None; 128],
+                    face: [0; 128],
+                });
+                for b in 0..128u8 {
+                    let c = b as char;
+                    a.units[b as usize] = metrics::advance_units(typeface, style, c);
+                    a.face[b as usize] = face_key_uncached(typeface, style, c);
+                }
+                faces.push(((typeface, style), a));
+                faces.len() - 1
+            }
+        };
+        f(&faces[i].1)
+    })
+}
+
+/// `metrics::advance_units`, from the ASCII table when it can.
+fn ascii_units(typeface: Typeface, style: cw_scene::Style, c: char) -> Option<(u16, u32)> {
+    if (c as u32) < 128 {
+        return with_ascii(typeface, style, |a| a.units[c as usize]);
+    }
+    metrics::advance_units(typeface, style, c)
 }
 
 /// `text-transform` applied to a string, keeping a byte-offset map from each output
