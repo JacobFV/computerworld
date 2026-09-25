@@ -542,6 +542,45 @@ fn export_target(v: &OrderedJson, require: bool) -> Option<String> {
     go(v, first).or_else(|| go(v, then))
 }
 
+/// Node's built-in modules, which a bundler for the browser replaces with an
+/// empty module when no package provides them (Vite's "externalized for browser
+/// compatibility"), so a package that imports one only on Node still loads.
+const NODE_BUILTINS: &[&str] = &[
+    "assert",
+    "buffer",
+    "child_process",
+    "crypto",
+    "events",
+    "fs",
+    "http",
+    "https",
+    "net",
+    "os",
+    "path",
+    "querystring",
+    "stream",
+    "string_decoder",
+    "tls",
+    "tty",
+    "url",
+    "util",
+    "vm",
+    "zlib",
+];
+
+/// The `node_modules` directory and package name owning `file`, when it is in a
+/// package (`a/node_modules/@s/p/x.js` is `("a/node_modules", "@s/p")`).
+fn package_of(file: &str) -> Option<(String, String)> {
+    let at = if file.starts_with("node_modules/") {
+        file.rfind("/node_modules/").map_or(0, |i| i + 1)
+    } else {
+        file.rfind("/node_modules/")? + 1
+    };
+    let nm = &file[..at + "node_modules".len()];
+    let (name, _) = package_parts(&file[at + "node_modules/".len()..]);
+    Some((nm.to_owned(), name.to_owned()))
+}
+
 /// The file a bare specifier names in `node_modules` (relative to the app's root).
 fn resolve_package(
     spec: &str,
@@ -578,7 +617,21 @@ fn resolve_package(
             _ => None,
         };
         if let Some(t) = entry {
-            return Some(normalize(&format!("{dir}/{t}")));
+            let f = normalize(&format!("{dir}/{t}"));
+            // A pattern's `x/index.js` that is `x.js` on disk (MUI 7's
+            // `colors/green`), which Vite's resolver finds as the file.
+            if read(&f).is_none() {
+                if let Some((stem, ext)) = [".js", ".mjs"]
+                    .iter()
+                    .find_map(|e| Some((f.strip_suffix(&format!("/index{e}"))?, e)))
+                {
+                    let g = format!("{stem}{ext}");
+                    if read(&g).is_some() {
+                        return Some(g);
+                    }
+                }
+            }
+            return Some(f);
         }
     }
     let base = if sub.is_empty() {
@@ -651,6 +704,42 @@ pub fn load_with(
         Open(String),
     }
     impl Loader<'_, '_> {
+        /// The file a bare `spec` imported by `importer` names, as Node looks
+        /// for it: in the `node_modules` of each directory from the importer's up,
+        /// then in the app's (`LoadOptions::node_modules`).
+        fn find_package(&mut self, importer: &str, spec: &str, require: bool) -> Option<String> {
+            let root = self.options.node_modules.clone()?;
+            let (name, _) = package_parts(spec);
+            let mut dirs = Vec::new();
+            let mut d = match importer.rfind('/') {
+                Some(i) => &importer[..i],
+                None => "",
+            };
+            loop {
+                let last = d.rsplit('/').next().unwrap_or("");
+                if last != "node_modules" && !last.starts_with('@') && last != ".." {
+                    dirs.push(if d.is_empty() {
+                        "node_modules".to_owned()
+                    } else {
+                        format!("{d}/node_modules")
+                    });
+                }
+                match d.rfind('/') {
+                    Some(i) => d = &d[..i],
+                    None if !d.is_empty() => d = "",
+                    None => break,
+                }
+            }
+            if !dirs.contains(&root) {
+                dirs.push(root.clone());
+            }
+            let nm = dirs
+                .into_iter()
+                .find(|nm| (self.read)(&format!("{nm}/{name}/package.json")).is_some())
+                .unwrap_or(root);
+            resolve_package(spec, &nm, require, self.read)
+        }
+
         /// What the package owning `importer` maps a module to in its package.json
         /// `browser` field (a bundler's browser build): for a bare `spec`, or for
         /// the file `path` in the package. `false` is an empty module.
@@ -660,9 +749,8 @@ pub fn load_with(
             spec: &str,
             path: Option<&str>,
         ) -> Option<String> {
-            let nm = self.options.node_modules.clone()?;
-            let rest = importer.strip_prefix(&format!("{nm}/"))?;
-            let (name, _) = package_parts(rest);
+            self.options.node_modules.as_ref()?;
+            let (nm, name) = package_of(importer)?;
             let dir = format!("{nm}/{name}");
             let pj = (self.read)(&format!("{dir}/package.json"))?;
             let v: serde_json::Value = serde_json::from_str(&pj).ok()?;
@@ -698,13 +786,12 @@ pub fn load_with(
 
         /// Whether the package owning `file` declares `"sideEffects": false`.
         fn side_effect_free(&mut self, file: &str) -> bool {
-            let Some(nm) = self.options.node_modules.clone() else {
+            if self.options.node_modules.is_none() {
+                return false;
+            }
+            let Some((nm, name)) = package_of(file) else {
                 return false;
             };
-            let Some(rest) = file.strip_prefix(&format!("{nm}/")) else {
-                return false;
-            };
-            let (name, _) = package_parts(rest);
             (self.read)(&format!("{nm}/{name}/package.json"))
                 .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
                 .is_some_and(|v| v["sideEffects"] == serde_json::Value::Bool(false))
@@ -747,10 +834,8 @@ pub fn load_with(
             let mut imports = BTreeMap::new();
             let mut order = Vec::new();
             let mut stylesheets = BTreeMap::new();
-            let in_package = file.starts_with(&format!(
-                "{}/",
-                self.options.node_modules.as_deref().unwrap_or("\u{0}")
-            ));
+            let in_package = self.options.node_modules.is_some()
+                && (package_of(file).is_some() || file.starts_with("__cw_node_builtin__/"));
             let commonjs = in_package && is_commonjs(&text, file);
             let specs = if commonjs {
                 requires_of(&text)
@@ -772,8 +857,8 @@ pub fn load_with(
                 }
                 if !is_relative(&spec) && is_stylesheet(&spec) {
                     // A package's stylesheet (`import 'todomvc-app-css/index.css'`).
-                    if let Some(nm) = self.options.node_modules.clone() {
-                        if let Some(path) = resolve_package(&spec, &nm, commonjs, self.read) {
+                    if self.options.node_modules.is_some() {
+                        if let Some(path) = self.find_package(file, &spec, commonjs) {
                             if let Some(css) = (self.read)(&path) {
                                 stylesheets.insert(spec.clone(), (path, css));
                                 continue;
@@ -786,7 +871,24 @@ pub fn load_with(
                     self.errors.push(d);
                     continue;
                 }
-                let base = if is_relative(&spec) {
+                let base = if let (true, Some(raw)) =
+                    (is_relative(&spec), spec.strip_suffix("?raw"))
+                {
+                    // Vite's `?raw`: the file's text as the default export.
+                    let path = normalize(&format!("{dir}/{raw}"));
+                    let Some(t) = (self.read)(&path) else {
+                        let mut d = Diagnostic::at(&text, at, format!("cannot find `{raw}`"));
+                        d.file = file.to_owned();
+                        self.errors.push(d);
+                        continue;
+                    };
+                    let v = format!("{path}?raw.js");
+                    self.virtual_files.insert(
+                        v.clone(),
+                        format!("export default {};\n", serde_json::Value::String(t)),
+                    );
+                    v
+                } else if is_relative(&spec) {
                     normalize(&format!("{dir}/{spec}"))
                 } else if let Some((from, to)) = self
                     .options
@@ -795,13 +897,18 @@ pub fn load_with(
                     .find(|(from, _)| alias_matches(from, &spec))
                 {
                     normalize(&format!("{to}{}", &spec[from.len()..]))
-                } else if let (Some(nm), false) =
-                    (self.options.node_modules.clone(), is_shim_module(&spec))
-                {
-                    match resolve_package(&spec, &nm, commonjs, self.read)
+                } else if self.options.node_modules.is_some() && !is_shim_module(&spec) {
+                    match self
+                        .find_package(file, &spec, commonjs)
                         .or_else(|| self.browser_replacement(file, &spec, None))
                     {
                         Some(f) => f,
+                        None if NODE_BUILTINS.contains(&spec.trim_start_matches("node:")) => {
+                            let f = format!("__cw_node_builtin__/{spec}.js");
+                            self.virtual_files
+                                .insert(f.clone(), "module.exports = {};\n".to_owned());
+                            f
+                        }
                         None => {
                             let mut d =
                                 Diagnostic::at(&text, at, format!("cannot find package `{spec}`"));
@@ -900,10 +1007,7 @@ pub fn load_with(
             let pure = in_package && self.side_effect_free(file);
             let i = self.out.len();
             self.out.push(Source {
-                package: file.starts_with(&format!(
-                    "{}/",
-                    self.options.node_modules.as_deref().unwrap_or("\u{0}")
-                )),
+                package: in_package,
                 file: file.to_owned(),
                 text,
                 imports,
@@ -1124,7 +1228,14 @@ fn lower_with_islands(
         let others = d.iter().any(|x| !x.message.starts_with(NEVER_RENDERS));
         for x in &d {
             if x.message.starts_with(NEVER_RENDERS) {
-                stuck |= !others;
+                if !others && renders(&sources[entry].text) && !options.vm_modules.contains(&entry)
+                {
+                    // The entry renders in a way the subset does not follow (in a
+                    // promise's callback, say): it renders from the island.
+                    add.push(entry);
+                } else {
+                    stuck |= !others;
+                }
                 continue;
             }
             let m = (0..sources.len()).find(|&i| sources[i].display_file(code) == x.file);
