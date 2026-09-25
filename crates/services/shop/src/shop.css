@@ -203,6 +203,9 @@ button.textlink:hover { text-decoration: underline; }
   .search { flex: 1 1 100%; order: 9; min-width: 0; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .card .info, .card .tags { min-width: 0; }
+  /* A card's rating wraps its count under the stars: at two columns "4.8 ★★★★★ (18)"
+     is wider than a card in some skins' faces. */
+  .card .rating { flex-wrap: wrap; }
   .detail, .cart-layout, .event-hero { display: block; }
   .event-hero { box-sizing: border-box; padding: 12px; }
   .pic.stage { width: auto; }
