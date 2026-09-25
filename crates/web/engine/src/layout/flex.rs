@@ -1347,6 +1347,7 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
             id: c,
             static_pos: Point { x, y },
             fixed: cs.position == Position::Fixed,
+            paint_in: None,
         });
     }
     out

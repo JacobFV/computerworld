@@ -2206,6 +2206,7 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
                 id: a,
                 static_pos: Point::default(),
                 fixed,
+                paint_in: None,
             });
             continue;
         }
@@ -2310,6 +2311,7 @@ pub fn layout_contents(ctx: &LayoutContext, id: BoxId, cb: &Cb) -> ContentsResul
             id: a,
             static_pos: Point { x: -cx0, y: -cy0 },
             fixed: false,
+            paint_in: None,
         };
         let mut f = block::layout_absolute(ctx, &cbf, &req);
         f.rect.origin.x += cx0;

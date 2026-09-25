@@ -322,6 +322,11 @@ pub(crate) struct Painter<'a> {
     /// subtree: stacking layers paint in tree order of the *elements*, which the
     /// fragment tree loses for boxes hoisted to their containing block.
     doc_order: HashMap<NodeId, (u32, u32)>,
+    /// Fixed boxes laid out at the root that belong to an inner stacking context
+    /// (`Fragment::stacking_parent`), by that context's element, and the root's
+    /// child state they are positioned in.
+    pub(crate) adopted: HashMap<NodeId, Vec<&'a Fragment>>,
+    pub(crate) root_inner: Option<State>,
 }
 
 /// Part numbers of the fixed pieces of a fragment; content-dependent pieces are
@@ -374,6 +379,8 @@ impl<'a> Painter<'a> {
             canvas_source: None,
             parts: HashMap::new(),
             doc_order: HashMap::new(),
+            adopted: HashMap::new(),
+            root_inner: None,
         };
         if let Some(doc) = doc {
             p.semantics = semantics::Tables::build(doc);

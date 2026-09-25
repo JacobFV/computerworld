@@ -226,6 +226,11 @@ pub struct Fragment {
     /// fragment keeps its geometry (a `Range` still reports its rects, as in Blink)
     /// but takes no part in painting, hit testing or scrollable overflow.
     pub hidden_for_paint: bool,
+    /// For a fixed box whose containing block is the viewport but which sits inside
+    /// an element that establishes a stacking context (MUI's sidebar inside its
+    /// `position: relative; z-index: 1` layout): that element, whose context it is
+    /// painted and hit-tested in, though its fragment is the root's.
+    pub stacking_parent: Option<crate::dom::NodeId>,
 }
 
 impl Fragment {
@@ -242,6 +247,7 @@ impl Fragment {
             collapsed_borders: None,
             used_margin: None,
             hidden_for_paint: false,
+            stacking_parent: None,
         }
     }
     pub fn source(&self) -> Option<StyleSource> {

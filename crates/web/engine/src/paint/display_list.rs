@@ -380,7 +380,16 @@ pub(crate) fn paint_root(p: &mut Painter, root_state: &State) {
         {
             paint_own(p, &tree.root, &state);
             let inner = enter(p, &tree.root, &state, true);
-            paint_context_with(p, html, &inner, extra, &inner);
+            // Fixed boxes that belong to an inner stacking context are painted there.
+            let mut own: Vec<&Fragment> = Vec::new();
+            for f in extra {
+                match f.stacking_parent {
+                    Some(n) => p.adopted.entry(n).or_default().push(f),
+                    None => own.push(f),
+                }
+            }
+            p.root_inner = Some(inner.clone());
+            paint_context_with(p, html, &inner, &own, &inner);
         }
         _ => paint_context(p, &tree.root, &state),
     }
@@ -398,7 +407,7 @@ fn paint_context_with<'a>(
     p: &mut Painter<'a>,
     f: &'a Fragment,
     state: &State,
-    extra: &'a [Fragment],
+    extra: &[&'a Fragment],
     extra_state: &State,
 ) {
     // 1. Own background and borders, then the replaced content of an atomic inline,
@@ -422,6 +431,19 @@ fn paint_context_with<'a>(
     }
     for c in extra {
         collect(p, c, extra_state, false, &mut b);
+    }
+    // The fixed boxes this context adopted, positioned in the root's space but with
+    // the context's opacity.
+    let adopted = f
+        .source()
+        .filter(|s| !s.is_anonymous())
+        .and_then(|s| p.adopted.remove(&s.node()));
+    if let (Some(list), Some(root)) = (adopted, p.root_inner.clone()) {
+        let mut s = root;
+        s.opacity = child_state.opacity;
+        for c in list {
+            collect(p, c, &s, false, &mut b);
+        }
     }
     if has_outline(p, f) {
         b.outlines.push(Item::new(f, state));

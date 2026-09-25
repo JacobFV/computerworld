@@ -990,3 +990,21 @@ fn an_outer_shadow_does_not_show_through_a_transparent_box() {
     assert_eq!(f.at(70, 30), WHITE, "inside the box");
     assert_ne!(f.at(70, 62), WHITE, "below the box, where the shadow falls");
 }
+
+/// A fixed box inside an element that establishes a stacking context belongs to
+/// that context, though its containing block is the viewport: react-admin's
+/// sidebar menu (fixed, inside its `position: relative; z-index: 1` layout) paints
+/// above a later `z-index: 0` sibling's background and takes clicks there.
+#[test]
+fn a_fixed_box_paints_in_its_ancestors_stacking_context() {
+    let html = "<!doctype html><body style='margin:0'><div style='position:relative;z-index:1'><div id=f style='position:fixed;top:0;left:0;width:100px;height:100px;background:#080'></div></div><div style='position:relative;z-index:0;background:white;height:300px'></div>";
+    let page = render(html);
+    let f = pixels(&page);
+    assert_eq!(f.at(50, 50), INK, "the fixed box is on top");
+    let hit = super::hit::hit_test(&page.tree, &page.styles, 50, 50);
+    assert_eq!(
+        hit,
+        page.doc.by_id("f").first().copied(),
+        "and takes the hit"
+    );
+}

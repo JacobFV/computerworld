@@ -361,6 +361,11 @@ mod cases {
             perform(&mut r, step, settle_ms);
         }
         let steps = t.elapsed();
+        // Development aid: CW_PARITY_EVAL=<js> prints what the page evaluates to
+        // after the steps.
+        if let Some(js) = std::env::var_os("CW_PARITY_EVAL") {
+            eprintln!("{name}: {:?}", r.eval(&js.to_string_lossy()));
+        }
         let errors: Vec<_> = r
             .logs()
             .into_iter()

@@ -175,7 +175,9 @@ if (args.includes('--baseline-fonts')) {
 }
 const browser = await chromium.launch({executablePath: process.env.CHROME_BIN, env: launchEnv});
 try {
-  const context = await browser.newContext({viewport: {width, height}, deviceScaleFactor: dpr, reducedMotion: 'reduce'});
+  // A site runs as in the world, whose clock is UTC (a page's dates format there);
+  // page fixtures keep the machine's zone, as their dumps always have.
+  const context = await browser.newContext({viewport: {width, height}, deviceScaleFactor: dpr, reducedMotion: 'reduce', ...(siteMode ? {timezoneId: 'UTC'} : {})});
   const page = await context.newPage();
   const url = siteMode ? site.url : pathToFileURL(resolve(fixture)).href;
   const inflight = new Set();

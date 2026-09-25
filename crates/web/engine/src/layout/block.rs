@@ -224,6 +224,9 @@ pub struct AbsRequest {
     /// to the border box of the fragment currently carrying the request.
     pub static_pos: Point,
     pub fixed: bool,
+    /// The nearest stacking-context element a fixed request travelled through on its
+    /// way to the viewport, which paints it (see `Fragment::stacking_parent`).
+    pub paint_in: Option<NodeId>,
 }
 
 pub fn translate_requests(reqs: &mut [AbsRequest], dx: Au, dy: Au) {
@@ -1000,6 +1003,7 @@ pub fn layout_block_children(
                 id: c,
                 static_pos: Point { x: sx, y: sy },
                 fixed: cbx.style.position == Position::Fixed,
+                paint_in: None,
             });
             continue;
         }
@@ -1990,13 +1994,32 @@ pub fn resolve_absolutes(
         _ => false,
     };
     let is_root = matches!(cbf.kind, FragmentKind::Box { source: StyleSource::Anonymous(n), .. } if n == crate::dom::Document::ROOT);
+    // A fixed box that passes through an element establishing a stacking context
+    // is painted in that context, though it is laid out against the viewport.
+    let context_node = match cbf.source() {
+        Some(src) if !src.is_anonymous() && !is_root => {
+            let establishes = cbf.establishes_stacking_context
+                || ctx
+                    .tree
+                    .box_of(src.node())
+                    .is_some_and(|b| ctx.tree[b].style.establishes_stacking_context(false));
+            establishes.then(|| src.node())
+        }
+        _ => None,
+    };
     let mut queue: std::collections::VecDeque<AbsRequest> = reqs.into();
-    while let Some(r) = queue.pop_front() {
+    while let Some(mut r) = queue.pop_front() {
         if r.fixed && !has_transform && !is_root {
+            if r.paint_in.is_none() {
+                r.paint_in = context_node;
+            }
             rest.push(r);
             continue;
         }
-        let (frag, inner) = layout_absolute_with_rest(ctx, cbf, &r);
+        let (mut frag, inner) = layout_absolute_with_rest(ctx, cbf, &r);
+        if is_root {
+            frag.stacking_parent = r.paint_in;
+        }
         // Fixed descendants the positioned box could not place (a fixed backdrop
         // inside a fixed MUI popover) come out relative to this containing block.
         let mut inner = inner;

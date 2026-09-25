@@ -1128,6 +1128,7 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
                             y: self.y,
                         },
                         fixed: self.ctx.style(aid).position == Position::Fixed,
+                        paint_in: None,
                     });
                 }
             } else {
@@ -1139,6 +1140,7 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
                             y: self.y,
                         },
                         fixed: self.ctx.style(aid).position == Position::Fixed,
+                        paint_in: None,
                     });
                 }
             }
@@ -1544,6 +1546,7 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
                 id: aid,
                 static_pos: Point { x: sx, y: sy },
                 fixed: s.position == Position::Fixed,
+                paint_in: None,
             });
         }
         self.y += line_height;
