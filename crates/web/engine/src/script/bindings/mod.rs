@@ -202,10 +202,10 @@ pub static ALL_HOOKS: [&HostHooks; 14] = [
 /// The heap-snapshot options of a realm's VM: its hooks, and a fingerprint of this
 /// crate's natives.
 pub fn snapshot_options() -> cw_jsvm::snapshot::Options<'static> {
-    cw_jsvm::snapshot::Options {
-        hooks: &ALL_HOOKS,
-        fingerprint: cw_jsvm::snapshot::fingerprint_of(&[host_call, register_protos]),
-    }
+    cw_jsvm::snapshot::Options::new(
+        &ALL_HOOKS,
+        cw_jsvm::snapshot::fingerprint_of(&[host_call, register_protos]),
+    )
 }
 
 /// `__cw_host(name, payload)`: the page's call to its embedder

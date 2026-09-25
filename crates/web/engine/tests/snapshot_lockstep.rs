@@ -140,17 +140,18 @@ fn run_fixture(name: &str) {
         r.set_overlay_scrollbars(true);
         r.run_document();
         settle(&mut r, 50);
+        let booted = r.snapshot_with_image();
         for step in &list {
             perform(&mut r, step);
         }
         let _ = r.fragment_tree();
         set_verify_snapshots(false);
 
-        let t = Instant::now();
         let image = r.heap_image().expect("the realm images");
-        let write_ms = ms(t);
         let state_only = r.snapshot();
+        let t = Instant::now();
         let mut with_image = r.snapshot_with_image();
+        let write_ms = ms(t);
         assert!(with_image.image.0.is_some());
         let (h1, h2) = (Box::new(host()), Box::new(host()));
         let t = Instant::now();
@@ -165,6 +166,15 @@ fn run_fixture(name: &str) {
             a == image && b == image,
             "{name}.{state}: restore and replay disagree with the live realm"
         );
+        // An image of the booted page and the inputs after it rebuild the realm too.
+        let mut tail = r.snapshot();
+        tail.image = booted.image.clone();
+        let from_boot = Realm::restore(&tail, Box::new(host()));
+        assert!(
+            from_boot.heap_image().unwrap() == image,
+            "{name}.{state}: the booted image and the inputs after it disagree with the live realm"
+        );
+        drop(from_boot);
         // Both go on the same way.
         for x in [&mut r, &mut restored, &mut replayed] {
             x.eval("document.body.setAttribute('data-after', String(document.querySelectorAll('*').length))")
@@ -178,11 +188,13 @@ fn run_fixture(name: &str) {
         );
         assert!(a == b && a == c, "{name}.{state}: the realms diverged");
         assert_eq!(*r.document(), *restored.document());
-        with_image.image = Default::default();
+        let shared = with_image.image.0.take().unwrap();
         eprintln!(
-            "{name}.{state}: image {} KiB, write {write_ms:.2} ms, restore {restore_ms:.2} ms, \
-             replay {replay_ms:.2} ms ({} inputs)",
+            "{name}.{state}: image {} KiB ({} KiB besides {} shared sources), write {write_ms:.2} ms, \
+             restore {restore_ms:.2} ms, replay {replay_ms:.2} ms ({} inputs)",
             image.len() / 1024,
+            shared.bytes.len() / 1024,
+            shared.sources.len(),
             state_only.inputs.len()
         );
     }

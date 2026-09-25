@@ -512,18 +512,28 @@ pub struct RealmState {
     /// them; see `Realm::set_overlay_scrollbars`.
     #[serde(default)]
     pub overlay_scrollbars: bool,
-    /// A heap snapshot of the realm this state describes (`Realm::heap_image`),
-    /// when one was taken: `Realm::restore` reads it instead of replaying the
-    /// inputs. It is a cache of what replay would rebuild, held in memory only
-    /// (never serialised, and ignored by comparisons), since it is readable only
-    /// by the program image that wrote it.
+    /// A heap snapshot of this realm as it was after some prefix of `inputs`
+    /// (`Realm::heap_image`), when one was taken: `Realm::restore` reads it and
+    /// replays only the inputs after it. It is a cache of what replay would
+    /// rebuild, held in memory only (never serialised, and ignored by
+    /// comparisons), since it is readable only by the program image that wrote it.
     #[serde(skip)]
     pub image: HeapImage,
 }
 
-/// The bytes of a realm's heap snapshot, shared between the copies of a state.
+/// A realm's heap image, shared between the states that carry it.
 #[derive(Clone, Default)]
-pub struct HeapImage(pub Option<std::sync::Arc<[u8]>>);
+pub struct HeapImage(pub Option<std::sync::Arc<ImageData>>);
+
+/// The bytes of a realm's heap image, and how far into its state it was taken.
+pub struct ImageData {
+    pub bytes: Vec<u8>,
+    /// The long source texts the bytes name (shared by a realm's images).
+    pub sources: Vec<std::sync::Arc<str>>,
+    /// The entry-point calls, and the journal entries, the realm had received.
+    pub inputs: usize,
+    pub journal: usize,
+}
 
 impl PartialEq for HeapImage {
     fn eq(&self, _: &HeapImage) -> bool {
@@ -534,11 +544,21 @@ impl Eq for HeapImage {}
 impl std::fmt::Debug for HeapImage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.0 {
-            Some(b) => write!(f, "HeapImage({} bytes)", b.len()),
+            Some(i) => write!(
+                f,
+                "HeapImage({} bytes after {} inputs)",
+                i.bytes.len(),
+                i.inputs
+            ),
             None => f.write_str("HeapImage(none)"),
         }
     }
 }
+
+/// VM steps a realm runs between two heap images its snapshots carry (see
+/// `Realm::snapshot`): about 10 ms of script to replay at most, against the 2 to
+/// 4 ms an image of a framework page takes to write.
+pub const IMAGE_EVERY_STEPS: u64 = 2_000_000;
 
 /// What `Realm::heap_image` writes: the VM heap and the state outside it, as the
 /// heap's length (8 bytes, little-endian), the heap, and the outside state in
@@ -583,6 +603,11 @@ pub struct Realm {
     /// This realm is the second half of a snapshot check (see
     /// `set_verify_snapshots`), not itself checked.
     verifying: bool,
+    /// The last heap image of this realm (taken, or restored from) and the VM's
+    /// step count then: what its snapshots carry (see `snapshot`).
+    image: RefCell<(Option<std::sync::Arc<ImageData>>, u64)>,
+    /// The shared copies of the VM's long source texts its images carry.
+    shared_sources: RefCell<Vec<(Rc<str>, std::sync::Arc<str>)>>,
 }
 
 const PRELUDE: &str = concat!(
@@ -604,13 +629,26 @@ impl Realm {
     /// this program can read, else by replaying its inputs against the journal;
     /// afterwards the realm is live on `host`.
     pub fn restore(state: &RealmState, host: Box<dyn ScriptHostDocument>) -> Realm {
-        match &state.image.0 {
-            Some(bytes) => match Self::from_image(state, bytes, host) {
-                Ok(realm) => realm,
-                Err((_, host)) => Self::replay(state, host),
-            },
-            None => Self::replay(state, host),
+        let Some(image) = &state.image.0 else {
+            return Self::replay(state, host);
+        };
+        if image.inputs > state.inputs.len() || image.journal > state.journal.len() {
+            return Self::replay(state, host);
         }
+        let mut realm = match Self::from_image(state, image, host) {
+            Ok(realm) => realm,
+            Err((_, host)) => return Self::replay(state, host),
+        };
+        // The inputs after the image, answered from the journal.
+        {
+            let mut j = Journal::replay(state.journal.clone());
+            j.replay_pos = image.journal;
+            j.recording = realm.inner.borrow().journal.recording;
+            realm.inner.borrow_mut().journal = j;
+        }
+        realm.apply_inputs(state.inputs[image.inputs..].to_vec());
+        realm.inner.borrow_mut().journal.replaying = false;
+        realm
     }
 
     /// Rebuilds a realm from a snapshot by replaying its inputs.
@@ -625,6 +663,14 @@ impl Realm {
         );
         realm.state.step_budget = state.step_budget;
         realm.set_overlay_scrollbars(state.overlay_scrollbars);
+        realm.apply_inputs(inputs);
+        realm.inner.borrow_mut().journal.replaying = false;
+        realm
+    }
+
+    /// Runs recorded entry-point calls again, in order.
+    fn apply_inputs(&mut self, inputs: Vec<Input>) {
+        let realm = self;
         for input in inputs {
             match input {
                 Input::RunDocument => realm.run_document(),
@@ -642,8 +688,6 @@ impl Realm {
                 Input::ImageSizes(sizes) => realm.set_image_sizes(sizes),
             }
         }
-        realm.inner.borrow_mut().journal.replaying = false;
-        realm
     }
 
     fn build(
@@ -683,8 +727,11 @@ impl Realm {
             },
             _reclaim: reclaim,
             verifying: false,
+            image: RefCell::new((None, 0)),
+            shared_sources: RefCell::new(Vec::new()),
         };
         realm.run_prelude();
+        realm.image.borrow_mut().1 = realm.vm.steps;
         realm
     }
 
@@ -696,22 +743,65 @@ impl Realm {
     /// the realm holds something a snapshot cannot carry (a stylesheet script
     /// edited through the CSSOM); its state then restores by replay.
     pub fn heap_image(&self) -> Result<Vec<u8>, String> {
+        self.write_image(None)
+    }
+
+    /// `heap_image`, with the long source texts put in `sources` instead (see
+    /// `cw_jsvm::snapshot::Options::sources_out`).
+    fn write_image(&self, sources: Option<&RefCell<Vec<Rc<str>>>>) -> Result<Vec<u8>, String> {
         let (img, roots) = self.inner.borrow().image()?;
+        let mut opts = bindings::snapshot_options();
+        opts.sources_out = sources;
         let heap = self
             .vm
-            .heap_snapshot(&roots, bindings::snapshot_options())
+            .heap_snapshot(&roots, opts)
             .map_err(|e| e.to_string())?;
         RealmImage::write(&heap, &img)
     }
 
-    /// The realm's snapshot with its heap image attached (see `RealmState::image`),
-    /// or without one when the realm cannot be imaged.
+    /// The realm's snapshot with a heap image of the realm as it is now (see
+    /// `RealmState::image`), or with none when the realm cannot be imaged.
     pub fn snapshot_with_image(&self) -> RealmState {
-        let mut s = self.snapshot();
-        if let Ok(b) = self.heap_image() {
-            s.image = HeapImage(Some(b.into()));
-        }
+        self.take_image();
+        let mut s = self.snapshot_state();
+        s.image = HeapImage(self.image.borrow().0.clone());
         s
+    }
+
+    /// Writes a heap image of the realm as it is now and keeps it for the
+    /// snapshots that follow; keeps none when the realm cannot be imaged.
+    fn take_image(&self) {
+        let out = RefCell::new(Vec::new());
+        let image = self.write_image(Some(&out)).ok().map(|bytes| {
+            // The realm's source texts are shared by all its images.
+            let mut shared = self.shared_sources.borrow_mut();
+            let sources = out
+                .into_inner()
+                .into_iter()
+                .map(|rc| {
+                    if let Some((_, a)) = shared.iter().find(|(r, _)| Rc::ptr_eq(r, &rc)) {
+                        return a.clone();
+                    }
+                    let a: std::sync::Arc<str> = std::sync::Arc::from(&*rc);
+                    shared.push((rc, a.clone()));
+                    a
+                })
+                .collect();
+            let inner = self.inner.borrow();
+            std::sync::Arc::new(ImageData {
+                bytes,
+                sources,
+                inputs: self.state.inputs.len(),
+                journal: inner.journal.entries.len(),
+            })
+        });
+        let mut slot = self.image.borrow_mut();
+        // A realm that cannot be imaged now keeps its last image (a prefix of its
+        // state all the same) and is not tried again for as long.
+        if image.is_some() {
+            slot.0 = image;
+        }
+        slot.1 = self.vm.steps;
     }
 
     /// Rebuilds a realm from `state` and its heap image `bytes` (no script runs,
@@ -720,15 +810,15 @@ impl Realm {
     #[allow(clippy::result_large_err)]
     pub fn from_image(
         state: &RealmState,
-        bytes: &[u8],
+        image: &std::sync::Arc<ImageData>,
         host: Box<dyn ScriptHostDocument>,
     ) -> Result<Realm, (String, Box<dyn ScriptHostDocument>)> {
-        let (heap, image_inner) = match RealmImage::read(bytes) {
+        let (heap, image_inner) = match RealmImage::read(&image.bytes) {
             Ok(i) => i,
             Err(e) => return Err((e, host)),
         };
         let journal = Journal {
-            entries: state.journal.clone(),
+            entries: state.journal[..image.journal.min(state.journal.len())].to_vec(),
             replay_pos: 0,
             replaying: false,
             recording: true,
@@ -744,14 +834,16 @@ impl Realm {
             let host = std::mem::replace(&mut inner.borrow_mut().host, Box::new(MemoryHost::new()));
             (e, host)
         };
-        let (mut vm, roots) =
-            match Vm::from_heap_snapshot(host_ref, heap, bindings::snapshot_options()) {
-                Ok(v) => v,
-                Err(e) => {
-                    drop(bridge);
-                    return Err(give_back(e.to_string(), inner));
-                }
-            };
+        let sources: Vec<Rc<str>> = image.sources.iter().map(|a| Rc::from(&**a)).collect();
+        let mut opts = bindings::snapshot_options();
+        opts.sources_in = &sources;
+        let (mut vm, roots) = match Vm::from_heap_snapshot(host_ref, heap, opts) {
+            Ok(v) => v,
+            Err(e) => {
+                drop(bridge);
+                return Err(give_back(e.to_string(), inner));
+            }
+        };
         let any: Rc<dyn std::any::Any> = inner.clone();
         vm.embedder = Some(any);
         let applied = inner.borrow_mut().apply_image(image_inner, &roots);
@@ -766,6 +858,7 @@ impl Realm {
             i.layout_cache.overlay_scrollbars = state.overlay_scrollbars;
         }
         let reclaim = vm.reclaim.take();
+        let steps = vm.steps;
         Ok(Realm {
             vm,
             _bridge: bridge,
@@ -773,7 +866,7 @@ impl Realm {
             state: RealmState {
                 html: state.html.clone(),
                 url: state.url.clone(),
-                inputs: state.inputs.clone(),
+                inputs: state.inputs[..image.inputs.min(state.inputs.len())].to_vec(),
                 journal: Vec::new(),
                 step_budget: state.step_budget,
                 overlay_scrollbars: state.overlay_scrollbars,
@@ -781,6 +874,13 @@ impl Realm {
             },
             _reclaim: reclaim,
             verifying: false,
+            image: RefCell::new((Some(image.clone()), steps)),
+            shared_sources: RefCell::new(
+                sources
+                    .into_iter()
+                    .zip(image.sources.iter().cloned())
+                    .collect(),
+            ),
         })
     }
 
@@ -933,10 +1033,28 @@ impl Realm {
         std::cell::Ref::map(self.inner.borrow(), |i| i.tree.as_ref().expect("laid out"))
     }
 
-    /// The realm's serialisable state for a snapshot.
+    /// The realm's state for a snapshot. It carries a heap image of the realm
+    /// (see `RealmState::image`): the last one, or a new one when the realm has
+    /// run `IMAGE_EVERY_STEPS` VM steps since, so a restore replays at most that
+    /// much script. Writing one observes the realm without changing it.
     pub fn snapshot(&self) -> RealmState {
+        let due = self.vm.steps.saturating_sub(self.image.borrow().1) >= IMAGE_EVERY_STEPS;
+        let recording = self.inner.borrow().journal.recording;
+        if due && recording && !self.verifying {
+            self.take_image();
+        }
+        let mut s = self.snapshot_state();
+        if recording {
+            s.image = HeapImage(self.image.borrow().0.clone());
+        }
+        s
+    }
+
+    /// The realm's serialisable state, without an image.
+    fn snapshot_state(&self) -> RealmState {
         let mut s = self.state.clone();
         s.journal = self.inner.borrow().journal.entries.clone();
+        s.image = HeapImage::default();
         s
     }
 
@@ -1562,7 +1680,7 @@ fn verify_snapshots() -> bool {
 
 /// A realm's image before an entry point, for the snapshot check.
 struct Verify {
-    image: Vec<u8>,
+    image: std::sync::Arc<ImageData>,
     state: RealmState,
     journal_at: usize,
 }
@@ -1646,9 +1764,15 @@ impl Realm {
             })
         });
         let image = image.ok()?;
+        let state = self.snapshot_state();
         Some(Verify {
-            image,
-            state: self.snapshot(),
+            image: std::sync::Arc::new(ImageData {
+                bytes: image,
+                sources: Vec::new(),
+                inputs: state.inputs.len(),
+                journal: journal_at,
+            }),
+            state,
             journal_at,
         })
     }

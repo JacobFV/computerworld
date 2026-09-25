@@ -12,10 +12,13 @@
 //! * each handle remembers the epoch it last saw. A handle whose epoch is the cell's
 //!   owns the live realm. A handle left behind (the copy a snapshot holds, once the
 //!   live world moved on) carries the `RealmState` it was cloned at, and rebuilds a
-//!   realm of its own by journal replay the first time it is used again;
+//!   realm of its own from it the first time it is used again: from the heap image
+//!   the state carries (`RealmState::image`) and a replay of the inputs after it,
+//!   or by replaying the whole journal when it carries none;
 //! * cloning captures the `RealmState` once per epoch and shares it, so taking a
-//!   snapshot costs one copy of the journal and restoring costs one replay, paid only
-//!   if the restored copy is actually used.
+//!   snapshot costs one copy of the journal (and, once the realm has run
+//!   `IMAGE_EVERY_STEPS` VM steps since its last image, writing a new one), and
+//!   restoring is paid only if the restored copy is actually used.
 //!
 //! Serialisation writes the `RealmState`; deserialisation yields a handle with no
 //! live realm, restored lazily. A new document is a new realm, so a journal never

@@ -5,10 +5,7 @@ use cw_jsvm::value::Value;
 use cw_jsvm::vm::Vm;
 use cw_script_host::memory::MemoryHost;
 
-const OPTS: Options = Options {
-    hooks: &[],
-    fingerprint: 0,
-};
+const OPTS: Options = Options::new(&[], 0);
 
 fn eval(vm: &mut Vm, src: &str) -> String {
     match vm.eval_source_with(src, "snap.js", false, true) {
@@ -144,9 +141,6 @@ fn another_fingerprint_is_refused() {
     let vm = Vm::new(&mut h1, vec!["/usr/bin/node".into()], vec![], None);
     let bytes = vm.heap_snapshot(&[], OPTS).unwrap();
     let mut h2 = MemoryHost::default();
-    let other = Options {
-        hooks: &[],
-        fingerprint: 1,
-    };
+    let other = Options::new(&[], 1);
     assert!(Vm::from_heap_snapshot(&mut h2, &bytes, other).is_err());
 }

@@ -46,7 +46,7 @@ use std::hash::BuildHasherDefault;
 use std::rc::{Rc, Weak};
 
 const MAGIC: &[u8; 8] = b"CWJSHEAP";
-const VERSION: u32 = 1;
+const VERSION: u32 = 2;
 
 /// Why a VM could not be written or read.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -95,7 +95,27 @@ pub struct Options<'a> {
     /// Mixed into the header's fingerprint: something that changes when the
     /// embedder's native functions move (see `fingerprint_of`).
     pub fingerprint: u64,
+    /// Writing: where source texts of `EXTERNAL_SOURCE` bytes or more go instead
+    /// of into the snapshot, which then names them by position here, so that the
+    /// snapshots of one realm can share them. Reading: those texts, in order.
+    pub sources_out: Option<&'a RefCell<Vec<Rc<str>>>>,
+    pub sources_in: &'a [Rc<str>],
 }
+
+impl<'a> Options<'a> {
+    /// Options with every source text inside the snapshot.
+    pub const fn new(hooks: &'a [&'static HostHooks], fingerprint: u64) -> Options<'a> {
+        Options {
+            hooks,
+            fingerprint,
+            sources_out: None,
+            sources_in: &[],
+        }
+    }
+}
+
+/// The length from which a source text can be kept outside a snapshot.
+pub const EXTERNAL_SOURCE: usize = 4096;
 
 fn anchor(_vm: &mut Vm, _a: &mut Args) -> JsResult<Value> {
     Ok(Value::Undefined)
@@ -279,6 +299,7 @@ struct W<'v, 'h> {
     o: Out,
     vm: &'v Vm<'h>,
     hooks: &'v [&'static HostHooks],
+    sources_out: Option<&'v RefCell<Vec<Rc<str>>>>,
     objs: Fast<usize, u32>,
     cells: Fast<usize, u32>,
     queue: VecDeque<Node>,
@@ -347,14 +368,26 @@ impl<'v, 'h> W<'v, 'h> {
             self.o.uv(id as u64 + 1);
         }
     }
+    /// A source text or file name: inline the first time (or named by its place
+    /// in `Options::sources_out`), by number after that.
     fn rcstr(&mut self, s: &Rc<str>) {
         let n = self.rcstrs.len() as u32;
         let id = *self.rcstrs.entry(s.clone()).or_insert(n);
-        if id == n {
-            self.o.uv(0);
-            self.o.str(s);
-        } else {
-            self.o.uv(id as u64 + 1);
+        if id != n {
+            self.o.uv(id as u64 + 2);
+            return;
+        }
+        match self.sources_out {
+            Some(out) if s.len() >= EXTERNAL_SOURCE => {
+                let mut out = out.borrow_mut();
+                self.o.uv(1);
+                self.o.uv(out.len() as u64);
+                out.push(s.clone());
+            }
+            _ => {
+                self.o.uv(0);
+                self.o.str(s);
+            }
         }
     }
     fn sym(&mut self, s: &Rc<Symbol>) {
@@ -1346,6 +1379,7 @@ impl<'h> Vm<'h> {
             o: Out::default(),
             vm: self,
             hooks: opts.hooks,
+            sources_out: opts.sources_out,
             objs: Fast::default(),
             cells: Fast::default(),
             queue: VecDeque::new(),
@@ -1411,6 +1445,7 @@ impl<'h> Vm<'h> {
 struct Rd<'a> {
     i: In<'a>,
     hooks: &'a [&'static HostHooks],
+    sources_in: &'a [Rc<str>],
     objs: Vec<Obj>,
     cells: Vec<CellRef>,
     strs: Vec<JsStr>,
@@ -1464,16 +1499,24 @@ impl<'a> Rd<'a> {
     }
     fn rcstr(&mut self) -> R<Rc<str>> {
         let r = self.i.us()?;
-        if r == 0 {
-            let s: Rc<str> = Rc::from(self.i.str()?);
-            self.rcstrs.push(s.clone());
-            Ok(s)
-        } else {
-            match self.rcstrs.get(r - 1) {
-                Some(s) => Ok(s.clone()),
-                None => err("bad source reference"),
+        let s: Rc<str> = match r {
+            0 => Rc::from(self.i.str()?),
+            1 => {
+                let at = self.i.us()?;
+                match self.sources_in.get(at) {
+                    Some(s) => s.clone(),
+                    None => return err("a source kept outside the snapshot is missing"),
+                }
             }
-        }
+            _ => {
+                return match self.rcstrs.get(r - 2) {
+                    Some(s) => Ok(s.clone()),
+                    None => err("bad source reference"),
+                }
+            }
+        };
+        self.rcstrs.push(s.clone());
+        Ok(s)
     }
     fn sym(&mut self) -> R<Rc<Symbol>> {
         let r = self.i.us()?;
@@ -2425,6 +2468,7 @@ impl<'h> Vm<'h> {
         let mut r = Rd {
             i,
             hooks: opts.hooks,
+            sources_in: opts.sources_in,
             objs: shells(nobj),
             cells: (0..ncell)
                 .map(|_| Rc::new(RefCell::new(Value::Undefined)))
