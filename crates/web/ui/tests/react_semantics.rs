@@ -2020,3 +2020,106 @@ export function Items() {
         &[Step::Wait(50)],
     );
 }
+
+#[test]
+fn hash_and_history_navigation_follow_the_page() {
+    // Links to a fragment, `location.hash = …`, pushState/replaceState, back and
+    // location.assign, with popstate then hashchange as the Realm fires them.
+    same_as_react(
+        r##"
+import { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+
+function useRoute(): string {
+  const [route, setRoute] = useState(location.hash || '#/');
+  useEffect(() => {
+    const onHash = (e: HashChangeEvent) => { console.log('hashchange', e.newURL.split('#')[1] ?? '', 'from', e.oldURL.split('#')[1] ?? ''); setRoute(location.hash || '#/'); };
+    const onPop = (e: PopStateEvent) => { console.log('popstate', JSON.stringify(e.state), location.pathname, location.hash); setRoute(location.hash || '#/'); };
+    window.addEventListener('hashchange', onHash);
+    window.addEventListener('popstate', onPop);
+    return () => { window.removeEventListener('hashchange', onHash); window.removeEventListener('popstate', onPop); };
+  }, []);
+  return route;
+}
+export function App() {
+  const route = useRoute();
+  return (
+    <div>
+      <p id="route">{route} {history.length} {JSON.stringify(history.state)} {location.pathname}</p>
+      <a id="to-b" href="#/b">b</a>
+      <button id="to-c" onClick={() => { location.hash = '#/c'; console.log('after set', location.hash, history.length); }}>c</button>
+      <button id="push" onClick={() => { history.pushState({ n: history.length }, '', '/app.html?x=1#/d'); console.log('pushed', location.search, location.hash); }}>push</button>
+      <button id="replace" onClick={() => history.replaceState({ r: 1 }, '')}>replace</button>
+      <button id="back" onClick={() => history.back()}>back</button>
+      <button id="assign" onClick={() => location.assign('#/e')}>assign</button>
+    </div>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"##,
+        &[
+            Step::Click("#to-b"),
+            Step::Click("#to-c"),
+            Step::Click("#push"),
+            Step::Click("#replace"),
+            Step::Click("#back"),
+            Step::Wait(20),
+            Step::Click("#back"),
+            Step::Wait(20),
+            Step::Click("#assign"),
+        ],
+    );
+}
+
+#[test]
+fn hash_and_history_navigation_follow_the_page_on_the_island() {
+    // The same router, on the island (a generator puts it there).
+    same_as_react(
+        r##"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import { App } from './router';
+createRoot(document.getElementById('root')!).render(<App />);
+// @file router.tsx
+import { useEffect, useState } from 'react';
+function* g() { yield 1; }
+
+function useRoute(): string {
+  const [route, setRoute] = useState(location.hash || '#/');
+  useEffect(() => {
+    const onHash = (e: HashChangeEvent) => { console.log('hashchange', e.newURL.split('#')[1] ?? '', 'from', e.oldURL.split('#')[1] ?? ''); setRoute(location.hash || '#/'); };
+    const onPop = (e: PopStateEvent) => { console.log('popstate', JSON.stringify(e.state), location.pathname, location.hash); setRoute(location.hash || '#/'); };
+    window.addEventListener('hashchange', onHash);
+    window.addEventListener('popstate', onPop);
+    return () => { window.removeEventListener('hashchange', onHash); window.removeEventListener('popstate', onPop); };
+  }, []);
+  return route;
+}
+export function App() {
+  const route = useRoute();
+  return (
+    <div>
+      <p id="route">{route} {history.length} {JSON.stringify(history.state)} {location.pathname}</p>
+      <a id="to-b" href="#/b">b</a>
+      <button id="to-c" onClick={() => { location.hash = '#/c'; console.log('after set', location.hash, history.length); }}>c</button>
+      <button id="push" onClick={() => { history.pushState({ n: history.length }, '', '/app.html?x=1#/d'); console.log('pushed', location.search, location.hash); }}>push</button>
+      <button id="replace" onClick={() => history.replaceState({ r: 1 }, '')}>replace</button>
+      <button id="back" onClick={() => history.back()}>back</button>
+      <button id="assign" onClick={() => location.assign('#/e')}>assign</button>
+    </div>
+  );
+}
+"##,
+        &[
+            Step::Click("#to-b"),
+            Step::Click("#to-c"),
+            Step::Click("#push"),
+            Step::Click("#replace"),
+            Step::Click("#back"),
+            Step::Wait(20),
+            Step::Click("#back"),
+            Step::Wait(20),
+            Step::Click("#assign"),
+        ],
+    );
+}

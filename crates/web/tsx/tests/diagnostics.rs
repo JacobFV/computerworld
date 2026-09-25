@@ -253,10 +253,6 @@ fn island_modules_that_need_a_page_refuse_the_build() {
             "function* g() { yield 1; }\nexport function Widget() { return <div dangerouslySetInnerHTML={{ __html: '<b>x</b>' }} />; }\n",
             "`dangerouslySetInnerHTML` on the island",
         ),
-        (
-            "function* g() { yield 1; }\nexport function Widget() { return <button onClick={() => { location.hash = '#/b'; }}>b</button>; }\n",
-            "navigating through `location` on the island",
-        ),
     ];
     for (widget, needle) in cases {
         let files = [("main.tsx", main), ("widget.tsx", widget)];

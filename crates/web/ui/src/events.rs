@@ -54,6 +54,7 @@ fn event_obj(ty: &str, target: NodeId, init: &Init) -> EventObj {
         repeat: init.repeat,
         prevented: Cell::new(false),
         stopped: Cell::new(false),
+        extra: Vec::new(),
     }
 }
 
@@ -171,7 +172,7 @@ impl Runtime {
     /// Native listeners `window` and `document` hold for `ty`, in capture (window
     /// first) or bubble (document first) order. Returns whether one stopped
     /// propagation.
-    fn fire_global(&mut self, ty: &str, ev: &Rc<EventObj>, capture: bool) -> bool {
+    pub(crate) fn fire_global(&mut self, ty: &str, ev: &Rc<EventObj>, capture: bool) -> bool {
         if self.global_listeners.is_empty() {
             return false;
         }
@@ -446,8 +447,8 @@ impl Runtime {
                         let same =
                             cur.split('#').next() == href.split('#').next() && href.contains('#');
                         if same && !(m.ctrl || m.meta) {
-                            self.inner.url = href.clone();
-                            self.inner.doc.url = href;
+                            // Same-document fragment navigation, as the Realm's.
+                            self.change_hash(&cur, &href, true);
                             return DefaultAction::None;
                         }
                         return DefaultAction::Navigate(href);
@@ -1288,15 +1289,25 @@ impl Runtime {
                 } else {
                     format!("{base}#{h}")
                 };
-                self.inner.url = new.clone();
-                self.inner.doc.url = new;
+                if new != old {
+                    self.change_hash(&old, &new, true);
+                    self.flush();
+                    self.settle();
+                }
                 DefaultAction::None
             }
             UiEvent::Visibility { hidden } => {
                 self.inner.hidden = hidden;
                 DefaultAction::None
             }
-            UiEvent::HistoryGo { .. } | UiEvent::PageShow | UiEvent::Unload => DefaultAction::None,
+            UiEvent::HistoryGo { delta } => {
+                let before = self.inner.url.clone();
+                self.history_traverse(delta as i64, &before);
+                self.flush();
+                self.settle();
+                DefaultAction::None
+            }
+            UiEvent::PageShow | UiEvent::Unload => DefaultAction::None,
         }
     }
 }

@@ -678,6 +678,22 @@ pub enum Builtin {
     /// The keys a `for...in` visits: an object's enumerable string keys in order
     /// (an array's or string's indices), none for `null`/`undefined`.
     ForInKeys,
+    /// `history.pushState(state, title, url?)` / `replaceState`.
+    HistoryPush,
+    HistoryReplace,
+    /// `history.go(delta)` (`back` is -1, `forward` 1): traversed on a timer.
+    HistoryGo,
+    /// The traversal a `history.go` scheduled (delta, the URL it was called at).
+    HistoryTraverse,
+    /// `history.length`, `history.state`.
+    HistoryLength,
+    HistoryState,
+    /// `location[part] = value` (part name, value).
+    LocationSet,
+    /// `location.assign(url)`, `location.replace(url)`, `location.reload()`.
+    LocationAssign,
+    LocationReplace,
+    LocationReload,
 }
 
 /// A JSX element expression.

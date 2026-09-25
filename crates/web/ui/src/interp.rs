@@ -147,7 +147,7 @@ fn arg(args: &[Value], i: usize) -> Value {
 }
 
 /// A part of an http(s) URL as `location` (WHATWG `URL`) reports it.
-fn location_part(url: &str, part: &str) -> String {
+pub(crate) fn location_part(url: &str, part: &str) -> String {
     let (scheme, rest) = url.split_once("://").unwrap_or(("", url));
     let (before_hash, hash) = match rest.find('#') {
         Some(i) => (&rest[..i], &rest[i..]),
@@ -1157,6 +1157,12 @@ impl Runtime {
                 _ => Value::Undefined,
             },
             Value::Node(n) => self.node_prop(*n, name),
+            Value::Event(e) if e.extra.iter().any(|(k, _)| &**k == name) => e
+                .extra
+                .iter()
+                .find(|(k, _)| &**k == name)
+                .map(|(_, v)| v.clone())
+                .unwrap_or_default(),
             Value::Event(e) => match name {
                 "target" => Value::Node(e.target),
                 "currentTarget" => Value::Node(e.current_target.get()),
@@ -1966,6 +1972,16 @@ impl Runtime {
                     _ => Value::Num(self.inner.host_storage_keys(area).len() as f64),
                 }
             }
+            B::HistoryPush
+            | B::HistoryReplace
+            | B::HistoryGo
+            | B::HistoryTraverse
+            | B::HistoryLength
+            | B::HistoryState
+            | B::LocationSet
+            | B::LocationAssign
+            | B::LocationReplace
+            | B::LocationReload => self.history_builtin(b, &args)?,
             B::LocationPart => {
                 let url = self.inner.url.clone();
                 Value::str(&location_part(&url, &arg(&args, 0).to_js_string()))
@@ -2020,7 +2036,7 @@ impl Runtime {
 
     /// The elements under `root` (not `root` itself) matching `sel`, in document
     /// order; only the first when `first`.
-    fn select(&mut self, root: NodeId, sel: &str, first: bool) -> R<Vec<NodeId>> {
+    pub(crate) fn select(&mut self, root: NodeId, sel: &str, first: bool) -> R<Vec<NodeId>> {
         let list = parse_selector(sel)?;
         let ctx = cw_web::css::MatchContext::new();
         let doc = &self.inner.doc;

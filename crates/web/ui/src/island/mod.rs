@@ -996,6 +996,15 @@ fn n_builtin(vm: &mut Vm, a: &mut Args) -> JsResult<Js> {
         "WindowScrollBy" => B::WindowScrollBy,
         "Alert" => B::Alert,
         "Fetch" => B::Fetch,
+        "LocationSet" => B::LocationSet,
+        "LocationAssign" => B::LocationAssign,
+        "LocationReplace" => B::LocationReplace,
+        "LocationReload" => B::LocationReload,
+        "HistoryLength" => B::HistoryLength,
+        "HistoryState" => B::HistoryState,
+        "HistoryPush" => B::HistoryPush,
+        "HistoryReplace" => B::HistoryReplace,
+        "HistoryGo" => B::HistoryGo,
         _ => return Ok(Js::Undefined),
     };
     let rt = rt_of(vm);

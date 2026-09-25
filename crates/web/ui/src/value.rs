@@ -197,6 +197,9 @@ pub struct EventObj {
     pub repeat: bool,
     pub prevented: Cell<bool>,
     pub stopped: Cell<bool>,
+    /// What an event of its type carries besides (`state` of a `popstate`,
+    /// `oldURL`/`newURL` of a `hashchange`).
+    pub extra: Vec<(Str, Value)>,
 }
 
 #[derive(Debug)]

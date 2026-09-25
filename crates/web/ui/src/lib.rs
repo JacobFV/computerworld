@@ -32,6 +32,7 @@ mod dom;
 mod events;
 pub mod gen;
 mod geometry;
+mod history;
 mod interp;
 pub mod island;
 mod json;

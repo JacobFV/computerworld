@@ -4243,6 +4243,46 @@ impl<'a> Lowerer<'a> {
 
     fn assignment(&mut self, a: &'a ast::AssignmentExpression<'a>) -> Lowered {
         use ast::AssignmentOperator as A;
+        // `location.hash = …` navigates, as the page's location does.
+        if let (A::Assign, ast::AssignmentTarget::StaticMemberExpression(m)) = (a.operator, &a.left)
+        {
+            let is_location = match strip(&m.object) {
+                E::Identifier(id) => id.name == "location" && self.resolve_is_free("location"),
+                _ => self.window_member(&m.object) == Some("location"),
+            };
+            let part = m.property.name.as_str();
+            if is_location
+                && matches!(
+                    part,
+                    "href"
+                        | "hash"
+                        | "search"
+                        | "pathname"
+                        | "host"
+                        | "hostname"
+                        | "port"
+                        | "protocol"
+                )
+            {
+                self.mark_always();
+                let (v, _) = self.expr(&a.right, Some(&Ty::String));
+                let tmp = self.temp(Ty::String);
+                return (
+                    Expr::Seq(vec![
+                        Expr::Assign(Box::new(LValue::Local(tmp)), None, Box::new(v)),
+                        Expr::Builtin(
+                            Builtin::LocationSet,
+                            vec![
+                                ArrayItem::Item(Expr::Str(part.into())),
+                                ArrayItem::Item(Expr::Local(tmp)),
+                            ],
+                        ),
+                        Expr::Local(tmp),
+                    ]),
+                    Ty::String,
+                );
+            }
+        }
         if matches!(
             a.left,
             ast::AssignmentTarget::ArrayAssignmentTarget(_)
@@ -4415,6 +4455,7 @@ impl<'a> Lowerer<'a> {
             "localStorage",
             "sessionStorage",
             "location",
+            "history",
             "navigator",
             "document",
             "console",
@@ -4479,6 +4520,14 @@ impl<'a> Lowerer<'a> {
                     ),
                     Ty::Number,
                 )
+            }
+            ("history", "length") => {
+                self.mark_always();
+                (Expr::Builtin(Builtin::HistoryLength, vec![]), Ty::Number)
+            }
+            ("history", "state") => {
+                self.mark_always();
+                (Expr::Builtin(Builtin::HistoryState, vec![]), Ty::Unknown)
             }
             (
                 "location",
@@ -4830,6 +4879,32 @@ impl<'a> Lowerer<'a> {
                     vec![Ty::String],
                     union(Ty::DomNode, Ty::Null),
                 )
+            }
+            ("history", m @ ("pushState" | "replaceState" | "back" | "forward" | "go")) => {
+                self.mark_always();
+                let (mut args, _) = self.exprs_args(&c.arguments, &[]);
+                let b = match m {
+                    "pushState" => Builtin::HistoryPush,
+                    "replaceState" => Builtin::HistoryReplace,
+                    _ => Builtin::HistoryGo,
+                };
+                match m {
+                    "back" => args = vec![ArrayItem::Item(Expr::Num(-1.0))],
+                    "forward" => args = vec![ArrayItem::Item(Expr::Num(1.0))],
+                    "go" if args.is_empty() => args = vec![ArrayItem::Item(Expr::Num(0.0))],
+                    _ => {}
+                }
+                return Some((Expr::Builtin(b, args), Ty::Void));
+            }
+            ("location", m @ ("assign" | "replace" | "reload")) => {
+                self.mark_always();
+                let (args, _) = self.exprs_args(&c.arguments, &[]);
+                let b = match m {
+                    "assign" => Builtin::LocationAssign,
+                    "replace" => Builtin::LocationReplace,
+                    _ => Builtin::LocationReload,
+                };
+                return Some((Expr::Builtin(b, args), Ty::Void));
             }
             (
                 "localStorage" | "sessionStorage",

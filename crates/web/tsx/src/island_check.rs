@@ -136,6 +136,7 @@ const GLOBALS: &[&str] = &[
     "confirm",
     "prompt",
     "fetch",
+    "history",
 ];
 
 /// Node's globals, which a browser lacks too: `typeof process` is `"undefined"`
@@ -169,7 +170,7 @@ const DOCUMENT: &[&str] = &[
 /// What the shim's `location` reads (it navigates nowhere).
 const LOCATION: &[&str] = &[
     "href", "origin", "protocol", "host", "hostname", "port", "pathname", "search", "hash",
-    "toString",
+    "toString", "assign", "replace", "reload",
 ];
 
 /// Why each module the island would run cannot run there (empty: it can).
@@ -248,30 +249,6 @@ impl Check<'_> {
 }
 
 impl<'a> Visit<'a> for Check<'_> {
-    fn visit_assignment_expression(&mut self, a: &oxc_ast::ast::AssignmentExpression<'a>) {
-        // `location.hash = …` navigates the page; the island's location only reads.
-        let navigates = match &a.left {
-            oxc_ast::ast::AssignmentTarget::StaticMemberExpression(m) => {
-                self.is_location(&m.object)
-            }
-            oxc_ast::ast::AssignmentTarget::AssignmentTargetIdentifier(id) => {
-                id.name == "location" && self.is_free(id)
-            }
-            _ => false,
-        } || matches!(&a.left, oxc_ast::ast::AssignmentTarget::StaticMemberExpression(m)
-        if m.property.name == "location"
-            && self.free_ident(&m.object).is_some_and(|w| {
-                matches!(w.name.as_str(), "window" | "self" | "globalThis" | "document")
-            }));
-        if navigates {
-            self.refuse(
-                a.span.start,
-                "navigating through `location` on the island".into(),
-            );
-        }
-        walk::walk_assignment_expression(self, a);
-    }
-
     fn visit_identifier_reference(&mut self, id: &IdentifierReference<'a>) {
         if self.allowed.contains(&id.span) || !self.is_free(id) {
             return;

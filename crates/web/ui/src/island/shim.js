@@ -318,10 +318,27 @@
   globalThis.sessionStorage = storage(1);
   const location = {};
   for (const part of ['href', 'origin', 'protocol', 'host', 'hostname', 'port', 'pathname', 'search', 'hash']) {
-    Object.defineProperty(location, part, { enumerable: true, get: () => B('LocationPart', part) });
+    Object.defineProperty(location, part, {
+      enumerable: true,
+      get: () => B('LocationPart', part),
+      set: (v) => { B('LocationSet', part, String(v)); },
+    });
   }
   location.toString = () => B('LocationPart', 'href');
+  location.assign = (u) => { B('LocationAssign', String(u)); };
+  location.replace = (u) => { B('LocationReplace', String(u)); };
+  location.reload = () => { B('LocationReload'); };
   globalThis.location = location;
+  globalThis.history = {
+    get length() { return B('HistoryLength'); },
+    get state() { return B('HistoryState'); },
+    scrollRestoration: 'auto',
+    pushState: (state, title, url) => { B('HistoryPush', state === undefined ? null : state, title, url === undefined ? null : url); },
+    replaceState: (state, title, url) => { B('HistoryReplace', state === undefined ? null : state, title, url === undefined ? null : url); },
+    go: (d) => { B('HistoryGo', d === undefined ? 0 : d | 0); },
+    back: () => { B('HistoryGo', -1); },
+    forward: () => { B('HistoryGo', 1); },
+  };
   for (const [name, b] of [['innerWidth', 'InnerWidth'], ['innerHeight', 'InnerHeight'], ['scrollX', 'ScrollX'], ['scrollY', 'ScrollY'], ['pageXOffset', 'ScrollX'], ['pageYOffset', 'ScrollY']]) {
     Object.defineProperty(globalThis, name, { configurable: true, get: () => B(b) });
   }
