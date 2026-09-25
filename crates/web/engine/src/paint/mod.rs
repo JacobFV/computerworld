@@ -158,6 +158,13 @@ impl Default for PaintContext<'static> {
     }
 }
 
+/// Drops what painting caches across paints (rasterised inline svgs), so the next
+/// paint computes everything afresh. Output never depends on the caches; this is
+/// for tests that check so.
+pub fn clear_caches() {
+    replaced::clear_svg_cache();
+}
+
 /// Paints the document. See the module documentation.
 pub fn paint(
     doc: &Document,

@@ -18,6 +18,9 @@
 //! grey their text. `<iframe>`, `<canvas>`, `<video>`, `<svg>` and `<object>` are a
 //! light grey box with the tag name in muted text.
 
+use std::collections::HashMap;
+use std::rc::Rc;
+
 use cw_scene::{Color, Primitive, Rect as SRect};
 
 use super::{display_list::box_rect, parts, px, semantics, snap, text, upx, Painter, State};
@@ -167,19 +170,35 @@ fn paint_svg(p: &mut Painter, key: (NodeId, u32), state: &State, content: Rect, 
         f(content.origin.x) - r.x as f64,
         f(content.origin.y) - r.y as f64,
     );
-    let built = crate::svg::build_at(
-        doc,
-        p.styles,
-        node,
-        f(content.size.width),
-        f(content.size.height),
-        origin,
-    );
+    let (w, h) = (f(content.size.width), f(content.size.height));
+    let cache_key = svg_cache_key(doc, p.styles, node, [w, h, origin.x, origin.y], r);
+    let cached = cache_key.and_then(|k| SVG_LAYERS.with(|c| c.borrow().get(&k).cloned()));
+    let layers = match cached {
+        Some(l) => l,
+        None => {
+            let built = crate::svg::build_at(doc, p.styles, node, w, h, origin);
+            let l = Rc::new(crate::svg::layers(
+                &built,
+                r.width as usize,
+                r.height as usize,
+            ));
+            if let Some(k) = cache_key {
+                SVG_LAYERS.with(|c| {
+                    let mut c = c.borrow_mut();
+                    if c.len() >= SVG_CACHE_ENTRIES {
+                        c.clear();
+                    }
+                    c.insert(k, l.clone());
+                });
+            }
+            l
+        }
+    };
     // The raster is exactly the content box, which is the clip an inline svg's
     // `overflow: hidden` asks for. A clip rect here would be in untransformed
     // coordinates and cut a transformed svg (Tailwind's `-translate-y-1/2` icons).
     let clipped = state.clone();
-    for layer in crate::svg::layers(&built, r.width as usize, r.height as usize) {
+    for layer in layers.iter() {
         let part = p.next_part(key);
         let id = p.id(key, part);
         match layer {
@@ -191,7 +210,7 @@ fn paint_svg(p: &mut Painter, key: (NodeId, u32), state: &State, content: Rect, 
                     Primitive::Image {
                         width: r.width,
                         height: r.height,
-                        rgba,
+                        rgba: rgba.clone(),
                     },
                 );
             }
@@ -209,6 +228,110 @@ fn paint_svg(p: &mut Painter, key: (NodeId, u32), state: &State, content: Rect, 
             }
         }
     }
+}
+
+/// Rasterised inline `<svg>`s, by everything that decides their pixels (see
+/// `svg_cache_key`): an icon repainted frame after frame is rasterised once.
+type SvgKey = (u64, u64);
+const SVG_CACHE_ENTRIES: usize = 512;
+thread_local! {
+    static SVG_LAYERS: std::cell::RefCell<HashMap<SvgKey, Rc<Vec<crate::svg::Layer>>>> =
+        std::cell::RefCell::new(HashMap::new());
+}
+
+/// A 128-bit digest of what `svg::build_at` and `svg::layers` read for `svg`: the
+/// subtree's structure, attributes, text and computed styles, the size, the
+/// origin and the raster size. `None` when the subtree references an element
+/// (`url(#...)`, `href="#..."`) that does not resolve inside it, whose content the
+/// digest would not cover.
+fn svg_cache_key(
+    doc: &crate::dom::Document,
+    styles: &crate::style::StyleSet,
+    svg: NodeId,
+    geometry: [f64; 4],
+    r: SRect,
+) -> Option<SvgKey> {
+    use std::hash::{Hash, Hasher};
+    fn visit<'d>(
+        doc: &'d crate::dom::Document,
+        styles: &crate::style::StyleSet,
+        n: NodeId,
+        hs: &mut [std::collections::hash_map::DefaultHasher; 2],
+        refs: &mut Vec<&'d str>,
+    ) -> Option<()> {
+        match doc.kind(n) {
+            crate::dom::NodeKind::Element { tag, attrs, .. } => {
+                for a in attrs {
+                    if a.name.ends_with("href") {
+                        refs.push(a.value.trim().strip_prefix('#')?);
+                    }
+                    let mut v = a.value.as_str();
+                    while let Some(i) = v.find("url(") {
+                        v = &v[i + 4..];
+                        let end = v.find(')')?;
+                        let id = v[..end].trim().trim_matches(['"', '\'']).trim();
+                        refs.push(id.strip_prefix('#')?);
+                        v = &v[end..];
+                    }
+                }
+                for h in hs.iter_mut() {
+                    1u8.hash(h);
+                    tag.hash(h);
+                    for a in attrs {
+                        a.name.hash(h);
+                        a.value.hash(h);
+                    }
+                    styles.get(n).hash(h);
+                }
+            }
+            crate::dom::NodeKind::Text(t) => {
+                for h in hs.iter_mut() {
+                    2u8.hash(h);
+                    t.hash(h);
+                    styles.get(n).hash(h);
+                }
+            }
+            _ => {
+                for h in hs.iter_mut() {
+                    3u8.hash(h);
+                }
+            }
+        }
+        for c in doc.children(n) {
+            visit(doc, styles, c, hs, refs)?;
+        }
+        for h in hs.iter_mut() {
+            4u8.hash(h);
+        }
+        Some(())
+    }
+    let mut hs = [
+        std::collections::hash_map::DefaultHasher::new(),
+        std::collections::hash_map::DefaultHasher::new(),
+    ];
+    // Two digests of the same input, the second salted: a 128-bit key.
+    0xC0FFEEu32.hash(&mut hs[1]);
+    let mut refs = Vec::new();
+    visit(doc, styles, svg, &mut hs, &mut refs)?;
+    for id in refs {
+        let target = *doc.by_id(id).first()?;
+        if target != svg && !doc.ancestors(target).any(|a| a == svg) {
+            return None;
+        }
+    }
+    for h in hs.iter_mut() {
+        for g in geometry {
+            g.to_bits().hash(h);
+        }
+        (r.width, r.height).hash(h);
+    }
+    Some((hs[0].finish(), hs[1].finish()))
+}
+
+/// Drops the rasterised-svg cache (for tests that compare cached paints with
+/// fresh ones).
+pub(crate) fn clear_svg_cache() {
+    SVG_LAYERS.with(|c| c.borrow_mut().clear());
 }
 
 fn paint_image(

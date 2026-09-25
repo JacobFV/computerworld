@@ -3,7 +3,8 @@
 //! the Realm with `cw_web::style::profile::set_verify(true)`, under which each style
 //! and layout flush is checked against a full cascade and a full layout of the same
 //! document and state (the realm panics on the first difference). After each step
-//! the settled page's paint is also compared with a paint of the from-scratch pass.
+//! the settled page's paint (reusing what earlier paints cached) is compared with a
+//! paint after `cw_web::paint::clear_caches`.
 //!
 //!     cargo test -p cw-web --features pipeline --test incremental
 //!
@@ -102,6 +103,26 @@ mod cases {
         settle(r, 20);
     }
 
+    fn paint(r: &mut Realm) -> cw_scene::Scene {
+        let tree = r.fragment_tree().clone();
+        let styles = r.styles().clone();
+        let doc = r.document();
+        let images = cw_web::paint::ImageMap::from_document(&doc, &styles);
+        let vp = cw_web::Viewport {
+            width: 1280,
+            height: 800,
+            scale: 1,
+            zoom: 100,
+        };
+        cw_web::paint::paint(
+            &doc,
+            &styles,
+            &tree,
+            vp,
+            &cw_web::paint::PaintContext::new(&images),
+        )
+    }
+
     fn run(name: &str) {
         cw_web::style::profile::set_verify(true);
         let html = std::fs::read_to_string(fixture_dir().join(format!("{name}.html"))).unwrap();
@@ -117,6 +138,15 @@ mod cases {
             for step in list.as_array().unwrap() {
                 perform(&mut r, step);
                 r.fragment_tree();
+                // A paint that reuses what earlier paints cached equals one that
+                // computes everything afresh.
+                let warm = paint(&mut r);
+                cw_web::paint::clear_caches();
+                let cold = paint(&mut r);
+                assert!(
+                    warm == cold,
+                    "{name}: a cached paint differs from a fresh one"
+                );
                 // Pointer moves over the page, hovering whatever lies under it.
                 for (x, y) in [(5, 5), (640, 60), (300, 400), (1000, 700)] {
                     r.dispatch(UiEvent::PointerMove {
