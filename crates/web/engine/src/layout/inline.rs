@@ -1090,7 +1090,47 @@ impl<'c, 'a, 'b> LineBreaker<'c, 'a, 'b> {
                     ) && self.units[p.unit].width > Au::ZERO
                 });
             let more_after = j < n;
-            if emit {
+            // A line that holds only empty inline boxes (an `<li>` whose one child
+            // floats, react-admin's empty tag list) is a zero-height line box, but
+            // its boxes still have a place: Chromium reports them at the line's top
+            // with no size, where the next content would start.
+            let phantom = !emit
+                && placed.iter().any(|p| {
+                    matches!(
+                        self.units[p.unit].kind,
+                        UnitKind::Open(_) | UnitKind::Close(_)
+                    )
+                });
+            if phantom {
+                let saved = (
+                    self.y,
+                    self.any_line,
+                    self.first_baseline,
+                    self.last_baseline,
+                );
+                // (Absolutes met on the line get their static positions from it.)
+                self.build_line(
+                    &placed,
+                    end_content,
+                    content_width,
+                    l,
+                    avail,
+                    indent,
+                    false,
+                    abs_here,
+                );
+                self.y = saved.0;
+                self.any_line = saved.1;
+                self.first_baseline = saved.2;
+                self.last_baseline = saved.3;
+                if let Some(mut line) = self.fragments.pop() {
+                    flatten_phantom(&mut line.children);
+                    line.rect.size.height = Au::ZERO;
+                    line.overflow = Rect::new(Au::ZERO, Au::ZERO, line.rect.size.width, Au::ZERO);
+                    line.hidden_for_paint = true;
+                    self.fragments.push(line);
+                }
+            } else if emit {
                 let br_clear = placed
                     .iter()
                     .rev()
@@ -1886,6 +1926,16 @@ fn baseline_shift(
             -lp.resolve(lh)
         }
         VerticalAlign::Top | VerticalAlign::Bottom => Au::ZERO,
+    }
+}
+
+/// The inline boxes of a zero-height line: at its top, with no height.
+fn flatten_phantom(kids: &mut crate::layout::fragment::FragmentList) {
+    for k in kids.iter_mut() {
+        k.rect.origin.y = Au::ZERO;
+        k.rect.size.height = Au::ZERO;
+        k.overflow = Rect::new(Au::ZERO, Au::ZERO, k.rect.size.width, Au::ZERO);
+        flatten_phantom(&mut k.children);
     }
 }
 

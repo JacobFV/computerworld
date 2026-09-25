@@ -830,4 +830,17 @@ mod cases {
         close(y("c"), 64.0, "#c y");
         close(y("d"), 114.0, "#d y");
     }
+    /// An inline box with nothing in flow (an `<li>` whose only child floats, an
+    /// empty `<span>`) sits on a zero-height line: Chromium reports it with no size
+    /// where the line's content would start, beside any float, and it moves nothing.
+    #[test]
+    fn empty_inline_boxes_sit_on_zero_height_lines() {
+        let p = page("<!DOCTYPE html><body style=\"margin:0;font:16px/20px Arimo\"><ul style=\"margin:0;padding:0;list-style:none\"><li id=a style=\"display:inline\"><a style=\"float:left;width:30px;height:40px\"></a></li></ul><div id=w style=\"width:200px\"><span id=s></span></div><div id=after>x</div><p style=\"margin:0\"><span id=t><span id=u></span></span></p>");
+        rect_is(&p, "a", 30.0, 0.0, 0.0, 0.0);
+        rect_is(&p, "w", 0.0, 0.0, 200.0, 0.0);
+        rect_is(&p, "s", 30.0, 0.0, 0.0, 0.0);
+        rect_is(&p, "after", 0.0, 0.0, 1280.0, 20.0);
+        rect_is(&p, "t", 30.0, 20.0, 0.0, 0.0);
+        rect_is(&p, "u", 30.0, 20.0, 0.0, 0.0);
+    }
 }
