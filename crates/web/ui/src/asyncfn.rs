@@ -18,15 +18,18 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::interp::{Flow, Frame};
-use crate::ir::{Expr, LValue, Module, Pattern, Stmt};
+use crate::ir::{Expr, Function, LValue, Pattern, Stmt};
+use crate::program::Program;
 use crate::runtime::*;
 use crate::value::*;
 
 /// Extends a borrow of the module to `'static`.
 ///
-/// SAFETY: every `Task` holds an `Rc<Module>` for as long as it holds references
-/// into it, and a `Module` is never mutated after the runtime is built, so the
-/// references stay valid for the task's whole life and never outlive it.
+/// SAFETY: every `Task` holds an `Rc` of its program for as long as it holds
+/// references into the program's IR, and a program's IR is never mutated or
+/// dropped while the program lives (an `IrProgram`'s module; a `GenProgram`'s
+/// async functions, parsed once into a `OnceLock`), so the references stay valid
+/// for the task's whole life and never outlive it.
 fn extend<T: ?Sized>(r: &T) -> &'static T {
     unsafe { &*(r as *const T) }
 }
@@ -92,7 +95,7 @@ enum Cont {
 /// A suspended (or running) async function call.
 #[derive(Debug)]
 pub struct Task {
-    module: Rc<Module>,
+    program: Rc<dyn Program>,
     func: u32,
     frame: Frame,
     stack: Vec<Cont>,
@@ -135,11 +138,18 @@ fn has_await(s: &Stmt) -> bool {
 
 /// Calls async function `func` with its frame already bound: runs to the first
 /// `await` and returns the promise of its result.
-pub(crate) fn start(rt: &mut Runtime, module: Rc<Module>, func: u32, frame: Frame) -> Value {
-    let body = extend(module.functions[func as usize].body.as_slice());
+fn function(program: &Rc<dyn Program>, func: u32) -> Option<&'static Function> {
+    program.function_ir(func).map(extend)
+}
+
+pub(crate) fn start(rt: &mut Runtime, program: Rc<dyn Program>, func: u32, frame: Frame) -> Value {
+    let body = function(&program, func)
+        .expect("an async function has its IR")
+        .body
+        .as_slice();
     let result = crate::interp::new_promise();
     let task = Task {
-        module,
+        program,
         func,
         frame,
         stack: vec![Cont::Seq {
@@ -664,7 +674,9 @@ fn comp(c: &CompS, v: &mut dyn FnMut(&V) -> Result<Value, String>) -> Result<Com
 
 /// A suspended task as data.
 pub(crate) fn encode(task: &Task, v: &mut dyn FnMut(&Value) -> V) -> TaskS {
-    let body = extend(task.module.functions[task.func as usize].body.as_slice());
+    let body = function(&task.program, task.func)
+        .map(|f| f.body.as_slice())
+        .unwrap_or(&[]);
     let (slices, stmts) = index(body);
     let slice_at = |s: &[Stmt]| {
         slices
@@ -719,15 +731,12 @@ pub(crate) fn encode(task: &Task, v: &mut dyn FnMut(&Value) -> V) -> TaskS {
 
 /// A task back from data (`encode`).
 pub(crate) fn decode(
-    module: &Rc<Module>,
+    program: &Rc<dyn Program>,
     s: &TaskS,
     v: &mut dyn FnMut(&V) -> Result<Value, String>,
 ) -> Result<Task, String> {
-    let func = module
-        .functions
-        .get(s.func as usize)
-        .ok_or("a task of an unknown function")?;
-    let body = extend(func.body.as_slice());
+    let func = function(program, s.func).ok_or("a task of an unknown function")?;
+    let body = func.body.as_slice();
     let (slices, stmts) = index(body);
     let slice = |i: u32| {
         slices
@@ -833,7 +842,7 @@ pub(crate) fn decode(
         _ => return Err("a task's result is not a promise".into()),
     };
     Ok(Task {
-        module: module.clone(),
+        program: program.clone(),
         func: s.func,
         frame,
         stack,

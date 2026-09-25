@@ -210,7 +210,9 @@ impl Runtime {
         self.fire_depth -= 1;
         #[cfg(not(target_arch = "wasm32"))]
         if self.fire_depth == 0 {
-            self.stats.script_micros += started.elapsed().as_micros() as u64;
+            let nanos = started.elapsed().as_nanos() as u64;
+            self.stats.script_nanos += nanos;
+            self.stats.script_micros = self.stats.script_nanos / 1000;
         }
         prevented
     }

@@ -10,17 +10,16 @@ use std::rc::Rc;
 use cw_web::dom::NodeId;
 use cw_web::script::{Inner, Journal, LogLevel, ScriptHostDocument};
 
-use crate::ir::Module;
 use crate::value::*;
 
 /// A thrown value, or the short-circuit of an optional chain.
 #[derive(Debug)]
-pub(crate) enum Throw {
+pub enum Throw {
     Value(Value),
     Short,
 }
 
-pub(crate) type R<T> = Result<T, Throw>;
+pub type R<T> = Result<T, Throw>;
 
 pub(crate) fn type_error<T>(msg: impl Into<String>) -> R<T> {
     Err(Throw::Value(Value::error("TypeError", &msg.into())))
@@ -277,55 +276,57 @@ pub(crate) struct RenderCtx {
     pub new_cache: ElemCache,
 }
 
-pub(crate) struct Runtime {
-    pub module: Rc<Module>,
-    pub inner: Inner,
-    pub globals: Vec<Value>,
-    pub ctx_defaults: BTreeMap<u32, Value>,
-    pub templates: Vec<TemplateInfo>,
-    pub instances: BTreeMap<u32, Instance>,
-    pub next_inst: u32,
-    pub root: MNode,
-    pub container: NodeId,
-    pub handlers: BTreeMap<NodeId, Vec<(Str, Value)>>,
-    pub controlled: BTreeMap<NodeId, Controlled>,
-    pub form_props: BTreeMap<NodeId, crate::dom::FormProps>,
+/// A mounted app's whole state. Opaque outside the crate except for the methods
+/// generated code calls (`crate::gen`).
+pub struct Runtime {
+    pub(crate) program: Rc<dyn crate::program::Program>,
+    pub(crate) inner: Inner,
+    pub(crate) globals: Vec<Value>,
+    pub(crate) ctx_defaults: BTreeMap<u32, Value>,
+    pub(crate) templates: Vec<TemplateInfo>,
+    pub(crate) instances: BTreeMap<u32, Instance>,
+    pub(crate) next_inst: u32,
+    pub(crate) root: MNode,
+    pub(crate) container: NodeId,
+    pub(crate) handlers: BTreeMap<NodeId, Vec<(Str, Value)>>,
+    pub(crate) controlled: BTreeMap<NodeId, Controlled>,
+    pub(crate) form_props: BTreeMap<NodeId, crate::dom::FormProps>,
     /// The instances whose output is being reconciled, innermost last.
-    pub owner: Vec<u32>,
-    pub pending_work: bool,
-    pub render: Vec<RenderCtx>,
-    pub ctx_stack: Vec<(u32, Value)>,
+    pub(crate) owner: Vec<u32>,
+    pub(crate) pending_work: bool,
+    pub(crate) render: Vec<RenderCtx>,
+    pub(crate) ctx_stack: Vec<(u32, Value)>,
     /// Instances rendered this pass, children before parents.
-    pub effect_list: Vec<u32>,
-    pub deleted_layout: Vec<Value>,
-    pub deleted_passive: Vec<Value>,
-    pub ref_detach: Vec<Value>,
-    pub ref_attach: Vec<(Value, NodeId)>,
-    pub autofocus: Vec<NodeId>,
-    pub timers: Vec<Timer>,
-    pub next_timer: u32,
+    pub(crate) effect_list: Vec<u32>,
+    pub(crate) deleted_layout: Vec<Value>,
+    pub(crate) deleted_passive: Vec<Value>,
+    pub(crate) ref_detach: Vec<Value>,
+    pub(crate) ref_attach: Vec<(Value, NodeId)>,
+    pub(crate) autofocus: Vec<NodeId>,
+    pub(crate) timers: Vec<Timer>,
+    pub(crate) next_timer: u32,
     /// Virtual milliseconds since boot (timers are due on this clock).
-    pub clock_ms: f64,
-    pub start_micros: i64,
-    pub microtasks: VecDeque<Microtask>,
-    pub id_counter: u32,
+    pub(crate) clock_ms: f64,
+    pub(crate) start_micros: i64,
+    pub(crate) microtasks: VecDeque<Microtask>,
+    pub(crate) id_counter: u32,
     /// The `cw` global's bridge to a computerworld desktop host.
     pub(crate) cw: crate::cw::CwBridge,
     /// Hole skipping and element reuse are sound for this module.
-    pub pure_render: bool,
-    pub booted: bool,
+    pub(crate) pure_render: bool,
+    pub(crate) booted: bool,
     /// A render threw: React unmounted the root.
-    pub crashed: bool,
+    pub(crate) crashed: bool,
     /// `window`/`document` event listeners, in registration order.
-    pub global_listeners: Vec<GlobalListener>,
+    pub(crate) global_listeners: Vec<GlobalListener>,
     /// Per function: which frame slots are boxed.
-    pub boxed_cache: Vec<Option<Rc<[bool]>>>,
+    pub(crate) boxed_cache: Vec<Option<Rc<[bool]>>>,
     /// Compiled regular expressions by (pattern, flags).
-    pub regex_cache: BTreeMap<(String, String), Rc<cw_regex::Regex>>,
+    pub(crate) regex_cache: BTreeMap<(String, String), Rc<cw_regex::Regex>>,
     /// Counters for timing and tests.
-    pub stats: Stats,
+    pub(crate) stats: Stats,
     /// Nesting of `fire` (script time is counted at the outermost).
-    pub fire_depth: u32,
+    pub(crate) fire_depth: u32,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -334,6 +335,8 @@ pub struct Stats {
     /// (what a browser reports as script time; not layout or hit testing). Not
     /// measured on wasm32, which has no clock here.
     pub script_micros: u64,
+    /// The same in nanoseconds.
+    pub script_nanos: u64,
     pub renders: u64,
     pub holes_evaluated: u64,
     pub holes_skipped: u64,
@@ -341,16 +344,18 @@ pub struct Stats {
 }
 
 impl Runtime {
-    pub fn new(module: Rc<Module>, host: Box<dyn ScriptHostDocument>, url: &str) -> Runtime {
+    pub(crate) fn new(
+        program: Rc<dyn crate::program::Program>,
+        host: Box<dyn ScriptHostDocument>,
+        url: &str,
+    ) -> Runtime {
         let inner = Inner::new(host, Journal::recording(), url);
-        let templates = module
-            .templates
-            .iter()
-            .map(crate::dom::template_info)
+        let templates = (0..program.templates_len())
+            .map(|t| crate::dom::template_info(program.template(t as u32)))
             .collect();
-        let pure_render = crate::render::is_pure(&module);
+        let pure_render = program.pure_render();
         Runtime {
-            module,
+            program,
             inner,
             globals: Vec::new(),
             ctx_defaults: BTreeMap::new(),

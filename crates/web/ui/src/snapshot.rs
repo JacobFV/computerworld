@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dom::FormProps;
 use crate::ir::Module;
+use crate::program::{Program, ProgramId};
 use crate::runtime::*;
 use crate::value::*;
 
@@ -146,9 +147,16 @@ pub struct TimerS {
 }
 
 /// A mounted app's complete state.
+///
+/// The program is named, not stored, when it was generated ahead of time: `program`
+/// is its identity and `module` is absent; an interpreted app's snapshot carries its
+/// IR in `module`, as it always has. See `crate::program`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct UiState {
-    pub module: Module,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub module: Option<Module>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub program: Option<ProgramId>,
     pub url: String,
     pub doc: Document,
     pub viewport: (u32, u32, u8, u16),
@@ -694,8 +702,13 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         .iter()
         .map(|l| (l.window, l.ty.to_string(), e.v(&l.f), l.capture))
         .collect();
+    let (module, program) = match rt.program.module() {
+        Some(m) => (Some((**m).clone()), None),
+        None => (None, Some(rt.program.id())),
+    };
     UiState {
-        module: (*rt.module).clone(),
+        module,
+        program,
         url: i.url.clone(),
         doc: i.doc.clone(),
         viewport: (
@@ -752,7 +765,7 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
 struct Dec<'a> {
     heap: &'a [HeapObj],
     done: Vec<Option<Value>>,
-    module: Rc<Module>,
+    program: Rc<dyn Program>,
     tasks: BTreeMap<u32, Rc<RefCell<Option<crate::asyncfn::Task>>>>,
     alls: BTreeMap<u32, Rc<RefCell<AllState>>>,
 }
@@ -1022,8 +1035,8 @@ impl Dec<'_> {
         let cell = Rc::new(RefCell::new(None));
         self.tasks.insert(*i, cell.clone());
         if let Some(t) = t {
-            let module = self.module.clone();
-            let task = crate::asyncfn::decode(&module, t, &mut |x| self.v(x))?;
+            let program = self.program.clone();
+            let task = crate::asyncfn::decode(&program, t, &mut |x| self.v(x))?;
             *cell.borrow_mut() = Some(task);
         }
         Ok(cell)
@@ -1131,16 +1144,58 @@ impl Dec<'_> {
     }
 }
 
-pub(crate) fn load(s: &UiState, host: Box<dyn ScriptHostDocument>) -> Result<Runtime, String> {
-    if s.module.version != crate::ir::IR_VERSION {
-        return Err(format!("IR version {}", s.module.version));
+/// The program a snapshot was taken of, when it can say: its own IR, or a
+/// registered generated program it names.
+pub(crate) fn own_program(s: &UiState) -> Result<Rc<dyn Program>, String> {
+    if let Some(m) = &s.module {
+        if m.version != crate::ir::IR_VERSION {
+            return Err(format!("IR version {}", m.version));
+        }
+        return Ok(Rc::new(crate::program::IrProgram::new(m.clone())));
     }
-    let module = Rc::new(s.module.clone());
-    let mut rt = Runtime::new(module.clone(), host, &s.url);
+    match &s.program {
+        Some(id) => match crate::program::find(id) {
+            Some(p) => Ok(Rc::new(crate::program::StaticProgram(p))),
+            None => Err(format!(
+                "program {} ({}) is not registered: restore it with UiApp::restore_with",
+                id.name, id.hash
+            )),
+        },
+        None => Err("a snapshot with neither IR nor a program".into()),
+    }
+}
+
+/// Whether `program` is the program the snapshot was taken of.
+pub(crate) fn check_program(s: &UiState, program: &dyn Program) -> Result<(), String> {
+    let hash = match (&s.program, &s.module) {
+        (Some(id), _) => id.hash.clone(),
+        (None, Some(m)) => {
+            if m.version != crate::ir::IR_VERSION {
+                return Err(format!("IR version {}", m.version));
+            }
+            crate::program::hash_hex(crate::program::ir_hash(m))
+        }
+        (None, None) => return Err("a snapshot with neither IR nor a program".into()),
+    };
+    let ours = crate::program::hash_hex(program.ir_hash());
+    if hash != ours {
+        return Err(format!(
+            "the snapshot is of IR {hash}, the program is IR {ours}"
+        ));
+    }
+    Ok(())
+}
+
+pub(crate) fn load(
+    s: &UiState,
+    program: Rc<dyn Program>,
+    host: Box<dyn ScriptHostDocument>,
+) -> Result<Runtime, String> {
+    let mut rt = Runtime::new(program.clone(), host, &s.url);
     let mut d = Dec {
         heap: &s.heap,
         done: vec![None; s.heap.len()],
-        module,
+        program,
         tasks: BTreeMap::new(),
         alls: BTreeMap::new(),
     };

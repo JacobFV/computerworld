@@ -285,13 +285,80 @@ fn deps_changed(old: &Option<Vec<Value>>, new: &Option<Vec<Value>>) -> bool {
     }
 }
 
-fn key_of(v: &Value) -> Option<Str> {
+/// An element's `key` prop as React reads it.
+pub fn key_of(v: &Value) -> Option<Str> {
     match v {
         Value::Undefined | Value::Null => None,
         Value::Str(s) => Some(s.clone()),
         other => Some(Rc::from(other.to_js_string().as_str())),
     }
 }
+
+/// The component a JSX element names.
+pub fn component_callee(f: Value) -> R<Rc<Closure>> {
+    match f {
+        Value::Func(func) => Ok(func),
+        other => type_error(format!("element type is invalid: {}", inspect(&other))),
+    }
+}
+
+/// `{...spread}` into a component's props (React drops `key` and `ref`).
+pub fn props_spread(out: &mut Vec<(Str, Value)>, v: &Value) {
+    if let Value::Object(o) = v {
+        for (k, v) in o.borrow().iter() {
+            if &**k == "key" || &**k == "ref" {
+                continue;
+            }
+            crate::interp::obj_set(out, k.clone(), v.clone());
+        }
+    }
+}
+
+/// `<Comp {...props}>children</Comp>`.
+pub fn component_elem(
+    func: Rc<Closure>,
+    mut props: Vec<(Str, Value)>,
+    children: Option<Value>,
+    key: Option<Str>,
+) -> Value {
+    if let Some(c) = children {
+        crate::interp::obj_set(&mut props, Rc::from("children"), c);
+    }
+    Value::Elem(Rc::new(Elem::Component {
+        func,
+        props: Value::object(props),
+        key,
+    }))
+}
+
+/// The context a `<Ctx.Provider>` provides.
+pub fn provider_context(v: Value) -> R<u32> {
+    match v {
+        Value::Context(ctx) => Ok(ctx),
+        _ => type_error("Provider of a value that is not a context"),
+    }
+}
+
+/// A template element under construction (see `Runtime::tpl_begin`).
+pub struct TplBuilder {
+    caching: bool,
+    site: (usize, u32),
+    old: Option<CacheEntry>,
+    tid: u32,
+    values: Vec<Value>,
+    deps: Vec<Vec<Value>>,
+    all_same: bool,
+}
+
+impl TplBuilder {
+    /// Whether this render compares hole dependencies (else they need not be read).
+    pub fn caching(&self) -> bool {
+        self.caching
+    }
+}
+
+/// A hook's argument evaluator: `(runtime, index) -> value`.
+pub type HookArg<'a> = dyn FnMut(&mut Runtime, usize) -> R<Value> + 'a;
 
 /// `useId`'s client format in React 18: `:r<n in base 32>:`.
 fn react_id(n: u32) -> String {
@@ -310,21 +377,30 @@ fn react_id(n: u32) -> String {
 impl Runtime {
     // ------------------------------------------------------------------ hooks
 
-    fn deps_arg(&mut self, frame: &mut Frame, e: Option<&Expr>) -> R<Option<Vec<Value>>> {
-        match e {
-            None => Ok(None),
-            Some(e) => match self.eval(frame, e)? {
-                Value::Array(a) => Ok(Some(a.borrow().clone())),
-                Value::Undefined | Value::Null => Ok(None),
-                other => type_error(format!(
-                    "dependency list {} is not an array",
-                    inspect(&other)
-                )),
-            },
+    /// A dependency list argument: absent (`nargs <= i`), an array, or nullish.
+    fn deps_arg(&mut self, nargs: usize, arg: &mut HookArg<'_>, i: usize) -> R<Option<Vec<Value>>> {
+        if i >= nargs {
+            return Ok(None);
+        }
+        match arg(self, i)? {
+            Value::Array(a) => Ok(Some(a.borrow().clone())),
+            Value::Undefined | Value::Null => Ok(None),
+            other => type_error(format!(
+                "dependency list {} is not an array",
+                inspect(&other)
+            )),
         }
     }
 
     pub(crate) fn hook(&mut self, frame: &mut Frame, h: Hook, args: &[Expr]) -> R<Value> {
+        self.hook_with(h, args.len(), &mut |rt: &mut Runtime, i: usize| {
+            rt.eval(frame, &args[i])
+        })
+    }
+
+    /// A hook call with `nargs` arguments, each evaluated (in the order React's
+    /// hook evaluates them, and only when it does) by `arg`.
+    pub fn hook_with(&mut self, h: Hook, nargs: usize, arg: &mut HookArg<'_>) -> R<Value> {
         let Some(ctx) = self.render.last_mut() else {
             return type_error(
                 "Invalid hook call: hooks can only be called while rendering a component",
@@ -340,9 +416,10 @@ impl Runtime {
             .unwrap_or(true);
         match h {
             Hook::State => {
-                let init = match args.first() {
-                    Some(e) => self.eval(frame, e)?,
-                    None => Value::Undefined,
+                let init = if nargs > 0 {
+                    arg(self, 0)?
+                } else {
+                    Value::Undefined
                 };
                 if first {
                     let value = if matches!(init, Value::Func(_)) {
@@ -384,21 +461,22 @@ impl Runtime {
                 Ok(Value::array(vec![value, Value::Setter(inst, idx as u32)]))
             }
             Hook::Reducer => {
-                let reducer = match args.first() {
-                    Some(e) => self.eval(frame, e)?,
-                    None => Value::Undefined,
+                let reducer = if nargs > 0 {
+                    arg(self, 0)?
+                } else {
+                    Value::Undefined
                 };
-                let init = match args.get(1) {
-                    Some(e) => self.eval(frame, e)?,
-                    None => Value::Undefined,
+                let init = if nargs > 1 {
+                    arg(self, 1)?
+                } else {
+                    Value::Undefined
                 };
                 if first {
-                    let value = match args.get(2) {
-                        Some(e) => {
-                            let f = self.eval(frame, e)?;
-                            self.call_value(&f, vec![init])?
-                        }
-                        None => init,
+                    let value = if nargs > 2 {
+                        let f = arg(self, 2)?;
+                        self.call_value(&f, vec![init])?
+                    } else {
+                        init
                     };
                     self.instance(inst).hooks.push(HookState::Reducer {
                         value: value.clone(),
@@ -434,11 +512,12 @@ impl Runtime {
                 Ok(Value::array(vec![value, Value::Dispatch(inst, idx as u32)]))
             }
             Hook::Memo | Hook::Callback => {
-                let f = match args.first() {
-                    Some(e) => self.eval(frame, e)?,
-                    None => Value::Undefined,
+                let f = if nargs > 0 {
+                    arg(self, 0)?
+                } else {
+                    Value::Undefined
                 };
-                let deps = self.deps_arg(frame, args.get(1))?;
+                let deps = self.deps_arg(nargs, arg, 1)?;
                 if !first {
                     if let HookState::Memo { value, deps: old } = &self.instance(inst).hooks[idx] {
                         if !deps_changed(old, &deps) {
@@ -465,9 +544,10 @@ impl Runtime {
             }
             Hook::Ref => {
                 if first {
-                    let init = match args.first() {
-                        Some(e) => self.eval(frame, e)?,
-                        None => Value::Undefined,
+                    let init = if nargs > 0 {
+                        arg(self, 0)?
+                    } else {
+                        Value::Undefined
                     };
                     let r = Value::Ref(Rc::new(std::cell::RefCell::new(init)));
                     self.instance(inst).hooks.push(HookState::Ref(r.clone()));
@@ -479,11 +559,12 @@ impl Runtime {
                 }
             }
             Hook::Effect | Hook::LayoutEffect => {
-                let create = match args.first() {
-                    Some(e) => self.eval(frame, e)?,
-                    None => Value::Undefined,
+                let create = if nargs > 0 {
+                    arg(self, 0)?
+                } else {
+                    Value::Undefined
                 };
-                let deps = self.deps_arg(frame, args.get(1))?;
+                let deps = self.deps_arg(nargs, arg, 1)?;
                 let layout = h == Hook::LayoutEffect;
                 if first {
                     self.instance(inst).hooks.push(HookState::Effect {
@@ -506,9 +587,10 @@ impl Runtime {
                 Ok(Value::Undefined)
             }
             Hook::Context => {
-                let c = match args.first() {
-                    Some(e) => self.eval(frame, e)?,
-                    None => Value::Undefined,
+                let c = if nargs > 0 {
+                    arg(self, 0)?
+                } else {
+                    Value::Undefined
                 };
                 let Value::Context(id) = c else {
                     return type_error("useContext needs a context");
@@ -519,13 +601,15 @@ impl Runtime {
                 Ok(self.context_value(id))
             }
             Hook::SyncExternalStore => {
-                let subscribe = match args.first() {
-                    Some(e) => self.eval(frame, e)?,
-                    None => Value::Undefined,
+                let subscribe = if nargs > 0 {
+                    arg(self, 0)?
+                } else {
+                    Value::Undefined
                 };
-                let get = match args.get(1) {
-                    Some(e) => self.eval(frame, e)?,
-                    None => Value::Undefined,
+                let get = if nargs > 1 {
+                    arg(self, 1)?
+                } else {
+                    Value::Undefined
                 };
                 let value = self.call_value(&get, vec![])?;
                 if first {
@@ -695,81 +779,42 @@ impl Runtime {
                     Some(k) => key_of(&self.eval(frame, k)?),
                     None => None,
                 };
-                let module = self.module.clone();
-                let meta = &module.templates[*template as usize].holes;
-                // A component's own frame: skip holes whose inputs are unchanged.
-                if let (Some(_), true) = (frame.inst, self.pure_render) {
+                let program = self.program.clone();
+                // A component's own frame: skip holes whose inputs are unchanged. (A
+                // generated program's templates carry no hole metadata: its own code
+                // does this; the interpreter runs only its async functions, never a
+                // render.)
+                let meta = match program.template(*template) {
+                    crate::program::TemplateRef::Ir(t) => Some(&t.holes),
+                    crate::program::TemplateRef::Static(_) => None,
+                };
+                let caching = frame.inst.is_some() && self.pure_render && meta.is_some();
+                let occ = if caching {
                     let addr = el as *const ElementExpr as usize;
-                    let occ = {
-                        let o = frame.occ.entry(addr).or_insert(0);
-                        *o += 1;
-                        *o
+                    let o = frame.occ.entry(addr).or_insert(0);
+                    *o += 1;
+                    (addr, *o)
+                } else {
+                    (0, 0)
+                };
+                let mut b = self.tpl_begin(caching, occ.0, occ.1, *template, holes.len());
+                for (i, h) in holes.iter().enumerate() {
+                    let (deps, always) = match meta {
+                        Some(m) if caching => (
+                            m[i].deps.iter().map(|d| frame.slot_value(d)).collect(),
+                            m[i].always,
+                        ),
+                        _ => (Vec::new(), false),
                     };
-                    let old = self
-                        .render
-                        .last_mut()
-                        .and_then(|r| r.old_cache.entries.remove(&(addr, occ)));
-                    let mut values = Vec::with_capacity(holes.len());
-                    let mut deps_out = Vec::with_capacity(holes.len());
-                    let mut all_same = old.is_some();
-                    for (i, h) in holes.iter().enumerate() {
-                        let m = &meta[i];
-                        let cur: Vec<Value> = m.deps.iter().map(|d| frame.slot_value(d)).collect();
-                        let reuse = match &old {
-                            Some(o) if !m.always => {
-                                o.deps[i].len() == cur.len()
-                                    && o.deps[i].iter().zip(&cur).all(|(a, b)| same_dep(a, b))
-                            }
-                            _ => false,
-                        };
-                        if reuse {
-                            values.push(old.as_ref().unwrap().holes[i].clone());
-                            self.stats.holes_skipped += 1;
-                        } else {
+                    match self.tpl_reuse(&b, i, always, &deps) {
+                        Some(v) => self.tpl_push(&mut b, v, deps, false),
+                        None => {
                             let v = self.eval(frame, h)?;
-                            if let Some(o) = &old {
-                                if !same_value(&o.holes[i], &v) {
-                                    all_same = false;
-                                }
-                            }
-                            values.push(v);
-                            self.stats.holes_evaluated += 1;
+                            self.tpl_push(&mut b, v, deps, true);
                         }
-                        deps_out.push(cur);
                     }
-                    let elem = match &old {
-                        Some(o) if all_same && o.elem.key() == key.as_ref() => {
-                            self.stats.elements_reused += 1;
-                            o.elem.clone()
-                        }
-                        _ => Rc::new(Elem::Template {
-                            tid: *template,
-                            holes: values.clone(),
-                            key,
-                        }),
-                    };
-                    if let Some(r) = self.render.last_mut() {
-                        r.new_cache.entries.insert(
-                            (addr, occ),
-                            CacheEntry {
-                                deps: deps_out,
-                                holes: values,
-                                elem: elem.clone(),
-                            },
-                        );
-                    }
-                    return Ok(Value::Elem(elem));
                 }
-                let mut values = Vec::with_capacity(holes.len());
-                for h in holes {
-                    values.push(self.eval(frame, h)?);
-                }
-                self.stats.holes_evaluated += holes.len() as u64;
-                Value::Elem(Rc::new(Elem::Template {
-                    tid: *template,
-                    holes: values,
-                    key,
-                }))
+                self.tpl_finish(b, key)
             }
             ElementExpr::Component {
                 callee,
@@ -778,9 +823,7 @@ impl Runtime {
                 key,
             } => {
                 let f = self.eval(frame, callee)?;
-                let Value::Func(func) = f else {
-                    return type_error(format!("element type is invalid: {}", inspect(&f)));
-                };
+                let func = component_callee(f)?;
                 let mut out: Vec<(Str, Value)> = Vec::with_capacity(props.len() + 1);
                 for p in props {
                     match p {
@@ -798,30 +841,20 @@ impl Runtime {
                             );
                         }
                         Prop::Spread(v) => {
-                            if let Value::Object(o) = self.eval(frame, v)? {
-                                for (k, v) in o.borrow().iter() {
-                                    if &**k == "key" || &**k == "ref" {
-                                        continue;
-                                    }
-                                    crate::interp::obj_set(&mut out, k.clone(), v.clone());
-                                }
-                            }
+                            let v = self.eval(frame, v)?;
+                            props_spread(&mut out, &v);
                         }
                     }
                 }
-                if let Some(c) = children {
-                    let c = self.eval(frame, c)?;
-                    crate::interp::obj_set(&mut out, Rc::from("children"), c);
-                }
+                let children = match children {
+                    Some(c) => Some(self.eval(frame, c)?),
+                    None => None,
+                };
                 let key = match key {
                     Some(k) => key_of(&self.eval(frame, k)?),
                     None => None,
                 };
-                Value::Elem(Rc::new(Elem::Component {
-                    func,
-                    props: Value::object(out),
-                    key,
-                }))
+                component_elem(func, out, children, key)
             }
             ElementExpr::Fragment { children, key } => {
                 let mut out = Vec::with_capacity(children.len());
@@ -840,9 +873,7 @@ impl Runtime {
                 children,
                 key,
             } => {
-                let Value::Context(ctx) = self.eval(frame, context)? else {
-                    return type_error("Provider of a value that is not a context");
-                };
+                let ctx = provider_context(self.eval(frame, context)?)?;
                 let value = self.eval(frame, value)?;
                 let mut out = Vec::with_capacity(children.len());
                 for c in children {
@@ -860,6 +891,108 @@ impl Runtime {
                 }))
             }
         })
+    }
+
+    /// Starts a template element: `caching` when this is a component's own render
+    /// and hole skipping is sound, `(site, occ)` the element expression's place and
+    /// occurrence in this render (the key of last render's entry).
+    pub fn tpl_begin(
+        &mut self,
+        caching: bool,
+        site: usize,
+        occ: u32,
+        tid: u32,
+        n_holes: usize,
+    ) -> TplBuilder {
+        let old = if caching {
+            self.render
+                .last_mut()
+                .and_then(|r| r.old_cache.entries.remove(&(site, occ)))
+        } else {
+            None
+        };
+        TplBuilder {
+            caching,
+            site: (site, occ),
+            all_same: old.is_some(),
+            old,
+            tid,
+            values: Vec::with_capacity(n_holes),
+            deps: Vec::with_capacity(if caching { n_holes } else { 0 }),
+        }
+    }
+
+    /// Hole `i`'s value from last render, when its dependency values (`deps`, the
+    /// slots it reads, in the order the IR lists them) are unchanged.
+    pub fn tpl_reuse(
+        &mut self,
+        b: &TplBuilder,
+        i: usize,
+        always: bool,
+        deps: &[Value],
+    ) -> Option<Value> {
+        if !b.caching || always {
+            return None;
+        }
+        let o = b.old.as_ref()?;
+        let same = o.deps[i].len() == deps.len()
+            && o.deps[i].iter().zip(deps).all(|(a, b)| same_dep(a, b));
+        if !same {
+            return None;
+        }
+        self.stats.holes_skipped += 1;
+        Some(o.holes[i].clone())
+    }
+
+    /// Hole `i`'s value: reused, or `evaluated` now.
+    pub fn tpl_push(&mut self, b: &mut TplBuilder, v: Value, deps: Vec<Value>, evaluated: bool) {
+        if b.caching {
+            if evaluated {
+                let i = b.values.len();
+                if let Some(o) = &b.old {
+                    if !same_value(&o.holes[i], &v) {
+                        b.all_same = false;
+                    }
+                }
+                self.stats.holes_evaluated += 1;
+            }
+            b.deps.push(deps);
+        }
+        b.values.push(v);
+    }
+
+    /// The element, reusing last render's when no hole changed.
+    pub fn tpl_finish(&mut self, b: TplBuilder, key: Option<Str>) -> Value {
+        if !b.caching {
+            self.stats.holes_evaluated += b.values.len() as u64;
+            return Value::Elem(Rc::new(Elem::Template {
+                tid: b.tid,
+                holes: b.values,
+                key,
+            }));
+        }
+        let elem = match &b.old {
+            Some(o) if b.all_same && o.elem.key() == key.as_ref() => {
+                self.stats.elements_reused += 1;
+                o.elem.clone()
+            }
+            _ => Rc::new(Elem::Template {
+                tid: b.tid,
+                holes: b.values.clone(),
+                key,
+            }),
+        };
+        if let Some(r) = self.render.last_mut() {
+            r.new_cache.entries.insert(
+                b.site,
+                CacheEntry {
+                    deps: b.deps,
+                    holes: b.values,
+                    elem: elem.clone(),
+                },
+            );
+        }
+        Value::Elem(elem)
     }
 
     // ------------------------------------------------------------------ mount / reconcile

@@ -30,8 +30,10 @@ mod asyncfn;
 mod cw;
 mod dom;
 mod events;
+pub mod gen;
 mod interp;
 mod json;
+pub mod program;
 mod render;
 mod runtime;
 mod snapshot;
@@ -43,10 +45,10 @@ use cw_web::layout::FragmentTree;
 use cw_web::script::{DefaultAction, Inner, LogEntry, ScriptHostDocument, UiEvent};
 use cw_web::style::StyleSet;
 
+pub use program::{GenProgram, IrProgram, Program, ProgramId};
 pub use runtime::Stats;
 pub use snapshot::UiState;
 
-use crate::interp::Frame;
 use crate::runtime::Runtime;
 use crate::value::{Closure, Value};
 
@@ -136,21 +138,43 @@ impl UiApp {
     /// An app rendering into an existing document (a desktop host builds its own).
     pub fn with_document(
         module: ir::Module,
-        mut doc: Document,
+        doc: Document,
         url: &str,
         host: Box<dyn ScriptHostDocument>,
     ) -> Result<UiApp, UiError> {
         if module.version != ir::IR_VERSION {
             return Err(UiError::Version(module.version));
         }
-        let Some(root) = &module.root else {
+        Self::with_program(Rc::new(program::IrProgram::new(module)), doc, url, host)
+    }
+
+    /// An app running a generated program (`cw-tsx build --emit rust`) in the page
+    /// `html`.
+    pub fn generated(
+        program: &'static program::GenProgram,
+        html: &str,
+        url: &str,
+        host: Box<dyn ScriptHostDocument>,
+    ) -> Result<UiApp, UiError> {
+        let doc = cw_web::html::parse(html);
+        Self::with_program(Rc::new(program::StaticProgram(program)), doc, url, host)
+    }
+
+    /// An app running `program`, interpreted or generated, in a document.
+    pub fn with_program(
+        program: Rc<dyn Program>,
+        mut doc: Document,
+        url: &str,
+        host: Box<dyn ScriptHostDocument>,
+    ) -> Result<UiApp, UiError> {
+        let Some(container_id) = program.container_id() else {
             return Err(UiError::NoContainer(String::new()));
         };
-        let Some(container) = doc.by_id(&root.container_id).first().copied() else {
-            return Err(UiError::NoContainer(root.container_id.clone()));
+        let Some(container) = doc.by_id(container_id).first().copied() else {
+            return Err(UiError::NoContainer(container_id.to_owned()));
         };
         doc.url = url.to_owned();
-        let mut rt = Runtime::new(Rc::new(module), host, url);
+        let mut rt = Runtime::new(program, host, url);
         rt.inner.doc = doc;
         rt.inner.ready_state = "complete".into();
         rt.container = container;
@@ -166,39 +190,16 @@ impl UiApp {
         }
         rt.booted = true;
         rt.start_micros = rt.inner.host_now_micros();
-        let module = rt.module.clone();
-        rt.globals = vec![Value::Undefined; module.globals.len()];
-        for (i, g) in module.globals.iter().enumerate() {
-            match &g.init {
-                ir::GlobalInit::Function(f) => {
-                    rt.globals[i] = Value::Func(Rc::new(Closure {
-                        func: *f,
-                        captures: Vec::new(),
-                    }));
-                }
-                ir::GlobalInit::Context(_) => rt.globals[i] = Value::Context(i as u32),
-                _ => {}
-            }
+        let program = rt.program.clone();
+        rt.globals = vec![Value::Undefined; program.globals_len()];
+        if let Err(e) = program.boot_globals(rt) {
+            rt.report(e);
+            rt.crashed = true;
+            return;
         }
-        let mut frame = Frame::bare();
-        for (i, g) in module.globals.iter().enumerate() {
-            let r = match &g.init {
-                ir::GlobalInit::Expr(e) => rt.eval(&mut frame, e).map(|v| rt.globals[i] = v),
-                ir::GlobalInit::Context(e) => rt.eval(&mut frame, e).map(|v| {
-                    rt.ctx_defaults.insert(i as u32, v);
-                }),
-                _ => Ok(()),
-            };
-            if let Err(e) = r {
-                rt.report(e);
-                rt.crashed = true;
-                return;
-            }
-        }
-        let root = module.root.as_ref().expect("checked in new");
         let element = rt.call_closure(
             &Rc::new(Closure {
-                func: root.element,
+                func: program.root_element(),
                 captures: Vec::new(),
             }),
             Vec::new(),
@@ -360,10 +361,38 @@ impl UiApp {
         snapshot::save(&self.rt)
     }
 
-    /// Rebuilds an app from a snapshot; afterwards it is live on `host`.
+    /// Rebuilds an app from a snapshot; afterwards it is live on `host`. The program
+    /// is the snapshot's own IR, or the registered generated program it names
+    /// (`program::register`).
     pub fn restore(state: &UiState, host: Box<dyn ScriptHostDocument>) -> Result<UiApp, UiError> {
+        let program = snapshot::own_program(state).map_err(UiError::State)?;
         Ok(UiApp {
-            rt: snapshot::load(state, host).map_err(UiError::State)?,
+            rt: snapshot::load(state, program, host).map_err(UiError::State)?,
         })
+    }
+
+    /// Rebuilds an app from a snapshot on `program`, which must be the same IR the
+    /// snapshot was taken of, interpreted or generated: an interpreted app's
+    /// snapshot restores on the generated program of its IR, and a generated app's
+    /// on the interpreter given that IR.
+    pub fn restore_with(
+        state: &UiState,
+        program: Rc<dyn Program>,
+        host: Box<dyn ScriptHostDocument>,
+    ) -> Result<UiApp, UiError> {
+        snapshot::check_program(state, &*program).map_err(UiError::State)?;
+        Ok(UiApp {
+            rt: snapshot::load(state, program, host).map_err(UiError::State)?,
+        })
+    }
+
+    /// Which program this app runs.
+    pub fn program_id(&self) -> program::ProgramId {
+        self.rt.program.id()
+    }
+
+    /// Whether this app runs generated code (else the interpreter).
+    pub fn is_generated(&self) -> bool {
+        self.rt.program.module().is_none()
     }
 }

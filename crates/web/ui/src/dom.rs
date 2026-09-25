@@ -10,33 +10,30 @@ use cw_web::css::parser::{component_values_to_string, parse_declaration_block};
 use cw_web::css::Declaration;
 use cw_web::dom::{Attribute, Namespace, NodeId, NodeKind};
 
-use crate::ir::{TAttr, TNode, Template};
+use crate::program::{AttrView, TNodeView, TView, TemplateRef};
 use crate::runtime::*;
 use crate::value::*;
 
 /// Where each hole of `t` lives, computed once.
-pub(crate) fn template_info(t: &Template) -> TemplateInfo {
+pub(crate) fn template_info(t: TemplateRef<'_>) -> TemplateInfo {
+    let n = t.n_holes();
     let mut info = TemplateInfo {
-        sites: vec![HoleSite::Attr; t.holes.len()],
-        props: vec![None; t.holes.len()],
+        sites: vec![HoleSite::Attr; n],
+        props: vec![None; n],
         tags: Vec::new(),
     };
-    fn walk(n: &TNode, info: &mut TemplateInfo) -> Option<usize> {
-        match n {
-            TNode::Element {
+    fn walk<N: TNodeView>(n: &N, info: &mut TemplateInfo) -> Option<usize> {
+        match n.view() {
+            TView::Element {
                 tag,
                 attrs,
                 children,
             } => {
                 let idx = info.tags.len();
-                info.tags.push(Rc::from(tag.as_str()));
-                for a in attrs {
-                    match a {
-                        TAttr::Static(..) => {}
-                        TAttr::Dynamic(name, h) => {
-                            info.props[*h as usize] = Some(Rc::from(name.as_str()));
-                        }
-                        TAttr::Spread(_) | TAttr::Ref(_) => {}
+                info.tags.push(Rc::from(tag));
+                for i in 0..attrs.len() {
+                    if let AttrView::Dynamic(name, h) = attrs.get(i) {
+                        info.props[h as usize] = Some(Rc::from(name));
                     }
                 }
                 let mut child_idx = Vec::new();
@@ -44,13 +41,13 @@ pub(crate) fn template_info(t: &Template) -> TemplateInfo {
                     child_idx.push(walk(c, info));
                 }
                 for (i, c) in children.iter().enumerate() {
-                    if let TNode::Hole(h) = c {
-                        let (next_static, next_hole) = match children.get(i + 1) {
-                            Some(TNode::Hole(nh)) => (None, Some(*nh)),
+                    if let TView::Hole(h) = c.view() {
+                        let (next_static, next_hole) = match children.get(i + 1).map(|n| n.view()) {
+                            Some(TView::Hole(nh)) => (None, Some(nh)),
                             Some(_) => (child_idx[i + 1], None),
                             None => (None, None),
                         };
-                        info.sites[*h as usize] = HoleSite::Child {
+                        info.sites[h as usize] = HoleSite::Child {
                             next_static,
                             next_hole,
                         };
@@ -58,15 +55,18 @@ pub(crate) fn template_info(t: &Template) -> TemplateInfo {
                 }
                 Some(idx)
             }
-            TNode::Text(_) => {
+            TView::Text(_) => {
                 let idx = info.tags.len();
                 info.tags.push(Rc::from(""));
                 Some(idx)
             }
-            TNode::Hole(_) => None,
+            TView::Hole(_) => None,
         }
     }
-    walk(&t.root, &mut info);
+    match t {
+        TemplateRef::Ir(t) => walk(&t.root, &mut info),
+        TemplateRef::Static(t) => walk(&t.root, &mut info),
+    };
     info
 }
 
@@ -713,12 +713,18 @@ impl Runtime {
             self.inner.doc.kind(parent),
             NodeKind::Element { ns: Namespace::Svg, tag, .. } if tag != "foreignObject"
         );
-        let module = self.module.clone();
-        let t = &module.templates[tid as usize];
+        let program = self.program.clone();
         let info = self.templates[tid as usize].clone();
         let mut created: Vec<NodeId> = Vec::with_capacity(info.tags.len());
         let mut holes: Vec<Option<MHole>> = (0..values.len()).map(|_| None).collect();
-        let root = self.build(&t.root, in_svg, &info, values, &mut created, &mut holes);
+        let root = match program.template(tid) {
+            TemplateRef::Ir(t) => {
+                self.build(&t.root, in_svg, &info, values, &mut created, &mut holes)
+            }
+            TemplateRef::Static(t) => {
+                self.build(&t.root, in_svg, &info, values, &mut created, &mut holes)
+            }
+        };
         let holes = holes
             .into_iter()
             .map(|h| h.expect("every hole is placed"))
@@ -727,23 +733,23 @@ impl Runtime {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn build(
+    fn build<N: TNodeView>(
         &mut self,
-        n: &TNode,
+        n: &N,
         in_svg: bool,
         info: &TemplateInfo,
         values: &[Value],
         created: &mut Vec<NodeId>,
         holes: &mut Vec<Option<MHole>>,
     ) -> Option<NodeId> {
-        match n {
-            TNode::Text(s) => {
+        match n.view() {
+            TView::Text(s) => {
                 let t = self.inner.doc.create_text(s);
                 created.push(t);
                 Some(t)
             }
-            TNode::Hole(_) => None,
-            TNode::Element {
+            TView::Hole(_) => None,
+            TView::Element {
                 tag,
                 attrs,
                 children,
@@ -752,7 +758,7 @@ impl Runtime {
                 let el = if svg {
                     self.inner.doc.create(NodeKind::Element {
                         ns: Namespace::Svg,
-                        tag: tag.clone(),
+                        tag: tag.to_owned(),
                         attrs: Vec::new(),
                     })
                 } else {
@@ -771,12 +777,12 @@ impl Runtime {
                 }
                 // Then the child holes, in order, each before its static successor.
                 for (i, c) in children.iter().enumerate() {
-                    if let TNode::Hole(h) = c {
+                    if let TView::Hole(h) = c.view() {
                         let HoleSite::Child {
                             next_static,
                             next_hole,
                             ..
-                        } = info.sites[*h as usize]
+                        } = info.sites[h as usize]
                         else {
                             unreachable!()
                         };
@@ -784,40 +790,40 @@ impl Runtime {
                         // Holes mount in order, so everything after this one that is
                         // already in place is static: go before the first of those.
                         let anchor = child_nodes[i + 1..].iter().find_map(|n| *n);
-                        let mounted = self.mount_value(&values[*h as usize], el, anchor);
-                        holes[*h as usize] = Some(MHole::Child {
+                        let mounted = self.mount_value(&values[h as usize], el, anchor);
+                        holes[h as usize] = Some(MHole::Child {
                             parent: el,
                             next_static,
                             next_hole,
-                            value: values[*h as usize].clone(),
+                            value: values[h as usize].clone(),
                             mounted,
                         });
                     }
                 }
                 // Props, in JSX order; a form control's value and checkedness last.
-                let is_form = matches!(tag.as_str(), "input" | "textarea" | "select" | "option");
-                for a in attrs {
-                    match a {
-                        TAttr::Static(name, value) => self.write_attr(el, name, Some(value)),
-                        TAttr::Dynamic(name, h) => {
-                            let v = &values[*h as usize];
+                let is_form = matches!(tag, "input" | "textarea" | "select" | "option");
+                for ai in 0..attrs.len() {
+                    match attrs.get(ai) {
+                        AttrView::Static(name, value) => self.write_attr(el, name, Some(value)),
+                        AttrView::Dynamic(name, h) => {
+                            let v = &values[h as usize];
                             self.set_prop(el, name, &Value::Undefined, v, true);
-                            holes[*h as usize] = Some(MHole::Attr {
+                            holes[h as usize] = Some(MHole::Attr {
                                 node: el,
                                 value: v.clone(),
                             });
                         }
-                        TAttr::Spread(h) => {
-                            let v = values[*h as usize].clone();
+                        AttrView::Spread(h) => {
+                            let v = values[h as usize].clone();
                             self.apply_spread(el, &Value::Undefined, &v, true);
-                            holes[*h as usize] = Some(MHole::Spread { node: el, value: v });
+                            holes[h as usize] = Some(MHole::Spread { node: el, value: v });
                         }
-                        TAttr::Ref(h) => {
-                            let v = values[*h as usize].clone();
+                        AttrView::Ref(h) => {
+                            let v = values[h as usize].clone();
                             if !v.is_nullish() {
                                 self.ref_attach.push((v.clone(), el));
                             }
-                            holes[*h as usize] = Some(MHole::Ref { node: el, value: v });
+                            holes[h as usize] = Some(MHole::Ref { node: el, value: v });
                         }
                     }
                 }

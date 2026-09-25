@@ -67,7 +67,7 @@ fn throw<T>(v: Value) -> R<T> {
 }
 
 /// A value for `console.log` and error reports.
-pub(crate) fn inspect(v: &Value) -> String {
+pub fn inspect(v: &Value) -> String {
     match v {
         Value::Str(s) => s.to_string(),
         other => inspect_nested(other, 0),
@@ -173,7 +173,7 @@ pub(crate) fn obj_set(o: &mut Vec<(Str, Value)>, k: Str, v: Value) {
 }
 
 /// A property key from a value (`obj[k]`).
-fn key_string(v: &Value) -> Str {
+pub(crate) fn key_string(v: &Value) -> Str {
     match v {
         Value::Str(s) => s.clone(),
         other => Rc::from(other.to_js_string().as_str()),
@@ -197,7 +197,7 @@ fn js_round(x: f64) -> f64 {
     }
 }
 
-fn to_int32(n: f64) -> i32 {
+pub(crate) fn to_int32(n: f64) -> i32 {
     if !n.is_finite() {
         return 0;
     }
@@ -322,8 +322,18 @@ impl Runtime {
         args: Vec<Value>,
         inst: Option<u32>,
     ) -> R<Value> {
-        let module = self.module.clone();
-        let f = &module.functions[c.func as usize];
+        let program = self.program.clone();
+        program.call(self, c, args, inst)
+    }
+
+    /// Runs function `f` (the IR of `c.func`) on the interpreter.
+    pub(crate) fn interpret_call(
+        &mut self,
+        f: &Function,
+        c: &Rc<Closure>,
+        args: Vec<Value>,
+        inst: Option<u32>,
+    ) -> R<Value> {
         let mut frame = Frame {
             locals: vec![Value::Undefined; f.n_locals as usize],
             closure: c.clone(),
@@ -337,7 +347,8 @@ impl Runtime {
             self.bind(&mut frame, p, v)?;
         }
         if f.is_async {
-            return Ok(crate::asyncfn::start(self, module.clone(), c.func, frame));
+            let program = self.program.clone();
+            return Ok(crate::asyncfn::start(self, program, c.func, frame));
         }
         match self.exec_block(&mut frame, &f.body)? {
             Flow::Return(v) => Ok(v),
@@ -350,9 +361,13 @@ impl Runtime {
         if let Some(Some(b)) = self.boxed_cache.get(f as usize) {
             return b.clone();
         }
-        let func = &self.module.functions[f as usize];
-        let mut flags = vec![false; func.n_locals as usize];
-        for b in &func.boxed {
+        let n_locals = self
+            .program
+            .function_ir(f)
+            .map(|func| func.n_locals as usize)
+            .unwrap_or(0);
+        let mut flags = vec![false; n_locals];
+        for b in self.program.boxed(f) {
             if let Some(x) = flags.get_mut(*b as usize) {
                 *x = true;
             }
@@ -368,7 +383,7 @@ impl Runtime {
     /// How many arguments a callback reads (so `map` does not build unused ones).
     fn arity(&self, f: &Value) -> usize {
         match f {
-            Value::Func(c) => self.module.functions[c.func as usize].params.len(),
+            Value::Func(c) => self.program.arity(c.func),
             _ => 1,
         }
     }
@@ -555,47 +570,26 @@ impl Runtime {
                 self.bind(frame, inner, v)?;
             }
             Pattern::Array { items, rest } => {
-                let arr = match &v {
-                    Value::Array(a) => a.borrow().clone(),
-                    Value::Str(s) => s.chars().map(|c| Value::str(&c.to_string())).collect(),
-                    other => return type_error(format!("{} is not iterable", inspect(other))),
-                };
+                let arr = crate::gen::array_items(&v)?;
                 for (i, item) in items.iter().enumerate() {
                     if let Some(p) = item {
                         self.bind(frame, p, arr.get(i).cloned().unwrap_or_default())?;
                     }
                 }
                 if let Some(r) = rest {
-                    let tail = arr
-                        .get(items.len()..)
-                        .map(|t| t.to_vec())
-                        .unwrap_or_default();
-                    self.bind(frame, r, Value::array(tail))?;
+                    self.bind(frame, r, crate::gen::array_rest(&arr, items.len()))?;
                 }
             }
             Pattern::Object { props, rest } => {
-                if v.is_nullish() {
-                    return type_error(format!(
-                        "Cannot destructure '{}' as it is {}.",
-                        v.to_js_string(),
-                        v.to_js_string()
-                    ));
-                }
+                crate::gen::destructure_check(&v)?;
                 for (k, p) in props {
                     let x = self.get_member(&v, k)?;
                     self.bind(frame, p, x)?;
                 }
                 if let Some(r) = rest {
-                    let out = match &v {
-                        Value::Object(o) => o
-                            .borrow()
-                            .iter()
-                            .filter(|(k, _)| !props.iter().any(|(n, _)| **n == **k))
-                            .cloned()
-                            .collect(),
-                        _ => Vec::new(),
-                    };
-                    self.bind(frame, r, Value::object(out))?;
+                    let rest_v =
+                        crate::gen::object_rest(&v, &mut props.iter().map(|(n, _)| n.as_str()));
+                    self.bind(frame, r, rest_v)?;
                 }
             }
         }
@@ -658,19 +652,10 @@ impl Runtime {
                             let v = self.eval(frame, v)?;
                             obj_set(&mut out, k, v);
                         }
-                        Prop::Spread(v) => match self.eval(frame, v)? {
-                            Value::Object(o) => {
-                                for (k, v) in o.borrow().iter() {
-                                    obj_set(&mut out, k.clone(), v.clone());
-                                }
-                            }
-                            Value::Array(a) => {
-                                for (i, v) in a.borrow().iter().enumerate() {
-                                    obj_set(&mut out, Rc::from(i.to_string().as_str()), v.clone());
-                                }
-                            }
-                            _ => {}
-                        },
+                        Prop::Spread(v) => {
+                            let v = self.eval(frame, v)?;
+                            crate::gen::obj_spread(&mut out, &v);
+                        }
                     }
                 }
                 Value::object(out)
@@ -786,10 +771,9 @@ impl Runtime {
                 Value::Num(if *prefix { new } else { cur })
             }
             Expr::Closure(f) => {
-                let module = self.module.clone();
-                let func = &module.functions[*f as usize];
-                let captures = func
-                    .captures
+                let captures = self
+                    .program
+                    .captures(*f)
                     .iter()
                     .map(|c| frame.slot(c).clone())
                     .collect();
@@ -844,10 +828,9 @@ impl Runtime {
                 Value::Cell(c) => *c.borrow_mut() = v,
                 _ => frame.locals[*n as usize] = v,
             },
-            LValue::Capture(n) => match &frame.closure.captures[*n as usize] {
-                Value::Cell(c) => *c.borrow_mut() = v,
-                _ => return js_error("TypeError", "Assignment to a captured constant"),
-            },
+            LValue::Capture(n) => {
+                crate::gen::write_capture(&frame.closure.captures[*n as usize], v)?
+            }
             LValue::Global(n) => self.globals[*n as usize] = v,
             LValue::Member(o, k) => {
                 let o = self.eval(frame, o)?;
@@ -856,20 +839,7 @@ impl Runtime {
             LValue::Index(o, k) => {
                 let o = self.eval(frame, o)?;
                 let k = self.eval(frame, k)?;
-                match (&o, &k) {
-                    (Value::Array(a), Value::Num(i)) if *i >= 0.0 && i.fract() == 0.0 => {
-                        let i = *i as usize;
-                        let mut a = a.borrow_mut();
-                        if i >= a.len() {
-                            a.resize(i + 1, Value::Undefined);
-                        }
-                        a[i] = v;
-                    }
-                    _ => {
-                        let k = key_string(&k);
-                        self.set_member(&o, &k, v)?;
-                    }
-                }
+                self.set_index(&o, &k, v)?;
             }
         }
         Ok(())
@@ -878,29 +848,7 @@ impl Runtime {
     pub(crate) fn binary(&mut self, op: BinaryOp, a: &Value, b: &Value) -> R<Value> {
         use BinaryOp as B;
         Ok(match op {
-            B::Add => {
-                let prim = |v: &Value| match v {
-                    Value::Array(_) | Value::Object(_) | Value::Func(_) => {
-                        Value::str(&v.to_js_string())
-                    }
-                    other => other.clone(),
-                };
-                let (a, b) = (prim(a), prim(b));
-                match (&a, &b) {
-                    (Value::Str(x), _) => {
-                        let mut s = String::with_capacity(x.len() + 8);
-                        s.push_str(x);
-                        s.push_str(&b.to_js_string());
-                        Value::str(&s)
-                    }
-                    (_, Value::Str(y)) => {
-                        let mut s = a.to_js_string();
-                        s.push_str(y);
-                        Value::str(&s)
-                    }
-                    _ => Value::Num(a.to_number() + b.to_number()),
-                }
-            }
+            B::Add => crate::gen::add(a, b),
             B::Sub => Value::Num(a.to_number() - b.to_number()),
             B::Mul => Value::Num(a.to_number() * b.to_number()),
             B::Div => Value::Num(a.to_number() / b.to_number()),
@@ -910,19 +858,7 @@ impl Runtime {
             B::StrictNotEq => Value::Bool(!strict_equals(a, b)),
             B::Eq => Value::Bool(loose_equals(a, b)),
             B::NotEq => Value::Bool(!loose_equals(a, b)),
-            B::Lt | B::LtEq | B::Gt | B::GtEq => {
-                let ord = match (a, b) {
-                    (Value::Str(x), Value::Str(y)) => Some(compare_strings(x, y)),
-                    _ => a.to_number().partial_cmp(&b.to_number()),
-                };
-                Value::Bool(match (op, ord) {
-                    (_, None) => false,
-                    (B::Lt, Some(o)) => o.is_lt(),
-                    (B::LtEq, Some(o)) => o.is_le(),
-                    (B::Gt, Some(o)) => o.is_gt(),
-                    (_, Some(o)) => o.is_ge(),
-                })
-            }
+            B::Lt | B::LtEq | B::Gt | B::GtEq => Value::Bool(crate::gen::compare(op, a, b)),
             B::BitAnd => Value::Num((to_int32(a.to_number()) & to_int32(b.to_number())) as f64),
             B::BitOr => Value::Num((to_int32(a.to_number()) | to_int32(b.to_number())) as f64),
             B::BitXor => Value::Num((to_int32(a.to_number()) ^ to_int32(b.to_number())) as f64),
@@ -1039,7 +975,7 @@ impl Runtime {
         })
     }
 
-    fn get_index(&mut self, o: &Value, k: &Value) -> R<Value> {
+    pub(crate) fn get_index(&mut self, o: &Value, k: &Value) -> R<Value> {
         match (o, k) {
             (Value::Array(a), Value::Num(i)) => {
                 if *i >= 0.0 && i.fract() == 0.0 {
@@ -1064,7 +1000,7 @@ impl Runtime {
         }
     }
 
-    fn set_member(&mut self, o: &Value, name: &str, v: Value) -> R<()> {
+    pub(crate) fn set_member(&mut self, o: &Value, name: &str, v: Value) -> R<()> {
         match o {
             Value::Object(obj) => obj_set(&mut obj.borrow_mut(), Rc::from(name), v),
             Value::Ref(r) if name == "current" => *r.borrow_mut() = v,
@@ -1131,6 +1067,25 @@ impl Runtime {
         }
     }
 
+    /// `o[k] = v`.
+    pub(crate) fn set_index(&mut self, o: &Value, k: &Value, v: Value) -> R<()> {
+        match (o, k) {
+            (Value::Array(a), Value::Num(i)) if *i >= 0.0 && i.fract() == 0.0 => {
+                let i = *i as usize;
+                let mut a = a.borrow_mut();
+                if i >= a.len() {
+                    a.resize(i + 1, Value::Undefined);
+                }
+                a[i] = v;
+                Ok(())
+            }
+            _ => {
+                let k = key_string(k);
+                self.set_member(o, &k, v)
+            }
+        }
+    }
+
     fn set_node_prop(&mut self, n: NodeId, name: &str, v: &Value) {
         match name {
             "value" => {
@@ -1165,7 +1120,7 @@ impl Runtime {
 
     // ------------------------------------------------------------------ builtins
 
-    fn builtin(&mut self, b: Builtin, args: Vec<Value>) -> R<Value> {
+    pub(crate) fn builtin(&mut self, b: Builtin, args: Vec<Value>) -> R<Value> {
         use Builtin as B;
         let num = |i: usize| arg(&args, i).to_number();
         Ok(match b {
@@ -1602,7 +1557,7 @@ impl Runtime {
 
     // ------------------------------------------------------------------ methods
 
-    fn method(&mut self, r: &Value, m: Method, args: Vec<Value>) -> R<Value> {
+    pub(crate) fn method(&mut self, r: &Value, m: Method, args: Vec<Value>) -> R<Value> {
         use Method as M;
         match r {
             Value::Array(a) => return self.array_method(a, r, m, args),
@@ -2411,7 +2366,7 @@ impl Runtime {
         }))
     }
 
-    fn new_regex(&mut self, pattern: &str, flags: &str) -> R<Value> {
+    pub(crate) fn new_regex(&mut self, pattern: &str, flags: &str) -> R<Value> {
         Ok(Value::Regex(self.new_regex_obj(pattern, flags)?))
     }
 
