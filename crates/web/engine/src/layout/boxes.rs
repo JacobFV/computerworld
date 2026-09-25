@@ -31,7 +31,7 @@ impl BoxId {
 }
 
 /// A length from an HTML attribute such as `width="50%"`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Dim {
     Px(Au),
     Percent(i32),
@@ -81,14 +81,14 @@ impl Dim {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TextBox {
     pub text: String,
     /// The DOM text node; `None` for generated content.
     pub node: Option<NodeId>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ReplacedBox {
     pub replaced: Replaced,
     /// Intrinsic content-box size, when known (image cache, control metrics).
@@ -97,19 +97,19 @@ pub struct ReplacedBox {
     pub attr_height: Option<Dim>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CellBox {
     pub colspan: u32,
     pub rowspan: u32,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ColBox {
     pub span: u32,
     pub width: Option<Dim>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum BoxKind {
     /// A block container box (block, list-item principal box, flow-root, anonymous
     /// block, body of a `<button>`).
@@ -140,7 +140,7 @@ pub enum BoxKind {
     Caption,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Level {
     Block,
     Inline,

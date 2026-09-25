@@ -1232,12 +1232,33 @@ pub fn layout_block_box(
             return r;
         }
     }
+    // A result from an earlier pass, for the same subtree and constraints.
+    let kept_key = memo_key.and_then(|(_, w, h, fw, fh)| {
+        let d = *ctx.cache.borrow().digests.get(id.index())?;
+        Some((d, w, h, fw, fh))
+    });
+    if let Some(k) = &kept_key {
+        let mut cache = ctx.cache.borrow_mut();
+        let hit = match cache.kept.remove(k) {
+            Some(e) => Some(e),
+            None => cache.kept_next.get(k).cloned(),
+        };
+        if let Some((y0, r)) = hit {
+            cache.kept_next.insert(*k, (y0, r.clone()));
+            cache.block_memo.insert(memo_key.unwrap(), (y0, r.clone()));
+            let mut r = r;
+            r.fragment.rect.origin.y += y_in - y0;
+            return r;
+        }
+    }
     let r = layout_block_box_uncached(ctx, id, cb, bfc, cb_origin, y_in, forced_width);
     if let Some(k) = memo_key {
-        ctx.cache
-            .borrow_mut()
-            .block_memo
-            .insert(k, (y_in, r.clone()));
+        let mut cache = ctx.cache.borrow_mut();
+        cache.block_memo.insert(k, (y_in, r.clone()));
+        // Absolutely positioned boxes still to place refer to this pass's boxes.
+        if let Some(kk) = kept_key.filter(|_| r.abs.is_empty()) {
+            cache.kept_next.insert(kk, (y_in, r.clone()));
+        }
     }
     r
 }

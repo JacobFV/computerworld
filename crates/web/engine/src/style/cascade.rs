@@ -1057,7 +1057,11 @@ impl<'a> Engine<'a> {
                 delta.layout = old.is_none_or(|o| !o.layout_eq(&style));
                 delta.hit = old.is_none_or(|o| !o.hit_eq(&style));
                 let style = Rc::new(style);
-                set.set(node, style.clone());
+                if delta.layout {
+                    set.set(node, style.clone());
+                } else {
+                    set.set_same_layout(node, style.clone());
+                }
                 (style, true)
             }
         };
@@ -1112,6 +1116,7 @@ impl<'a> Engine<'a> {
                 marker = Some(ms);
             }
         }
+        let layout_before = delta.layout;
         for (map, new) in [
             (&mut set.before, before),
             (&mut set.after, after),
@@ -1136,6 +1141,9 @@ impl<'a> Engine<'a> {
                     }
                 }
             }
+        }
+        if delta.layout && !layout_before {
+            set.bump(node);
         }
         Ok((own_changed, delta))
     }

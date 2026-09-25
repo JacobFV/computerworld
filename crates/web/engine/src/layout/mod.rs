@@ -36,12 +36,12 @@ pub use fragment::*;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
-use crate::dom::{Document, NodeId, QuirksMode};
+use crate::dom::{Document, NodeId, NodeKind, QuirksMode};
 use crate::geom::{Au, Size};
 use crate::style::{ComputedStyle, StyleSet};
 use crate::Viewport;
 
-use boxes::{BoxId, BoxTree};
+use boxes::{BoxId, BoxKind, BoxTree};
 
 /// Intrinsic sizes of images the document references, supplied by the caller from its
 /// image cache. `None` means the image is not (yet) available: the element falls back
@@ -106,7 +106,19 @@ pub struct LayoutCache {
     pub block_memo: std::collections::HashMap<BlockMemoKey, (Au, block::BlockResult)>,
     /// Lay every box out every time it is asked for (for checks of the memo).
     pub no_memo: bool,
+    /// Results of `block::layout_block_box` kept from earlier passes, by the digest
+    /// of everything the box's layout reads (see `digests`) and its constraints:
+    /// a formatting-context root whose subtree did not change is not laid out
+    /// again. Entries not used by a pass are dropped after it.
+    pub kept: std::collections::HashMap<KeptKey, (Au, block::BlockResult)>,
+    /// The entries this pass used or made, which become `kept` after it.
+    pub kept_next: std::collections::HashMap<KeptKey, (Au, block::BlockResult)>,
+    /// Per box of this pass, the digest of its subtree's layout inputs.
+    pub digests: Vec<u128>,
 }
+
+/// A subtree's digest and the constraints it was laid out under (as `BlockMemoKey`).
+pub type KeptKey = (u128, Au, Option<Au>, Option<Au>, Option<Option<Au>>);
 
 /// A box and the constraints it was laid out under: containing block width and
 /// height, forced width, forced height.
@@ -146,6 +158,109 @@ impl<'a> LayoutContext<'a> {
     }
 }
 
+/// For each box, a 128-bit digest of everything `block::layout_block_box` reads
+/// for it and its subtree, so that a later pass can reuse a result: each box's
+/// kind (text, replaced content and sizes, cell spans, marker text), flags and
+/// style (its node's style epoch: see `StyleSet::epoch`), its scroll offset, its children's and marker's digests, an
+/// inline svg's elements and their styles, and what every box reads globally (the
+/// viewport, quirks mode, scrollbar mode, the viewport's overflow and the root and
+/// body styles).
+fn digests(
+    doc: &Document,
+    styles: &StyleSet,
+    tree: &BoxTree,
+    scroll: &ScrollState,
+    viewport: (Au, Au),
+    root_overflow: (crate::style::Overflow, crate::style::Overflow),
+    cache: &LayoutCache,
+) -> Vec<u128> {
+    use std::hash::{Hash, Hasher};
+    type H = std::collections::hash_map::DefaultHasher;
+    let mut global = H::new();
+    viewport.hash(&mut global);
+    (doc.quirks == QuirksMode::Quirks).hash(&mut global);
+    cache.overlay_scrollbars.hash(&mut global);
+    root_overflow.hash(&mut global);
+    for n in [doc.document_element(), doc.body()].into_iter().flatten() {
+        styles.epoch(n).hash(&mut global);
+    }
+    let global = global.finish();
+    let n = tree.len();
+    let mut out: Vec<Option<u128>> = vec![None; n];
+    fn visit(
+        id: BoxId,
+        doc: &Document,
+        styles: &StyleSet,
+        tree: &BoxTree,
+        scroll: &ScrollState,
+        global: u64,
+        out: &mut Vec<Option<u128>>,
+    ) -> u128 {
+        if let Some(d) = out[id.index()] {
+            return d;
+        }
+        let b = &tree[id];
+        let mut hs = [H::new(), H::new()];
+        0x9e37_79b9u32.hash(&mut hs[1]);
+        let kids: Vec<u128> = b
+            .children
+            .iter()
+            .chain(b.marker.iter())
+            .map(|c| visit(*c, doc, styles, tree, scroll, global, out))
+            .collect();
+        for h in hs.iter_mut() {
+            global.hash(h);
+            b.kind.hash(h);
+            b.source.hash(h);
+            b.node.hash(h);
+            b.level.hash(h);
+            b.inline_children.hash(h);
+            b.control.hash(h);
+            b.is_root.hash(h);
+            b.split_first.hash(h);
+            b.split_last.hash(h);
+            b.is_item.hash(h);
+            b.marker.is_some().hash(h);
+            // Every box's style is its node's computed (or pseudo-element) style,
+            // or derived from it by the box's kind and flags (blockified items,
+            // anonymous boxes, table wrappers), all hashed here.
+            styles.epoch(b.source.node()).hash(h);
+            if let Some(node) = b.node {
+                scroll.get(&node).hash(h);
+            }
+            kids.hash(h);
+        }
+        // An inline svg's shapes and text are laid out from its elements.
+        if let (BoxKind::Replaced(_), Some(node)) = (&b.kind, b.node) {
+            if doc.tag(node) == Some("svg") && crate::svg::is_svg(doc, node) {
+                for d in doc.descendants(node) {
+                    for h in hs.iter_mut() {
+                        match doc.kind(d) {
+                            NodeKind::Element { tag, attrs, .. } => {
+                                tag.hash(h);
+                                for a in attrs {
+                                    a.name.hash(h);
+                                    a.value.hash(h);
+                                }
+                            }
+                            NodeKind::Text(t) => t.hash(h),
+                            _ => {}
+                        }
+                        styles.epoch(d).hash(h);
+                        doc.parent(d).hash(h);
+                    }
+                }
+            }
+        }
+        let d = (u128::from(hs[0].finish()) << 64) | u128::from(hs[1].finish());
+        out[id.index()] = Some(d);
+        d
+    }
+    (0..n)
+        .map(|i| visit(BoxId(i as u32), doc, styles, tree, scroll, global, &mut out))
+        .collect()
+}
+
 /// The standard entry point: no image sizes known, no scroll offsets.
 pub fn layout(doc: &Document, styles: &StyleSet, viewport: Viewport) -> FragmentTree {
     let scroll = ScrollState::new();
@@ -177,6 +292,19 @@ pub fn layout_with(
     let bt = crate::style::profile::span(crate::style::profile::Phase::BoxTree);
     let mut tree = boxes::build(doc, styles, opts.images);
     let root_overflow = scroll::propagate_root_overflow(doc, &mut tree);
+    cache.digests = if cache.no_memo {
+        Vec::new()
+    } else {
+        digests(
+            doc,
+            styles,
+            &tree,
+            opts.scroll,
+            (vw, vh),
+            root_overflow,
+            cache,
+        )
+    };
     drop(bt);
     let _t = crate::style::profile::span(crate::style::profile::Phase::Layout);
     cache.reserve(tree.len());
@@ -197,6 +325,8 @@ pub fn layout_with(
     let out = scroll::layout_root(&ctx);
     *cache = ctx.cache.into_inner();
     cache.block_memo.clear();
+    cache.kept = std::mem::take(&mut cache.kept_next);
+    cache.digests.clear();
     // Under the incremental check, the memo is checked against laying every box
     // out every time.
     if crate::style::profile::verifying() && !cache.no_memo {

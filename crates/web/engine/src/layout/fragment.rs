@@ -90,7 +90,7 @@ pub enum FragmentKind {
     Line,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Replaced {
     /// An `<img>`; `src` resolved; intrinsic size when known.
     Image { src: String, alt: String },

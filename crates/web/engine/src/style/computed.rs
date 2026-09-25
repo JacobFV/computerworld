@@ -1487,7 +1487,13 @@ pub struct StyleSet {
     pub(crate) root_font_size_au: Au,
     /// The matching state (hover, focus, ...) the styles were computed against.
     pub(crate) match_state: Option<crate::style::invalidation::MatchState>,
+    /// Per node, a number that changes whenever its style or a pseudo-element
+    /// style is replaced by one that lays out differently (unique across style
+    /// sets): what layout keys reuse by.
+    epochs: Vec<u64>,
 }
+
+static NEXT_EPOCH: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
 impl StyleSet {
     pub fn new() -> Self {
@@ -1521,7 +1527,39 @@ impl StyleSet {
         if self.styles.len() <= id.index() {
             self.styles.resize(id.index() + 1, None);
         }
+        let same = self.styles[id.index()]
+            .as_ref()
+            .is_some_and(|o| std::rc::Rc::ptr_eq(o, &style));
         self.styles[id.index()] = Some(style);
+        if !same {
+            self.bump(id);
+        }
+    }
+    /// Marks the node's styles replaced (see [`StyleSet::epoch`]).
+    pub(crate) fn bump(&mut self, id: crate::dom::NodeId) {
+        if self.epochs.len() <= id.index() {
+            self.epochs.resize(id.index() + 1, 0);
+        }
+        self.epochs[id.index()] = NEXT_EPOCH.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+    /// Replaces the node's style with one that lays out the same
+    /// ([`ComputedStyle::layout_eq`]), keeping its epoch.
+    pub(crate) fn set_same_layout(
+        &mut self,
+        id: crate::dom::NodeId,
+        style: std::rc::Rc<ComputedStyle>,
+    ) {
+        if self.styles.len() <= id.index() {
+            self.styles.resize(id.index() + 1, None);
+        }
+        self.styles[id.index()] = Some(style);
+    }
+    /// A number that is the same for two style sets only while the node's style
+    /// and pseudo-element styles lay out the same (0 for a node never styled in
+    /// this set): it changes whenever one of them is replaced, except through
+    /// [`StyleSet::set_same_layout`].
+    pub fn epoch(&self, id: crate::dom::NodeId) -> u64 {
+        self.epochs.get(id.index()).copied().unwrap_or(0)
     }
     pub fn get(&self, id: crate::dom::NodeId) -> Option<&ComputedStyle> {
         self.styles.get(id.index()).and_then(|s| s.as_deref())
@@ -1531,15 +1569,19 @@ impl StyleSet {
     }
     pub fn set_before(&mut self, id: crate::dom::NodeId, style: std::rc::Rc<ComputedStyle>) {
         self.before.insert(id, style);
+        self.bump(id);
     }
     pub fn set_after(&mut self, id: crate::dom::NodeId, style: std::rc::Rc<ComputedStyle>) {
         self.after.insert(id, style);
+        self.bump(id);
     }
     pub fn set_marker(&mut self, id: crate::dom::NodeId, style: std::rc::Rc<ComputedStyle>) {
         self.marker.insert(id, style);
+        self.bump(id);
     }
     pub fn set_placeholder(&mut self, id: crate::dom::NodeId, style: std::rc::Rc<ComputedStyle>) {
         self.placeholder.insert(id, style);
+        self.bump(id);
     }
     pub fn placeholder(&self, id: crate::dom::NodeId) -> Option<&ComputedStyle> {
         self.placeholder.get(&id).map(|s| &**s)
@@ -1631,5 +1673,6 @@ impl StyleSet {
         self.after.remove(&id);
         self.marker.remove(&id);
         self.placeholder.remove(&id);
+        self.bump(id);
     }
 }
