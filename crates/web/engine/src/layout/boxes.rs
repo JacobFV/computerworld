@@ -173,6 +173,9 @@ pub struct LayoutBox {
     /// The box is a flex or grid item: it establishes an independent formatting
     /// context and its `z-index` creates a stacking context.
     pub is_item: bool,
+    /// A `<fieldset>`: it establishes a block formatting context (HTML §15.3.13), so
+    /// it contains its floats (Conduit's sign-in form, whose button floats right).
+    pub is_fieldset: bool,
 }
 
 impl LayoutBox {
@@ -243,6 +246,7 @@ impl LayoutBox {
             || !matches!(s.overflow_x, crate::style::Overflow::Visible)
             || !matches!(s.overflow_y, crate::style::Overflow::Visible)
             || self.control.is_some()
+            || self.is_fieldset
     }
     pub fn is_scroll_container(&self) -> bool {
         use crate::style::Overflow as O;
@@ -396,6 +400,7 @@ impl<'a> Builder<'a> {
             split_first: true,
             split_last: true,
             is_item: false,
+            is_fieldset: false,
         });
         id
     }
@@ -736,6 +741,7 @@ impl<'a> Builder<'a> {
                 if tag == "button" {
                     self.boxes[id.index()].control = Some(ControlKind::Button);
                 }
+                self.boxes[id.index()].is_fieldset = tag == "fieldset";
                 if display == Display::ListItem {
                     self.list_item_marker(id, node, &style, depth);
                 }

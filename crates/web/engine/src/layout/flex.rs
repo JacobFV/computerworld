@@ -122,6 +122,7 @@ pub fn wrap_flex_items(
                 split_first: true,
                 split_last: true,
                 is_item: true,
+                is_fieldset: false,
             });
             out.push(id);
         } else {

@@ -732,4 +732,15 @@ mod cases {
             close(p.rect("b").y - r, down, &format!("sub at {fs}px"));
         }
     }
+    /// Conduit's sidebar and sign-in form: `white-space: nowrap` inline-blocks still
+    /// wrap between each other (a break around an atomic inline follows its parent's
+    /// `white-space`), and a `<fieldset>` contains its floats. Rects are Chromium's.
+    #[test]
+    fn nowrap_pills_wrap_and_a_fieldset_contains_floats() {
+        let p = page("<!DOCTYPE html><style>body{margin:0;font:16px/20px Arimo} .p{display:inline-block;white-space:nowrap;width:60px;height:20px;margin-right:10px}</style><div style=\"width:150px\"><span class=p id=a></span><span class=p id=b></span><span class=p id=c></span></div><fieldset id=f style=\"margin:0;padding:0;border:0\"><div style=\"float:right;width:50px;height:40px\"></div><div id=g style=\"height:10px\"></div></fieldset>");
+        rect_is(&p, "a", 0.0, 0.0, 60.0, 20.0);
+        rect_is(&p, "b", 70.0, 0.0, 60.0, 20.0);
+        rect_is(&p, "c", 0.0, 25.0, 60.0, 20.0);
+        rect_is(&p, "f", 0.0, 50.0, 1280.0, 40.0);
+    }
 }

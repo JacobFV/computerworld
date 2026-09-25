@@ -260,7 +260,7 @@ impl Collector<'_, '_> {
                 | BoxKind::Caption
                 | BoxKind::Row
                 | BoxKind::RowGroup => {
-                    self.atomic(k);
+                    self.atomic(k, id);
                 }
                 BoxKind::Marker(_) | BoxKind::Col(_) | BoxKind::ColGroup(_) => {}
             }
@@ -280,11 +280,15 @@ impl Collector<'_, '_> {
             ) && self.last_wraps
     }
 
-    fn atomic(&mut self, k: BoxId) {
+    /// An atomic inline `k` in the inline box (or container) `parent`. Whether a line
+    /// may break around it is the parent's `white-space`, not its own: a row of
+    /// `white-space: nowrap` inline-block tag pills wraps between the pills
+    /// (Conduit's popular tags), as in Blink.
+    fn atomic(&mut self, k: BoxId, parent: BoxId) {
         let ctx = self.ctx;
         let b = &ctx.tree[k];
         let s = b.style.clone();
-        let wraps = self.wraps(&s);
+        let wraps = self.wraps(&ctx.tree[parent].style);
         let mut bb = self.break_before_content(false)
             || (matches!(self.last_content, Some(UnitKind::Word)) && self.last_wraps && wraps);
         if !wraps {

@@ -87,6 +87,7 @@ pub fn wrap_grid_items(
         b.inline_children = true;
         b.marker = None;
         b.control = None;
+        b.is_fieldset = false;
         b.is_root = false;
         b.split_first = true;
         b.split_last = true;
