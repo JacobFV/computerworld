@@ -700,6 +700,8 @@ pub enum Builtin {
     CancelAnimationFrame,
     /// `performance.now()`: the Realm's (virtual milliseconds, plus its boot offset).
     PerformanceNow,
+    /// `matchMedia(query)`: a MediaQueryList, re-evaluated on resize.
+    MatchMedia,
 }
 
 /// A JSX element expression.

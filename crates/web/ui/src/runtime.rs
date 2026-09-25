@@ -65,6 +65,11 @@ pub enum NativeFn {
         create: crate::value::Value,
     },
     ImperativeClear(crate::value::Value),
+    /// A MediaQueryList's `addEventListener`/`addListener` (`add`) or remove.
+    MediaListen {
+        list: u32,
+        add: bool,
+    },
     /// An async function resumed after an `await` (with the value, or throwing it).
     Resume {
         task: Rc<RefCell<Option<crate::asyncfn::Task>>>,
@@ -322,6 +327,8 @@ pub struct Runtime {
     /// `requestAnimationFrame` callbacks waiting for a frame, by id.
     pub(crate) raf: Vec<(u32, Value)>,
     pub(crate) next_raf: u32,
+    /// `matchMedia` lists: the query, its object, its `change` listeners.
+    pub(crate) media_lists: Vec<(String, Value, Vec<Value>)>,
     /// Virtual milliseconds since boot (timers are due on this clock).
     pub(crate) clock_ms: f64,
     pub(crate) start_micros: i64,
@@ -408,6 +415,7 @@ impl Runtime {
             next_timer: 1,
             raf: Vec::new(),
             next_raf: 0,
+            media_lists: Vec::new(),
             clock_ms: 0.0,
             start_micros: 0,
             microtasks: VecDeque::new(),

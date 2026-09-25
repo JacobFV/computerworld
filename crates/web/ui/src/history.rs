@@ -291,6 +291,67 @@ impl Runtime {
         self.fire_global(ty, &ev, false);
     }
 
+    /// `matchMedia(query)`: the Realm's MediaQueryList, as a plain object whose
+    /// `matches` follows the page's media on resize.
+    pub(crate) fn match_media(&mut self, query: &str) -> Value {
+        let list = cw_web::css::MediaQueryList::parse(query);
+        let matches = list.evaluate(&self.inner.media());
+        let media = list.to_string();
+        let i = self.media_lists.len() as u32;
+        let native = |add: bool| {
+            Value::Native(Rc::new(crate::runtime::NativeFn::MediaListen {
+                list: i,
+                add,
+            }))
+        };
+        let obj = Value::object(vec![
+            (Rc::from("media"), Value::str(&media)),
+            (Rc::from("matches"), Value::Bool(matches)),
+            (Rc::from("onchange"), Value::Null),
+            (Rc::from("addEventListener"), native(true)),
+            (Rc::from("removeEventListener"), native(false)),
+            (Rc::from("addListener"), native(true)),
+            (Rc::from("removeListener"), native(false)),
+        ]);
+        self.media_lists.push((media, obj.clone(), Vec::new()));
+        obj
+    }
+
+    /// The Realm's `reevaluateMedia`, run on resize before `resize` fires.
+    pub(crate) fn reevaluate_media(&mut self) {
+        for i in 0..self.media_lists.len() {
+            let (media, obj, _) = self.media_lists[i].clone();
+            let now = cw_web::css::MediaQueryList::parse(&media).evaluate(&self.inner.media());
+            let Value::Object(o) = &obj else { continue };
+            let was = crate::interp::obj_get(&o.borrow(), "matches").is_some_and(|m| m.truthy());
+            if now == was {
+                continue;
+            }
+            for (k, v) in o.borrow_mut().iter_mut() {
+                if &**k == "matches" {
+                    *v = Value::Bool(now);
+                }
+            }
+            let ev = Value::object(vec![
+                (Rc::from("type"), Value::str("change")),
+                (Rc::from("media"), Value::str(&media)),
+                (Rc::from("matches"), Value::Bool(now)),
+            ]);
+            let onchange = crate::interp::obj_get(&o.borrow(), "onchange");
+            if let Some(f) = onchange.filter(|f| f.type_of() == "function") {
+                if let Err(e) = self.call_value(&f, vec![ev.clone()]) {
+                    self.report(e);
+                }
+            }
+            let listeners = self.media_lists[i].2.clone();
+            for f in listeners {
+                if let Err(e) = self.call_value(&f, vec![ev.clone()]) {
+                    self.report(e);
+                }
+            }
+        }
+    }
+
     /// Runs the history builtins (`crate::ir::Builtin::History…`, `Location…`).
     pub(crate) fn history_builtin(&mut self, b: crate::ir::Builtin, args: &[Value]) -> R<Value> {
         use crate::ir::Builtin as B;

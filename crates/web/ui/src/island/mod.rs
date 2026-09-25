@@ -999,6 +999,7 @@ fn n_builtin(vm: &mut Vm, a: &mut Args) -> JsResult<Js> {
         "RequestAnimationFrame" => B::RequestAnimationFrame,
         "CancelAnimationFrame" => B::CancelAnimationFrame,
         "PerformanceNow" => B::PerformanceNow,
+        "MatchMedia" => B::MatchMedia,
         "LocationSet" => B::LocationSet,
         "LocationAssign" => B::LocationAssign,
         "LocationReplace" => B::LocationReplace,

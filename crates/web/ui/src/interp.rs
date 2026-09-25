@@ -1984,6 +1984,7 @@ impl Runtime {
                 Value::Undefined
             }
             B::PerformanceNow => Value::Num(self.performance_now()),
+            B::MatchMedia => self.match_media(&arg(&args, 0).to_js_string()),
             B::HistoryPush
             | B::HistoryReplace
             | B::HistoryGo
@@ -3399,6 +3400,23 @@ impl Runtime {
                 let (recv, name) = (recv.clone(), name.clone());
                 return self.invoke_by_name(&recv, &name, args);
             }
+            NativeFn::MediaListen { list, add } => {
+                // `addEventListener('change', f)` or the legacy `addListener(f)`.
+                let f = match args.first() {
+                    Some(Value::Str(_)) => args.get(1).cloned().unwrap_or_default(),
+                    _ => args.first().cloned().unwrap_or_default(),
+                };
+                if let Some(l) = self.media_lists.get_mut(*list as usize) {
+                    if *add {
+                        if !f.is_nullish() && !l.2.iter().any(|g| strict_equals(g, &f)) {
+                            l.2.push(f);
+                        }
+                    } else {
+                        l.2.retain(|g| !strict_equals(g, &f));
+                    }
+                }
+                return Ok(Value::Undefined);
+            }
             _ => {}
         }
         let v = args.into_iter().next().unwrap_or_default();
@@ -3448,6 +3466,7 @@ impl Runtime {
             NativeFn::Builtin(_)
             | NativeFn::ImperativeSet { .. }
             | NativeFn::ImperativeClear(_)
+            | NativeFn::MediaListen { .. }
             | NativeFn::BoundMethod { .. } => unreachable!("called above"),
         }
         Ok(Value::Undefined)

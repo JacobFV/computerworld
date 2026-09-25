@@ -1273,6 +1273,7 @@ impl Runtime {
                 self.inner.viewport.width = width;
                 self.inner.viewport.height = height;
                 self.inner.sheet_changed();
+                self.reevaluate_media();
                 let target = self.inner.doc.body().unwrap_or(Document::ROOT);
                 let ev = Rc::new(event_obj("resize", target, &Init::default()));
                 self.fire_global("resize", &ev, false);

@@ -4758,6 +4758,10 @@ impl<'a> Lowerer<'a> {
                 )
             }
             "cancelAnimationFrame" => (Builtin::CancelAnimationFrame, vec![Ty::Number], Ty::Void),
+            "matchMedia" => {
+                self.mark_always();
+                (Builtin::MatchMedia, vec![Ty::String], Ty::Unknown)
+            }
             "fetch" => (
                 Builtin::Fetch,
                 vec![Ty::String],
@@ -5015,6 +5019,10 @@ impl<'a> Lowerer<'a> {
                 return Some((Expr::Builtin(Builtin::RequestAnimationFrame, args), num));
             }
             ("window", "cancelAnimationFrame") => (Builtin::CancelAnimationFrame, vec![], Ty::Void),
+            ("window", "matchMedia") => {
+                self.mark_always();
+                (Builtin::MatchMedia, vec![Ty::String], Ty::Unknown)
+            }
             ("performance", "now") => {
                 self.mark_always();
                 (Builtin::PerformanceNow, vec![], num)

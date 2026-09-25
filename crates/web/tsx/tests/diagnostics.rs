@@ -238,8 +238,8 @@ fn island_modules_that_need_a_page_refuse_the_build() {
     let main = "import { createRoot } from 'react-dom/client';\nimport { Widget } from './widget';\ncreateRoot(document.getElementById('root')!).render(<Widget />);\n";
     let cases = [
         (
-            "function* g() { yield 1; }\nexport function Widget() { return <p>{String(window.matchMedia('(min-width: 1px)').matches)}</p>; }\n",
-            "`window.matchMedia` is not on the island",
+            "function* g() { yield 1; }\nexport function Widget() { return <p>{String(document.createElement('div'))}</p>; }\n",
+            "`document.createElement` is not on the island",
         ),
         (
             "import { Component } from 'react';\nexport class Widget extends Component { render() { return <p />; } }\n",

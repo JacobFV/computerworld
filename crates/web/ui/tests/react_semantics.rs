@@ -61,6 +61,8 @@ enum Step {
     Key(&'static str),
     /// Advances the clock (timers).
     Wait(u32),
+    /// The window is resized to this width and height.
+    Resize(u32, u32),
 }
 
 struct Outcome {
@@ -163,6 +165,10 @@ fn event(step: &Step, at: Option<(i32, i32)>) -> Vec<UiEvent> {
             repeat: false,
         }],
         Step::Wait(_) => vec![],
+        Step::Resize(w, h) => vec![UiEvent::Resize {
+            width: *w,
+            height: *h,
+        }],
     }
 }
 
@@ -2193,5 +2199,71 @@ export function App() {
 }
 "#,
         &[Step::Click("#go"), Step::Wait(40), Step::Wait(100)],
+    );
+}
+
+#[test]
+fn match_media_follows_the_page_media_on_resize() {
+    same_as_react(
+        r#"
+import { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+
+export function App() {
+  const [wide, setWide] = useState(() => window.matchMedia('(min-width: 700px)').matches);
+  const [log, setLog] = useState<string[]>([]);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 700px)');
+    const legacy = matchMedia('(max-width: 500px)');
+    const onChange = (e: { matches: boolean; media: string }) => { setWide(e.matches); setLog((l) => [...l, e.media + '=' + e.matches]); };
+    mq.addEventListener('change', onChange);
+    legacy.addListener((e: { matches: boolean }) => console.log('narrow', e.matches, legacy.matches));
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return <div><p id="w">{String(wide)} {log.join(' ')}</p></div>;
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[
+            Step::Resize(400, 600),
+            Step::Wait(10),
+            Step::Resize(900, 600),
+            Step::Wait(10),
+        ],
+    );
+}
+
+#[test]
+fn match_media_follows_the_page_media_on_resize_on_the_island() {
+    same_as_react(
+        r#"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import { App } from './mq';
+createRoot(document.getElementById('root')!).render(<App />);
+// @file mq.tsx
+import { useEffect, useState } from 'react';
+function* g() { yield 1; }
+
+export function App() {
+  const [wide, setWide] = useState(() => window.matchMedia('(min-width: 700px)').matches);
+  const [log, setLog] = useState<string[]>([]);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 700px)');
+    const legacy = matchMedia('(max-width: 500px)');
+    const onChange = (e: { matches: boolean; media: string }) => { setWide(e.matches); setLog((l) => [...l, e.media + '=' + e.matches]); };
+    mq.addEventListener('change', onChange);
+    legacy.addListener((e: { matches: boolean }) => console.log('narrow', e.matches, legacy.matches));
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return <div><p id="w">{String(wide)} {log.join(' ')}</p></div>;
+}
+"#,
+        &[
+            Step::Resize(400, 600),
+            Step::Wait(10),
+            Step::Resize(900, 600),
+            Step::Wait(10),
+        ],
     );
 }

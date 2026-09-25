@@ -70,6 +70,8 @@ pub enum HeapObj {
     /// A `useImperativeHandle` effect (ref, create) and its cleanup (ref).
     ImperativeSet(V, V),
     ImperativeClear(V),
+    /// A MediaQueryList's listener adder (true) or remover, by list.
+    MediaListen(u32, bool),
     /// A `Date`'s time value (`None` when invalid: JSON has no NaN).
     Date(Option<f64>),
     /// A promise: 0 pending, 1 fulfilled, 2 rejected; its value; its reactions
@@ -208,6 +210,9 @@ pub struct UiState {
     pub raf: Vec<(u32, V)>,
     #[serde(default)]
     pub next_raf: u32,
+    /// `matchMedia` lists: query, object, listeners.
+    #[serde(default)]
+    pub media_lists: Vec<(String, V, Vec<V>)>,
     pub clock_ms: f64,
     pub start_micros: i64,
     pub id_counter: u32,
@@ -573,6 +578,7 @@ impl Enc {
                             HeapObj::ImperativeSet(self.v(r), self.v(create))
                         }
                         NativeFn::ImperativeClear(r) => HeapObj::ImperativeClear(self.v(r)),
+                        NativeFn::MediaListen { list, add } => HeapObj::MediaListen(*list, *add),
                     };
                     V::H(i)
                 }
@@ -741,6 +747,11 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         })
         .collect();
     let raf: Vec<(u32, V)> = rt.raf.iter().map(|(i, f)| (*i, e.v(f))).collect();
+    let media_lists: Vec<(String, V, Vec<V>)> = rt
+        .media_lists
+        .iter()
+        .map(|(m, o, ls)| (m.clone(), e.v(o), ls.iter().map(|l| e.v(l)).collect()))
+        .collect();
     let timers = rt
         .timers
         .iter()
@@ -845,6 +856,7 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         next_timer: rt.next_timer,
         raf,
         next_raf: rt.next_raf,
+        media_lists,
         clock_ms: rt.clock_ms,
         start_micros: rt.start_micros,
         id_counter: rt.id_counter,
@@ -1056,6 +1068,10 @@ impl Dec<'_> {
             HeapObj::ImperativeSet(r, create) => Value::Native(Rc::new(NativeFn::ImperativeSet {
                 r: self.v(r)?,
                 create: self.v(create)?,
+            })),
+            HeapObj::MediaListen(list, add) => Value::Native(Rc::new(NativeFn::MediaListen {
+                list: *list,
+                add: *add,
             })),
             HeapObj::ImperativeClear(r) => {
                 Value::Native(Rc::new(NativeFn::ImperativeClear(self.v(r)?)))
@@ -1465,6 +1481,10 @@ pub(crate) fn load(
         rt.raf.push((*i, d.v(f)?));
     }
     rt.next_raf = s.next_raf;
+    for (m, o, ls) in &s.media_lists {
+        let ls = ls.iter().map(|l| d.v(l)).collect::<Result<Vec<_>, _>>()?;
+        rt.media_lists.push((m.clone(), d.v(o)?, ls));
+    }
     rt.clock_ms = s.clock_ms;
     rt.start_micros = s.start_micros;
     rt.id_counter = s.id_counter;
