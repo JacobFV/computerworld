@@ -165,6 +165,8 @@ class IncomingMessage extends Readable {
   constructor(socket) {
     super({});
     this.socket = socket || null;
+    // The deprecated alias Express still reads (`req.protocol`).
+    this.connection = this.socket;
     this.httpVersionMajor = 1;
     this.httpVersionMinor = 1;
     this.httpVersion = '1.1';
@@ -431,7 +433,17 @@ class ServerResponse extends OutgoingMessage {
       if (Array.isArray(headers)) for (let i = 0; i + 1 < headers.length; i += 2) this.appendHeader(headers[i], headers[i + 1]);
       else for (const k of Object.keys(headers)) this.setHeader(k, headers[k]);
     }
+    // The headers are fixed from here on, as when Node stores them.
+    this._header = true;
+    this.headersSent = true;
     return this;
+  }
+  // What `write` and `end` call when no one has written the head yet; middleware
+  // (`on-headers`, `compression`) wraps `writeHead` and calls this itself.
+  _implicitHeader() { this.writeHead(this.statusCode); }
+  write(chunk, encoding, cb) {
+    if (!this._header && !this.writableEnded) this._implicitHeader();
+    return super.write(chunk, encoding, cb);
   }
   writeContinue() {}
   writeProcessing() {}
@@ -442,10 +454,12 @@ class ServerResponse extends OutgoingMessage {
     let contentLength = null;
     if (chunk !== undefined && chunk !== null) {
       if (!this._wrote) contentLength = typeof chunk === 'string' ? Buffer.byteLength(chunk, encoding || 'utf8') : chunk.length;
-      this.write(chunk, encoding);
+      // Node's own write, not one middleware may have put on the response.
+      OutgoingMessage.prototype.write.call(this, chunk, encoding);
     } else if (!this._wrote) {
       contentLength = 0;
     }
+    if (!this._header) this._implicitHeader();
     this.writableEnded = true;
     this.finished = true;
     this.headersSent = true;

@@ -13,4 +13,10 @@ key true secret 11 undefined
 hmac true
 export superSecret
 private refused
+es5 stream true function function send
+callable true
+es5 transform SHOUT
+class readable 012
+server sees function true
+client got 200 fired
 --- stderr
