@@ -14,7 +14,10 @@
 //! the run to one fixture, `SCRIPT_PERF_PHASE` prints only one phase's profile and
 //! `SCRIPT_PERF_NO_PROFILE=1` only times (for an external profiler such as
 //! callgrind with `--toggle-collect=script_perf::perf::click_at`; the phases are
-//! the functions `first_boot`, `boot`, `click_at` (two clicks) and `key`).
+//! the functions `first_boot`, `boot`, `click_at` and `key`).
+//! `SCRIPT_PERF_EXIT_AFTER=<phase>` ends the process as that phase first returns;
+//! use it with `SCRIPT_PERF_RUNS=1` and the same phase's toggle, since callgrind
+//! can miss a phase's return and go on counting everything after it.
 
 #[cfg(feature = "pipeline")]
 mod perf {
@@ -128,9 +131,20 @@ mod perf {
             .unwrap_or(25);
         let (mut news, mut boots, mut clicks, mut keys) = (vec![], vec![], vec![], vec![]);
         let mut colds = vec![];
+        // An instruction-counting profiler that toggles on a phase function can
+        // miss its return and keep counting what follows (the realm's drop);
+        // this ends the process as the named phase returns, so nothing does.
+        let exit_after = std::env::var("SCRIPT_PERF_EXIT_AFTER").ok();
+        let done = |phase: &str| {
+            if exit_after.as_deref() == Some(phase) {
+                std::process::exit(0);
+            }
+        };
         for _ in 0..runs {
             let t = Instant::now();
-            drop(first_boot(name, &html));
+            let cold = first_boot(name, &html);
+            done("first_boot");
+            drop(cold);
             colds.push(t.elapsed().as_secs_f64() * 1000.0);
             // Later loads reuse the compiled prelude and bundles.
             let t = Instant::now();
@@ -139,15 +153,18 @@ mod perf {
             drop(r);
             let t = Instant::now();
             let mut r = boot(name, &html);
+            done("boot");
             boots.push(t.elapsed().as_secs_f64() * 1000.0);
             let at = centre(&mut r, "#check-2");
             let t = Instant::now();
             click_at(&mut r, at);
+            done("click_at");
             clicks.push(t.elapsed().as_secs_f64() * 1000.0);
             let at = centre(&mut r, "#new-task");
             click_at(&mut r, at);
             let t = Instant::now();
             key(&mut r);
+            done("key");
             keys.push(t.elapsed().as_secs_f64() * 1000.0);
         }
         eprintln!(
