@@ -767,6 +767,8 @@ pub fn computed_strings(style: &ComputedStyle, info: &BoxInfo) -> BTreeMap<Strin
     let margin = |v: LengthPercentageAuto, side: usize| -> String {
         match v {
             LengthPercentageAuto::Set(l) => lp_str(l, cb_width),
+            // An element with no box reports its computed value, as Chromium does.
+            LengthPercentageAuto::Auto if info.rect.is_none() => "auto".into(),
             // What layout resolved the `auto` to (flex and grid items absorb free
             // space; a block centres), else where the box landed in its container.
             LengthPercentageAuto::Auto if info.used_margin.is_some() && !inline_nonreplaced => {

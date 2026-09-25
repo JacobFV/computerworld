@@ -671,4 +671,35 @@ mod cases {
             close(p.rect(id).width, *want, &format!("{font} size={size}"));
         }
     }
+    /// What TodoMVC's stylesheet needed from the UA sheet and media queries, each
+    /// value Chromium's: WebKit's prefixed `device-pixel-ratio` media features match
+    /// (plain and in range syntax), form controls reset `font-weight` as the `font`
+    /// shorthand in Chromium's UA sheet does, a checkbox's margins are `3px 3px 3px
+    /// 4px`, an `h1` in a `section` keeps the plain `h1` margins (Chromium dropped the
+    /// section rules), and disabled controls take Chromium's colours.
+    #[test]
+    fn todomvc_ua_and_media_details_match_chromium() {
+        let p = page(
+            "<!DOCTYPE html><style>body { margin: 0; font-weight: 300 }
+             @media screen and (-webkit-min-device-pixel-ratio: 0) { #a { height: 40px } }
+             @media screen and (-webkit-device-pixel-ratio>=0) { #b { height: 30px } }</style>
+             <input type=checkbox id=a><input type=checkbox id=b>
+             <section><h1 id=h style='font-size: 80px'>todos</h1></section>
+             <input id=d disabled><button id=e disabled>x</button><select id=f disabled><option>o</option></select>",
+        );
+        close(p.rect("a").height, 40.0, "#a height");
+        close(p.rect("b").height, 30.0, "#b height");
+        assert_eq!(p.computed("a", "font-weight"), "400");
+        assert_eq!(p.computed("a", "margin-bottom"), "3px");
+        assert_eq!(p.computed("a", "margin-left"), "4px");
+        let h1_margin: f64 = p
+            .computed("h", "margin-top")
+            .trim_end_matches("px")
+            .parse()
+            .unwrap();
+        close(h1_margin, 53.6, "#h margin-top");
+        assert_eq!(p.computed("d", "color"), "rgb(84, 84, 84)");
+        assert_eq!(p.computed("e", "color"), "rgba(16, 16, 16, 0.3)");
+        assert_eq!(p.computed("f", "color"), "rgb(128, 128, 128)");
+    }
 }

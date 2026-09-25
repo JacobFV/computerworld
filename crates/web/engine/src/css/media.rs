@@ -491,6 +491,14 @@ fn parse_feature(values: &[ComponentValue]) -> Option<MediaFeature> {
     if items.len() >= 3 && matches!(items[1], ComponentValue::Token(Token::Colon)) {
         let name = ident(items[0])?;
         let value = parse_value(&items[2..])?;
+        // WebKit's prefixed pixel-ratio features (`-webkit-min-device-pixel-ratio: 0`,
+        // TodoMVC's hack to reach WebKit and Blink only) put the prefix before `min-`.
+        let name = match name.strip_prefix("-webkit-") {
+            Some(
+                n @ ("device-pixel-ratio" | "min-device-pixel-ratio" | "max-device-pixel-ratio"),
+            ) => n.to_owned(),
+            _ => name,
+        };
         let (name, op) = if let Some(n) = name.strip_prefix("min-") {
             (n.to_owned(), CompareOp::Ge)
         } else if let Some(n) = name.strip_prefix("max-") {
@@ -720,6 +728,7 @@ impl MediaFeature {
                 }
                 "orientation"
                 | "resolution"
+                | "-webkit-device-pixel-ratio"
                 | "prefers-color-scheme"
                 | "display-mode"
                 | "color"
@@ -763,6 +772,10 @@ impl MediaFeature {
                         })
                     }
                     ("resolution", FeatureValue::Resolution(r)) => ord(media.dppx.micro, *r),
+                    (
+                        "device-pixel-ratio" | "-webkit-device-pixel-ratio",
+                        FeatureValue::Number(n),
+                    ) => ord(media.dppx.micro, n.micro),
                     ("prefers-color-scheme", FeatureValue::Ident(i)) if *op == CompareOp::Eq => {
                         Some(match i.as_str() {
                             "light" => media.color_scheme == ColorScheme::Light,
@@ -1181,6 +1194,14 @@ mod tests {
         };
         assert!(eval("(min-resolution: 1.5dppx)", &hi));
         assert!(eval("(min-resolution: 192dpi)", &hi));
+        // WebKit's prefixed pixel ratio (TodoMVC: `-webkit-min-device-pixel-ratio: 0`).
+        assert!(eval("screen and (-webkit-min-device-pixel-ratio: 0)", &m));
+        assert!(eval("(-webkit-min-device-pixel-ratio: 1.5)", &hi));
+        assert!(!eval("(-webkit-min-device-pixel-ratio: 1.5)", &m));
+        assert!(eval("(-webkit-max-device-pixel-ratio: 1)", &m));
+        assert!(eval("(-webkit-device-pixel-ratio: 1)", &m));
+        // In range syntax too (TodoMVC Vue's minified `(-webkit-device-pixel-ratio>=0)`).
+        assert!(eval("screen and (-webkit-device-pixel-ratio>=0)", &m));
         assert!(eval("(prefers-color-scheme: light)", &m));
         assert!(!eval("(prefers-color-scheme: dark)", &m));
         assert!(eval(
