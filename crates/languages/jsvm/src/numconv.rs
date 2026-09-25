@@ -580,11 +580,17 @@ pub fn to_uint32(x: f64) -> u32 {
 }
 
 /// Canonical array index of a property key, if it is one.
+#[inline]
 pub fn array_index(s: &str) -> Option<u32> {
     let b = s.as_bytes();
-    if b.is_empty() || b.len() > 10 {
+    if b.is_empty() || b.len() > 10 || !b[0].is_ascii_digit() {
         return None;
     }
+    array_index_digits(s)
+}
+
+fn array_index_digits(s: &str) -> Option<u32> {
+    let b = s.as_bytes();
     if b[0] == b'0' {
         return if b.len() == 1 { Some(0) } else { None };
     }

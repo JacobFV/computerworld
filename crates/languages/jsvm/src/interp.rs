@@ -1200,8 +1200,26 @@ impl<'h> Vm<'h> {
                     let Value::Str(name) = &code.consts[c as usize] else {
                         leave!();
                     };
-                    let Some(v) = plain_get(f.stack.last().unwrap(), name) else {
-                        leave!();
+                    let recv = f.stack.last().unwrap();
+                    let v = match plain_get(recv, name) {
+                        Some(v) => v,
+                        None => {
+                            // A method of a primitive (`s.charCodeAt`, `n.toFixed`):
+                            // looked up on its prototype, whose exotic parts
+                            // (a string's indices and length) the name misses.
+                            let proto = match recv {
+                                Value::Str(_) if crate::numconv::array_index(name).is_none() => {
+                                    &self.intr.string_proto
+                                }
+                                Value::Num(_) => &self.intr.number_proto,
+                                Value::Bool(_) => &self.intr.boolean_proto,
+                                _ => leave!(),
+                            };
+                            match proto_get(proto, name) {
+                                Some(v) => v,
+                                None => leave!(),
+                            }
+                        }
                     };
                     if let Op::GetProp(_) = op {
                         *f.stack.last_mut().unwrap() = v;
@@ -2778,6 +2796,30 @@ fn plain_get(obj: &Value, name: &JsStr) -> Option<Value> {
         }
         Value::Str(s) if name.as_str() == "length" => Some(Value::Num(s.len16() as f64)),
         _ => None,
+    }
+}
+
+/// A primitive's property found on its wrapper prototype `proto` (a string's
+/// `length` and indices are answered before this): an own data property of
+/// the prototype, or the ordinary chain above it. `None` for getters and
+/// anything exotic.
+#[inline]
+fn proto_get(proto: &Obj, name: &JsStr) -> Option<Value> {
+    if !name.is_canon() {
+        return None;
+    }
+    let id = std::rc::Rc::as_ptr(&name.0) as *const u8 as usize;
+    let d = proto.borrow();
+    if let Some(i) = d.props.find_ident(id) {
+        return match &d.props.entries[i].1.slot {
+            Slot::Data(Value::Empty) => None,
+            Slot::Data(v) => Some(v.clone()),
+            Slot::Accessor(..) => None,
+        };
+    }
+    match &d.proto {
+        Some(p) => plain_get_ident(p, id),
+        None => Some(Value::Undefined),
     }
 }
 

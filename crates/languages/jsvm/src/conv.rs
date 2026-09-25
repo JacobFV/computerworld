@@ -97,7 +97,15 @@ impl<'h> Vm<'h> {
         Err(self.type_error("Cannot convert object to primitive value"))
     }
 
+    #[inline]
     pub fn to_number(&mut self, v: &Value) -> JsResult<f64> {
+        if let Value::Num(n) = v {
+            return Ok(*n);
+        }
+        self.to_number_slow(v)
+    }
+
+    fn to_number_slow(&mut self, v: &Value) -> JsResult<f64> {
         Ok(match v {
             Value::Undefined | Value::Empty => f64::NAN,
             Value::Null => 0.0,
@@ -134,7 +142,15 @@ impl<'h> Vm<'h> {
         }
     }
 
+    #[inline]
     pub fn to_string(&mut self, v: &Value) -> JsResult<JsStr> {
+        if let Value::Str(s) = v {
+            return Ok(s.clone());
+        }
+        self.to_string_slow(v)
+    }
+
+    fn to_string_slow(&mut self, v: &Value) -> JsResult<JsStr> {
         Ok(match v {
             Value::Str(s) => s.clone(),
             Value::Num(n) => JsStr::new(number_to_string(*n)),
@@ -200,7 +216,17 @@ impl<'h> Vm<'h> {
         })
     }
 
+    #[inline]
     pub fn to_integer(&mut self, v: &Value) -> JsResult<f64> {
+        if let Value::Num(n) = v {
+            if n.is_finite() {
+                return Ok(n.trunc() + 0.0);
+            }
+        }
+        self.to_integer_slow(v)
+    }
+
+    fn to_integer_slow(&mut self, v: &Value) -> JsResult<f64> {
         let n = self.to_number(v)?;
         Ok(if n.is_nan() {
             0.0
