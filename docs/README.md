@@ -32,6 +32,7 @@ CI and fails if the two have drifted apart.
 - [Service SDK](service-sdk.md) — What a service is to the network.
 - [Create a service](custom-service.md) — Adding a synthetic-internet service.
 - [Migrating a service from Page to HTML](html-migration.md) — Moving a service from the `Page` format to HTML, with the search service as the worked example.
+- [Real open-source web apps](oss-webapps.md) — Real open-source web apps as sites: the node-app kind, their packages, seeds and the world that runs them.
 
 ## How it works
 

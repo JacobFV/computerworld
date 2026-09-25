@@ -64,5 +64,65 @@
     "commit": "018c9ce9286fa4961292fe1e024b49fcd7e2dd7f",
     "commit_date": "2026-09-11T08:52:07-07:00",
     "local_checkout": "/tmp/computerworld-sources/typed-crystallization-networks"
+  },
+  {
+    "repository": "https://github.com/tastejs/todomvc",
+    "commit": "ff43b02e59dfa604386bb382034b2cd07c2bcd8a",
+    "commit_date": "2026-05-02T18:06:21-07:00",
+    "local_checkout": "~/.cache/computerworld/oss-web/todomvc",
+    "license": "MIT",
+    "license_file": "license.md",
+    "used_for": "worlds/oss-web todomvc.com: examples/react and examples/vue, built with their own webpack and Vite builds (crates/services/oss-web/packages/todomvc)",
+    "modified": "Nothing in the apps. The site's landing page is ours; todomvc-common's base.js ships as built."
+  },
+  {
+    "repository": "https://github.com/gothinkster/node-express-realworld-example-app",
+    "commit": "30b68e1e881462b2f4164ea09ab4c4f5699c7b0b",
+    "commit_date": "2024-01-04T16:28:24+01:00",
+    "local_checkout": "~/.cache/computerworld/oss-web/realworld-api",
+    "license": "MIT (package.json `license` field only; the repository has no LICENSE file in any commit)",
+    "license_file": null,
+    "used_for": "worlds/oss-web api.realworld.show: the Express backend, bundled with esbuild and run on the in-world JavaScript VM by the node-app service kind",
+    "modified": "@prisma/client is bundled as crates/services/oss-web/shims/prisma-store.js (a Prisma Client over one JSON file, reading the app's own schema.prisma), because Prisma's engine is a native Postgres client; bcrypt cost 10 -> 4 in auth.service.ts, because cost 10 exceeds a request's VM step budget."
+  },
+  {
+    "repository": "https://github.com/khaledosman/react-redux-realworld-example-app",
+    "commit": "53b0b4c0b8c371053a8d082ff9a42bfae68f3755",
+    "commit_date": "2024-03-13T14:18:50+01:00",
+    "local_checkout": "~/.cache/computerworld/oss-web/conduit-react",
+    "license": "MIT",
+    "license_file": "LICENSE.md",
+    "used_for": "worlds/oss-web conduit.realworld.show: the Create React App build, with REACT_APP_BACKEND_URL pointed at the in-world API",
+    "modified": "index.html links the RealWorld theme from the site (/main.css, from the Vue app) instead of demo.productionready.io, which is not on the in-world internet."
+  },
+  {
+    "repository": "https://github.com/mutoe/vue3-realworld-example-app",
+    "commit": "741c215ef0f674f90fcb03c5493a1b3a3a7f1b03",
+    "commit_date": "2026-08-29T07:33:07+08:00",
+    "local_checkout": "~/.cache/computerworld/oss-web/conduit-vue",
+    "license": "MIT",
+    "license_file": "LICENSE",
+    "used_for": "worlds/oss-web vue.realworld.show: the Vite build, with VITE_API_HOST pointed at the in-world API",
+    "modified": "Nothing."
+  },
+  {
+    "repository": "https://github.com/marmelab/react-admin",
+    "commit": "99e8c52b7db1712c0afa4eeed533e4a713dfc1ec",
+    "commit_date": "2026-09-25T17:20:58+02:00",
+    "local_checkout": "~/.cache/computerworld/oss-web/react-admin",
+    "license": "MIT",
+    "license_file": "LICENSE.md",
+    "used_for": "worlds/oss-web react-admin.marmelab.com: examples/simple, built with the monorepo's own yarn 4 install and Vite",
+    "modified": "examples/simple/src/data.tsx rewritten by scripts/oss-web/react-admin-data.py before the build: the same records with the world's people and posts instead of lorem ipsum."
+  },
+  {
+    "repository": "https://github.com/typicode/json-server",
+    "commit": "78ea71375666d49145734689c097654c54f90686",
+    "commit_date": "2023-09-29T15:34:18+02:00",
+    "local_checkout": "~/.cache/computerworld/oss-web/json-server",
+    "license": "MIT",
+    "license_file": "LICENSE",
+    "used_for": "worlds/oss-web json-server.typicode.com: v0.17.4's CLI, built with its own Babel step and bundled with esbuild, run on the in-world JavaScript VM over /data/db.json",
+    "modified": "Nothing; errorhandler's page template is shipped beside the bundle, where its code reads it."
   }
 ]

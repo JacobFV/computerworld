@@ -59,6 +59,7 @@ const sections = [
     { file: 'service-sdk.md', blurb: 'What a service is to the network.' },
     { file: 'custom-service.md', blurb: 'Adding a synthetic-internet service.' },
     { file: 'html-migration.md', blurb: 'Moving a service from the `Page` format to HTML, with the search service as the worked example.' },
+    { file: 'oss-webapps.md', blurb: 'Real open-source web apps as sites: the node-app kind, their packages, seeds and the world that runs them.' },
   ]},
   { title: 'How it works', pages: [
     { file: 'architecture.md', blurb: 'Crates and the boundaries between them.' },
