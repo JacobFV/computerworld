@@ -135,6 +135,7 @@ const GLOBALS: &[&str] = &[
     "alert",
     "confirm",
     "prompt",
+    "fetch",
 ];
 
 /// Node's globals, which a browser lacks too: `typeof process` is `"undefined"`

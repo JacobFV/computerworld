@@ -490,6 +490,13 @@ impl Runtime {
             }
             Value::Elem(e) => self.elem_to_js(e),
             Value::Context(id) => Js::Obj(self.js_context(*id)),
+            // A cw-ui promise is a VM promise that settles with it, so VM code
+            // awaits it as its own.
+            Value::Promise(_) => {
+                let proxy = self.wrap_cw(v);
+                self.js_call_helper("fromCw", vec![proxy])
+                    .unwrap_or(Js::Undefined)
+            }
             // A date crosses as a date (a copy: its time, not its identity).
             Value::Date(d) => {
                 let t = d.get();
@@ -988,12 +995,36 @@ fn n_builtin(vm: &mut Vm, a: &mut Args) -> JsResult<Js> {
         "WindowScrollTo" => B::WindowScrollTo,
         "WindowScrollBy" => B::WindowScrollBy,
         "Alert" => B::Alert,
+        "Fetch" => B::Fetch,
         _ => return Ok(Js::Undefined),
     };
     let rt = rt_of(vm);
     let list = a.arg(1);
     let items = rt.js_to_array(&list).unwrap_or_default();
     let mut args: Vec<Value> = items.iter().map(|v| rt.cw_value(v)).collect();
+    if matches!(b, B::Fetch) {
+        // `fetch(url, init)`: the init object and its headers as cw-ui objects.
+        if let Some(init) = args.get(1).cloned() {
+            let init = rt.plain_object(&init).unwrap_or_default();
+            if let Value::Object(o) = &init {
+                let fixed: Vec<(Str, Value)> = o
+                    .borrow()
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect();
+                let mut out = Vec::new();
+                for (k, v) in fixed {
+                    let v = if &*k == "headers" {
+                        rt.plain_object(&v).unwrap_or_default()
+                    } else {
+                        v
+                    };
+                    out.push((k, v));
+                }
+                args[1] = Value::object(out);
+            }
+        }
+    }
     while args.last().is_some_and(|v| matches!(v, Value::Undefined)) {
         args.pop();
     }

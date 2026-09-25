@@ -1987,3 +1987,36 @@ export function Prefs() {
         &[Step::Click("#go"), Step::Click("#go")],
     );
 }
+
+#[test]
+fn island_code_fetches_through_the_page() {
+    // api.tsx runs on the island (a generator); its fetch is the page's, through
+    // cw-ui, and its promises are the VM's own.
+    same_as_react(
+        r#"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import { Items } from './api';
+createRoot(document.getElementById('root')!).render(<Items />);
+// @file api.tsx
+import { useEffect, useState } from 'react';
+function* ids() { yield 1; }
+async function load(): Promise<{ id: number; name: string }[]> {
+  const r = await fetch('/api/items');
+  console.log('status', r.status, r.ok, typeof r.json);
+  return r.json();
+}
+export function Items() {
+  const [items, setItems] = useState<{ id: number; name: string }[]>([]);
+  const [note, setNote] = useState('loading');
+  useEffect(() => {
+    load().then((xs) => { setItems(xs); setNote('done ' + xs.length); });
+    fetch('/api/missing').then((r) => console.log('missing', r.status, r.ok));
+    Promise.all([fetch('/api/items'), Promise.resolve(2)]).then(([r, n]) => console.log('all', r.status, n));
+  }, []);
+  return <div><p>{note}</p><ul>{items.map((it) => <li key={it.id}>{it.name}</li>)}</ul></div>;
+}
+"#,
+        &[Step::Wait(50)],
+    );
+}

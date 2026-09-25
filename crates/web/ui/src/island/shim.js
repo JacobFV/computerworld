@@ -109,6 +109,7 @@
   };
   cw.construct = (f, args) => new f(...args);
   cw.then = (p, ok, bad) => p.then(ok, bad);
+  cw.fromCw = (p) => new Promise((ok, bad) => { p.then(ok, bad); });
   cw.isThenable = (v) => v !== null && (typeof v === 'object' || typeof v === 'function') && typeof v.then === 'function';
 
   // ------------------------------------------------------------ elements
@@ -330,6 +331,7 @@
   globalThis.alert = (m) => B('Alert', 'alert', m === undefined ? '' : String(m));
   globalThis.confirm = (m) => B('Alert', 'confirm', m === undefined ? '' : String(m));
   globalThis.prompt = (m) => B('Alert', 'prompt', m === undefined ? '' : String(m));
+  globalThis.fetch = (url, init) => B('Fetch', String(url), init);
   globalThis.addEventListener = (t, f, o) => B('WindowAddListener', t, f, o);
   globalThis.removeEventListener = (t, f, o) => B('WindowRemoveListener', t, f, o);
   globalThis.setTimeout = (f, ms, ...args) => cw.timer(0, f, ms, args);
