@@ -35,6 +35,7 @@ pub mod regexp;
 pub mod repl;
 pub mod serve;
 pub mod snapshot;
+pub mod uprops;
 pub mod value;
 pub mod vm;
 pub mod workers;

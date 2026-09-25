@@ -91,3 +91,8 @@ server.listen(0, () => {
   });
 });
 }
+
+// Unicode property escapes beyond letters and digits (punctuation, symbols, emoji).
+console.log('props', /^\p{P}+$/u.test('!?,.'), /\p{S}/u.test('a+b'), /\p{Emoji}/u.test('ok \u{1F600}'),
+  /^\p{Emoji}$/u.test('a'), '$5 €3'.match(/\p{Sc}/gu).join(''), /[\p{L}\p{P}]+/u.exec('hi, you')[0],
+  /\P{P}+/u.exec('!!abc!!')[0], /\p{General_Category=Math_Symbol}/u.test('='), /\p{Extended_Pictographic}/u.test('❤'));

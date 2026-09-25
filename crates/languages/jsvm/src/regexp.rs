@@ -82,9 +82,88 @@ fn surrogate_escapes(pattern: &str) -> std::borrow::Cow<'_, str> {
     std::borrow::Cow::Owned(out)
 }
 
+/// Unicode property escapes the regex engine has no tables for (`\p{P}`,
+/// `\p{Emoji}`, `\p{Sc}`, ...; see `uprops`), spelled out as the classes they
+/// stand for. Only a `u`/`v` pattern has property escapes; a `\P{...}` inside a
+/// class (a negation within a union) is left for the engine to refuse.
+fn property_escapes(pattern: &str) -> std::borrow::Cow<'_, str> {
+    if !pattern.contains("\\p{") && !pattern.contains("\\P{") {
+        return std::borrow::Cow::Borrowed(pattern);
+    }
+    let c: Vec<char> = pattern.chars().collect();
+    let mut out = String::with_capacity(pattern.len());
+    let mut in_class = false;
+    let mut changed = false;
+    let mut i = 0;
+    while i < c.len() {
+        let ch = c[i];
+        if ch == '\\' && i + 1 < c.len() {
+            let kind = c[i + 1];
+            if (kind == 'p' || kind == 'P') && c.get(i + 2) == Some(&'{') {
+                if let Some(end) = c[i + 3..].iter().position(|x| *x == '}') {
+                    let body: String = c[i + 3..i + 3 + end].iter().collect();
+                    let name = match body.split_once('=') {
+                        Some(("General_Category" | "gc", v)) => Some(v),
+                        Some(_) => None,
+                        None => Some(body.as_str()),
+                    };
+                    let table = name.and_then(crate::uprops::ranges);
+                    if let Some(ranges) = table.filter(|_| !(in_class && kind == 'P')) {
+                        let mut set = String::new();
+                        for (a, b) in ranges {
+                            if a == b {
+                                set.push_str(&format!("\\u{{{a:X}}}"));
+                            } else {
+                                set.push_str(&format!("\\u{{{a:X}}}-\\u{{{b:X}}}"));
+                            }
+                        }
+                        if in_class {
+                            out.push_str(&set);
+                        } else {
+                            out.push('[');
+                            if kind == 'P' {
+                                out.push('^');
+                            }
+                            out.push_str(&set);
+                            out.push(']');
+                        }
+                        changed = true;
+                        i += 4 + end;
+                        continue;
+                    }
+                }
+            }
+            out.push(ch);
+            out.push(kind);
+            i += 2;
+            continue;
+        }
+        if ch == '[' && !in_class {
+            in_class = true;
+        } else if ch == ']' && in_class {
+            in_class = false;
+        }
+        out.push(ch);
+        i += 1;
+    }
+    if changed {
+        std::borrow::Cow::Owned(out)
+    } else {
+        std::borrow::Cow::Borrowed(pattern)
+    }
+}
+
 fn compile(pattern: &str, flags: &str) -> Result<Regex, String> {
     let fl = flags_of(flags)?;
     let rewritten = surrogate_escapes(pattern);
+    let rewritten = if fl.unicode {
+        match property_escapes(&rewritten) {
+            std::borrow::Cow::Owned(p) => std::borrow::Cow::Owned(p),
+            std::borrow::Cow::Borrowed(_) => rewritten,
+        }
+    } else {
+        rewritten
+    };
     Regex::new(&rewritten, Flavor::JavaScript, fl).map_err(|e| {
         let prefix = format!("Invalid regular expression: /{pattern}/: ");
         match e.message.strip_prefix(&prefix) {

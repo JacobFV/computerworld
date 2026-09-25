@@ -15,6 +15,7 @@ export superSecret
 private refused
 es5 stream true function function send
 callable true
+props true true true false $€ hi, abc true true
 es5 transform SHOUT
 class readable 012
 server sees function true
