@@ -451,6 +451,9 @@ fn has_bars(f: &Fragment) -> bool {
 }
 
 fn paint_scrollbars(p: &mut Painter, f: &Fragment, state: &State) {
+    if p.hits_only {
+        return;
+    }
     let FragmentKind::Box {
         source,
         padding,
@@ -686,6 +689,9 @@ fn has_outline(p: &Painter, f: &Fragment) -> bool {
 }
 
 fn paint_outline(p: &mut Painter, f: &Fragment, state: &State) {
+    if p.hits_only {
+        return;
+    }
     let Some(key) = p.key(f) else { return };
     let rect = snap(box_rect(p, f, state));
     let style = p.style_of(f).clone();
@@ -862,7 +868,7 @@ pub(crate) fn paint_own(p: &mut Painter, f: &Fragment, state: &State) {
                 ),
         );
     }
-    if hidden || source.is_anonymous() {
+    if hidden || source.is_anonymous() || p.hits_only {
         return;
     }
     // The element's own decoration belongs to its opacity group.

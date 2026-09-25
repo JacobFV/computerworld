@@ -55,6 +55,20 @@ impl HitList {
     ) -> HitList {
         let _t = crate::style::profile::span(crate::style::profile::Phase::HitTest);
         let mut p = Painter::new(None, styles, tree, viewport, ctx);
+        p.hits_only = true;
+        p.run();
+        HitList { hits: p.hits }
+    }
+
+    /// The same list recorded by a full paint (primitives and all), which the
+    /// hits-only traversal must reproduce; for checks.
+    pub fn build_by_painting(
+        tree: &FragmentTree,
+        styles: &StyleSet,
+        viewport: Viewport,
+        ctx: &PaintContext,
+    ) -> HitList {
+        let mut p = Painter::new(None, styles, tree, viewport, ctx);
         p.run();
         HitList { hits: p.hits }
     }

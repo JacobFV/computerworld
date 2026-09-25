@@ -293,6 +293,9 @@ type GradientKey = (u32, u32, BackgroundImage);
 
 /// The paint pass: accumulates scene nodes, scroll areas, hit items and the focus.
 pub(crate) struct Painter<'a> {
+    /// Record only hit-test items: a hit list needs the traversal, clips and
+    /// transforms, not the scene's primitives.
+    pub hits_only: bool,
     pub doc: Option<&'a Document>,
     pub styles: &'a StyleSet,
     pub tree: &'a FragmentTree,
@@ -363,6 +366,7 @@ impl<'a> Painter<'a> {
             focus: None,
             background: Color::WHITE,
             hits: Vec::new(),
+            hits_only: false,
             ordinals: HashMap::new(),
             gradients: HashMap::new(),
             initial: ComputedStyle::initial(),

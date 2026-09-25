@@ -184,6 +184,19 @@ pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
     let style = p.style_rc(*source);
     let rect = abs_rect(state, f);
     let srect = super::snap(rect);
+    if p.hits_only {
+        p.record_hit(
+            state,
+            source.node(),
+            srect,
+            0,
+            matches!(
+                style.pointer_events,
+                crate::style::computed::PointerEvents::None
+            ),
+        );
+        return;
+    }
     let font = &style.font;
     let x = px(rect.origin.x);
     let baseline_px = px(rect.origin.y + *baseline);

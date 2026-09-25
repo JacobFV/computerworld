@@ -42,6 +42,9 @@ const PLACEHOLDER_EDGE: Color = Color(200, 200, 200, 255);
 const MISSING_EDGE: Color = Color(192, 192, 192, 255);
 
 pub(crate) fn paint(p: &mut Painter, f: &Fragment, state: &State) {
+    if p.hits_only {
+        return;
+    }
     let FragmentKind::Box {
         source,
         padding,

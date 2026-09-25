@@ -1236,6 +1236,17 @@ impl Inner {
         }
         if self.hit_list.as_ref().map(|(e, _)| *e) != Some(self.hit_epoch) {
             let list = crate::paint::hit::HitList::build(tree, &self.styles, self.viewport, &ctx);
+            if style::profile::verifying() {
+                let painted = crate::paint::hit::HitList::build_by_painting(
+                    tree,
+                    &self.styles,
+                    self.viewport,
+                    &ctx,
+                );
+                if list != painted {
+                    panic!("a hits-only traversal differs from a paint at {}", self.url);
+                }
+            }
             self.hit_list = Some((self.hit_epoch, list));
         } else if style::profile::verifying() {
             let fresh = crate::paint::hit::HitList::build(tree, &self.styles, self.viewport, &ctx);
