@@ -12,13 +12,16 @@
 //! `react-dom.production.min.js` and this script, in Chrome and on the engine's
 //! `Realm` alike.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use oxc_allocator::{Allocator, TakeIn};
 use oxc_ast::ast::{
-    BindingPattern, Declaration, ExportDefaultDeclarationKind, ImportDeclarationSpecifier,
-    Statement,
+    BindingIdentifier, BindingPattern, Declaration, ExportDefaultDeclarationKind, Expression,
+    IdentifierName, ImportDeclarationSpecifier, ObjectProperty, Statement, VariableDeclarationKind,
+    VariableDeclarator,
 };
+use oxc_ast::builder::AstBuilder;
+use oxc_ast_visit::{walk_mut, VisitMut};
 use oxc_codegen::{Codegen, CodegenOptions};
 use oxc_parser::Parser;
 use oxc_semantic::SemanticBuilder;
@@ -41,35 +44,31 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
         "// Compiled by cw-tsx from {entry}: types stripped, JSX as React.createElement.\n'use strict';\n"
     );
     let mut errors = Vec::new();
-    for (i, src) in sources.iter().enumerate() {
-        if src.is_ambient() {
-            continue;
-        }
-        match emit_one(src, code_modules) {
-            Ok((code, exports)) => {
-                if !bundled {
-                    out.push_str(&code);
-                } else if i + 1 == sources.len() {
-                    out.push_str(&format!("// {}\n(() => {{\n{code}}})();\n", src.file));
-                } else {
-                    let fields: Vec<String> = exports
-                        .iter()
-                        .map(|(exported, local)| {
-                            if exported == local {
-                                exported.clone()
-                            } else {
-                                format!("{}: {local}", js_key(exported))
-                            }
-                        })
-                        .collect();
-                    out.push_str(&format!(
-                        "// {}\nconst __cw_mod_{i} = (() => {{\n{code}return {{ {} }};\n}})();\n",
-                        src.file,
-                        fields.join(", ")
-                    ));
-                }
+    if !bundled {
+        for src in sources.iter().filter(|s| !s.is_ambient()) {
+            match emit_one(src, code_modules, 0, &[]) {
+                Ok(code) => out.push_str(&code),
+                Err(e) => errors.extend(e),
             }
-            Err(e) => errors.extend(e),
+        }
+    } else {
+        // Every module's exports object exists before any module runs, so a
+        // module in an import cycle sees the other's (live) exports.
+        let names = export_names(sources);
+        out.push_str(&format!(
+            "const __cw_m = [{}];\n",
+            vec!["{}"; sources.len()].join(", ")
+        ));
+        for (i, src) in sources.iter().enumerate() {
+            if src.is_ambient() {
+                continue;
+            }
+            match emit_one(src, code_modules, i, &names) {
+                Ok(code) => {
+                    out.push_str(&format!("// {}\n(() => {{\n{code}}})();\n", src.file));
+                }
+                Err(e) => errors.extend(e),
+            }
         }
     }
     if errors.is_empty() {
@@ -77,6 +76,62 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
     } else {
         Err(errors)
     }
+}
+
+/// The names each module exports (values and types alike), `export *` resolved
+/// through the modules before it.
+fn export_names(sources: &[Source]) -> Vec<Vec<String>> {
+    let mut out: Vec<Vec<String>> = Vec::new();
+    for src in sources {
+        let allocator = Allocator::default();
+        let ret = Parser::new(&allocator, &src.text, SourceType::tsx()).parse();
+        let mut names = Vec::new();
+        for stmt in &ret.program.body {
+            match stmt {
+                Statement::ExportDeclaration(e) => match &e.declaration {
+                    Declaration::FunctionDeclaration(f) => {
+                        names.extend(f.id.as_ref().map(|i| i.name.to_string()))
+                    }
+                    Declaration::ClassDeclaration(c) => {
+                        names.extend(c.id.as_ref().map(|i| i.name.to_string()))
+                    }
+                    Declaration::VariableDeclaration(v) => {
+                        for d in &v.declarations {
+                            binding_idents(&d.id, &mut names);
+                        }
+                    }
+                    Declaration::TSEnumDeclaration(e) => names.push(e.id.name.to_string()),
+                    _ => {}
+                },
+                Statement::ExportNamedDeclaration(e) => {
+                    for spec in &e.specifiers {
+                        names.push(spec.exported.name().to_string());
+                    }
+                }
+                Statement::ExportFromDeclaration(e) => {
+                    for spec in &e.specifiers {
+                        names.push(spec.exported.name().to_string());
+                    }
+                }
+                Statement::ExportDefaultDeclaration(_) => names.push("default".into()),
+                Statement::ExportAllDeclaration(e) => match &e.exported {
+                    Some(n) => names.push(n.name().to_string()),
+                    None => {
+                        if let Some(&m) = src.imports.get(e.source.value.as_str()) {
+                            if let Some(theirs) = out.get(m) {
+                                names.extend(theirs.iter().filter(|n| *n != "default").cloned());
+                            }
+                        }
+                    }
+                },
+                _ => {}
+            }
+        }
+        names.sort();
+        names.dedup();
+        out.push(names);
+    }
+    out
 }
 
 fn js_key(name: &str) -> String {
@@ -164,13 +219,19 @@ fn top_level_values(body: &[Statement<'_>]) -> BTreeSet<String> {
     values
 }
 
-/// One module's code (imports rewritten, exports stripped) and its value exports
-/// as (exported name, local name).
-#[allow(clippy::type_complexity)]
+/// One module's code. On its own (`modules == 1`) it is the module's code with its
+/// React imports read from the globals. Bundled, it is the body of the module's
+/// scope: its exports defined as getters on `__cw_m[index]` (live, as ES module
+/// bindings are), then its code, in which every use of a name imported from
+/// another module of the app reads that module's exports object
+/// (`__cw_i3.Button`), so an import cycle sees the other module as it is when the
+/// name is used, not when this module started.
 fn emit_one(
     src: &Source,
     modules: usize,
-) -> Result<(String, Vec<(String, String)>), Vec<Diagnostic>> {
+    index: usize,
+    names: &[Vec<String>],
+) -> Result<String, Vec<Diagnostic>> {
     let bundled = modules > 1;
     let source = src.text.as_str();
     let at = |offset: u32, msg: String| {
@@ -184,6 +245,7 @@ fn emit_one(
         d
     };
     let allocator = Allocator::default();
+    let b = AstBuilder::new(&allocator);
     let ret = Parser::new(&allocator, source, SourceType::tsx()).parse();
     if !ret.diagnostics.is_empty() {
         return Err(ret.diagnostics.iter().map(from_oxc).collect());
@@ -192,10 +254,16 @@ fn emit_one(
     let values = top_level_values(&program.body);
     let mut preamble = String::new();
     let mut errors = Vec::new();
+    // Exported name, and the expression its getter returns.
     let mut exports: Vec<(String, String)> = Vec::new();
+    // Names imported from modules of the app: module, name there.
+    let mut imported: BTreeMap<String, (usize, String)> = BTreeMap::new();
+    let mut used_modules: BTreeSet<usize> = BTreeSet::new();
+    let module_of = |spec: &str| src.imports.get(spec).copied();
     let alloc = &allocator;
     let body = program.body.take_in(&alloc);
     let mut kept = oxc_allocator::Vec::new_in(&alloc);
+    let default_name = alloc.alloc_str("__cw_default");
     for stmt in body {
         match stmt {
             Statement::ImportDeclaration(mut import) => {
@@ -203,9 +271,12 @@ fn emit_one(
                     continue;
                 }
                 let module = import.source.value.to_string();
-                let local_module = src.imports.get(&module).copied();
+                let local_module = module_of(&module);
                 let global = match (module.as_str(), local_module) {
-                    (_, Some(m)) => format!("__cw_mod_{m}"),
+                    (_, Some(m)) => {
+                        used_modules.insert(m);
+                        format!("__cw_i{m}")
+                    }
                     ("react", _) => "React".to_owned(),
                     ("react-dom" | "react-dom/client", _) => "ReactDOM".to_owned(),
                     (other, None) => {
@@ -223,20 +294,19 @@ fn emit_one(
                             if s.import_kind.is_type() {
                                 continue;
                             }
-                            let imported = s.imported.name().to_string();
+                            let name = s.imported.name().to_string();
                             let local = s.local.name.to_string();
-                            if imported == local {
+                            if let Some(m) = local_module {
+                                imported.insert(local, (m, name));
+                            } else if name == local {
                                 named.push(local);
                             } else {
-                                named.push(format!("{}: {local}", js_key(&imported)));
+                                named.push(format!("{}: {local}", js_key(&name)));
                             }
                         }
                         ImportDeclarationSpecifier::ImportDefaultSpecifier(s) => {
-                            if local_module.is_some() {
-                                preamble.push_str(&format!(
-                                    "const {} = {global}.default;\n",
-                                    s.local.name
-                                ));
+                            if let Some(m) = local_module {
+                                imported.insert(s.local.name.to_string(), (m, "default".into()));
                             } else if s.local.name.as_str() != global {
                                 preamble.push_str(&format!("const {} = {global};\n", s.local.name));
                             }
@@ -280,54 +350,118 @@ fn emit_one(
                 }
                 for spec in &e.specifiers {
                     let local = spec.local.name().to_string();
-                    if spec.export_kind.is_type() || !values.contains(&local) {
+                    if spec.export_kind.is_type() {
                         continue;
                     }
-                    exports.push((spec.exported.name().to_string(), local));
+                    let exported = spec.exported.name().to_string();
+                    if let Some((m, name)) = imported.get(&local) {
+                        exports.push((exported, format!("__cw_i{m}{}", js_member(name))));
+                    } else if values.contains(&local) {
+                        exports.push((exported, local));
+                    }
                 }
             }
             Statement::ExportFromDeclaration(e) => {
-                errors.push(at(
-                    e.span.start,
-                    "a re-export from another module is outside what cw-tsx bundles (import, then export)".into(),
-                ));
+                if e.export_kind.is_type() {
+                    continue;
+                }
+                let Some(m) = module_of(e.source.value.as_str()) else {
+                    errors.push(at(
+                        e.span.start,
+                        format!("import from `{}`: only `react`, `react-dom` and the app's own modules are available to a compiled app", e.source.value),
+                    ));
+                    continue;
+                };
+                used_modules.insert(m);
+                for spec in &e.specifiers {
+                    if spec.export_kind.is_type() {
+                        continue;
+                    }
+                    let name = spec.local.name().to_string();
+                    exports.push((
+                        spec.exported.name().to_string(),
+                        format!("__cw_i{m}{}", js_member(&name)),
+                    ));
+                }
+            }
+            Statement::ExportAllDeclaration(e) => {
+                if e.export_kind.is_type() {
+                    continue;
+                }
+                let Some(m) = module_of(e.source.value.as_str()) else {
+                    errors.push(at(
+                        e.span.start,
+                        format!("import from `{}`: only `react`, `react-dom` and the app's own modules are available to a compiled app", e.source.value),
+                    ));
+                    continue;
+                };
+                used_modules.insert(m);
+                match &e.exported {
+                    Some(ns) => exports.push((ns.name().to_string(), format!("__cw_i{m}"))),
+                    None => {
+                        for n in names.get(m).into_iter().flatten() {
+                            if n != "default" {
+                                exports.push((n.clone(), format!("__cw_i{m}{}", js_member(n))));
+                            }
+                        }
+                    }
+                }
             }
             Statement::ExportDefaultDeclaration(mut export) => {
                 let span = export.span;
                 match export.declaration.take_in(&alloc) {
-                    ExportDefaultDeclarationKind::FunctionDeclaration(f) => match &f.id {
-                        Some(id) => {
-                            exports.push(("default".into(), id.name.to_string()));
-                            kept.push(Statement::FunctionDeclaration(f));
+                    ExportDefaultDeclarationKind::FunctionDeclaration(mut f) => {
+                        if f.id.is_none() {
+                            f.id = Some(BindingIdentifier::new(span, default_name, &b));
                         }
-                        None if bundled => errors.push(at(
-                            span.start,
-                            "an anonymous default export: name the function".into(),
-                        )),
-                        None => {}
-                    },
-                    ExportDefaultDeclarationKind::ClassDeclaration(c) => {
-                        if let Some(id) = &c.id {
-                            exports.push(("default".into(), id.name.to_string()));
-                            kept.push(Statement::ClassDeclaration(c));
+                        let name =
+                            f.id.as_ref()
+                                .map(|i| i.name.to_string())
+                                .unwrap_or_default();
+                        exports.push(("default".into(), name));
+                        kept.push(Statement::FunctionDeclaration(f));
+                    }
+                    ExportDefaultDeclarationKind::ClassDeclaration(mut c) => {
+                        if c.id.is_none() {
+                            c.id = Some(BindingIdentifier::new(span, default_name, &b));
                         }
+                        let name =
+                            c.id.as_ref()
+                                .map(|i| i.name.to_string())
+                                .unwrap_or_default();
+                        exports.push(("default".into(), name));
+                        kept.push(Statement::ClassDeclaration(c));
                     }
                     ExportDefaultDeclarationKind::Identifier(id) => {
-                        exports.push(("default".into(), id.name.to_string()));
+                        let local = id.name.to_string();
+                        let getter = match imported.get(&local) {
+                            Some((m, name)) => format!("__cw_i{m}{}", js_member(name)),
+                            None => local,
+                        };
+                        exports.push(("default".into(), getter));
                     }
                     ExportDefaultDeclarationKind::TSInterfaceDeclaration(_) => {}
-                    _ if bundled => errors.push(at(
-                        span.start,
-                        "`export default` of an expression: export a named declaration".into(),
-                    )),
-                    _ => {}
+                    other => {
+                        // `export default <expression>`: `const __cw_default = …`.
+                        let x = other.into_expression();
+                        let decl = VariableDeclarator::new(
+                            span,
+                            BindingPattern::new_binding_identifier(span, default_name, &b),
+                            None,
+                            Some(x),
+                            false,
+                            &b,
+                        );
+                        kept.push(Statement::new_variable_declaration(
+                            span,
+                            VariableDeclarationKind::Const,
+                            oxc_allocator::Vec::from_iter_in([decl], &alloc),
+                            false,
+                            &b,
+                        ));
+                        exports.push(("default".into(), "__cw_default".into()));
+                    }
                 }
-            }
-            Statement::ExportAllDeclaration(e) => {
-                errors.push(at(
-                    e.span.start,
-                    "`export *` is outside what cw-tsx bundles".into(),
-                ));
             }
             other => kept.push(other),
         }
@@ -335,8 +469,12 @@ fn emit_one(
     if !errors.is_empty() {
         return Err(errors);
     }
+    if !bundled && !exports.is_empty() {
+        // A one-module app's exports are nobody's imports.
+        exports.clear();
+    }
     program.body = kept;
-    let semantic = SemanticBuilder::new().build(&program);
+    let semantic = SemanticBuilder::new().with_enum_eval(true).build(&program);
     let scoping = semantic.semantic.into_scoping();
     let mut options = TransformOptions::default();
     options.jsx.runtime = JsxRuntime::Classic;
@@ -347,6 +485,26 @@ fn emit_one(
         Transformer::new(&allocator, path, &options).build_with_scoping(scoping, &mut program);
     if !ret.diagnostics.is_empty() {
         return Err(ret.diagnostics.iter().map(from_oxc).collect());
+    }
+    if !imported.is_empty() {
+        // Uses of imported names (unbound now that the imports are gone) read the
+        // exporting module's exports object.
+        let semantic = SemanticBuilder::new().build(&program);
+        let scoping = semantic.semantic.into_scoping();
+        let mut refs: HashMap<oxc_semantic::ReferenceId, (usize, String)> = HashMap::new();
+        for (name, ids) in scoping.root_unresolved_references() {
+            if let Some(target) = imported.get(name.as_str()) {
+                for id in ids {
+                    refs.insert(*id, target.clone());
+                }
+            }
+        }
+        let mut rw = ImportUses {
+            refs,
+            b: AstBuilder::new(&allocator),
+            alloc: &allocator,
+        };
+        rw.visit_program(&mut program);
     }
     let code = Codegen::new()
         .with_options(CodegenOptions {
@@ -359,5 +517,96 @@ fn emit_one(
         })
         .build(&program)
         .code;
-    Ok((format!("{preamble}{code}"), exports))
+    if !bundled {
+        return Ok(format!("{preamble}{code}"));
+    }
+    let mut head = String::new();
+    for m in &used_modules {
+        head.push_str(&format!("const __cw_i{m} = __cw_m[{m}];\n"));
+    }
+    if !exports.is_empty() {
+        let mut seen = BTreeSet::new();
+        let props: Vec<String> = exports
+            .iter()
+            .filter(|(n, _)| seen.insert(n.clone()))
+            .map(|(n, g)| format!("{}: {{ enumerable: true, get: () => {g} }}", js_key(n)))
+            .collect();
+        head.push_str(&format!(
+            "Object.defineProperties(__cw_m[{index}], {{ {} }});\n",
+            props.join(", ")
+        ));
+    }
+    Ok(format!("{head}{preamble}{code}"))
+}
+
+/// A property access of `name`: `.name` (keywords are fine there) or `["name"]`.
+fn js_member(name: &str) -> String {
+    let key = js_key(name);
+    if key.starts_with('"') {
+        format!("[{key}]")
+    } else {
+        format!(".{key}")
+    }
+}
+
+/// Rewrites uses of imported names into reads of the exporting module.
+struct ImportUses<'a> {
+    refs: HashMap<oxc_semantic::ReferenceId, (usize, String)>,
+    b: AstBuilder<'a>,
+    alloc: &'a Allocator,
+}
+
+impl<'a> VisitMut<'a> for ImportUses<'a> {
+    fn visit_expression(&mut self, it: &mut Expression<'a>) {
+        if let Expression::Identifier(id) = it {
+            if let Some((m, name)) = id.reference_id.get().and_then(|r| self.refs.get(&r)) {
+                let span = id.span;
+                let object = Expression::new_identifier(
+                    span,
+                    self.alloc.alloc_str(&format!("__cw_i{m}")),
+                    &self.b,
+                );
+                *it = if js_key(name).starts_with('"') {
+                    Expression::new_computed_member_expression(
+                        span,
+                        object,
+                        Expression::new_string_literal(
+                            span,
+                            self.alloc.alloc_str(name),
+                            None,
+                            &self.b,
+                        ),
+                        false,
+                        &self.b,
+                    )
+                } else {
+                    Expression::new_static_member_expression(
+                        span,
+                        object,
+                        IdentifierName::new(span, self.alloc.alloc_str(name), &self.b),
+                        false,
+                        &self.b,
+                    )
+                };
+                return;
+            }
+        }
+        walk_mut::walk_expression(self, it);
+    }
+
+    fn visit_object_property(&mut self, it: &mut ObjectProperty<'a>) {
+        // `{ a }` of an imported `a` becomes `{ a: __cw_i1.a }`.
+        if it.shorthand {
+            if let Expression::Identifier(id) = &it.value {
+                if id
+                    .reference_id
+                    .get()
+                    .is_some_and(|r| self.refs.contains_key(&r))
+                {
+                    it.shorthand = false;
+                }
+            }
+        }
+        walk_mut::walk_object_property(self, it);
+    }
 }

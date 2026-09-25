@@ -315,6 +315,9 @@ impl<'m> Gen<'m> {
                     let a = cx.expr(e);
                     cx.line(&format!("rt.set_context_default({i}, {a});"));
                 }
+                GlobalInit::Run(f) => {
+                    cx.line(&format!("f{f}(rt, &[], Vec::new(), None)?;"));
+                }
                 _ => {}
             }
         }

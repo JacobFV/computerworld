@@ -345,6 +345,16 @@ impl Program for IrProgram {
                     let v = rt.eval(&mut frame, e)?;
                     rt.ctx_defaults.insert(i as u32, v);
                 }
+                ir::GlobalInit::Run(f) => {
+                    rt.call_closure(
+                        &Rc::new(Closure {
+                            func: *f,
+                            captures: Vec::new(),
+                        }),
+                        Vec::new(),
+                        None,
+                    )?;
+                }
                 _ => {}
             }
         }

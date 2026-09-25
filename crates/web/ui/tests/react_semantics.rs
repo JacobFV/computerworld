@@ -118,7 +118,11 @@ fn dom_text(
 }
 
 fn compile(tsx: &str) -> (cw_ui::ir::Module, String) {
-    let b = cw_tsx::build(tsx, "app.tsx");
+    // Several modules (`// @file <path>` lines), the first the entry; or one.
+    let b = match cw_tsx::virtual_files(tsx) {
+        Some(files) => cw_tsx::build_virtual(&files).unwrap_or_else(|d| panic!("{d:?}")),
+        None => cw_tsx::build(tsx, "app.tsx"),
+    };
     assert!(
         b.diagnostics.is_empty(),
         "outside the subset:\n{}",
@@ -198,9 +202,12 @@ fn run_compiled_on(module: &cw_ui::ir::Module, steps: &[Step], generated: bool) 
     for s in steps {
         let at = match s {
             Step::Click(sel) => {
-                let n = app
-                    .query_selector(sel)
-                    .unwrap_or_else(|| panic!("compiled: no {sel}"));
+                let n = app.query_selector(sel).unwrap_or_else(|| {
+                    panic!(
+                        "compiled: no {sel}; logs: {:?}",
+                        app.logs().iter().map(|l| &l.text).collect::<Vec<_>>()
+                    )
+                });
                 app.centre_of(n)
             }
             _ => None,
@@ -1338,6 +1345,110 @@ function App() {
     <Toggle>
       {(on, flip) => <button id="go" onClick={flip}>{on ? 'on' : 'off'} {join('-', 'a', 0, 'b', '', 2)}</button>}
     </Toggle>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[Step::Click("#go"), Step::Click("#go")],
+    );
+}
+
+#[test]
+fn modules_re_export_import_cycles_and_run_code_when_they_load() {
+    // Re-exports and `export *`, `import * as`, an anonymous default export, an
+    // enum, module-level statements (a loop, a guard that throws, a log) that run
+    // in order when the module loads, and an import cycle (the library uses the
+    // app's constant when called, after both modules loaded).
+    same_as_react(
+        r#"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import App, { total } from './App';
+import * as util from './util';
+const rootElement = document.getElementById('root')!;
+if (!rootElement) throw new Error('no root element');
+console.log('boot', util.twice(2), total, util.Color.Green, util.Color[6], util.Color.Blue);
+const root = createRoot(rootElement);
+root.render(<App />);
+// @file App.tsx
+import { useState } from 'react';
+import { twice } from './util';
+import { label, isEven, shout } from './lib';
+export const total = [1, 2, 3].reduce((a, b) => a + b, 0);
+let calls = 0;
+for (let i = 0; i < 4; i++) {
+  calls += i;
+}
+console.log('App module loaded', calls, isEven(calls));
+export default function (): JSX.Element {
+  const [n, setN] = useState(calls);
+  return <button id="go" onClick={() => setN(twice(n) + 1)}>{label(n)} {shout('x')}</button>;
+}
+// @file util.ts
+export enum Color { Red, Green = 5, Blue }
+export const twice = (n: number) => n * 2;
+// @file lib/index.ts
+export * from './impl';
+export { yell as shout } from './impl';
+// @file lib/impl.ts
+import { total } from '../App';
+export function label(n: number) { return 'n=' + n + ' ' + (isEven(n) ? 'even' : 'odd') + ' of ' + total; }
+export const isEven = (n: number) => n % 2 === 0;
+export const yell = (s: string) => s.toUpperCase() + '!';
+"#,
+        &[Step::Click("#go"), Step::Click("#go")],
+    );
+}
+
+#[test]
+fn dom_refs_measure_query_and_scroll_as_the_page_does() {
+    // Geometry reads flush layout and give the Realm's numbers; element queries,
+    // traversal and scrolling act on the engine's document.
+    same_as_react(
+        r#"
+import { useLayoutEffect, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+function App() {
+  const box = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  const [out, setOut] = useState('');
+  const [tall, setTall] = useState(false);
+  useLayoutEffect(() => {
+    const el = box.current!;
+    const r = el.getBoundingClientRect();
+    const ul = list.current!;
+    const items = ul.querySelectorAll('li.item');
+    const second = ul.querySelector('li:nth-child(2)')!;
+    console.log('rect', r.x, r.y, r.width, r.height, r.top, r.right, r.bottom, r.left);
+    console.log('offset', el.offsetLeft, el.offsetTop, el.offsetWidth, el.offsetHeight, el.clientWidth, el.clientHeight, el.scrollHeight);
+    console.log('query', items.length, second.textContent, second.closest('ul') === ul, ul.contains(second), second.matches('.item'), second.getAttribute('data-k'), second.hasAttribute('title'));
+    console.log('tree', ul.children.length, ul.firstElementChild!.textContent, second.nextElementSibling!.textContent, second.parentElement === ul, document.querySelectorAll('li').length);
+    setOut(`${Math.round(r.width)}x${Math.round(r.height)}`);
+  }, [tall]);
+  const scroll = () => {
+    const el = box.current!;
+    el.scrollTop = 30;
+    const before = el.scrollTop;
+    el.scrollBy(0, 15);
+    list.current!.lastElementChild!.scrollIntoView();
+    window.scrollTo(0, 40);
+    console.log('scrolled', before, el.scrollTop, window.scrollY, document.documentElement.scrollTop);
+    setTall(!tall);
+  };
+  return (
+    <div>
+      <div id="box" ref={box} style={{ width: 150, height: 60, overflow: 'auto', border: '3px solid black', padding: 4 }}>
+        <div style={{ height: tall ? 400 : 200 }}>content</div>
+      </div>
+      <ul ref={list}>
+        <li className="item" data-k="a">one</li>
+        <li className="item" data-k="b">two</li>
+        <li>three</li>
+      </ul>
+      <p id="out">{out}</p>
+      <button id="go" onClick={scroll}>scroll</button>
+      <div style={{ height: 1500 }}>spacer</div>
+    </div>
   );
 }
 createRoot(document.getElementById('root')!).render(<App />);

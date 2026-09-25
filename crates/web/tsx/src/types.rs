@@ -169,10 +169,19 @@ pub fn property(t: &Ty, name: &str) -> Option<Ty> {
             "value" | "id" | "tagName" | "name" | "type" | "textContent" | "className" => {
                 Some(Ty::String)
             }
-            "checked" | "disabled" => Some(Ty::Boolean),
+            "checked" | "disabled" | "isConnected" => Some(Ty::Boolean),
+            "nodeName" => Some(Ty::String),
             "offsetWidth" | "offsetHeight" | "scrollTop" | "scrollLeft" | "selectionStart"
             | "selectionEnd" | "valueAsNumber" | "scrollHeight" | "scrollWidth"
-            | "clientHeight" | "clientWidth" => Some(Ty::Number),
+            | "clientHeight" | "clientWidth" | "offsetLeft" | "offsetTop" | "clientLeft"
+            | "clientTop" | "childElementCount" => Some(Ty::Number),
+            "offsetParent"
+            | "parentElement"
+            | "firstElementChild"
+            | "lastElementChild"
+            | "nextElementSibling"
+            | "previousElementSibling" => Some(union(Ty::DomNode, Ty::Null)),
+            "children" => Some(Ty::Array(Box::new(Ty::DomNode))),
             _ => None,
         },
         Ty::Set(_) | Ty::Map(..) if name == "size" => Some(Ty::Number),

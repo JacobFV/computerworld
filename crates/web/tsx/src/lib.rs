@@ -220,125 +220,173 @@ pub fn load_with(
     read: &mut dyn FnMut(&str) -> Option<String>,
     options: &LoadOptions,
 ) -> (Vec<Source>, Vec<Diagnostic>) {
-    #[allow(clippy::too_many_arguments)]
-    fn visit(
-        file: &str,
-        read: &mut dyn FnMut(&str) -> Option<String>,
-        options: &LoadOptions,
-        out: &mut Vec<Source>,
-        index: &mut BTreeMap<String, usize>,
-        stack: &mut Vec<String>,
-        errors: &mut Vec<Diagnostic>,
-    ) -> Option<usize> {
-        if let Some(i) = index.get(file) {
-            return Some(*i);
-        }
-        if let Some(pos) = stack.iter().position(|f| f == file) {
-            let cycle: Vec<&str> = stack[pos..]
-                .iter()
-                .map(String::as_str)
-                .chain([file])
-                .collect();
-            errors.push(Diagnostic {
-                file: file.to_owned(),
-                line: 1,
-                col: 1,
-                message: format!("import cycle: {}", cycle.join(" → ")),
-            });
-            return None;
-        }
-        let text = read(file)?;
-        stack.push(file.to_owned());
-        let dir = match file.rfind('/') {
-            Some(i) => &file[..i],
-            None => "",
-        };
-        // Declaration files a module references come before it, like its imports.
-        for (path, at) in references(&text) {
-            let target = normalize(&format!("{dir}/{path}"));
-            if visit(&target, read, options, out, index, stack, errors).is_none() {
-                let mut d = Diagnostic::at(&text, at, format!("cannot find `{path}`"));
-                d.file = file.to_owned();
-                errors.push(d);
-            }
-        }
-        let mut imports = BTreeMap::new();
-        for (spec, at) in specifiers(&text) {
-            let base = if is_relative(&spec) {
-                normalize(&format!("{dir}/{spec}"))
-            } else if let Some((from, to)) = options
-                .aliases
-                .iter()
-                .find(|(from, _)| spec.starts_with(from.as_str()))
-            {
-                normalize(&format!("{to}{}", &spec[from.len()..]))
-            } else {
-                continue;
-            };
-            let candidates = [
-                base.clone(),
-                format!("{base}.tsx"),
-                format!("{base}.ts"),
-                format!("{base}/index.tsx"),
-                format!("{base}/index.ts"),
-            ];
-            let found = candidates.iter().find_map(|c| {
-                if let Some(i) = index.get(c) {
-                    return Some(*i);
-                }
-                if c.ends_with(".tsx") || c.ends_with(".ts") {
-                    let probe = read(c)?;
-                    drop(probe);
-                    visit(c, read, options, out, index, stack, errors)
-                } else {
-                    None
-                }
-            });
-            match found {
-                Some(i) => {
-                    imports.insert(spec, i);
-                }
-                None => {
-                    let mut d = Diagnostic::at(&text, at, format!("cannot find module `{spec}`"));
-                    d.file = file.to_owned();
-                    errors.push(d);
-                }
-            }
-        }
-        stack.pop();
-        let i = out.len();
-        out.push(Source {
-            file: file.to_owned(),
-            text,
-            imports,
-        });
-        index.insert(file.to_owned(), i);
-        Some(i)
+    struct Loader<'r, 'o> {
+        read: &'r mut dyn FnMut(&str) -> Option<String>,
+        options: &'o LoadOptions,
+        out: Vec<Source>,
+        index: BTreeMap<String, usize>,
+        /// Files being loaded (an import of one of them closes a cycle).
+        open: Vec<String>,
+        /// Imports that close a cycle: the importer, its specifier, the file.
+        back: Vec<(String, String, String)>,
+        errors: Vec<Diagnostic>,
     }
-    let mut out = Vec::new();
-    let mut index = BTreeMap::new();
-    let mut errors = Vec::new();
-    let entry = normalize(entry);
-    if visit(
-        &entry,
+    enum Found {
+        Done(usize),
+        Open(String),
+    }
+    impl Loader<'_, '_> {
+        /// Loads `file` and what it imports; `None` when it cannot be read.
+        fn visit(&mut self, file: &str) -> Option<Found> {
+            if let Some(i) = self.index.get(file) {
+                return Some(Found::Done(*i));
+            }
+            if self.open.iter().any(|f| f == file) {
+                // A cycle, as ES modules allow: this import is patched in once
+                // the file is loaded.
+                return Some(Found::Open(file.to_owned()));
+            }
+            let text = (self.read)(file)?;
+            self.open.push(file.to_owned());
+            let dir = match file.rfind('/') {
+                Some(i) => &file[..i],
+                None => "",
+            };
+            // Declaration files a module references come before it, like its imports.
+            for (path, at) in references(&text) {
+                let target = normalize(&format!("{dir}/{path}"));
+                if self.visit(&target).is_none() {
+                    let mut d = Diagnostic::at(&text, at, format!("cannot find `{path}`"));
+                    d.file = file.to_owned();
+                    self.errors.push(d);
+                }
+            }
+            let mut imports = BTreeMap::new();
+            for (spec, at) in specifiers(&text) {
+                let base = if is_relative(&spec) {
+                    normalize(&format!("{dir}/{spec}"))
+                } else if let Some((from, to)) = self
+                    .options
+                    .aliases
+                    .iter()
+                    .find(|(from, _)| spec.starts_with(from.as_str()))
+                {
+                    normalize(&format!("{to}{}", &spec[from.len()..]))
+                } else {
+                    continue;
+                };
+                // `./x.js` names `x.ts` in TypeScript's ES module resolution.
+                let stem = [".js", ".jsx", ".mjs"]
+                    .iter()
+                    .find_map(|e| base.strip_suffix(e))
+                    .map(str::to_owned);
+                let mut candidates = vec![
+                    base.clone(),
+                    format!("{base}.tsx"),
+                    format!("{base}.ts"),
+                    format!("{base}/index.tsx"),
+                    format!("{base}/index.ts"),
+                ];
+                if let Some(stem) = stem {
+                    candidates.push(format!("{stem}.tsx"));
+                    candidates.push(format!("{stem}.ts"));
+                }
+                let mut found = None;
+                for c in &candidates {
+                    if let Some(i) = self.index.get(c) {
+                        found = Some(Found::Done(*i));
+                        break;
+                    }
+                    if !(c.ends_with(".tsx") || c.ends_with(".ts")) {
+                        continue;
+                    }
+                    if self.open.iter().any(|f| f == c) {
+                        found = Some(Found::Open(c.clone()));
+                        break;
+                    }
+                    if (self.read)(c).is_none() {
+                        continue;
+                    }
+                    found = self.visit(c);
+                    if found.is_some() {
+                        break;
+                    }
+                }
+                match found {
+                    Some(Found::Done(i)) => {
+                        imports.insert(spec, i);
+                    }
+                    Some(Found::Open(target)) => {
+                        self.back.push((file.to_owned(), spec, target));
+                    }
+                    None => {
+                        let mut d =
+                            Diagnostic::at(&text, at, format!("cannot find module `{spec}`"));
+                        d.file = file.to_owned();
+                        self.errors.push(d);
+                    }
+                }
+            }
+            self.open.pop();
+            let i = self.out.len();
+            self.out.push(Source {
+                file: file.to_owned(),
+                text,
+                imports,
+            });
+            self.index.insert(file.to_owned(), i);
+            Some(Found::Done(i))
+        }
+    }
+    let mut l = Loader {
         read,
         options,
-        &mut out,
-        &mut index,
-        &mut Vec::new(),
-        &mut errors,
-    )
-    .is_none()
-        && errors.is_empty()
-    {
-        errors.push(Diagnostic {
+        out: Vec::new(),
+        index: BTreeMap::new(),
+        open: Vec::new(),
+        back: Vec::new(),
+        errors: Vec::new(),
+    };
+    let entry = normalize(entry);
+    if l.visit(&entry).is_none() && l.errors.is_empty() {
+        l.errors.push(Diagnostic {
             file: entry.clone(),
             line: 1,
             col: 1,
             message: "cannot read the entry module".into(),
         });
     }
-    (out, errors)
+    for (importer, spec, target) in std::mem::take(&mut l.back) {
+        if let (Some(&i), Some(&t)) = (l.index.get(&importer), l.index.get(&target)) {
+            l.out[i].imports.insert(spec, t);
+        }
+    }
+    (l.out, l.errors)
+}
+
+/// Several modules written as one text, each starting at a line `// @file <path>`
+/// (as tests write small apps): the files in order, or `None` without markers.
+pub fn virtual_files(text: &str) -> Option<Vec<(String, String)>> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    for line in text.split_inclusive('\n') {
+        if let Some(name) = line.trim().strip_prefix("// @file ") {
+            out.push((name.trim().to_owned(), String::new()));
+        } else if let Some((_, body)) = out.last_mut() {
+            body.push_str(line);
+        }
+    }
+    (!out.is_empty()).then_some(out)
+}
+
+/// Loads and compiles an app given as [`virtual_files`] (the first is the entry).
+pub fn build_virtual(files: &[(String, String)]) -> Result<Build, Vec<Diagnostic>> {
+    let map: BTreeMap<&str, &str> = files
+        .iter()
+        .map(|(n, t)| (n.as_str(), t.as_str()))
+        .collect();
+    let entry = files.first().map(|(n, _)| n.clone()).unwrap_or_default();
+    let sources = load(&entry, &mut |f| map.get(f).map(|s| (*s).to_owned()))?;
+    Ok(build_modules(&sources))
 }
 
 /// Compiles an app of several modules (from `load`) both ways.

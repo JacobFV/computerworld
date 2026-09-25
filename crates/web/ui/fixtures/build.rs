@@ -23,7 +23,12 @@ fn main() {
             if !src.contains("createRoot(") {
                 continue;
             }
-            let b = if src.contains("cw.d.ts") {
+            let b = if let Some(files) = cw_tsx::virtual_files(&src) {
+                match cw_tsx::build_virtual(&files) {
+                    Ok(b) => b,
+                    Err(_) => continue,
+                }
+            } else if src.contains("cw.d.ts") {
                 let files: BTreeMap<&str, &str> =
                     [("app.tsx", src.as_str()), ("cw.d.ts", cw_d_ts.as_str())].into();
                 match cw_tsx::load("app.tsx", &mut |f| files.get(f).map(|s| (*s).to_owned())) {

@@ -465,6 +465,11 @@ const NEVER_RENDERS: &str = "the module never renders";
 /// Evaluates the projects of `split` (`"dev"`, `"test"` or `"all"`) of the corpus in
 /// `dir` (holding `manifest.json` and `src/`).
 pub fn evaluate(dir: &Path, split: &str) -> Report {
+    evaluate_with(dir, split, &mut |_, _| {})
+}
+
+/// [`evaluate`], showing `show` every diagnostic (with its project) as it goes.
+pub fn evaluate_with(dir: &Path, split: &str, show: &mut dyn FnMut(&str, &Diagnostic)) -> Report {
     let manifest: Manifest = serde_json::from_str(
         &std::fs::read_to_string(dir.join("manifest.json")).expect("corpus manifest"),
     )
@@ -490,7 +495,7 @@ pub fn evaluate(dir: &Path, split: &str) -> Report {
                 .map(|(a, b)| (a.clone(), b.clone()))
                 .collect(),
         };
-        let result = evaluate_project(&root, p, &options, &mut report);
+        let result = evaluate_project(&root, p, &options, &mut report, show);
         report.modules.merge(&result.modules);
         report.functions.merge(&result.functions);
         report.components.merge(&result.components);
@@ -508,6 +513,7 @@ fn evaluate_project(
     p: &ManifestProject,
     options: &LoadOptions,
     report: &mut Report,
+    show: &mut dyn FnMut(&str, &Diagnostic),
 ) -> ProjectResult {
     let mut result = ProjectResult {
         id: p.id.clone(),
@@ -555,6 +561,9 @@ fn evaluate_project(
         let cause = |m: &str| cause_in(m, &imported);
         diags.dedup();
         for d in &diags {
+            let mut shown = d.clone();
+            shown.file = file.clone();
+            show(&p.id, &shown);
             *report
                 .diagnostics_by_cause
                 .entry(cause(&d.message))

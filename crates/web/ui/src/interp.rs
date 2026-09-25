@@ -146,6 +146,27 @@ fn arg(args: &[Value], i: usize) -> Value {
     args.get(i).cloned().unwrap_or(Value::Undefined)
 }
 
+/// `scrollTo(x, y)` / `scrollTo({ left, top })`: each axis, when given.
+fn scroll_args(args: &[Value]) -> (Option<f64>, Option<f64>) {
+    let num = |v: Option<Value>| match v {
+        None | Some(Value::Undefined) => None,
+        Some(v) => Some(v.to_number()),
+    };
+    match arg(args, 0) {
+        Value::Object(o) => {
+            let o = o.borrow();
+            (num(obj_get(&o, "left")), num(obj_get(&o, "top")))
+        }
+        _ => (num(args.first().cloned()), num(args.get(1).cloned())),
+    }
+}
+
+fn parse_selector(sel: &str) -> R<cw_web::css::selector::SelectorList> {
+    cw_web::css::selector::parse_selector_list(sel)
+        .map_err(|_| ())
+        .or_else(|_| js_error("SyntaxError", format!("'{sel}' is not a valid selector")))
+}
+
 /// Object keys in JavaScript's order: integer-like keys ascending, then the rest in
 /// insertion order.
 pub(crate) fn object_keys(o: &[(Str, Value)]) -> Vec<Str> {
@@ -1061,27 +1082,77 @@ impl Runtime {
                 let (s, e) = i.form.selection.get(&n).copied().unwrap_or((len, len));
                 Value::Num(if name == "selectionStart" { s } else { e } as f64)
             }
-            "offsetWidth" | "offsetHeight" => {
-                let r = i.rects_of(n);
-                match r.first() {
-                    Some(r) => Value::Num(
-                        if name == "offsetWidth" {
-                            r.size.width
-                        } else {
-                            r.size.height
-                        }
-                        .to_px_round() as f64,
-                    ),
-                    None => Value::Num(0.0),
-                }
+            // Geometry, as the Realm computes it (`crate::geometry`).
+            "offsetLeft" | "offsetTop" | "offsetWidth" | "offsetHeight" | "clientLeft"
+            | "clientTop" | "clientWidth" | "clientHeight" | "scrollWidth" | "scrollHeight" => {
+                let m = crate::geometry::metrics(i, n);
+                let k = [
+                    "offsetLeft",
+                    "offsetTop",
+                    "offsetWidth",
+                    "offsetHeight",
+                    "clientLeft",
+                    "clientTop",
+                    "clientWidth",
+                    "clientHeight",
+                    "scrollWidth",
+                    "scrollHeight",
+                ]
+                .iter()
+                .position(|k| *k == name)
+                .unwrap_or(0);
+                Value::Num(m[k])
             }
             "scrollTop" | "scrollLeft" => {
-                let (x, y) = i.scroll.get(&n).copied().unwrap_or_default();
-                Value::Num(if name == "scrollTop" { y } else { x }.to_px_round() as f64)
+                let (x, y) = crate::geometry::scroll_of(i, n);
+                Value::Num(if name == "scrollTop" { y } else { x })
             }
-            "scrollHeight" | "scrollWidth" | "clientHeight" | "clientWidth" => {
-                Value::Num(box_metric(i, n, name))
+            "offsetParent" => {
+                i.ensure_styles();
+                crate::geometry::offset_parent(i, n)
+                    .map(Value::Node)
+                    .unwrap_or(Value::Null)
             }
+            "parentElement" => i
+                .doc
+                .parent(n)
+                .filter(|p| i.doc.is_element(*p))
+                .map(Value::Node)
+                .unwrap_or(Value::Null),
+            "firstElementChild" | "lastElementChild" | "children" | "childElementCount" => {
+                let kids: Vec<NodeId> =
+                    i.doc.children(n).filter(|c| i.doc.is_element(*c)).collect();
+                match name {
+                    "firstElementChild" => kids
+                        .first()
+                        .copied()
+                        .map(Value::Node)
+                        .unwrap_or(Value::Null),
+                    "lastElementChild" => {
+                        kids.last().copied().map(Value::Node).unwrap_or(Value::Null)
+                    }
+                    "childElementCount" => Value::Num(kids.len() as f64),
+                    _ => Value::array(kids.into_iter().map(Value::Node).collect()),
+                }
+            }
+            "nextElementSibling" | "previousElementSibling" => {
+                let sibs: Vec<NodeId> = match i.doc.parent(n) {
+                    Some(p) => i.doc.children(p).filter(|c| i.doc.is_element(*c)).collect(),
+                    None => Vec::new(),
+                };
+                let at = sibs.iter().position(|c| *c == n);
+                let pick = match (at, name) {
+                    (Some(k), "nextElementSibling") => sibs.get(k + 1).copied(),
+                    (Some(k), _) if k > 0 => sibs.get(k - 1).copied(),
+                    _ => None,
+                };
+                pick.map(Value::Node).unwrap_or(Value::Null)
+            }
+            "isConnected" => Value::Bool(
+                n == cw_web::dom::Document::ROOT
+                    || i.doc.ancestors(n).any(|a| a == cw_web::dom::Document::ROOT),
+            ),
+            "nodeName" => Value::str(&i.doc.tag(n).unwrap_or("#text").to_ascii_uppercase()),
             _ => Value::Undefined,
         }
     }
@@ -1112,14 +1183,11 @@ impl Runtime {
                 self.inner.set_value(n, &s);
             }
             "checked" => self.inner.set_checked(n, v.truthy()),
-            "scrollTop" | "scrollLeft" => {
-                let (x, y) = self.inner.scroll.get(&n).copied().unwrap_or_default();
-                let px = cw_web::geom::Au::from_px_i32(v.to_number() as i32);
-                if name == "scrollTop" {
-                    self.inner.set_scroll(n, x, px);
-                } else {
-                    self.inner.set_scroll(n, px, y);
-                }
+            "scrollTop" => {
+                crate::geometry::scroll_to(&mut self.inner, n, None, Some(v.to_number()))
+            }
+            "scrollLeft" => {
+                crate::geometry::scroll_to(&mut self.inner, n, Some(v.to_number()), None)
             }
             "textContent" => {
                 let kids: Vec<NodeId> = self.inner.doc.children(n).collect();
@@ -1429,20 +1497,52 @@ impl Runtime {
                     .map(Value::Node)
                     .unwrap_or(Value::Null)
             }
-            B::QuerySelector => {
-                let sel = arg(&args, 0).to_js_string();
-                let Ok(list) = cw_web::css::selector::parse_selector_list(&sel) else {
-                    return js_error("SyntaxError", format!("'{sel}' is not a valid selector"));
-                };
-                let ctx = cw_web::css::MatchContext::new();
-                let doc = &self.inner.doc;
-                doc.descendants(cw_web::dom::Document::ROOT)
-                    .find(|n| {
-                        doc.is_element(*n)
-                            && cw_web::css::matching::matches_list(doc, *n, &list, &ctx)
-                    })
-                    .map(Value::Node)
-                    .unwrap_or(Value::Null)
+            B::QuerySelector => self
+                .select(
+                    cw_web::dom::Document::ROOT,
+                    &arg(&args, 0).to_js_string(),
+                    true,
+                )?
+                .first()
+                .copied()
+                .map(Value::Node)
+                .unwrap_or(Value::Null),
+            B::QuerySelectorAll => Value::array(
+                self.select(
+                    cw_web::dom::Document::ROOT,
+                    &arg(&args, 0).to_js_string(),
+                    false,
+                )?
+                .into_iter()
+                .map(Value::Node)
+                .collect(),
+            ),
+            B::DocumentElement => self
+                .inner
+                .doc
+                .document_element()
+                .map(Value::Node)
+                .unwrap_or(Value::Null),
+            B::ScrollX | B::ScrollY => {
+                let (x, y) =
+                    crate::geometry::scroll_of(&mut self.inner, cw_web::dom::Document::ROOT);
+                Value::Num(if b == B::ScrollX { x } else { y })
+            }
+            B::WindowScrollTo | B::WindowScrollBy => {
+                let (x, y) = scroll_args(&args);
+                let root = cw_web::dom::Document::ROOT;
+                if b == B::WindowScrollBy {
+                    let (cx, cy) = crate::geometry::scroll_of(&mut self.inner, root);
+                    crate::geometry::scroll_to(
+                        &mut self.inner,
+                        root,
+                        Some(cx + x.unwrap_or(0.0)),
+                        Some(cy + y.unwrap_or(0.0)),
+                    );
+                } else {
+                    crate::geometry::scroll_to(&mut self.inner, root, x, y);
+                }
+                Value::Undefined
             }
             B::ActiveElement => match self.inner.focused.or_else(|| self.inner.doc.body()) {
                 Some(n) => Value::Node(n),
@@ -1519,6 +1619,13 @@ impl Runtime {
                 }
                 Value::Set(Rc::new(RefCell::new(out)))
             }
+            B::ForInKeys => match arg(&args, 0) {
+                Value::Undefined | Value::Null => Value::array(Vec::new()),
+                v @ (Value::Object(_) | Value::Array(_) | Value::Str(_)) => {
+                    self.builtin(B::ObjectKeys, vec![v])?
+                }
+                _ => Value::array(Vec::new()),
+            },
             B::NewArray => match args.as_slice() {
                 [Value::Num(n)] => {
                     if n.fract() != 0.0 || *n < 0.0 || *n > 4294967295.0 {
@@ -1544,6 +1651,27 @@ impl Runtime {
                 Value::Map(Rc::new(RefCell::new(out)))
             }
         })
+    }
+
+    /// The elements under `root` (not `root` itself) matching `sel`, in document
+    /// order; only the first when `first`.
+    fn select(&mut self, root: NodeId, sel: &str, first: bool) -> R<Vec<NodeId>> {
+        let list = parse_selector(sel)?;
+        let ctx = cw_web::css::MatchContext::new();
+        let doc = &self.inner.doc;
+        let mut out = Vec::new();
+        for n in doc.descendants(root) {
+            if n != root
+                && doc.is_element(n)
+                && cw_web::css::matching::matches_list(doc, n, &list, &ctx)
+            {
+                out.push(n);
+                if first {
+                    break;
+                }
+            }
+        }
+        Ok(out)
     }
 
     fn fetch(&mut self, args: &[Value]) -> R<Value> {
@@ -1690,6 +1818,89 @@ impl Runtime {
                 let start = clamp(&arg(&args, 0)).min(end);
                 self.inner.form.selection.insert(*n, (start, end));
                 Value::Undefined
+            }
+            (M::NodeGetBoundingClientRect, Value::Node(n)) => {
+                let r = crate::geometry::client_rect(&mut self.inner, *n);
+                crate::geometry::rect_value(r)
+            }
+            (M::NodeGetClientRects, Value::Node(n)) => Value::array(
+                crate::geometry::client_rects(&mut self.inner, *n)
+                    .into_iter()
+                    .map(|r| crate::geometry::rect_value(Some(r)))
+                    .collect(),
+            ),
+            (M::NodeScrollIntoView, Value::Node(n)) => {
+                let a = arg(&args, 0);
+                let block = match &a {
+                    Value::Object(o) => obj_get(&o.borrow(), "block").map(|b| b.to_js_string()),
+                    _ => None,
+                };
+                let top = !(matches!(a, Value::Bool(false)) || block.as_deref() == Some("end"));
+                let center = block.as_deref() == Some("center");
+                crate::geometry::scroll_into_view(&mut self.inner, *n, top, center);
+                Value::Undefined
+            }
+            (M::NodeScrollTo | M::NodeScrollBy, Value::Node(n)) => {
+                let (x, y) = scroll_args(&args);
+                let n = *n;
+                if m == M::NodeScrollBy {
+                    let (cx, cy) = crate::geometry::scroll_of(&mut self.inner, n);
+                    crate::geometry::scroll_to(
+                        &mut self.inner,
+                        n,
+                        Some(cx + x.unwrap_or(0.0)),
+                        Some(cy + y.unwrap_or(0.0)),
+                    );
+                } else {
+                    crate::geometry::scroll_to(&mut self.inner, n, x, y);
+                }
+                Value::Undefined
+            }
+            (M::NodeContains, Value::Node(n)) => Value::Bool(match arg(&args, 0) {
+                Value::Node(o) => o == *n || self.inner.doc.ancestors(o).any(|a| a == *n),
+                _ => false,
+            }),
+            (M::NodeClosest | M::NodeMatches, Value::Node(n)) => {
+                let list = parse_selector(&arg(&args, 0).to_js_string())?;
+                let ctx = cw_web::css::MatchContext::new();
+                let doc = &self.inner.doc;
+                let hit = |x: NodeId| {
+                    doc.is_element(x) && cw_web::css::matching::matches_list(doc, x, &list, &ctx)
+                };
+                if m == M::NodeMatches {
+                    Value::Bool(hit(*n))
+                } else {
+                    std::iter::once(*n)
+                        .chain(doc.ancestors(*n))
+                        .find(|x| hit(*x))
+                        .map(Value::Node)
+                        .unwrap_or(Value::Null)
+                }
+            }
+            (M::NodeGetAttribute, Value::Node(n)) => {
+                match self.inner.doc.attr(*n, &arg(&args, 0).to_js_string()) {
+                    Some(v) => Value::str(v),
+                    None => Value::Null,
+                }
+            }
+            (M::NodeHasAttribute, Value::Node(n)) => Value::Bool(
+                self.inner
+                    .doc
+                    .attr(*n, &arg(&args, 0).to_js_string())
+                    .is_some(),
+            ),
+            (M::NodeQuerySelector | M::NodeQuerySelectorAll, Value::Node(n)) => {
+                let found =
+                    self.select(*n, &arg(&args, 0).to_js_string(), m == M::NodeQuerySelector)?;
+                if m == M::NodeQuerySelector {
+                    found
+                        .first()
+                        .copied()
+                        .map(Value::Node)
+                        .unwrap_or(Value::Null)
+                } else {
+                    Value::array(found.into_iter().map(Value::Node).collect())
+                }
             }
             (M::EventPreventDefault, Value::Event(e)) => {
                 e.prevented.set(true);
@@ -2327,58 +2538,6 @@ impl Runtime {
             M::ToString => Value::Str(s.clone()),
             other => return type_error(format!("{other:?} is not a string method")),
         })
-    }
-}
-
-/// `clientWidth`/`clientHeight`/`scrollWidth`/`scrollHeight` of a block box, as the
-/// Realm's layout bindings compute them.
-fn box_metric(i: &mut cw_web::script::Inner, n: NodeId, name: &str) -> f64 {
-    use cw_web::geom::Au;
-    use cw_web::layout::FragmentKind;
-    i.ensure_layout();
-    let Some(tree) = i.tree.as_ref() else {
-        return 0.0;
-    };
-    let px = |a: Au| a.to_px_round() as f64;
-    if Some(n) == i.doc.document_element() {
-        return match name {
-            "clientWidth" => px(tree.viewport_width),
-            "clientHeight" => px(tree.viewport_height),
-            "scrollWidth" => px(tree.content_width.max(tree.viewport_width)),
-            _ => px(tree.content_height.max(tree.viewport_height)),
-        };
-    }
-    let Some((f, abs)) = cw_web::script::inner::fragment_of(tree, n) else {
-        return 0.0;
-    };
-    let (border, scroll) = match &f.kind {
-        FragmentKind::Box { border, scroll, .. } => (*border, *scroll),
-        _ => (cw_web::geom::Edges::ZERO, None),
-    };
-    let bar = |on: bool| if on { Au::from_px_i32(15) } else { Au::ZERO };
-    let bar_w = scroll.map(|s| bar(s.shows_y_bar)).unwrap_or(Au::ZERO);
-    let bar_h = scroll.map(|s| bar(s.shows_x_bar)).unwrap_or(Au::ZERO);
-    let (w, h) = (abs.size.width, abs.size.height);
-    let client_w = (w - border.horizontal() - bar_w).max(Au::ZERO);
-    let client_h = (h - border.vertical() - bar_h).max(Au::ZERO);
-    let (scroll_w, scroll_h) = match scroll {
-        Some(s) => (
-            s.content_width.max(client_w),
-            s.content_height.max(client_h),
-        ),
-        None => {
-            let ov = f.overflow;
-            (
-                (ov.right() - border.left).max((w - border.horizontal()).max(Au::ZERO)),
-                (ov.bottom() - border.top).max((h - border.vertical()).max(Au::ZERO)),
-            )
-        }
-    };
-    match name {
-        "clientWidth" => px(client_w),
-        "clientHeight" => px(client_h),
-        "scrollWidth" => px(scroll_w),
-        _ => px(scroll_h),
     }
 }
 

@@ -58,6 +58,11 @@ pub fn lower_modules(sources: &[crate::Source]) -> Result<Module, Vec<Diagnostic
         l.enter_module(i);
         decls.push(l.declare(&program.body, &sources[i].imports));
     }
+    // Imports that close a cycle, now that every module is declared.
+    for (i, import, m) in std::mem::take(&mut l.deferred_imports) {
+        l.enter_module(i);
+        l.local_import(import, m);
+    }
     // Reassigned module `let`s make identity tracking unsafe across calls.
     l.mutable_globals = l.ginfo.iter().any(|g| g.reassigned);
     for (i, d) in decls.iter().enumerate() {
@@ -90,6 +95,9 @@ pub fn lower_modules(sources: &[crate::Source]) -> Result<Module, Vec<Diagnostic
     }
 }
 
+/// The local name of an anonymous or expression default export.
+const DEFAULT_LOCAL: &str = "\u{0}default";
+
 /// A name imported from `react` / `react-dom`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ReactName {
@@ -99,6 +107,9 @@ enum ReactName {
     StrictMode,
     Memo,
     CreateRoot,
+    HydrateRoot,
+    /// React 17's `ReactDOM.render(element, container)`.
+    DomRender,
     /// `import React from 'react'` / `import * as React`.
     ReactNs,
     ReactDomNs,
@@ -123,6 +134,8 @@ fn react_export(name: &str) -> ReactName {
         "StrictMode" => ReactName::StrictMode,
         "memo" => ReactName::Memo,
         "createRoot" => ReactName::CreateRoot,
+        "hydrateRoot" => ReactName::HydrateRoot,
+        "render" => ReactName::DomRender,
         _ => ReactName::Other,
     }
 }
@@ -344,6 +357,16 @@ struct Lowerer<'a> {
     ambient_mods: Vec<usize>,
     /// Constants they `declare` (the host's globals), to the module declaring them.
     ambient_values: BTreeMap<String, usize>,
+    /// Imports of a module not yet declared (an import cycle): bound once every
+    /// module is declared. Importer, declaration, imported module.
+    deferred_imports: Vec<(usize, &'a ast::ImportDeclaration<'a>, usize)>,
+    /// `import * as ns` of a module of the app, by (module, name): the module.
+    namespaces: BTreeMap<(usize, String), usize>,
+    /// Module-level `const r = createRoot(container)`, by (module, name): the
+    /// container's id.
+    root_vars: BTreeMap<(usize, String), String>,
+    /// Module-level `const el = document.getElementById(id)`, by (module, name).
+    container_vars: BTreeMap<(usize, String), String>,
 }
 
 type Lowered = (Expr, Ty);
@@ -401,6 +424,10 @@ impl<'a> Lowerer<'a> {
             mutable_globals: false,
             ambient_mods: Vec::new(),
             ambient_values: BTreeMap::new(),
+            deferred_imports: Vec::new(),
+            namespaces: BTreeMap::new(),
+            root_vars: BTreeMap::new(),
+            container_vars: BTreeMap::new(),
         }
     }
 
@@ -495,7 +522,7 @@ impl<'a> Lowerer<'a> {
         body: &'a oxc_allocator::Vec<'a, S<'a>>,
         imports: &BTreeMap<String, usize>,
     ) -> Vec<&'a S<'a>> {
-        self.collect_exports(body);
+        self.collect_exports(body, imports);
         // Pass 1: imports and type declarations; module declarations to lower.
         let mut decls: Vec<&'a S<'a>> = Vec::new();
         for stmt in body.iter() {
@@ -556,7 +583,11 @@ impl<'a> Lowerer<'a> {
     }
 
     /// What the current module exports, by exported name to local name.
-    fn collect_exports(&mut self, body: &'a oxc_allocator::Vec<'a, S<'a>>) {
+    fn collect_exports(
+        &mut self,
+        body: &'a oxc_allocator::Vec<'a, S<'a>>,
+        imports: &BTreeMap<String, usize>,
+    ) {
         for stmt in body.iter() {
             match stmt {
                 S::ExportDeclaration(e) => {
@@ -578,6 +609,10 @@ impl<'a> Lowerer<'a> {
                         ast::Declaration::TSInterfaceDeclaration(i) => {
                             names.push(i.id.name.to_string())
                         }
+                        ast::Declaration::TSEnumDeclaration(e) => names.push(e.id.name.to_string()),
+                        ast::Declaration::ClassDeclaration(c) => {
+                            names.extend(c.id.as_ref().map(|i| i.name.to_string()))
+                        }
                         _ => {}
                     }
                     for n in names {
@@ -586,14 +621,19 @@ impl<'a> Lowerer<'a> {
                 }
                 S::ExportDefaultDeclaration(e) => match &e.declaration {
                     ast::ExportDefaultDeclarationKind::FunctionDeclaration(f) => {
-                        if let Some(id) = &f.id {
-                            self.exports.insert("default".into(), id.name.to_string());
-                        }
+                        let local = match &f.id {
+                            Some(id) => id.name.to_string(),
+                            None => DEFAULT_LOCAL.to_owned(),
+                        };
+                        self.exports.insert("default".into(), local);
                     }
                     ast::ExportDefaultDeclarationKind::Identifier(id) => {
                         self.exports.insert("default".into(), id.name.to_string());
                     }
-                    _ => {}
+                    _ => {
+                        self.exports
+                            .insert("default".into(), DEFAULT_LOCAL.to_owned());
+                    }
                 },
                 S::ExportNamedDeclaration(e) => {
                     for spec in &e.specifiers {
@@ -604,12 +644,78 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 S::ExportFromDeclaration(e) => {
-                    self.err(e.span, "re-exporting from another module is outside the compiled subset (import, then export)");
+                    let from = e.source.value.as_str();
+                    let Some(m) = self.reexported_module(imports, from, e.span) else {
+                        continue;
+                    };
+                    for spec in &e.specifiers {
+                        let exported = spec.exported.name().to_string();
+                        let theirs = spec.local.name().to_string();
+                        let local = format!("\u{0}re:{exported}");
+                        let only_type = e.export_kind.is_type() || spec.export_kind.is_type();
+                        self.bind_import(&local, m, &theirs, only_type, e.span, from);
+                        self.exports.insert(exported, local);
+                    }
                 }
                 S::ExportAllDeclaration(e) => {
-                    self.err(e.span, "`export *` is outside the compiled subset");
+                    let from = e.source.value.as_str();
+                    let Some(m) = self.reexported_module(imports, from, e.span) else {
+                        continue;
+                    };
+                    match &e.exported {
+                        Some(ns) => {
+                            let exported = ns.name().to_string();
+                            let local = format!("\u{0}re:{exported}");
+                            self.namespace_import(&local, m);
+                            self.exports.insert(exported, local);
+                        }
+                        None => {
+                            let names: Vec<String> = self.mods[m]
+                                .exports
+                                .keys()
+                                .filter(|n| *n != "default")
+                                .cloned()
+                                .collect();
+                            for n in names {
+                                if self.exports.contains_key(&n) {
+                                    continue;
+                                }
+                                let local = format!("\u{0}re:{n}");
+                                self.bind_import(&local, m, &n, false, e.span, from);
+                                self.exports.insert(n, local);
+                            }
+                        }
+                    }
                 }
                 _ => {}
+            }
+        }
+    }
+
+    /// The module of the app an `export … from` names (declared before this one).
+    fn reexported_module(
+        &mut self,
+        imports: &BTreeMap<String, usize>,
+        from: &str,
+        span: Span,
+    ) -> Option<usize> {
+        match imports.get(from) {
+            Some(&m) if m < self.cur_mod => Some(m),
+            Some(_) => {
+                self.err(
+                    span,
+                    "re-exporting from a module in an import cycle is outside the compiled subset",
+                );
+                None
+            }
+            None => {
+                self.err(
+                    span,
+                    format!(
+                        "import from `{from}`: a compiled app imports only `react` and `react-dom`"
+                    ),
+                );
+                None
             }
         }
     }
@@ -638,7 +744,11 @@ impl<'a> Lowerer<'a> {
     ) {
         let module = import.source.value.as_str();
         if let Some(&m) = imports.get(module) {
-            self.local_import(import, m);
+            if m >= self.cur_mod {
+                self.deferred_imports.push((self.cur_mod, import, m));
+            } else {
+                self.local_import(import, m);
+            }
             return;
         }
         if import.import_kind.is_type() {
@@ -703,33 +813,85 @@ impl<'a> Lowerer<'a> {
                     (s.local.name.to_string(), "default".to_string(), whole_type)
                 }
                 ast::ImportDeclarationSpecifier::ImportNamespaceSpecifier(s) => {
-                    self.err(s.span, "`import * as` from a module of the app is outside the compiled subset (import names)");
+                    self.namespace_import(&s.local.name, m);
                     continue;
                 }
             };
-            let theirs = &self.mods[m];
-            let Some(their_local) = theirs.exports.get(&exported).cloned() else {
-                self.err(
-                    import.span,
-                    format!("`{exported}` is not exported by `{}`", import.source.value),
-                );
-                continue;
-            };
-            let value = theirs.global_names.get(&their_local).copied();
-            let is_type = theirs.type_decls.contains_key(&their_local)
-                || theirs.type_imports.contains_key(&their_local);
-            if let (Some(slot), false) = (value, only_type) {
-                self.global_names.insert(local.clone(), slot);
-            }
-            if is_type {
-                self.type_imports.insert(local, (m, exported));
-            } else if value.is_none() {
-                self.err(
-                    import.span,
-                    format!("`{exported}` from `{}` is neither a value nor a type the compiled subset knows", import.source.value),
-                );
+            self.bind_import(
+                &local,
+                m,
+                &exported,
+                only_type,
+                import.span,
+                &import.source.value,
+            );
+        }
+    }
+
+    /// Binds `local` in the current module to what module `m` exports as `exported`.
+    fn bind_import(
+        &mut self,
+        local: &str,
+        m: usize,
+        exported: &str,
+        only_type: bool,
+        span: Span,
+        from: &str,
+    ) {
+        let theirs = &self.mods[m];
+        let Some(their_local) = theirs.exports.get(exported).cloned() else {
+            self.err(span, format!("`{exported}` is not exported by `{from}`"));
+            return;
+        };
+        let value = theirs.global_names.get(&their_local).copied();
+        let is_type = theirs.type_decls.contains_key(&their_local)
+            || theirs.type_imports.contains_key(&their_local);
+        let ns = self.namespaces.get(&(m, their_local.clone())).copied();
+        if let (Some(slot), false) = (value, only_type) {
+            self.global_names.insert(local.to_owned(), slot);
+        }
+        if let Some(n) = ns {
+            self.namespaces.insert((self.cur_mod, local.to_owned()), n);
+        }
+        if is_type {
+            self.type_imports
+                .insert(local.to_owned(), (m, exported.to_owned()));
+        } else if value.is_none() {
+            self.err(
+                span,
+                format!("`{exported}` from `{from}` is neither a value nor a type the compiled subset knows"),
+            );
+        }
+    }
+
+    /// `import * as ns` of module `m`: an object of its exported values (made when
+    /// the module loads), and a name its types are reached through (`ns.Props`).
+    fn namespace_import(&mut self, local: &str, m: usize) {
+        let theirs = &self.mods[m];
+        let mut props = Vec::new();
+        for (exported, their_local) in &theirs.exports {
+            if let Some(slot) = theirs.global_names.get(their_local) {
+                props.push(Prop::KeyValue(exported.clone(), Expr::Global(*slot)));
             }
         }
+        let slot = self.globals.len() as u32;
+        self.globals.push(Global {
+            name: local.to_owned(),
+            init: GlobalInit::Expr(Expr::Object(props)),
+            ty: Ty::Unknown,
+        });
+        self.add_global_name(
+            local,
+            GlobalInfo {
+                slot,
+                ty: Ty::Unknown,
+                func: None,
+                kind: FunctionKind::Plain,
+                reassigned: false,
+                generic: None,
+            },
+        );
+        self.namespaces.insert((self.cur_mod, local.to_owned()), m);
     }
 
     fn function_decl_of(&self, stmt: &'a S<'a>) -> Option<&'a ast::Function<'a>> {
@@ -748,11 +910,11 @@ impl<'a> Lowerer<'a> {
     }
 
     fn declare_function(&mut self, f: &'a ast::Function<'a>) {
-        let Some(id) = &f.id else {
-            self.err(f.span, "an anonymous default export needs a name");
-            return;
+        // An anonymous `export default function` (a page, a component).
+        let name = match &f.id {
+            Some(id) => id.name.to_string(),
+            None => DEFAULT_LOCAL.to_owned(),
         };
-        let name = id.name.to_string();
         let Some(body) = &f.body else {
             return;
         };
@@ -769,7 +931,11 @@ impl<'a> Lowerer<'a> {
                 span: f.span,
                 is_async: f.r#async,
                 generator: f.generator,
-                kind: fn_kind(&name),
+                kind: if f.id.is_none() {
+                    FunctionKind::Component
+                } else {
+                    fn_kind(&name)
+                },
             },
         );
     }
@@ -840,13 +1006,59 @@ impl<'a> Lowerer<'a> {
         Ty::Function(params, Box::new(ret))
     }
 
+    /// A module global that holds a value (not a function).
+    fn add_value_global(&mut self, name: &str) -> u32 {
+        let slot = self.globals.len() as u32;
+        self.globals.push(Global {
+            name: name.to_owned(),
+            init: GlobalInit::Undefined,
+            ty: Ty::Unknown,
+        });
+        self.add_global_name(
+            name,
+            GlobalInfo {
+                slot,
+                ty: Ty::Unknown,
+                func: None,
+                kind: FunctionKind::Plain,
+                reassigned: false,
+                generic: None,
+            },
+        );
+        slot
+    }
+
     fn declare_statement_globals(&mut self, stmt: &'a S<'a>) {
         let decl = match stmt {
             S::VariableDeclaration(d) => d,
             S::ExportDeclaration(e) => match &e.declaration {
                 ast::Declaration::VariableDeclaration(d) => d,
+                ast::Declaration::TSEnumDeclaration(en) => {
+                    self.add_value_global(en.id.name.as_str());
+                    return;
+                }
                 _ => return,
             },
+            S::TSEnumDeclaration(en) => {
+                self.add_value_global(en.id.name.as_str());
+                return;
+            }
+            S::ExportDefaultDeclaration(e) => {
+                if let Some(x) = e.declaration.as_expression() {
+                    if !matches!(x, E::Identifier(_)) {
+                        match self.function_value(DEFAULT_LOCAL, x) {
+                            Some(mut p) => {
+                                p.kind = FunctionKind::Component;
+                                self.add_function_global(DEFAULT_LOCAL, p);
+                            }
+                            None => {
+                                self.add_value_global(DEFAULT_LOCAL);
+                            }
+                        }
+                    }
+                }
+                return;
+            }
             _ => return,
         };
         for d in &decl.declarations {
@@ -950,52 +1162,198 @@ impl<'a> Lowerer<'a> {
             S::ExportDefaultDeclaration(e) => match &e.declaration {
                 ast::ExportDefaultDeclarationKind::FunctionDeclaration(_) => {}
                 ast::ExportDefaultDeclarationKind::Identifier(_) => {}
-                _ => {
-                    self.err(
-                        e.span,
-                        "`export default` of an expression: export a named function",
-                    );
+                ast::ExportDefaultDeclarationKind::ClassDeclaration(c) => {
+                    self.err(c.span, "class components are outside the compiled subset");
+                }
+                other => {
+                    let x = other.as_expression().expect("an expression");
+                    if self.gname(DEFAULT_LOCAL).is_some_and(|g| g.func.is_none()) {
+                        self.module_value(DEFAULT_LOCAL, x, e.span);
+                    }
                 }
             },
-            S::ExportDeclaration(e) => {
-                if let ast::Declaration::VariableDeclaration(d) = &e.declaration {
-                    self.module_var(d);
+            S::ExportDeclaration(e) => match &e.declaration {
+                ast::Declaration::VariableDeclaration(d) => self.module_var(d),
+                ast::Declaration::TSEnumDeclaration(en) => self.enum_decl(en),
+                ast::Declaration::ClassDeclaration(c) => {
+                    self.err(c.span, "class components are outside the compiled subset");
                 }
-            }
-            S::ExportNamedDeclaration(_) => {}
+                _ => {}
+            },
+            S::ExportNamedDeclaration(_)
+            | S::ExportFromDeclaration(_)
+            | S::ExportAllDeclaration(_) => {}
             S::VariableDeclaration(d) => self.module_var(d),
             S::ExpressionStatement(e) => {
                 if !self.render_call(&e.expression) {
-                    self.err(
-                        e.span,
-                        "a module-level statement other than the render call is outside the compiled subset",
-                    );
+                    self.run_statement(stmt);
                 }
             }
-            S::TSEnumDeclaration(e) => {
-                self.err(
-                    e.span,
-                    "`enum` is outside the compiled subset (use a union of string literals)",
-                );
-            }
+            S::TSEnumDeclaration(e) => self.enum_decl(e),
             S::ClassDeclaration(c) => {
                 self.err(c.span, "class components are outside the compiled subset");
             }
-            other => {
+            S::TSGlobalDeclaration(_) | S::TSExternalModuleDeclaration(_) => {}
+            S::TSNamespaceDeclaration(n) if n.declare => {}
+            S::TSImportEqualsDeclaration(i) => {
                 self.err(
-                    other.span(),
-                    "this module-level statement is outside the compiled subset",
+                    i.span,
+                    "`import … = require(…)` is outside the compiled subset",
                 );
             }
+            // Any other statement (`if`, a loop, `try`, a block) runs when the
+            // module loads, in order with the module's declarations.
+            _ => self.run_statement(stmt),
         }
+    }
+
+    /// A module-level statement that runs when the module loads: a function of
+    /// its own, run at its place in the globals' initialisation order.
+    fn run_statement(&mut self, stmt: &'a S<'a>) {
+        let fidx = self.functions.len() as u32;
+        self.functions.push(None);
+        self.fns.push(FnCtx::new(FunctionKind::Plain));
+        let mut body = Vec::new();
+        self.cur().scopes.push(Vec::new());
+        self.statement(stmt, &mut body);
+        let ctx = self.fns.pop().unwrap();
+        self.finish_run(fidx, ctx, body, stmt.span());
+    }
+
+    /// Records the load-time function `fidx` made of `body` in frame `ctx`.
+    fn finish_run(&mut self, fidx: u32, ctx: FnCtx, body: Vec<Stmt>, span: Span) {
+        let boxed: Vec<u32> = ctx
+            .locals
+            .iter()
+            .enumerate()
+            .filter(|(_, l)| l.captured && l.reassigned.is_some())
+            .map(|(i, _)| i as u32)
+            .collect();
+        self.functions[fidx as usize] = Some(Function {
+            name: "<module>".into(),
+            kind: FunctionKind::Plain,
+            params: Vec::new(),
+            n_locals: ctx.locals.len() as u32,
+            captures: Vec::new(),
+            body,
+            local_types: ctx.locals.iter().map(|l| l.ty.clone()).collect(),
+            ret: Ty::Void,
+            line: self.line(span),
+            has_depless_effect: false,
+            boxed,
+            is_async: false,
+            rest: None,
+        });
+        self.globals.push(Global {
+            name: "<module>".into(),
+            init: GlobalInit::Run(fidx),
+            ty: Ty::Void,
+        });
+        self.ginfo.push(GlobalInfo {
+            slot: self.globals.len() as u32 - 1,
+            ty: Ty::Void,
+            func: None,
+            kind: FunctionKind::Plain,
+            reassigned: false,
+            generic: None,
+        });
+    }
+
+    /// A module global `name` initialised with `x` when the module loads.
+    fn module_value(&mut self, name: &str, x: &'a E<'a>, span: Span) {
+        self.fns.push(FnCtx::new(FunctionKind::Plain));
+        let (init, ty) = self.expr(x, None);
+        let ctx = self.fns.pop().unwrap();
+        let g = self.gname(name).expect("declared").slot;
+        self.ginfo[g as usize].ty = ty.clone();
+        self.globals[g as usize].ty = ty;
+        if ctx.locals.is_empty() && ctx.captures.is_empty() {
+            self.globals[g as usize].init = GlobalInit::Expr(init);
+        } else {
+            let fidx = self.functions.len() as u32;
+            self.functions.push(None);
+            let body = vec![Stmt::Expr(Expr::Assign(
+                Box::new(LValue::Global(g)),
+                None,
+                Box::new(init),
+            ))];
+            self.finish_run(fidx, ctx, body, span);
+        }
+    }
+
+    /// `enum E { A, B = 5, C = 'c' }`: an object of its members, with the reverse
+    /// mapping TypeScript gives numeric members (`E[5] === 'B'`).
+    fn enum_decl(&mut self, en: &'a ast::TSEnumDeclaration<'a>) {
+        let mut props = Vec::new();
+        let mut next = Some(0.0);
+        self.fns.push(FnCtx::new(FunctionKind::Plain));
+        for m in &en.body.members {
+            let name = match &m.id {
+                ast::TSEnumMemberName::Identifier(i) => i.name.to_string(),
+                ast::TSEnumMemberName::String(s) => s.value.to_string(),
+                other => {
+                    self.err(
+                        other.span(),
+                        "this enum member name is outside the compiled subset",
+                    );
+                    continue;
+                }
+            };
+            let value = match m.initializer.as_ref().map(strip) {
+                None => match next {
+                    Some(n) => Expr::Num(n),
+                    None => {
+                        self.err(m.span, "an enum member after a string member needs a value");
+                        continue;
+                    }
+                },
+                Some(E::NumericLiteral(n)) => Expr::Num(n.value),
+                Some(E::UnaryExpression(u))
+                    if u.operator == ast::UnaryOperator::UnaryNegation
+                        && matches!(strip(&u.argument), E::NumericLiteral(_)) =>
+                {
+                    match strip(&u.argument) {
+                        E::NumericLiteral(n) => Expr::Num(-n.value),
+                        _ => unreachable!(),
+                    }
+                }
+                Some(E::StringLiteral(s)) => Expr::Str(s.value.to_string()),
+                Some(other) => self.expr(other, None).0,
+            };
+            next = match &value {
+                Expr::Num(n) => Some(n + 1.0),
+                _ => None,
+            };
+            if let Expr::Num(n) = &value {
+                props.push(Prop::KeyValue(name.clone(), value.clone()));
+                props.push(Prop::KeyValue(num_key(*n), Expr::Str(name)));
+            } else {
+                props.push(Prop::KeyValue(name, value));
+            }
+        }
+        self.fns.pop();
+        let g = self.gname(en.id.name.as_str()).expect("declared").slot as usize;
+        self.globals[g].init = GlobalInit::Expr(Expr::Object(props));
     }
 
     fn module_var(&mut self, d: &'a ast::VariableDeclaration<'a>) {
         for decl in &d.declarations {
-            if let (ast::BindingPattern::BindingIdentifier(id), Some(_)) = (&decl.id, &decl.init) {
+            if let (ast::BindingPattern::BindingIdentifier(id), Some(init)) = (&decl.id, &decl.init)
+            {
                 let name = id.name.to_string();
                 if self.gname(&name).is_some_and(|g| g.func.is_some()) {
                     continue;
+                }
+                // `const root = createRoot(container)`: the render root, rendered
+                // into by `root.render(<App />)` below.
+                if let Some(container) = self.create_root_container(init) {
+                    if let Some(id) = container {
+                        self.root_vars.insert((self.cur_mod, name), id);
+                    }
+                    continue;
+                }
+                if let Some(cid) = self.container_id(init) {
+                    self.container_vars.insert((self.cur_mod, name), cid);
                 }
             }
             // Module initialisers run in a frame of their own.
@@ -1024,17 +1382,58 @@ impl<'a> Lowerer<'a> {
                 }
                 None => (None, declared.clone().unwrap_or(Ty::Undefined)),
             };
-            let frame = self.fns.pop().unwrap();
-            if !frame.locals.is_empty() || !frame.captures.is_empty() {
-                self.err(
-                    decl.span,
-                    "a module initialiser that declares variables is outside the compiled subset",
-                );
-                continue;
-            }
+            let mut frame = self.fns.pop().unwrap();
             let Some(init) = init else {
                 continue;
             };
+            let destructures = !matches!(decl.id, ast::BindingPattern::BindingIdentifier(_));
+            let mut effects = false;
+            walk_expr(&init, &mut |e| {
+                if matches!(
+                    e,
+                    Expr::Call(..) | Expr::Method { .. } | Expr::Invoke { .. } | Expr::Builtin(..)
+                ) {
+                    effects = true;
+                }
+            });
+            if !frame.locals.is_empty() || !frame.captures.is_empty() || (destructures && effects) {
+                // An initialiser with variables of its own (or one to destructure
+                // with effects, evaluated once): it runs as a function, whose
+                // destructuring assigns the globals.
+                let tmp = frame.locals.len() as u32;
+                frame.locals.push(Local {
+                    ty: ty.clone(),
+                    pending: false,
+                    early: false,
+                    captured: false,
+                    reassigned: None,
+                    fresh: false,
+                });
+                let mut body = vec![Stmt::Let(Pattern::Local(tmp), Some(init))];
+                let mut names = Vec::new();
+                binding_names(&decl.id, &mut names);
+                for (name, path) in names {
+                    let g = self.gname(&name).expect("declared").slot;
+                    let mut value = Expr::Local(tmp);
+                    for step in path {
+                        value = match step {
+                            PathStep::Key(k) => Expr::Member(Box::new(value), k, false),
+                            PathStep::Index(i) => {
+                                Expr::Index(Box::new(value), Box::new(Expr::Num(i as f64)), false)
+                            }
+                        };
+                    }
+                    body.push(Stmt::Expr(Expr::Assign(
+                        Box::new(LValue::Global(g)),
+                        None,
+                        Box::new(value),
+                    )));
+                }
+                let fidx = self.functions.len() as u32;
+                self.functions.push(None);
+                self.finish_run(fidx, frame, body, decl.span);
+                continue;
+            }
             let ty = if d.kind == ast::VariableDeclarationKind::Let {
                 widen(&ty)
             } else {
@@ -1104,61 +1503,59 @@ impl<'a> Lowerer<'a> {
         ))
     }
 
-    /// `createRoot(document.getElementById('app')).render(<App />)`.
+    /// The render call: `createRoot(container).render(<App />)` (or through a
+    /// `const root = createRoot(container)`), `hydrateRoot(container, <App />)`,
+    /// or React 17's `ReactDOM.render(<App />, container)`; the container is
+    /// `document.getElementById(id)`, `document.querySelector('#id')` or a module
+    /// constant holding one.
     fn render_call(&mut self, e: &'a E<'a>) -> bool {
-        let E::CallExpression(render) = strip(e) else {
+        let E::CallExpression(call) = strip(e) else {
             return false;
         };
-        let E::StaticMemberExpression(m) = strip(&render.callee) else {
-            return false;
-        };
-        if m.property.name != "render" {
-            return false;
-        }
-        let E::CallExpression(create) = strip(&m.object) else {
-            return false;
-        };
-        let is_create = match strip(&create.callee) {
-            E::Identifier(id) => self.react.get(id.name.as_str()) == Some(&ReactName::CreateRoot),
-            E::StaticMemberExpression(cm) => {
-                cm.property.name == "createRoot"
-                    && matches!(strip(&cm.object), E::Identifier(id) if self.react.get(id.name.as_str()) == Some(&ReactName::ReactDomNs))
-            }
-            _ => false,
-        };
-        if !is_create {
-            return false;
-        }
-        let container = create.arguments.first().and_then(|a| a.as_expression());
-        let id = container.and_then(|c| match strip(c) {
-            E::CallExpression(g) => match strip(&g.callee) {
-                E::StaticMemberExpression(gm)
-                    if gm.property.name == "getElementById"
-                        && matches!(strip(&gm.object), E::Identifier(d) if d.name == "document") =>
-                {
-                    match g
-                        .arguments
-                        .first()
-                        .and_then(|a| a.as_expression())
-                        .map(strip)
-                    {
-                        Some(E::StringLiteral(s)) => Some(s.value.to_string()),
-                        _ => None,
+        let args: Vec<&'a E<'a>> = call
+            .arguments
+            .iter()
+            .filter_map(|a| a.as_expression())
+            .collect();
+        let (container, element) = match strip(&call.callee) {
+            E::StaticMemberExpression(m) if m.property.name == "render" => {
+                if let Some(c) = self.create_root_container(&m.object) {
+                    (c, args.first().copied())
+                } else if let E::Identifier(id) = strip(&m.object) {
+                    if let Some(c) = self.root_vars.get(&(self.cur_mod, id.name.to_string())) {
+                        (Some(c.clone()), args.first().copied())
+                    } else if self.react.get(id.name.as_str()) == Some(&ReactName::ReactDomNs) {
+                        // `ReactDOM.render(element, container)`.
+                        (
+                            args.get(1).and_then(|c| self.container_id(c)),
+                            args.first().copied(),
+                        )
+                    } else {
+                        return false;
                     }
+                } else {
+                    return false;
                 }
-                _ => None,
-            },
-            _ => None,
-        });
-        let Some(container_id) = id else {
+            }
+            callee if self.dom_function(callee) == Some(ReactName::HydrateRoot) => (
+                args.first().and_then(|c| self.container_id(c)),
+                args.get(1).copied(),
+            ),
+            callee if self.dom_function(callee) == Some(ReactName::DomRender) => (
+                args.get(1).and_then(|c| self.container_id(c)),
+                args.first().copied(),
+            ),
+            _ => return false,
+        };
+        let Some(container_id) = container else {
             self.err(
-                create.span,
+                call.span,
                 "the render container must be `document.getElementById('<id>')`",
             );
             return true;
         };
-        let Some(element) = render.arguments.first().and_then(|a| a.as_expression()) else {
-            self.err(render.span, "`render` needs an element");
+        let Some(element) = element else {
+            self.err(call.span, "`render` needs an element");
             return true;
         };
         let fidx = self.functions.len() as u32;
@@ -1175,20 +1572,100 @@ impl<'a> Lowerer<'a> {
             body: vec![Stmt::Return(Some(x))],
             local_types: ctx.locals.iter().map(|l| l.ty.clone()).collect(),
             ret: Ty::Node,
-            line: self.line(render.span),
+            line: self.line(call.span),
             has_depless_effect: false,
             boxed: Vec::new(),
             is_async: false,
             rest: None,
         });
         if self.root.is_some() {
-            self.err(render.span, "the module renders twice");
+            self.err(call.span, "the module renders twice");
         }
         self.root = Some(Root {
             container_id,
             element: fidx,
         });
         true
+    }
+
+    /// Which react-dom function `callee` names (`createRoot`, `ReactDOM.render`).
+    fn dom_function(&self, callee: &E<'a>) -> Option<ReactName> {
+        match strip(callee) {
+            E::Identifier(id) if self.resolve_is_free(id.name.as_str()) => {
+                self.react.get(id.name.as_str()).copied()
+            }
+            E::StaticMemberExpression(m) => match strip(&m.object) {
+                E::Identifier(id)
+                    if self.react.get(id.name.as_str()) == Some(&ReactName::ReactDomNs) =>
+                {
+                    match m.property.name.as_str() {
+                        "createRoot" => Some(ReactName::CreateRoot),
+                        "hydrateRoot" => Some(ReactName::HydrateRoot),
+                        "render" => Some(ReactName::DomRender),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// For `createRoot(container)`: `Some` with the container's id (`None` when
+    /// the container is not one the compiler can find).
+    fn create_root_container(&self, e: &'a E<'a>) -> Option<Option<String>> {
+        let E::CallExpression(c) = strip(e) else {
+            return None;
+        };
+        if self.dom_function(&c.callee) != Some(ReactName::CreateRoot) {
+            return None;
+        }
+        Some(
+            c.arguments
+                .first()
+                .and_then(|a| a.as_expression())
+                .and_then(|c| self.container_id(c)),
+        )
+    }
+
+    /// `document.getElementById('id')`, `document.querySelector('#id')`, or a
+    /// module constant holding one: the id.
+    fn container_id(&self, e: &E<'a>) -> Option<String> {
+        match strip(e) {
+            E::Identifier(id) => self
+                .container_vars
+                .get(&(self.cur_mod, id.name.to_string()))
+                .cloned(),
+            E::CallExpression(g) => {
+                let E::StaticMemberExpression(gm) = strip(&g.callee) else {
+                    return None;
+                };
+                if !matches!(strip(&gm.object), E::Identifier(d) if d.name == "document") {
+                    return None;
+                }
+                let arg = match g
+                    .arguments
+                    .first()
+                    .and_then(|a| a.as_expression())
+                    .map(strip)
+                {
+                    Some(E::StringLiteral(s)) => s.value.to_string(),
+                    _ => return None,
+                };
+                match gm.property.name.as_str() {
+                    "getElementById" => Some(arg),
+                    "querySelector" => arg
+                        .strip_prefix('#')
+                        .filter(|r| {
+                            r.chars()
+                                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+                        })
+                        .map(str::to_owned),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
     }
 
     // ------------------------------------------------------------------ types
@@ -2132,6 +2609,32 @@ impl<'a> Lowerer<'a> {
                 self.cur().scopes.pop();
                 self.cur().cond_depth -= 1;
                 out.push(Stmt::ForOf(pat, iter, body));
+            }
+            S::ForInStatement(f) => {
+                // The object's enumerable keys, as strings, in order.
+                let (obj, _) = self.expr(&f.right, None);
+                let keys = Expr::Builtin(Builtin::ForInKeys, vec![ArrayItem::Item(obj)]);
+                self.cur().cond_depth += 1;
+                self.cur().scopes.push(Vec::new());
+                let pat = match &f.left {
+                    ast::ForStatementLeft::VariableDeclaration(d)
+                        if d.declarations.len() == 1
+                            && d.kind != ast::VariableDeclarationKind::Var =>
+                    {
+                        self.bind_pattern(&d.declarations[0].id, &Ty::String)
+                    }
+                    other => {
+                        self.err(
+                            other.span(),
+                            "a `for...in` target must be a `const` or `let` declaration",
+                        );
+                        Pattern::Ignore
+                    }
+                };
+                let body = self.body_of(&f.body);
+                self.cur().scopes.pop();
+                self.cur().cond_depth -= 1;
+                out.push(Stmt::ForOf(pat, keys, body));
             }
             S::ForStatement(f) => {
                 self.cur().cond_depth += 1;
@@ -3230,6 +3733,17 @@ impl<'a> Lowerer<'a> {
                 )
             }
             ("document", "body") => (Expr::Builtin(Builtin::DocumentBody, vec![]), Ty::DomNode),
+            ("document", "documentElement") => {
+                (Expr::Builtin(Builtin::DocumentElement, vec![]), Ty::DomNode)
+            }
+            ("window", "scrollX" | "pageXOffset") => {
+                self.mark_always();
+                (Expr::Builtin(Builtin::ScrollX, vec![]), Ty::Number)
+            }
+            ("window", "scrollY" | "pageYOffset") => {
+                self.mark_always();
+                (Expr::Builtin(Builtin::ScrollY, vec![]), Ty::Number)
+            }
             ("window", "innerWidth") => {
                 self.mark_always();
                 (Expr::Builtin(Builtin::InnerWidth, vec![]), Ty::Number)
@@ -3527,6 +4041,16 @@ impl<'a> Lowerer<'a> {
                     union(Ty::DomNode, Ty::Null),
                 )
             }
+            ("document", "querySelectorAll") => {
+                self.mark_always();
+                (
+                    Builtin::QuerySelectorAll,
+                    vec![Ty::String],
+                    Ty::Array(Box::new(Ty::DomNode)),
+                )
+            }
+            ("window", "scrollTo" | "scroll") => (Builtin::WindowScrollTo, vec![], Ty::Void),
+            ("window", "scrollBy") => (Builtin::WindowScrollBy, vec![], Ty::Void),
             ("Object", "values") | ("Object", "entries") => {
                 let (args, tys) = self.exprs_args(&c.arguments, &[]);
                 let v = match tys.first().map(non_null) {
@@ -4263,8 +4787,39 @@ impl<'a> Lowerer<'a> {
                     vec![Ty::Number, Ty::Number],
                     Ty::Void,
                 ),
+                (Ty::DomNode, n)
+                    if cw_ui::ir::method_by_name(cw_ui::ir::MethodKind::Node, n).is_some() =>
+                {
+                    let m = cw_ui::ir::method_by_name(cw_ui::ir::MethodKind::Node, n).unwrap();
+                    let node_or_null = union(Ty::DomNode, Ty::Null);
+                    let ret = match m {
+                        M::NodeGetBoundingClientRect => dom_rect(),
+                        M::NodeGetClientRects => Ty::Array(Box::new(dom_rect())),
+                        M::NodeContains | M::NodeMatches | M::NodeHasAttribute => Ty::Boolean,
+                        M::NodeClosest | M::NodeQuerySelector => node_or_null,
+                        M::NodeQuerySelectorAll => Ty::Array(Box::new(Ty::DomNode)),
+                        M::NodeGetAttribute => union(Ty::String, Ty::Null),
+                        M::ToString => Ty::String,
+                        _ => Ty::Void,
+                    };
+                    if matches!(m, M::NodeGetBoundingClientRect | M::NodeGetClientRects) {
+                        self.mark_always();
+                    }
+                    (m, vec![], ret)
+                }
                 (Ty::Event, "preventDefault") => (M::EventPreventDefault, vec![], Ty::Void),
                 (Ty::Event, "stopPropagation") => (M::EventStopPropagation, vec![], Ty::Void),
+                // A host object's method the runtime does not model.
+                (t, _) if is_host_type(t) => {
+                    self.err(
+                        c.span,
+                        format!(
+                            "method `{name}` on type {} is outside the compiled subset",
+                            types::show(t)
+                        ),
+                    );
+                    return (Expr::Undefined, Ty::Unknown);
+                }
                 // A receiver whose type does not say which method this is.
                 _ => return self.dynamic_invoke(recv, name, optional, c),
             }
@@ -4910,6 +5465,18 @@ fn is_fresh_init(e: &E<'_>) -> bool {
         },
         _ => false,
     }
+}
+
+/// A `DOMRect` (a plain object of its readable fields).
+fn dom_rect() -> Ty {
+    Ty::Object(
+        [
+            "x", "y", "width", "height", "top", "right", "bottom", "left",
+        ]
+        .iter()
+        .map(|k| (k.to_string(), Ty::Number, false))
+        .collect(),
+    )
 }
 
 /// The built-in function `ns.name`, for using it as a value.

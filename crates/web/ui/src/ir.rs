@@ -64,6 +64,10 @@ pub enum GlobalInit {
     Context(Expr),
     /// Declared but not yet assigned (`let x;`).
     Undefined,
+    /// Not a binding: module-level code that runs at this point of the module's
+    /// initialisation (function `n`, called with no arguments), such as a
+    /// statement with effects or an initialiser with variables of its own.
+    Run(u32),
 }
 
 /// Where the module renders: `createRoot(document.getElementById(id)).render(<App/>)`.
@@ -426,6 +430,21 @@ pub enum Method {
     NodeSelect,
     /// `el.setSelectionRange(start, end)`.
     NodeSetSelectionRange,
+    /// `el.getBoundingClientRect()`: a `DOMRect` (as a plain object).
+    NodeGetBoundingClientRect,
+    NodeGetClientRects,
+    /// `el.scrollIntoView(arg)`.
+    NodeScrollIntoView,
+    /// `el.scrollTo(x, y)` / `scrollTo({ left, top })`, and `scroll`.
+    NodeScrollTo,
+    NodeScrollBy,
+    NodeContains,
+    NodeClosest,
+    NodeMatches,
+    NodeGetAttribute,
+    NodeHasAttribute,
+    NodeQuerySelector,
+    NodeQuerySelectorAll,
     // An event.
     EventPreventDefault,
     EventStopPropagation,
@@ -526,6 +545,16 @@ pub enum Builtin {
     ActiveElement,
     /// `document.body`.
     DocumentBody,
+    /// `document.documentElement`.
+    DocumentElement,
+    /// `document.querySelectorAll(selector)`: an array of elements.
+    QuerySelectorAll,
+    /// `window.scrollX` / `scrollY` (and `pageXOffset` / `pageYOffset`).
+    ScrollX,
+    ScrollY,
+    /// `window.scrollTo(x, y)` / `scrollTo({ left, top })` / `scroll`.
+    WindowScrollTo,
+    WindowScrollBy,
     /// `window.innerWidth` / `window.innerHeight`.
     InnerWidth,
     InnerHeight,
@@ -561,6 +590,9 @@ pub enum Builtin {
     NewMap,
     /// `Array(n)` / `new Array(n)` / `new Array(a, b)`.
     NewArray,
+    /// The keys a `for...in` visits: an object's enumerable string keys in order
+    /// (an array's or string's indices), none for `null`/`undefined`.
+    ForInKeys,
 }
 
 /// A JSX element expression.
@@ -788,6 +820,18 @@ pub fn method_by_name(kind: MethodKind, name: &str) -> Option<Method> {
         (K::Node, "blur") => M::NodeBlur,
         (K::Node, "select") => M::NodeSelect,
         (K::Node, "setSelectionRange") => M::NodeSetSelectionRange,
+        (K::Node, "getBoundingClientRect") => M::NodeGetBoundingClientRect,
+        (K::Node, "getClientRects") => M::NodeGetClientRects,
+        (K::Node, "scrollIntoView") => M::NodeScrollIntoView,
+        (K::Node, "scrollTo" | "scroll") => M::NodeScrollTo,
+        (K::Node, "scrollBy") => M::NodeScrollBy,
+        (K::Node, "contains") => M::NodeContains,
+        (K::Node, "closest") => M::NodeClosest,
+        (K::Node, "matches") => M::NodeMatches,
+        (K::Node, "getAttribute") => M::NodeGetAttribute,
+        (K::Node, "hasAttribute") => M::NodeHasAttribute,
+        (K::Node, "querySelector") => M::NodeQuerySelector,
+        (K::Node, "querySelectorAll") => M::NodeQuerySelectorAll,
         (K::Event, "preventDefault") => M::EventPreventDefault,
         (K::Event, "stopPropagation") => M::EventStopPropagation,
         (_, "toString") => M::ToString,

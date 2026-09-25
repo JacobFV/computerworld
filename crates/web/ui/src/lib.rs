@@ -31,6 +31,7 @@ mod cw;
 mod dom;
 mod events;
 pub mod gen;
+mod geometry;
 mod interp;
 mod json;
 pub mod program;

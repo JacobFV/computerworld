@@ -489,7 +489,7 @@ fn compiled_layout_matches_chromium() {
 /// `getBoundingClientRect`, calendar computes with `Date`. Each must still be reported
 /// as outside the subset (`fallback_apps_are_reported_as_such`); take an app off this
 /// list when the subset grows to compile it.
-const FALLBACK_APPS: &[&str] = &["calendar", "music"];
+const FALLBACK_APPS: &[&str] = &["calendar"];
 
 /// The React apps in `framework-parity/app-src/<name>/` (TSX, several modules, as a
 /// coding agent writes them), whose pages `app-<name>.html` run the agent's own

@@ -12,7 +12,7 @@
 //!                                      `PROGRAM: cw_ui::GenProgram`) for an app
 //!                                      built into the binary
 //!     cw-tsx check app.tsx             prints the diagnostics; exit 1 if any
-//!     cw-tsx corpus <dir> [--split dev|test|all] [--json out.json] [--top n]
+//!     cw-tsx corpus <dir> [--split dev|test|all] [--json out.json] [--top n] [--grep text]
 //!                                      evaluates the held-out corpus in <dir>
 //!                                      (crates/web/tsx/corpus): how much of it is
 //!                                      inside the compiled subset, and why not
@@ -160,18 +160,26 @@ fn corpus(rest: &[String]) -> ExitCode {
     let mut split = "dev".to_owned();
     let mut json: Option<PathBuf> = None;
     let mut top = 40usize;
+    let mut grep: Option<String> = None;
     let mut it = rest.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--split" => split = it.next().cloned().unwrap_or_default(),
             "--json" => json = it.next().map(PathBuf::from),
             "--top" => top = it.next().and_then(|n| n.parse().ok()).unwrap_or(top),
+            "--grep" => grep = it.next().cloned(),
             s if dir.is_none() => dir = Some(PathBuf::from(s)),
             _ => return usage(),
         }
     }
     let Some(dir) = dir else { return usage() };
-    let report = cw_tsx::corpus::evaluate(&dir, &split);
+    let report = cw_tsx::corpus::evaluate_with(&dir, &split, &mut |project, d| {
+        if let Some(g) = &grep {
+            if d.message.contains(g.as_str()) {
+                println!("{project}: {d}");
+            }
+        }
+    });
     print!("{}", report.summary(top));
     if let Some(p) = json {
         let text = serde_json::to_string_pretty(&report).expect("report") + "\n";

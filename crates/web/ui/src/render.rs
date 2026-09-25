@@ -1844,6 +1844,9 @@ impl Runtime {
     }
 
     fn commit(&mut self) {
+        // The DOM changed: a geometry read in a layout effect (or anything after)
+        // lays out the document as it is now, as after a DOM call in a page.
+        self.inner.touch();
         for c in std::mem::take(&mut self.deleted_layout) {
             self.run_cleanup(&c);
         }

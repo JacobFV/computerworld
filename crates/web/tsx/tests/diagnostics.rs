@@ -179,9 +179,14 @@ fn an_app_of_several_modules_compiles_into_one() {
     assert!(b.diagnostics.is_empty(), "{:?}", b.diagnostics);
     assert!(b.ir.is_some());
     let js = b.js.unwrap();
-    assert!(js.contains("const __cw_mod_0 = (() => {"), "{js}");
-    assert!(js.contains("return { greet };"), "{js}");
-    assert!(js.contains("const App = __cw_mod_2.default;"), "{js}");
+    // Every module's exports object exists first; exports are live getters, and
+    // a use of an imported name reads the exporting module's object.
+    assert!(js.contains("const __cw_m = [{}, {}, {}, {}];"), "{js}");
+    assert!(
+        js.contains("Object.defineProperties(__cw_m[0], { greet: { enumerable: true, get: () => greet } });"),
+        "{js}"
+    );
+    assert!(js.contains("React.createElement(__cw_i2.default"), "{js}");
 }
 
 #[test]
