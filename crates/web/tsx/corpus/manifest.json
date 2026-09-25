@@ -1,0 +1,3607 @@
+{
+ "seed": "cw-tsx-corpus-v1",
+ "split_rule": "DEV when the first byte of sha256(\"cw-tsx-corpus-v1:split:<project id>\") is even, TEST when odd",
+ "sources": [
+  {
+   "id": "todomvc",
+   "repository": "https://github.com/tastejs/todomvc",
+   "commit": "ff43b02e59dfa604386bb382034b2cd07c2bcd8a",
+   "license": "MIT",
+   "license_file": "src/todomvc/license.md",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "vite",
+   "repository": "https://github.com/vitejs/vite",
+   "commit": "bc598a6a8a6b7d6e157e9f19c16911cff8d2360c",
+   "license": "MIT",
+   "license_file": "src/vite/LICENSE",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "zustand",
+   "repository": "https://github.com/pmndrs/zustand",
+   "commit": "b57db4f86ef179285da216eeb291266da82c361c",
+   "license": "MIT",
+   "license_file": "src/zustand/LICENSE",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "realworld",
+   "repository": "https://github.com/angelguzmaning/ts-redux-react-realworld-example-app",
+   "commit": "cb397562724ea7f53758d5511c220690b99fe2f5",
+   "license": "MIT",
+   "license_file": "src/realworld/LICENSE",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "tanstack-table",
+   "repository": "https://github.com/TanStack/table",
+   "commit": "21d713fc4947d2a08cc2136bb055889a61412ded",
+   "license": "MIT",
+   "license_file": "src/tanstack-table/LICENSE",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "tanstack-query",
+   "repository": "https://github.com/TanStack/query",
+   "commit": "2443290fb5d8d31e7016087fc78216a0703fbfa0",
+   "license": "MIT",
+   "license_file": "src/tanstack-query/LICENSE",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "redux-toolkit",
+   "repository": "https://github.com/reduxjs/redux-toolkit",
+   "commit": "c9dac937d77adc3bf04842a43955e81d0e7a46da",
+   "license": "MIT",
+   "license_file": "src/redux-toolkit/LICENSE",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "refine",
+   "repository": "https://github.com/refinedev/refine",
+   "commit": "2352eb5b6539e2f39ad9aef652279ad1dcf2c467",
+   "license": "MIT",
+   "license_file": "src/refine/LICENSE",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "react-admin",
+   "repository": "https://github.com/marmelab/react-admin",
+   "commit": "99e8c52b7db1712c0afa4eeed533e4a713dfc1ec",
+   "license": "MIT",
+   "license_file": "src/react-admin/LICENSE.md",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "shadcn",
+   "repository": "https://github.com/shadcn-ui/ui",
+   "commit": "98a1fe67b439324ddc857f47fbdce056600a4329",
+   "license": "MIT",
+   "license_file": "src/shadcn/LICENSE.md",
+   "aliases": {
+    "@/": "apps/v4/"
+   },
+   "support": [
+    "apps/v4/registry/new-york-v4/ui",
+    "apps/v4/registry/new-york-v4/lib",
+    "apps/v4/registry/new-york-v4/hooks",
+    "apps/v4/lib",
+    "apps/v4/hooks"
+   ]
+  },
+  {
+   "id": "chakra",
+   "repository": "https://github.com/chakra-ui/chakra-ui",
+   "commit": "961161428b8c59157ad921dd23303b73c294d73f",
+   "license": "MIT",
+   "license_file": "src/chakra/LICENSE",
+   "aliases": {
+    "compositions/": "apps/compositions/src/"
+   },
+   "support": [
+    "apps/compositions/src/ui",
+    "apps/compositions/src/lib"
+   ]
+  },
+  {
+   "id": "mui",
+   "repository": "https://github.com/mui/material-ui",
+   "commit": "190a83cf3784c53b57d7a80cf96df27276eed079",
+   "license": "MIT",
+   "license_file": "src/mui/LICENSE",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "mantine-ui",
+   "repository": "https://github.com/mantinedev/ui.mantine.dev",
+   "commit": "7bce6d790cf29472862a6bc9cfc68eecc79aedd1",
+   "license": "MIT",
+   "license_file": "src/mantine-ui/LICENCE",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "headlessui",
+   "repository": "https://github.com/tailwindlabs/headlessui",
+   "commit": "eea57cf46fd6767ed1059012f7073b88eb159fba",
+   "license": "MIT",
+   "license_file": "src/headlessui/LICENSE",
+   "aliases": {},
+   "support": []
+  },
+  {
+   "id": "react-hook-form",
+   "repository": "https://github.com/react-hook-form/react-hook-form",
+   "commit": "72a4c98f770d618c05a3fc726a7643b2d2db665b",
+   "license": "MIT",
+   "license_file": "src/react-hook-form/LICENSE",
+   "aliases": {},
+   "support": []
+  }
+ ],
+ "projects": [
+  {
+   "id": "todomvc/examples/typescript-react/js",
+   "source": "todomvc",
+   "root": "examples/typescript-react/js",
+   "split": "test",
+   "files": [
+    "examples/typescript-react/js/app.tsx",
+    "examples/typescript-react/js/constants.ts",
+    "examples/typescript-react/js/footer.tsx",
+    "examples/typescript-react/js/interfaces.d.ts",
+    "examples/typescript-react/js/todoItem.tsx",
+    "examples/typescript-react/js/todoModel.ts",
+    "examples/typescript-react/js/utils.ts"
+   ]
+  },
+  {
+   "id": "vite/packages/create-vite/template-react-ts/src",
+   "source": "vite",
+   "root": "packages/create-vite/template-react-ts/src",
+   "split": "dev",
+   "files": [
+    "packages/create-vite/template-react-ts/src/App.tsx",
+    "packages/create-vite/template-react-ts/src/main.tsx"
+   ]
+  },
+  {
+   "id": "zustand/examples/starter/src",
+   "source": "zustand",
+   "root": "examples/starter/src",
+   "split": "test",
+   "files": [
+    "examples/starter/src/index.tsx",
+    "examples/starter/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "realworld/src",
+   "source": "realworld",
+   "root": "src",
+   "split": "dev",
+   "files": [
+    "src/components/App/App.slice.ts",
+    "src/components/App/App.tsx",
+    "src/components/ArticleEditor/ArticleEditor.slice.tsx",
+    "src/components/ArticleEditor/ArticleEditor.tsx",
+    "src/components/ArticlePreview/ArticlePreview.tsx",
+    "src/components/ArticlesViewer/ArticlesViewer.slice.ts",
+    "src/components/ArticlesViewer/ArticlesViewer.tsx",
+    "src/components/ContainerPage/ContainerPage.tsx",
+    "src/components/Errors/Errors.tsx",
+    "src/components/Footer/Footer.tsx",
+    "src/components/FormGroup/FormGroup.tsx",
+    "src/components/GenericForm/GenericForm.tsx",
+    "src/components/Header/Header.tsx",
+    "src/components/Pages/ArticlePage/ArticlePage.slice.ts",
+    "src/components/Pages/ArticlePage/ArticlePage.tsx",
+    "src/components/Pages/EditArticle/EditArticle.tsx",
+    "src/components/Pages/Home/Home.slice.ts",
+    "src/components/Pages/Home/Home.tsx",
+    "src/components/Pages/Login/Login.slice.ts",
+    "src/components/Pages/Login/Login.tsx",
+    "src/components/Pages/NewArticle/NewArticle.tsx",
+    "src/components/Pages/ProfilePage/ProfilePage.slice.ts",
+    "src/components/Pages/ProfilePage/ProfilePage.tsx",
+    "src/components/Pages/Register/Register.slice.ts",
+    "src/components/Pages/Register/Register.tsx",
+    "src/components/Pages/Settings/Settings.slice.ts",
+    "src/components/Pages/Settings/Settings.tsx",
+    "src/components/Pagination/Pagination.tsx",
+    "src/components/UserInfo/UserInfo.tsx",
+    "src/config/settings.ts",
+    "src/index.tsx",
+    "src/react-app-env.d.ts",
+    "src/services/conduit.ts",
+    "src/setupTests.ts",
+    "src/state/store.ts",
+    "src/state/storeHooks.ts",
+    "src/types/article.ts",
+    "src/types/comment.ts",
+    "src/types/error.ts",
+    "src/types/genericFormField.tsx",
+    "src/types/location.ts",
+    "src/types/object.ts",
+    "src/types/profile.ts",
+    "src/types/style.ts",
+    "src/types/user.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/basic-dynamic-columns/src",
+   "source": "tanstack-table",
+   "root": "examples/react/basic-dynamic-columns/src",
+   "split": "test",
+   "files": [
+    "examples/react/basic-dynamic-columns/src/main.tsx",
+    "examples/react/basic-dynamic-columns/src/makeData.ts",
+    "examples/react/basic-dynamic-columns/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/basic-use-app-table/src",
+   "source": "tanstack-table",
+   "root": "examples/react/basic-use-app-table/src",
+   "split": "dev",
+   "files": [
+    "examples/react/basic-use-app-table/src/main.tsx",
+    "examples/react/basic-use-app-table/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/cell-spanning/src",
+   "source": "tanstack-table",
+   "root": "examples/react/cell-spanning/src",
+   "split": "test",
+   "files": [
+    "examples/react/cell-spanning/src/main.tsx",
+    "examples/react/cell-spanning/src/makeData.ts",
+    "examples/react/cell-spanning/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/column-dnd/src",
+   "source": "tanstack-table",
+   "root": "examples/react/column-dnd/src",
+   "split": "dev",
+   "files": [
+    "examples/react/column-dnd/src/main.tsx",
+    "examples/react/column-dnd/src/makeData.ts",
+    "examples/react/column-dnd/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/column-ordering/src",
+   "source": "tanstack-table",
+   "root": "examples/react/column-ordering/src",
+   "split": "test",
+   "files": [
+    "examples/react/column-ordering/src/main.tsx",
+    "examples/react/column-ordering/src/makeData.ts",
+    "examples/react/column-ordering/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/column-pinning-sticky/src",
+   "source": "tanstack-table",
+   "root": "examples/react/column-pinning-sticky/src",
+   "split": "test",
+   "files": [
+    "examples/react/column-pinning-sticky/src/main.tsx",
+    "examples/react/column-pinning-sticky/src/makeData.ts",
+    "examples/react/column-pinning-sticky/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/column-sizing/src",
+   "source": "tanstack-table",
+   "root": "examples/react/column-sizing/src",
+   "split": "test",
+   "files": [
+    "examples/react/column-sizing/src/main.tsx",
+    "examples/react/column-sizing/src/makeData.ts",
+    "examples/react/column-sizing/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/column-visibility/src",
+   "source": "tanstack-table",
+   "root": "examples/react/column-visibility/src",
+   "split": "dev",
+   "files": [
+    "examples/react/column-visibility/src/main.tsx",
+    "examples/react/column-visibility/src/makeData.ts",
+    "examples/react/column-visibility/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/composable-tables/src",
+   "source": "tanstack-table",
+   "root": "examples/react/composable-tables/src",
+   "split": "dev",
+   "files": [
+    "examples/react/composable-tables/src/components/cell-components.tsx",
+    "examples/react/composable-tables/src/components/header-components.tsx",
+    "examples/react/composable-tables/src/components/indeterminate-checkbox.tsx",
+    "examples/react/composable-tables/src/components/table-components.tsx",
+    "examples/react/composable-tables/src/hooks/table.ts",
+    "examples/react/composable-tables/src/main.tsx",
+    "examples/react/composable-tables/src/makeData.ts",
+    "examples/react/composable-tables/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/kitchen-sink-chakra-ui/src",
+   "source": "tanstack-table",
+   "root": "examples/react/kitchen-sink-chakra-ui/src",
+   "split": "dev",
+   "files": [
+    "examples/react/kitchen-sink-chakra-ui/src/columns.tsx",
+    "examples/react/kitchen-sink-chakra-ui/src/components/data-table/cell-components.tsx",
+    "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-column-header.tsx",
+    "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-filter-list.tsx",
+    "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-pagination.tsx",
+    "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-sort-list.tsx",
+    "examples/react/kitchen-sink-chakra-ui/src/components/data-table/data-table-view-options.tsx",
+    "examples/react/kitchen-sink-chakra-ui/src/components/data-table/header-components.tsx",
+    "examples/react/kitchen-sink-chakra-ui/src/components/data-table/shared.tsx",
+    "examples/react/kitchen-sink-chakra-ui/src/hooks/features.ts",
+    "examples/react/kitchen-sink-chakra-ui/src/hooks/table.ts",
+    "examples/react/kitchen-sink-chakra-ui/src/lib/data-table.ts",
+    "examples/react/kitchen-sink-chakra-ui/src/lib/make-data.ts",
+    "examples/react/kitchen-sink-chakra-ui/src/main.tsx",
+    "examples/react/kitchen-sink-chakra-ui/src/types/index.ts",
+    "examples/react/kitchen-sink-chakra-ui/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/kitchen-sink-material-ui/src",
+   "source": "tanstack-table",
+   "root": "examples/react/kitchen-sink-material-ui/src",
+   "split": "test",
+   "files": [
+    "examples/react/kitchen-sink-material-ui/src/columns.tsx",
+    "examples/react/kitchen-sink-material-ui/src/components/data-table/cell-components.tsx",
+    "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-column-header.tsx",
+    "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-filter-list.tsx",
+    "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-pagination.tsx",
+    "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-sort-list.tsx",
+    "examples/react/kitchen-sink-material-ui/src/components/data-table/data-table-view-options.tsx",
+    "examples/react/kitchen-sink-material-ui/src/components/data-table/header-components.tsx",
+    "examples/react/kitchen-sink-material-ui/src/components/data-table/shared.tsx",
+    "examples/react/kitchen-sink-material-ui/src/hooks/features.ts",
+    "examples/react/kitchen-sink-material-ui/src/hooks/table.ts",
+    "examples/react/kitchen-sink-material-ui/src/lib/data-table.ts",
+    "examples/react/kitchen-sink-material-ui/src/lib/make-data.ts",
+    "examples/react/kitchen-sink-material-ui/src/main.tsx",
+    "examples/react/kitchen-sink-material-ui/src/types/index.ts",
+    "examples/react/kitchen-sink-material-ui/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/kitchen-sink-react-aria/src",
+   "source": "tanstack-table",
+   "root": "examples/react/kitchen-sink-react-aria/src",
+   "split": "dev",
+   "files": [
+    "examples/react/kitchen-sink-react-aria/src/columns.tsx",
+    "examples/react/kitchen-sink-react-aria/src/components/data-table/cell-components.tsx",
+    "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-column-header.tsx",
+    "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-filter-list.tsx",
+    "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-pagination.tsx",
+    "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-sort-list.tsx",
+    "examples/react/kitchen-sink-react-aria/src/components/data-table/data-table-view-options.tsx",
+    "examples/react/kitchen-sink-react-aria/src/components/data-table/header-components.tsx",
+    "examples/react/kitchen-sink-react-aria/src/components/data-table/shared.tsx",
+    "examples/react/kitchen-sink-react-aria/src/hooks/features.ts",
+    "examples/react/kitchen-sink-react-aria/src/hooks/table.ts",
+    "examples/react/kitchen-sink-react-aria/src/lib/data-table.ts",
+    "examples/react/kitchen-sink-react-aria/src/lib/make-data.ts",
+    "examples/react/kitchen-sink-react-aria/src/main.tsx",
+    "examples/react/kitchen-sink-react-aria/src/types/index.ts",
+    "examples/react/kitchen-sink-react-aria/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/kitchen-sink-shadcn-radix/src",
+   "source": "tanstack-table",
+   "root": "examples/react/kitchen-sink-shadcn-radix/src",
+   "split": "dev",
+   "files": [
+    "examples/react/kitchen-sink-shadcn-radix/src/columns.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/cell-components.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-column-header.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-filter-list.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-pagination.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-sort-list.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/data-table-view-options.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/data-table/header-components.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/mode-toggle.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/theme-provider.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/badge.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/button.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/calendar.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/checkbox.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/command.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/dialog.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/dropdown-menu.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/faceted.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/input.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/popover.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/progress.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/select.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/sortable.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/table.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/components/ui/tooltip.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/hooks/features.ts",
+    "examples/react/kitchen-sink-shadcn-radix/src/hooks/table.ts",
+    "examples/react/kitchen-sink-shadcn-radix/src/lib/composition.ts",
+    "examples/react/kitchen-sink-shadcn-radix/src/lib/data-table.ts",
+    "examples/react/kitchen-sink-shadcn-radix/src/lib/make-data.ts",
+    "examples/react/kitchen-sink-shadcn-radix/src/lib/utils.ts",
+    "examples/react/kitchen-sink-shadcn-radix/src/main.tsx",
+    "examples/react/kitchen-sink-shadcn-radix/src/types/index.ts",
+    "examples/react/kitchen-sink-shadcn-radix/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/lib-chakra-ui/src",
+   "source": "tanstack-table",
+   "root": "examples/react/lib-chakra-ui/src",
+   "split": "test",
+   "files": [
+    "examples/react/lib-chakra-ui/src/main.tsx",
+    "examples/react/lib-chakra-ui/src/makeData.ts",
+    "examples/react/lib-chakra-ui/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/lib-mantine/src",
+   "source": "tanstack-table",
+   "root": "examples/react/lib-mantine/src",
+   "split": "test",
+   "files": [
+    "examples/react/lib-mantine/src/main.tsx",
+    "examples/react/lib-mantine/src/makeData.ts",
+    "examples/react/lib-mantine/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/lib-material-ui/src",
+   "source": "tanstack-table",
+   "root": "examples/react/lib-material-ui/src",
+   "split": "dev",
+   "files": [
+    "examples/react/lib-material-ui/src/main.tsx",
+    "examples/react/lib-material-ui/src/makeData.ts",
+    "examples/react/lib-material-ui/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/lib-shadcn-radix/src",
+   "source": "tanstack-table",
+   "root": "examples/react/lib-shadcn-radix/src",
+   "split": "test",
+   "files": [
+    "examples/react/lib-shadcn-radix/src/components/ui/button.tsx",
+    "examples/react/lib-shadcn-radix/src/components/ui/input.tsx",
+    "examples/react/lib-shadcn-radix/src/components/ui/select.tsx",
+    "examples/react/lib-shadcn-radix/src/components/ui/table.tsx",
+    "examples/react/lib-shadcn-radix/src/lib/utils.ts",
+    "examples/react/lib-shadcn-radix/src/main.tsx",
+    "examples/react/lib-shadcn-radix/src/makeData.ts",
+    "examples/react/lib-shadcn-radix/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/row-dnd/src",
+   "source": "tanstack-table",
+   "root": "examples/react/row-dnd/src",
+   "split": "dev",
+   "files": [
+    "examples/react/row-dnd/src/main.tsx",
+    "examples/react/row-dnd/src/makeData.ts",
+    "examples/react/row-dnd/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/sorting/src",
+   "source": "tanstack-table",
+   "root": "examples/react/sorting/src",
+   "split": "test",
+   "files": [
+    "examples/react/sorting/src/main.tsx",
+    "examples/react/sorting/src/makeData.ts",
+    "examples/react/sorting/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/spreadsheet/src",
+   "source": "tanstack-table",
+   "root": "examples/react/spreadsheet/src",
+   "split": "dev",
+   "files": [
+    "examples/react/spreadsheet/src/CellContextMenu.tsx",
+    "examples/react/spreadsheet/src/ColumnMenu.tsx",
+    "examples/react/spreadsheet/src/Spreadsheet.tsx",
+    "examples/react/spreadsheet/src/SpreadsheetGrid.tsx",
+    "examples/react/spreadsheet/src/main.tsx",
+    "examples/react/spreadsheet/src/spreadsheetModel.ts",
+    "examples/react/spreadsheet/src/spreadsheetTable.ts",
+    "examples/react/spreadsheet/src/useGridInteractions.ts",
+    "examples/react/spreadsheet/src/useSpreadsheetHistory.ts",
+    "examples/react/spreadsheet/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/sub-components/src",
+   "source": "tanstack-table",
+   "root": "examples/react/sub-components/src",
+   "split": "test",
+   "files": [
+    "examples/react/sub-components/src/main.tsx",
+    "examples/react/sub-components/src/makeData.ts",
+    "examples/react/sub-components/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/virtualized-columns-experimental/src",
+   "source": "tanstack-table",
+   "root": "examples/react/virtualized-columns-experimental/src",
+   "split": "dev",
+   "files": [
+    "examples/react/virtualized-columns-experimental/src/main.tsx",
+    "examples/react/virtualized-columns-experimental/src/makeData.ts",
+    "examples/react/virtualized-columns-experimental/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/virtualized-columns/src",
+   "source": "tanstack-table",
+   "root": "examples/react/virtualized-columns/src",
+   "split": "test",
+   "files": [
+    "examples/react/virtualized-columns/src/main.tsx",
+    "examples/react/virtualized-columns/src/makeData.ts",
+    "examples/react/virtualized-columns/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-table/examples/react/virtualized-infinite-scrolling/src",
+   "source": "tanstack-table",
+   "root": "examples/react/virtualized-infinite-scrolling/src",
+   "split": "test",
+   "files": [
+    "examples/react/virtualized-infinite-scrolling/src/main.tsx",
+    "examples/react/virtualized-infinite-scrolling/src/makeData.ts",
+    "examples/react/virtualized-infinite-scrolling/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/algolia/src",
+   "source": "tanstack-query",
+   "root": "examples/react/algolia/src",
+   "split": "test",
+   "files": [
+    "examples/react/algolia/src/App.tsx",
+    "examples/react/algolia/src/Search.tsx",
+    "examples/react/algolia/src/SearchResults.tsx",
+    "examples/react/algolia/src/algolia.ts",
+    "examples/react/algolia/src/index.tsx",
+    "examples/react/algolia/src/useAlgolia.ts"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/auto-refetching/src",
+   "source": "tanstack-query",
+   "root": "examples/react/auto-refetching/src",
+   "split": "dev",
+   "files": [
+    "examples/react/auto-refetching/src/pages/api/data.ts",
+    "examples/react/auto-refetching/src/pages/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/basic-graphql-request/src",
+   "source": "tanstack-query",
+   "root": "examples/react/basic-graphql-request/src",
+   "split": "test",
+   "files": [
+    "examples/react/basic-graphql-request/src/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/basic/src",
+   "source": "tanstack-query",
+   "root": "examples/react/basic/src",
+   "split": "test",
+   "files": [
+    "examples/react/basic/src/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/batching/src",
+   "source": "tanstack-query",
+   "root": "examples/react/batching/src",
+   "split": "test",
+   "files": [
+    "examples/react/batching/src/character-loader.ts",
+    "examples/react/batching/src/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/chat/src",
+   "source": "tanstack-query",
+   "root": "examples/react/chat/src",
+   "split": "test",
+   "files": [
+    "examples/react/chat/src/chat.ts",
+    "examples/react/chat/src/index.tsx",
+    "examples/react/chat/src/message.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/default-query-function/src",
+   "source": "tanstack-query",
+   "root": "examples/react/default-query-function/src",
+   "split": "test",
+   "files": [
+    "examples/react/default-query-function/src/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/devtools-panel/src",
+   "source": "tanstack-query",
+   "root": "examples/react/devtools-panel/src",
+   "split": "dev",
+   "files": [
+    "examples/react/devtools-panel/src/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/eslint-legacy/src",
+   "source": "tanstack-query",
+   "root": "examples/react/eslint-legacy/src",
+   "split": "test",
+   "files": [
+    "examples/react/eslint-legacy/src/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/eslint-plugin-demo/src",
+   "source": "tanstack-query",
+   "root": "examples/react/eslint-plugin-demo/src",
+   "split": "dev",
+   "files": [
+    "examples/react/eslint-plugin-demo/src/allowlist-demo.tsx",
+    "examples/react/eslint-plugin-demo/src/prefer-query-options-demo.tsx",
+    "examples/react/eslint-plugin-demo/src/queries.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/infinite-query-with-max-pages/src",
+   "source": "tanstack-query",
+   "root": "examples/react/infinite-query-with-max-pages/src",
+   "split": "dev",
+   "files": [
+    "examples/react/infinite-query-with-max-pages/src/pages/api/projects.ts",
+    "examples/react/infinite-query-with-max-pages/src/pages/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/load-more-infinite-scroll/src",
+   "source": "tanstack-query",
+   "root": "examples/react/load-more-infinite-scroll/src",
+   "split": "test",
+   "files": [
+    "examples/react/load-more-infinite-scroll/src/pages/about.tsx",
+    "examples/react/load-more-infinite-scroll/src/pages/api/projects.ts",
+    "examples/react/load-more-infinite-scroll/src/pages/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/nextjs-suspense-streaming/src",
+   "source": "tanstack-query",
+   "root": "examples/react/nextjs-suspense-streaming/src",
+   "split": "test",
+   "files": [
+    "examples/react/nextjs-suspense-streaming/src/app/api/wait/route.ts",
+    "examples/react/nextjs-suspense-streaming/src/app/layout.tsx",
+    "examples/react/nextjs-suspense-streaming/src/app/page.tsx",
+    "examples/react/nextjs-suspense-streaming/src/app/providers.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/nextjs/src",
+   "source": "tanstack-query",
+   "root": "examples/react/nextjs/src",
+   "split": "test",
+   "files": [
+    "examples/react/nextjs/src/components/Header.tsx",
+    "examples/react/nextjs/src/components/InfoBox.tsx",
+    "examples/react/nextjs/src/components/Layout.tsx",
+    "examples/react/nextjs/src/components/PostList.tsx",
+    "examples/react/nextjs/src/components/index.ts",
+    "examples/react/nextjs/src/hooks/usePosts.ts",
+    "examples/react/nextjs/src/pages/_app.tsx",
+    "examples/react/nextjs/src/pages/client-only.tsx",
+    "examples/react/nextjs/src/pages/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/offline/src",
+   "source": "tanstack-query",
+   "root": "examples/react/offline/src",
+   "split": "test",
+   "files": [
+    "examples/react/offline/src/App.tsx",
+    "examples/react/offline/src/api.ts",
+    "examples/react/offline/src/index.tsx",
+    "examples/react/offline/src/movies.ts"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/pagination/src",
+   "source": "tanstack-query",
+   "root": "examples/react/pagination/src",
+   "split": "test",
+   "files": [
+    "examples/react/pagination/src/pages/api/projects.ts",
+    "examples/react/pagination/src/pages/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/playground/src",
+   "source": "tanstack-query",
+   "root": "examples/react/playground/src",
+   "split": "test",
+   "files": [
+    "examples/react/playground/src/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/prefetching/src",
+   "source": "tanstack-query",
+   "root": "examples/react/prefetching/src",
+   "split": "dev",
+   "files": [
+    "examples/react/prefetching/src/pages/[user]/[repo].tsx",
+    "examples/react/prefetching/src/pages/_app.tsx",
+    "examples/react/prefetching/src/pages/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/react-native/src",
+   "source": "tanstack-query",
+   "root": "examples/react/react-native/src",
+   "split": "dev",
+   "files": [
+    "examples/react/react-native/src/components/Divider.tsx",
+    "examples/react/react-native/src/components/ErrorMessage.tsx",
+    "examples/react/react-native/src/components/ListItem.tsx",
+    "examples/react/react-native/src/components/LoadingIndicator.tsx",
+    "examples/react/react-native/src/data/movies.json",
+    "examples/react/react-native/src/hooks/useAppState.ts",
+    "examples/react/react-native/src/hooks/useOnlineManager.ts",
+    "examples/react/react-native/src/hooks/useRefreshByUser.ts",
+    "examples/react/react-native/src/hooks/useRefreshOnFocus.ts",
+    "examples/react/react-native/src/lib/api.ts",
+    "examples/react/react-native/src/navigation/MoviesStack.tsx",
+    "examples/react/react-native/src/navigation/types.ts",
+    "examples/react/react-native/src/screens/MovieDetailsScreen.tsx",
+    "examples/react/react-native/src/screens/MoviesListScreen.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/react-router/src",
+   "source": "tanstack-query",
+   "root": "examples/react/react-router/src",
+   "split": "dev",
+   "files": [
+    "examples/react/react-router/src/contacts.ts",
+    "examples/react/react-router/src/error-page.tsx",
+    "examples/react/react-router/src/index.tsx",
+    "examples/react/react-router/src/routes/contact.tsx",
+    "examples/react/react-router/src/routes/destroy.tsx",
+    "examples/react/react-router/src/routes/edit.tsx",
+    "examples/react/react-router/src/routes/index.tsx",
+    "examples/react/react-router/src/routes/new.tsx",
+    "examples/react/react-router/src/routes/root.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/rick-morty/src",
+   "source": "tanstack-query",
+   "root": "examples/react/rick-morty/src",
+   "split": "dev",
+   "files": [
+    "examples/react/rick-morty/src/App.tsx",
+    "examples/react/rick-morty/src/Character.tsx",
+    "examples/react/rick-morty/src/Characters.tsx",
+    "examples/react/rick-morty/src/Episode.tsx",
+    "examples/react/rick-morty/src/Episodes.tsx",
+    "examples/react/rick-morty/src/Home.tsx",
+    "examples/react/rick-morty/src/Layout.tsx",
+    "examples/react/rick-morty/src/api.ts",
+    "examples/react/rick-morty/src/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/shadow-dom/src",
+   "source": "tanstack-query",
+   "root": "examples/react/shadow-dom/src",
+   "split": "dev",
+   "files": [
+    "examples/react/shadow-dom/src/DogList.tsx",
+    "examples/react/shadow-dom/src/main.tsx",
+    "examples/react/shadow-dom/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/simple/src",
+   "source": "tanstack-query",
+   "root": "examples/react/simple/src",
+   "split": "test",
+   "files": [
+    "examples/react/simple/src/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/star-wars/src",
+   "source": "tanstack-query",
+   "root": "examples/react/star-wars/src",
+   "split": "test",
+   "files": [
+    "examples/react/star-wars/src/App.tsx",
+    "examples/react/star-wars/src/Character.tsx",
+    "examples/react/star-wars/src/Characters.tsx",
+    "examples/react/star-wars/src/Film.tsx",
+    "examples/react/star-wars/src/Films.tsx",
+    "examples/react/star-wars/src/Home.tsx",
+    "examples/react/star-wars/src/Layout.tsx",
+    "examples/react/star-wars/src/api.ts",
+    "examples/react/star-wars/src/index.tsx"
+   ]
+  },
+  {
+   "id": "tanstack-query/examples/react/suspense/src",
+   "source": "tanstack-query",
+   "root": "examples/react/suspense/src",
+   "split": "test",
+   "files": [
+    "examples/react/suspense/src/components/Button.tsx",
+    "examples/react/suspense/src/components/Project.tsx",
+    "examples/react/suspense/src/components/Projects.tsx",
+    "examples/react/suspense/src/components/Spinner.tsx",
+    "examples/react/suspense/src/index.tsx",
+    "examples/react/suspense/src/queries.ts"
+   ]
+  },
+  {
+   "id": "redux-toolkit/examples/query/react/authentication/src",
+   "source": "redux-toolkit",
+   "root": "examples/query/react/authentication/src",
+   "split": "dev",
+   "files": [
+    "examples/query/react/authentication/src/App.tsx",
+    "examples/query/react/authentication/src/app/services/auth.ts",
+    "examples/query/react/authentication/src/app/store.ts",
+    "examples/query/react/authentication/src/features/auth/Login.tsx",
+    "examples/query/react/authentication/src/features/auth/ProtectedComponent.tsx",
+    "examples/query/react/authentication/src/features/auth/authSlice.tsx",
+    "examples/query/react/authentication/src/hooks/store.ts",
+    "examples/query/react/authentication/src/hooks/useAuth.ts",
+    "examples/query/react/authentication/src/index.tsx",
+    "examples/query/react/authentication/src/mocks/browser.ts",
+    "examples/query/react/authentication/src/mocks/handlers.ts",
+    "examples/query/react/authentication/src/react-app-env.d.ts",
+    "examples/query/react/authentication/src/utils/PrivateOutlet.tsx"
+   ]
+  },
+  {
+   "id": "redux-toolkit/examples/query/react/basic/src",
+   "source": "redux-toolkit",
+   "root": "examples/query/react/basic/src",
+   "split": "dev",
+   "files": [
+    "examples/query/react/basic/src/App.tsx",
+    "examples/query/react/basic/src/index.tsx",
+    "examples/query/react/basic/src/react-app-env.d.ts",
+    "examples/query/react/basic/src/services/pokemon.ts",
+    "examples/query/react/basic/src/setupTests.ts",
+    "examples/query/react/basic/src/store.ts"
+   ]
+  },
+  {
+   "id": "redux-toolkit/examples/query/react/graphql-codegen/src",
+   "source": "redux-toolkit",
+   "root": "examples/query/react/graphql-codegen/src",
+   "split": "test",
+   "files": [
+    "examples/query/react/graphql-codegen/src/App.tsx",
+    "examples/query/react/graphql-codegen/src/app/services/baseApi.ts",
+    "examples/query/react/graphql-codegen/src/app/services/types.generated.ts",
+    "examples/query/react/graphql-codegen/src/features/posts/GetPost.generated.ts",
+    "examples/query/react/graphql-codegen/src/features/posts/GetPosts.generated.ts",
+    "examples/query/react/graphql-codegen/src/features/posts/PostsManager.tsx",
+    "examples/query/react/graphql-codegen/src/index.tsx",
+    "examples/query/react/graphql-codegen/src/mocks/browser.ts",
+    "examples/query/react/graphql-codegen/src/mocks/db.ts",
+    "examples/query/react/graphql-codegen/src/react-app-env.d.ts"
+   ]
+  },
+  {
+   "id": "redux-toolkit/examples/query/react/graphql/src",
+   "source": "redux-toolkit",
+   "root": "examples/query/react/graphql/src",
+   "split": "dev",
+   "files": [
+    "examples/query/react/graphql/src/App.tsx",
+    "examples/query/react/graphql/src/app/services/posts.ts",
+    "examples/query/react/graphql/src/features/posts/PostsManager.tsx",
+    "examples/query/react/graphql/src/index.tsx",
+    "examples/query/react/graphql/src/mocks/browser.ts",
+    "examples/query/react/graphql/src/mocks/db.ts",
+    "examples/query/react/graphql/src/react-app-env.d.ts"
+   ]
+  },
+  {
+   "id": "redux-toolkit/examples/query/react/infinite-queries/src",
+   "source": "redux-toolkit",
+   "root": "examples/query/react/infinite-queries/src",
+   "split": "test",
+   "files": [
+    "examples/query/react/infinite-queries/src/App.tsx",
+    "examples/query/react/infinite-queries/src/app/createAppSlice.ts",
+    "examples/query/react/infinite-queries/src/app/hooks.ts",
+    "examples/query/react/infinite-queries/src/app/store.ts",
+    "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts",
+    "examples/query/react/infinite-queries/src/features/baseApi.ts",
+    "examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/BidirectionalCursorInfScroll.tsx",
+    "examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/infiniteScrollApi.ts",
+    "examples/query/react/infinite-queries/src/features/infinite-scroll/InfiniteScrollExample.tsx",
+    "examples/query/react/infinite-queries/src/features/infinite-scroll/infiniteScrollApi.ts",
+    "examples/query/react/infinite-queries/src/features/limit-offset/LimitOffsetExample.tsx",
+    "examples/query/react/infinite-queries/src/features/limit-offset/infiniteScrollApi.ts",
+    "examples/query/react/infinite-queries/src/features/max-pages/InfiniteScrollMaxExample.tsx",
+    "examples/query/react/infinite-queries/src/features/max-pages/infiniteScrollApi.ts",
+    "examples/query/react/infinite-queries/src/features/pagination-infinite-scroll/PaginationInfScrollExample.tsx",
+    "examples/query/react/infinite-queries/src/features/pagination-infinite-scroll/infiniteScrollApi.ts",
+    "examples/query/react/infinite-queries/src/features/pagination/PaginationExample.tsx",
+    "examples/query/react/infinite-queries/src/features/pagination/paginationApi.ts",
+    "examples/query/react/infinite-queries/src/features/rn-flatlist/FlatlistExample.tsx",
+    "examples/query/react/infinite-queries/src/main.tsx",
+    "examples/query/react/infinite-queries/src/mocks/browser.ts",
+    "examples/query/react/infinite-queries/src/mocks/handlers.ts",
+    "examples/query/react/infinite-queries/src/setupTests.ts",
+    "examples/query/react/infinite-queries/src/utils/test-utils.tsx",
+    "examples/query/react/infinite-queries/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "redux-toolkit/examples/query/react/kitchen-sink/src",
+   "source": "redux-toolkit",
+   "root": "examples/query/react/kitchen-sink/src",
+   "split": "test",
+   "files": [
+    "examples/query/react/kitchen-sink/src/App.tsx",
+    "examples/query/react/kitchen-sink/src/app/services/api.ts",
+    "examples/query/react/kitchen-sink/src/app/services/counter.ts",
+    "examples/query/react/kitchen-sink/src/app/services/post.ts",
+    "examples/query/react/kitchen-sink/src/app/services/posts.ts",
+    "examples/query/react/kitchen-sink/src/app/services/times.ts",
+    "examples/query/react/kitchen-sink/src/app/store.ts",
+    "examples/query/react/kitchen-sink/src/features/auth/authSlice.ts",
+    "examples/query/react/kitchen-sink/src/features/bundleSplitting/Lazy.tsx",
+    "examples/query/react/kitchen-sink/src/features/bundleSplitting/Post.tsx",
+    "examples/query/react/kitchen-sink/src/features/bundleSplitting/PostsList.tsx",
+    "examples/query/react/kitchen-sink/src/features/bundleSplitting/index.ts",
+    "examples/query/react/kitchen-sink/src/features/common/Container.tsx",
+    "examples/query/react/kitchen-sink/src/features/counter/Counter.tsx",
+    "examples/query/react/kitchen-sink/src/features/counter/CounterList.tsx",
+    "examples/query/react/kitchen-sink/src/features/polling/PollingToggles.tsx",
+    "examples/query/react/kitchen-sink/src/features/polling/pollingSlice.ts",
+    "examples/query/react/kitchen-sink/src/features/posts/PostDetail.tsx",
+    "examples/query/react/kitchen-sink/src/features/posts/PostsManager.tsx",
+    "examples/query/react/kitchen-sink/src/features/time/TimeList.tsx",
+    "examples/query/react/kitchen-sink/src/index.tsx",
+    "examples/query/react/kitchen-sink/src/mocks/browser.ts",
+    "examples/query/react/kitchen-sink/src/mocks/handlers.ts",
+    "examples/query/react/kitchen-sink/src/mocks/mockServer.ts",
+    "examples/query/react/kitchen-sink/src/mocks/setupTests.tsx",
+    "examples/query/react/kitchen-sink/src/react-app-env.d.ts",
+    "examples/query/react/kitchen-sink/src/setupTests.ts"
+   ]
+  },
+  {
+   "id": "redux-toolkit/examples/query/react/mutations/src",
+   "source": "redux-toolkit",
+   "root": "examples/query/react/mutations/src",
+   "split": "test",
+   "files": [
+    "examples/query/react/mutations/src/App.tsx",
+    "examples/query/react/mutations/src/app/services/posts.ts",
+    "examples/query/react/mutations/src/features/posts/PostDetail.tsx",
+    "examples/query/react/mutations/src/features/posts/PostsManager.tsx",
+    "examples/query/react/mutations/src/index.tsx",
+    "examples/query/react/mutations/src/mocks/browser.ts",
+    "examples/query/react/mutations/src/mocks/db.ts",
+    "examples/query/react/mutations/src/react-app-env.d.ts",
+    "examples/query/react/mutations/src/store.ts"
+   ]
+  },
+  {
+   "id": "redux-toolkit/examples/query/react/optimistic-update/src",
+   "source": "redux-toolkit",
+   "root": "examples/query/react/optimistic-update/src",
+   "split": "test",
+   "files": [
+    "examples/query/react/optimistic-update/src/App.tsx",
+    "examples/query/react/optimistic-update/src/app/services/posts.ts",
+    "examples/query/react/optimistic-update/src/features/posts/PostDetail.tsx",
+    "examples/query/react/optimistic-update/src/features/posts/PostsManager.tsx",
+    "examples/query/react/optimistic-update/src/index.tsx",
+    "examples/query/react/optimistic-update/src/mocks/browser.ts",
+    "examples/query/react/optimistic-update/src/mocks/db.ts",
+    "examples/query/react/optimistic-update/src/react-app-env.d.ts"
+   ]
+  },
+  {
+   "id": "redux-toolkit/examples/query/react/prefetching/src",
+   "source": "redux-toolkit",
+   "root": "examples/query/react/prefetching/src",
+   "split": "dev",
+   "files": [
+    "examples/query/react/prefetching/src/App.tsx",
+    "examples/query/react/prefetching/src/app/services/posts.ts",
+    "examples/query/react/prefetching/src/features/posts/PostsManager.tsx",
+    "examples/query/react/prefetching/src/index.tsx",
+    "examples/query/react/prefetching/src/mocks/browser.ts",
+    "examples/query/react/prefetching/src/mocks/db.ts",
+    "examples/query/react/prefetching/src/react-app-env.d.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/auth-otp/src",
+   "source": "refine",
+   "root": "examples/auth-otp/src",
+   "split": "test",
+   "files": [
+    "examples/auth-otp/src/App.tsx",
+    "examples/auth-otp/src/index.tsx",
+    "examples/auth-otp/src/interfaces/index.d.ts",
+    "examples/auth-otp/src/pages/login/index.tsx",
+    "examples/auth-otp/src/pages/login/login.tsx",
+    "examples/auth-otp/src/pages/posts/create.tsx",
+    "examples/auth-otp/src/pages/posts/edit.tsx",
+    "examples/auth-otp/src/pages/posts/index.tsx",
+    "examples/auth-otp/src/pages/posts/list.tsx",
+    "examples/auth-otp/src/pages/posts/show.tsx",
+    "examples/auth-otp/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/blog-issue-tracker/src",
+   "source": "refine",
+   "root": "examples/blog-issue-tracker/src",
+   "split": "dev",
+   "files": [
+    "examples/blog-issue-tracker/src/App.tsx",
+    "examples/blog-issue-tracker/src/components/header/index.tsx",
+    "examples/blog-issue-tracker/src/components/index.ts",
+    "examples/blog-issue-tracker/src/components/task/pie.tsx",
+    "examples/blog-issue-tracker/src/contexts/color-mode/index.tsx",
+    "examples/blog-issue-tracker/src/helper/index.ts",
+    "examples/blog-issue-tracker/src/index.tsx",
+    "examples/blog-issue-tracker/src/pages/dashboard/index.tsx",
+    "examples/blog-issue-tracker/src/pages/login/index.tsx",
+    "examples/blog-issue-tracker/src/pages/register/index.tsx",
+    "examples/blog-issue-tracker/src/pages/task/create.tsx",
+    "examples/blog-issue-tracker/src/pages/task/edit.tsx",
+    "examples/blog-issue-tracker/src/pages/task/index.tsx",
+    "examples/blog-issue-tracker/src/pages/task/list.tsx",
+    "examples/blog-issue-tracker/src/pages/task/show.tsx",
+    "examples/blog-issue-tracker/src/pages/user/index.tsx",
+    "examples/blog-issue-tracker/src/pages/user/list.tsx",
+    "examples/blog-issue-tracker/src/providers/auth.ts",
+    "examples/blog-issue-tracker/src/providers/constants.ts",
+    "examples/blog-issue-tracker/src/providers/data.ts",
+    "examples/blog-issue-tracker/src/providers/supabase-client.ts",
+    "examples/blog-issue-tracker/src/types.ts",
+    "examples/blog-issue-tracker/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/blog-ra-chakra-tutorial/src",
+   "source": "refine",
+   "root": "examples/blog-ra-chakra-tutorial/src",
+   "split": "test",
+   "files": [
+    "examples/blog-ra-chakra-tutorial/src/App.tsx",
+    "examples/blog-ra-chakra-tutorial/src/authProvider.ts",
+    "examples/blog-ra-chakra-tutorial/src/components/column-filter/index.tsx",
+    "examples/blog-ra-chakra-tutorial/src/components/column-sorter/index.tsx",
+    "examples/blog-ra-chakra-tutorial/src/components/pagination/index.tsx",
+    "examples/blog-ra-chakra-tutorial/src/constants.ts",
+    "examples/blog-ra-chakra-tutorial/src/index.tsx",
+    "examples/blog-ra-chakra-tutorial/src/interfaces/index.d.ts",
+    "examples/blog-ra-chakra-tutorial/src/pages/posts/create.tsx",
+    "examples/blog-ra-chakra-tutorial/src/pages/posts/edit.tsx",
+    "examples/blog-ra-chakra-tutorial/src/pages/posts/index.ts",
+    "examples/blog-ra-chakra-tutorial/src/pages/posts/list.tsx",
+    "examples/blog-ra-chakra-tutorial/src/pages/posts/show.tsx",
+    "examples/blog-ra-chakra-tutorial/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/blog-react-aria/src",
+   "source": "refine",
+   "root": "examples/blog-react-aria/src",
+   "split": "test",
+   "files": [
+    "examples/blog-react-aria/src/App.tsx",
+    "examples/blog-react-aria/src/components/Button.tsx",
+    "examples/blog-react-aria/src/components/Header.tsx",
+    "examples/blog-react-aria/src/components/Input.tsx",
+    "examples/blog-react-aria/src/components/Layout.tsx",
+    "examples/blog-react-aria/src/components/Modal.tsx",
+    "examples/blog-react-aria/src/index.tsx",
+    "examples/blog-react-aria/src/meta.json",
+    "examples/blog-react-aria/src/pages/category/create.tsx",
+    "examples/blog-react-aria/src/pages/category/list.tsx",
+    "examples/blog-react-aria/src/react-app-env.d.ts",
+    "examples/blog-react-aria/src/reportWebVitals.ts",
+    "examples/blog-react-aria/src/setupTests.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/data-provider-graphql/src",
+   "source": "refine",
+   "root": "examples/data-provider-graphql/src",
+   "split": "dev",
+   "files": [
+    "examples/data-provider-graphql/src/App.tsx",
+    "examples/data-provider-graphql/src/graphql/schema.types.ts",
+    "examples/data-provider-graphql/src/graphql/types.ts",
+    "examples/data-provider-graphql/src/index.tsx",
+    "examples/data-provider-graphql/src/interfaces/index.d.ts",
+    "examples/data-provider-graphql/src/pages/categories/create.tsx",
+    "examples/data-provider-graphql/src/pages/categories/edit.tsx",
+    "examples/data-provider-graphql/src/pages/categories/index.ts",
+    "examples/data-provider-graphql/src/pages/categories/list.tsx",
+    "examples/data-provider-graphql/src/pages/categories/queries.ts",
+    "examples/data-provider-graphql/src/pages/posts/create.tsx",
+    "examples/data-provider-graphql/src/pages/posts/edit.tsx",
+    "examples/data-provider-graphql/src/pages/posts/index.tsx",
+    "examples/data-provider-graphql/src/pages/posts/list.tsx",
+    "examples/data-provider-graphql/src/pages/posts/queries.ts",
+    "examples/data-provider-graphql/src/pages/posts/show.tsx",
+    "examples/data-provider-graphql/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/form-antd-mutation-mode/src",
+   "source": "refine",
+   "root": "examples/form-antd-mutation-mode/src",
+   "split": "dev",
+   "files": [
+    "examples/form-antd-mutation-mode/src/App.tsx",
+    "examples/form-antd-mutation-mode/src/components/mutation-mode-picker/index.tsx",
+    "examples/form-antd-mutation-mode/src/index.tsx",
+    "examples/form-antd-mutation-mode/src/interfaces/index.d.ts",
+    "examples/form-antd-mutation-mode/src/pages/posts/create.tsx",
+    "examples/form-antd-mutation-mode/src/pages/posts/edit.tsx",
+    "examples/form-antd-mutation-mode/src/pages/posts/index.tsx",
+    "examples/form-antd-mutation-mode/src/pages/posts/list.tsx",
+    "examples/form-antd-mutation-mode/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/inferencer-material-ui/src",
+   "source": "refine",
+   "root": "examples/inferencer-material-ui/src",
+   "split": "test",
+   "files": [
+    "examples/inferencer-material-ui/src/App.tsx",
+    "examples/inferencer-material-ui/src/authProvider.ts",
+    "examples/inferencer-material-ui/src/components/header/index.tsx",
+    "examples/inferencer-material-ui/src/components/index.ts",
+    "examples/inferencer-material-ui/src/contexts/color-mode/index.tsx",
+    "examples/inferencer-material-ui/src/i18n.ts",
+    "examples/inferencer-material-ui/src/index.tsx",
+    "examples/inferencer-material-ui/src/pages/blog-posts/create.tsx",
+    "examples/inferencer-material-ui/src/pages/blog-posts/edit.tsx",
+    "examples/inferencer-material-ui/src/pages/blog-posts/index.ts",
+    "examples/inferencer-material-ui/src/pages/blog-posts/list.tsx",
+    "examples/inferencer-material-ui/src/pages/blog-posts/show.tsx",
+    "examples/inferencer-material-ui/src/pages/categories/create.tsx",
+    "examples/inferencer-material-ui/src/pages/categories/edit.tsx",
+    "examples/inferencer-material-ui/src/pages/categories/index.ts",
+    "examples/inferencer-material-ui/src/pages/categories/list.tsx",
+    "examples/inferencer-material-ui/src/pages/categories/show.tsx",
+    "examples/inferencer-material-ui/src/pages/forgotPassword/index.tsx",
+    "examples/inferencer-material-ui/src/pages/login/index.tsx",
+    "examples/inferencer-material-ui/src/pages/register/index.tsx",
+    "examples/inferencer-material-ui/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/table-antd-use-update-many/src",
+   "source": "refine",
+   "root": "examples/table-antd-use-update-many/src",
+   "split": "dev",
+   "files": [
+    "examples/table-antd-use-update-many/src/App.tsx",
+    "examples/table-antd-use-update-many/src/index.tsx",
+    "examples/table-antd-use-update-many/src/interfaces/index.d.ts",
+    "examples/table-antd-use-update-many/src/pages/posts/create.tsx",
+    "examples/table-antd-use-update-many/src/pages/posts/edit.tsx",
+    "examples/table-antd-use-update-many/src/pages/posts/index.tsx",
+    "examples/table-antd-use-update-many/src/pages/posts/list.tsx",
+    "examples/table-antd-use-update-many/src/pages/posts/show.tsx",
+    "examples/table-antd-use-update-many/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/table-react-table-basic/src",
+   "source": "refine",
+   "root": "examples/table-react-table-basic/src",
+   "split": "dev",
+   "files": [
+    "examples/table-react-table-basic/src/App.tsx",
+    "examples/table-react-table-basic/src/index.tsx",
+    "examples/table-react-table-basic/src/interfaces/index.d.ts",
+    "examples/table-react-table-basic/src/pages/posts/index.tsx",
+    "examples/table-react-table-basic/src/pages/posts/list.tsx",
+    "examples/table-react-table-basic/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/theme-material-ui-demo/src",
+   "source": "refine",
+   "root": "examples/theme-material-ui-demo/src",
+   "split": "dev",
+   "files": [
+    "examples/theme-material-ui-demo/src/App.tsx",
+    "examples/theme-material-ui-demo/src/authProvider.ts",
+    "examples/theme-material-ui-demo/src/components/index.ts",
+    "examples/theme-material-ui-demo/src/components/remember-me/index.tsx",
+    "examples/theme-material-ui-demo/src/components/theme-settings/index.tsx",
+    "examples/theme-material-ui-demo/src/index.tsx",
+    "examples/theme-material-ui-demo/src/interfaces/index.d.ts",
+    "examples/theme-material-ui-demo/src/pages/posts/create.tsx",
+    "examples/theme-material-ui-demo/src/pages/posts/edit.tsx",
+    "examples/theme-material-ui-demo/src/pages/posts/index.tsx",
+    "examples/theme-material-ui-demo/src/pages/posts/list.tsx",
+    "examples/theme-material-ui-demo/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/upload-material-ui-base64/src",
+   "source": "refine",
+   "root": "examples/upload-material-ui-base64/src",
+   "split": "test",
+   "files": [
+    "examples/upload-material-ui-base64/src/App.tsx",
+    "examples/upload-material-ui-base64/src/index.tsx",
+    "examples/upload-material-ui-base64/src/interfaces/index.d.ts",
+    "examples/upload-material-ui-base64/src/pages/posts/create.tsx",
+    "examples/upload-material-ui-base64/src/pages/posts/edit.tsx",
+    "examples/upload-material-ui-base64/src/pages/posts/index.tsx",
+    "examples/upload-material-ui-base64/src/pages/posts/list.tsx",
+    "examples/upload-material-ui-base64/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "refine/examples/with-nextjs-headless/src",
+   "source": "refine",
+   "root": "examples/with-nextjs-headless/src",
+   "split": "test",
+   "files": [
+    "examples/with-nextjs-headless/src/app/_refine_context.tsx",
+    "examples/with-nextjs-headless/src/app/blog-posts/create/page.tsx",
+    "examples/with-nextjs-headless/src/app/blog-posts/edit/[id]/page.tsx",
+    "examples/with-nextjs-headless/src/app/blog-posts/layout.tsx",
+    "examples/with-nextjs-headless/src/app/blog-posts/page.tsx",
+    "examples/with-nextjs-headless/src/app/blog-posts/show/[id]/page.tsx",
+    "examples/with-nextjs-headless/src/app/forgot-password/page.tsx",
+    "examples/with-nextjs-headless/src/app/layout.tsx",
+    "examples/with-nextjs-headless/src/app/login/page.tsx",
+    "examples/with-nextjs-headless/src/app/not-found.tsx",
+    "examples/with-nextjs-headless/src/app/page.tsx",
+    "examples/with-nextjs-headless/src/app/register/page.tsx",
+    "examples/with-nextjs-headless/src/app/update-password/page.tsx",
+    "examples/with-nextjs-headless/src/components/layout/header.tsx",
+    "examples/with-nextjs-headless/src/components/select-language/index.tsx",
+    "examples/with-nextjs-headless/src/i18n/config.ts",
+    "examples/with-nextjs-headless/src/i18n/index.ts",
+    "examples/with-nextjs-headless/src/i18n/request.ts",
+    "examples/with-nextjs-headless/src/providers/auth-provider/auth-provider.client.ts",
+    "examples/with-nextjs-headless/src/providers/auth-provider/auth-provider.server.ts",
+    "examples/with-nextjs-headless/src/providers/data-provider/index.ts",
+    "examples/with-nextjs-headless/src/providers/devtools/index.tsx",
+    "examples/with-nextjs-headless/src/types/index.tsx"
+   ]
+  },
+  {
+   "id": "react-admin/examples/demo/src",
+   "source": "react-admin",
+   "root": "examples/demo/src",
+   "split": "test",
+   "files": [
+    "examples/demo/src/App.tsx",
+    "examples/demo/src/authProvider.ts",
+    "examples/demo/src/categories/CategoryEdit.tsx",
+    "examples/demo/src/categories/CategoryList.tsx",
+    "examples/demo/src/categories/LinkToRelatedProducts.tsx",
+    "examples/demo/src/categories/index.ts",
+    "examples/demo/src/dashboard/CardWithIcon.tsx",
+    "examples/demo/src/dashboard/Dashboard.tsx",
+    "examples/demo/src/dashboard/MonthlyRevenue.tsx",
+    "examples/demo/src/dashboard/NbNewOrders.tsx",
+    "examples/demo/src/dashboard/NewCustomers.tsx",
+    "examples/demo/src/dashboard/OrderChart.tsx",
+    "examples/demo/src/dashboard/PendingOrder.tsx",
+    "examples/demo/src/dashboard/PendingOrders.tsx",
+    "examples/demo/src/dashboard/PendingReviews.tsx",
+    "examples/demo/src/dashboard/Welcome.tsx",
+    "examples/demo/src/dashboard/index.ts",
+    "examples/demo/src/dataProvider/graphql.ts",
+    "examples/demo/src/dataProvider/index.ts",
+    "examples/demo/src/dataProvider/rest.ts",
+    "examples/demo/src/fakeServer/graphql.ts",
+    "examples/demo/src/fakeServer/index.ts",
+    "examples/demo/src/fakeServer/rest.ts",
+    "examples/demo/src/i18n/en.ts",
+    "examples/demo/src/i18n/fr.ts",
+    "examples/demo/src/index.tsx",
+    "examples/demo/src/invoices/InvoiceList.tsx",
+    "examples/demo/src/invoices/InvoiceShow.tsx",
+    "examples/demo/src/invoices/index.ts",
+    "examples/demo/src/json-graphql-server.d.ts",
+    "examples/demo/src/layout/AppBar.tsx",
+    "examples/demo/src/layout/AppBarToolbar.tsx",
+    "examples/demo/src/layout/Layout.tsx",
+    "examples/demo/src/layout/Login.tsx",
+    "examples/demo/src/layout/Logo.tsx",
+    "examples/demo/src/layout/Menu.tsx",
+    "examples/demo/src/layout/SubMenu.tsx",
+    "examples/demo/src/layout/index.ts",
+    "examples/demo/src/mui.d.ts",
+    "examples/demo/src/orders/Basket.tsx",
+    "examples/demo/src/orders/MobileGrid.tsx",
+    "examples/demo/src/orders/OrderEdit.tsx",
+    "examples/demo/src/orders/OrderList.tsx",
+    "examples/demo/src/orders/TableCellRight.tsx",
+    "examples/demo/src/orders/Totals.tsx",
+    "examples/demo/src/orders/index.ts",
+    "examples/demo/src/products/Aside.tsx",
+    "examples/demo/src/products/CreateRelatedReviewButton.tsx",
+    "examples/demo/src/products/GridList.tsx",
+    "examples/demo/src/products/Poster.tsx",
+    "examples/demo/src/products/ProductCreate.tsx",
+    "examples/demo/src/products/ProductEdit.tsx",
+    "examples/demo/src/products/ProductEditDetails.tsx",
+    "examples/demo/src/products/ProductList.tsx",
+    "examples/demo/src/products/ProductRefField.tsx",
+    "examples/demo/src/products/ProductReferenceField.tsx",
+    "examples/demo/src/products/ThumbnailField.tsx",
+    "examples/demo/src/products/index.tsx",
+    "examples/demo/src/reviews/AcceptButton.tsx",
+    "examples/demo/src/reviews/BulkAcceptButton.tsx",
+    "examples/demo/src/reviews/BulkRejectButton.tsx",
+    "examples/demo/src/reviews/RejectButton.tsx",
+    "examples/demo/src/reviews/ReviewCreate.tsx",
+    "examples/demo/src/reviews/ReviewEdit.tsx",
+    "examples/demo/src/reviews/ReviewEditToolbar.tsx",
+    "examples/demo/src/reviews/ReviewItem.tsx",
+    "examples/demo/src/reviews/ReviewList.tsx",
+    "examples/demo/src/reviews/ReviewListDesktop.tsx",
+    "examples/demo/src/reviews/ReviewListMobile.tsx",
+    "examples/demo/src/reviews/StarRatingField.tsx",
+    "examples/demo/src/reviews/StarRatingInput.tsx",
+    "examples/demo/src/reviews/index.ts",
+    "examples/demo/src/reviews/reviewFilters.tsx",
+    "examples/demo/src/reviews/rowSx.tsx",
+    "examples/demo/src/segments/LinkToRelatedCustomers.tsx",
+    "examples/demo/src/segments/Segments.tsx",
+    "examples/demo/src/segments/data.ts",
+    "examples/demo/src/themes/ThemeSwapper.tsx",
+    "examples/demo/src/themes/chiptuneTheme.ts",
+    "examples/demo/src/themes/cssVariablesTheme.ts",
+    "examples/demo/src/themes/softTheme.ts",
+    "examples/demo/src/themes/themes.tsx",
+    "examples/demo/src/types.ts",
+    "examples/demo/src/visitors/AddressField.tsx",
+    "examples/demo/src/visitors/Aside.tsx",
+    "examples/demo/src/visitors/AvatarField.tsx",
+    "examples/demo/src/visitors/ColoredNumberField.tsx",
+    "examples/demo/src/visitors/CustomerLinkField.tsx",
+    "examples/demo/src/visitors/CustomerReferenceField.tsx",
+    "examples/demo/src/visitors/FullNameField.tsx",
+    "examples/demo/src/visitors/MobileGrid.tsx",
+    "examples/demo/src/visitors/SegmentInput.tsx",
+    "examples/demo/src/visitors/SegmentsField.tsx",
+    "examples/demo/src/visitors/SegmentsInput.tsx",
+    "examples/demo/src/visitors/VisitorCreate.tsx",
+    "examples/demo/src/visitors/VisitorEdit.tsx",
+    "examples/demo/src/visitors/VisitorList.tsx",
+    "examples/demo/src/visitors/VisitorListAside.tsx",
+    "examples/demo/src/visitors/index.ts",
+    "examples/demo/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "react-admin/examples/crm/src",
+   "source": "react-admin",
+   "root": "examples/crm/src",
+   "split": "dev",
+   "files": [
+    "examples/crm/src/App.tsx",
+    "examples/crm/src/activity/ActivityLog.tsx",
+    "examples/crm/src/activity/ActivityLogCompanyCreated.tsx",
+    "examples/crm/src/activity/ActivityLogContactCreated.tsx",
+    "examples/crm/src/activity/ActivityLogContactNoteCreated.tsx",
+    "examples/crm/src/activity/ActivityLogContext.tsx",
+    "examples/crm/src/activity/ActivityLogDealCreated.tsx",
+    "examples/crm/src/activity/ActivityLogDealNoteCreated.tsx",
+    "examples/crm/src/activity/ActivityLogIterator.tsx",
+    "examples/crm/src/activity/ActivityLogNote.tsx",
+    "examples/crm/src/companies/CompanyAside.tsx",
+    "examples/crm/src/companies/CompanyAvatar.tsx",
+    "examples/crm/src/companies/CompanyCard.tsx",
+    "examples/crm/src/companies/CompanyCreate.tsx",
+    "examples/crm/src/companies/CompanyEdit.tsx",
+    "examples/crm/src/companies/CompanyEmpty.tsx",
+    "examples/crm/src/companies/CompanyInputs.tsx",
+    "examples/crm/src/companies/CompanyList.tsx",
+    "examples/crm/src/companies/CompanyListFilter.tsx",
+    "examples/crm/src/companies/CompanyShow.tsx",
+    "examples/crm/src/companies/GridList.tsx",
+    "examples/crm/src/companies/index.ts",
+    "examples/crm/src/companies/sizes.ts",
+    "examples/crm/src/consts.ts",
+    "examples/crm/src/contacts/Avatar.tsx",
+    "examples/crm/src/contacts/ContactAside.tsx",
+    "examples/crm/src/contacts/ContactCreate.tsx",
+    "examples/crm/src/contacts/ContactEdit.tsx",
+    "examples/crm/src/contacts/ContactEmpty.tsx",
+    "examples/crm/src/contacts/ContactImportButton.tsx",
+    "examples/crm/src/contacts/ContactImportDialog.tsx",
+    "examples/crm/src/contacts/ContactInputs.tsx",
+    "examples/crm/src/contacts/ContactList.tsx",
+    "examples/crm/src/contacts/ContactListContent.tsx",
+    "examples/crm/src/contacts/ContactListFilter.tsx",
+    "examples/crm/src/contacts/ContactShow.tsx",
+    "examples/crm/src/contacts/TagsList.tsx",
+    "examples/crm/src/contacts/TagsListEdit.tsx",
+    "examples/crm/src/contacts/index.tsx",
+    "examples/crm/src/contacts/useContactImport.tsx",
+    "examples/crm/src/dashboard/Dashboard.tsx",
+    "examples/crm/src/dashboard/DashboardActivityLog.tsx",
+    "examples/crm/src/dashboard/DashboardStepper.tsx",
+    "examples/crm/src/dashboard/DealsChart.tsx",
+    "examples/crm/src/dashboard/DealsPipeline.tsx",
+    "examples/crm/src/dashboard/HotContacts.tsx",
+    "examples/crm/src/dashboard/LatestNotes.tsx",
+    "examples/crm/src/dashboard/TasksList.tsx",
+    "examples/crm/src/dashboard/TasksListEmpty.tsx",
+    "examples/crm/src/dashboard/TasksListFilter.tsx",
+    "examples/crm/src/dashboard/Welcome.tsx",
+    "examples/crm/src/deals/ContactList.tsx",
+    "examples/crm/src/deals/DealArchivedList.tsx",
+    "examples/crm/src/deals/DealCard.tsx",
+    "examples/crm/src/deals/DealColumn.tsx",
+    "examples/crm/src/deals/DealCreate.tsx",
+    "examples/crm/src/deals/DealEdit.tsx",
+    "examples/crm/src/deals/DealEmpty.tsx",
+    "examples/crm/src/deals/DealInputs.tsx",
+    "examples/crm/src/deals/DealList.tsx",
+    "examples/crm/src/deals/DealListContent.tsx",
+    "examples/crm/src/deals/DealShow.tsx",
+    "examples/crm/src/deals/OnlyMineInput.tsx",
+    "examples/crm/src/deals/deal.ts",
+    "examples/crm/src/deals/index.ts",
+    "examples/crm/src/deals/stages.ts",
+    "examples/crm/src/index.tsx",
+    "examples/crm/src/layout/Header.tsx",
+    "examples/crm/src/layout/Layout.tsx",
+    "examples/crm/src/login/LoginForm.tsx",
+    "examples/crm/src/login/LoginPage.tsx",
+    "examples/crm/src/login/LoginSkeleton.tsx",
+    "examples/crm/src/login/SignupPage.tsx",
+    "examples/crm/src/misc/ContactOption.tsx",
+    "examples/crm/src/misc/DialogCloseButton.tsx",
+    "examples/crm/src/misc/ImageEditorField.tsx",
+    "examples/crm/src/misc/RelativeDate.tsx",
+    "examples/crm/src/misc/Status.tsx",
+    "examples/crm/src/misc/fetchWithTimeout.ts",
+    "examples/crm/src/misc/isLinkedInUrl.ts",
+    "examples/crm/src/misc/unsupportedDomains.const.ts",
+    "examples/crm/src/misc/useAppBarHeight.ts",
+    "examples/crm/src/misc/usePapaParse.tsx",
+    "examples/crm/src/notes/Note.tsx",
+    "examples/crm/src/notes/NoteAttachments.tsx",
+    "examples/crm/src/notes/NoteCreate.tsx",
+    "examples/crm/src/notes/NoteInputs.tsx",
+    "examples/crm/src/notes/NotesIterator.tsx",
+    "examples/crm/src/notes/StatusSelector.tsx",
+    "examples/crm/src/notes/index.ts",
+    "examples/crm/src/notes/utils.ts",
+    "examples/crm/src/providers/commons/activity.ts",
+    "examples/crm/src/providers/commons/canAccess.ts",
+    "examples/crm/src/providers/commons/getCompanyAvatar.ts",
+    "examples/crm/src/providers/commons/getContactAvatar.ts",
+    "examples/crm/src/providers/fakerest/authProvider.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/companies.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/contactNotes.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/contacts.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/dealNotes.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/deals.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/finalize.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/index.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/sales.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/tags.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/tasks.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/types.ts",
+    "examples/crm/src/providers/fakerest/dataGenerator/utils.ts",
+    "examples/crm/src/providers/fakerest/dataProvider.ts",
+    "examples/crm/src/providers/fakerest/fakeServer.ts",
+    "examples/crm/src/providers/fakerest/index.ts",
+    "examples/crm/src/providers/fakerest/internal/listParser.ts",
+    "examples/crm/src/providers/fakerest/internal/supabaseAdapter.ts",
+    "examples/crm/src/providers/fakerest/internal/transformContainsFilter.ts",
+    "examples/crm/src/providers/fakerest/internal/transformFilter.ts",
+    "examples/crm/src/providers/fakerest/internal/transformInFilter.ts",
+    "examples/crm/src/providers/fakerest/internal/transformOrFilter.ts",
+    "examples/crm/src/providers/types.ts",
+    "examples/crm/src/root/CRM.tsx",
+    "examples/crm/src/root/ConfigurationContext.tsx",
+    "examples/crm/src/root/defaultConfiguration.ts",
+    "examples/crm/src/sales/SaleName.tsx",
+    "examples/crm/src/sales/SalesCreate.tsx",
+    "examples/crm/src/sales/SalesEdit.tsx",
+    "examples/crm/src/sales/SalesInputs.tsx",
+    "examples/crm/src/sales/SalesList.tsx",
+    "examples/crm/src/sales/index.ts",
+    "examples/crm/src/settings/SettingsPage.tsx",
+    "examples/crm/src/tags/RoundButton.tsx",
+    "examples/crm/src/tags/TagChip.tsx",
+    "examples/crm/src/tags/TagCreateModal.tsx",
+    "examples/crm/src/tags/TagDialog.tsx",
+    "examples/crm/src/tags/TagEditModal.tsx",
+    "examples/crm/src/tags/colors.ts",
+    "examples/crm/src/tasks/AddTask.tsx",
+    "examples/crm/src/tasks/Task.tsx",
+    "examples/crm/src/tasks/TaskEdit.tsx",
+    "examples/crm/src/tasks/TasksIterator.tsx",
+    "examples/crm/src/types.ts",
+    "examples/crm/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "react-admin/examples/simple/src",
+   "source": "react-admin",
+   "root": "examples/simple/src",
+   "split": "test",
+   "files": [
+    "examples/simple/src/Layout.tsx",
+    "examples/simple/src/addUploadFeature.tsx",
+    "examples/simple/src/authProvider.tsx",
+    "examples/simple/src/comments/CommentCreate.tsx",
+    "examples/simple/src/comments/CommentEdit.tsx",
+    "examples/simple/src/comments/CommentList.tsx",
+    "examples/simple/src/comments/CommentShow.tsx",
+    "examples/simple/src/comments/PostPreview.tsx",
+    "examples/simple/src/comments/PostQuickCreate.tsx",
+    "examples/simple/src/comments/PostQuickCreateCancelButton.tsx",
+    "examples/simple/src/comments/PostReferenceInput.tsx",
+    "examples/simple/src/comments/index.tsx",
+    "examples/simple/src/customRouteLayout.tsx",
+    "examples/simple/src/customRouteNoLayout.tsx",
+    "examples/simple/src/data.tsx",
+    "examples/simple/src/dataProvider.tsx",
+    "examples/simple/src/i18n/en.ts",
+    "examples/simple/src/i18n/fr.ts",
+    "examples/simple/src/i18n/index.ts",
+    "examples/simple/src/i18nProvider.tsx",
+    "examples/simple/src/index.tsx",
+    "examples/simple/src/posts/PostCreate.tsx",
+    "examples/simple/src/posts/PostEdit.tsx",
+    "examples/simple/src/posts/PostList.tsx",
+    "examples/simple/src/posts/PostShow.tsx",
+    "examples/simple/src/posts/PostTitle.tsx",
+    "examples/simple/src/posts/ResetViewsButton.tsx",
+    "examples/simple/src/posts/TagReferenceInput.tsx",
+    "examples/simple/src/posts/index.tsx",
+    "examples/simple/src/queryClient.ts",
+    "examples/simple/src/tags/TagCreate.tsx",
+    "examples/simple/src/tags/TagEdit.tsx",
+    "examples/simple/src/tags/TagList.tsx",
+    "examples/simple/src/tags/TagShow.tsx",
+    "examples/simple/src/tags/index.tsx",
+    "examples/simple/src/users/Aside.tsx",
+    "examples/simple/src/users/UserCreate.tsx",
+    "examples/simple/src/users/UserEdit.tsx",
+    "examples/simple/src/users/UserEditEmbedded.tsx",
+    "examples/simple/src/users/UserList.tsx",
+    "examples/simple/src/users/UserShow.tsx",
+    "examples/simple/src/users/index.tsx",
+    "examples/simple/src/validators.tsx",
+    "examples/simple/src/vite-env.d.ts"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/accordion-demo.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/accordion-demo.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/accordion-demo.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/breadcrumb-ellipsis.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/breadcrumb-ellipsis.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/breadcrumb-ellipsis.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/breadcrumb-separator.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/breadcrumb-separator.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/breadcrumb-separator.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-group-demo.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/button-group-demo.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/button-group-demo.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-group-popover.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/button-group-popover.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/button-group-popover.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-group-select.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/button-group-select.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/button-group-select.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-group-size.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/button-group-size.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/button-group-size.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-link.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/button-link.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/button-link.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-loading.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/button-loading.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/button-loading.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-outline.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/button-outline.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/button-outline.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/button-size.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/button-size.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/button-size.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/card-with-form.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/card-with-form.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/card-with-form.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/carousel-api.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/carousel-api.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/carousel-api.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/carousel-orientation.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/carousel-orientation.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/carousel-orientation.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/carousel-plugin.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/carousel-plugin.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/carousel-plugin.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/date-picker-demo.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/date-picker-demo.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/date-picker-demo.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/dropdown-menu-checkboxes.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/dropdown-menu-checkboxes.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/dropdown-menu-checkboxes.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/empty-input-group.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/empty-input-group.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/empty-input-group.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/field-demo.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/field-demo.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/field-demo.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/field-fieldset.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/field-fieldset.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/field-fieldset.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/form-rhf-switch.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/form-rhf-switch.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/form-rhf-switch.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/form-tanstack-radiogroup.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/form-tanstack-radiogroup.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/form-tanstack-radiogroup.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/input-group-dropdown.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/input-group-dropdown.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/input-group-dropdown.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/input-group-spinner.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/input-group-spinner.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/input-group-spinner.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/item-group.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/item-group.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/item-group.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/kbd-input-group.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/kbd-input-group.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/kbd-input-group.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/native-select-demo.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/native-select-demo.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/native-select-demo.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/native-select-groups.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/native-select-groups.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/native-select-groups.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/resizable-demo-with-handle.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/resizable-demo-with-handle.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/resizable-demo-with-handle.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/scroll-area-horizontal-demo.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/scroll-area-horizontal-demo.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/scroll-area-horizontal-demo.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/sonner-demo.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/sonner-demo.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/sonner-demo.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/spinner-badge.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/spinner-badge.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/spinner-badge.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/spinner-basic.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/spinner-basic.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/spinner-basic.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/spinner-item.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/spinner-item.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/spinner-item.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/switch-demo.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/switch-demo.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/switch-demo.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/toggle-group-demo.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/toggle-group-demo.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/toggle-group-demo.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/toggle-group-single.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/toggle-group-single.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/toggle-group-single.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/toggle-lg.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/toggle-lg.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/toggle-lg.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/toggle-sm.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/toggle-sm.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/toggle-sm.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/examples/tooltip-demo.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/examples/tooltip-demo.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/examples/tooltip-demo.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/login-02",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/login-02",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/login-02/components/login-form.tsx",
+    "apps/v4/registry/new-york-v4/blocks/login-02/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/login-03",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/login-03",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/login-03/components/login-form.tsx",
+    "apps/v4/registry/new-york-v4/blocks/login-03/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/login-05",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/login-05",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/login-05/components/login-form.tsx",
+    "apps/v4/registry/new-york-v4/blocks/login-05/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/sidebar-01",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/sidebar-01",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/sidebar-01/components/app-sidebar.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-01/components/search-form.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-01/components/version-switcher.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-01/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/sidebar-02",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/sidebar-02",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/sidebar-02/components/app-sidebar.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-02/components/search-form.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-02/components/version-switcher.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-02/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/sidebar-04",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/sidebar-04",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/sidebar-04/components/app-sidebar.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-04/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/sidebar-05",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/sidebar-05",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/sidebar-05/components/app-sidebar.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-05/components/search-form.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-05/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/sidebar-07",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/sidebar-07",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/sidebar-07/components/app-sidebar.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-07/components/nav-main.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-07/components/nav-projects.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-07/components/nav-user.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-07/components/team-switcher.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-07/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/sidebar-10",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/sidebar-10",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/sidebar-10/components/app-sidebar.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-10/components/nav-actions.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-10/components/nav-favorites.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-10/components/nav-main.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-10/components/nav-secondary.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-10/components/nav-workspaces.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-10/components/team-switcher.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-10/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/sidebar-11",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/sidebar-11",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/sidebar-11/components/app-sidebar.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-11/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/sidebar-16",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/sidebar-16",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/sidebar-16/components/app-sidebar.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-16/components/nav-main.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-16/components/nav-projects.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-16/components/nav-secondary.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-16/components/nav-user.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-16/components/search-form.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-16/components/site-header.tsx",
+    "apps/v4/registry/new-york-v4/blocks/sidebar-16/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/signup-01",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/signup-01",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/signup-01/components/signup-form.tsx",
+    "apps/v4/registry/new-york-v4/blocks/signup-01/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/signup-02",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/signup-02",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/signup-02/components/signup-form.tsx",
+    "apps/v4/registry/new-york-v4/blocks/signup-02/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/signup-03",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/signup-03",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/signup-03/components/signup-form.tsx",
+    "apps/v4/registry/new-york-v4/blocks/signup-03/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/blocks/signup-04",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/blocks/signup-04",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/blocks/signup-04/components/signup-form.tsx",
+    "apps/v4/registry/new-york-v4/blocks/signup-04/page.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-area-default.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-area-default.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-area-default.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-bar-label.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-bar-label.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-bar-label.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-bar-stacked.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-bar-stacked.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-bar-stacked.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-line-label.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-line-label.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-line-label.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-pie-donut.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-pie-donut.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-pie-donut.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-pie-label.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-pie-label.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-pie-label.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-pie-simple.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-pie-simple.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-pie-simple.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle-fill.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle-fill.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle-fill.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-radar-grid-circle.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-radar-grid-custom.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-radar-grid-custom.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-radar-grid-custom.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-radar-icons.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-radar-icons.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-radar-icons.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-radar-label-custom.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-radar-label-custom.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-radar-label-custom.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-radar-legend.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-radar-legend.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-radar-legend.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-tooltip-default.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-tooltip-default.tsx",
+   "split": "test",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-tooltip-default.tsx"
+   ]
+  },
+  {
+   "id": "shadcn/apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx",
+   "source": "shadcn",
+   "root": "apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx",
+   "split": "dev",
+   "files": [
+    "apps/v4/registry/new-york-v4/charts/chart-tooltip-label-none.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/accordion-controlled.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/accordion-controlled.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/accordion-controlled.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/accordion-with-icon.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/accordion-with-icon.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/accordion-with-icon.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/action-bar-with-dialog.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/action-bar-with-dialog.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/action-bar-with-dialog.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/avatar-closed-component.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/avatar-closed-component.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/avatar-closed-component.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/avatar-with-random-color.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/avatar-with-random-color.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/avatar-with-random-color.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/blockquote-with-variants.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/blockquote-with-variants.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/blockquote-with-variants.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/breadcrumb-with-ellipsis.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/breadcrumb-with-ellipsis.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/breadcrumb-with-ellipsis.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/checkbox-card-explorer-demo.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/checkbox-card-explorer-demo.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/checkbox-card-explorer-demo.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/checkbox-with-hook-form.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/checkbox-with-hook-form.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/checkbox-with-hook-form.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/checkbox-with-sizes.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/checkbox-with-sizes.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/checkbox-with-sizes.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/code-with-colors.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/code-with-colors.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/code-with-colors.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/color-swatch-with-badge.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/color-swatch-with-badge.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/color-swatch-with-badge.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/combobox-autohighlight.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/combobox-autohighlight.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/combobox-autohighlight.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/combobox-explorer-demo.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/combobox-explorer-demo.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/combobox-explorer-demo.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/combobox-with-selection-behavior.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/combobox-with-selection-behavior.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/combobox-with-selection-behavior.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/data-list-closed-component.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/data-list-closed-component.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/data-list-closed-component.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/data-list-with-variants.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/data-list-with-variants.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/data-list-with-variants.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/dialog-with-placement.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/dialog-with-placement.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/dialog-with-placement.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/flex-with-order.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/flex-with-order.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/flex-with-order.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/group-with-attached.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/group-with-attached.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/group-with-attached.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/input-with-error-text.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/input-with-error-text.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/input-with-error-text.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/listbox-with-description.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/listbox-with-description.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/listbox-with-description.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/listbox-with-icon.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/listbox-with-icon.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/listbox-with-icon.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/mark-basic.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/mark-basic.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/mark-basic.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/qr-code-explorer-demo.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/qr-code-explorer-demo.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/qr-code-explorer-demo.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/radio-variant-table.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/radio-variant-table.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/radio-variant-table.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/radio-with-sizes.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/radio-with-sizes.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/radio-with-sizes.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/segmented-control-with-icon.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/segmented-control-with-icon.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/segmented-control-with-icon.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/select-with-avatar.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/select-with-avatar.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/select-with-avatar.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/select-with-positioning.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/select-with-positioning.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/select-with-positioning.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/slider-with-thumb-alignment.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/slider-with-thumb-alignment.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/slider-with-thumb-alignment.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/spinner-with-label.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/spinner-with-label.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/spinner-with-label.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/splitter-ide-layout.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/splitter-ide-layout.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/splitter-ide-layout.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/splitter-responsive-orientation.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/splitter-responsive-orientation.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/splitter-responsive-orientation.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/status-with-label.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/status-with-label.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/status-with-label.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/steps-vertical.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/steps-vertical.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/steps-vertical.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/table-with-caption-top.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/table-with-caption-top.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/table-with-caption-top.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/tags-input-explorer-demo.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/tags-input-explorer-demo.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/tags-input-explorer-demo.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/theme-nested.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/theme-nested.tsx",
+   "split": "test",
+   "files": [
+    "apps/compositions/src/examples/theme-nested.tsx"
+   ]
+  },
+  {
+   "id": "chakra/apps/compositions/src/examples/tree-view-with-links.tsx",
+   "source": "chakra",
+   "root": "apps/compositions/src/examples/tree-view-with-links.tsx",
+   "split": "dev",
+   "files": [
+    "apps/compositions/src/examples/tree-view-with-links.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/alert/BasicAlerts.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/alert/BasicAlerts.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/alert/BasicAlerts.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/autocomplete/Virtualize.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/autocomplete/Virtualize.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/autocomplete/Virtualize.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/badges/BadgeListItem.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/badges/BadgeListItem.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/badges/BadgeListItem.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/buttons/IconLabelButtons.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/buttons/IconLabelButtons.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/buttons/IconLabelButtons.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/cards/MediaControlCard.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/cards/MediaControlCard.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/cards/MediaControlCard.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/chips/ColorChips.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/chips/ColorChips.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/chips/ColorChips.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/container/FixedContainer.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/container/FixedContainer.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/container/FixedContainer.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/dialogs/CookiesBanner.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/dialogs/CookiesBanner.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/dialogs/CookiesBanner.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/grid/BasicGrid.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/grid/BasicGrid.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/grid/BasicGrid.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/grid/ColumnsGrid.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/grid/ColumnsGrid.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/grid/ColumnsGrid.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/image-list/MasonryImageList.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/image-list/MasonryImageList.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/image-list/MasonryImageList.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/lists/InsetList.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/lists/InsetList.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/lists/InsetList.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/lists/SwitchListSecondary.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/lists/SwitchListSecondary.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/lists/SwitchListSecondary.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/menubar/CheckboxItemsMenubar.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/menubar/CheckboxItemsMenubar.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/menubar/CheckboxItemsMenubar.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/modal/SpringModal.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/modal/SpringModal.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/modal/SpringModal.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/pagination/BasicPagination.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/pagination/BasicPagination.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/pagination/BasicPagination.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/paper/SquareCorners.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/paper/SquareCorners.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/paper/SquareCorners.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/popover/PopoverPopupState.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/popover/PopoverPopupState.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/popover/PopoverPopupState.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/slider/DiscreteSlider.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/slider/DiscreteSlider.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/slider/DiscreteSlider.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/table/SpanningTable.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/table/SpanningTable.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/table/SpanningTable.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/tabs/AccessibleTabs2.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/tabs/AccessibleTabs2.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/tabs/AccessibleTabs2.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/text-fields/CustomizedInputsStyled.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/text-fields/CustomizedInputsStyled.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/components/text-fields/CustomizedInputsStyled.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/text-fields/FormattedInputs.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/text-fields/FormattedInputs.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/text-fields/FormattedInputs.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/timeline/AlternateReverseTimeline.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/timeline/AlternateReverseTimeline.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/timeline/AlternateReverseTimeline.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/toggle-button/StandaloneToggleButton.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/toggle-button/StandaloneToggleButton.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/toggle-button/StandaloneToggleButton.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/components/tooltips/CustomizedTooltips.tsx",
+   "source": "mui",
+   "root": "docs/data/material/components/tooltips/CustomizedTooltips.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/components/tooltips/CustomizedTooltips.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/customization/css-layers/CssLayersCaveat.tsx",
+   "source": "mui",
+   "root": "docs/data/material/customization/css-layers/CssLayersCaveat.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/customization/css-layers/CssLayersCaveat.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/customization/focus-visible/FocusVisibleCustomIcons.tsx",
+   "source": "mui",
+   "root": "docs/data/material/customization/focus-visible/FocusVisibleCustomIcons.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/customization/focus-visible/FocusVisibleCustomIcons.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/customization/palette/AddingColorTokens.tsx",
+   "source": "mui",
+   "root": "docs/data/material/customization/palette/AddingColorTokens.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/customization/palette/AddingColorTokens.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/customization/palette/UsingStylesUtils.tsx",
+   "source": "mui",
+   "root": "docs/data/material/customization/palette/UsingStylesUtils.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/customization/palette/UsingStylesUtils.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/customization/transitions/TransitionHover.tsx",
+   "source": "mui",
+   "root": "docs/data/material/customization/transitions/TransitionHover.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/customization/transitions/TransitionHover.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/getting-started/templates/checkout/Checkout.tsx",
+   "source": "mui",
+   "root": "docs/data/material/getting-started/templates/checkout/Checkout.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/getting-started/templates/checkout/Checkout.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/getting-started/templates/checkout/components/SitemarkIcon.tsx",
+   "source": "mui",
+   "root": "docs/data/material/getting-started/templates/checkout/components/SitemarkIcon.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/getting-started/templates/checkout/components/SitemarkIcon.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx",
+   "source": "mui",
+   "root": "docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/getting-started/templates/crud-dashboard/CrudDashboard.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/getting-started/templates/crud-dashboard/components/DashboardSidebarDividerItem.tsx",
+   "source": "mui",
+   "root": "docs/data/material/getting-started/templates/crud-dashboard/components/DashboardSidebarDividerItem.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/getting-started/templates/crud-dashboard/components/DashboardSidebarDividerItem.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx",
+   "source": "mui",
+   "root": "docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/getting-started/templates/dashboard/components/SideMenu.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx",
+   "source": "mui",
+   "root": "docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/getting-started/templates/marketing-page/components/Footer.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/getting-started/templates/marketing-page/components/Highlights.tsx",
+   "source": "mui",
+   "root": "docs/data/material/getting-started/templates/marketing-page/components/Highlights.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/getting-started/templates/marketing-page/components/Highlights.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/getting-started/templates/sign-in/components/ForgotPassword.tsx",
+   "source": "mui",
+   "root": "docs/data/material/getting-started/templates/sign-in/components/ForgotPassword.tsx",
+   "split": "dev",
+   "files": [
+    "docs/data/material/getting-started/templates/sign-in/components/ForgotPassword.tsx"
+   ]
+  },
+  {
+   "id": "mui/docs/data/material/integrations/routing/LinkRouter.tsx",
+   "source": "mui",
+   "root": "docs/data/material/integrations/routing/LinkRouter.tsx",
+   "split": "test",
+   "files": [
+    "docs/data/material/integrations/routing/LinkRouter.tsx"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/AuthenticationTitle",
+   "source": "mantine-ui",
+   "root": "lib/AuthenticationTitle",
+   "split": "dev",
+   "files": [
+    "lib/AuthenticationTitle/AuthenticationTitle.tsx",
+    "lib/AuthenticationTitle/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/ButtonCopy",
+   "source": "mantine-ui",
+   "root": "lib/ButtonCopy",
+   "split": "test",
+   "files": [
+    "lib/ButtonCopy/ButtonCopy.tsx",
+    "lib/ButtonCopy/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/CheckboxCard",
+   "source": "mantine-ui",
+   "root": "lib/CheckboxCard",
+   "split": "test",
+   "files": [
+    "lib/CheckboxCard/CheckboxCard.tsx",
+    "lib/CheckboxCard/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/DndListHandle",
+   "source": "mantine-ui",
+   "root": "lib/DndListHandle",
+   "split": "test",
+   "files": [
+    "lib/DndListHandle/DndListHandle.tsx",
+    "lib/DndListHandle/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/DoubleHeader",
+   "source": "mantine-ui",
+   "root": "lib/DoubleHeader",
+   "split": "test",
+   "files": [
+    "lib/DoubleHeader/DoubleHeader.tsx",
+    "lib/DoubleHeader/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/DoubleNavbar",
+   "source": "mantine-ui",
+   "root": "lib/DoubleNavbar",
+   "split": "dev",
+   "files": [
+    "lib/DoubleNavbar/DoubleNavbar.tsx",
+    "lib/DoubleNavbar/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/DropzoneButton",
+   "source": "mantine-ui",
+   "root": "lib/DropzoneButton",
+   "split": "test",
+   "files": [
+    "lib/DropzoneButton/DropzoneButton.tsx",
+    "lib/DropzoneButton/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/EmailBanner",
+   "source": "mantine-ui",
+   "root": "lib/EmailBanner",
+   "split": "test",
+   "files": [
+    "lib/EmailBanner/EmailBanner.tsx",
+    "lib/EmailBanner/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/FaqSimple",
+   "source": "mantine-ui",
+   "root": "lib/FaqSimple",
+   "split": "test",
+   "files": [
+    "lib/FaqSimple/FaqSimple.tsx",
+    "lib/FaqSimple/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/FaqWithImage",
+   "source": "mantine-ui",
+   "root": "lib/FaqWithImage",
+   "split": "dev",
+   "files": [
+    "lib/FaqWithImage/FaqWithImage.tsx",
+    "lib/FaqWithImage/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/FeaturesGrid",
+   "source": "mantine-ui",
+   "root": "lib/FeaturesGrid",
+   "split": "dev",
+   "files": [
+    "lib/FeaturesGrid/FeaturesGrid.tsx",
+    "lib/FeaturesGrid/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/FooterSimple",
+   "source": "mantine-ui",
+   "root": "lib/FooterSimple",
+   "split": "test",
+   "files": [
+    "lib/FooterSimple/FooterSimple.tsx",
+    "lib/FooterSimple/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/GetInTouch",
+   "source": "mantine-ui",
+   "root": "lib/GetInTouch",
+   "split": "test",
+   "files": [
+    "lib/GetInTouch/ContactIcons.tsx",
+    "lib/GetInTouch/GetInTouch.tsx",
+    "lib/GetInTouch/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/HeaderMegaMenu",
+   "source": "mantine-ui",
+   "root": "lib/HeaderMegaMenu",
+   "split": "dev",
+   "files": [
+    "lib/HeaderMegaMenu/HeaderMegaMenu.tsx",
+    "lib/HeaderMegaMenu/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/HeaderMenu",
+   "source": "mantine-ui",
+   "root": "lib/HeaderMenu",
+   "split": "test",
+   "files": [
+    "lib/HeaderMenu/HeaderMenu.tsx",
+    "lib/HeaderMenu/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/HeroImageRight",
+   "source": "mantine-ui",
+   "root": "lib/HeroImageRight",
+   "split": "dev",
+   "files": [
+    "lib/HeroImageRight/HeroImageRight.tsx",
+    "lib/HeroImageRight/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/HeroText",
+   "source": "mantine-ui",
+   "root": "lib/HeroText",
+   "split": "dev",
+   "files": [
+    "lib/HeroText/Dots.tsx",
+    "lib/HeroText/HeroText.tsx",
+    "lib/HeroText/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/InputWithButton",
+   "source": "mantine-ui",
+   "root": "lib/InputWithButton",
+   "split": "test",
+   "files": [
+    "lib/InputWithButton/InputWithButton.tsx",
+    "lib/InputWithButton/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/PasswordStrength",
+   "source": "mantine-ui",
+   "root": "lib/PasswordStrength",
+   "split": "dev",
+   "files": [
+    "lib/PasswordStrength/PasswordStrength.tsx",
+    "lib/PasswordStrength/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/ServerError",
+   "source": "mantine-ui",
+   "root": "lib/ServerError",
+   "split": "test",
+   "files": [
+    "lib/ServerError/ServerError.tsx",
+    "lib/ServerError/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/ServerOverload",
+   "source": "mantine-ui",
+   "root": "lib/ServerOverload",
+   "split": "test",
+   "files": [
+    "lib/ServerOverload/Illustration.tsx",
+    "lib/ServerOverload/ServerOverload.tsx",
+    "lib/ServerOverload/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/SliderLabel",
+   "source": "mantine-ui",
+   "root": "lib/SliderLabel",
+   "split": "test",
+   "files": [
+    "lib/SliderLabel/SliderLabel.tsx",
+    "lib/SliderLabel/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/SliderMarks",
+   "source": "mantine-ui",
+   "root": "lib/SliderMarks",
+   "split": "dev",
+   "files": [
+    "lib/SliderMarks/SliderMarks.tsx",
+    "lib/SliderMarks/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/SliderWhite",
+   "source": "mantine-ui",
+   "root": "lib/SliderWhite",
+   "split": "test",
+   "files": [
+    "lib/SliderWhite/SliderWhite.tsx",
+    "lib/SliderWhite/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/SplitButton",
+   "source": "mantine-ui",
+   "root": "lib/SplitButton",
+   "split": "dev",
+   "files": [
+    "lib/SplitButton/SplitButton.tsx",
+    "lib/SplitButton/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/StatsRing",
+   "source": "mantine-ui",
+   "root": "lib/StatsRing",
+   "split": "test",
+   "files": [
+    "lib/StatsRing/StatsRing.tsx",
+    "lib/StatsRing/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/TableSort",
+   "source": "mantine-ui",
+   "root": "lib/TableSort",
+   "split": "test",
+   "files": [
+    "lib/TableSort/TableSort.tsx",
+    "lib/TableSort/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/UserCardImage",
+   "source": "mantine-ui",
+   "root": "lib/UserCardImage",
+   "split": "test",
+   "files": [
+    "lib/UserCardImage/UserCardImage.tsx",
+    "lib/UserCardImage/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/UserInfoAction",
+   "source": "mantine-ui",
+   "root": "lib/UserInfoAction",
+   "split": "dev",
+   "files": [
+    "lib/UserInfoAction/UserInfoAction.tsx",
+    "lib/UserInfoAction/attributes.json"
+   ]
+  },
+  {
+   "id": "mantine-ui/lib/UserMenu",
+   "source": "mantine-ui",
+   "root": "lib/UserMenu",
+   "split": "test",
+   "files": [
+    "lib/UserMenu/UserMenu.tsx",
+    "lib/UserMenu/attributes.json"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx",
+   "split": "dev",
+   "files": [
+    "playgrounds/react/page-examples/combobox/combobox-open-on-focus.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/combobox/combobox-virtualized.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/combobox/combobox-virtualized.tsx",
+   "split": "dev",
+   "files": [
+    "playgrounds/react/page-examples/combobox/combobox-virtualized.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx",
+   "split": "dev",
+   "files": [
+    "playgrounds/react/page-examples/combobox/combobox-with-pure-tailwind.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/dialog/dialog-focus-issue.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/dialog/dialog-focus-issue.tsx",
+   "split": "test",
+   "files": [
+    "playgrounds/react/page-examples/dialog/dialog-focus-issue.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/dialog/dialog.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/dialog/dialog.tsx",
+   "split": "test",
+   "files": [
+    "playgrounds/react/page-examples/dialog/dialog.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/dialog/scrollable-page-with-dialog.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/dialog/scrollable-page-with-dialog.tsx",
+   "split": "test",
+   "files": [
+    "playgrounds/react/page-examples/dialog/scrollable-page-with-dialog.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/listbox/listbox-overlaps.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/listbox/listbox-overlaps.tsx",
+   "split": "test",
+   "files": [
+    "playgrounds/react/page-examples/listbox/listbox-overlaps.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/menu/menu-with-floating-ui.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/menu/menu-with-floating-ui.tsx",
+   "split": "test",
+   "files": [
+    "playgrounds/react/page-examples/menu/menu-with-floating-ui.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/menu/multiple-elements.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/menu/multiple-elements.tsx",
+   "split": "dev",
+   "files": [
+    "playgrounds/react/page-examples/menu/multiple-elements.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/radio-group/radio-group.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/radio-group/radio-group.tsx",
+   "split": "dev",
+   "files": [
+    "playgrounds/react/page-examples/radio-group/radio-group.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx",
+   "split": "dev",
+   "files": [
+    "playgrounds/react/page-examples/tabs/tabs-with-pure-tailwind.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/transitions/component-examples/modal.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/transitions/component-examples/modal.tsx",
+   "split": "dev",
+   "files": [
+    "playgrounds/react/page-examples/transitions/component-examples/modal.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/transitions/component-examples/nested/hidden.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/transitions/component-examples/nested/hidden.tsx",
+   "split": "test",
+   "files": [
+    "playgrounds/react/page-examples/transitions/component-examples/nested/hidden.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx",
+   "split": "dev",
+   "files": [
+    "playgrounds/react/page-examples/transitions/full-page-examples/full-page-transition.tsx"
+   ]
+  },
+  {
+   "id": "headlessui/playgrounds/react/page-examples/transitions/react-hot-toast.tsx",
+   "source": "headlessui",
+   "root": "playgrounds/react/page-examples/transitions/react-hot-toast.tsx",
+   "split": "test",
+   "files": [
+    "playgrounds/react/page-examples/transitions/react-hot-toast.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/asyncSetFormValues.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/asyncSetFormValues.tsx",
+   "split": "test",
+   "files": [
+    "examples/V7/asyncSetFormValues.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/conditionalFields.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/conditionalFields.tsx",
+   "split": "dev",
+   "files": [
+    "examples/V7/conditionalFields.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/customInput.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/customInput.tsx",
+   "split": "test",
+   "files": [
+    "examples/V7/customInput.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/customMaskedInputWithController.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/customMaskedInputWithController.tsx",
+   "split": "test",
+   "files": [
+    "examples/V7/customMaskedInputWithController.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/customValidation.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/customValidation.tsx",
+   "split": "test",
+   "files": [
+    "examples/V7/customValidation.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/defaultValues.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/defaultValues.tsx",
+   "split": "dev",
+   "files": [
+    "examples/V7/defaultValues.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/disableNativeValidation.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/disableNativeValidation.tsx",
+   "split": "dev",
+   "files": [
+    "examples/V7/disableNativeValidation.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/fieldArrayMinLength.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/fieldArrayMinLength.tsx",
+   "split": "dev",
+   "files": [
+    "examples/V7/fieldArrayMinLength.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/getValuesCompareFields.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/getValuesCompareFields.tsx",
+   "split": "test",
+   "files": [
+    "examples/V7/getValuesCompareFields.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/initalFormState.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/initalFormState.tsx",
+   "split": "dev",
+   "files": [
+    "examples/V7/initalFormState.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/setValue.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/setValue.tsx",
+   "split": "test",
+   "files": [
+    "examples/V7/setValue.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/triggerFieldValidation.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/triggerFieldValidation.tsx",
+   "split": "dev",
+   "files": [
+    "examples/V7/triggerFieldValidation.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/typescript/Control.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/typescript/Control.tsx",
+   "split": "test",
+   "files": [
+    "examples/V7/typescript/Control.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/typescript/UseFormMethods.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/typescript/UseFormMethods.tsx",
+   "split": "test",
+   "files": [
+    "examples/V7/typescript/UseFormMethods.tsx"
+   ]
+  },
+  {
+   "id": "react-hook-form/examples/V7/validationOnFieldBlur.tsx",
+   "source": "react-hook-form",
+   "root": "examples/V7/validationOnFieldBlur.tsx",
+   "split": "dev",
+   "files": [
+    "examples/V7/validationOnFieldBlur.tsx"
+   ]
+  }
+ ]
+}

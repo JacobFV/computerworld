@@ -1,0 +1,10 @@
+{
+  "title": "Email banner",
+  "category": "banners",
+  "responsive": true,
+  "dimmed": true,
+  "canvas": {
+    "center": true,
+    "maxWidth": 980
+  }
+}

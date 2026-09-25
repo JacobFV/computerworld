@@ -1,0 +1,8 @@
+{
+  "title": "Card with checkbox",
+  "category": "inputs",
+  "canvas": {
+    "center": true,
+    "maxWidth": 400
+  }
+}
