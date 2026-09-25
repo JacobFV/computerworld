@@ -406,6 +406,10 @@ pub struct Vm<'h> {
     pub pool: FramePool,
     /// The profiler, while one is running (see `profile`).
     pub prof: Option<Box<crate::profile::Profiler>>,
+    /// Collects cyclic garbage once the rest of the VM has dropped, so a VM's
+    /// heap is freed with it. Last, so it drops last; an embedder that holds
+    /// JS values beyond the VM takes it and drops it after them.
+    pub reclaim: Option<crate::gc::Reclaim>,
 }
 
 impl<'h> Vm<'h> {

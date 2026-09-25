@@ -18,6 +18,7 @@ pub mod compiler;
 pub mod conv;
 pub mod debug;
 pub mod fs;
+pub mod gc;
 pub mod hostio;
 pub mod inspect;
 pub mod interp;

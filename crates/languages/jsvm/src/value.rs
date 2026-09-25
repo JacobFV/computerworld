@@ -615,7 +615,9 @@ pub struct Obj(pub Rc<RefCell<ObjData>>);
 
 impl Obj {
     pub fn new(data: ObjData) -> Obj {
-        Obj(Rc::new(RefCell::new(data)))
+        let o = Obj(Rc::new(RefCell::new(data)));
+        crate::gc::register(&o);
+        o
     }
     pub fn borrow(&self) -> std::cell::Ref<'_, ObjData> {
         self.0.borrow()
@@ -685,10 +687,34 @@ pub struct ObjData {
     /// Class name for objects built by class constructors is resolved via
     /// the prototype chain; this marks module namespaces, arguments, etc.
     pub tag: Option<&'static str>,
+    /// This object's entry in the cycle collector's table (`gc::UNREGISTERED`
+    /// until `Obj::new` registers it). An `ObjData` stays in the object it was
+    /// made for: moving one out of its object would leave the entry stale.
+    pub(crate) gc_slot: u32,
+}
+
+thread_local! {
+    /// Objects alive on this thread (made minus dropped): see `live_objects`.
+    static LIVE_OBJECTS: std::cell::Cell<i64> = const { std::cell::Cell::new(0) };
+}
+
+/// How many JS objects are alive on this thread, across every VM on it.
+pub fn live_objects() -> i64 {
+    LIVE_OBJECTS.with(|c| c.get())
+}
+
+impl Drop for ObjData {
+    fn drop(&mut self) {
+        LIVE_OBJECTS.with(|c| c.set(c.get() - 1));
+        if self.gc_slot != crate::gc::UNREGISTERED {
+            crate::gc::unregister(self.gc_slot, self);
+        }
+    }
 }
 
 impl ObjData {
     pub fn new(proto: Option<Obj>, kind: Kind) -> ObjData {
+        LIVE_OBJECTS.with(|c| c.set(c.get() + 1));
         ObjData {
             proto,
             props: PropMap::default(),
@@ -697,6 +723,7 @@ impl ObjData {
             elems_frozen: false,
             elems_sealed: false,
             tag: None,
+            gc_slot: crate::gc::UNREGISTERED,
         }
     }
 }

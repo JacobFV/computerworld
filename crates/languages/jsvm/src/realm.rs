@@ -190,6 +190,7 @@ impl<'h> Vm<'h> {
             cache_seen: Default::default(),
             pool: Default::default(),
             prof: None,
+            reclaim: Some(crate::gc::Reclaim),
         };
         // The inspect symbol is registered under its key.
         let ic = vm.syms.inspect_custom.clone();

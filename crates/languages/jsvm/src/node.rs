@@ -1751,6 +1751,8 @@ impl<'h> Vm<'h> {
     pub fn event_loop(&mut self) -> JsResult<()> {
         loop {
             self.drain_after(None)?;
+            // Between tasks: a safe point to reclaim cyclic garbage.
+            crate::gc::maybe_collect();
             // Each turn starts by reading the clock (`uv__update_time`).
             let now = self.clock();
             let mut ran = false;

@@ -521,6 +521,9 @@ pub struct Realm {
     _bridge: Box<bridge::Bridge>,
     pub(crate) inner: Rc<RefCell<Inner>>,
     state: RealmState,
+    /// Frees the realm's cyclic garbage once everything above (the VM and the
+    /// document's handles on JS values) has dropped.
+    _reclaim: Option<cw_jsvm::gc::Reclaim>,
 }
 
 const PRELUDE: &str = concat!(
@@ -593,6 +596,7 @@ impl Realm {
         let any: Rc<dyn std::any::Any> = inner.clone();
         vm.embedder = Some(any);
         bindings::install(&mut vm);
+        let reclaim = vm.reclaim.take();
         let mut realm = Realm {
             vm,
             _bridge: bridge,
@@ -605,6 +609,7 @@ impl Realm {
                 step_budget: 0,
                 overlay_scrollbars: false,
             },
+            _reclaim: reclaim,
         };
         realm.run_prelude();
         realm
@@ -1178,6 +1183,8 @@ impl Realm {
             ran = true;
         }
         self.flush_console();
+        // Idle: a safe point to reclaim cyclic garbage (see `cw_jsvm::gc`).
+        cw_jsvm::gc::maybe_collect();
         ran
     }
 
@@ -1338,6 +1345,7 @@ impl Realm {
         self.drain_microtasks();
         self.pump_animations();
         self.flush_console();
+        cw_jsvm::gc::maybe_collect();
         self.inner.borrow_mut().host.request_relayout();
         action
     }

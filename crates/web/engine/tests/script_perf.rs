@@ -131,6 +131,10 @@ mod perf {
             .unwrap_or(25);
         let (mut news, mut boots, mut clicks, mut keys) = (vec![], vec![], vec![], vec![]);
         let mut colds = vec![];
+        // Each phase starts from a collected heap (`cw_jsvm::gc`): a cycle
+        // collection is charged to the phase whose allocation made it due, not
+        // to whichever phase happens to follow garbage left by the one before.
+        let collect = cw_jsvm::gc::collect;
         // An instruction-counting profiler that toggles on a phase function can
         // miss its return and keep counting what follows (the realm's drop);
         // this ends the process as the named phase returns, so nothing does.
@@ -141,6 +145,7 @@ mod perf {
             }
         };
         for _ in 0..runs {
+            collect();
             let t = Instant::now();
             let cold = first_boot(name, &html);
             done("first_boot");
@@ -151,17 +156,20 @@ mod perf {
             let r = Realm::new(&html, &format!("{BASE}{name}.html"), Box::new(host()));
             news.push(t.elapsed().as_secs_f64() * 1000.0);
             drop(r);
+            collect();
             let t = Instant::now();
             let mut r = boot(name, &html);
             done("boot");
             boots.push(t.elapsed().as_secs_f64() * 1000.0);
             let at = centre(&mut r, "#check-2");
+            collect();
             let t = Instant::now();
             click_at(&mut r, at);
             done("click_at");
             clicks.push(t.elapsed().as_secs_f64() * 1000.0);
             let at = centre(&mut r, "#new-task");
             click_at(&mut r, at);
+            collect();
             let t = Instant::now();
             key(&mut r);
             done("key");
