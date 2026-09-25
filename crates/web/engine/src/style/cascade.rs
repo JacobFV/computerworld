@@ -1227,6 +1227,17 @@ impl<'a> Engine<'a> {
         {
             s.text_align = TextAlign::Start;
         }
+        // The UA sheet's `th { text-align: center }` is Blink's `-internal-center`:
+        // it holds only while the parent's `text-align` is the initial `start`, so a
+        // header cell in a `text-left` table inherits `left` (HTML §15.3.8).
+        if !is_pseudo
+            && s.text_align == TextAlign::Center
+            && parent.text_align != TextAlign::Start
+            && w.level(LonghandId::TextAlign).is_some_and(|l| l.is_ua())
+            && self.doc.is(node, "th")
+        {
+            s.text_align = parent.text_align;
+        }
         // Quirks: tables take the document text colour unless the author says otherwise.
         if self.quirks && !is_pseudo && self.doc.is(node, "table") {
             let author_set = w.level(LonghandId::Color).is_some_and(|l| !l.is_ua());

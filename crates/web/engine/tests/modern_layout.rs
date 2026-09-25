@@ -609,4 +609,19 @@ mod cases {
         close(w("c"), 20.375, "#c keeps the space");
         close(w("d"), 7.875, "#d");
     }
+    /// The UA's centring of `<th>` is Blink's `-internal-center`: it applies only
+    /// while the parent's `text-align` is the initial `start`, so header cells in a
+    /// `text-left` table (app-music's track list) start at the left; an author's
+    /// `center` still wins.
+    #[test]
+    fn a_header_cell_inherits_a_set_text_align() {
+        let p = page(&format!(
+            "{RESET}<table style='text-align: left; width: 300px'><tr><th id=a>A</th><th id=b style='text-align: center'>B</th></tr></table>
+             <table style='width: 300px'><tr><th id=c>C</th></tr><tr style='text-align: right'><th id=d>D</th></tr></table>"
+        ));
+        assert_eq!(p.computed("a", "text-align"), "left");
+        assert_eq!(p.computed("b", "text-align"), "center");
+        assert_eq!(p.computed("c", "text-align"), "center");
+        assert_eq!(p.computed("d", "text-align"), "right");
+    }
 }
