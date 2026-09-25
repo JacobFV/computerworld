@@ -2861,6 +2861,13 @@ impl DesktopState {
             _ => Err("interaction does not belong to focused application".into()),
         }
     }
+    /// Whether the focused window is a web application, whose document handles taps,
+    /// double taps and pointer positions itself.
+    pub fn focused_web_app(&self) -> bool {
+        self.focused
+            .and_then(|id| self.windows.get(&id))
+            .is_some_and(|w| matches!(&w.state, AppState::Native(app) if app.web().is_some()))
+    }
     /// Click carrying the offset inside the control that was hit, so a text view can
     /// place its caret where the pointer actually landed.
     pub fn click_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<Vec<AppEffect>, String> {

@@ -85,8 +85,21 @@ struct Cell {
     /// failure), handed out with the next entry's.
     deferred: Vec<AppEffect>,
     console: Vec<String>,
+    /// Where the document was last painted, for input at a point: each control's
+    /// first box (content coordinates) and the pane offsets it was painted at.
+    painted: Painted,
 }
 unsafe impl Send for Cell {}
+
+/// What the last paint of a window left for pointer input.
+#[derive(Default)]
+struct Painted {
+    bounds: std::collections::BTreeMap<String, cw_scene::Rect>,
+    /// Pane offsets the document's own scroll state was brought to.
+    scrolls: std::collections::BTreeMap<String, i32>,
+    /// The pointer position the document was last told about.
+    pointer: Option<(i32, i32)>,
+}
 
 /// A window saved while requests it made are outstanding: the runtime's complete
 /// state (the promises and the code awaiting them), which requests are waiting for
@@ -304,6 +317,7 @@ impl WebApp {
             waiting: vec![],
             deferred: vec![],
             console: vec![],
+            painted: Painted::default(),
         };
         let mut app = Self {
             kind: entry.kind,
@@ -347,6 +361,7 @@ impl WebApp {
             waiting: vec![],
             deferred: vec![],
             console: vec![],
+            painted: Painted::default(),
         };
         Ok(Self {
             kind: entry.kind,
@@ -442,6 +457,7 @@ impl WebApp {
             waiting,
             deferred,
             console: out.logs,
+            painted: Painted::default(),
         };
         if Arc::strong_count(&local.cell) == 1 {
             *lock(&local.cell) = fresh;
@@ -794,9 +810,9 @@ impl WebApp {
     ) -> Result<Vec<AppEffect>, String> {
         self.click_detail(window, target, clock_us, 1)
     }
-    /// What the desktop calls opening a control: on a phone a tap, which is one click;
-    /// on a desktop a double click, two clicks (the second with `detail` 2, then
-    /// `dblclick`), the second only if the first left the control in the document.
+    /// A double click (a double tap on a phone): two clicks, the second with
+    /// `detail` 2, then `dblclick`; the second only if the first left the control in
+    /// the document.
     pub fn activate(
         &mut self,
         window: u64,
@@ -804,19 +820,66 @@ impl WebApp {
         clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
         let mut effects = self.click_detail(window, target, clock_us, 1)?;
-        let (mobile, still) = self
+        let still = self
             .read(|cell| {
                 let mut still = false;
                 if let Some(runtime) = cell.runtime.as_mut() {
                     runtime.view(&mut |v| still = node_for(v.doc, target).is_some());
                 }
-                (cell.env.mobile, still)
+                still
             })
-            .unwrap_or((true, false));
-        if !mobile && still {
+            .unwrap_or(false);
+        if still {
             effects.extend(self.click_detail(window, target, clock_us, 2)?);
         }
         Ok(effects)
+    }
+    /// A click `dx`, `dy` into the control `target` names, as painted: a click at that
+    /// point of the document, which hit-tests it itself (so a click lands on what is
+    /// under the pointer, listener or not, and places a text caret where it fell).
+    /// Before the window was painted the control itself is clicked.
+    pub fn click_at(
+        &mut self,
+        window: u64,
+        target: &str,
+        dx: i32,
+        dy: i32,
+        clock_us: u64,
+    ) -> Result<Vec<AppEffect>, String> {
+        let kind = self.kind;
+        let at = {
+            let local = match self.local.get_mut() {
+                Ok(l) => l,
+                Err(p) => p.into_inner(),
+            };
+            let cell = lock(&local.cell);
+            (cell.epoch == local.epoch)
+                .then(|| cell.painted.bounds.get(target).copied())
+                .flatten()
+        };
+        let Some(bounds) = at else {
+            return self.click(window, target, clock_us);
+        };
+        let (x, y) = (bounds.x + dx, bounds.y + dy);
+        self.enter(Some(window), Some(clock_us), |runtime, now| {
+            let mut exists = false;
+            runtime.view(&mut |v| exists = node_for(v.doc, target).is_some());
+            if !exists {
+                return Err(format!("{kind} has no control {target}"));
+            }
+            runtime.dispatch(
+                UiEvent::Click {
+                    x,
+                    y,
+                    button: 0,
+                    modifiers: Modifiers::default(),
+                    detail: 1,
+                },
+                now,
+            );
+            Ok(())
+        })
+        .map(|((), effects)| effects)
     }
     fn click_detail(
         &mut self,
@@ -914,14 +977,29 @@ impl WebApp {
         });
     }
 
-    /// Paints the document into the window's content.
+    /// Paints the document into the window's content. The document is first told
+    /// what the window knows and it does not: its size and platform, where its panes
+    /// are scrolled to, and where the pointer is (so `:hover` and `mouseover` follow
+    /// it). Like an environment change, none of that is an input the application may
+    /// answer with requests or state.
     pub fn render(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
         let wanted = env_for(env.theme, env.width, env.height);
         let clock = env.clock_us;
         let result = self.read(|cell| {
             Self::sync_env(cell, &wanted, clock);
+            Self::sync_pointer(cell, &p.scroll.offsets, env.pointer, clock);
             if let Some(runtime) = cell.runtime.as_mut() {
+                let mark = p.scene.nodes.len();
                 runtime.view(&mut |v| paint::paint(v, p, env));
+                let mut bounds = std::collections::BTreeMap::new();
+                for n in &p.scene.nodes[mark..] {
+                    if let Some(i) = &n.interaction {
+                        bounds
+                            .entry(i.clone())
+                            .or_insert_with(|| n.transform.bounds(n.bounds));
+                    }
+                }
+                cell.painted.bounds = bounds;
             }
         });
         if let Err(reason) = result {
@@ -929,6 +1007,58 @@ impl WebApp {
             p.scene.background = l.surface;
             crate::apps::look::notice(p, env.width, 40, &reason);
         }
+    }
+
+    /// Brings the document's own scroll state to the window's pane offsets, and its
+    /// pointer to where the window's is, when either moved.
+    fn sync_pointer(
+        cell: &mut Cell,
+        offsets: &std::collections::BTreeMap<String, i32>,
+        pointer: Option<(i32, i32)>,
+        now: u64,
+    ) {
+        let Some(runtime) = cell.runtime.as_mut() else {
+            return;
+        };
+        let mut events = vec![];
+        if cell.painted.scrolls != *offsets {
+            runtime.view(&mut |v| {
+                for (pane, offset) in offsets {
+                    let node = if pane == "page" {
+                        None
+                    } else {
+                        match pane_node(v.doc, pane) {
+                            Some(n) => Some(n),
+                            None => continue,
+                        }
+                    };
+                    events.push(UiEvent::Scroll {
+                        node,
+                        x: 0,
+                        y: (*offset).max(0),
+                    });
+                }
+            });
+            cell.painted.scrolls = offsets.clone();
+        }
+        if cell.painted.pointer != pointer {
+            // Off the document, nothing is under the pointer.
+            let (x, y) = pointer.unwrap_or((-1, -1));
+            events.push(UiEvent::PointerMove {
+                x,
+                y,
+                modifiers: Modifiers::default(),
+            });
+            cell.painted.pointer = pointer;
+        }
+        if events.is_empty() {
+            return;
+        }
+        for event in events {
+            runtime.dispatch(event, now);
+        }
+        let out = runtime.drain();
+        cell.console.extend(out.logs);
     }
 }
 

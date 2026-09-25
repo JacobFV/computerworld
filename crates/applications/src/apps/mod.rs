@@ -253,6 +253,10 @@ macro_rules! native_apps {
                 clock_us: u64,
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
+                    Self::Web(_) | Self::Notes(_) => self
+                        .web_mut()
+                        .expect("a web application")
+                        .click_at(window, target, dx, dy, clock_us),
                     Self::Code(a) => a.click_at(window, target, dx, dy, clock_us),
                     Self::Freecad(a) => a.click_at(window, target, dx, dy, clock_us),
                     Self::Kicad(a) => a.click_at(window, target, dx, dy, clock_us),

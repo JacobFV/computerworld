@@ -923,7 +923,10 @@ impl Environment {
                     // A tap on a spreadsheet or database grid selects, as a click does;
                     // editing takes a second tap (a double click), as on the phones' own.
                     let grid = target.starts_with("sheet:") || target.starts_with("db:");
-                    let effects = if opening && !(grid && action.op != "double_click") {
+                    // A web application's document tells a tap from a double tap itself:
+                    // a tap is a click where it landed, a double tap its double click.
+                    let web = desktop.focused_web_app();
+                    let effects = if opening && !((grid || web) && action.op != "double_click") {
                         desktop.activate(&target)
                     } else {
                         desktop.click_at(&target, x - hit.x, y - hit.y)

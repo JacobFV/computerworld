@@ -726,3 +726,125 @@ fn a_window_saved_mid_request_takes_the_answer_after_a_restore() {
         assert_eq!(behind.state()["text"], "second", "{kind}");
     }
 }
+
+/// An app that reports what the pointer does to it.
+fn pointer_probe() -> &'static str {
+    define(cw_sdk::WebApplication {
+        kind: "pointer-probe".into(),
+        version: 1,
+        titles: Default::default(),
+        source: WebSource::Script {
+            script: r#"
+const saved = cw.state.get();
+const s = saved ?? { clicks: 0, dbl: 0, last: "" };
+if (saved === null) cw.state.set(s);
+document.getElementById("root").innerHTML =
+  '<div id="hot"><span class="inner">Hot</span></div>';
+document.addEventListener("click", (e) => {
+  s.clicks++;
+  s.last = e.target.className || e.target.id;
+  cw.state.set(Object.assign({}, s));
+});
+document.addEventListener("dblclick", () => {
+  s.dbl++;
+  cw.state.set(Object.assign({}, s));
+});
+"#
+            .into(),
+            style: "#hot { position: absolute; left: 10px; top: 10px; width: 100px; \
+                    height: 40px; } #hot:hover { background: rgb(255, 0, 0); } \
+                    .inner { display: block; width: 50px; height: 20px; }"
+                .into(),
+            react: false,
+        },
+    })
+    .unwrap();
+    "pointer-probe"
+}
+
+fn render_at(app: &WebApp, theme: DesktopTheme, pointer: Option<(i32, i32)>) -> cw_scene::Scene {
+    let mut e = env(theme, 400, 300);
+    e.pointer = pointer;
+    let mut p = Painter::themed(theme, 400, 300, 1 << 52);
+    app.render(&mut p, &e);
+    p.scene
+}
+
+fn painted_red(scene: &cw_scene::Scene) -> bool {
+    scene.nodes.iter().any(|n| {
+        serde_json::to_string(&n.primitive)
+            .unwrap()
+            .contains("[255,0,0,255]")
+    })
+}
+
+/// The pointer over a window is the document's pointer: `:hover` follows it, and
+/// leaves with it; a restored window picks it up from the next paint.
+#[test]
+fn hover_follows_the_pointer() {
+    let (app, _) = WebApp::launch(pointer_probe(), "", 1, 0, DesktopTheme::Macos).unwrap();
+    assert!(!painted_red(&render_at(&app, DesktopTheme::Macos, None)));
+    assert!(painted_red(&render_at(
+        &app,
+        DesktopTheme::Macos,
+        Some((20, 20))
+    )));
+    assert!(!painted_red(&render_at(
+        &app,
+        DesktopTheme::Macos,
+        Some((300, 200))
+    )));
+    assert!(painted_red(&render_at(
+        &app,
+        DesktopTheme::Macos,
+        Some((20, 20))
+    )));
+    let restored: WebApp = serde_json::from_str(&serde_json::to_string(&app).unwrap()).unwrap();
+    assert!(painted_red(&render_at(
+        &restored,
+        DesktopTheme::Macos,
+        Some((20, 20))
+    )));
+    assert!(!painted_red(&render_at(&app, DesktopTheme::Macos, None)));
+}
+
+/// A click lands at its point: on what is under it there, not on the control the
+/// scene named; and a double click is a double click on a phone as on a desktop.
+#[test]
+fn clicks_land_where_they_point_and_phones_double_tap() {
+    for theme in [DesktopTheme::Macos, DesktopTheme::Ios] {
+        let (mut app, _) = WebApp::launch(pointer_probe(), "", 1, 0, theme).unwrap();
+        // Not painted yet: the control itself is clicked.
+        app.click_at(1, "hot", 5, 5, 0).unwrap();
+        assert_eq!(app.state()["last"], "hot", "{theme:?}");
+        render_at(&app, theme, None);
+        app.click_at(1, "hot", 5, 5, 0).unwrap();
+        assert_eq!(
+            app.state()["last"],
+            "inner",
+            "{theme:?}: the span under the point"
+        );
+        app.click_at(1, "hot", 80, 30, 0).unwrap();
+        assert_eq!(app.state()["last"], "hot", "{theme:?}: past the span");
+        app.activate(1, "hot", 0).unwrap();
+        assert_eq!(app.state()["dbl"], 1, "{theme:?}");
+        assert_eq!(app.state()["clicks"], 5, "{theme:?}");
+    }
+}
+
+/// On a phone, a tap on an open note's text, where it is painted, gives the body the
+/// keyboard; a tap on a row of the list opens it.
+#[test]
+fn taps_on_notes_land_where_they_point() {
+    let mut disk = disk_with(&["a.txt"]);
+    let mut app = web_notes(&mut disk, DesktopTheme::Ios);
+    render_at(&app, DesktopTheme::Ios, None);
+    let effects = app.click_at(1, "notes:open:a.txt", 10, 10, 0).unwrap();
+    disk.web(&mut app, effects).unwrap();
+    assert_eq!(app.state()["open"], "a.txt");
+    render_at(&app, DesktopTheme::Ios, None);
+    assert_eq!(app.text_field(), None);
+    app.click_at(1, "notes:body", 30, 9, 0).unwrap();
+    assert_eq!(app.text_field().as_deref(), Some("notes:body"));
+    assert_eq!(app.state()["editing"], true);
+}

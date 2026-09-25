@@ -389,3 +389,57 @@ fn journal_growth() {
         (heap1 - heap0) / (len1 - len0).max(1) as isize
     );
 }
+
+/// What pointer input costs a Notes window: a paint that also moves the document's
+/// pointer, and a click at a point against a click on the control.
+#[test]
+#[ignore]
+fn pointer_costs() {
+    let e = env();
+    let mut app = web();
+    let _ = app_content_with(&AppState::Native(app.clone()), &e);
+    let paints: Vec<Duration> = (0..30)
+        .map(|i| {
+            let mut e = env();
+            e.pointer = Some((20 + i % 2, 100));
+            let state = AppState::Native(app.clone());
+            let t = Instant::now();
+            let _ = app_content_with(&state, &e);
+            t.elapsed()
+        })
+        .collect();
+    let still: Vec<Duration> = (0..30)
+        .map(|_| {
+            let state = AppState::Native(app.clone());
+            let t = Instant::now();
+            let _ = app_content_with(&state, &e);
+            t.elapsed()
+        })
+        .collect();
+    let at: Vec<Duration> = (0..30)
+        .map(|_| {
+            let t = Instant::now();
+            app.click_at(1, "notes:reload", 5, 5, 0).unwrap();
+            let d = t.elapsed();
+            app.tree_listed(1, FOLDER, Ok(names())).unwrap();
+            d
+        })
+        .collect();
+    let by_id: Vec<Duration> = (0..30)
+        .map(|_| {
+            let t = Instant::now();
+            app.click(1, "notes:reload", 0).unwrap();
+            let d = t.elapsed();
+            app.tree_listed(1, FOLDER, Ok(names())).unwrap();
+            d
+        })
+        .collect();
+    println!(
+        "pointer: paint with the pointer moved {:?}, paint with it still {:?}, click at a \
+         point {:?}, click on the control {:?} (medians)",
+        median(paints),
+        median(still),
+        median(at),
+        median(by_id)
+    );
+}
