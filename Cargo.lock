@@ -488,7 +488,9 @@ dependencies = [
  "cw-protocol",
  "cw-sdk",
  "cw-service-node-app",
+ "cw-web",
  "serde_json",
+ "url",
 ]
 
 [[package]]

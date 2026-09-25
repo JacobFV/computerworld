@@ -13,3 +13,5 @@ cw-service-node-app = { path = "../node-app" }
 
 [dev-dependencies]
 serde_json.workspace = true
+cw-web = { path = "../../web/engine" }
+url.workspace = true
