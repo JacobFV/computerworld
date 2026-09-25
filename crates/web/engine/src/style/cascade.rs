@@ -251,6 +251,7 @@ pub struct StyleEngine {
     fonts: crate::css::FontEnvironment,
     custom_memo: CustomMemo,
     pending_memo: PendingMemo,
+    shared: SharedStyles,
 }
 
 const CUSTOM_MEMO_ENTRIES: usize = 4096;
@@ -266,6 +267,57 @@ type CustomMemoEntry = (
     Rc<CustomProperties>,
     Rc<CustomProperties>,
 );
+
+/// What a shared style is found under: the parent style's address (the entry keeps
+/// it alive), the root font size, and the addresses of the matched rules.
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct ShareKey {
+    parent: usize,
+    root_fs: Au,
+    rules: Box<[usize]>,
+}
+
+const SHARED_STYLES: usize = 4096;
+
+/// Styles computed for elements that read nothing but their parent's style and
+/// their matched rules: see `Engine::share_key`.
+type SharedStyles = std::cell::RefCell<
+    std::collections::HashMap<ShareKey, (Rc<ComputedStyle>, Rc<ComputedStyle>, bool)>,
+>;
+
+/// A newly computed style: owned, or one shared with other elements. It lives on
+/// the stack for the comparison with the old style, which usually finds them
+/// equal, so the owned one is not boxed.
+#[allow(clippy::large_enum_variant)]
+enum StyleValue {
+    Own(ComputedStyle),
+    Shared(Rc<ComputedStyle>),
+}
+
+impl StyleValue {
+    fn same(&self, old: &Rc<ComputedStyle>) -> bool {
+        match self {
+            StyleValue::Own(s) => **old == *s,
+            StyleValue::Shared(s) => Rc::ptr_eq(s, old) || **old == **s,
+        }
+    }
+    fn into_rc(self) -> Rc<ComputedStyle> {
+        match self {
+            StyleValue::Own(s) => Rc::new(s),
+            StyleValue::Shared(s) => s,
+        }
+    }
+}
+
+impl std::ops::Deref for StyleValue {
+    type Target = ComputedStyle;
+    fn deref(&self) -> &ComputedStyle {
+        match self {
+            StyleValue::Own(s) => s,
+            StyleValue::Shared(s) => s,
+        }
+    }
+}
 
 /// Substituted `var()` values: see `Engine::resolve_pending`.
 type PendingMemo = std::cell::RefCell<
@@ -328,6 +380,7 @@ impl StyleEngine {
             fonts: media.fonts,
             custom_memo: Default::default(),
             pending_memo: Default::default(),
+            shared: Default::default(),
         };
         // Global layer order: first declaration wins the position, across sheets.
         let mut layers: Vec<String> = Vec::new();
@@ -722,6 +775,43 @@ impl<'a> Engine<'a> {
         u
     }
 
+    /// The key under which an element's style is shared, or `None` when its style
+    /// reads more than its parent's style and its matched rules: presentational
+    /// hints, `style=""`, `lang`, the root's font, a quirks-mode table's colour.
+    fn share_key(
+        &self,
+        node: NodeId,
+        parent: &Rc<ComputedStyle>,
+        root_font_size: Option<Au>,
+        matched: &[&'a css::IndexEntry<RuleData>],
+    ) -> Option<ShareKey> {
+        let root_fs = root_font_size?;
+        let doc = self.doc;
+        for a in doc.attrs(node) {
+            let n = a.name.as_str();
+            if n == "style"
+                || n == "lang"
+                || n == "xml:lang"
+                || hints::is_hint_attribute(doc, node, n)
+            {
+                return None;
+            }
+        }
+        if doc.is(node, "table")
+            || doc.is(node, "a") && doc.body().is_some_and(|b| doc.has_attr(b, "link"))
+        {
+            return None;
+        }
+        Some(ShareKey {
+            parent: Rc::as_ptr(parent) as usize,
+            root_fs,
+            rules: matched
+                .iter()
+                .map(|e| *e as *const css::IndexEntry<RuleData> as usize)
+                .collect(),
+        })
+    }
+
     fn inline_block(&self, node: NodeId) -> Result<Option<Rc<ParsedBlock>>, Unsupported> {
         let Some(src) = self.doc.attr(node, "style") else {
             return Ok(None);
@@ -757,11 +847,37 @@ impl<'a> Engine<'a> {
         keys: &AncestorKeys,
         unsupported: &mut Vec<Unsupported>,
     ) -> Result<Winners<'a>, Unsupported> {
-        let _t = super::profile::span(super::profile::Phase::Match);
         let index = pseudo.unwrap_or(&self.data.elements);
+        let matched = self.match_rules(node, index, keys);
+        self.winners_from(node, pseudo.is_some(), matched, unsupported)
+    }
+
+    /// The rules of `index` that match the element, in the index's order (in the
+    /// reusable buffer, which `winners_from` hands back).
+    fn match_rules(
+        &self,
+        node: NodeId,
+        index: &'a SelectorIndex<RuleData>,
+        keys: &AncestorKeys,
+    ) -> Vec<&'a css::IndexEntry<RuleData>> {
+        let _t = super::profile::span(super::profile::Phase::Match);
         let mut matched = self.matched.take();
         matched.clear();
         index.matching_into(self.doc, node, self.ctx, keys, &mut matched);
+        matched
+    }
+
+    /// The cascade of the matched rules (and, for the element itself rather than a
+    /// pseudo-element, its hints and `style=""`).
+    fn winners_from(
+        &self,
+        node: NodeId,
+        is_pseudo: bool,
+        mut matched: Vec<&'a css::IndexEntry<RuleData>>,
+        unsupported: &mut Vec<Unsupported>,
+    ) -> Result<Winners<'a>, Unsupported> {
+        let _t = super::profile::span(super::profile::Phase::Match);
+        let pseudo = is_pseudo.then_some(());
         let mut cands: Vec<Candidate<'a, '_>> = Vec::with_capacity(16);
         for entry in matched.drain(..) {
             let r = &entry.data;
@@ -1185,13 +1301,45 @@ impl<'a> Engine<'a> {
         keys: &AncestorKeys,
         unsupported: &mut Vec<Unsupported>,
     ) -> Result<(Own, Delta), Unsupported> {
-        let w = self.winners(node, None, keys, unsupported)?;
-        let style = self.compute(node, &w, parent, root_font_size, false);
-        // `inherit` on a property that is not inherited reads the parent's value
-        // of it, so such an element follows any change of its parent's style.
-        let explicit = w.values.iter().any(|(id, v, _)| {
-            !id.def().inherited && matches!(**v, Specified::CssWide(CssWide::Inherit))
-        });
+        let matched = self.match_rules(node, &self.data.elements, keys);
+        // An element whose style is a function of its parent's style and the rules
+        // it matches alone shares the style computed for another such element (a
+        // sibling, a cousin, the same card in another column, or itself before a
+        // restyle that changed nothing it reads).
+        let share = self.share_key(node, parent, root_font_size, &matched);
+        let shared = share
+            .as_ref()
+            .and_then(|k| self.data.shared.borrow().get(k).map(|e| (e.1.clone(), e.2)));
+        let (style, explicit, quirk_color) = match shared {
+            Some((style, explicit)) => {
+                self.matched.set(matched);
+                (StyleValue::Shared(style), explicit, false)
+            }
+            None => {
+                let w = self.winners_from(node, false, matched, unsupported)?;
+                let style = self.compute(node, &w, parent, root_font_size, false);
+                // `inherit` on a property that is not inherited reads the parent's
+                // value of it, so such an element follows any change of its parent.
+                let explicit = w.values.iter().any(|(id, v, _)| {
+                    !id.def().inherited && matches!(**v, Specified::CssWide(CssWide::Inherit))
+                });
+                let quirk_color = self.quirks
+                    && self.doc.is(node, "table")
+                    && !w.level(LonghandId::Color).is_some_and(|l| !l.is_ua());
+                match share {
+                    Some(k) => {
+                        let style = Rc::new(style);
+                        let mut cache = self.data.shared.borrow_mut();
+                        if cache.len() >= SHARED_STYLES {
+                            cache.clear();
+                        }
+                        cache.insert(k, (parent.clone(), style.clone(), explicit));
+                        (StyleValue::Shared(style), explicit, quirk_color)
+                    }
+                    None => (StyleValue::Own(style), explicit, quirk_color),
+                }
+            }
+        };
         set.set_explicit_inherit(node, explicit);
         let is_root = root_font_size.is_none();
         let root_fs = if is_root {
@@ -1202,23 +1350,20 @@ impl<'a> Engine<'a> {
         if is_root {
             set.root_font_size_au = root_fs;
         }
-        if self.quirks
-            && self.doc.is(node, "table")
-            && !w.level(LonghandId::Color).is_some_and(|l| !l.is_ua())
-        {
+        if quirk_color {
             set.quirk_table_color.insert(node);
-        } else {
+        } else if !set.quirk_table_color.is_empty() {
             set.quirk_table_color.remove(&node);
         }
         let mut delta = Delta::default();
         let mut inherited = false;
         let (style, own_changed) = match set.get_rc(node) {
-            Some(old) if **old == style => (old.clone(), false),
+            Some(old) if style.same(old) => (old.clone(), false),
             old => {
+                let style = style.into_rc();
                 inherited = old.is_none_or(|o| !o.inherited_eq(&style));
                 delta.layout = old.is_none_or(|o| !o.layout_eq(&style));
                 delta.hit = old.is_none_or(|o| !o.hit_eq(&style));
-                let style = Rc::new(style);
                 if delta.layout {
                     set.set(node, style.clone());
                 } else {
@@ -2163,6 +2308,7 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
         fonts: crate::css::FontEnvironment::Bundled,
         custom_memo: Default::default(),
         pending_memo: Default::default(),
+        shared: Default::default(),
     };
     let engine = Engine::new(&data, &doc, &ctx);
     engine.compute(Document::ROOT, &w, parent, Some(parent.font.size), true)
@@ -2961,7 +3107,11 @@ mod tests {
         engine
             .update(&doc, &mut set, &muts, &changed, &ctx)
             .unwrap();
-        let fresh = engine.cascade(&doc, &ctx).unwrap();
+        // A fresh engine, so nothing the first one remembers takes part.
+        let fresh = StyleEngine::build(&sheets, &Media::default(), false, Strictness::Lenient)
+            .unwrap()
+            .cascade(&doc, &ctx)
+            .unwrap();
         if let Some(d) = set.diff(&fresh, &doc) {
             panic!("incremental != full for {css:?}: {d}");
         }
@@ -3013,6 +3163,26 @@ mod tests {
                 d.remove_attr(n, "class");
                 vec![]
             });
+        }
+        // Siblings that match the same rules but differ in what else their style
+        // reads must not share one style.
+        let share_html = r#"<div id="root"><p id="a" class="c">x</p><p id="b" class="c" lang="tr">x</p><p id="c" class="c" style="color: red">x</p><p id="d" class="c" align="center">x</p><font id="e" class="c" size="7">x</font></div>"#;
+        for (target, name, value) in [
+            ("b", "lang", "fr"),
+            ("c", "style", "color: blue"),
+            ("d", "align", "right"),
+            ("e", "size", "2"),
+            ("a", "class", "c d"),
+        ] {
+            check_update(
+                share_html,
+                ".c { font-size: 12px } .d { color: green }",
+                |d, _| {
+                    let n = el(d, target);
+                    d.set_attr(n, name, value);
+                    vec![]
+                },
+            );
         }
         let structural = [
             "li:first-child { color: red }",
@@ -3104,11 +3274,13 @@ mod tests {
         }
         let mut html = String::from(r#"<div id="list">"#);
         for i in 0..50 {
-            html.push_str(&format!(r#"<p class="item">{i}</p>"#));
+            html.push_str(&format!(r#"<p class="item" id="i{i}">{i}</p>"#));
         }
         html.push_str("</div>");
         let css = ".on { background: red } .big { font-size: 30px } .item { margin: 1px }";
-        let computes = |class: &str| {
+        // The elements matched (rematched or recomputed) and whether the children's
+        // styles are the objects they were.
+        let restyle = |class: &str| {
             let mut doc = crate::html::parse(&html);
             doc.drain_mutations();
             let sheets = [sheet(css)];
@@ -3116,22 +3288,24 @@ mod tests {
                 StyleEngine::build(&sheets, &Media::default(), false, Strictness::Lenient).unwrap();
             let ctx = MatchContext::new();
             let mut set = engine.cascade(&doc, &ctx).unwrap();
+            let before = set.get_rc(el(&doc, "i7")).unwrap().clone();
             let list = el(&doc, "list");
             doc.set_attr(list, "class", class);
             let muts = doc.drain_mutations();
             super::super::profile::set_clock(Some(tick));
             super::super::profile::take();
             engine.update(&doc, &mut set, &muts, &[], &ctx).unwrap();
-            let n = super::super::profile::take()
-                .get(super::super::profile::Phase::Compute)
-                .1;
+            let t = super::super::profile::take();
             super::super::profile::set_clock(None);
             assert!(set
                 .diff(&engine.cascade(&doc, &ctx).unwrap(), &doc)
                 .is_none());
-            n
+            let kept = Rc::ptr_eq(&before, set.get_rc(el(&doc, "i7")).unwrap());
+            (t.get(super::super::profile::Phase::Match).1, kept)
         };
-        assert_eq!(computes("on"), 1);
-        assert_eq!(computes("big"), 51);
+        // The list alone: one rule match and one cascade.
+        assert_eq!(restyle("on"), (2, true));
+        let (matched, kept) = restyle("big");
+        assert!(matched > 50 && !kept);
     }
 }
