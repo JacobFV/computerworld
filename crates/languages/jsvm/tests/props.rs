@@ -94,3 +94,26 @@ fn adding_properties_respects_prototypes_and_extensibility() {
     );
     assert_eq!(out, "setter 5 fresh true 1 3 true 9 false");
 }
+
+#[test]
+fn computed_keys_equality_and_literals_on_the_fast_paths() {
+    let src = r#"
+        const o = { a: 1, a: 2, [('b')]: 3 };
+        const k = Object.keys(o);
+        const arr = [1, 2];
+        arr[2] = 3; arr[0] = 9; arr['1'] = 8;
+        const target = {};
+        for (const key of k) target[key] = o[key] * 10;
+        const frozen = Object.freeze({ x: 1 });
+        const setOn = (obj, key, v) => { try { obj[key] = v; return 'ok'; } catch (e) { return e.name; } };
+        const eqs = [null == undefined, null != 0, undefined == 0, 1 == 1, 'a' == 'a', true == true,
+                     o == o, o == {}, '1' == 1, 0 == false, null == false, NaN == NaN, 1n == 1];
+        [k.join(), o.a, JSON.stringify(arr), arr.length, JSON.stringify(target),
+         setOn(frozen, 'x', 2), frozen.x, eqs.join()].join(' ')
+    "#;
+    let out = eval(src);
+    assert_eq!(
+        out,
+        "a,b 2 [9,8,3] 3 {\"a\":20,\"b\":30} ok 1 true,true,false,true,true,true,true,false,true,true,false,false,true"
+    );
+}

@@ -1229,6 +1229,43 @@ impl<'h> Vm<'h> {
                     f.stack.truncate(n - 2);
                     f.stack.push(v);
                 }
+                Op::SetElem => {
+                    // [obj key value] -> value
+                    let n = f.stack.len();
+                    if !element_set(&f.stack[n - 3], &f.stack[n - 2], &f.stack[n - 1]) {
+                        leave!();
+                    }
+                    let v = f.stack.pop().unwrap();
+                    f.stack.truncate(n - 3);
+                    f.stack.push(v);
+                }
+                Op::DefineField(c) => {
+                    // [obj value] -> obj, on an object literal being built.
+                    let Value::Str(name) = &code.consts[c as usize] else {
+                        leave!();
+                    };
+                    let n = f.stack.len();
+                    if !define_field(&f.stack[n - 2], name, &f.stack[n - 1]) {
+                        leave!();
+                    }
+                    f.stack.pop();
+                }
+                Op::Eq | Op::Ne => {
+                    let n = f.stack.len();
+                    let Some(eq) = simple_loose_eq(&f.stack[n - 2], &f.stack[n - 1]) else {
+                        leave!();
+                    };
+                    let r = if matches!(*op, Op::Eq) { eq } else { !eq };
+                    f.stack.truncate(n - 2);
+                    f.stack.push(Value::Bool(r));
+                }
+                Op::NewObject => {
+                    let proto = self.intr.object_proto.clone();
+                    f.stack.push(Value::Obj(Obj::new(ObjData::new(
+                        Some(proto),
+                        Kind::Ordinary,
+                    ))));
+                }
                 _ => leave!(),
             }
         }
@@ -2730,7 +2767,15 @@ fn plain_get(obj: &Value, name: &JsStr) -> Option<Value> {
         return None;
     }
     match obj {
-        Value::Obj(o) => plain_get_ident(o, std::rc::Rc::as_ptr(&name.0) as *const u8 as usize),
+        Value::Obj(o) => {
+            if let Kind::Array(v) = &o.borrow().kind {
+                return match name.as_str() {
+                    "length" => Some(Value::Num(v.len() as f64)),
+                    _ => None,
+                };
+            }
+            plain_get_ident(o, std::rc::Rc::as_ptr(&name.0) as *const u8 as usize)
+        }
         Value::Str(s) if name.as_str() == "length" => Some(Value::Num(s.len16() as f64)),
         _ => None,
     }
@@ -2802,6 +2847,99 @@ fn plain_set(obj: &Value, name: &JsStr, v: &Value) -> bool {
     }
 }
 
+/// `==` when no conversion is involved: both nullish or one of them nullish,
+/// two numbers, strings, booleans or objects. `None` for the rest.
+#[inline]
+fn simple_loose_eq(a: &Value, b: &Value) -> Option<bool> {
+    Some(match (a, b) {
+        (Value::Undefined | Value::Null, Value::Undefined | Value::Null) => true,
+        (
+            Value::Undefined | Value::Null,
+            Value::Num(_) | Value::Str(_) | Value::Bool(_) | Value::Obj(_),
+        )
+        | (
+            Value::Num(_) | Value::Str(_) | Value::Bool(_) | Value::Obj(_),
+            Value::Undefined | Value::Null,
+        ) => false,
+        (Value::Num(x), Value::Num(y)) => x == y,
+        (Value::Str(x), Value::Str(y)) => x == y,
+        (Value::Bool(x), Value::Bool(y)) => x == y,
+        (Value::Obj(x), Value::Obj(y)) => x.ptr_eq(y),
+        _ => return None,
+    })
+}
+
+/// An object literal's field `name: v` (CreateDataProperty) on an ordinary
+/// object: replaces a configurable or writable own property, or adds one to
+/// an extensible object.
+#[inline]
+fn define_field(obj: &Value, name: &JsStr, v: &Value) -> bool {
+    let Value::Obj(o) = obj else {
+        return false;
+    };
+    if !name.is_canon() {
+        return false;
+    }
+    let mut d = o.borrow_mut();
+    if !d.kind.ordinary_props() {
+        return false;
+    }
+    let id = std::rc::Rc::as_ptr(&name.0) as *const u8 as usize;
+    match d.props.find_ident(id) {
+        Some(i) => {
+            let p = &mut d.props.entries[i].1;
+            if !p.configurable() && !p.writable() {
+                return false;
+            }
+            *p = Prop::data(v.clone(), ALL);
+        }
+        None => {
+            if !d.extensible {
+                return false;
+            }
+            d.props
+                .push_absent(Key::Str(name.clone()), Prop::data(v.clone(), ALL));
+        }
+    }
+    true
+}
+
+/// An element write the fast path can do: an array element by an integer
+/// index within (or just past) a plain array, or a canonical string key on an
+/// ordinary object (as `plain_set`).
+#[inline]
+fn element_set(obj: &Value, key: &Value, v: &Value) -> bool {
+    match (obj, key) {
+        (Value::Obj(o), Value::Num(n)) => {
+            let i = *n as usize;
+            if i as f64 != *n {
+                return false;
+            }
+            let mut d = o.borrow_mut();
+            let plain = !d.elems_frozen && !d.elems_sealed && d.extensible;
+            if let Kind::Array(arr) = &mut d.kind {
+                if plain {
+                    if i < arr.len() {
+                        arr[i] = v.clone();
+                        return true;
+                    }
+                    if i == arr.len() {
+                        arr.push(v.clone());
+                        return true;
+                    }
+                }
+            }
+            false
+        }
+        (Value::Obj(o), Value::Str(s)) => {
+            !matches!(o.borrow().kind, Kind::Array(_))
+                && crate::numconv::array_index(s).is_none()
+                && plain_set(obj, s, v)
+        }
+        _ => false,
+    }
+}
+
 /// Whether no object on the prototype chain starting at `proto` has an own
 /// property with identity `id`, all of them being ordinary. False (inconclusive)
 /// for exotic prototypes and very long chains.
@@ -2832,6 +2970,14 @@ fn absent_from_prototypes(proto: Option<&Obj>, id: usize) -> bool {
 fn element_get(obj: &Value, key: &Value) -> Option<Value> {
     if let (Value::Obj(o), Value::Sym(s)) = (obj, key) {
         return plain_get_ident(o, std::rc::Rc::as_ptr(s) as *const u8 as usize);
+    }
+    if let (Value::Obj(o), Value::Str(s)) = (obj, key) {
+        // A canonical name (a key from `for…in` or `Object.keys`, a literal);
+        // an array's `length` and its index strings are the general path's.
+        if s.is_canon() && !matches!(o.borrow().kind, Kind::Array(_)) {
+            return plain_get_ident(o, std::rc::Rc::as_ptr(&s.0) as *const u8 as usize);
+        }
+        return None;
     }
     if let (Value::Obj(o), Value::Num(n)) = (obj, key) {
         let i = *n as usize;
