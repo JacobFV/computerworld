@@ -166,6 +166,13 @@ pub enum Elem {
         children: Vec<Value>,
         key: Option<Str>,
     },
+    /// `createPortal(children, container)`: children rendered into another node,
+    /// in React's tree where the portal is.
+    Portal {
+        children: Vec<Value>,
+        container: NodeId,
+        key: Option<Str>,
+    },
 }
 
 impl Elem {
@@ -174,7 +181,8 @@ impl Elem {
             Elem::Template { key, .. }
             | Elem::Component { key, .. }
             | Elem::Fragment { key, .. }
-            | Elem::Provider { key, .. } => key.as_ref(),
+            | Elem::Provider { key, .. }
+            | Elem::Portal { key, .. } => key.as_ref(),
         }
     }
 }

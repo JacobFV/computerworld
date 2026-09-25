@@ -1093,6 +1093,7 @@ impl Runtime {
                     self.dom_nodes(c, out);
                 }
             }
+            MNode::Portal { .. } => {}
         }
     }
 
@@ -1108,6 +1109,7 @@ impl Runtime {
             MNode::List { children, .. } | MNode::Provider { children, .. } => {
                 children.iter().find_map(|(_, c)| self.first_dom(c))
             }
+            MNode::Portal { .. } => None,
         }
     }
 
@@ -1155,6 +1157,9 @@ impl Runtime {
                 }
                 (MNode::List { fragment: true, .. }, Elem::Fragment { .. }) => true,
                 (MNode::Provider { ctx, .. }, Elem::Provider { ctx: c, .. }) => ctx == c,
+                (MNode::Portal { container, .. }, Elem::Portal { container: c, .. }) => {
+                    container == c
+                }
                 _ => false,
             },
             _ => false,
@@ -1300,6 +1305,34 @@ impl Runtime {
                         }
                         self.replace(old, &e, parent, anchor)
                     }
+                    Elem::Portal {
+                        children,
+                        container,
+                        key,
+                    } => {
+                        if let MNode::Portal {
+                            container: c,
+                            children: old_children,
+                            key: k,
+                        } = old
+                        {
+                            if c == *container && k.as_ref() == key.as_ref() {
+                                let list = MNode::List {
+                                    children: old_children,
+                                    key: None,
+                                    fragment: false,
+                                };
+                                return self.portal_list(list, children, *container, key, parent);
+                            }
+                            let old = MNode::Portal {
+                                container: c,
+                                children: old_children,
+                                key: k,
+                            };
+                            return self.replace(old, &e, parent, anchor);
+                        }
+                        self.replace(old, &e, parent, anchor)
+                    }
                 }
             }
             other => {
@@ -1383,6 +1416,47 @@ impl Runtime {
                     children,
                     key: key.clone(),
                 }
+            }
+            Elem::Portal {
+                children,
+                container,
+                key,
+            } => self.portal_list(MNode::Empty, children, *container, key, parent),
+        }
+    }
+
+    /// A portal's children reconciled in its container, and their top nodes
+    /// recorded under `parent` for event bubbling.
+    fn portal_list(
+        &mut self,
+        old: MNode,
+        children: &[Value],
+        container: NodeId,
+        key: &Option<Str>,
+        parent: NodeId,
+    ) -> MNode {
+        let list = self.reconcile_list(old, children, container, None, false, None);
+        let MNode::List { children, .. } = list else {
+            unreachable!()
+        };
+        let node = MNode::Portal {
+            container,
+            children,
+            key: key.clone(),
+        };
+        self.record_portal(&node, parent);
+        node
+    }
+
+    /// Records a portal's top DOM nodes as bubbling to `parent`.
+    pub(crate) fn record_portal(&mut self, node: &MNode, parent: NodeId) {
+        if let MNode::Portal { children, .. } = node {
+            let mut tops = Vec::new();
+            for (_, c) in children {
+                self.dom_nodes(c, &mut tops);
+            }
+            for t in tops {
+                self.portal_parents.insert(t, parent);
             }
         }
     }
@@ -1760,7 +1834,9 @@ impl Runtime {
                     }
                 }
             }
-            MNode::List { children, .. } | MNode::Provider { children, .. } => {
+            MNode::List { children, .. }
+            | MNode::Provider { children, .. }
+            | MNode::Portal { children, .. } => {
                 for (_, c) in children {
                     self.collect_instances(c, out);
                 }
@@ -1809,6 +1885,21 @@ impl Runtime {
                 }
             }
             MNode::List { children, .. } => self.visit_children(children, parent, anchor),
+            MNode::Portal {
+                container,
+                children,
+                ..
+            } => {
+                let c = *container;
+                self.visit_children(children, c, None);
+                let mut tops = Vec::new();
+                for (_, ch) in children.iter() {
+                    self.dom_nodes(ch, &mut tops);
+                }
+                for t in tops {
+                    self.portal_parents.insert(t, parent);
+                }
+            }
             MNode::Provider {
                 ctx,
                 value,
@@ -1914,6 +2005,19 @@ impl Runtime {
             MNode::List { children, .. } | MNode::Provider { children, .. } => {
                 for (_, c) in children {
                     self.unmount(c, remove);
+                }
+            }
+            MNode::Portal { children, .. } => {
+                // In another container: removed whatever becomes of the parent.
+                let mut tops = Vec::new();
+                for (_, c) in &children {
+                    self.dom_nodes(c, &mut tops);
+                }
+                for t in tops {
+                    self.portal_parents.remove(&t);
+                }
+                for (_, c) in children {
+                    self.unmount(c, true);
                 }
             }
         }

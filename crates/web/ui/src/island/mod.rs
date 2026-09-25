@@ -605,6 +605,36 @@ impl Runtime {
         }
         let ov = Js::Obj(o.clone());
         let tag = self.js_get(&ov, "$$typeof");
+        let portal = self.js_symbol("PORTAL");
+        if js_same(&tag, &portal) {
+            // `createPortal(children, container, key)`.
+            let children_js = self.js_get(&ov, "children");
+            let children = match self.cw_value(&children_js) {
+                Value::Array(a) => a.borrow().clone(),
+                Value::Foreign(f) if f.array => {
+                    let f = f.clone();
+                    self.foreign_items(&f).unwrap_or_default()
+                }
+                Value::Undefined => Vec::new(),
+                v => vec![v],
+            };
+            let container_js = self.js_get(&ov, "containerInfo");
+            let key = match self.js_get(&ov, "key") {
+                Js::Null | Js::Undefined => None,
+                k => {
+                    let vm = self.vm();
+                    vm.to_str(&k).ok().map(|s| Rc::from(s.as_str()))
+                }
+            };
+            return Some(match self.cw_value(&container_js) {
+                Value::Node(container) => Value::Elem(Rc::new(Elem::Portal {
+                    children,
+                    container,
+                    key,
+                })),
+                _ => Value::error("Error", "Target container is not a DOM element."),
+            });
+        }
         let element = self.js_symbol("ELEMENT");
         if !js_same(&tag, &element) {
             return None;
@@ -718,6 +748,22 @@ impl Runtime {
 
     /// A cw-ui element as the VM's element.
     fn elem_to_js(&mut self, e: &Rc<Elem>) -> Js {
+        if let Elem::Portal {
+            children,
+            container,
+            key,
+        } = &**e
+        {
+            let c = self.js_value(&Value::array(children.clone()));
+            let n = self.js_value(&Value::Node(*container));
+            let k = match key {
+                Some(k) => Js::str(k),
+                None => Js::Null,
+            };
+            return self
+                .js_call_helper("portal", vec![c, n, k])
+                .unwrap_or(Js::Undefined);
+        }
         let (ty, props, key): (Js, Vec<(String, Value)>, Option<Str>) = match &**e {
             Elem::Template { tid, holes, key } => {
                 return self.template_to_js(*tid, holes, key.clone());
@@ -740,6 +786,7 @@ impl Runtime {
                     key.clone(),
                 )
             }
+            Elem::Portal { .. } => unreachable!("converted above"),
             Elem::Provider {
                 ctx,
                 value,

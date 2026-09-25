@@ -702,6 +702,8 @@ pub enum Builtin {
     PerformanceNow,
     /// `matchMedia(query)`: a MediaQueryList, re-evaluated on resize.
     MatchMedia,
+    /// `createPortal(children, container, key?)`: a portal element.
+    CreatePortal,
 }
 
 /// A JSX element expression.

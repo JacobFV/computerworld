@@ -322,13 +322,6 @@ impl<'a> Visit<'a> for Check<'_> {
         walk::walk_static_member_expression(self, m);
     }
 
-    fn visit_identifier_name(&mut self, n: &oxc_ast::ast::IdentifierName<'a>) {
-        // A property named so, as a package's plain `createElement` code spells it.
-        if n.name == "createPortal" {
-            self.refuse(n.span.start, "`createPortal` on the island".into());
-        }
-    }
-
     fn visit_import_declaration(&mut self, d: &oxc_ast::ast::ImportDeclaration<'a>) {
         if d.source.value == "react" {
             for s in d.specifiers.iter().flatten() {

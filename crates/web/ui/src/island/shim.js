@@ -15,6 +15,7 @@
   const CONTEXT = Symbol.for('react.context');
   const FORWARD_REF = Symbol.for('react.forward_ref');
   const MEMO = Symbol.for('react.memo');
+  const PORTAL = Symbol.for('react.portal');
   const ID = Symbol('cw.value');
 
   // ------------------------------------------------------------ cw-ui values
@@ -271,7 +272,9 @@
   });
   const ReactDOM = {
     flushSync(f) { return f(); },
-    createPortal() { throw new Error('createPortal is not supported in an island'); },
+    createPortal(children, containerInfo, key) {
+      return { $$typeof: PORTAL, key: key == null ? null : '' + key, children, containerInfo, implementation: null };
+    },
     createRoot: () => rootOf(),
     hydrateRoot: (container, el) => { cw.rendered = el; return rootOf(); },
     render(el) { cw.rendered = el; },
@@ -281,7 +284,8 @@
   globalThis.React = React;
   globalThis.ReactDOM = ReactDOM;
   globalThis.__cw_jsx = jsxRuntime;
-  cw.symbols = { ELEMENT, FRAGMENT, STRICT, SUSPENSE, PROFILER, PROVIDER, CONTEXT };
+  cw.symbols = { ELEMENT, FRAGMENT, STRICT, SUSPENSE, PROFILER, PROVIDER, CONTEXT, PORTAL };
+  cw.portal = (children, containerInfo, key) => ReactDOM.createPortal(children, containerInfo, key);
 
   // ------------------------------------------------------------ the host
   // A browser, not Node: what jsvm adds for Node is not here, so a package's

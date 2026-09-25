@@ -221,13 +221,7 @@ impl Runtime {
     fn fire_inner(&mut self, ty: &str, target: NodeId, init: &Init) -> bool {
         // React's tree: the target and its ancestors up to (and including) the root
         // container.
-        let mut path = vec![target];
-        path.extend(
-            self.inner
-                .doc
-                .ancestors(target)
-                .filter(|a| self.inner.doc.is_element(*a)),
-        );
+        let path = self.react_path(target);
         let (props, bubbles) = react_props(ty);
         let native = Rc::new(event_obj(ty, target, init));
         let mut stopped = self.fire_global(ty, &native, true);
@@ -411,6 +405,25 @@ impl Runtime {
             self.fire("focusin", t, &init);
         }
         true
+    }
+
+    /// The target and its ancestors in React's tree: DOM parents, except that a
+    /// portal's content goes on to where the portal sits.
+    pub(crate) fn react_path(&self, target: NodeId) -> Vec<NodeId> {
+        let mut path = vec![target];
+        let mut cur = target;
+        loop {
+            let next = match self.portal_parents.get(&cur) {
+                Some(p) => Some(*p),
+                None => self.inner.doc.parent(cur),
+            };
+            let Some(n) = next else { break };
+            if self.inner.doc.is_element(n) {
+                path.push(n);
+            }
+            cur = n;
+        }
+        path
     }
 
     fn focus_target(&self, target: NodeId) -> Option<NodeId> {

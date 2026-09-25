@@ -1985,6 +1985,28 @@ impl Runtime {
             }
             B::PerformanceNow => Value::Num(self.performance_now()),
             B::MatchMedia => self.match_media(&arg(&args, 0).to_js_string()),
+            B::CreatePortal => {
+                let children = match arg(&args, 0) {
+                    Value::Array(a) => a.borrow().clone(),
+                    Value::Foreign(f) if f.array => {
+                        let f = f.clone();
+                        self.foreign_items(&f)?
+                    }
+                    v => vec![v],
+                };
+                let key = match arg(&args, 2) {
+                    k if k.is_nullish() => None,
+                    k => Some(Rc::from(k.to_js_string().as_str())),
+                };
+                match arg(&args, 1) {
+                    Value::Node(container) => Value::Elem(Rc::new(Elem::Portal {
+                        children,
+                        container,
+                        key,
+                    })),
+                    _ => return type_error("Target container is not a DOM element."),
+                }
+            }
             B::HistoryPush
             | B::HistoryReplace
             | B::HistoryGo

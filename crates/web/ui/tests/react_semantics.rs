@@ -115,6 +115,14 @@ fn dom_text(
     let mut out = String::new();
     if let Some(root) = doc.by_id("root").first() {
         walk(doc, *root, values, sel, &mut out);
+        // Whatever else the app put in the body (a portal's content).
+        if let Some(body) = doc.parent(*root) {
+            for c in doc.children(body) {
+                if c != *root && doc.is_element(c) && !doc.is(c, "script") {
+                    walk(doc, c, values, sel, &mut out);
+                }
+            }
+        }
     }
     out
 }
@@ -2317,5 +2325,95 @@ export function App() {
 }
 "#,
         &[Step::Click("#go"), Step::Click("#go"), Step::Click("#go")],
+    );
+}
+
+#[test]
+fn portals_render_elsewhere_and_bubble_through_react() {
+    same_as_react(
+        r#"
+import { createContext, useContext, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { createRoot } from 'react-dom/client';
+
+const Theme = createContext('light');
+function Modal({ onClose }: { onClose: () => void }) {
+  const theme = useContext(Theme);
+  return createPortal(
+    <div id="modal" className={theme}>
+      <p id="inside">in {theme}</p>
+      <button id="close" onClick={() => { console.log('close'); onClose(); }}>close</button>
+    </div>,
+    document.body,
+  );
+}
+export function App() {
+  const [open, setOpen] = useState(false);
+  const [clicks, setClicks] = useState(0);
+  return (
+    <Theme.Provider value="dark">
+      <section id="outer" onClick={() => { console.log('bubbled to section'); setClicks((c) => c + 1); }}>
+        <button id="open" onClick={() => setOpen(true)}>open</button>
+        <p id="count">{clicks} {String(open)}</p>
+        {open && <Modal onClose={() => setOpen(false)} />}
+      </section>
+    </Theme.Provider>
+  );
+}
+createRoot(document.getElementById('root')!).render(<App />);
+"#,
+        &[
+            Step::Click("#open"),
+            Step::Click("#inside"),
+            Step::Click("#close"),
+            Step::Click("#open"),
+        ],
+    );
+}
+
+#[test]
+fn portals_render_elsewhere_and_bubble_through_react_on_the_island() {
+    same_as_react(
+        r#"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import { App } from './modal';
+createRoot(document.getElementById('root')!).render(<App />);
+// @file modal.tsx
+import { createContext, useContext, useState } from 'react';
+import { createPortal } from 'react-dom';
+function* g() { yield 1; }
+
+const Theme = createContext('light');
+function Modal({ onClose }: { onClose: () => void }) {
+  const theme = useContext(Theme);
+  return createPortal(
+    <div id="modal" className={theme}>
+      <p id="inside">in {theme}</p>
+      <button id="close" onClick={() => { console.log('close'); onClose(); }}>close</button>
+    </div>,
+    document.body,
+  );
+}
+export function App() {
+  const [open, setOpen] = useState(false);
+  const [clicks, setClicks] = useState(0);
+  return (
+    <Theme.Provider value="dark">
+      <section id="outer" onClick={() => { console.log('bubbled to section'); setClicks((c) => c + 1); }}>
+        <button id="open" onClick={() => setOpen(true)}>open</button>
+        <p id="count">{clicks} {String(open)}</p>
+        {open && <Modal onClose={() => setOpen(false)} />}
+      </section>
+    </Theme.Provider>
+  );
+}
+"#,
+        &[
+            Step::Click("#open"),
+            Step::Click("#inside"),
+            Step::Click("#close"),
+            Step::Click("#open"),
+        ],
     );
 }

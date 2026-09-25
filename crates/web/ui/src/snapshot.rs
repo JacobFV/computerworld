@@ -70,6 +70,8 @@ pub enum HeapObj {
     /// A `useImperativeHandle` effect (ref, create) and its cleanup (ref).
     ImperativeSet(V, V),
     ImperativeClear(V),
+    /// A portal element: children, container, key.
+    Portal(Vec<V>, NodeId, Option<String>),
     /// A MediaQueryList's listener adder (true) or remover, by list.
     MediaListen(u32, bool),
     /// A `Date`'s time value (`None` when invalid: JSON has no NaN).
@@ -119,6 +121,7 @@ pub enum MNodeS {
     Component(u32),
     List(Vec<(ListKeyS, MNodeS)>, Option<String>, bool),
     Provider(u32, V, Vec<(ListKeyS, MNodeS)>, Option<String>),
+    Portal(NodeId, Vec<(ListKeyS, MNodeS)>, Option<String>),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -213,6 +216,9 @@ pub struct UiState {
     /// `matchMedia` lists: query, object, listeners.
     #[serde(default)]
     pub media_lists: Vec<(String, V, Vec<V>)>,
+    /// Portals' top nodes, to where their portal sits in React's tree.
+    #[serde(default)]
+    pub portal_parents: Vec<(NodeId, NodeId)>,
     pub clock_ms: f64,
     pub start_micros: i64,
     pub id_counter: u32,
@@ -453,6 +459,15 @@ impl Enc {
                             children.iter().map(|x| self.v(x)).collect(),
                             key.as_ref().map(|k| k.to_string()),
                         ),
+                        Elem::Portal {
+                            children,
+                            container,
+                            key,
+                        } => HeapObj::Portal(
+                            children.iter().map(|x| self.v(x)).collect(),
+                            *container,
+                            key.as_ref().map(|k| k.to_string()),
+                        ),
                     };
                     self.heap[i as usize] = obj;
                     V::H(i)
@@ -651,6 +666,18 @@ impl Enc {
             } => MNodeS::Provider(
                 *ctx,
                 self.v(value),
+                children
+                    .iter()
+                    .map(|(k, c)| (Self::key(k), self.mnode(c)))
+                    .collect(),
+                key.as_ref().map(|k| k.to_string()),
+            ),
+            MNode::Portal {
+                container,
+                children,
+                key,
+            } => MNodeS::Portal(
+                *container,
                 children
                     .iter()
                     .map(|(k, c)| (Self::key(k), self.mnode(c)))
@@ -857,6 +884,12 @@ pub(crate) fn save(rt: &Runtime) -> UiState {
         raf,
         next_raf: rt.next_raf,
         media_lists,
+        portal_parents: {
+            let mut p: Vec<(NodeId, NodeId)> =
+                rt.portal_parents.iter().map(|(a, b)| (*a, *b)).collect();
+            p.sort();
+            p
+        },
         clock_ms: rt.clock_ms,
         start_micros: rt.start_micros,
         id_counter: rt.id_counter,
@@ -981,6 +1014,17 @@ impl Dec<'_> {
                 }
                 Value::Elem(Rc::new(Elem::Fragment {
                     children: c,
+                    key: key.as_deref().map(Rc::from),
+                }))
+            }
+            HeapObj::Portal(children, container, key) => {
+                let mut c = Vec::with_capacity(children.len());
+                for x in children {
+                    c.push(self.v(x)?);
+                }
+                Value::Elem(Rc::new(Elem::Portal {
+                    children: c,
+                    container: *container,
                     key: key.as_deref().map(Rc::from),
                 }))
             }
@@ -1279,6 +1323,17 @@ impl Dec<'_> {
                     key: key.as_deref().map(Rc::from),
                 }
             }
+            MNodeS::Portal(container, children, key) => {
+                let mut c = Vec::with_capacity(children.len());
+                for (k, m) in children {
+                    c.push((Self::key(k), self.mnode(m)?));
+                }
+                MNode::Portal {
+                    container: *container,
+                    children: c,
+                    key: key.as_deref().map(Rc::from),
+                }
+            }
         })
     }
 }
@@ -1481,6 +1536,7 @@ pub(crate) fn load(
         rt.raf.push((*i, d.v(f)?));
     }
     rt.next_raf = s.next_raf;
+    rt.portal_parents = s.portal_parents.iter().copied().collect();
     for (m, o, ls) in &s.media_lists {
         let ls = ls.iter().map(|l| d.v(l)).collect::<Result<Vec<_>, _>>()?;
         rt.media_lists.push((m.clone(), d.v(o)?, ls));

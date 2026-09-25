@@ -208,6 +208,8 @@ enum ReactName {
     HydrateRoot,
     /// React 17's `ReactDOM.render(element, container)`.
     DomRender,
+    /// `createPortal(children, container, key?)`.
+    CreatePortal,
     /// `import React from 'react'` / `import * as React`.
     ReactNs,
     ReactDomNs,
@@ -244,6 +246,7 @@ fn react_export(name: &str) -> ReactName {
         "createRoot" => ReactName::CreateRoot,
         "hydrateRoot" => ReactName::HydrateRoot,
         "render" => ReactName::DomRender,
+        "createPortal" => ReactName::CreatePortal,
         _ => ReactName::Other,
     }
 }
@@ -5246,6 +5249,10 @@ impl<'a> Lowerer<'a> {
                 let (args, _) =
                     self.exprs_args(&c.arguments, &[Ty::Function(vec![], Box::new(Ty::Void))]);
                 return (Expr::Builtin(Builtin::StartTransition, args), Ty::Void);
+            }
+            ReactName::CreatePortal => {
+                let (args, _) = self.exprs_args(&c.arguments, &[Ty::Node, Ty::DomNode]);
+                return (Expr::Builtin(Builtin::CreatePortal, args), Ty::Node);
             }
             _ => {}
         }

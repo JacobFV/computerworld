@@ -197,6 +197,13 @@ pub(crate) enum MNode {
         children: Vec<(ListKey, MNode)>,
         key: Option<Str>,
     },
+    /// A portal: its children mounted in `container`; it adds nothing to its
+    /// parent's DOM.
+    Portal {
+        container: NodeId,
+        children: Vec<(ListKey, MNode)>,
+        key: Option<Str>,
+    },
 }
 
 /// How a list child is matched against the previous render: an explicit key or its
@@ -329,6 +336,9 @@ pub struct Runtime {
     pub(crate) next_raf: u32,
     /// `matchMedia` lists: the query, its object, its `change` listeners.
     pub(crate) media_lists: Vec<(String, Value, Vec<Value>)>,
+    /// A portal's top DOM nodes, to the DOM node its portal sits under in React's
+    /// tree: where React's events go on bubbling.
+    pub(crate) portal_parents: std::collections::HashMap<NodeId, NodeId>,
     /// Virtual milliseconds since boot (timers are due on this clock).
     pub(crate) clock_ms: f64,
     pub(crate) start_micros: i64,
@@ -416,6 +426,7 @@ impl Runtime {
             raf: Vec::new(),
             next_raf: 0,
             media_lists: Vec::new(),
+            portal_parents: std::collections::HashMap::new(),
             clock_ms: 0.0,
             start_micros: 0,
             microtasks: VecDeque::new(),
