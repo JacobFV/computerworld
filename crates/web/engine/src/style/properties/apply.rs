@@ -1002,7 +1002,7 @@ fn auto_tracks(v: &Specified, c: &ComputeCtx) -> Option<Vec<TrackSize>> {
 pub fn grid_auto_rows(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
     match auto_tracks(v, c) {
         Some(t) => {
-            s.grid_auto_rows = t;
+            s.grid_auto_rows = std::rc::Rc::new(t);
             true
         }
         None => false,
@@ -1012,7 +1012,7 @@ pub fn grid_auto_rows(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> b
 pub fn grid_auto_columns(s: &mut ComputedStyle, v: &Specified, c: &ComputeCtx) -> bool {
     match auto_tracks(v, c) {
         Some(t) => {
-            s.grid_auto_columns = t;
+            s.grid_auto_columns = std::rc::Rc::new(t);
             true
         }
         None => false,
@@ -1058,7 +1058,7 @@ pub fn quotes(s: &mut ComputedStyle, v: &Specified, _c: &ComputeCtx) -> bool {
     };
     s.quotes = match q {
         None => ComputedStyle::initial().quotes,
-        Some(pairs) => pairs.clone(),
+        Some(pairs) => std::rc::Rc::new(pairs.clone()),
     };
     true
 }
@@ -1068,32 +1068,46 @@ simple!(counter_increment, Counters, |s, x| s.counter_increment = x);
 
 // --- Transitions and animations --------------------------------------------------
 
-simple!(transition_property, Idents, |s, x| s.transitions.property =
-    x);
-simple!(transition_duration, Times, |s, x| s.transitions.duration =
-    x);
-simple!(transition_timing_function, Timings, |s, x| s
-    .transitions
-    .timing = x);
-simple!(transition_delay, Times, |s, x| s.transitions.delay = x);
-simple!(animation_name, Idents, |s, x| s.animations.name = x);
-simple!(animation_duration, Times, |s, x| s.animations.duration = x);
-simple!(animation_timing_function, Timings, |s, x| s
-    .animations
-    .timing = x);
-simple!(animation_delay, Times, |s, x| s.animations.delay = x);
-simple!(animation_iteration_count, IterationCounts, |s, x| s
-    .animations
-    .iteration_count =
-    x);
-simple!(animation_direction, AnimationDirections, |s, x| s
-    .animations
-    .direction =
-    x);
-simple!(animation_fill_mode, AnimationFillModes, |s, x| s
-    .animations
-    .fill_mode =
-    x);
-simple!(animation_play_state, Bools, |s, x| s
-    .animations
-    .play_state = x);
+simple!(transition_property, Idents, |s, x| std::rc::Rc::make_mut(
+    &mut s.transitions
+)
+.property = x);
+simple!(transition_duration, Times, |s, x| std::rc::Rc::make_mut(
+    &mut s.transitions
+)
+.duration = x);
+simple!(transition_timing_function, Timings, |s, x| {
+    std::rc::Rc::make_mut(&mut s.transitions).timing = x
+});
+simple!(transition_delay, Times, |s, x| std::rc::Rc::make_mut(
+    &mut s.transitions
+)
+.delay = x);
+simple!(animation_name, Idents, |s, x| std::rc::Rc::make_mut(
+    &mut s.animations
+)
+.name = x);
+simple!(animation_duration, Times, |s, x| std::rc::Rc::make_mut(
+    &mut s.animations
+)
+.duration = x);
+simple!(animation_timing_function, Timings, |s, x| {
+    std::rc::Rc::make_mut(&mut s.animations).timing = x
+});
+simple!(animation_delay, Times, |s, x| std::rc::Rc::make_mut(
+    &mut s.animations
+)
+.delay = x);
+simple!(animation_iteration_count, IterationCounts, |s, x| {
+    std::rc::Rc::make_mut(&mut s.animations).iteration_count = x
+});
+simple!(animation_direction, AnimationDirections, |s, x| {
+    std::rc::Rc::make_mut(&mut s.animations).direction = x
+});
+simple!(animation_fill_mode, AnimationFillModes, |s, x| {
+    std::rc::Rc::make_mut(&mut s.animations).fill_mode = x
+});
+simple!(animation_play_state, Bools, |s, x| std::rc::Rc::make_mut(
+    &mut s.animations
+)
+.play_state = x);

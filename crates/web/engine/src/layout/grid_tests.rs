@@ -305,7 +305,9 @@ fn auto_fit_collapses_empty_tracks_and_their_gutters() {
 #[test]
 fn grid_auto_rows_cycle_for_implicit_rows() {
     let mut t = T::new();
-    let g = t.grid(t.body, 100, |s| s.grid_auto_rows = vec![fx(20), fx(40)]);
+    let g = t.grid(t.body, 100, |s| {
+        s.grid_auto_rows = vec![fx(20), fx(40)].into()
+    });
     let items: Vec<NodeId> = (0..4).map(|_| t.div(g, |_| {})).collect();
     let tree = t.layout();
     assert_eq!(t.rect(&tree, items[0]), r(0, 0, 100, 20));
@@ -321,7 +323,7 @@ fn areas_wider_than_template_add_explicit_tracks_sized_by_auto_columns() {
     let g = t.grid(t.body, 800, |s| {
         s.grid_template_columns = tracks(&[fx(100)]);
         s.grid_template_areas = areas(&["a b c"]);
-        s.grid_auto_columns = vec![fx(50)];
+        s.grid_auto_columns = vec![fx(50)].into();
         s.justify_content = JustifyContent::Start;
     });
     let c = t.item(g, 10, |s| {
@@ -451,7 +453,7 @@ fn lines_beyond_the_explicit_grid_create_implicit_tracks() {
     let mut t = T::new();
     let g = t.grid(t.body, 800, |s| {
         s.grid_template_columns = tracks(&[fx(100), fx(100)]);
-        s.grid_auto_columns = vec![fx(60)];
+        s.grid_auto_columns = vec![fx(60)].into();
         s.justify_content = JustifyContent::Start;
     });
     let far = t.item(g, 10, |s| s.grid_column_start = line(4));
@@ -471,7 +473,7 @@ fn negative_implicit_lines_grow_the_grid_before_the_explicit_one() {
     let mut t = T::new();
     let g = t.grid(t.body, 200, |s| {
         s.grid_template_rows = tracks(&[fx(50)]);
-        s.grid_auto_rows = vec![fx(30)];
+        s.grid_auto_rows = vec![fx(30)].into();
     });
     let a = t.div(g, |s| s.grid_row_start = line(1));
     // Explicit end line is 2; -3 is line 0, one implicit row before the grid.
@@ -489,7 +491,7 @@ fn auto_placement_sparse_with_a_locked_item() {
     let mut t = T::new();
     let g = t.grid(t.body, 300, |s| {
         s.grid_template_columns = tracks(&[fx(100), fx(100), fx(100)]);
-        s.grid_auto_rows = vec![fx(10)];
+        s.grid_auto_rows = vec![fx(10)].into();
     });
     let locked = t.div(g, |s| {
         s.grid_column_start = line(2);
@@ -515,7 +517,7 @@ fn auto_placement_dense_backfills_holes() {
     let mut t = T::new();
     let g = t.grid(t.body, 300, |s| {
         s.grid_template_columns = tracks(&[fx(100), fx(100), fx(100)]);
-        s.grid_auto_rows = vec![fx(10)];
+        s.grid_auto_rows = vec![fx(10)].into();
         s.grid_auto_flow = GridAutoFlow::RowDense;
     });
     let locked = t.div(g, |s| {
@@ -542,7 +544,7 @@ fn items_locked_in_a_row_go_after_earlier_items_in_that_row() {
     let mut t = T::new();
     let g = t.grid(t.body, 300, |s| {
         s.grid_template_columns = tracks(&[fx(100), fx(100), fx(100)]);
-        s.grid_auto_rows = vec![fx(10)];
+        s.grid_auto_rows = vec![fx(10)].into();
     });
     let a = t.div(g, |s| s.grid_row_start = line(2));
     let b = t.div(g, |s| s.grid_row_start = line(2));
@@ -558,7 +560,7 @@ fn column_flow_fills_columns_and_adds_implicit_columns() {
     let mut t = T::new();
     let g = t.grid(t.body, 800, |s| {
         s.grid_template_rows = tracks(&[fx(50), fx(50)]);
-        s.grid_auto_columns = vec![fx(100)];
+        s.grid_auto_columns = vec![fx(100)].into();
         s.grid_auto_flow = GridAutoFlow::Column;
         s.justify_content = JustifyContent::Start;
     });
@@ -581,7 +583,7 @@ fn column_flow_dense_with_a_locked_row() {
     let mut t = T::new();
     let g = t.grid(t.body, 800, |s| {
         s.grid_template_rows = tracks(&[fx(50), fx(50)]);
-        s.grid_auto_columns = vec![fx(100)];
+        s.grid_auto_columns = vec![fx(100)].into();
         s.grid_auto_flow = GridAutoFlow::ColumnDense;
         s.justify_content = JustifyContent::Start;
     });
@@ -615,7 +617,7 @@ fn text_becomes_an_anonymous_item_and_white_space_is_dropped() {
     let mut t = T::new();
     let g = t.grid(t.body, 400, |s| {
         s.grid_template_columns = tracks(&[fx(200), fx(200)]);
-        s.grid_auto_rows = vec![fx(30)];
+        s.grid_auto_rows = vec![fx(30)].into();
     });
     t.text(g, "   ");
     let a = t.item(g, 10, |_| {});
@@ -641,7 +643,7 @@ fn display_contents_child_contributes_its_children_and_inline_children_are_block
     let mut t = T::new();
     let g = t.grid(t.body, 300, |s| {
         s.grid_template_columns = tracks(&[fx(100), fx(100), fx(100)]);
-        s.grid_auto_rows = vec![fx(10)];
+        s.grid_auto_rows = vec![fx(10)].into();
     });
     let wrapper = t.div(g, |s| s.display = Display::Contents);
     let a = t.div(wrapper, |_| {});
@@ -872,7 +874,7 @@ fn implicit_tracks_beyond_a_definite_height_overflow_the_container() {
     let g = t.grid(t.body, 200, |s| {
         s.height = len(100);
         s.grid_template_rows = tracks(&[fx(100)]);
-        s.grid_auto_rows = vec![fx(50)];
+        s.grid_auto_rows = vec![fx(50)].into();
     });
     let a = t.div(g, |_| {});
     let b = t.div(g, |_| {});

@@ -77,6 +77,19 @@ enum CustomDeclared {
 #[derive(Clone, Debug)]
 struct ParsedBlock {
     decls: Vec<(ParsedDecl, bool)>,
+    /// Whether any declaration is `!important`, and whether any is not.
+    important: bool,
+    normal: bool,
+}
+
+impl ParsedBlock {
+    fn new(decls: Vec<(ParsedDecl, bool)>) -> ParsedBlock {
+        ParsedBlock {
+            important: decls.iter().any(|(_, i)| *i),
+            normal: decls.iter().any(|(_, i)| !*i),
+            decls,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -97,26 +110,31 @@ struct SortKey {
     order: u32,
 }
 
-/// A declaration in the cascade: one of the engine's (borrowed for the winners) or
-/// one parsed for this element alone (hints, `style=""`; copied into the winners).
+/// A block of declarations in the cascade at one sort key: the normal or the
+/// important declarations of a rule the element matched (borrowed from the
+/// engine for the winners), or of its hints or `style=""` (parsed for this element
+/// alone and copied into the winners). Sorting blocks rather than declarations
+/// keeps the order (a block's declarations share its key and apply in order) at a
+/// fraction of the work: a utility sheet's universal rule alone declares dozens.
 struct Candidate<'a, 'l> {
     key: SortKey,
-    decl: DeclRef<'a, 'l>,
+    decls: DeclsRef<'a, 'l>,
+    important: bool,
+}
+
+impl Candidate<'_, '_> {
+    fn decls(&self) -> &[(ParsedDecl, bool)] {
+        match self.decls {
+            DeclsRef::Shared(d) => d,
+            DeclsRef::Local(d) => d,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
-enum DeclRef<'a, 'l> {
-    Shared(&'a ParsedDecl),
-    Local(&'l ParsedDecl),
-}
-
-impl DeclRef<'_, '_> {
-    fn get(&self) -> &ParsedDecl {
-        match self {
-            DeclRef::Shared(d) => d,
-            DeclRef::Local(d) => d,
-        }
-    }
+enum DeclsRef<'a, 'l> {
+    Shared(&'a [(ParsedDecl, bool)]),
+    Local(&'l [(ParsedDecl, bool)]),
 }
 
 /// The winning declared value of every longhand and custom property on one element,
@@ -137,7 +155,7 @@ impl<'a> Winners<'a> {
     fn new() -> Winners<'a> {
         Winners {
             slot: [0; LonghandId::COUNT],
-            values: Vec::new(),
+            values: Vec::with_capacity(48),
             ua: Vec::new(),
             custom: Vec::new(),
             custom_shared: true,
@@ -157,6 +175,19 @@ impl<'a> Winners<'a> {
             i => Some(self.values[i as usize - 1].2),
         }
     }
+    /// A logical property or shorthand, mapped by the element's direction.
+    fn set_logical(&mut self, name: &str, value: &[ComponentValue], dir: Direction, level: Level) {
+        if let Some(id) = shorthands::resolve_longhand(name, dir) {
+            if let Some(s) = parse_longhand(id, value) {
+                self.set(id, Cow::Owned(s), level);
+            }
+        } else if let Ok(v) = shorthands::expand(name, value, dir) {
+            for (id, s) in v {
+                self.set(id, Cow::Owned(s), level);
+            }
+        }
+    }
+
     fn set(&mut self, id: LonghandId, v: Cow<'a, Specified>, level: Level) {
         let v = match &*v {
             Specified::CssWide(CssWide::Revert) => {
@@ -219,6 +250,7 @@ pub struct StyleEngine {
     viewport: (Au, Au),
     fonts: crate::css::FontEnvironment,
     custom_memo: CustomMemo,
+    pending_memo: PendingMemo,
 }
 
 const CUSTOM_MEMO_ENTRIES: usize = 4096;
@@ -229,6 +261,11 @@ type CustomMemo = std::cell::RefCell<
     std::collections::HashMap<(usize, Vec<usize>), (Rc<CustomProperties>, Rc<CustomProperties>)>,
 >;
 
+/// Substituted `var()` values: see `Engine::resolve_pending`.
+type PendingMemo = std::cell::RefCell<
+    std::collections::HashMap<(usize, usize, u16, bool), (Rc<CustomProperties>, Option<Specified>)>,
+>;
+
 /// A cascade engine applied to one document and matching state for one pass.
 struct Engine<'a> {
     data: &'a StyleEngine,
@@ -237,6 +274,8 @@ struct Engine<'a> {
     body_text_color: Color,
     /// Parsed `style=""` attributes, cached per element per pass.
     inline_cache: std::cell::RefCell<BTreeMap<NodeId, Rc<ParsedBlock>>>,
+    /// The matched-rules buffer `winners` reuses.
+    matched: std::cell::Cell<Vec<&'a css::IndexEntry<RuleData>>>,
 }
 
 impl std::ops::Deref for Engine<'_> {
@@ -280,6 +319,7 @@ impl StyleEngine {
             ),
             fonts: media.fonts,
             custom_memo: Default::default(),
+            pending_memo: Default::default(),
         };
         // Global layer order: first declaration wins the position, across sheets.
         let mut layers: Vec<String> = Vec::new();
@@ -529,7 +569,7 @@ impl StyleEngine {
             let p = self.parse_declaration(d)?;
             out.push((p, d.important));
         }
-        Ok(ParsedBlock { decls: out })
+        Ok(ParsedBlock::new(out))
     }
 
     fn parse_declaration(&mut self, d: &Declaration) -> Result<ParsedDecl, Unsupported> {
@@ -561,6 +601,7 @@ impl<'a> Engine<'a> {
             ctx,
             body_text_color,
             inline_cache: std::cell::RefCell::new(BTreeMap::new()),
+            matched: std::cell::Cell::new(Vec::new()),
         }
     }
 
@@ -615,6 +656,35 @@ impl<'a> Engine<'a> {
         out
     }
 
+    /// [`substitute_pending`] for a value of the engine's own declarations,
+    /// memoised by the value's address, the custom properties it substitutes from,
+    /// the property and the direction (which picks a logical property's longhand).
+    fn resolve_pending(
+        &self,
+        s: &ComputedStyle,
+        def: &PropertyDef,
+        v: &'a Specified,
+    ) -> Option<Specified> {
+        let key = (
+            v as *const Specified as usize,
+            Rc::as_ptr(&s.custom) as usize,
+            def.id as u16,
+            s.direction == Direction::Rtl,
+        );
+        if let Some((_, r)) = self.data.pending_memo.borrow().get(&key) {
+            return r.clone();
+        }
+        let r = substitute_pending(s, def, v);
+        let mut memo = self.data.pending_memo.borrow_mut();
+        if memo.len() >= CUSTOM_MEMO_ENTRIES {
+            memo.clear();
+        }
+        // The custom properties are kept alive with the entry, so their address
+        // cannot be reused while it exists.
+        memo.insert(key, (s.custom.clone(), r.clone()));
+        r
+    }
+
     fn inline_block(&self, node: NodeId) -> Result<Option<Rc<ParsedBlock>>, Unsupported> {
         let Some(src) = self.doc.attr(node, "style") else {
             return Ok(None);
@@ -636,7 +706,7 @@ impl<'a> Engine<'a> {
                 }
             }
         }
-        let b = Rc::new(ParsedBlock { decls: out });
+        let b = Rc::new(ParsedBlock::new(out));
         self.inline_cache.borrow_mut().insert(node, b.clone());
         Ok(Some(b))
     }
@@ -652,10 +722,20 @@ impl<'a> Engine<'a> {
     ) -> Result<Winners<'a>, Unsupported> {
         let _t = super::profile::span(super::profile::Phase::Match);
         let index = pseudo.unwrap_or(&self.data.elements);
-        let mut cands: Vec<Candidate<'a, '_>> = Vec::new();
-        for entry in index.matching_with(self.doc, node, self.ctx, keys) {
+        let mut matched = self.matched.take();
+        matched.clear();
+        index.matching_into(self.doc, node, self.ctx, keys, &mut matched);
+        let mut cands: Vec<Candidate<'a, '_>> = Vec::with_capacity(16);
+        for entry in matched.drain(..) {
             let r = &entry.data;
-            for (decl, important) in &r.block.decls {
+            for important in [false, true] {
+                if !(if important {
+                    r.block.important
+                } else {
+                    r.block.normal
+                }) {
+                    continue;
+                }
                 let level = match (r.origin, important) {
                     (Origin::UserAgent, false) => Level::Ua,
                     (Origin::UserAgent, true) => Level::UaImportant,
@@ -664,18 +744,19 @@ impl<'a> Engine<'a> {
                     (Origin::Author, false) => Level::Author,
                     (Origin::Author, true) => Level::AuthorImportant,
                 };
-                let layer = layer_key(r.layer, self.layer_count, *important);
                 cands.push(Candidate {
                     key: SortKey {
                         level,
-                        layer,
+                        layer: layer_key(r.layer, self.layer_count, important),
                         spec: r.spec,
                         order: r.order,
                     },
-                    decl: DeclRef::Shared(decl),
+                    decls: DeclsRef::Shared(&r.block.decls),
+                    important,
                 });
             }
         }
+        self.matched.set(matched);
         let hint_block;
         let inline_block;
         if pseudo.is_none() {
@@ -698,20 +779,21 @@ impl<'a> Engine<'a> {
                 }
             }
             hint_block = parsed;
-            for (i, (decl, _)) in hint_block.iter().enumerate() {
+            if !hint_block.is_empty() {
                 cands.push(Candidate {
                     key: SortKey {
                         level: Level::Hints,
                         layer: 0,
                         spec: Specificity::ZERO,
-                        order: i as u32,
+                        order: 0,
                     },
-                    decl: DeclRef::Local(decl),
+                    decls: DeclsRef::Local(&hint_block),
+                    important: false,
                 });
             }
             inline_block = self.inline_block(node)?;
             if let Some(b) = &inline_block {
-                for (i, (decl, important)) in b.decls.iter().enumerate() {
+                for (i, (decl, _)) in b.decls.iter().enumerate() {
                     if matches!(decl, ParsedDecl::Invalid) {
                         if let Some(src) = self.doc.attr(node, "style") {
                             let d = css::parse_declaration_block(src).into_iter().nth(i);
@@ -722,19 +804,24 @@ impl<'a> Engine<'a> {
                             }
                         }
                     }
-                    let level = if *important {
-                        Level::InlineImportant
-                    } else {
-                        Level::Inline
-                    };
+                }
+                for important in [false, true] {
+                    if !(if important { b.important } else { b.normal }) {
+                        continue;
+                    }
                     cands.push(Candidate {
                         key: SortKey {
-                            level,
+                            level: if important {
+                                Level::InlineImportant
+                            } else {
+                                Level::Inline
+                            },
                             layer: 0,
                             spec: Specificity::ZERO,
-                            order: i as u32,
+                            order: 0,
                         },
-                        decl: DeclRef::Local(decl),
+                        decls: DeclsRef::Local(&b.decls),
+                        important,
                     });
                 }
             }
@@ -742,58 +829,71 @@ impl<'a> Engine<'a> {
         cands.sort_by_key(|c| c.key);
         // Direction is needed to map logical properties: the strongest `direction`.
         let mut dir = Direction::Ltr;
-        let mut parent_dir = None;
-        if let Some(p) = self.doc.parent(node) {
-            if self.doc.is_element(p) {
-                parent_dir = Some(p);
-            }
-        }
-        let _ = parent_dir;
         for c in &cands {
-            if let ParsedDecl::Longhands(v) = c.decl.get() {
-                for (id, s) in v {
-                    if *id == LonghandId::Direction {
-                        if let Specified::Direction(d) = s {
-                            dir = *d;
+            for (d, important) in c.decls() {
+                if *important != c.important {
+                    continue;
+                }
+                if let ParsedDecl::Longhands(v) = d {
+                    for (id, s) in v {
+                        if *id == LonghandId::Direction {
+                            if let Specified::Direction(d) = s {
+                                dir = *d;
+                            }
                         }
                     }
                 }
             }
         }
         let mut w = Winners::new();
-        for c in cands {
-            match (c.decl, c.decl.get()) {
-                (DeclRef::Shared(ParsedDecl::Longhands(v)), _) => {
-                    for (id, s) in v {
-                        w.set(*id, Cow::Borrowed(s), c.key.level);
-                    }
-                }
-                (DeclRef::Shared(ParsedDecl::Custom(name, v)), _) => {
-                    w.custom
-                        .push((Cow::Borrowed(name.as_str()), Cow::Borrowed(v)));
-                }
-                (_, ParsedDecl::Longhands(v)) => {
-                    for (id, s) in v {
-                        w.set(*id, Cow::Owned(s.clone()), c.key.level);
-                    }
-                }
-                (_, ParsedDecl::Custom(name, v)) => {
-                    w.custom_shared = false;
-                    w.custom
-                        .push((Cow::Owned(name.clone()), Cow::Owned(v.clone())));
-                }
-                (_, ParsedDecl::Logical(name, value)) => {
-                    if let Some(id) = shorthands::resolve_longhand(name, dir) {
-                        if let Some(s) = parse_longhand(id, value) {
-                            w.set(id, Cow::Owned(s), c.key.level);
+        for c in &cands {
+            let level = c.key.level;
+            match c.decls {
+                DeclsRef::Shared(decls) => {
+                    for (d, important) in decls {
+                        if *important != c.important {
+                            continue;
                         }
-                    } else if let Ok(v) = shorthands::expand(name, value, dir) {
-                        for (id, s) in v {
-                            w.set(id, Cow::Owned(s), c.key.level);
+                        match d {
+                            ParsedDecl::Longhands(v) => {
+                                for (id, s) in v {
+                                    w.set(*id, Cow::Borrowed(s), level);
+                                }
+                            }
+                            ParsedDecl::Custom(name, v) => {
+                                w.custom
+                                    .push((Cow::Borrowed(name.as_str()), Cow::Borrowed(v)));
+                            }
+                            ParsedDecl::Logical(name, value) => {
+                                w.set_logical(name, value, dir, level)
+                            }
+                            ParsedDecl::Invalid => {}
                         }
                     }
                 }
-                (_, ParsedDecl::Invalid) => {}
+                DeclsRef::Local(decls) => {
+                    for (d, important) in decls {
+                        if *important != c.important {
+                            continue;
+                        }
+                        match d {
+                            ParsedDecl::Longhands(v) => {
+                                for (id, s) in v {
+                                    w.set(*id, Cow::Owned(s.clone()), level);
+                                }
+                            }
+                            ParsedDecl::Custom(name, v) => {
+                                w.custom_shared = false;
+                                w.custom
+                                    .push((Cow::Owned(name.clone()), Cow::Owned(v.clone())));
+                            }
+                            ParsedDecl::Logical(name, value) => {
+                                w.set_logical(name, value, dir, level)
+                            }
+                            ParsedDecl::Invalid => {}
+                        }
+                    }
+                }
             }
         }
         Ok(w)
@@ -803,7 +903,7 @@ impl<'a> Engine<'a> {
     fn compute(
         &self,
         node: NodeId,
-        w: &Winners,
+        w: &Winners<'a>,
         parent: &ComputedStyle,
         root_font_size: Option<Au>,
         is_pseudo: bool,
@@ -831,10 +931,27 @@ impl<'a> Engine<'a> {
             web_fonts: &self.web_fonts,
         };
         let initial = ComputedStyle::initial_rc();
+        // The declared longhands in apply order: by phase, then in the table's order.
+        let mut declared: Vec<(u8, LonghandId, &Cow<Specified>)> = w
+            .values
+            .iter()
+            .map(|(id, v, _)| (id.def().phase, *id, v))
+            .collect();
+        declared.sort_unstable_by_key(|(phase, id, _)| (*phase, *id as usize));
         let apply_phase = |s: &mut ComputedStyle, ctx: &ComputeCtx, phase: u8| {
-            for def in LONGHANDS.iter().filter(|d| d.phase == phase) {
-                if let Some(v) = w.get(def.id) {
-                    apply_value(s, def, v, ctx, parent, &initial);
+            for (_, id, v) in declared.iter().filter(|d| d.0 == phase) {
+                let def = id.def();
+                match (&***v, v) {
+                    // A `var()` value borrowed from the engine: its address is
+                    // stable, so the substitution is memoised.
+                    (Specified::Pending { .. }, Cow::Borrowed(b)) => {
+                        let resolved = self.resolve_pending(s, def, b);
+                        match resolved {
+                            Some(r) => apply_value(s, def, &r, ctx, parent, &initial),
+                            None => unset_value(s, def, parent, &initial),
+                        }
+                    }
+                    (v, _) => apply_value(s, def, v, ctx, parent, &initial),
                 }
             }
         };
@@ -1494,43 +1611,59 @@ fn apply_value(
     parent: &ComputedStyle,
     initial: &ComputedStyle,
 ) {
-    let unset = |s: &mut ComputedStyle| {
-        if def.inherited {
-            (def.copy)(s, parent);
-        } else {
-            (def.copy)(s, initial);
-        }
-    };
+    let unset = |s: &mut ComputedStyle| unset_value(s, def, parent, initial);
     match v {
         Specified::CssWide(CssWide::Initial) => (def.copy)(s, initial),
         Specified::CssWide(CssWide::Inherit) => (def.copy)(s, parent),
         Specified::CssWide(_) => unset(s),
-        Specified::Pending { property, value } => {
-            let Some(tokens) = substitute_var(value, &s.custom, 0) else {
-                unset(s);
-                return;
-            };
-            let resolved = if let Some(id) = shorthands::resolve_longhand(property, s.direction) {
-                if id == def.id {
-                    parse_longhand(id, &tokens)
-                } else {
-                    None
-                }
-            } else {
-                shorthands::expand(property, &tokens, s.direction)
-                    .ok()
-                    .and_then(|v| v.into_iter().find(|(id, _)| *id == def.id).map(|(_, v)| v))
-            };
-            match resolved {
-                Some(Specified::Pending { .. }) | None => unset(s),
-                Some(r) => apply_value(s, def, &r, ctx, parent, initial),
-            }
-        }
+        Specified::Pending { .. } => match substitute_pending(s, def, v) {
+            Some(r) => apply_value(s, def, &r, ctx, parent, initial),
+            None => unset(s),
+        },
         other => {
             if !(def.apply)(s, other, ctx) {
                 unset(s);
             }
         }
+    }
+}
+
+/// `unset`: the inherited value for an inherited property, else the initial one.
+fn unset_value(
+    s: &mut ComputedStyle,
+    def: &PropertyDef,
+    parent: &ComputedStyle,
+    initial: &ComputedStyle,
+) {
+    if def.inherited {
+        (def.copy)(s, parent);
+    } else {
+        (def.copy)(s, initial);
+    }
+}
+
+/// A `var()` value (`Specified::Pending`) with the element's custom properties
+/// substituted and re-parsed for `def`, or `None` when that is invalid at
+/// computed-value time (the property is then `unset`).
+fn substitute_pending(s: &ComputedStyle, def: &PropertyDef, v: &Specified) -> Option<Specified> {
+    let Specified::Pending { property, value } = v else {
+        return None;
+    };
+    let tokens = substitute_var(value, &s.custom, 0)?;
+    let resolved = if let Some(id) = shorthands::resolve_longhand(property, s.direction) {
+        if id == def.id {
+            parse_longhand(id, &tokens)
+        } else {
+            None
+        }
+    } else {
+        shorthands::expand(property, &tokens, s.direction)
+            .ok()
+            .and_then(|v| v.into_iter().find(|(id, _)| *id == def.id).map(|(_, v)| v))
+    };
+    match resolved {
+        Some(Specified::Pending { .. }) | None => None,
+        Some(r) => Some(r),
     }
 }
 
@@ -1963,6 +2096,7 @@ pub fn compute_from_declarations(decls: &[Declaration], parent: &ComputedStyle) 
         viewport: (Au::from_px_i32(1280), Au::from_px_i32(800)),
         fonts: crate::css::FontEnvironment::Bundled,
         custom_memo: Default::default(),
+        pending_memo: Default::default(),
     };
     let engine = Engine::new(&data, &doc, &ctx);
     engine.compute(Document::ROOT, &w, parent, Some(parent.font.size), true)

@@ -441,18 +441,18 @@ longhands! {
     CounterReset, "counter-reset", false, 2, p::counter_reset, a::counter_reset, |d, s| d.counter_reset = s.counter_reset.clone();
     CounterIncrement, "counter-increment", false, 2, p::counter_increment, a::counter_increment, |d, s| d.counter_increment = s.counter_increment.clone();
     // Transitions and animations.
-    TransitionProperty, "transition-property", false, 2, p::transition_property, a::transition_property, |d, s| d.transitions.property = s.transitions.property.clone();
-    TransitionDuration, "transition-duration", false, 2, p::times, a::transition_duration, |d, s| d.transitions.duration = s.transitions.duration.clone();
-    TransitionTimingFunction, "transition-timing-function", false, 2, p::timing_functions, a::transition_timing_function, |d, s| d.transitions.timing = s.transitions.timing.clone();
-    TransitionDelay, "transition-delay", false, 2, p::times, a::transition_delay, |d, s| d.transitions.delay = s.transitions.delay.clone();
-    AnimationName, "animation-name", false, 2, p::animation_name, a::animation_name, |d, s| d.animations.name = s.animations.name.clone();
-    AnimationDuration, "animation-duration", false, 2, p::times, a::animation_duration, |d, s| d.animations.duration = s.animations.duration.clone();
-    AnimationTimingFunction, "animation-timing-function", false, 2, p::timing_functions, a::animation_timing_function, |d, s| d.animations.timing = s.animations.timing.clone();
-    AnimationDelay, "animation-delay", false, 2, p::times, a::animation_delay, |d, s| d.animations.delay = s.animations.delay.clone();
-    AnimationIterationCount, "animation-iteration-count", false, 2, p::iteration_counts, a::animation_iteration_count, |d, s| d.animations.iteration_count = s.animations.iteration_count.clone();
-    AnimationDirection, "animation-direction", false, 2, p::animation_directions, a::animation_direction, |d, s| d.animations.direction = s.animations.direction.clone();
-    AnimationFillMode, "animation-fill-mode", false, 2, p::animation_fill_modes, a::animation_fill_mode, |d, s| d.animations.fill_mode = s.animations.fill_mode.clone();
-    AnimationPlayState, "animation-play-state", false, 2, p::animation_play_states, a::animation_play_state, |d, s| d.animations.play_state = s.animations.play_state.clone();
+    TransitionProperty, "transition-property", false, 2, p::transition_property, a::transition_property, |d, s| std::rc::Rc::make_mut(&mut d.transitions).property = s.transitions.property.clone();
+    TransitionDuration, "transition-duration", false, 2, p::times, a::transition_duration, |d, s| std::rc::Rc::make_mut(&mut d.transitions).duration = s.transitions.duration.clone();
+    TransitionTimingFunction, "transition-timing-function", false, 2, p::timing_functions, a::transition_timing_function, |d, s| std::rc::Rc::make_mut(&mut d.transitions).timing = s.transitions.timing.clone();
+    TransitionDelay, "transition-delay", false, 2, p::times, a::transition_delay, |d, s| std::rc::Rc::make_mut(&mut d.transitions).delay = s.transitions.delay.clone();
+    AnimationName, "animation-name", false, 2, p::animation_name, a::animation_name, |d, s| std::rc::Rc::make_mut(&mut d.animations).name = s.animations.name.clone();
+    AnimationDuration, "animation-duration", false, 2, p::times, a::animation_duration, |d, s| std::rc::Rc::make_mut(&mut d.animations).duration = s.animations.duration.clone();
+    AnimationTimingFunction, "animation-timing-function", false, 2, p::timing_functions, a::animation_timing_function, |d, s| std::rc::Rc::make_mut(&mut d.animations).timing = s.animations.timing.clone();
+    AnimationDelay, "animation-delay", false, 2, p::times, a::animation_delay, |d, s| std::rc::Rc::make_mut(&mut d.animations).delay = s.animations.delay.clone();
+    AnimationIterationCount, "animation-iteration-count", false, 2, p::iteration_counts, a::animation_iteration_count, |d, s| std::rc::Rc::make_mut(&mut d.animations).iteration_count = s.animations.iteration_count.clone();
+    AnimationDirection, "animation-direction", false, 2, p::animation_directions, a::animation_direction, |d, s| std::rc::Rc::make_mut(&mut d.animations).direction = s.animations.direction.clone();
+    AnimationFillMode, "animation-fill-mode", false, 2, p::animation_fill_modes, a::animation_fill_mode, |d, s| std::rc::Rc::make_mut(&mut d.animations).fill_mode = s.animations.fill_mode.clone();
+    AnimationPlayState, "animation-play-state", false, 2, p::animation_play_states, a::animation_play_state, |d, s| std::rc::Rc::make_mut(&mut d.animations).play_state = s.animations.play_state.clone();
 }
 
 impl LonghandId {
@@ -471,8 +471,16 @@ impl LonghandId {
     }
     /// Looks a longhand up by name, after alias and vendor-prefix normalisation.
     pub fn by_name(name: &str) -> Option<LonghandId> {
+        thread_local! {
+            static BY_NAME: std::collections::HashMap<&'static str, LonghandId> =
+                LONGHANDS.iter().map(|d| (d.name, d.id)).collect();
+        }
+        // Canonical names (the common case) skip normalising.
+        if let Some(id) = BY_NAME.with(|m| m.get(name).copied()) {
+            return Some(id);
+        }
         let n = normalize_property_name(name);
-        LONGHANDS.iter().find(|d| d.name == n).map(|d| d.id)
+        BY_NAME.with(|m| m.get(n.as_str()).copied())
     }
 }
 

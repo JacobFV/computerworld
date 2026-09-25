@@ -1144,8 +1144,8 @@ pub struct ComputedStyle {
     pub grid_template_rows: TrackList,
     pub grid_template_columns: TrackList,
     pub grid_template_areas: Vec<Vec<String>>,
-    pub grid_auto_rows: Vec<TrackSize>,
-    pub grid_auto_columns: Vec<TrackSize>,
+    pub grid_auto_rows: std::rc::Rc<Vec<TrackSize>>,
+    pub grid_auto_columns: std::rc::Rc<Vec<TrackSize>>,
     pub grid_auto_flow: GridAutoFlow,
     pub grid_row_start: GridLine,
     pub grid_row_end: GridLine,
@@ -1167,7 +1167,7 @@ pub struct ComputedStyle {
     pub box_orient_vertical: bool,
     pub content: Content,
     /// `quotes` pairs.
-    pub quotes: Vec<(String, String)>,
+    pub quotes: std::rc::Rc<Vec<(String, String)>>,
     pub counter_reset: Vec<(String, i32)>,
     pub counter_increment: Vec<(String, i32)>,
 
@@ -1177,8 +1177,8 @@ pub struct ComputedStyle {
     pub custom: std::rc::Rc<CustomProperties>,
 
     // Transitions and animations (parsed in M1; M2 runs them on the world clock).
-    pub transitions: TransitionList,
-    pub animations: AnimationList,
+    pub transitions: std::rc::Rc<TransitionList>,
+    pub animations: std::rc::Rc<AnimationList>,
 }
 
 impl ComputedStyle {
@@ -1280,8 +1280,8 @@ impl ComputedStyle {
             grid_template_rows: TrackList::default(),
             grid_template_columns: TrackList::default(),
             grid_template_areas: Vec::new(),
-            grid_auto_rows: vec![TrackSize::Auto],
-            grid_auto_columns: vec![TrackSize::Auto],
+            grid_auto_rows: std::rc::Rc::new(vec![TrackSize::Auto]),
+            grid_auto_columns: std::rc::Rc::new(vec![TrackSize::Auto]),
             grid_auto_flow: GridAutoFlow::Row,
             grid_row_start: GridLine::Auto,
             grid_row_end: GridLine::Auto,
@@ -1298,15 +1298,15 @@ impl ComputedStyle {
             line_clamp: None,
             box_orient_vertical: false,
             content: Content::Normal,
-            quotes: vec![
+            quotes: std::rc::Rc::new(vec![
                 ("\u{201C}".into(), "\u{201D}".into()),
                 ("\u{2018}".into(), "\u{2019}".into()),
-            ],
+            ]),
             counter_reset: Vec::new(),
             counter_increment: Vec::new(),
             custom: Default::default(),
-            transitions: TransitionList::default(),
-            animations: AnimationList::default(),
+            transitions: Default::default(),
+            animations: Default::default(),
         }
     }
 

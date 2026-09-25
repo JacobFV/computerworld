@@ -8,7 +8,7 @@ use super::selector::{
     PseudoClass, RelativeSelector, SelectorList, SimpleSelector,
 };
 use crate::dom::{Document, Namespace, NodeId, NodeKind};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeSet, HashMap};
 
 /// Form control state that lives outside the DOM attributes (the "dirty" checkedness
 /// and value the user or script set). The default reads the attributes.
@@ -964,13 +964,15 @@ fn ancestor_requirements(selector: &ComplexSelector) -> u64 {
 #[derive(Clone, Debug)]
 pub struct SelectorIndex<T> {
     entries: Vec<IndexEntry<T>>,
-    ids: BTreeMap<String, Vec<usize>>,
-    classes: BTreeMap<String, Vec<usize>>,
-    tags: BTreeMap<String, Vec<usize>>,
+    // Looked up, never iterated: hash maps (a utility sheet has thousands of
+    // classes, many sharing long prefixes an ordered map compares again and again).
+    ids: HashMap<String, Vec<usize>>,
+    classes: HashMap<String, Vec<usize>>,
+    tags: HashMap<String, Vec<usize>>,
     /// Entries whose rightmost compound has no key but that require an ancestor
     /// class, bucketed by it: a utility sheet's `.space-x-4 > :not([hidden]) ~
     /// :not([hidden])` would otherwise be a candidate for every element on the page.
-    ancestor_classes: BTreeMap<String, Vec<usize>>,
+    ancestor_classes: HashMap<String, Vec<usize>>,
     other: Vec<usize>,
 }
 
@@ -978,10 +980,10 @@ impl<T> Default for SelectorIndex<T> {
     fn default() -> Self {
         SelectorIndex {
             entries: Vec::new(),
-            ids: BTreeMap::new(),
-            classes: BTreeMap::new(),
-            tags: BTreeMap::new(),
-            ancestor_classes: BTreeMap::new(),
+            ids: HashMap::new(),
+            classes: HashMap::new(),
+            tags: HashMap::new(),
+            ancestor_classes: HashMap::new(),
             other: Vec::new(),
         }
     }
@@ -1039,7 +1041,7 @@ impl<T> SelectorIndex<T> {
         element: NodeId,
         keys: &AncestorKeys,
     ) -> impl Iterator<Item = &'a IndexEntry<T>> + 'a {
-        let mut idx: Vec<usize> = Vec::new();
+        let mut idx: Vec<usize> = Vec::with_capacity(32);
         if let Some(id) = doc.attr(element, "id") {
             if let Some(v) = self.ids.get(id) {
                 idx.extend(v);
@@ -1051,7 +1053,12 @@ impl<T> SelectorIndex<T> {
             }
         }
         if let Some(t) = doc.tag(element) {
-            if let Some(v) = self.tags.get(&t.to_ascii_lowercase()) {
+            let v = if t.bytes().any(|b| b.is_ascii_uppercase()) {
+                self.tags.get(&t.to_ascii_lowercase())
+            } else {
+                self.tags.get(t)
+            };
+            if let Some(v) = v {
                 idx.extend(v);
             }
         }
@@ -1085,12 +1092,23 @@ impl<T> SelectorIndex<T> {
         ctx: &MatchContext,
         keys: &AncestorKeys,
     ) -> Vec<&'a IndexEntry<T>> {
+        let mut out = Vec::new();
+        self.matching_into(doc, element, ctx, keys, &mut out);
+        out
+    }
+    /// `matching_with`, appending to `out` (so a caller can reuse one buffer).
+    pub fn matching_into<'a>(
+        &'a self,
+        doc: &Document,
+        element: NodeId,
+        ctx: &MatchContext,
+        keys: &AncestorKeys,
+        out: &mut Vec<&'a IndexEntry<T>>,
+    ) {
         let bloom = keys.bloom;
-        self.candidates_with(doc, element, keys)
-            .filter(|e| {
-                e.ancestors & bloom == e.ancestors && matches(doc, element, &e.selector, ctx)
-            })
-            .collect()
+        out.extend(self.candidates_with(doc, element, keys).filter(|e| {
+            e.ancestors & bloom == e.ancestors && matches(doc, element, &e.selector, ctx)
+        }));
     }
 }
 
