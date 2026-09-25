@@ -765,4 +765,46 @@ mod cases {
         close(p.rect("f").x, 16.015625, "#f x");
         close(p.rect("g").width, 18.671875, "#g width");
     }
+    /// A fixed box inside a fixed box (MUI's invisible backdrop inside its popover
+    /// root) is laid out against the viewport; it used to get no box at all.
+    #[test]
+    fn a_fixed_box_inside_a_fixed_box_is_laid_out() {
+        let p = page(
+            "<!DOCTYPE html><body style='margin: 0'><div id=a style='position: fixed; z-index: 1300; top: 0; left: 0; right: 0; bottom: 0'>
+             <div id=b style='position: fixed; display: flex; top: 0; left: 0; right: 0; bottom: 0; z-index: -1; opacity: 0; visibility: hidden'></div>
+             <div id=c style='position: fixed; top: 10px; left: 20px; width: 30px; height: 40px'></div></div>",
+        );
+        rect_is(&p, "a", 0.0, 0.0, 1280.0, 800.0);
+        rect_is(&p, "b", 0.0, 0.0, 1280.0, 800.0);
+        rect_is(&p, "c", 20.0, 10.0, 30.0, 40.0);
+    }
+    /// MUI's popover paper: an absolutely positioned box with `max-width` and
+    /// `max-height: calc(100% - 32px)`. The percentage max-width does not clamp its
+    /// shrink-to-fit width (cyclic, so `none`), and with no positioned ancestor its
+    /// containing block is the initial one, the viewport, not the `<html>` box (here
+    /// 0 px tall, which made every such max-height negative). Sizes are Chromium's.
+    #[test]
+    fn a_popover_paper_sizes_to_its_menu() {
+        let p = page("<!DOCTYPE html><body style='margin:0;font:16px Arimo'><div id=a style='position:absolute;top:0px;max-height:calc(100% - 32px);max-width:calc(100% - 32px)'><ul style='margin:0;padding:8px 0'><li style='display:flex;padding:6px 16px'>English</li></ul></div><div id=b style='position:absolute;top:100px;overflow-y:auto'><ul style='margin:0;padding:8px 0'><li style='display:flex;padding:6px 16px'>English</li></ul></div><div id=c style='position:absolute;top:200px;min-height:16px;max-height:calc(100% - 32px)'><ul style='margin:0;padding:8px 0'><li style='display:flex;padding:6px 16px'>English</li></ul></div><div id=d style='position:absolute;top:300px;max-height:calc(100% - 32px);overflow-y:auto'><ul style='margin:0;padding:8px 0'><li style='display:flex;padding:6px 16px'>English</li></ul></div><div id=e style='position:absolute;top:400px;max-height:500px;overflow-y:auto'><ul style='margin:0;padding:8px 0'><li style='display:flex;padding:6px 16px'>English</li></ul></div>");
+        for id in ["a", "b", "c", "d", "e"] {
+            close(p.rect(id).width, 84.484375, &format!("#{id} width"));
+            close(p.rect(id).height, 46.0, &format!("#{id} height"));
+        }
+    }
+    /// A replaced element with a percentage width contributes its natural width to
+    /// max-content and nothing to min-content (css-sizing's cyclic percentages):
+    /// an inline-flex wrapper around a `width: 100%` input (MUI's InputBase) is the
+    /// input's `size` wide, and a table cell squeezed to its min-content has none.
+    /// Widths are Chromium's.
+    #[test]
+    fn a_percentage_width_input_contributes_its_natural_width() {
+        let p = page(
+            "<!DOCTYPE html><body style='margin: 0'><span id=a style='display: inline-flex'><input id=i style='width: 100%; font: 16px Arimo; padding: 0; border: 0'></span>
+             <table><tr><td id=c><input id=j style='width: 100%; font: 16px Arimo; padding: 0; border: 0'></td><td style='width: 10000px'></td></tr></table>",
+        );
+        close(p.rect("a").width, 207.0, "#a width");
+        close(p.rect("i").width, 207.0, "#i width");
+        close(p.rect("c").width, 2.0, "#c width");
+        close(p.rect("j").width, 0.0, "#j width");
+    }
 }

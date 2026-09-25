@@ -228,6 +228,9 @@ try {
   // A site's app fetches its data after load: let the network go quiet first.
   const quiet = async () => {
     if (!siteMode) return;
+    // A site's own timers (react-admin's fake REST provider answers after 300 ms)
+    // get `settle_ms` of wall time first.
+    if (site.settle_ms) await new Promise(r => setTimeout(r, site.settle_ms));
     // Until no request has been in flight for 300 ms (at most ten seconds).
     for (let i = 0, still = 0; i < 200 && still < 6; i++) {
       await new Promise(r => setTimeout(r, 50));

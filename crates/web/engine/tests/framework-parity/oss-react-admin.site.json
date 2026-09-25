@@ -1,0 +1,5 @@
+{
+ "url": "http://react-admin.marmelab.com/",
+ "static": {"react-admin.marmelab.com": "crates/services/oss-web/packages/react-admin"},
+ "settle_ms": 1500
+}

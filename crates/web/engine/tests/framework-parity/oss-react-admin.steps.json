@@ -1,0 +1,9 @@
+{
+  "initial": [],
+  "show": [
+    {"action": "click", "selector": "a[href='#/posts/12/show']"}
+  ],
+  "comments": [
+    {"action": "click", "selector": "a[href='#/comments']"}
+  ]
+}

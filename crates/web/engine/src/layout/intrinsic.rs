@@ -29,6 +29,10 @@ pub fn min_max(ctx: &LayoutContext, id: BoxId) -> (Au, Au) {
     v
 }
 
+fn has_percent(v: Sizing) -> bool {
+    matches!(v, Sizing::Set(lp) if lp.has_percent())
+}
+
 fn length_of(v: Sizing) -> Option<Au> {
     match v {
         Sizing::Set(LengthPercentage::Length(l)) => Some(l),
@@ -117,6 +121,16 @@ fn compute(ctx: &LayoutContext, id: BoxId) -> (Au, Au) {
             (w, w)
         }
         BoxKind::Replaced(rb) => {
+            let e = edges_h(ctx, id);
+            // A percentage width is cyclic here (css-sizing §5.2.2): the max-content
+            // contribution is the natural width and the min-content one is zero.
+            // MUI's `width: 100%` input inside its inline-flex root is as wide as
+            // its `size`, not its padding.
+            if has_percent(s.width) {
+                if let Some(natural) = rb.intrinsic {
+                    return (e, natural.width + e);
+                }
+            }
             let size = block::replaced_size(
                 ctx,
                 id,
@@ -126,7 +140,6 @@ fn compute(ctx: &LayoutContext, id: BoxId) -> (Au, Au) {
                     height: None,
                 },
             );
-            let e = edges_h(ctx, id);
             (size.width + e, size.width + e)
         }
         BoxKind::TableWrapper => table::intrinsic_widths(ctx, id),
@@ -161,7 +174,10 @@ fn compute(ctx: &LayoutContext, id: BoxId) -> (Au, Au) {
                     }
                 }
             };
-            if let Some(mxw) = length_of(s.max_width) {
+            // A `max-width` with a percentage is cyclic here and behaves as `none`
+            // (css-sizing §5.2.1c): MUI's popover paper, `max-width: calc(100% -
+            // 32px)`, is sized to its menu, not clamped to its -32 px length part.
+            if let Some(mxw) = length_of(s.max_width).filter(|_| !has_percent(s.max_width)) {
                 let bb = (mxw + content_e).max(e);
                 mn = mn.min(bb);
                 mx = mx.min(bb);

@@ -1535,7 +1535,7 @@ fn layout_block_box_uncached(
             frag.children.push(mf);
         }
     }
-    let unresolved = if s.is_positioned() || b.is_root {
+    let unresolved = if s.is_positioned() {
         resolve_absolutes(ctx, &mut frag, abs)
     } else {
         abs
@@ -1990,13 +1990,19 @@ pub fn resolve_absolutes(
         _ => false,
     };
     let is_root = matches!(cbf.kind, FragmentKind::Box { source: StyleSource::Anonymous(n), .. } if n == crate::dom::Document::ROOT);
-    for r in reqs {
+    let mut queue: std::collections::VecDeque<AbsRequest> = reqs.into();
+    while let Some(r) = queue.pop_front() {
         if r.fixed && !has_transform && !is_root {
             rest.push(r);
             continue;
         }
-        let frag = layout_absolute(ctx, cbf, &r);
+        let (frag, inner) = layout_absolute_with_rest(ctx, cbf, &r);
+        // Fixed descendants the positioned box could not place (a fixed backdrop
+        // inside a fixed MUI popover) come out relative to this containing block.
+        let mut inner = inner;
+        translate_requests(&mut inner, frag.rect.origin.x, frag.rect.origin.y);
         cbf.children.push(frag);
+        queue.extend(inner);
     }
     rest
 }
@@ -2004,6 +2010,17 @@ pub fn resolve_absolutes(
 /// Lays out one absolutely positioned box against its containing block fragment
 /// (§10.3.7, §10.6.4). The result is relative to the containing block's border box.
 pub fn layout_absolute(ctx: &LayoutContext, cbf: &Fragment, req: &AbsRequest) -> Fragment {
+    layout_absolute_with_rest(ctx, cbf, req).0
+}
+
+/// [`layout_absolute`], with the requests of fixed descendants the box does not
+/// contain (relative to the box's border box), which must travel further up.
+pub fn layout_absolute_with_rest(
+    ctx: &LayoutContext,
+    cbf: &Fragment,
+    req: &AbsRequest,
+) -> (Fragment, Vec<AbsRequest>) {
+    let mut rest = Vec::new();
     let id = req.id;
     let b = &ctx.tree[id];
     let s = &b.style;
@@ -2160,7 +2177,7 @@ pub fn layout_absolute(ctx: &LayoutContext, cbf: &Fragment, req: &AbsRequest) ->
             if let Some(h) = inset_h {
                 ctx.cache.borrow_mut().forced_height.insert(id, Some(h));
             }
-            let f = layout_block_box(
+            let r = layout_block_box(
                 ctx,
                 id,
                 &cb,
@@ -2168,8 +2185,9 @@ pub fn layout_absolute(ctx: &LayoutContext, cbf: &Fragment, req: &AbsRequest) ->
                 Point::default(),
                 Au::ZERO,
                 Some(w),
-            )
-            .fragment;
+            );
+            rest = r.abs;
+            let f = r.fragment;
             if inset_h.is_some() {
                 ctx.cache.borrow_mut().forced_height.remove(&id);
             }
@@ -2227,5 +2245,5 @@ pub fn layout_absolute(ctx: &LayoutContext, cbf: &Fragment, req: &AbsRequest) ->
     };
     frag.is_positioned = true;
     frag.used_margin = Some(used_margin);
-    frag
+    (frag, rest)
 }

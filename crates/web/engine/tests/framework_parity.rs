@@ -232,6 +232,14 @@ mod cases {
         )
     }
 
+    fn site_settle_ms(name: &str) -> u32 {
+        let spec: Value = serde_json::from_str(
+            &std::fs::read_to_string(fixture_dir().join(format!("{name}.site.json"))).unwrap(),
+        )
+        .unwrap();
+        spec["settle_ms"].as_u64().unwrap_or(0) as u32
+    }
+
     fn content_type(path: &str) -> &'static str {
         match path.rsplit('.').next().unwrap_or("") {
             "html" => "text/html",
@@ -275,7 +283,7 @@ mod cases {
     /// One step as Playwright performs it: a click moves the pointer onto the
     /// element's centre and clicks there (so hit testing picks the target), typing
     /// goes to the focused element, a key press is a key press.
-    fn perform(r: &mut Realm, step: &Value) {
+    fn perform(r: &mut Realm, step: &Value, settle_ms: u32) {
         let modifiers = Modifiers::default();
         match step["action"].as_str().unwrap() {
             "click" => {
@@ -311,6 +319,9 @@ mod cases {
             other => panic!("unknown action {other:?}"),
         }
         settle(r, 20);
+        if settle_ms > 0 {
+            settle(r, settle_ms);
+        }
     }
 
     struct Timing {
@@ -338,10 +349,16 @@ mod cases {
         r.set_font_environment(cw_web::css::FontEnvironment::LinuxBaseline);
         r.run_document();
         settle(&mut r, 50);
+        // A site's own timers (react-admin's fake provider answers after 300 ms) get
+        // the `settle_ms` of virtual time that dump.mjs gives them in wall time.
+        let settle_ms = if is_site { site_settle_ms(name) } else { 0 };
+        if settle_ms > 0 {
+            settle(&mut r, settle_ms);
+        }
         let boot = t.elapsed();
         let t = Instant::now();
         for step in list {
-            perform(&mut r, step);
+            perform(&mut r, step, settle_ms);
         }
         let steps = t.elapsed();
         let errors: Vec<_> = r
@@ -518,5 +535,10 @@ mod cases {
     #[test]
     fn oss_conduit_vue() {
         run_fixture("oss-conduit-vue");
+    }
+
+    #[test]
+    fn oss_react_admin() {
+        run_fixture("oss-react-admin");
     }
 }

@@ -1,0 +1,22 @@
+[
+ {
+  "family": "\"Times New Roman\"",
+  "first": "html",
+  "chromium": []
+ },
+ {
+  "family": "Roboto, Helvetica, Arial, sans-serif",
+  "first": "html>body>div:nth-child(1)>div:nth-child(1)>button:nth-child(1)",
+  "chromium": [
+   {
+    "family": "Liberation Sans",
+    "glyphs": 15
+   }
+  ]
+ },
+ {
+  "family": "Arial",
+  "first": "html>body>div:nth-child(1)>div:nth-child(1)>div:nth-child(2)>header:nth-child(1)>div:nth-child(1)>button:nth-child(1)",
+  "chromium": []
+ }
+]
