@@ -101,13 +101,23 @@ pub struct LayoutCache {
     /// (Playwright launches it with `--hide-scrollbars`, which is what the parity
     /// dumps were taken with). A host setting, so it survives `invalidate_all`.
     pub overlay_scrollbars: bool,
+    /// Results of `block::layout_block_box` for formatting-context roots within one
+    /// pass, by box and constraints (see there).
+    pub block_memo: std::collections::HashMap<BlockMemoKey, (Au, block::BlockResult)>,
+    /// Lay every box out every time it is asked for (for checks of the memo).
+    pub no_memo: bool,
 }
+
+/// A box and the constraints it was laid out under: containing block width and
+/// height, forced width, forced height.
+pub type BlockMemoKey = (BoxId, Au, Option<Au>, Option<Au>, Option<Option<Au>>);
 
 impl LayoutCache {
     pub fn invalidate_all(&mut self) {
         self.intrinsic.clear();
         self.empty_block.clear();
         self.forced_height.clear();
+        self.block_memo.clear();
     }
     fn reserve(&mut self, n: usize) {
         self.intrinsic.resize(n, None);
@@ -186,5 +196,20 @@ pub fn layout_with(
     };
     let out = scroll::layout_root(&ctx);
     *cache = ctx.cache.into_inner();
+    cache.block_memo.clear();
+    // Under the incremental check, the memo is checked against laying every box
+    // out every time.
+    if crate::style::profile::verifying() && !cache.no_memo {
+        let mut plain = LayoutCache {
+            overlay_scrollbars: cache.overlay_scrollbars,
+            no_memo: true,
+            ..LayoutCache::default()
+        };
+        let fresh = layout_with(doc, styles, viewport, opts, &mut plain);
+        assert!(
+            fresh == out,
+            "a layout reusing results within the pass differs from one that does not"
+        );
+    }
     out
 }

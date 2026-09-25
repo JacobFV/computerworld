@@ -234,7 +234,7 @@ pub fn translate_requests(reqs: &mut [AbsRequest], dx: Au, dy: Au) {
 }
 
 /// The result of laying out one block-level box in a flow.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct BlockResult {
     /// Positioned relative to the containing block's content box.
     pub fragment: Fragment,
@@ -1202,6 +1202,47 @@ pub fn layout_block_level(
 /// Lays out a block container box (block, list item, flow root, cell body). When
 /// `forced_width` is given (cells, absolutes, floats) it is the content width.
 pub fn layout_block_box(
+    ctx: &LayoutContext,
+    id: BoxId,
+    cb: &Cb,
+    bfc: &mut Bfc,
+    cb_origin: Point,
+    y_in: Au,
+    forced_width: Option<Au>,
+) -> BlockResult {
+    // A box that establishes a formatting context, with no floats outside it to
+    // avoid, lays out the same wherever it is placed: flex and grid layout lay
+    // their items out several times (measuring, then stretching), and each of those
+    // would lay the whole subtree out again. Its result is kept for the pass.
+    let memo_key =
+        (!ctx.cache.borrow().no_memo && bfc.floats.is_empty() && ctx.tree[id].establishes_bfc())
+            .then(|| {
+                (
+                    id,
+                    cb.width,
+                    cb.height,
+                    forced_width,
+                    crate::layout::flex::forced_height(ctx, id),
+                )
+            });
+    if let Some(k) = &memo_key {
+        if let Some((y0, r)) = ctx.cache.borrow().block_memo.get(k) {
+            let mut r = r.clone();
+            r.fragment.rect.origin.y += y_in - *y0;
+            return r;
+        }
+    }
+    let r = layout_block_box_uncached(ctx, id, cb, bfc, cb_origin, y_in, forced_width);
+    if let Some(k) = memo_key {
+        ctx.cache
+            .borrow_mut()
+            .block_memo
+            .insert(k, (y_in, r.clone()));
+    }
+    r
+}
+
+fn layout_block_box_uncached(
     ctx: &LayoutContext,
     id: BoxId,
     cb: &Cb,
