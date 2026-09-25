@@ -81,6 +81,7 @@ pub fn emit(m: &Module, mod_name: &str) -> String {
     let island = m.island.as_ref().map(|i| i.script.as_str()).unwrap_or("");
     let ih = "#".repeat(raw_hashes(island));
     let _ = writeln!(out, "    island: r{ih}\"{island}\"{ih},");
+    let _ = writeln!(out, "    react: {},", m.react);
     let _ = writeln!(out, "}};\n");
     // Function table.
     let _ = writeln!(out, "static FUNCS: [GenFunc; {}] = [", m.functions.len());

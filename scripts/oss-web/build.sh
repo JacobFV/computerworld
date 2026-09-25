@@ -52,6 +52,25 @@ CONDUIT_VUE=741c215ef0f674f90fcb03c5493a1b3a3a7f1b03
 REACT_ADMIN=99e8c52b7db1712c0afa4eeed533e4a713dfc1ec
 JSON_SERVER=78ea71375666d49145734689c097654c54f90686 # v0.17.4
 
+# compile_ui <app dir> <entry> <dist dir> <app script>: the app compiled for cw-ui
+# (docs/tsx-apps.md) from its sources and its installed node_modules, as
+# app.ui.json beside the React build. The page (index.html) names it on the app's
+# script with data-cw-ui, so the world's browser runs it on cw-ui; react.html is
+# the React build's page unchanged, for comparison. The compiler is this
+# checkout's cw-tsx (CW_TSX, default target/release/cw-tsx).
+compile_ui() {
+  local cw_tsx=${CW_TSX:-$ROOT/target/release/cw-tsx}
+  [ -x "$cw_tsx" ] || { echo "build cw-tsx first: cargo build --release -p cw-tsx" >&2; exit 1; }
+  local out
+  out=$(mktemp -d)
+  "$cw_tsx" build "$1/$2" --root "$1" -o "$out" --name app
+  cp "$out/app.ui.json" "$3/app.ui.json"
+  rm -rf "$out"
+  cp "$3/index.html" "$3/react.html"
+  sed -i "s#src=\"$4\"#src=\"$4\" data-cw-ui=\"app.ui.json\"#" "$3/index.html"
+  grep -q 'data-cw-ui="app.ui.json"' "$3/index.html"
+}
+
 build_todomvc() {
   local src
   src=$(fetch todomvc https://github.com/tastejs/todomvc "$TODOMVC")
@@ -62,6 +81,7 @@ build_todomvc() {
     mkdir -p "$stage/examples/$app"
     cp -r "$src/examples/$app/dist" "$stage/examples/$app/dist"
   done
+  compile_ui "$src/examples/react" src/index.js "$stage/examples/react/dist" app.bundle.js
   cp "$src/license.md" "$stage/license.md"
   publish todomvc public "$stage"
   # The landing page is ours: the upstream's site index pulls in its whole bower tree.

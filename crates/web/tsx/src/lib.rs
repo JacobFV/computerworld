@@ -93,6 +93,13 @@ pub struct Source {
     /// A module of an npm package (JavaScript, from `node_modules`): it runs on the
     /// app's island, never compiled.
     pub package: bool,
+    /// Its import specifiers in source order (modules and stylesheets alike).
+    pub order: Vec<String>,
+    /// A CommonJS module (`require`, `module.exports`): a package's, run when first
+    /// required or imported, as a bundler runs it.
+    pub commonjs: bool,
+    /// The stylesheets it imports, by specifier: the file and its text.
+    pub stylesheets: BTreeMap<String, (String, String)>,
 }
 
 impl Source {
@@ -103,6 +110,9 @@ impl Source {
             text: text.to_owned(),
             imports: BTreeMap::new(),
             package: false,
+            order: Vec::new(),
+            commonjs: false,
+            stylesheets: BTreeMap::new(),
         }
     }
 
@@ -182,6 +192,48 @@ fn specifiers_of(text: &str, file: &str) -> Vec<(String, u32)> {
     out
 }
 
+/// Whether a package's JavaScript is CommonJS: a `.cjs` file, or one with no
+/// `import`/`export` that uses `require` or `module.exports`/`exports`.
+pub fn is_commonjs(text: &str, file: &str) -> bool {
+    if file.ends_with(".cjs") {
+        return true;
+    }
+    if !(file.ends_with(".js") || file.ends_with(".jsx")) {
+        return false;
+    }
+    let allocator = oxc_allocator::Allocator::default();
+    let ret = oxc_parser::Parser::new(&allocator, text, oxc_span::SourceType::cjs()).parse();
+    if ret.program.body.iter().any(|s| s.is_module_declaration()) {
+        return false;
+    }
+    text.contains("require(") || text.contains("exports")
+}
+
+/// The `require("…")` specifiers of a CommonJS module, in source order.
+fn requires_of(text: &str) -> Vec<(String, u32)> {
+    use oxc_ast_visit::Visit;
+    struct R(Vec<(String, u32)>);
+    impl<'a> Visit<'a> for R {
+        fn visit_call_expression(&mut self, c: &oxc_ast::ast::CallExpression<'a>) {
+            if let oxc_ast::ast::Expression::Identifier(id) = &c.callee {
+                if id.name == "require" && c.arguments.len() == 1 {
+                    if let Some(oxc_ast::ast::Expression::StringLiteral(s)) =
+                        c.arguments[0].as_expression()
+                    {
+                        self.0.push((s.value.to_string(), c.span.start));
+                    }
+                }
+            }
+            oxc_ast_visit::walk::walk_call_expression(self, c);
+        }
+    }
+    let allocator = oxc_allocator::Allocator::default();
+    let ret = oxc_parser::Parser::new(&allocator, text, oxc_span::SourceType::cjs()).parse();
+    let mut r = R(Vec::new());
+    r.visit_program(&ret.program);
+    r.0
+}
+
 /// The paths of a source's `/// <reference path="…" />` directives.
 fn references(text: &str) -> Vec<(String, u32)> {
     let mut out = Vec::new();
@@ -258,8 +310,44 @@ pub fn asset_url(file: &str, spec: &str) -> Option<String> {
     Some(format!("/{}", normalize(&format!("{dir}/{spec}"))))
 }
 
+/// The app's stylesheet as its bundler would emit it: every stylesheet the
+/// modules import, each once, in the order the modules run (depth first from the
+/// entry, each module's imports in source order).
+pub fn stylesheet(sources: &[Source]) -> String {
+    fn visit(
+        sources: &[Source],
+        i: usize,
+        seen: &mut Vec<bool>,
+        done: &mut std::collections::BTreeSet<String>,
+        out: &mut String,
+    ) {
+        if seen[i] {
+            return;
+        }
+        seen[i] = true;
+        let s = &sources[i];
+        for spec in &s.order {
+            if let Some((path, css)) = s.stylesheets.get(spec) {
+                if done.insert(path.clone()) {
+                    out.push_str(&format!("/* {path} */\n{css}\n"));
+                }
+            } else if let Some(&m) = s.imports.get(spec) {
+                visit(sources, m, seen, done, out);
+            }
+        }
+    }
+    let mut out = String::new();
+    if sources.is_empty() {
+        return out;
+    }
+    let mut seen = vec![false; sources.len()];
+    let mut done = std::collections::BTreeSet::new();
+    visit(sources, sources.len() - 1, &mut seen, &mut done, &mut out);
+    out
+}
+
 /// Whether a relative import names a stylesheet (imported for its effect).
-pub(crate) fn is_stylesheet(spec: &str) -> bool {
+pub fn is_stylesheet(spec: &str) -> bool {
     [".css", ".scss", ".sass", ".less"]
         .iter()
         .any(|e| spec.to_ascii_lowercase().ends_with(e))
@@ -287,22 +375,91 @@ fn package_parts(spec: &str) -> (&str, &str) {
     }
 }
 
-/// The target of a package.json `exports` entry under the conditions an ES module
-/// bundle for a browser uses.
-fn export_target(v: &serde_json::Value) -> Option<String> {
-    match v {
-        serde_json::Value::String(s) => Some(s.clone()),
-        serde_json::Value::Object(o) => {
-            for c in ["browser", "import", "module", "default", "require"] {
-                if let Some(t) = o.get(c).and_then(export_target) {
-                    return Some(t);
-                }
+/// A JSON value with its objects' keys in document order (what `exports`
+/// conditions are matched in).
+enum OrderedJson {
+    Str(String),
+    Obj(Vec<(String, OrderedJson)>),
+    Arr(Vec<OrderedJson>),
+    Other,
+}
+
+impl OrderedJson {
+    /// `text`'s value at key `field` of its top-level object, read as a JavaScript
+    /// object literal (which keeps key order).
+    fn field(text: &str, field: &str) -> Option<OrderedJson> {
+        let src = format!("({text})");
+        let allocator = oxc_allocator::Allocator::default();
+        let ret = oxc_parser::Parser::new(&allocator, &src, oxc_span::SourceType::mjs())
+            .parse_expression();
+        let e = ret.ok()?;
+        let top = Self::of(&e);
+        match top {
+            OrderedJson::Obj(fields) => {
+                fields.into_iter().find(|(k, _)| k == field).map(|(_, v)| v)
             }
-            None
+            _ => None,
         }
-        serde_json::Value::Array(a) => a.iter().find_map(export_target),
-        _ => None,
     }
+
+    fn of(e: &oxc_ast::ast::Expression<'_>) -> OrderedJson {
+        use oxc_ast::ast::{ArrayExpressionElement, Expression as E, ObjectPropertyKind};
+        match e.without_parentheses() {
+            E::StringLiteral(s) => OrderedJson::Str(s.value.to_string()),
+            E::ObjectExpression(o) => OrderedJson::Obj(
+                o.properties
+                    .iter()
+                    .filter_map(|p| match p {
+                        ObjectPropertyKind::ObjectProperty(p) => {
+                            Some((p.key.static_name()?.to_string(), Self::of(&p.value)))
+                        }
+                        _ => None,
+                    })
+                    .collect(),
+            ),
+            E::ArrayExpression(a) => OrderedJson::Arr(
+                a.elements
+                    .iter()
+                    .filter_map(|x| match x {
+                        ArrayExpressionElement::SpreadElement(_)
+                        | ArrayExpressionElement::Elision(_) => None,
+                        x => x.as_expression().map(Self::of),
+                    })
+                    .collect(),
+            ),
+            _ => OrderedJson::Other,
+        }
+    }
+}
+
+/// The conditions a production browser bundle resolves `exports` with (webpack's
+/// for `mode: production`, `target: web`, an ES import).
+const CONDITIONS: &[&str] = &[
+    "webpack",
+    "production",
+    "browser",
+    "import",
+    "module",
+    "default",
+];
+
+/// The target of a package.json `exports` entry: the first key, in the entry's
+/// own order, that is an active condition (Node's and the bundlers' rule); with
+/// `require` too when nothing else matches.
+fn export_target(v: &OrderedJson) -> Option<String> {
+    fn go(v: &OrderedJson, require: bool) -> Option<String> {
+        match v {
+            OrderedJson::Str(s) => Some(s.clone()),
+            OrderedJson::Obj(o) => o.iter().find_map(|(k, v)| {
+                (CONDITIONS.contains(&k.as_str()) || (require && k == "require"))
+                    .then(|| go(v, require))
+                    .flatten()
+            }),
+            OrderedJson::Arr(a) => a.iter().find_map(|x| go(x, require)),
+            OrderedJson::Other => None,
+        }
+    }
+    go(v, false).or_else(|| go(v, true))
 }
 
 /// The file a bare specifier names in `node_modules` (relative to the app's root).
@@ -321,11 +478,13 @@ fn resolve_package(
     } else {
         format!("./{sub}")
     };
-    if let Some(exports) = pkg.get("exports") {
+    let exports =
+        read(&format!("{dir}/package.json")).and_then(|t| OrderedJson::field(&t, "exports"));
+    if let Some(exports) = &exports {
         let entry = match exports {
-            serde_json::Value::Object(o) if o.keys().any(|k| k.starts_with('.')) => {
-                match o.get(&key) {
-                    Some(e) => export_target(e),
+            OrderedJson::Obj(o) if o.iter().any(|(k, _)| k.starts_with('.')) => {
+                match o.iter().find(|(k, _)| *k == key) {
+                    Some((_, e)) => export_target(e),
                     // A subpath pattern (`"./*": "./esm/*.mjs"`).
                     None => o.iter().find_map(|(k, v)| {
                         let (pre, post) = k.split_once('*')?;
@@ -419,9 +578,45 @@ pub fn load_with(
                 }
             }
             let mut imports = BTreeMap::new();
-            for (spec, at) in specifiers_of(&text, file) {
+            let mut order = Vec::new();
+            let mut stylesheets = BTreeMap::new();
+            let in_package = file.starts_with(&format!(
+                "{}/",
+                self.options.node_modules.as_deref().unwrap_or("\u{0}")
+            ));
+            let commonjs = in_package && is_commonjs(&text, file);
+            let specs = if commonjs {
+                requires_of(&text)
+            } else {
+                specifiers_of(&text, file)
+            };
+            for (spec, at) in specs {
+                order.push(spec.clone());
                 if asset_url(file, &spec).is_some() {
-                    // A stylesheet or media file, which a bundler serves, not a module.
+                    // A stylesheet or media file, which a bundler serves, not a module;
+                    // a stylesheet's text goes into the page's (see `stylesheet`).
+                    if is_stylesheet(&spec) {
+                        let path = normalize(&format!("{dir}/{spec}"));
+                        if let Some(css) = (self.read)(&path) {
+                            stylesheets.insert(spec.clone(), (path, css));
+                        }
+                    }
+                    continue;
+                }
+                if !is_relative(&spec) && is_stylesheet(&spec) {
+                    // A package's stylesheet (`import 'todomvc-app-css/index.css'`).
+                    if let Some(nm) = self.options.node_modules.clone() {
+                        if let Some(path) = resolve_package(&spec, &nm, self.read) {
+                            if let Some(css) = (self.read)(&path) {
+                                stylesheets.insert(spec.clone(), (path, css));
+                                continue;
+                            }
+                        }
+                    }
+                    let mut d =
+                        Diagnostic::at(&text, at, format!("cannot find stylesheet `{spec}`"));
+                    d.file = file.to_owned();
+                    self.errors.push(d);
                     continue;
                 }
                 let base = if is_relative(&spec) {
@@ -464,6 +659,8 @@ pub fn load_with(
                     format!("{base}.js"),
                     format!("{base}/index.mjs"),
                     format!("{base}/index.js"),
+                    format!("{base}.jsx"),
+                    format!("{base}/index.jsx"),
                     format!("{base}.d.ts"),
                     format!("{base}/index.d.ts"),
                 ];
@@ -520,6 +717,9 @@ pub fn load_with(
                 file: file.to_owned(),
                 text,
                 imports,
+                order,
+                commonjs,
+                stylesheets,
             });
             self.index.insert(file.to_owned(), i);
             Some(Found::Done(i))
@@ -616,10 +816,16 @@ pub fn build_modules_with_island(sources: &[Source], files: &[&str]) -> Build {
         .collect();
     let (mut ir, mut diagnostics, vm, outside) = lower_with_islands(sources, forced);
     // What would run on the island must be able to: else the app is React's.
+    // App code the island cannot run refuses the build. A package's is only
+    // noted: a library holds code for platforms and modes an app never reaches,
+    // so what it needs is judged when it runs (a missing global throws there).
+    let mut island_notes = Vec::new();
     if ir.is_some() {
         let mut refused = Vec::new();
         for (i, s) in sources.iter().enumerate() {
-            if s.package || vm.contains(&i) {
+            if s.package {
+                island_notes.extend(island_check::check(s));
+            } else if vm.contains(&i) {
                 refused.extend(island_check::check(s));
             }
         }
@@ -658,6 +864,7 @@ pub fn build_modules_with_island(sources: &[Source], files: &[&str]) -> Build {
         js_errors,
         island_modules,
         outside,
+        island_notes,
     }
 }
 
@@ -793,6 +1000,9 @@ pub struct Build {
     pub island_modules: Vec<String>,
     /// What put those modules outside the subset.
     pub outside: Vec<Diagnostic>,
+    /// What the app's packages reference that the island lacks (not a refusal:
+    /// it matters only if that code runs).
+    pub island_notes: Vec<Diagnostic>,
 }
 
 /// Compiles a one-module app both ways.

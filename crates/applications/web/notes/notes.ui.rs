@@ -22,6 +22,7 @@ pub static PROGRAM: GenProgram = GenProgram {
     async_ir: r#""#,
     async_cache: std::sync::OnceLock::new(),
     island: r#""#,
+    react: 18,
 };
 
 static FUNCS: [GenFunc; 51] = [

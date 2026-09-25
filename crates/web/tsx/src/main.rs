@@ -42,6 +42,7 @@ fn main() -> ExitCode {
     let mut name: Option<String> = None;
     let mut rust = false;
     let mut mod_name: Option<String> = None;
+    let mut root_arg: Option<PathBuf> = None;
     let mut it = rest.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -52,27 +53,60 @@ fn main() -> ExitCode {
                 _ => return usage(),
             },
             "--mod" => mod_name = it.next().cloned(),
+            "--root" => root_arg = it.next().map(PathBuf::from),
             s if input.is_none() => input = Some(PathBuf::from(s)),
             _ => return usage(),
         }
     }
     let Some(input) = input else { return usage() };
-    let root = input.parent().map(Path::to_path_buf).unwrap_or_default();
-    let file_name = input
-        .file_name()
-        .map(|f| f.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "app.tsx".into());
-    let mut read = |rel: &str| std::fs::read_to_string(root.join(rel)).ok();
-    let sources = match cw_tsx::load(&file_name, &mut read) {
-        Ok(s) => s,
-        Err(diags) => {
-            for d in &diags {
-                eprintln!("{}: {d}", root.display());
-            }
-            return ExitCode::from(1);
-        }
+    // The app's root: `--root`, else the nearest directory above the entry whose
+    // node_modules has React (an npm project's root), else the entry's own.
+    let dir = input.parent().map(Path::to_path_buf).unwrap_or_default();
+    let root = match root_arg {
+        Some(r) => r,
+        None => dir
+            .ancestors()
+            .find(|a| a.join("node_modules/react/package.json").is_file())
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| dir.clone()),
     };
-    let build = cw_tsx::build_modules(&sources);
+    let abs = |p: &Path| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    let file_name = abs(&input)
+        .strip_prefix(abs(&root))
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| {
+            input
+                .file_name()
+                .map(|f| f.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "app.tsx".into())
+        });
+    let options = cw_tsx::LoadOptions {
+        aliases: Vec::new(),
+        node_modules: root
+            .join("node_modules")
+            .is_dir()
+            .then(|| "node_modules".to_owned()),
+    };
+    let mut read = |rel: &str| std::fs::read_to_string(root.join(rel)).ok();
+    let (sources, load_errors) = cw_tsx::load_with(&file_name, &mut read, &options);
+    if !load_errors.is_empty() {
+        for d in &load_errors {
+            eprintln!("{}: {d}", root.display());
+        }
+        return ExitCode::from(1);
+    }
+    let mut build = cw_tsx::build_modules(&sources);
+    // The React the app is built with (its installed `react`), whose DOM writes
+    // the runtime reproduces.
+    if let Some(ir) = build.ir.as_mut() {
+        let version = std::fs::read_to_string(root.join("node_modules/react/package.json"))
+            .ok()
+            .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+            .and_then(|v| v["version"].as_str().map(str::to_owned));
+        if let Some(major) = version.and_then(|v| v.split('.').next()?.parse::<u32>().ok()) {
+            ir.react = major;
+        }
+    }
     for d in &build.diagnostics {
         if d.file.is_empty() {
             eprintln!("{}: {d}", input.display());

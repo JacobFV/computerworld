@@ -47,6 +47,19 @@ pub struct Module {
     /// (`state.push(x)`, `props.items.sort()`, `obj.field = v` on a non-fresh
     /// object). When set, the runtime never skips a hole by identity of its inputs.
     pub mutates_shared: bool,
+    /// The major version of React the app is built with, whose DOM writes the
+    /// runtime reproduces where versions differ (React 19 sets an input's `type`
+    /// and `name` after its other props). 18 unless the app says otherwise.
+    #[serde(default = "react_18", skip_serializing_if = "is_react_18")]
+    pub react: u32,
+}
+
+fn react_18() -> u32 {
+    18
+}
+
+fn is_react_18(v: &u32) -> bool {
+    *v == 18
 }
 
 /// The island of an app: a script for the JS VM and what compiled code takes from

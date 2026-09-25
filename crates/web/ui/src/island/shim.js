@@ -388,6 +388,9 @@
     get documentElement() { return B('DocumentElement'); },
     get activeElement() { return B('ActiveElement'); },
     get title() { return B('DocumentTitle'); },
+    get defaultView() { return globalThis; },
+    get location() { return globalThis.location; },
+    get head() { return B('QuerySelector', 'head'); },
     addEventListener: (t, f, o) => B('DocumentAddListener', t, f, o),
     removeEventListener: (t, f, o) => B('DocumentRemoveListener', t, f, o),
   };

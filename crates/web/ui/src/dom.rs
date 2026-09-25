@@ -908,13 +908,25 @@ impl Runtime {
                     }
                 }
                 // Props, in JSX order; a form control's value and checkedness last.
+                // React 19 sets an input's `type` after its other props, then its
+                // value and checkedness, then its `name` (`initInput`).
                 let is_form = matches!(tag, "input" | "textarea" | "select" | "option");
+                let late = |name: &str| name == "type" || name == "name";
+                let react19 = tag == "input" && !svg && self.program.react_major() >= 19;
+                let mut deferred: Vec<(String, Value)> = Vec::new();
                 for ai in 0..attrs.len() {
                     match attrs.get(ai) {
+                        AttrView::Static(name, value) if react19 && late(name) => {
+                            deferred.push((name.to_owned(), Value::str(value)));
+                        }
                         AttrView::Static(name, value) => self.write_attr(el, name, Some(value)),
                         AttrView::Dynamic(name, h) => {
                             let v = &values[h as usize];
-                            self.set_prop(el, name, &Value::Undefined, v, true);
+                            if react19 && late(name) {
+                                deferred.push((name.to_owned(), v.clone()));
+                            } else {
+                                self.set_prop(el, name, &Value::Undefined, v, true);
+                            }
                             holes[h as usize] = Some(MHole::Attr {
                                 node: el,
                                 value: v.clone(),
@@ -922,7 +934,26 @@ impl Runtime {
                         }
                         AttrView::Spread(h) => {
                             let v = values[h as usize].clone();
-                            self.apply_spread(el, &Value::Undefined, &v, true);
+                            if react19 {
+                                let obj = self.plain_object(&v).unwrap_or_default();
+                                if let Value::Object(o) = &obj {
+                                    let pairs: Vec<(Str, Value)> = o.borrow().clone();
+                                    let (lates, rest): (Vec<_>, Vec<_>) =
+                                        pairs.into_iter().partition(|(k, _)| late(k));
+                                    for (k, v) in lates {
+                                        deferred.retain(|(n, _)| *n != *k);
+                                        deferred.push((k.to_string(), v));
+                                    }
+                                    self.apply_spread(
+                                        el,
+                                        &Value::Undefined,
+                                        &Value::object(rest),
+                                        true,
+                                    );
+                                }
+                            } else {
+                                self.apply_spread(el, &Value::Undefined, &v, true);
+                            }
                             holes[h as usize] = Some(MHole::Spread { node: el, value: v });
                         }
                         AttrView::Ref(h) => {
@@ -934,8 +965,17 @@ impl Runtime {
                         }
                     }
                 }
+                if react19 {
+                    deferred.sort_by_key(|(n, _)| n != "type");
+                    for (name, v) in deferred.iter().filter(|(n, _)| n == "type") {
+                        self.set_prop(el, name, &Value::Undefined, v, true);
+                    }
+                }
                 if is_form {
                     self.mount_form_control(el);
+                }
+                for (name, v) in deferred.iter().filter(|(n, _)| n == "name") {
+                    self.set_prop(el, name, &Value::Undefined, v, true);
                 }
                 Some(el)
             }

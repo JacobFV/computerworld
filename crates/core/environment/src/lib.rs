@@ -425,6 +425,16 @@ impl Environment {
                         if !machine.browser.console().is_empty() {
                             v["console"] = serde_json::to_value(machine.browser.console())?;
                         }
+                        // A page whose app runs compiled on cw-ui (docs/tsx-apps.md),
+                        // said only when it does.
+                        if machine
+                            .browser
+                            .document()
+                            .and_then(|d| d.scripted())
+                            .is_some_and(|s| s.is_compiled())
+                        {
+                            v["compiled"] = json!(true);
+                        }
                         v
                     }
                     "filesystem.v1" => {

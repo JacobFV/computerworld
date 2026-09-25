@@ -336,6 +336,20 @@ impl UiApp {
         })
     }
 
+    /// Every element in document order matching a CSS selector.
+    pub fn query_selector_all(&self, selector: &str) -> Vec<NodeId> {
+        let Ok(list) = cw_web::css::selector::parse_selector_list(selector) else {
+            return Vec::new();
+        };
+        let ctx = cw_web::css::MatchContext::new();
+        let doc = &self.rt.inner.doc;
+        doc.descendants(Document::ROOT)
+            .filter(|n| {
+                doc.is_element(*n) && cw_web::css::matching::matches_list(doc, *n, &list, &ctx)
+            })
+            .collect()
+    }
+
     /// The centre of an element's first box, in viewport pixels (where a click on
     /// it lands).
     pub fn centre_of(&mut self, node: NodeId) -> Option<(i32, i32)> {

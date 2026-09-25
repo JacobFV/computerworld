@@ -313,6 +313,79 @@ fn todomvc_react_adds_completes_filters_and_clears() {
     todomvc("http://todomvc.com/examples/react/dist/");
 }
 
+/// TodoMVC React runs on cw-ui in the world: its page names the app compiled from
+/// its sources (`data-cw-ui`, scripts/oss-web/build.sh), and the browser runs that
+/// instead of the React build. The same flow on the compiled page and on the React
+/// build's page (`react.html`), side by side: after every action the two pages
+/// show the agent the same elements.
+#[test]
+fn todomvc_react_compiled_shows_what_its_react_build_shows() {
+    let mut compiled = Agent::new();
+    let mut react = Agent::new();
+    compiled.navigate("http://todomvc.com/examples/react/dist/");
+    react.navigate("http://todomvc.com/examples/react/dist/react.html");
+    let runs_compiled = |a: &Agent| {
+        a.world.observe(&a.session).unwrap().channels["browser.v1"][MACHINE]["compiled"]
+            == json!(true)
+    };
+    assert!(runs_compiled(&compiled), "the page did not run compiled");
+    assert!(!runs_compiled(&react));
+    let same = |c: &Agent, r: &Agent, what: &str| {
+        let (a, b) = (c.dump(), r.dump());
+        assert_eq!(
+            a, b,
+            "after {what}: compiled (left) and React (right) differ"
+        );
+    };
+    same(&compiled, &react, "loading");
+    let input = "What needs to be done?";
+    for todo in [
+        "Review the CI caching PR",
+        "Reply to Wren",
+        "Book the offsite room",
+    ] {
+        for a in [&mut compiled, &mut react] {
+            a.fill(input, todo);
+            a.key("Enter");
+        }
+        same(&compiled, &react, todo);
+    }
+    let first = |a: &Agent| -> String {
+        a.elements()
+            .into_iter()
+            .find(|e| {
+                e["text"].as_str().is_some_and(|t| t == "[ ]" || t == "[x]")
+                    && e["id"].as_str().unwrap_or("").contains("li[1]")
+            })
+            .unwrap()["id"]
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    for a in [&mut compiled, &mut react] {
+        let id = first(a);
+        a.act("browser.v1", "click", json!({ "id": id }));
+    }
+    same(&compiled, &react, "completing the first");
+    for (kind, name) in [
+        ("link", "Active"),
+        ("link", "Completed"),
+        ("link", "All"),
+        ("button", "Clear completed"),
+    ] {
+        for a in [&mut compiled, &mut react] {
+            a.click(kind, name);
+        }
+        same(&compiled, &react, name);
+        assert_eq!(
+            compiled.url(),
+            react.url().replace("react.html", ""),
+            "after {name}"
+        );
+    }
+    assert!(compiled.shows("2 items left"));
+}
+
 #[test]
 fn todomvc_vue_adds_completes_filters_and_clears() {
     todomvc("http://todomvc.com/examples/vue/dist/");
@@ -850,6 +923,72 @@ fn measure() {
             "| {name} | {nav:.0} | {total:.0} | {waited} | {again:.0} | {:.0} → {:.0} | {before_snapshot} → {after_snapshot} |",
             rss_before as f64 / 1024.0,
             rss_after as f64 / 1024.0
+        );
+    }
+}
+
+/// TodoMVC React compiled (cw-ui) against its React build, each in a fresh world
+/// in one process: first and second load, adding a todo (fill and Enter) and
+/// ticking it, medians of five.
+///
+///     cargo test --release -p computerworld --features oss-web --test oss_webapps -- --ignored --nocapture measure_compiled
+#[test]
+#[ignore]
+fn measure_compiled_against_react() {
+    let median = |mut v: Vec<f64>| {
+        v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        v[v.len() / 2]
+    };
+    println!("| TodoMVC React | first load (ms) | second load (ms) | add a todo (ms) | tick it (ms) | snapshot after (bytes) |");
+    println!("|---|---|---|---|---|---|");
+    for (name, url) in [
+        (
+            "compiled (cw-ui)",
+            "http://todomvc.com/examples/react/dist/",
+        ),
+        (
+            "React build",
+            "http://todomvc.com/examples/react/dist/react.html",
+        ),
+    ] {
+        let (mut first, mut second, mut add, mut tick, mut snap) =
+            (vec![], vec![], vec![], vec![], vec![]);
+        for _ in 0..5 {
+            let mut a = Agent::new();
+            let t = std::time::Instant::now();
+            a.navigate(url);
+            first.push(t.elapsed().as_secs_f64() * 1000.0);
+            assert!(a.shows("todos"));
+            let t = std::time::Instant::now();
+            a.navigate("http://todomvc.com/license.md");
+            a.navigate(url);
+            second.push(t.elapsed().as_secs_f64() * 1000.0);
+            let t = std::time::Instant::now();
+            a.fill("What needs to be done?", "Reply to Wren");
+            a.key("Enter");
+            add.push(t.elapsed().as_secs_f64() * 1000.0);
+            assert!(a.shows("1 item left"));
+            let id = a
+                .elements()
+                .into_iter()
+                .find(|e| e["text"].as_str() == Some("[ ]"))
+                .unwrap()["id"]
+                .as_str()
+                .unwrap()
+                .to_owned();
+            let t = std::time::Instant::now();
+            a.act("browser.v1", "click", json!({ "id": id }));
+            tick.push(t.elapsed().as_secs_f64() * 1000.0);
+            assert!(a.shows("0 items left"));
+            snap.push(a.world.export_snapshot().unwrap().len() as f64);
+        }
+        println!(
+            "| {name} | {:.1} | {:.1} | {:.1} | {:.1} | {:.0} |",
+            median(first),
+            median(second),
+            median(add),
+            median(tick),
+            median(snap)
         );
     }
 }

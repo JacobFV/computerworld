@@ -15,8 +15,8 @@
 //! app) it runs on the Realm as any other page. See docs/tsx-apps.md.
 //!
 //! `PageScript` has the methods the browser calls on a realm, under the same names,
-//! so the drivers treat both alike; a compiled app has no `requestAnimationFrame`,
-//! observers or same-document history of its own, and those calls are no-ops.
+//! so the drivers treat both alike; a compiled app runs its own frames and
+//! same-document history, and has no observers, so `after_layout` is a no-op.
 
 use std::cell::Ref;
 use std::ops::Deref;

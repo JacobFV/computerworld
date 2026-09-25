@@ -166,6 +166,9 @@ const DOCUMENT: &[&str] = &[
     "title",
     "addEventListener",
     "removeEventListener",
+    "defaultView",
+    "location",
+    "head",
 ];
 
 /// What the shim's `location` reads (it navigates nowhere).
@@ -255,7 +258,8 @@ impl<'a> Visit<'a> for Check<'_> {
             return;
         }
         let name = id.name.as_str();
-        if !GLOBALS.contains(&name) {
+        let cjs = self.src.commonjs && matches!(name, "module" | "exports" | "require");
+        if !GLOBALS.contains(&name) && !cjs {
             self.refuse(
                 id.span.start,
                 format!("`{name}` is not on the island (its React shim is no browser page)"),

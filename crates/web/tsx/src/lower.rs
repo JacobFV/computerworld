@@ -173,6 +173,7 @@ pub fn lower_modules_with(
                 provides,
             }),
             mutates_shared: l.mutates_shared,
+            react: 18,
         })
     } else {
         let mut d = l.diags;
@@ -879,6 +880,10 @@ impl<'a> Lowerer<'a> {
                     "import from `{module}`: a compiled app imports only `react` and `react-dom`"
                 ),
             );
+            return;
+        }
+        if resolved.is_none() && crate::is_stylesheet(module) {
+            // A package's stylesheet: the page's (`crate::stylesheet`).
             return;
         }
         if self.islands && resolved.is_some_and(|m| self.package_mods.contains(&m))
@@ -4771,6 +4776,9 @@ impl<'a> Lowerer<'a> {
                 Ty::Promise(Box::new(Ty::Response)),
             ),
             "Array" => (Builtin::NewArray, vec![], Ty::Array(Box::new(Ty::Unknown))),
+            // `Error(msg)` without `new` is `new Error(msg)`.
+            "Error" => (Builtin::Error, vec![Ty::String], Ty::Error),
+            "TypeError" => (Builtin::TypeError, vec![Ty::String], Ty::Error),
             "alert" | "confirm" | "prompt" => {
                 // What the page's `alert` does: the host records `kind: text`;
                 // `confirm` answers true and `prompt` null.

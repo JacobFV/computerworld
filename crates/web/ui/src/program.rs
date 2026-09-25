@@ -233,6 +233,10 @@ pub trait Program {
     fn island_script(&self) -> Option<&str> {
         None
     }
+    /// The React major version whose DOM writes the app expects (`Module::react`).
+    fn react_major(&self) -> u32 {
+        18
+    }
     /// Calls a closure of this program; `inst` marks a component's render.
     fn call(
         &self,
@@ -298,6 +302,9 @@ impl Program for IrProgram {
     }
     fn island_script(&self) -> Option<&str> {
         self.module.island.as_ref().map(|i| i.script.as_str())
+    }
+    fn react_major(&self) -> u32 {
+        self.module.react
     }
     fn globals_len(&self) -> usize {
         self.module.globals.len()
@@ -425,6 +432,8 @@ pub struct GenProgram {
     pub async_cache: OnceLock<BTreeMap<u32, Function>>,
     /// The island's script (`ir::Island::script`); empty when there is none.
     pub island: &'static str,
+    /// `ir::Module::react`.
+    pub react: u32,
 }
 
 impl GenProgram {
@@ -495,6 +504,9 @@ impl Program for GenProgram {
     fn island_script(&self) -> Option<&str> {
         (!self.island.is_empty()).then_some(self.island)
     }
+    fn react_major(&self) -> u32 {
+        self.react
+    }
     fn call(
         &self,
         rt: &mut Runtime,
@@ -563,6 +575,9 @@ impl Program for StaticProgram {
     }
     fn island_script(&self) -> Option<&str> {
         self.0.island_script()
+    }
+    fn react_major(&self) -> u32 {
+        self.0.react
     }
     fn call(
         &self,

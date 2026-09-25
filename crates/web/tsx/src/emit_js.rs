@@ -52,7 +52,7 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
     let mut errors = Vec::new();
     if !bundled {
         for src in sources.iter().filter(|s| !s.is_ambient()) {
-            match emit_one(src, code_modules, 0, &[]) {
+            match emit_one(src, code_modules, 0, &[], &[]) {
                 Ok(code) => out.push_str(&code),
                 Err(e) => errors.extend(e),
             }
@@ -65,11 +65,21 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
             "const __cw_m = [{}];\n",
             vec!["{}"; sources.len()].join(", ")
         ));
+        if sources.iter().any(|s| s.commonjs) {
+            out.push_str(MODULE_RUNTIME);
+        }
+        let cjs: Vec<usize> = (0..sources.len())
+            .filter(|&i| sources[i].commonjs)
+            .collect();
         for (i, src) in sources.iter().enumerate() {
             if src.is_ambient() {
                 continue;
             }
-            match emit_one(src, code_modules, i, &names) {
+            if src.commonjs {
+                out.push_str(&emit_cjs(src, i));
+                continue;
+            }
+            match emit_one(src, code_modules, i, &names, &cjs) {
                 Ok(code) => {
                     out.push_str(&format!("// {}\n(() => {{\n{code}}})();\n", src.file));
                 }
@@ -82,6 +92,75 @@ pub fn emit_modules(sources: &[Source]) -> Result<String, Vec<Diagnostic>> {
     } else {
         Err(errors)
     }
+}
+
+/// What a bundle of several modules needs to run them: `__cw_get(i)` is module
+/// `i`'s exports object, running it first if it is CommonJS and has not run;
+/// `__cw_req` is a CommonJS module's `require`; `__cw_cjs` gives a CommonJS
+/// module's exports the shape an ES import sees (`default` is `module.exports`,
+/// or its `default` when it says `__esModule`; each own key a named export).
+const MODULE_RUNTIME: &str = r#"var __cw_lazy = {};
+var __cw_import_meta = { url: typeof location === 'undefined' ? '' : String(location.href) };
+function __cw_get(i) { var l = __cw_lazy[i]; if (l) { __cw_lazy[i] = null; l(); } return __cw_m[i]; }
+function __cw_req(map, s) {
+  if (s === 'react') return React;
+  if (s === 'react-dom' || s === 'react-dom/client') return ReactDOM;
+  if (s === 'react/jsx-runtime' || s === 'react/jsx-dev-runtime') return __cw_jsx;
+  var m = map[s];
+  if (m === undefined) throw new Error("Cannot find module '" + s + "'");
+  var ns = __cw_get(m);
+  return Object.prototype.hasOwnProperty.call(ns, '__cw_cjs') ? ns.__cw_cjs : ns;
+}
+function __cw_cjs(ns, ex) {
+  Object.defineProperty(ns, '__cw_cjs', { value: ex });
+  var def = ex && ex.__esModule ? ex['default'] : ex;
+  Object.defineProperty(ns, 'default', { enumerable: true, get: function () { return def; } });
+  if (ex !== null && (typeof ex === 'object' || typeof ex === 'function')) {
+    Object.keys(ex).forEach(function (k) {
+      if (k !== 'default' && k !== '__cw_cjs') Object.defineProperty(ns, k, { enumerable: true, get: function () { return ex[k]; } });
+    });
+  }
+}
+"#;
+
+/// A package's CommonJS module, run when first required or imported: its code in
+/// Node's module wrapper, with `require` resolving what the loader resolved.
+fn emit_cjs(src: &Source, index: usize) -> String {
+    let map: Vec<String> = src
+        .imports
+        .iter()
+        .map(|(spec, m)| format!("{}: {m}", js_key_quoted(spec)))
+        .collect();
+    let code = define_node_env_text(&src.text);
+    format!(
+        "// {file}\n__cw_lazy[{index}] = function () {{ var module = {{ exports: {{}} }}; var require = function (s) {{ return __cw_req({{ {map} }}, s); }}; (function (module, exports, require) {{\n{code}\n}}).call(module.exports, module, module.exports, require); __cw_cjs(__cw_m[{index}], module.exports); }};\n",
+        file = src.file,
+        map = map.join(", "),
+    )
+}
+
+/// A string as an object key, always quoted.
+fn js_key_quoted(s: &str) -> String {
+    format!("{s:?}")
+}
+
+/// `process.env.NODE_ENV` as `"production"` in a script's text (for CommonJS
+/// code, which is not re-emitted).
+fn define_node_env_text(text: &str) -> String {
+    if !text.contains("NODE_ENV") {
+        return text.to_owned();
+    }
+    let allocator = Allocator::default();
+    let ret = Parser::new(&allocator, text, oxc_span::SourceType::cjs()).parse();
+    if !ret.diagnostics.is_empty() {
+        return text.to_owned();
+    }
+    let mut program = ret.program;
+    DefineNodeEnv {
+        b: AstBuilder::new(&allocator),
+    }
+    .visit_program(&mut program);
+    Codegen::new().build(&program).code
 }
 
 /// `react/jsx-runtime` for a bundle whose packages import it.
@@ -104,6 +183,7 @@ pub fn emit_island(
         "var __cw_m = [{}];\nvar __cw_init = {{}};\nvar __cw_done = {{}};\nfunction __cw_run(i) {{ if (!__cw_done[i]) {{ __cw_done[i] = true; __cw_init[i](); }} }}\n",
         vec!["{}"; sources.len()].join(", ")
     ));
+    out.push_str(MODULE_RUNTIME);
     if sources.iter().enumerate().any(|(i, s)| {
         (s.package || vm.contains(&i))
             && (s.imports.contains_key("react/jsx-runtime") || s.text.contains("react/jsx-runtime"))
@@ -111,6 +191,9 @@ pub fn emit_island(
         out.push_str("var __cw_jsx = globalThis.__cw_jsx;\n");
     }
     let file_index = |f: &str| sources.iter().position(|s| s.file == f);
+    let cjs: Vec<usize> = (0..sources.len())
+        .filter(|&i| sources[i].commonjs)
+        .collect();
     // Compiled modules' exports, as the island's modules see them.
     let mut provided: BTreeMap<usize, Vec<String>> = BTreeMap::new();
     for (file, name, slot) in &island.provides {
@@ -129,13 +212,15 @@ pub fn emit_island(
     }
     let mut errors = Vec::new();
     for (i, src) in sources.iter().enumerate() {
-        if src.package {
-            match emit_one(src, 2, i, &names) {
+        if src.package && src.commonjs {
+            out.push_str(&emit_cjs(src, i));
+        } else if src.package {
+            match emit_one(src, 2, i, &names, &cjs) {
                 Ok(code) => out.push_str(&format!("// {}\n(() => {{\n{code}}})();\n", src.file)),
                 Err(e) => errors.extend(e),
             }
         } else if vm.contains(&i) {
-            match emit_one(src, 2, i, &names) {
+            match emit_one(src, 2, i, &names, &cjs) {
                 Ok(code) => out.push_str(&format!(
                     "// {}\n__cw_init[{i}] = () => {{\n{code}}};\n",
                     src.file
@@ -165,8 +250,8 @@ pub fn emit_island(
         exports.push(match name.as_str() {
             "!run" => format!("() => __cw_run({m})"),
             "!root" => "() => __cw.rendered".to_owned(),
-            "*" | "" => format!("() => __cw_m[{m}]"),
-            n => format!("() => __cw_m[{m}]{}", js_member(n)),
+            "*" | "" => format!("() => __cw_get({m})"),
+            n => format!("() => __cw_get({m}){}", js_member(n)),
         });
     }
     if !errors.is_empty() {
@@ -329,6 +414,7 @@ fn emit_one(
     modules: usize,
     index: usize,
     names: &[Vec<String>],
+    cjs: &[usize],
 ) -> Result<String, Vec<Diagnostic>> {
     let bundled = modules > 1;
     let source = src.text.as_str();
@@ -349,7 +435,7 @@ fn emit_one(
         return Err(ret.diagnostics.iter().map(from_oxc).collect());
     }
     let mut program = ret.program;
-    if source.contains("NODE_ENV") {
+    if source.contains("NODE_ENV") || source.contains("import.meta") {
         DefineNodeEnv {
             b: AstBuilder::new(&allocator),
         }
@@ -376,6 +462,13 @@ fn emit_one(
                 }
                 let module = import.source.value.to_string();
                 let local_module = module_of(&module);
+                if local_module.is_none()
+                    && crate::is_stylesheet(&module)
+                    && import.specifiers.as_ref().is_none_or(|s| s.is_empty())
+                {
+                    // A stylesheet: the page's, collected by `crate::stylesheet`.
+                    continue;
+                }
                 if local_module.is_none() {
                     if let Some(url) = crate::asset_url(&src.file, &module) {
                         // A stylesheet the page loads, or a media file's URL.
@@ -649,7 +742,12 @@ fn emit_one(
     }
     let mut head = String::new();
     for m in &used_modules {
-        head.push_str(&format!("const __cw_i{m} = __cw_m[{m}];\n"));
+        // A CommonJS module runs when first imported.
+        if cjs.contains(m) {
+            head.push_str(&format!("const __cw_i{m} = __cw_get({m});\n"));
+        } else {
+            head.push_str(&format!("const __cw_i{m} = __cw_m[{m}];\n"));
+        }
     }
     if !exports.is_empty() {
         let mut seen = BTreeSet::new();
@@ -746,6 +844,12 @@ struct DefineNodeEnv<'a> {
 
 impl<'a> VisitMut<'a> for DefineNodeEnv<'a> {
     fn visit_expression(&mut self, it: &mut Expression<'a>) {
+        // `import.meta`, which a classic script cannot say: the bundle's object for
+        // it (webpack defines no `env` on it; `url` is the page's).
+        if let Expression::ImportMeta(m) = it {
+            *it = Expression::new_identifier(m.span, "__cw_import_meta", &self.b);
+            return;
+        }
         if let Expression::StaticMemberExpression(m) = it {
             if m.property.name == "NODE_ENV" {
                 if let Expression::StaticMemberExpression(inner) = &m.object {
