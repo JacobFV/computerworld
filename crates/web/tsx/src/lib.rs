@@ -21,6 +21,7 @@
 pub mod corpus;
 pub mod emit_js;
 pub mod emit_rust;
+pub mod island_check;
 pub mod lower;
 mod scan;
 mod types;
@@ -614,6 +615,20 @@ pub fn build_modules_with_island(sources: &[Source], files: &[&str]) -> Build {
         .filter(|&i| files.contains(&sources[i].file.as_str()))
         .collect();
     let (mut ir, mut diagnostics, vm, outside) = lower_with_islands(sources, forced);
+    // What would run on the island must be able to: else the app is React's.
+    if ir.is_some() {
+        let mut refused = Vec::new();
+        for (i, s) in sources.iter().enumerate() {
+            if s.package || vm.contains(&i) {
+                refused.extend(island_check::check(s));
+            }
+        }
+        if !refused.is_empty() {
+            diagnostics.extend(outside.iter().cloned());
+            diagnostics.extend(refused);
+            ir = None;
+        }
+    }
     // Packages the compiled code imports, and the app's modules outside the
     // subset, run on the app's island.
     if let Some(island) = ir.as_mut().and_then(|m| m.island.as_mut()) {

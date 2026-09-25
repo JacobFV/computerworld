@@ -20,11 +20,11 @@
   },
   "apps_island": {
     "total": 29,
-    "inside": 28
+    "inside": 23
   },
   "apps_island_modules": {
-    "total": 187,
-    "inside": 157
+    "total": 101,
+    "inside": 90
   },
   "diagnostics": 362,
   "diagnostics_by_cause": {
@@ -279,24 +279,11 @@
         "inside": 42
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 43,
-        "inside": 32
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "src/services/conduit.ts",
-        "src/components/Pages/EditArticle/EditArticle.tsx",
-        "src/components/ArticlesViewer/ArticlesViewer.tsx",
-        "src/components/Pages/Login/Login.tsx",
-        "src/components/Pages/NewArticle/NewArticle.tsx",
-        "src/components/Pages/Register/Register.tsx",
-        "src/components/Pages/Settings/Settings.tsx",
-        "src/types/location.ts",
-        "src/components/Pages/ProfilePage/ProfilePage.tsx",
-        "src/components/Pages/ArticlePage/ArticlePage.tsx",
-        "src/components/App/App.tsx"
-      ],
       "entry": "src/index.tsx",
       "sample": [
         "src/components/App/App.tsx: src/components/App/App.tsx: line 74:29: `await` inside an expression is outside the compiled subset (await into a variable first)",
@@ -600,18 +587,11 @@
         "inside": 7
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 9,
-        "inside": 4
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/react/spreadsheet/src/spreadsheetModel.ts",
-        "examples/react/spreadsheet/src/useGridInteractions.ts",
-        "examples/react/spreadsheet/src/CellContextMenu.tsx",
-        "examples/react/spreadsheet/src/ColumnMenu.tsx",
-        "examples/react/spreadsheet/src/SpreadsheetGrid.tsx"
-      ],
       "entry": "examples/react/spreadsheet/src/main.tsx",
       "sample": [
         "examples/react/spreadsheet/src/CellContextMenu.tsx: examples/react/spreadsheet/src/CellContextMenu.tsx: line 49:10: this React API is outside the compiled subset",
@@ -647,14 +627,11 @@
         "inside": 7
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 2,
-        "inside": 1
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/react/virtualized-columns-experimental/src/main.tsx"
-      ],
       "entry": "examples/react/virtualized-columns-experimental/src/main.tsx",
       "sample": [
         "examples/react/virtualized-columns-experimental/src/main.tsx: examples/react/virtualized-columns-experimental/src/main.tsx: line 96:8: unknown name `process`",
@@ -1033,14 +1010,11 @@
         "inside": 12
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 22,
-        "inside": 21
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/blog-issue-tracker/src/contexts/color-mode/index.tsx"
-      ],
       "entry": "examples/blog-issue-tracker/src/index.tsx",
       "sample": [
         "examples/blog-issue-tracker/src/contexts/color-mode/index.tsx: line 23:34: `window.matchMedia` is outside the compiled subset"
@@ -1170,14 +1144,11 @@
         "inside": 6
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 10,
-        "inside": 9
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/theme-material-ui-demo/src/authProvider.ts"
-      ],
       "entry": "examples/theme-material-ui-demo/src/index.tsx",
       "sample": [
         "examples/theme-material-ui-demo/src/authProvider.ts: line 6:7: `window.location` is outside the compiled subset",

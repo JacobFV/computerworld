@@ -229,3 +229,56 @@ fn module_errors_name_their_file() {
         "{shown:?}"
     );
 }
+
+/// A module outside the subset runs on the island only if the island can run it:
+/// its React shim is no browser page, so a module needing the page's APIs, a
+/// class component or raw HTML keeps the whole app on React.
+#[test]
+fn island_modules_that_need_a_page_refuse_the_build() {
+    let main = "import { createRoot } from 'react-dom/client';\nimport { Widget } from './widget';\ncreateRoot(document.getElementById('root')!).render(<Widget />);\n";
+    let cases = [
+        (
+            "function* g() { yield 1; }\nexport function Widget() { return <p>{String(window.matchMedia('(min-width: 1px)').matches)}</p>; }\n",
+            "`window.matchMedia` is not on the island",
+        ),
+        (
+            "function* g() { yield 1; }\nexport function Widget() { return <p>{String(requestAnimationFrame)}</p>; }\n",
+            "`requestAnimationFrame` is not on the island",
+        ),
+        (
+            "import { Component } from 'react';\nexport class Widget extends Component { render() { return <p />; } }\n",
+            "a class component on the island",
+        ),
+        (
+            "function* g() { yield 1; }\nexport function Widget() { return <div dangerouslySetInnerHTML={{ __html: '<b>x</b>' }} />; }\n",
+            "`dangerouslySetInnerHTML` on the island",
+        ),
+        (
+            "function* g() { yield 1; }\nexport function Widget() { return <button onClick={() => { location.hash = '#/b'; }}>b</button>; }\n",
+            "navigating through `location` on the island",
+        ),
+    ];
+    for (widget, needle) in cases {
+        let files = [("main.tsx", main), ("widget.tsx", widget)];
+        let b = cw_tsx::build_modules(&load_virtual(&files, "main.tsx").unwrap());
+        assert!(b.ir.is_none(), "built:\n{widget}");
+        assert!(b.js.is_some(), "no fallback for:\n{widget}");
+        assert!(
+            b.diagnostics
+                .iter()
+                .any(|d| d.file == "widget.tsx" && d.message.contains(needle)),
+            "expected …{needle}…, got {:?}",
+            b.diagnostics
+        );
+    }
+    // What a browser and the island agree on is fine: `typeof process` is
+    // "undefined" in both, and `process.env.NODE_ENV` is "production", as a
+    // bundler defines it.
+    let widget = "function* g() { yield 1; }\nexport function Widget() { const dev = process.env.NODE_ENV !== 'production'; return <p>{String(dev)} {typeof process}</p>; }\n";
+    let files = [("main.tsx", main), ("widget.tsx", widget)];
+    let b = cw_tsx::build_modules(&load_virtual(&files, "main.tsx").unwrap());
+    assert!(b.diagnostics.is_empty(), "{:?}", b.diagnostics);
+    assert_eq!(b.island_modules, vec!["widget.tsx".to_owned()]);
+    let js = b.js.unwrap();
+    assert!(js.contains("'production' !== 'production'"), "{js}");
+}

@@ -20,11 +20,11 @@
   },
   "apps_island": {
     "total": 39,
-    "inside": 38
+    "inside": 25
   },
   "apps_island_modules": {
-    "total": 292,
-    "inside": 251
+    "total": 92,
+    "inside": 85
   },
   "diagnostics": 246,
   "diagnostics_by_cause": {
@@ -268,18 +268,11 @@
         "inside": 0
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 6,
-        "inside": 1
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/typescript-react/js/utils.ts",
-        "examples/typescript-react/js/todoModel.ts",
-        "examples/typescript-react/js/footer.tsx",
-        "examples/typescript-react/js/todoItem.tsx",
-        "examples/typescript-react/js/app.tsx"
-      ],
       "entry": "examples/typescript-react/js/app.tsx",
       "sample": [
         "examples/typescript-react/js/app.tsx: examples/typescript-react/js/app.tsx: line 12:1: `TodoModel` from `./todoModel` is neither a value nor a type the compiled subset knows",
@@ -606,14 +599,11 @@
         "inside": 6
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 2,
-        "inside": 1
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/react/virtualized-columns/src/main.tsx"
-      ],
       "entry": "examples/react/virtualized-columns/src/main.tsx",
       "sample": [
         "examples/react/virtualized-columns/src/main.tsx: examples/react/virtualized-columns/src/main.tsx: line 95:8: unknown name `process`",
@@ -639,14 +629,11 @@
         "inside": 0
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 2,
-        "inside": 1
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/react/virtualized-infinite-scrolling/src/main.tsx"
-      ],
       "entry": "examples/react/virtualized-infinite-scrolling/src/main.tsx",
       "sample": [
         "examples/react/virtualized-infinite-scrolling/src/main.tsx: examples/react/virtualized-infinite-scrolling/src/main.tsx: line 173:14: unknown name `window`",
@@ -728,14 +715,11 @@
         "inside": 3
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 1,
+        "total": 0,
         "inside": 0
       },
-      "island_modules": [
-        "examples/react/basic/src/index.tsx"
-      ],
       "entry": "examples/react/basic/src/index.tsx",
       "sample": [
         "examples/react/basic/src/index.tsx: line 17:12: `window.localStorage` is outside the compiled subset"
@@ -757,14 +741,11 @@
         "inside": 3
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 2,
-        "inside": 1
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/react/batching/src/character-loader.ts"
-      ],
       "entry": "examples/react/batching/src/index.tsx",
       "sample": [
         "examples/react/batching/src/character-loader.ts: line 55:20: `Promise.withResolvers` is outside the compiled subset"
@@ -845,14 +826,11 @@
         "inside": 3
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 1,
+        "total": 0,
         "inside": 0
       },
-      "island_modules": [
-        "examples/react/eslint-legacy/src/index.tsx"
-      ],
       "entry": "examples/react/eslint-legacy/src/index.tsx",
       "sample": [
         "examples/react/eslint-legacy/src/index.tsx: line 17:12: `window.localStorage` is outside the compiled subset"
@@ -1084,14 +1062,11 @@
         "inside": 6
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 4,
-        "inside": 3
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/react/suspense/src/index.tsx"
-      ],
       "entry": "examples/react/suspense/src/index.tsx",
       "sample": [
         "examples/react/suspense/src/index.tsx: examples/react/suspense/src/index.tsx: line 18:18: this React API is outside the compiled subset",
@@ -1117,15 +1092,11 @@
         "inside": 4
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 8,
-        "inside": 6
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/query/react/graphql-codegen/src/features/posts/GetPosts.generated.ts",
-        "examples/query/react/graphql-codegen/src/index.tsx"
-      ],
       "entry": "examples/query/react/graphql-codegen/src/index.tsx",
       "sample": [
         "examples/query/react/graphql-codegen/src/features/posts/GetPost.generated.ts: examples/query/react/graphql-codegen/src/features/posts/GetPost.generated.ts: line 15:1: unknown name `module`",
@@ -1151,17 +1122,11 @@
         "inside": 10
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 18,
-        "inside": 14
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts",
-        "examples/query/react/infinite-queries/src/features/bidirectional-cursor-infinite-scroll/infiniteScrollApi.ts",
-        "examples/query/react/infinite-queries/src/features/infinite-scroll/InfiniteScrollExample.tsx",
-        "examples/query/react/infinite-queries/src/main.tsx"
-      ],
       "entry": "examples/query/react/infinite-queries/src/main.tsx",
       "sample": [
         "examples/query/react/infinite-queries/src/app/useIntersectionCallback.ts: line 12:45: unknown name `IntersectionObserver`",
@@ -1366,14 +1331,11 @@
         "inside": 13
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 19,
-        "inside": 18
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/inferencer-material-ui/src/contexts/color-mode/index.tsx"
-      ],
       "entry": "examples/inferencer-material-ui/src/index.tsx",
       "sample": [
         "examples/inferencer-material-ui/src/contexts/color-mode/index.tsx: line 23:34: `window.matchMedia` is outside the compiled subset"
@@ -1397,16 +1359,11 @@
         "inside": 4
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 6,
-        "inside": 3
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/upload-material-ui-base64/src/pages/posts/create.tsx",
-        "examples/upload-material-ui-base64/src/pages/posts/edit.tsx",
-        "examples/upload-material-ui-base64/src/App.tsx"
-      ],
       "entry": "examples/upload-material-ui-base64/src/index.tsx",
       "sample": [],
       "outside": []
@@ -1454,22 +1411,11 @@
         "inside": 110
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 91,
-        "inside": 82
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/demo/src/products/ProductList.tsx",
-        "examples/demo/src/products/ProductEdit.tsx",
-        "examples/demo/src/products/ProductCreate.tsx",
-        "examples/demo/src/dashboard/CardWithIcon.tsx",
-        "examples/demo/src/dashboard/Dashboard.tsx",
-        "examples/demo/src/dataProvider/index.ts",
-        "examples/demo/src/App.tsx",
-        "examples/demo/src/fakeServer/index.ts",
-        "examples/demo/src/index.tsx"
-      ],
       "entry": "examples/demo/src/index.tsx",
       "sample": [
         "examples/demo/src/App.tsx: examples/demo/src/App.tsx: line 29:20: this expression is outside the compiled subset",
@@ -1509,17 +1455,11 @@
         "inside": 56
       },
       "app": false,
-      "app_island": true,
+      "app_island": false,
       "apps_island_modules": {
-        "total": 40,
-        "inside": 36
+        "total": 0,
+        "inside": 0
       },
-      "island_modules": [
-        "examples/simple/src/addUploadFeature.tsx",
-        "examples/simple/src/dataProvider.tsx",
-        "examples/simple/src/i18nProvider.tsx",
-        "examples/simple/src/posts/PostList.tsx"
-      ],
       "entry": "examples/simple/src/index.tsx",
       "sample": [
         "examples/simple/src/addUploadFeature.tsx: line 16:18: `instanceof` of anything but a built-in class is outside the compiled subset",

@@ -1953,3 +1953,37 @@ createRoot(document.getElementById('root')!).render(<App />);
         &[Step::Click("#go"), Step::Click("#go")],
     );
 }
+
+#[test]
+fn island_code_reaches_the_page_through_cw_ui() {
+    // prefs.tsx runs on the island (a generator); its storage, location, window
+    // size and dialogs are cw-ui's own builtins, so they are the page's.
+    same_as_react(
+        r#"
+// @file main.tsx
+import { createRoot } from 'react-dom/client';
+import { Prefs } from './prefs';
+createRoot(document.getElementById('root')!).render(<Prefs />);
+// @file prefs.tsx
+import { useState } from 'react';
+function* keys() { yield 'theme'; }
+export function Prefs() {
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') ?? 'light');
+  const where = location.pathname + location.search + '|' + window.location.host;
+  return (
+    <div>
+      <p id="out">{theme} {where} {innerWidth > 0 ? 'wide' : 'none'} {window.innerHeight > 0 ? 'tall' : 'none'} {sessionStorage.length}</p>
+      <button id="go" onClick={() => {
+        const next = theme === 'light' ? 'dark' : 'light';
+        if (confirm('switch to ' + next + '?')) {
+          localStorage.setItem('theme', next);
+          setTheme(localStorage.getItem('theme') + ':' + localStorage.length + ':' + [...keys()].join(''));
+        }
+      }}>go</button>
+    </div>
+  );
+}
+"#,
+        &[Step::Click("#go"), Step::Click("#go")],
+    );
+}

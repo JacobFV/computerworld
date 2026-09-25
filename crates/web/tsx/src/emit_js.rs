@@ -349,6 +349,12 @@ fn emit_one(
         return Err(ret.diagnostics.iter().map(from_oxc).collect());
     }
     let mut program = ret.program;
+    if source.contains("NODE_ENV") {
+        DefineNodeEnv {
+            b: AstBuilder::new(&allocator),
+        }
+        .visit_program(&mut program);
+    }
     let values = top_level_values(&program.body);
     let mut preamble = String::new();
     let mut errors = Vec::new();
@@ -729,5 +735,29 @@ impl<'a> VisitMut<'a> for ImportUses<'a> {
             }
         }
         walk_mut::walk_object_property(self, it);
+    }
+}
+
+/// `process.env.NODE_ENV` is `"production"`, as a bundler defines it for the page
+/// (packages branch on it; neither a browser nor the island has `process`).
+struct DefineNodeEnv<'a> {
+    b: AstBuilder<'a>,
+}
+
+impl<'a> VisitMut<'a> for DefineNodeEnv<'a> {
+    fn visit_expression(&mut self, it: &mut Expression<'a>) {
+        if let Expression::StaticMemberExpression(m) = it {
+            if m.property.name == "NODE_ENV" {
+                if let Expression::StaticMemberExpression(inner) = &m.object {
+                    if inner.property.name == "env"
+                        && matches!(&inner.object, Expression::Identifier(p) if p.name == "process")
+                    {
+                        *it = Expression::new_string_literal(m.span, "production", None, &self.b);
+                        return;
+                    }
+                }
+            }
+        }
+        walk_mut::walk_expression(self, it);
     }
 }

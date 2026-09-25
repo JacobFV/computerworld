@@ -283,6 +283,11 @@
   cw.symbols = { ELEMENT, FRAGMENT, STRICT, SUSPENSE, PROFILER, PROVIDER, CONTEXT };
 
   // ------------------------------------------------------------ the host
+  // A browser, not Node: what jsvm adds for Node is not here, so a package's
+  // `typeof process` finds what it finds on the page.
+  for (const k of ['process', 'Buffer', 'global', 'setImmediate', 'clearImmediate']) {
+    delete globalThis[k];
+  }
   globalThis.window = globalThis;
   globalThis.self = globalThis;
   // `x.toLocaleString(…)` for compiled code: the VM's own (jsvm's Intl).
@@ -300,6 +305,31 @@
     addEventListener: (t, f, o) => B('DocumentAddListener', t, f, o),
     removeEventListener: (t, f, o) => B('DocumentRemoveListener', t, f, o),
   };
+  const storage = (area) => ({
+    getItem: (k) => B('StorageGet', area, String(k)),
+    setItem: (k, v) => B('StorageSet', area, String(k), String(v)),
+    removeItem: (k) => B('StorageRemove', area, String(k)),
+    clear: () => B('StorageClear', area),
+    key: (i) => B('StorageKey', area, i),
+    get length() { return B('StorageLength', area); },
+  });
+  globalThis.localStorage = storage(0);
+  globalThis.sessionStorage = storage(1);
+  const location = {};
+  for (const part of ['href', 'origin', 'protocol', 'host', 'hostname', 'port', 'pathname', 'search', 'hash']) {
+    Object.defineProperty(location, part, { enumerable: true, get: () => B('LocationPart', part) });
+  }
+  location.toString = () => B('LocationPart', 'href');
+  globalThis.location = location;
+  for (const [name, b] of [['innerWidth', 'InnerWidth'], ['innerHeight', 'InnerHeight'], ['scrollX', 'ScrollX'], ['scrollY', 'ScrollY'], ['pageXOffset', 'ScrollX'], ['pageYOffset', 'ScrollY']]) {
+    Object.defineProperty(globalThis, name, { configurable: true, get: () => B(b) });
+  }
+  globalThis.scrollTo = (...a) => B('WindowScrollTo', ...a);
+  globalThis.scroll = globalThis.scrollTo;
+  globalThis.scrollBy = (...a) => B('WindowScrollBy', ...a);
+  globalThis.alert = (m) => B('Alert', 'alert', m === undefined ? '' : String(m));
+  globalThis.confirm = (m) => B('Alert', 'confirm', m === undefined ? '' : String(m));
+  globalThis.prompt = (m) => B('Alert', 'prompt', m === undefined ? '' : String(m));
   globalThis.addEventListener = (t, f, o) => B('WindowAddListener', t, f, o);
   globalThis.removeEventListener = (t, f, o) => B('WindowRemoveListener', t, f, o);
   globalThis.setTimeout = (f, ms, ...args) => cw.timer(0, f, ms, args);

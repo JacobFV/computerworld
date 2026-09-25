@@ -4,8 +4,8 @@ functions     690 / 770    89.6%
 components    533 / 594    89.7%
 apps            0 / 39      0.0%
 with the modules outside the subset on the island (packages stubbed):
-  apps         38 / 39     97.4%
-  compiled    251 / 292    86.0%
+  apps         25 / 39     64.1%
+  compiled     85 / 92     92.4%
 functions blocked, by cause:
      25  value imported from a module that does not resolve
      10  this React API is outside the compiled subset
