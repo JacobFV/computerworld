@@ -807,4 +807,14 @@ mod cases {
         close(p.rect("c").width, 2.0, "#c width");
         close(p.rect("j").width, 0.0, "#j width");
     }
+    /// A table cell's own `max-width` and `min-width` clamp its min- and max-content
+    /// contributions in auto table layout, as in Blink (react-admin's `max-width:
+    /// 16em` nowrap title cells and `min-width: 9em` tag cells). Rects are Chromium's.
+    #[test]
+    fn a_cells_min_and_max_width_clamp_its_column() {
+        let p = page("<!DOCTYPE html><style>body{margin:0;font:14px Arimo} td{padding:6px 16px;box-sizing:border-box}</style><table style=\"width:600px;border-spacing:0\"><tr><td id=a style=\"max-width:10em;white-space:nowrap;overflow:hidden\">A very long title that will not fit in ten ems</td><td id=b style=\"min-width:9em\">x</td><td id=c>short text here</td></tr></table>");
+        close(p.rect("a").width, 216.765625, "#a width");
+        close(p.rect("b").width, 195.09375, "#b width");
+        close(p.rect("c").width, 188.140625, "#c width");
+    }
 }

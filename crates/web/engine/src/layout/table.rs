@@ -681,11 +681,23 @@ fn cell_widths(ctx: &LayoutContext, id: BoxId, border: Edges) -> (Au, Au, Option
     if s.white_space == crate::style::WhiteSpace::NoWrap {
         mn = mn.max(mx);
     }
-    if let Some(mxw) = match s.max_width {
-        Sizing::Set(LengthPercentage::Length(w)) => Some(w + e),
-        _ => None,
-    } {
-        mx = mx.min(mxw).max(mn);
+    // A cell's own `max-width` and `min-width` clamp both its contributions, as in
+    // Blink (react-admin's title cells are `max-width: 16em` and `white-space:
+    // nowrap`, a 224 px column however long the title; its tags cells are
+    // `min-width: 9em`). Lengths are of the box `box-sizing` names.
+    let border_box = |w: Au| match s.box_sizing {
+        BoxSizing::BorderBox => w.max(e),
+        BoxSizing::ContentBox => w + e,
+    };
+    if let Sizing::Set(LengthPercentage::Length(w)) = s.max_width {
+        let mxw = border_box(w);
+        mn = mn.min(mxw);
+        mx = mx.min(mxw);
+    }
+    if let Sizing::Set(LengthPercentage::Length(w)) = s.min_width {
+        let mnw = border_box(w);
+        mn = mn.max(mnw);
+        mx = mx.max(mnw);
     }
     (mn, mx.max(mn), spec, pct)
 }

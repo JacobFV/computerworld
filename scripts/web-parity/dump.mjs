@@ -271,6 +271,7 @@ try {
     process.exitCode = 1;
   }
   if (process.env.PARITY_HTML) await writeFile(process.env.PARITY_HTML, await page.content());
+  if (process.env.PARITY_EVAL) console.log('PARITY_EVAL', await page.evaluate(process.env.PARITY_EVAL));
   const dump = await page.evaluate(collect, properties);
 
   // Which platform faces Chromium really used, per distinct family list, through CDP.
