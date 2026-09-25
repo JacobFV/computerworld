@@ -164,8 +164,11 @@ pub fn layout_with(
     let zoom = (viewport.zoom.max(1)) as i32;
     let vw = Au::from_px_i32(viewport.width as i32).scale(100, zoom);
     let vh = Au::from_px_i32(viewport.height as i32).scale(100, zoom);
+    let bt = crate::style::profile::span(crate::style::profile::Phase::BoxTree);
     let mut tree = boxes::build(doc, styles, opts.images);
     let root_overflow = scroll::propagate_root_overflow(doc, &mut tree);
+    drop(bt);
+    let _t = crate::style::profile::span(crate::style::profile::Phase::Layout);
     cache.reserve(tree.len());
     let ctx = LayoutContext {
         doc,

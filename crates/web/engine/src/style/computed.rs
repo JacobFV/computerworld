@@ -1489,6 +1489,76 @@ impl StyleSet {
     pub fn marker(&self, id: crate::dom::NodeId) -> Option<&ComputedStyle> {
         self.marker.get(&id).map(|s| &**s)
     }
+    /// The first difference between this set and `other` over the nodes connected to
+    /// `doc` (what an incremental restyle must reproduce from a full cascade), or
+    /// `None` when they agree. Entries for nodes no longer in the document, and the
+    /// `unsupported` log, are not compared.
+    pub fn diff(&self, other: &StyleSet, doc: &crate::dom::Document) -> Option<String> {
+        if self.root_font_size_au != other.root_font_size_au {
+            return Some("root font size".into());
+        }
+        if self.font_faces != other.font_faces {
+            return Some("@font-face rules".into());
+        }
+        if self.keyframes != other.keyframes {
+            return Some("@keyframes".into());
+        }
+        if self.viewport != other.viewport {
+            return Some("viewport".into());
+        }
+        for n in doc.descendants(crate::dom::Document::ROOT) {
+            type Entry<'a> = (
+                Option<&'a ComputedStyle>,
+                Option<&'a ComputedStyle>,
+                Option<&'a ComputedStyle>,
+                Option<&'a ComputedStyle>,
+                Option<&'a ComputedStyle>,
+                bool,
+            );
+            fn what(s: &StyleSet, n: crate::dom::NodeId) -> Entry<'_> {
+                (
+                    s.get(n),
+                    s.before(n),
+                    s.after(n),
+                    s.marker(n),
+                    s.placeholder(n),
+                    s.quirk_table_color.contains(&n),
+                )
+            }
+            let (a, b) = (what(self, n), what(other, n));
+            if a != b {
+                let tag = doc.tag(n).unwrap_or("#text");
+                let part = if a.0 != b.0 {
+                    let fields = match (a.0, b.0) {
+                        (Some(x), Some(y)) => {
+                            let (x, y) = (format!("{x:#?}"), format!("{y:#?}"));
+                            x.lines()
+                                .zip(y.lines())
+                                .filter(|(l, r)| l != r)
+                                .take(4)
+                                .map(|(l, r)| format!("{} != {}", l.trim(), r.trim()))
+                                .collect::<Vec<_>>()
+                                .join("; ")
+                        }
+                        (x, y) => format!("present {} != {}", x.is_some(), y.is_some()),
+                    };
+                    format!("style ({fields})")
+                } else if a.1 != b.1 {
+                    "::before".into()
+                } else if a.2 != b.2 {
+                    "::after".into()
+                } else if a.3 != b.3 {
+                    "::marker".into()
+                } else if a.4 != b.4 {
+                    "::placeholder".into()
+                } else {
+                    "quirks table colour".into()
+                };
+                return Some(format!("node {} <{tag}>: {part}", n.0));
+            }
+        }
+        None
+    }
     pub fn clear(&mut self, id: crate::dom::NodeId) {
         if let Some(s) = self.styles.get_mut(id.index()) {
             *s = None;

@@ -34,6 +34,7 @@ pub fn hit_test_with(
     x_px: i32,
     y_px: i32,
 ) -> Option<NodeId> {
+    let _t = crate::style::profile::span(crate::style::profile::Phase::HitTest);
     let mut p = Painter::new(None, styles, tree, viewport, ctx);
     p.run();
     p.hits

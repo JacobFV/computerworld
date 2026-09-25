@@ -126,6 +126,30 @@ impl FormState for FormData {
     }
 }
 
+/// The selector-matching state (hover, focus, form state, ...) styles are computed
+/// against.
+fn match_context<'a>(
+    doc: &Document,
+    form: &'a FormData,
+    (hovered, active, focused): (Option<NodeId>, Option<NodeId>, Option<NodeId>),
+    focus_visible: bool,
+    target_id: &Option<String>,
+) -> MatchContext<'a> {
+    let mut ctx = MatchContext::new();
+    ctx.set_hovered(doc, hovered);
+    ctx.set_active(doc, active);
+    ctx.focused = focused;
+    ctx.focus_visible = focus_visible;
+    ctx.target_id = target_id.clone();
+    ctx.document_lang = doc
+        .document_element()
+        .and_then(|h| doc.attr(h, "lang"))
+        .unwrap_or("")
+        .to_owned();
+    ctx.form = Some(form);
+    ctx
+}
+
 /// A history entry of the realm (`pushState`).
 #[derive(Clone, Debug)]
 pub struct HistoryEntry {
@@ -763,6 +787,53 @@ impl Inner {
         out
     }
 
+    /// The selector-matching state (hover, focus, form state, ...) styles are
+    /// computed against.
+    fn match_context(&self) -> MatchContext<'_> {
+        match_context(
+            &self.doc,
+            &self.form,
+            (self.hovered, self.active, self.focused),
+            self.focus_visible,
+            &self.target_id,
+        )
+    }
+
+    /// Checks the incrementally maintained styles and fragment tree against a
+    /// from-scratch cascade and layout of the same document and state, panicking
+    /// with the first difference (`style::profile::verifying`).
+    fn verify_incremental(&self) {
+        let media = self.media();
+        let sheets = self.effective_sheets();
+        let ctx = self.match_context();
+        let fresh = style::cascade(&self.doc, &sheets, &media, &ctx, Strictness::Lenient)
+            .unwrap_or_else(|_| StyleSet::new());
+        if let Some(d) = self.styles.diff(&fresh, &self.doc) {
+            panic!(
+                "incremental restyle differs from a full cascade at {}: {d}",
+                self.url
+            );
+        }
+        let Some(tree) = &self.tree else {
+            return;
+        };
+        let mut cache = LayoutCache {
+            overlay_scrollbars: self.layout_cache.overlay_scrollbars,
+            ..LayoutCache::default()
+        };
+        let opts = LayoutOptions {
+            images: &self.images,
+            scroll: &self.scroll,
+        };
+        let fresh_tree = layout::layout_with(&self.doc, &fresh, self.viewport, opts, &mut cache);
+        if *tree != fresh_tree {
+            panic!(
+                "incremental layout differs from a full layout at {}",
+                self.url
+            );
+        }
+    }
+
     /// Flushes pending style work: a full cascade when sheets changed (or none ran),
     /// else an incremental restyle from the document's mutation log and the changed
     /// matching state.
@@ -779,25 +850,18 @@ impl Inner {
             return;
         }
         let media = self.media();
+        let sheets_t = style::profile::span(style::profile::Phase::Sheets);
         let sheets = self.effective_sheets();
+        drop(sheets_t);
         let mutations: Vec<Mutation> = self.doc.drain_mutations();
         let changed: Vec<NodeId> = std::mem::take(&mut self.state_changed);
-        let ctx = {
-            let mut ctx = MatchContext::new();
-            ctx.set_hovered(&self.doc, self.hovered);
-            ctx.set_active(&self.doc, self.active);
-            ctx.focused = self.focused;
-            ctx.focus_visible = self.focus_visible;
-            ctx.target_id = self.target_id.clone();
-            ctx.document_lang = self
-                .doc
-                .document_element()
-                .and_then(|h| self.doc.attr(h, "lang"))
-                .unwrap_or("")
-                .to_owned();
-            ctx.form = Some(&self.form);
-            ctx
-        };
+        let ctx = match_context(
+            &self.doc,
+            &self.form,
+            (self.hovered, self.active, self.focused),
+            self.focus_visible,
+            &self.target_id,
+        );
         if !self.styles_valid {
             match style::cascade(&self.doc, &sheets, &media, &ctx, Strictness::Lenient) {
                 Ok(set) => self.styles = set,
@@ -829,6 +893,7 @@ impl Inner {
             }
         }
         self.styles_generation = self.generation;
+        let _t = style::profile::span(style::profile::Phase::StyleOther);
         self.inline_cache.clear();
         self.detect_animations();
     }
@@ -981,8 +1046,13 @@ impl Inner {
             &mut self.layout_cache,
         );
         self.clamp_scroll(&tree);
-        self.tree = Some(tree);
-        self.tree_generation = self.generation;
+        if self.tree_generation != self.generation {
+            self.tree = Some(tree);
+            self.tree_generation = self.generation;
+        }
+        if style::profile::verifying() {
+            self.verify_incremental();
+        }
     }
 
     /// Clamps every scroll offset to the laid-out scrollable range.

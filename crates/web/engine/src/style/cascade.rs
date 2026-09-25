@@ -181,6 +181,7 @@ impl<'a> Engine<'a> {
         ctx: &'a MatchContext<'a>,
         strictness: Strictness,
     ) -> Result<Engine<'a>, Unsupported> {
+        let _t = super::profile::span(super::profile::Phase::EngineBuild);
         let quirks = doc.quirks == QuirksMode::Quirks;
         let mut e = Engine {
             doc,
@@ -387,6 +388,7 @@ impl<'a> Engine<'a> {
         keys: &AncestorKeys,
         unsupported: &mut Vec<Unsupported>,
     ) -> Result<Winners, Unsupported> {
+        let _t = super::profile::span(super::profile::Phase::Match);
         let index = pseudo.unwrap_or(&self.elements);
         let mut cands: Vec<Candidate> = Vec::new();
         for entry in index.matching_with(self.doc, node, self.ctx, keys) {
@@ -533,6 +535,7 @@ impl<'a> Engine<'a> {
         root_font_size: Option<Au>,
         is_pseudo: bool,
     ) -> ComputedStyle {
+        let _t = super::profile::span(super::profile::Phase::Compute);
         let mut s = ComputedStyle::inherit_from(parent);
         // Custom properties first: everything else may reference them.
         s.custom = resolve_custom(&w.custom, &parent.custom);
@@ -845,6 +848,7 @@ impl<'a> Engine<'a> {
         set: &mut StyleSet,
         mutations: &[Mutation],
     ) -> Option<Vec<NodeId>> {
+        let _t = super::profile::span(super::profile::Phase::Invalidation);
         let doc = self.doc;
         let mut roots: BTreeSet<NodeId> = BTreeSet::new();
         let mut whole = false;

@@ -166,6 +166,7 @@ pub fn paint(
     viewport: Viewport,
     ctx: &PaintContext,
 ) -> Scene {
+    let _t = crate::style::profile::span(crate::style::profile::Phase::Paint);
     let mut p = Painter::new(Some(doc), styles, tree, viewport, ctx);
     p.run();
     p.finish()
