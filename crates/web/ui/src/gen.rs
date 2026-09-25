@@ -80,6 +80,12 @@ pub fn obj_put(out: &mut Vec<(Str, Value)>, k: &str, v: Value) {
     crate::interp::obj_set(out, Rc::from(k), v);
 }
 
+/// `{ k: v }` with the key already made.
+#[inline]
+pub fn obj_put_str(out: &mut Vec<(Str, Value)>, k: Str, v: Value) {
+    crate::interp::obj_set(out, k, v);
+}
+
 /// `{ [k]: v }`.
 pub fn obj_put_key(out: &mut Vec<(Str, Value)>, k: &Value, v: Value) {
     crate::interp::obj_set(out, crate::interp::key_string(k), v);
@@ -204,6 +210,28 @@ pub fn add(a: &Value, b: &Value) -> Value {
     }
 }
 
+/// `v === "s"`.
+#[inline]
+pub fn eq_str(v: &Value, s: &str) -> bool {
+    matches!(v, Value::Str(x) if &**x == s)
+}
+
+/// `"s" + v`.
+pub fn add_str_left(s: &str, v: &Value) -> Value {
+    let b = v.to_js_string();
+    let mut out = String::with_capacity(s.len() + b.len());
+    out.push_str(s);
+    out.push_str(&b);
+    Value::str(&out)
+}
+
+/// `v + "s"`.
+pub fn add_str_right(v: &Value, s: &str) -> Value {
+    let mut out = v.to_js_string();
+    out.push_str(s);
+    Value::str(&out)
+}
+
 /// `a < b` and friends: strings compare by UTF-16 code units, the rest as numbers.
 pub fn compare(op: BinaryOp, a: &Value, b: &Value) -> bool {
     let ord = match (a, b) {
@@ -299,6 +327,30 @@ impl Runtime {
     /// `createContext(default)` for the context global `i`.
     pub fn set_context_default(&mut self, i: u32, v: Value) {
         self.ctx_defaults.insert(i, v);
+    }
+
+    /// String literal `i` of this program: made the first time, shared after (a
+    /// string's identity is its content, so sharing one is unobservable).
+    #[inline]
+    pub fn lit(&mut self, i: usize, s: &'static str) -> Value {
+        if let Some(Some(v)) = self.lits.get(i) {
+            return Value::Str(v.clone());
+        }
+        if self.lits.len() <= i {
+            self.lits.resize(i + 1, None);
+        }
+        let v: Str = Rc::from(s);
+        self.lits[i] = Some(v.clone());
+        Value::Str(v)
+    }
+
+    /// String literal `i` as a property key.
+    #[inline]
+    pub fn lit_key(&mut self, i: usize, s: &'static str) -> Str {
+        match self.lit(i, s) {
+            Value::Str(k) => k,
+            _ => unreachable!(),
+        }
     }
 
     /// Whether hole skipping is sound for this program (with `inst`, a template

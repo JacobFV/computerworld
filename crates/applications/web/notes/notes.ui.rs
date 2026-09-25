@@ -106,56 +106,58 @@ fn f0(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R
     let t3 = rt.call_builtin(Builtin::CwStateGet, t2)?;
     let t4 = t3;
     l1 = t4;
-    let t5 = l1.clone();
-    let t6 = Value::Bool(strict_equals(&t5, &Value::Null));
-    let t7 = t6;
-    l2 = t7;
-    let mut t8: Vec<(Str, Value)> = Vec::with_capacity(1);
-    let t9 = l1.clone();
-    let t10 = Value::Bool(strict_equals(&t9, &Value::Null));
-    let t11 = if t10.truthy() {
-        let t12 = l0.clone();
-        let mut t13: Vec<Value> = Vec::with_capacity(0);
-        let t14 = rt.call(&t12, t13)?;
-        t14
+    let t5 = Value::Bool(strict_equals(&l1, &Value::Null));
+    let t6 = t5;
+    l2 = t6;
+    let mut t7: Vec<(Str, Value)> = Vec::with_capacity(1);
+    let t8 = if strict_equals(&l1, &Value::Null) {
+        let t9 = l0.clone();
+        let mut t10: Vec<Value> = Vec::with_capacity(0);
+        let t11 = rt.call(&t9, t10)?;
+        t11
     } else {
-        let t15 = l1.clone();
-        t15
+        let t12 = l1.clone();
+        t12
     };
-    obj_put(&mut t8, "current", t11);
-    let t16 = Value::object(t8);
-    let t17 = t16;
-    l3 = t17;
-    let t18 = l2.clone();
-    if t18.truthy() {
-        let mut t19: Vec<Value> = Vec::with_capacity(1);
-        let t20 = l3.clone();
-        let t21 = rt.member(&t20, "current")?;
-        t19.push(t21);
-        let t22 = rt.call_builtin(Builtin::CwStateSet, t19)?;
-        let _ = t22;
+    let t13 = rt.lit_key(0, "current");
+    obj_put_str(&mut t7, t13, t8);
+    let t14 = Value::object(t7);
+    let t15 = t14;
+    l3 = t15;
+    let t16 = l2.clone();
+    if t16.truthy() {
+        let mut t17: Vec<Value> = Vec::with_capacity(1);
+        let t18 = rt.member(&l3, "current")?;
+        t17.push(t18);
+        let t19 = rt.call_builtin(Builtin::CwStateSet, t17)?;
+        let _ = t19;
     }
-    let mut t23: Vec<Value> = Vec::with_capacity(0);
-    let t24 = rt.call_builtin(Builtin::NewSet, t23)?;
-    let t25 = t24;
-    l4 = t25;
-    let t26 = closure(19, vec![l3.clone(), l4.clone()]);
-    let t27 = t26;
-    l5 = t27;
-    let mut t28: Vec<(Str, Value)> = Vec::with_capacity(5);
-    let t29 = l2.clone();
-    let t30 = Value::Bool(!t29.truthy());
-    obj_put(&mut t28, "restored", t30);
-    let t31 = closure(20, vec![l3.clone()]);
-    obj_put(&mut t28, "get", t31);
-    let t32 = l5.clone();
-    obj_put(&mut t28, "set", t32);
+    let mut t20: Vec<Value> = Vec::with_capacity(0);
+    let t21 = rt.call_builtin(Builtin::NewSet, t20)?;
+    let t22 = t21;
+    l4 = t22;
+    let t23 = closure(19, vec![l3.clone(), l4.clone()]);
+    let t24 = t23;
+    l5 = t24;
+    let mut t25: Vec<(Str, Value)> = Vec::with_capacity(5);
+    let t26 = l2.clone();
+    let t27 = Value::Bool(!(t26.truthy()));
+    let t28 = rt.lit_key(1, "restored");
+    obj_put_str(&mut t25, t28, t27);
+    let t29 = closure(20, vec![l3.clone()]);
+    let t30 = rt.lit_key(2, "get");
+    obj_put_str(&mut t25, t30, t29);
+    let t31 = l5.clone();
+    let t32 = rt.lit_key(3, "set");
+    obj_put_str(&mut t25, t32, t31);
     let t33 = closure(21, vec![l5.clone(), l3.clone()]);
-    obj_put(&mut t28, "update", t33);
-    let t34 = closure(22, vec![l4.clone()]);
-    obj_put(&mut t28, "subscribe", t34);
-    let t35 = Value::object(t28);
-    return Ok(t35);
+    let t34 = rt.lit_key(4, "update");
+    obj_put_str(&mut t25, t34, t33);
+    let t35 = closure(22, vec![l4.clone()]);
+    let t36 = rt.lit_key(5, "subscribe");
+    obj_put_str(&mut t25, t36, t35);
+    let t37 = Value::object(t25);
+    return Ok(t37);
     Ok(Value::Undefined)
 }
 
@@ -168,14 +170,12 @@ fn f1(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R
     let t3 = rt.hook_with(Hook::SyncExternalStore, 2, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
         match i {
             0 => {
-                let t4 = l0.clone();
-                let t5 = rt.member(&t4, "subscribe")?;
-                Ok(t5)
+                let t4 = rt.member(&l0, "subscribe")?;
+                Ok(t4)
             }
             1 => {
-                let t6 = l0.clone();
-                let t7 = rt.member(&t6, "get")?;
-                Ok(t7)
+                let t5 = rt.member(&l0, "get")?;
+                Ok(t5)
             }
             _ => Ok(Value::Undefined),
         }
@@ -250,61 +250,49 @@ fn f3(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R
     l4 = t11;
     let mut t12: u64 = 0;
     'l1: loop {
-        let t13 = l4.clone();
-        let mut t14: Vec<Value> = Vec::with_capacity(2);
-        let t15 = l2.clone();
-        let t16 = rt.member(&t15, "length")?;
-        t14.push(t16);
-        let t17 = l3.clone();
-        let t18 = rt.member(&t17, "length")?;
-        t14.push(t18);
-        let t19 = rt.call_builtin(Builtin::MathMin, t14)?;
-        let t20 = Value::Bool(compare(BinaryOp::Lt, &t13, &t19));
-        if !t20.truthy() { break 'l1; }
+        let mut t13: Vec<Value> = Vec::with_capacity(2);
+        let t14 = rt.member(&l2, "length")?;
+        t13.push(t14);
+        let t15 = rt.member(&l3, "length")?;
+        t13.push(t15);
+        let t16 = rt.call_builtin(Builtin::MathMin, t13)?;
+        if !(compare(BinaryOp::Lt, &l4, &t16)) { break 'l1; }
         'b1: {
-            let t21 = l2.clone();
-            let t22 = l4.clone();
-            let t23 = rt.index(&t21, &t22)?;
-            let mut t24: Vec<Value> = Vec::with_capacity(1);
-            t24.push(Value::Num(0.0));
-            let t25 = rt.call_method(&t23, Method::StrCodePointAt, t24)?;
-            let t26 = if t25.is_nullish() {
+            let t17 = rt.index(&l2, &l4)?;
+            let mut t18: Vec<Value> = Vec::with_capacity(1);
+            t18.push(Value::Num(0.0));
+            let t19 = rt.call_method(&t17, Method::StrCodePointAt, t18)?;
+            let t20 = if t19.is_nullish() {
                 Value::Num(0.0)
-            } else { t25 };
-            let t27 = l3.clone();
-            let t28 = l4.clone();
-            let t29 = rt.index(&t27, &t28)?;
-            let mut t30: Vec<Value> = Vec::with_capacity(1);
-            t30.push(Value::Num(0.0));
-            let t31 = rt.call_method(&t29, Method::StrCodePointAt, t30)?;
-            let t32 = if t31.is_nullish() {
+            } else { t19 };
+            let t21 = rt.index(&l3, &l4)?;
+            let mut t22: Vec<Value> = Vec::with_capacity(1);
+            t22.push(Value::Num(0.0));
+            let t23 = rt.call_method(&t21, Method::StrCodePointAt, t22)?;
+            let t24 = if t23.is_nullish() {
                 Value::Num(0.0)
-            } else { t31 };
-            let t33 = Value::Num(t26.to_number() - t32.to_number());
-            let t34 = t33;
-            l5 = t34;
-            let t35 = l5.clone();
-            let t36 = Value::Bool(!strict_equals(&t35, &Value::Num(0.0)));
-            if t36.truthy() {
-                let t37 = l5.clone();
-                return Ok(t37);
+            } else { t23 };
+            let t25 = Value::Num(t20.to_number() - t24.to_number());
+            let t26 = t25;
+            l5 = t26;
+            if !strict_equals(&l5, &Value::Num(0.0)) {
+                let t27 = l5.clone();
+                return Ok(t27);
             }
         }
-        let t38 = l4.clone();
-        let t39 = t38.to_number();
-        let t40 = t39 + 1.0;
-        l4 = Value::Num(t40);
-        let t41 = Value::Num(t39);
-        let _ = t41;
+        let t28 = l4.clone();
+        let t29 = t28.to_number();
+        let t30 = t29 + 1.0;
+        l4 = Value::Num(t30);
+        let t31 = Value::Num(t29);
+        let _ = t31;
         t12 += 1;
         if t12 > 50_000_000 { return Err(Throw::Value(Value::error("RangeError", "loop did not terminate"))); }
     }
-    let t42 = l2.clone();
-    let t43 = rt.member(&t42, "length")?;
-    let t44 = l3.clone();
-    let t45 = rt.member(&t44, "length")?;
-    let t46 = Value::Num(t43.to_number() - t45.to_number());
-    return Ok(t46);
+    let t32 = rt.member(&l2, "length")?;
+    let t33 = rt.member(&l3, "length")?;
+    let t34 = Value::Num(t32.to_number() - t33.to_number());
+    return Ok(t34);
     Ok(Value::Undefined)
 }
 
@@ -317,11 +305,11 @@ fn f4(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R
     let mut t2: Vec<Value> = Vec::with_capacity(2);
     let t3 = l0.clone();
     t2.push(t3);
-    t2.push(str("Error"));
-    let t4 = rt.call_builtin(Builtin::IsError, t2)?;
-    let t5 = if t4.truthy() {
-        let t6 = l0.clone();
-        let t7 = rt.member(&t6, "message")?;
+    let t4 = rt.lit(6, "Error");
+    t2.push(t4);
+    let t5 = rt.call_builtin(Builtin::IsError, t2)?;
+    let t6 = if t5.truthy() {
+        let t7 = rt.member(&l0, "message")?;
         t7
     } else {
         let mut t8: Vec<Value> = Vec::with_capacity(1);
@@ -330,7 +318,7 @@ fn f4(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R
         let t10 = rt.call_builtin(Builtin::String, t8)?;
         t10
     };
-    return Ok(t5);
+    return Ok(t6);
     Ok(Value::Undefined)
 }
 
@@ -368,56 +356,52 @@ fn f6(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R
     let t4 = rt.call(&t2, t3)?;
     let t5 = t4;
     l0 = t5;
-    let t6 = l0.clone();
-    let t7 = rt.member(&t6, "open")?;
-    let t8 = Value::Bool(strict_equals(&t7, &Value::Null));
-    if t8.truthy() {
-        let mut t9: Vec<Value> = Vec::with_capacity(1);
-        t9.push(str("no note is open"));
-        let t10 = rt.call_builtin(Builtin::CwRefuse, t9)?;
-        let _ = t10;
+    let t6 = rt.member(&l0, "open")?;
+    if strict_equals(&t6, &Value::Null) {
+        let mut t7: Vec<Value> = Vec::with_capacity(1);
+        let t8 = rt.lit(7, "no note is open");
+        t7.push(t8);
+        let t9 = rt.call_builtin(Builtin::CwRefuse, t7)?;
+        let _ = t9;
         return Ok(Value::Bool(false));
     }
-    let mut t11 = String::new();
-    let t12 = l0.clone();
-    let t13 = rt.member(&t12, "folder")?;
-    t11.push_str(&t13.to_js_string());
-    t11.push_str("/");
-    let t14 = l0.clone();
-    let t15 = rt.member(&t14, "open")?;
-    t11.push_str(&t15.to_js_string());
-    let t16 = Value::str(&t11);
-    let t17 = t16;
-    l1 = t17;
-    let t18 = rt.global(20);
-    let t19 = rt.member(&t18, "set")?;
-    let mut t20: Vec<Value> = Vec::with_capacity(1);
-    let mut t21: Vec<(Str, Value)> = Vec::with_capacity(2);
-    let t22 = l0.clone();
-    obj_spread(&mut t21, &t22);
-    obj_put(&mut t21, "dirty", Value::Bool(false));
-    let t23 = Value::object(t21);
-    t20.push(t23);
-    let t24 = rt.call(&t19, t20)?;
-    let _ = t24;
-    let mut t25: Vec<Value> = Vec::with_capacity(1);
-    let t26 = l0.clone();
-    let t27 = rt.member(&t26, "folder")?;
-    t25.push(t27);
-    let t28 = rt.call_builtin(Builtin::CwMkdir, t25)?;
-    let _ = t28;
-    let mut t29: Vec<Value> = Vec::with_capacity(2);
-    let t30 = l1.clone();
-    t29.push(t30);
-    let t31 = l0.clone();
-    let t32 = rt.member(&t31, "text")?;
-    t29.push(t32);
-    let t33 = rt.call_builtin(Builtin::CwWriteFile, t29)?;
-    let mut t34: Vec<Value> = Vec::with_capacity(1);
-    let t35 = rt.global(5);
-    t34.push(t35);
-    let t36 = rt.call_method(&t33, Method::PromiseThen, t34)?;
-    let _ = t36;
+    let mut t10 = String::new();
+    let t11 = rt.member(&l0, "folder")?;
+    t10.push_str(&t11.to_js_string());
+    t10.push_str("/");
+    let t12 = rt.member(&l0, "open")?;
+    t10.push_str(&t12.to_js_string());
+    let t13 = Value::str(&t10);
+    let t14 = t13;
+    l1 = t14;
+    let t15 = rt.global(20);
+    let t16 = rt.member(&t15, "set")?;
+    let mut t17: Vec<Value> = Vec::with_capacity(1);
+    let mut t18: Vec<(Str, Value)> = Vec::with_capacity(2);
+    let t19 = l0.clone();
+    obj_spread(&mut t18, &t19);
+    let t20 = rt.lit_key(8, "dirty");
+    obj_put_str(&mut t18, t20, Value::Bool(false));
+    let t21 = Value::object(t18);
+    t17.push(t21);
+    let t22 = rt.call(&t16, t17)?;
+    let _ = t22;
+    let mut t23: Vec<Value> = Vec::with_capacity(1);
+    let t24 = rt.member(&l0, "folder")?;
+    t23.push(t24);
+    let t25 = rt.call_builtin(Builtin::CwMkdir, t23)?;
+    let _ = t25;
+    let mut t26: Vec<Value> = Vec::with_capacity(2);
+    let t27 = l1.clone();
+    t26.push(t27);
+    let t28 = rt.member(&l0, "text")?;
+    t26.push(t28);
+    let t29 = rt.call_builtin(Builtin::CwWriteFile, t26)?;
+    let mut t30: Vec<Value> = Vec::with_capacity(1);
+    let t31 = rt.global(5);
+    t30.push(t31);
+    let t32 = rt.call_method(&t29, Method::PromiseThen, t30)?;
+    let _ = t32;
     return Ok(Value::Bool(true));
     Ok(Value::Undefined)
 }
@@ -430,7 +414,7 @@ fn f7(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R
     let mut t2: Vec<Value> = Vec::with_capacity(1);
     let mut t3: Vec<Value> = Vec::with_capacity(0);
     let t4 = rt.call_builtin(Builtin::CwNow, t3)?;
-    let t5 = Value::Num(t4.to_number() / Value::Num(1000000.0).to_number());
+    let t5 = Value::Num(t4.to_number() / 1000000.0);
     t2.push(t5);
     let t6 = rt.call_builtin(Builtin::MathFloor, t2)?;
     t1.push_str(&t6.to_js_string());
@@ -460,53 +444,56 @@ fn f8(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R
     let t5 = rt.call(&t3, t4)?;
     let t6 = t5;
     l1 = t6;
-    let t7 = l1.clone();
-    let t8 = rt.member(&t7, "entries")?;
-    let mut t9: Vec<Value> = Vec::with_capacity(1);
-    let t10 = l0.clone();
-    t9.push(t10);
-    let t11 = rt.call_method(&t8, Method::ArrayIncludes, t9)?;
-    let t12 = Value::Bool(!t11.truthy());
-    if t12.truthy() {
-        let mut t13: Vec<Value> = Vec::with_capacity(1);
-        t13.push(str("note not found"));
-        let t14 = rt.call_builtin(Builtin::CwRefuse, t13)?;
-        let _ = t14;
+    let t7 = rt.member(&l1, "entries")?;
+    let mut t8: Vec<Value> = Vec::with_capacity(1);
+    let t9 = l0.clone();
+    t8.push(t9);
+    let t10 = rt.call_method(&t7, Method::ArrayIncludes, t8)?;
+    if !(t10.truthy()) {
+        let mut t11: Vec<Value> = Vec::with_capacity(1);
+        let t12 = rt.lit(9, "note not found");
+        t11.push(t12);
+        let t13 = rt.call_builtin(Builtin::CwRefuse, t11)?;
+        let _ = t13;
         return Ok(Value::Undefined);
     }
-    let t15 = rt.global(20);
-    let t16 = rt.member(&t15, "set")?;
-    let mut t17: Vec<Value> = Vec::with_capacity(1);
-    let mut t18: Vec<(Str, Value)> = Vec::with_capacity(5);
-    let t19 = l1.clone();
-    obj_spread(&mut t18, &t19);
-    let t20 = l0.clone();
-    obj_put(&mut t18, "open", t20);
-    obj_put(&mut t18, "editing", Value::Bool(false));
-    obj_put(&mut t18, "text", str(""));
-    obj_put(&mut t18, "dirty", Value::Bool(false));
-    let t21 = Value::object(t18);
-    t17.push(t21);
-    let t22 = rt.call(&t16, t17)?;
-    let _ = t22;
-    let mut t23: Vec<Value> = Vec::with_capacity(1);
-    let mut t24 = String::new();
-    let t25 = l1.clone();
-    let t26 = rt.member(&t25, "folder")?;
-    t24.push_str(&t26.to_js_string());
-    t24.push_str("/");
-    let t27 = l0.clone();
-    t24.push_str(&t27.to_js_string());
-    let t28 = Value::str(&t24);
-    t23.push(t28);
-    let t29 = rt.call_builtin(Builtin::CwReadFile, t23)?;
-    let mut t30: Vec<Value> = Vec::with_capacity(2);
-    let t31 = closure(48, vec![l0.clone()]);
-    t30.push(t31);
-    let t32 = closure(50, vec![]);
-    t30.push(t32);
-    let t33 = rt.call_method(&t29, Method::PromiseThen, t30)?;
-    let _ = t33;
+    let t14 = rt.global(20);
+    let t15 = rt.member(&t14, "set")?;
+    let mut t16: Vec<Value> = Vec::with_capacity(1);
+    let mut t17: Vec<(Str, Value)> = Vec::with_capacity(5);
+    let t18 = l1.clone();
+    obj_spread(&mut t17, &t18);
+    let t19 = l0.clone();
+    let t20 = rt.lit_key(10, "open");
+    obj_put_str(&mut t17, t20, t19);
+    let t21 = rt.lit_key(11, "editing");
+    obj_put_str(&mut t17, t21, Value::Bool(false));
+    let t22 = rt.lit(12, "");
+    let t23 = rt.lit_key(13, "text");
+    obj_put_str(&mut t17, t23, t22);
+    let t24 = rt.lit_key(8, "dirty");
+    obj_put_str(&mut t17, t24, Value::Bool(false));
+    let t25 = Value::object(t17);
+    t16.push(t25);
+    let t26 = rt.call(&t15, t16)?;
+    let _ = t26;
+    let mut t27: Vec<Value> = Vec::with_capacity(1);
+    let mut t28 = String::new();
+    let t29 = rt.member(&l1, "folder")?;
+    t28.push_str(&t29.to_js_string());
+    t28.push_str("/");
+    let t30 = l0.clone();
+    t28.push_str(&t30.to_js_string());
+    let t31 = Value::str(&t28);
+    t27.push(t31);
+    let t32 = rt.call_builtin(Builtin::CwReadFile, t27)?;
+    let mut t33: Vec<Value> = Vec::with_capacity(2);
+    let t34 = closure(48, vec![l0.clone()]);
+    t33.push(t34);
+    let t35 = closure(50, vec![]);
+    t33.push(t35);
+    let t36 = rt.call_method(&t32, Method::PromiseThen, t33)?;
+    let _ = t36;
     Ok(Value::Undefined)
 }
 
@@ -560,224 +547,196 @@ fn f11(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t5 = rt.call(&t3, t4)?;
     let t6 = t5;
     l1 = t6;
-    let t7 = l0.clone();
-    let t8 = rt.member(&t7, "ctrlKey")?;
-    let t9 = if !t8.truthy() {
-        let t10 = l0.clone();
-        let t11 = rt.member(&t10, "metaKey")?;
-        t11
-    } else { t8 };
-    let t12 = t9;
-    l2 = t12;
-    let t13 = l2.clone();
-    let t14 = if t13.truthy() {
-        let t15 = l0.clone();
-        let t16 = rt.member(&t15, "key")?;
+    let t7 = rt.member(&l0, "ctrlKey")?;
+    let t8 = if !t7.truthy() {
+        let t9 = rt.member(&l0, "metaKey")?;
+        t9
+    } else { t7 };
+    let t10 = t8;
+    l2 = t10;
+    let t11 = l2.clone();
+    let t12 = if t11.truthy() {
+        let t13 = rt.member(&l0, "key")?;
+        let mut t14: Vec<Value> = Vec::with_capacity(0);
+        let t15 = rt.call_method(&t13, Method::StrToLowerCase, t14)?;
+        let t16 = Value::Bool(eq_str(&t15, "s"));
+        t16
+    } else { t11 };
+    if t12.truthy() {
         let mut t17: Vec<Value> = Vec::with_capacity(0);
-        let t18 = rt.call_method(&t16, Method::StrToLowerCase, t17)?;
-        let t19 = Value::Bool(strict_equals(&t18, &str("s")));
-        t19
-    } else { t13 };
-    if t14.truthy() {
-        let t20 = l0.clone();
-        let mut t21: Vec<Value> = Vec::with_capacity(0);
-        let t22 = rt.call_method(&t20, Method::EventPreventDefault, t21)?;
-        let _ = t22;
-        let mut t23: Vec<Value> = Vec::with_capacity(0);
-        let t24 = f6(rt, &[], t23, None)?;
-        let _ = t24;
+        let t18 = rt.call_method(&l0, Method::EventPreventDefault, t17)?;
+        let _ = t18;
+        let mut t19: Vec<Value> = Vec::with_capacity(0);
+        let t20 = f6(rt, &[], t19, None)?;
+        let _ = t20;
         return Ok(Value::Undefined);
     }
-    let mut t25: Vec<Value> = Vec::with_capacity(1);
-    let t26 = l0.clone();
-    let t27 = rt.member(&t26, "key")?;
-    t25.push(t27);
-    let t28 = rt.call_builtin(Builtin::ArrayFrom, t25)?;
-    let t29 = rt.member(&t28, "length")?;
-    let t30 = Value::Bool(strict_equals(&t29, &Value::Num(1.0)));
-    let t31 = if t30.truthy() {
-        let t32 = l2.clone();
-        let t33 = Value::Bool(!t32.truthy());
-        t33
-    } else { t30 };
-    let t34 = if t31.truthy() {
-        let t35 = l0.clone();
-        let t36 = rt.member(&t35, "altKey")?;
-        let t37 = Value::Bool(!t36.truthy());
-        t37
-    } else { t31 };
-    let t38 = t34;
-    l3 = t38;
-    let t39 = l1.clone();
-    let t40 = rt.member(&t39, "open")?;
-    let t41 = Value::Bool(strict_equals(&t40, &Value::Null));
-    if t41.truthy() {
-        let t42 = l0.clone();
-        let mut t43: Vec<Value> = Vec::with_capacity(0);
-        let t44 = rt.call_method(&t42, Method::EventPreventDefault, t43)?;
-        let _ = t44;
-        let mut t45: Vec<Value> = Vec::with_capacity(1);
-        let t46 = l0.clone();
-        let t47 = rt.member(&t46, "key")?;
-        let t48 = Value::Bool(strict_equals(&t47, &str("Backspace")));
-        let t49 = if !t48.truthy() {
-            let t50 = l0.clone();
-            let t51 = rt.member(&t50, "key")?;
-            let t52 = Value::Bool(strict_equals(&t51, &str("Enter")));
-            t52
-        } else { t48 };
-        let t53 = if t49.truthy() {
-            str("no note is open")
+    let mut t21: Vec<Value> = Vec::with_capacity(1);
+    let t22 = rt.member(&l0, "key")?;
+    t21.push(t22);
+    let t23 = rt.call_builtin(Builtin::ArrayFrom, t21)?;
+    let t24 = rt.member(&t23, "length")?;
+    let t25 = Value::Bool(strict_equals(&t24, &Value::Num(1.0)));
+    let t26 = if t25.truthy() {
+        let t27 = l2.clone();
+        let t28 = Value::Bool(!(t27.truthy()));
+        t28
+    } else { t25 };
+    let t29 = if t26.truthy() {
+        let t30 = rt.member(&l0, "altKey")?;
+        let t31 = Value::Bool(!(t30.truthy()));
+        t31
+    } else { t26 };
+    let t32 = t29;
+    l3 = t32;
+    let t33 = rt.member(&l1, "open")?;
+    if strict_equals(&t33, &Value::Null) {
+        let mut t34: Vec<Value> = Vec::with_capacity(0);
+        let t35 = rt.call_method(&l0, Method::EventPreventDefault, t34)?;
+        let _ = t35;
+        let mut t36: Vec<Value> = Vec::with_capacity(1);
+        let t37 = rt.member(&l0, "key")?;
+        let t38 = Value::Bool(eq_str(&t37, "Backspace"));
+        let t39 = if !t38.truthy() {
+            let t40 = rt.member(&l0, "key")?;
+            let t41 = Value::Bool(eq_str(&t40, "Enter"));
+            t41
+        } else { t38 };
+        let t42 = if t39.truthy() {
+            let t43 = rt.lit(7, "no note is open");
+            t43
         } else {
-            let mut t54 = String::new();
-            t54.push_str("unsupported notes key ");
-            let t55 = l0.clone();
-            let t56 = rt.member(&t55, "key")?;
-            t54.push_str(&t56.to_js_string());
-            let t57 = Value::str(&t54);
-            t57
+            let mut t44 = String::new();
+            t44.push_str("unsupported notes key ");
+            let t45 = rt.member(&l0, "key")?;
+            t44.push_str(&t45.to_js_string());
+            let t46 = Value::str(&t44);
+            t46
         };
-        t45.push(t53);
-        let t58 = rt.call_builtin(Builtin::CwRefuse, t45)?;
-        let _ = t58;
+        t36.push(t42);
+        let t47 = rt.call_builtin(Builtin::CwRefuse, t36)?;
+        let _ = t47;
         return Ok(Value::Undefined);
     }
-    let t59 = l0.clone();
-    let t60 = rt.member(&t59, "target")?;
-    let mut t61: Vec<Value> = Vec::with_capacity(1);
-    t61.push(str("notes:body"));
-    let t62 = rt.call_builtin(Builtin::GetElementById, t61)?;
-    let t63 = Value::Bool(strict_equals(&t60, &t62));
-    let t64 = t63;
-    l4 = t64;
-    let t65 = l4.clone();
-    let t66 = Value::Bool(!t65.truthy());
-    if t66.truthy() {
-        let t67 = l0.clone();
-        let t68 = rt.member(&t67, "key")?;
-        let t69 = Value::Bool(strict_equals(&t68, &str("Backspace")));
-        if t69.truthy() {
-            let t70 = l0.clone();
-            let mut t71: Vec<Value> = Vec::with_capacity(0);
-            let t72 = rt.call_method(&t70, Method::EventPreventDefault, t71)?;
-            let _ = t72;
-            let mut t73: Vec<Value> = Vec::with_capacity(1);
-            let mut t74: Vec<Value> = Vec::with_capacity(1);
-            let t75 = l1.clone();
-            let t76 = rt.member(&t75, "text")?;
-            t74.push(t76);
-            let t77 = rt.call_builtin(Builtin::ArrayFrom, t74)?;
-            let mut t78: Vec<Value> = Vec::with_capacity(2);
-            t78.push(Value::Num(0.0));
-            t78.push(Value::Num((-1.0)));
-            let t79 = rt.call_method(&t77, Method::ArraySlice, t78)?;
-            let mut t80: Vec<Value> = Vec::with_capacity(1);
-            t80.push(str(""));
-            let t81 = rt.call_method(&t79, Method::ArrayJoin, t80)?;
-            t73.push(t81);
-            let t82 = f10(rt, &[], t73, None)?;
-            let _ = t82;
+    let t48 = rt.member(&l0, "target")?;
+    let mut t49: Vec<Value> = Vec::with_capacity(1);
+    let t50 = rt.lit(14, "notes:body");
+    t49.push(t50);
+    let t51 = rt.call_builtin(Builtin::GetElementById, t49)?;
+    let t52 = Value::Bool(strict_equals(&t48, &t51));
+    let t53 = t52;
+    l4 = t53;
+    let t54 = l4.clone();
+    if !(t54.truthy()) {
+        let t55 = rt.member(&l0, "key")?;
+        if eq_str(&t55, "Backspace") {
+            let mut t56: Vec<Value> = Vec::with_capacity(0);
+            let t57 = rt.call_method(&l0, Method::EventPreventDefault, t56)?;
+            let _ = t57;
+            let mut t58: Vec<Value> = Vec::with_capacity(1);
+            let mut t59: Vec<Value> = Vec::with_capacity(1);
+            let t60 = rt.member(&l1, "text")?;
+            t59.push(t60);
+            let t61 = rt.call_builtin(Builtin::ArrayFrom, t59)?;
+            let mut t62: Vec<Value> = Vec::with_capacity(2);
+            t62.push(Value::Num(0.0));
+            t62.push(Value::Num((-1.0)));
+            let t63 = rt.call_method(&t61, Method::ArraySlice, t62)?;
+            let mut t64: Vec<Value> = Vec::with_capacity(1);
+            let t65 = rt.lit(12, "");
+            t64.push(t65);
+            let t66 = rt.call_method(&t63, Method::ArrayJoin, t64)?;
+            t58.push(t66);
+            let t67 = f10(rt, &[], t58, None)?;
+            let _ = t67;
         } else {
-            let t83 = l0.clone();
-            let t84 = rt.member(&t83, "key")?;
-            let t85 = Value::Bool(strict_equals(&t84, &str("Enter")));
-            if t85.truthy() {
-                let t86 = l0.clone();
-                let mut t87: Vec<Value> = Vec::with_capacity(0);
-                let t88 = rt.call_method(&t86, Method::EventPreventDefault, t87)?;
-                let _ = t88;
-                let mut t89: Vec<Value> = Vec::with_capacity(1);
-                let t90 = l1.clone();
-                let t91 = rt.member(&t90, "text")?;
-                let t92 = add(&t91, &str("\n"));
-                t89.push(t92);
-                let t93 = f10(rt, &[], t89, None)?;
-                let _ = t93;
+            let t68 = rt.member(&l0, "key")?;
+            if eq_str(&t68, "Enter") {
+                let mut t69: Vec<Value> = Vec::with_capacity(0);
+                let t70 = rt.call_method(&l0, Method::EventPreventDefault, t69)?;
+                let _ = t70;
+                let mut t71: Vec<Value> = Vec::with_capacity(1);
+                let t72 = rt.member(&l1, "text")?;
+                let t73 = add_str_right(&t72, "\n");
+                t71.push(t73);
+                let t74 = f10(rt, &[], t71, None)?;
+                let _ = t74;
             } else {
-                let t94 = l3.clone();
-                if t94.truthy() {
-                    let t95 = l0.clone();
-                    let mut t96: Vec<Value> = Vec::with_capacity(0);
-                    let t97 = rt.call_method(&t95, Method::EventPreventDefault, t96)?;
-                    let _ = t97;
-                    let mut t98: Vec<Value> = Vec::with_capacity(1);
-                    let t99 = l1.clone();
-                    let t100 = rt.member(&t99, "text")?;
-                    let t101 = l0.clone();
-                    let t102 = rt.member(&t101, "key")?;
-                    let t103 = add(&t100, &t102);
-                    t98.push(t103);
-                    let t104 = f10(rt, &[], t98, None)?;
-                    let _ = t104;
+                let t75 = l3.clone();
+                if t75.truthy() {
+                    let mut t76: Vec<Value> = Vec::with_capacity(0);
+                    let t77 = rt.call_method(&l0, Method::EventPreventDefault, t76)?;
+                    let _ = t77;
+                    let mut t78: Vec<Value> = Vec::with_capacity(1);
+                    let t79 = rt.member(&l1, "text")?;
+                    let t80 = rt.member(&l0, "key")?;
+                    let t81 = add(&t79, &t80);
+                    t78.push(t81);
+                    let t82 = f10(rt, &[], t78, None)?;
+                    let _ = t82;
                 } else {
-                    let t105 = l0.clone();
-                    let mut t106: Vec<Value> = Vec::with_capacity(0);
-                    let t107 = rt.call_method(&t105, Method::EventPreventDefault, t106)?;
-                    let _ = t107;
-                    let mut t108: Vec<Value> = Vec::with_capacity(1);
-                    let mut t109 = String::new();
-                    t109.push_str("unsupported notes key ");
-                    let t110 = l0.clone();
-                    let t111 = rt.member(&t110, "key")?;
-                    t109.push_str(&t111.to_js_string());
-                    let t112 = Value::str(&t109);
-                    t108.push(t112);
-                    let t113 = rt.call_builtin(Builtin::CwRefuse, t108)?;
-                    let _ = t113;
+                    let mut t83: Vec<Value> = Vec::with_capacity(0);
+                    let t84 = rt.call_method(&l0, Method::EventPreventDefault, t83)?;
+                    let _ = t84;
+                    let mut t85: Vec<Value> = Vec::with_capacity(1);
+                    let mut t86 = String::new();
+                    t86.push_str("unsupported notes key ");
+                    let t87 = rt.member(&l0, "key")?;
+                    t86.push_str(&t87.to_js_string());
+                    let t88 = Value::str(&t86);
+                    t85.push(t88);
+                    let t89 = rt.call_builtin(Builtin::CwRefuse, t85)?;
+                    let _ = t89;
                 }
             }
         }
         return Ok(Value::Undefined);
     }
-    let t114 = l3.clone();
-    let t115 = Value::Bool(!t114.truthy());
-    let t116 = if t115.truthy() {
-        let t117 = rt.global(21);
-        let mut t118: Vec<Value> = Vec::with_capacity(1);
-        let t119 = l0.clone();
-        let t120 = rt.member(&t119, "key")?;
-        t118.push(t120);
-        let t121 = rt.call_method(&t117, Method::SetHas, t118)?;
-        let t122 = Value::Bool(!t121.truthy());
-        t122
-    } else { t115 };
-    if t116.truthy() {
-        let t123 = l0.clone();
-        let mut t124: Vec<Value> = Vec::with_capacity(0);
-        let t125 = rt.call_method(&t123, Method::EventPreventDefault, t124)?;
-        let _ = t125;
-        let mut t126: Vec<Value> = Vec::with_capacity(1);
-        let mut t127 = String::new();
-        t127.push_str("unsupported notes key ");
-        let t128 = l0.clone();
-        let t129 = rt.member(&t128, "key")?;
-        t127.push_str(&t129.to_js_string());
-        let t130 = Value::str(&t127);
-        t126.push(t130);
-        let t131 = rt.call_builtin(Builtin::CwRefuse, t126)?;
-        let _ = t131;
+    let t90 = l3.clone();
+    let t91 = Value::Bool(!(t90.truthy()));
+    let t92 = if t91.truthy() {
+        let t93 = rt.global(21);
+        let mut t94: Vec<Value> = Vec::with_capacity(1);
+        let t95 = rt.member(&l0, "key")?;
+        t94.push(t95);
+        let t96 = rt.call_method(&t93, Method::SetHas, t94)?;
+        let t97 = Value::Bool(!(t96.truthy()));
+        t97
+    } else { t91 };
+    if t92.truthy() {
+        let mut t98: Vec<Value> = Vec::with_capacity(0);
+        let t99 = rt.call_method(&l0, Method::EventPreventDefault, t98)?;
+        let _ = t99;
+        let mut t100: Vec<Value> = Vec::with_capacity(1);
+        let mut t101 = String::new();
+        t101.push_str("unsupported notes key ");
+        let t102 = rt.member(&l0, "key")?;
+        t101.push_str(&t102.to_js_string());
+        let t103 = Value::str(&t101);
+        t100.push(t103);
+        let t104 = rt.call_builtin(Builtin::CwRefuse, t100)?;
+        let _ = t104;
     } else {
-        let t132 = l0.clone();
-        let t133 = rt.member(&t132, "key")?;
-        let t134 = Value::Bool(strict_equals(&t133, &str("Backspace")));
-        let t135 = if t134.truthy() {
-            let t136 = l1.clone();
-            let t137 = rt.member(&t136, "text")?;
-            let t138 = Value::Bool(strict_equals(&t137, &str("")));
-            t138
-        } else { t134 };
-        if t135.truthy() {
-            let t139 = rt.global(20);
-            let t140 = rt.member(&t139, "set")?;
-            let mut t141: Vec<Value> = Vec::with_capacity(1);
-            let mut t142: Vec<(Str, Value)> = Vec::with_capacity(2);
-            let t143 = l1.clone();
-            obj_spread(&mut t142, &t143);
-            obj_put(&mut t142, "dirty", Value::Bool(true));
-            let t144 = Value::object(t142);
-            t141.push(t144);
-            let t145 = rt.call(&t140, t141)?;
-            let _ = t145;
+        let t105 = rt.member(&l0, "key")?;
+        let t106 = Value::Bool(eq_str(&t105, "Backspace"));
+        let t107 = if t106.truthy() {
+            let t108 = rt.member(&l1, "text")?;
+            let t109 = Value::Bool(eq_str(&t108, ""));
+            t109
+        } else { t106 };
+        if t107.truthy() {
+            let t110 = rt.global(20);
+            let t111 = rt.member(&t110, "set")?;
+            let mut t112: Vec<Value> = Vec::with_capacity(1);
+            let mut t113: Vec<(Str, Value)> = Vec::with_capacity(2);
+            let t114 = l1.clone();
+            obj_spread(&mut t113, &t114);
+            let t115 = rt.lit_key(8, "dirty");
+            obj_put_str(&mut t113, t115, Value::Bool(true));
+            let t116 = Value::object(t113);
+            t112.push(t116);
+            let t117 = rt.call(&t111, t112)?;
+            let _ = t117;
         }
     }
     Ok(Value::Undefined)
@@ -789,21 +748,20 @@ fn f12(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let mut args = args.into_iter();
     let t1 = args.next().unwrap_or(Value::Undefined);
     l0 = t1;
-    let t2 = l0.clone();
-    let t3 = Value::Bool(strict_equals(&t2, &str("windows")));
-    let t4 = if t3.truthy() {
-        str("Sticky Notes")
+    let t2 = if eq_str(&l0, "windows") {
+        let t3 = rt.lit(15, "Sticky Notes");
+        t3
     } else {
-        let t5 = l0.clone();
-        let t6 = Value::Bool(strict_equals(&t5, &str("android")));
-        let t7 = if t6.truthy() {
-            str("Keep")
+        let t4 = if eq_str(&l0, "android") {
+            let t5 = rt.lit(16, "Keep");
+            t5
         } else {
-            str("Notes")
+            let t6 = rt.lit(17, "Notes");
+            t6
         };
-        t7
+        t4
     };
-    return Ok(t4);
+    return Ok(t2);
     Ok(Value::Undefined)
 }
 
@@ -817,56 +775,58 @@ fn f13(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t2 = inst.is_some() && rt.is_pure_render();
     let t3 = if t2 { occ[0] += 1; occ[0] } else { 0 };
     let mut t4 = rt.tpl_begin(t2, 0, t3, 9, 4);
-    let t5: Vec<Value> = if t4.caching() { vec![read(&l0)] } else { Vec::new() };
-    match rt.tpl_reuse(&t4, 0, false, &t5) {
-        Some(v) => rt.tpl_push(&mut t4, v, t5, false),
-        None => {
-            let t6 = l0.clone();
-            let t7 = rt.member(&t6, "id")?;
-            rt.tpl_push(&mut t4, t7, t5, true);
+    let t6: Vec<Value> = if t4.caching() { vec![read(&l0)] } else { Vec::new() };
+    let t5 = if rt.tpl_reuse_all(&mut t4, &t6) {
+        rt.tpl_finish(t4, None)
+    } else {
+        let t7: Vec<Value> = if t4.caching() { vec![read(&l0)] } else { Vec::new() };
+        match rt.tpl_reuse(&t4, 0, false, &t7) {
+            Some(v) => rt.tpl_push(&mut t4, v, t7, false),
+            None => {
+                let t8 = rt.member(&l0, "id")?;
+                rt.tpl_push(&mut t4, t8, t7, true);
+            }
         }
-    }
-    let t8: Vec<Value> = if t4.caching() { vec![read(&l0)] } else { Vec::new() };
-    match rt.tpl_reuse(&t4, 1, false, &t8) {
-        Some(v) => rt.tpl_push(&mut t4, v, t8, false),
-        None => {
-            let mut t9 = String::new();
-            t9.push_str("action ");
-            let t10 = l0.clone();
-            let t11 = rt.member(&t10, "place")?;
-            t9.push_str(&t11.to_js_string());
-            let t12 = l0.clone();
-            let t13 = rt.member(&t12, "primary")?;
-            let t14 = if t13.truthy() {
-                str(" primary")
-            } else {
-                str("")
-            };
-            t9.push_str(&t14.to_js_string());
-            let t15 = Value::str(&t9);
-            rt.tpl_push(&mut t4, t15, t8, true);
+        let t9: Vec<Value> = if t4.caching() { vec![read(&l0)] } else { Vec::new() };
+        match rt.tpl_reuse(&t4, 1, false, &t9) {
+            Some(v) => rt.tpl_push(&mut t4, v, t9, false),
+            None => {
+                let mut t10 = String::new();
+                t10.push_str("action ");
+                let t11 = rt.member(&l0, "place")?;
+                t10.push_str(&t11.to_js_string());
+                let t12 = rt.member(&l0, "primary")?;
+                let t13 = if t12.truthy() {
+                    let t14 = rt.lit(18, " primary");
+                    t14
+                } else {
+                    let t15 = rt.lit(12, "");
+                    t15
+                };
+                t10.push_str(&t13.to_js_string());
+                let t16 = Value::str(&t10);
+                rt.tpl_push(&mut t4, t16, t9, true);
+            }
         }
-    }
-    let t16: Vec<Value> = if t4.caching() { vec![read(&l0)] } else { Vec::new() };
-    match rt.tpl_reuse(&t4, 2, false, &t16) {
-        Some(v) => rt.tpl_push(&mut t4, v, t16, false),
-        None => {
-            let t17 = l0.clone();
-            let t18 = rt.member(&t17, "onClick")?;
-            rt.tpl_push(&mut t4, t18, t16, true);
+        let t17: Vec<Value> = if t4.caching() { vec![read(&l0)] } else { Vec::new() };
+        match rt.tpl_reuse(&t4, 2, false, &t17) {
+            Some(v) => rt.tpl_push(&mut t4, v, t17, false),
+            None => {
+                let t18 = rt.member(&l0, "onClick")?;
+                rt.tpl_push(&mut t4, t18, t17, true);
+            }
         }
-    }
-    let t19: Vec<Value> = if t4.caching() { vec![read(&l0)] } else { Vec::new() };
-    match rt.tpl_reuse(&t4, 3, false, &t19) {
-        Some(v) => rt.tpl_push(&mut t4, v, t19, false),
-        None => {
-            let t20 = l0.clone();
-            let t21 = rt.member(&t20, "label")?;
-            rt.tpl_push(&mut t4, t21, t19, true);
+        let t19: Vec<Value> = if t4.caching() { vec![read(&l0)] } else { Vec::new() };
+        match rt.tpl_reuse(&t4, 3, false, &t19) {
+            Some(v) => rt.tpl_push(&mut t4, v, t19, false),
+            None => {
+                let t20 = rt.member(&l0, "label")?;
+                rt.tpl_push(&mut t4, t20, t19, true);
+            }
         }
-    }
-    let t22 = rt.tpl_finish(t4, None);
-    return Ok(t22);
+        rt.tpl_finish(t4, None)
+    };
+    return Ok(t5);
     Ok(Value::Undefined)
 }
 
@@ -882,15 +842,14 @@ fn f14(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t4 = rt.member(&t3, "s")?;
     l1 = t4;
     let mut t5: Vec<Value> = Vec::with_capacity(1);
-    let t6 = l1.clone();
-    let t7 = rt.member(&t6, "entries")?;
-    let mut t8: Vec<Value> = Vec::with_capacity(1);
-    let t9 = closure(46, vec![l1.clone()]);
-    t8.push(t9);
-    let t10 = rt.call_method(&t7, Method::ArrayMap, t8)?;
-    t5.push(t10);
-    let t11 = fragment(t5, None);
-    return Ok(t11);
+    let t6 = rt.member(&l1, "entries")?;
+    let mut t7: Vec<Value> = Vec::with_capacity(1);
+    let t8 = closure(46, vec![l1.clone()]);
+    t7.push(t8);
+    let t9 = rt.call_method(&t6, Method::ArrayMap, t7)?;
+    t5.push(t9);
+    let t10 = fragment(t5, None);
+    return Ok(t10);
     Ok(Value::Undefined)
 }
 
@@ -906,39 +865,41 @@ fn f15(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     destructure_check(&t3)?;
     let t4 = rt.member(&t3, "s")?;
     l1 = t4;
-    let t5 = l1.clone();
-    let t6 = rt.member(&t5, "problem")?;
-    let t7 = Value::Bool(!strict_equals(&t6, &Value::Null));
-    if t7.truthy() {
-        let t8 = inst.is_some() && rt.is_pure_render();
-        let t9 = if t8 { occ[0] += 1; occ[0] } else { 0 };
-        let mut t10 = rt.tpl_begin(t8, 1, t9, 7, 1);
-        let t11: Vec<Value> = if t10.caching() { vec![read(&l1)] } else { Vec::new() };
-        match rt.tpl_reuse(&t10, 0, false, &t11) {
-            Some(v) => rt.tpl_push(&mut t10, v, t11, false),
-            None => {
-                let t12 = l1.clone();
-                let t13 = rt.member(&t12, "problem")?;
-                rt.tpl_push(&mut t10, t13, t11, true);
+    let t5 = rt.member(&l1, "problem")?;
+    if !strict_equals(&t5, &Value::Null) {
+        let t6 = inst.is_some() && rt.is_pure_render();
+        let t7 = if t6 { occ[0] += 1; occ[0] } else { 0 };
+        let mut t8 = rt.tpl_begin(t6, 1, t7, 7, 1);
+        let t10: Vec<Value> = if t8.caching() { vec![read(&l1)] } else { Vec::new() };
+        let t9 = if rt.tpl_reuse_all(&mut t8, &t10) {
+            rt.tpl_finish(t8, None)
+        } else {
+            let t11: Vec<Value> = if t8.caching() { vec![read(&l1)] } else { Vec::new() };
+            match rt.tpl_reuse(&t8, 0, false, &t11) {
+                Some(v) => rt.tpl_push(&mut t8, v, t11, false),
+                None => {
+                    let t12 = rt.member(&l1, "problem")?;
+                    rt.tpl_push(&mut t8, t12, t11, true);
+                }
             }
-        }
-        let t14 = rt.tpl_finish(t10, None);
-        return Ok(t14);
+            rt.tpl_finish(t8, None)
+        };
+        return Ok(t9);
     }
-    let t15 = l1.clone();
-    let t16 = rt.member(&t15, "entries")?;
-    let t17 = rt.member(&t16, "length")?;
-    let t18 = Value::Bool(strict_equals(&t17, &Value::Num(0.0)));
-    let t19 = if t18.truthy() {
-        let t20 = inst.is_some() && rt.is_pure_render();
-        let t21 = if t20 { occ[1] += 1; occ[1] } else { 0 };
-        let mut t22 = rt.tpl_begin(t20, 2, t21, 8, 0);
-        let t23 = rt.tpl_finish(t22, None);
-        t23
+    let t13 = rt.member(&l1, "entries")?;
+    let t14 = rt.member(&t13, "length")?;
+    let t15 = if strict_equals(&t14, &Value::Num(0.0)) {
+        let t16 = inst.is_some() && rt.is_pure_render();
+        let t17 = if t16 { occ[1] += 1; occ[1] } else { 0 };
+        let mut t18 = rt.tpl_begin(t16, 2, t17, 8, 0);
+        let t19 = {
+            rt.tpl_finish(t18, None)
+        };
+        t19
     } else {
         Value::Null
     };
-    return Ok(t19);
+    return Ok(t15);
     Ok(Value::Undefined)
 }
 
@@ -948,44 +909,62 @@ fn f16(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t1 = inst.is_some() && rt.is_pure_render();
     let t2 = if t1 { occ[0] += 1; occ[0] } else { 0 };
     let mut t3 = rt.tpl_begin(t1, 3, t2, 10, 2);
-    let t4: Vec<Value> = Vec::new();
-    match rt.tpl_reuse(&t3, 0, false, &t4) {
-        Some(v) => rt.tpl_push(&mut t3, v, t4, false),
-        None => {
-            let t5 = rt.global(13);
-            let t6 = component_callee(t5)?;
-            let mut t7: Vec<(Str, Value)> = Vec::with_capacity(6);
-            obj_put(&mut t7, "id", str("notes:new"));
-            obj_put(&mut t7, "place", str("new"));
-            obj_put(&mut t7, "label", str("New note"));
-            obj_put(&mut t7, "primary", Value::Bool(true));
-            let t8 = rt.global(7);
-            obj_put(&mut t7, "onClick", t8);
-            let t9 = None;
-            let t10 = component_elem(t6, t7, t9, None);
-            rt.tpl_push(&mut t3, t10, t4, true);
+    let t4 = {
+        let t5: Vec<Value> = Vec::new();
+        match rt.tpl_reuse(&t3, 0, false, &t5) {
+            Some(v) => rt.tpl_push(&mut t3, v, t5, false),
+            None => {
+                let t6 = rt.global(13);
+                let t7 = component_callee(t6)?;
+                let mut t8: Vec<(Str, Value)> = Vec::with_capacity(6);
+                let t9 = rt.lit(19, "notes:new");
+                let t10 = rt.lit_key(20, "id");
+                obj_put_str(&mut t8, t10, t9);
+                let t11 = rt.lit(21, "new");
+                let t12 = rt.lit_key(22, "place");
+                obj_put_str(&mut t8, t12, t11);
+                let t13 = rt.lit(23, "New note");
+                let t14 = rt.lit_key(24, "label");
+                obj_put_str(&mut t8, t14, t13);
+                let t15 = rt.lit_key(25, "primary");
+                obj_put_str(&mut t8, t15, Value::Bool(true));
+                let t16 = rt.global(7);
+                let t17 = rt.lit_key(26, "onClick");
+                obj_put_str(&mut t8, t17, t16);
+                let t18 = None;
+                let t19 = component_elem(t7, t8, t18, None);
+                rt.tpl_push(&mut t3, t19, t5, true);
+            }
         }
-    }
-    let t11: Vec<Value> = Vec::new();
-    match rt.tpl_reuse(&t3, 1, false, &t11) {
-        Some(v) => rt.tpl_push(&mut t3, v, t11, false),
-        None => {
-            let t12 = rt.global(13);
-            let t13 = component_callee(t12)?;
-            let mut t14: Vec<(Str, Value)> = Vec::with_capacity(6);
-            obj_put(&mut t14, "id", str("notes:reload"));
-            obj_put(&mut t14, "place", str("reload"));
-            obj_put(&mut t14, "label", str("Reload"));
-            obj_put(&mut t14, "primary", Value::Bool(false));
-            let t15 = rt.global(5);
-            obj_put(&mut t14, "onClick", t15);
-            let t16 = None;
-            let t17 = component_elem(t13, t14, t16, None);
-            rt.tpl_push(&mut t3, t17, t11, true);
+        let t20: Vec<Value> = Vec::new();
+        match rt.tpl_reuse(&t3, 1, false, &t20) {
+            Some(v) => rt.tpl_push(&mut t3, v, t20, false),
+            None => {
+                let t21 = rt.global(13);
+                let t22 = component_callee(t21)?;
+                let mut t23: Vec<(Str, Value)> = Vec::with_capacity(6);
+                let t24 = rt.lit(27, "notes:reload");
+                let t25 = rt.lit_key(20, "id");
+                obj_put_str(&mut t23, t25, t24);
+                let t26 = rt.lit(28, "reload");
+                let t27 = rt.lit_key(22, "place");
+                obj_put_str(&mut t23, t27, t26);
+                let t28 = rt.lit(29, "Reload");
+                let t29 = rt.lit_key(24, "label");
+                obj_put_str(&mut t23, t29, t28);
+                let t30 = rt.lit_key(25, "primary");
+                obj_put_str(&mut t23, t30, Value::Bool(false));
+                let t31 = rt.global(5);
+                let t32 = rt.lit_key(26, "onClick");
+                obj_put_str(&mut t23, t32, t31);
+                let t33 = None;
+                let t34 = component_elem(t22, t23, t33, None);
+                rt.tpl_push(&mut t3, t34, t20, true);
+            }
         }
-    }
-    let t18 = rt.tpl_finish(t3, None);
-    return Ok(t18);
+        rt.tpl_finish(t3, None)
+    };
+    return Ok(t4);
     Ok(Value::Undefined)
 }
 
@@ -1005,168 +984,177 @@ fn f17(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     l2 = t5;
     let t6 = rt.member(&t3, "heading")?;
     l3 = t6;
-    let t7 = l1.clone();
-    let t8 = rt.member(&t7, "open")?;
-    let t9 = if t8.is_nullish() {
-        str("")
-    } else { t8 };
+    let t7 = rt.member(&l1, "open")?;
+    let t8 = if t7.is_nullish() {
+        let t9 = rt.lit(12, "");
+        t9
+    } else { t7 };
     let mut t10: Vec<Value> = Vec::with_capacity(2);
     let t11 = rt.regex("\\.txt$", "")?;
     t10.push(t11);
-    t10.push(str(""));
-    let t12 = rt.call_method(&t9, Method::StrReplace, t10)?;
-    let t13 = t12;
-    l4 = t13;
-    let t14 = inst.is_some() && rt.is_pure_render();
-    let t15 = if t14 { occ[0] += 1; occ[0] } else { 0 };
-    let mut t16 = rt.tpl_begin(t14, 4, t15, 3, 12);
-    let t17: Vec<Value> = if t16.caching() { vec![read(&l2)] } else { Vec::new() };
-    match rt.tpl_reuse(&t16, 0, false, &t17) {
-        Some(v) => rt.tpl_push(&mut t16, v, t17, false),
-        None => {
-            let t18 = l2.clone();
-            let t19 = if t18.truthy() {
-                str("note phone")
-            } else {
-                str("note")
-            };
-            rt.tpl_push(&mut t16, t19, t17, true);
+    let t12 = rt.lit(12, "");
+    t10.push(t12);
+    let t13 = rt.call_method(&t8, Method::StrReplace, t10)?;
+    let t14 = t13;
+    l4 = t14;
+    let t15 = inst.is_some() && rt.is_pure_render();
+    let t16 = if t15 { occ[0] += 1; occ[0] } else { 0 };
+    let mut t17 = rt.tpl_begin(t15, 4, t16, 3, 12);
+    let t18 = {
+        let t19: Vec<Value> = if t17.caching() { vec![read(&l2)] } else { Vec::new() };
+        match rt.tpl_reuse(&t17, 0, false, &t19) {
+            Some(v) => rt.tpl_push(&mut t17, v, t19, false),
+            None => {
+                let t20 = l2.clone();
+                let t21 = if t20.truthy() {
+                    let t22 = rt.lit(30, "note phone");
+                    t22
+                } else {
+                    let t23 = rt.lit(31, "note");
+                    t23
+                };
+                rt.tpl_push(&mut t17, t21, t19, true);
+            }
         }
-    }
-    let t20: Vec<Value> = if t16.caching() { vec![read(&l2), read(&l3)] } else { Vec::new() };
-    match rt.tpl_reuse(&t16, 1, false, &t20) {
-        Some(v) => rt.tpl_push(&mut t16, v, t20, false),
-        None => {
-            let t21 = l2.clone();
-            let t22 = if t21.truthy() {
-                let t23 = inst.is_some() && rt.is_pure_render();
-                let t24 = if t23 { occ[1] += 1; occ[1] } else { 0 };
-                let mut t25 = rt.tpl_begin(t23, 5, t24, 1, 2);
-                let t26: Vec<Value> = Vec::new();
-                match rt.tpl_reuse(&t25, 0, false, &t26) {
-                    Some(v) => rt.tpl_push(&mut t25, v, t26, false),
-                    None => {
-                        let t27 = rt.global(9);
-                        rt.tpl_push(&mut t25, t27, t26, true);
-                    }
-                }
-                let t28: Vec<Value> = if t25.caching() { vec![read(&l3)] } else { Vec::new() };
-                match rt.tpl_reuse(&t25, 1, false, &t28) {
-                    Some(v) => rt.tpl_push(&mut t25, v, t28, false),
-                    None => {
-                        let t29 = l3.clone();
-                        rt.tpl_push(&mut t25, t29, t28, true);
-                    }
-                }
-                let t30 = rt.tpl_finish(t25, None);
-                t30
-            } else { t21 };
-            rt.tpl_push(&mut t16, t22, t20, true);
+        let t24: Vec<Value> = if t17.caching() { vec![read(&l2), read(&l3)] } else { Vec::new() };
+        match rt.tpl_reuse(&t17, 1, false, &t24) {
+            Some(v) => rt.tpl_push(&mut t17, v, t24, false),
+            None => {
+                let t25 = l2.clone();
+                let t26 = if t25.truthy() {
+                    let t27 = inst.is_some() && rt.is_pure_render();
+                    let t28 = if t27 { occ[1] += 1; occ[1] } else { 0 };
+                    let mut t29 = rt.tpl_begin(t27, 5, t28, 1, 2);
+                    let t30 = {
+                        let t31: Vec<Value> = Vec::new();
+                        match rt.tpl_reuse(&t29, 0, false, &t31) {
+                            Some(v) => rt.tpl_push(&mut t29, v, t31, false),
+                            None => {
+                                let t32 = rt.global(9);
+                                rt.tpl_push(&mut t29, t32, t31, true);
+                            }
+                        }
+                        let t33: Vec<Value> = if t29.caching() { vec![read(&l3)] } else { Vec::new() };
+                        match rt.tpl_reuse(&t29, 1, false, &t33) {
+                            Some(v) => rt.tpl_push(&mut t29, v, t33, false),
+                            None => {
+                                let t34 = l3.clone();
+                                rt.tpl_push(&mut t29, t34, t33, true);
+                            }
+                        }
+                        rt.tpl_finish(t29, None)
+                    };
+                    t30
+                } else { t25 };
+                rt.tpl_push(&mut t17, t26, t24, true);
+            }
         }
-    }
-    let t31: Vec<Value> = if t16.caching() { vec![read(&l4)] } else { Vec::new() };
-    match rt.tpl_reuse(&t16, 2, false, &t31) {
-        Some(v) => rt.tpl_push(&mut t16, v, t31, false),
-        None => {
-            let t32 = l4.clone();
-            rt.tpl_push(&mut t16, t32, t31, true);
+        let t35: Vec<Value> = if t17.caching() { vec![read(&l4)] } else { Vec::new() };
+        match rt.tpl_reuse(&t17, 2, false, &t35) {
+            Some(v) => rt.tpl_push(&mut t17, v, t35, false),
+            None => {
+                let t36 = l4.clone();
+                rt.tpl_push(&mut t17, t36, t35, true);
+            }
         }
-    }
-    let t33: Vec<Value> = if t16.caching() { vec![read(&l1)] } else { Vec::new() };
-    match rt.tpl_reuse(&t16, 3, false, &t33) {
-        Some(v) => rt.tpl_push(&mut t16, v, t33, false),
-        None => {
-            let t34 = l1.clone();
-            let t35 = rt.member(&t34, "text")?;
-            rt.tpl_push(&mut t16, t35, t33, true);
+        let t37: Vec<Value> = if t17.caching() { vec![read(&l1)] } else { Vec::new() };
+        match rt.tpl_reuse(&t17, 3, false, &t37) {
+            Some(v) => rt.tpl_push(&mut t17, v, t37, false),
+            None => {
+                let t38 = rt.member(&l1, "text")?;
+                rt.tpl_push(&mut t17, t38, t37, true);
+            }
         }
-    }
-    let t36: Vec<Value> = Vec::new();
-    match rt.tpl_reuse(&t16, 4, false, &t36) {
-        Some(v) => rt.tpl_push(&mut t16, v, t36, false),
-        None => {
-            let t37 = rt.global(19);
-            rt.tpl_push(&mut t16, t37, t36, true);
+        let t39: Vec<Value> = Vec::new();
+        match rt.tpl_reuse(&t17, 4, false, &t39) {
+            Some(v) => rt.tpl_push(&mut t17, v, t39, false),
+            None => {
+                let t40 = rt.global(19);
+                rt.tpl_push(&mut t17, t40, t39, true);
+            }
         }
-    }
-    let t38: Vec<Value> = Vec::new();
-    match rt.tpl_reuse(&t16, 5, false, &t38) {
-        Some(v) => rt.tpl_push(&mut t16, v, t38, false),
-        None => {
-            rt.tpl_push(&mut t16, Value::Bool(false), t38, true);
+        let t41: Vec<Value> = Vec::new();
+        match rt.tpl_reuse(&t17, 5, false, &t41) {
+            Some(v) => rt.tpl_push(&mut t17, v, t41, false),
+            None => {
+                rt.tpl_push(&mut t17, Value::Bool(false), t41, true);
+            }
         }
-    }
-    let t39: Vec<Value> = Vec::new();
-    match rt.tpl_reuse(&t16, 6, true, &t39) {
-        Some(v) => rt.tpl_push(&mut t16, v, t39, false),
-        None => {
-            let t40 = closure(42, vec![]);
-            rt.tpl_push(&mut t16, t40, t39, true);
+        let t42: Vec<Value> = Vec::new();
+        match rt.tpl_reuse(&t17, 6, true, &t42) {
+            Some(v) => rt.tpl_push(&mut t17, v, t42, false),
+            None => {
+                let t43 = closure(42, vec![]);
+                rt.tpl_push(&mut t17, t43, t42, true);
+            }
         }
-    }
-    let t41: Vec<Value> = Vec::new();
-    match rt.tpl_reuse(&t16, 7, false, &t41) {
-        Some(v) => rt.tpl_push(&mut t16, v, t41, false),
-        None => {
-            let t42 = closure(43, vec![]);
-            rt.tpl_push(&mut t16, t42, t41, true);
+        let t44: Vec<Value> = Vec::new();
+        match rt.tpl_reuse(&t17, 7, false, &t44) {
+            Some(v) => rt.tpl_push(&mut t17, v, t44, false),
+            None => {
+                let t45 = closure(43, vec![]);
+                rt.tpl_push(&mut t17, t45, t44, true);
+            }
         }
-    }
-    let t43: Vec<Value> = if t16.caching() { vec![read(&l1)] } else { Vec::new() };
-    match rt.tpl_reuse(&t16, 8, false, &t43) {
-        Some(v) => rt.tpl_push(&mut t16, v, t43, false),
-        None => {
-            let t44 = l1.clone();
-            let t45 = rt.member(&t44, "text")?;
-            let t46 = Value::Bool(strict_equals(&t45, &str("")));
-            let t47 = if t46.truthy() {
-                let t48 = inst.is_some() && rt.is_pure_render();
-                let t49 = if t48 { occ[2] += 1; occ[2] } else { 0 };
-                let mut t50 = rt.tpl_begin(t48, 6, t49, 2, 0);
-                let t51 = rt.tpl_finish(t50, None);
-                t51
-            } else { t46 };
-            rt.tpl_push(&mut t16, t47, t43, true);
+        let t46: Vec<Value> = if t17.caching() { vec![read(&l1)] } else { Vec::new() };
+        match rt.tpl_reuse(&t17, 8, false, &t46) {
+            Some(v) => rt.tpl_push(&mut t17, v, t46, false),
+            None => {
+                let t47 = rt.member(&l1, "text")?;
+                let t48 = Value::Bool(eq_str(&t47, ""));
+                let t49 = if t48.truthy() {
+                    let t50 = inst.is_some() && rt.is_pure_render();
+                    let t51 = if t50 { occ[2] += 1; occ[2] } else { 0 };
+                    let mut t52 = rt.tpl_begin(t50, 6, t51, 2, 0);
+                    let t53 = {
+                        rt.tpl_finish(t52, None)
+                    };
+                    t53
+                } else { t48 };
+                rt.tpl_push(&mut t17, t49, t46, true);
+            }
         }
-    }
-    let t52: Vec<Value> = if t16.caching() { vec![read(&l1)] } else { Vec::new() };
-    match rt.tpl_reuse(&t16, 9, false, &t52) {
-        Some(v) => rt.tpl_push(&mut t16, v, t52, false),
-        None => {
-            let t53 = l1.clone();
-            let t54 = rt.member(&t53, "dirty")?;
-            let t55 = if t54.truthy() {
-                str("action primary save")
-            } else {
-                str("action save")
-            };
-            rt.tpl_push(&mut t16, t55, t52, true);
+        let t54: Vec<Value> = if t17.caching() { vec![read(&l1)] } else { Vec::new() };
+        match rt.tpl_reuse(&t17, 9, false, &t54) {
+            Some(v) => rt.tpl_push(&mut t17, v, t54, false),
+            None => {
+                let t55 = rt.member(&l1, "dirty")?;
+                let t56 = if t55.truthy() {
+                    let t57 = rt.lit(32, "action primary save");
+                    t57
+                } else {
+                    let t58 = rt.lit(33, "action save");
+                    t58
+                };
+                rt.tpl_push(&mut t17, t56, t54, true);
+            }
         }
-    }
-    let t56: Vec<Value> = Vec::new();
-    match rt.tpl_reuse(&t16, 10, false, &t56) {
-        Some(v) => rt.tpl_push(&mut t16, v, t56, false),
-        None => {
-            let t57 = rt.global(6);
-            rt.tpl_push(&mut t16, t57, t56, true);
+        let t59: Vec<Value> = Vec::new();
+        match rt.tpl_reuse(&t17, 10, false, &t59) {
+            Some(v) => rt.tpl_push(&mut t17, v, t59, false),
+            None => {
+                let t60 = rt.global(6);
+                rt.tpl_push(&mut t17, t60, t59, true);
+            }
         }
-    }
-    let t58: Vec<Value> = if t16.caching() { vec![read(&l1)] } else { Vec::new() };
-    match rt.tpl_reuse(&t16, 11, false, &t58) {
-        Some(v) => rt.tpl_push(&mut t16, v, t58, false),
-        None => {
-            let t59 = l1.clone();
-            let t60 = rt.member(&t59, "dirty")?;
-            let t61 = if t60.truthy() {
-                str("Save •")
-            } else {
-                str("Save")
-            };
-            rt.tpl_push(&mut t16, t61, t58, true);
+        let t61: Vec<Value> = if t17.caching() { vec![read(&l1)] } else { Vec::new() };
+        match rt.tpl_reuse(&t17, 11, false, &t61) {
+            Some(v) => rt.tpl_push(&mut t17, v, t61, false),
+            None => {
+                let t62 = rt.member(&l1, "dirty")?;
+                let t63 = if t62.truthy() {
+                    let t64 = rt.lit(34, "Save •");
+                    t64
+                } else {
+                    let t65 = rt.lit(35, "Save");
+                    t65
+                };
+                rt.tpl_push(&mut t17, t63, t61, true);
+            }
         }
-    }
-    let t62 = rt.tpl_finish(t16, None);
-    return Ok(t62);
+        rt.tpl_finish(t17, None)
+    };
+    return Ok(t18);
     Ok(Value::Undefined)
 }
 
@@ -1184,24 +1172,21 @@ fn f18(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t6 = f2(rt, &[], t5, None)?;
     let t7 = t6;
     l1 = t7;
-    let t8 = l1.clone();
-    let t9 = rt.member(&t8, "mobile")?;
-    let t10 = if !t9.truthy() {
-        let t11 = l1.clone();
-        let t12 = rt.member(&t11, "width")?;
-        let t13 = Value::Bool(compare(BinaryOp::Lt, &t12, &Value::Num(480.0)));
-        t13
-    } else { t9 };
-    let t14 = t10;
-    l2 = t14;
-    let mut t15: Vec<Value> = Vec::with_capacity(1);
-    let t16 = l1.clone();
-    let t17 = rt.member(&t16, "platform")?;
-    t15.push(t17);
-    let t18 = f12(rt, &[], t15, None)?;
-    let t19 = t18;
-    l3 = t19;
-    let t21 = rt.hook_with(Hook::Ref, 1, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
+    let t8 = rt.member(&l1, "mobile")?;
+    let t9 = if !t8.truthy() {
+        let t10 = rt.member(&l1, "width")?;
+        let t11 = Value::Bool((t10.to_number() < 480.0));
+        t11
+    } else { t8 };
+    let t12 = t9;
+    l2 = t12;
+    let mut t13: Vec<Value> = Vec::with_capacity(1);
+    let t14 = rt.member(&l1, "platform")?;
+    t13.push(t14);
+    let t15 = f12(rt, &[], t13, None)?;
+    let t16 = t15;
+    l3 = t16;
+    let t18 = rt.hook_with(Hook::Ref, 1, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
         match i {
             0 => {
                 Ok(Value::Null)
@@ -1209,442 +1194,462 @@ fn f18(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
             _ => Ok(Value::Undefined),
         }
     });
-    let t20 = t21?;
-    let t22 = t20;
-    l4 = t22;
-    let t23 = l0.clone();
-    let t24 = rt.member(&t23, "open")?;
-    let t25 = Value::Bool(!strict_equals(&t24, &Value::Null));
-    let t26 = if t25.truthy() {
-        let t27 = l0.clone();
-        let t28 = rt.member(&t27, "editing")?;
-        let t29 = if !t28.truthy() {
-            let t30 = l1.clone();
-            let t31 = rt.member(&t30, "mobile")?;
-            let t32 = Value::Bool(!t31.truthy());
-            t32
-        } else { t28 };
-        t29
-    } else { t25 };
-    let t33 = t26;
-    l5 = t33;
-    let t35 = rt.hook_with(Hook::LayoutEffect, 1, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
+    let t17 = t18?;
+    let t19 = t17;
+    l4 = t19;
+    let t20 = rt.member(&l0, "open")?;
+    let t21 = Value::Bool(!strict_equals(&t20, &Value::Null));
+    let t22 = if t21.truthy() {
+        let t23 = rt.member(&l0, "editing")?;
+        let t24 = if !t23.truthy() {
+            let t25 = rt.member(&l1, "mobile")?;
+            let t26 = Value::Bool(!(t25.truthy()));
+            t26
+        } else { t23 };
+        t24
+    } else { t21 };
+    let t27 = t22;
+    l5 = t27;
+    let t29 = rt.hook_with(Hook::LayoutEffect, 1, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
         match i {
             0 => {
-                let t36 = closure(27, vec![l4.clone(), l5.clone()]);
+                let t30 = closure(27, vec![l4.clone(), l5.clone()]);
+                Ok(t30)
+            }
+            _ => Ok(Value::Undefined),
+        }
+    });
+    let t28 = t29?;
+    let _ = t28;
+    let t32 = rt.hook_with(Hook::Effect, 2, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
+        match i {
+            0 => {
+                let t33 = closure(28, vec![l4.clone(), l5.clone()]);
+                Ok(t33)
+            }
+            1 => {
+                let mut t34: Vec<Value> = Vec::with_capacity(1);
+                let t35 = l5.clone();
+                t34.push(t35);
+                let t36 = Value::array(t34);
                 Ok(t36)
             }
             _ => Ok(Value::Undefined),
         }
     });
-    let t34 = t35?;
-    let _ = t34;
+    let t31 = t32?;
+    let _ = t31;
     let t38 = rt.hook_with(Hook::Effect, 2, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
         match i {
             0 => {
-                let t39 = closure(28, vec![l4.clone(), l5.clone()]);
+                let t39 = closure(31, vec![]);
                 Ok(t39)
             }
             1 => {
-                let mut t40: Vec<Value> = Vec::with_capacity(1);
-                let t41 = l5.clone();
-                t40.push(t41);
-                let t42 = Value::array(t40);
-                Ok(t42)
+                let mut t40: Vec<Value> = Vec::with_capacity(0);
+                let t41 = Value::array(t40);
+                Ok(t41)
             }
             _ => Ok(Value::Undefined),
         }
     });
     let t37 = t38?;
     let _ = t37;
-    let t44 = rt.hook_with(Hook::Effect, 2, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
+    let t43 = rt.hook_with(Hook::Effect, 2, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
         match i {
             0 => {
-                let t45 = closure(31, vec![]);
-                Ok(t45)
+                let t44 = closure(37, vec![]);
+                Ok(t44)
             }
             1 => {
-                let mut t46: Vec<Value> = Vec::with_capacity(0);
-                let t47 = Value::array(t46);
-                Ok(t47)
+                let mut t45: Vec<Value> = Vec::with_capacity(0);
+                let t46 = Value::array(t45);
+                Ok(t46)
             }
             _ => Ok(Value::Undefined),
         }
     });
-    let t43 = t44?;
-    let _ = t43;
-    let t49 = rt.hook_with(Hook::Effect, 2, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
+    let t42 = t43?;
+    let _ = t42;
+    let t48 = rt.hook_with(Hook::Effect, 2, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
         match i {
             0 => {
-                let t50 = closure(37, vec![]);
-                Ok(t50)
+                let t49 = closure(40, vec![l0.clone()]);
+                Ok(t49)
             }
             1 => {
-                let mut t51: Vec<Value> = Vec::with_capacity(0);
-                let t52 = Value::array(t51);
-                Ok(t52)
+                let mut t50: Vec<Value> = Vec::with_capacity(3);
+                let t51 = rt.member(&l0, "folder")?;
+                t50.push(t51);
+                let t52 = rt.member(&l0, "open")?;
+                t50.push(t52);
+                let t53 = rt.member(&l0, "dirty")?;
+                t50.push(t53);
+                let t54 = Value::array(t50);
+                Ok(t54)
             }
             _ => Ok(Value::Undefined),
         }
     });
-    let t48 = t49?;
-    let _ = t48;
-    let t54 = rt.hook_with(Hook::Effect, 2, &mut |rt: &mut Runtime, i: usize| -> R<Value> {
-        match i {
-            0 => {
-                let t55 = closure(40, vec![l0.clone()]);
-                Ok(t55)
-            }
-            1 => {
-                let mut t56: Vec<Value> = Vec::with_capacity(3);
-                let t57 = l0.clone();
-                let t58 = rt.member(&t57, "folder")?;
-                t56.push(t58);
-                let t59 = l0.clone();
-                let t60 = rt.member(&t59, "open")?;
-                t56.push(t60);
-                let t61 = l0.clone();
-                let t62 = rt.member(&t61, "dirty")?;
-                t56.push(t62);
-                let t63 = Value::array(t56);
-                Ok(t63)
-            }
-            _ => Ok(Value::Undefined),
-        }
-    });
-    let t53 = t54?;
-    let _ = t53;
-    let t64 = inst.is_some() && rt.is_pure_render();
-    let t65 = if t64 { occ[0] += 1; occ[0] } else { 0 };
-    let mut t66 = rt.tpl_begin(t64, 7, t65, 0, 2);
-    let t67: Vec<Value> = Vec::new();
-    match rt.tpl_reuse(&t66, 0, false, &t67) {
-        Some(v) => rt.tpl_push(&mut t66, v, t67, false),
-        None => {
-            rt.tpl_push(&mut t66, Value::Bool(true), t67, true);
-        }
-    }
-    let t68: Vec<Value> = if t66.caching() { vec![read(&l0)] } else { Vec::new() };
-    match rt.tpl_reuse(&t66, 1, false, &t68) {
-        Some(v) => rt.tpl_push(&mut t66, v, t68, false),
-        None => {
-            let t69 = l0.clone();
-            let t70 = rt.member(&t69, "folder")?;
-            rt.tpl_push(&mut t66, t70, t68, true);
-        }
-    }
-    let t71 = rt.tpl_finish(t66, None);
-    let t72 = t71;
-    l6 = t72;
-    let t73 = l2.clone();
-    let t74 = if t73.truthy() {
-        let t75 = l0.clone();
-        let t76 = rt.member(&t75, "open")?;
-        let t77 = Value::Bool(!strict_equals(&t76, &Value::Null));
-        t77
-    } else { t73 };
-    if t74.truthy() {
-        let t78 = inst.is_some() && rt.is_pure_render();
-        let t79 = if t78 { occ[1] += 1; occ[1] } else { 0 };
-        let mut t80 = rt.tpl_begin(t78, 8, t79, 4, 2);
-        let t81: Vec<Value> = if t80.caching() { vec![read(&l6)] } else { Vec::new() };
-        match rt.tpl_reuse(&t80, 0, false, &t81) {
-            Some(v) => rt.tpl_push(&mut t80, v, t81, false),
+    let t47 = t48?;
+    let _ = t47;
+    let t55 = inst.is_some() && rt.is_pure_render();
+    let t56 = if t55 { occ[0] += 1; occ[0] } else { 0 };
+    let mut t57 = rt.tpl_begin(t55, 7, t56, 0, 2);
+    let t58 = {
+        let t59: Vec<Value> = Vec::new();
+        match rt.tpl_reuse(&t57, 0, false, &t59) {
+            Some(v) => rt.tpl_push(&mut t57, v, t59, false),
             None => {
-                let t82 = l6.clone();
-                rt.tpl_push(&mut t80, t82, t81, true);
+                rt.tpl_push(&mut t57, Value::Bool(true), t59, true);
             }
         }
-        let t83: Vec<Value> = if t80.caching() { vec![read(&l0), read(&l3)] } else { Vec::new() };
-        match rt.tpl_reuse(&t80, 1, false, &t83) {
-            Some(v) => rt.tpl_push(&mut t80, v, t83, false),
+        let t60: Vec<Value> = if t57.caching() { vec![read(&l0)] } else { Vec::new() };
+        match rt.tpl_reuse(&t57, 1, false, &t60) {
+            Some(v) => rt.tpl_push(&mut t57, v, t60, false),
             None => {
-                let t84 = rt.global(17);
-                let t85 = component_callee(t84)?;
-                let mut t86: Vec<(Str, Value)> = Vec::with_capacity(4);
-                let t87 = l0.clone();
-                obj_put(&mut t86, "s", t87);
-                obj_put(&mut t86, "phone", Value::Bool(true));
-                let t88 = l3.clone();
-                obj_put(&mut t86, "heading", t88);
-                let t89 = None;
-                let t90 = component_elem(t85, t86, t89, None);
-                rt.tpl_push(&mut t80, t90, t83, true);
+                let t61 = rt.member(&l0, "folder")?;
+                rt.tpl_push(&mut t57, t61, t60, true);
             }
         }
-        let t91 = rt.tpl_finish(t80, None);
-        return Ok(t91);
-    }
-    let t92 = l1.clone();
-    let t93 = rt.member(&t92, "mobile")?;
-    if t93.truthy() {
-        let t94 = inst.is_some() && rt.is_pure_render();
-        let t95 = if t94 { occ[2] += 1; occ[2] } else { 0 };
-        let mut t96 = rt.tpl_begin(t94, 9, t95, 12, 9);
-        let t97: Vec<Value> = if t96.caching() { vec![read(&l1)] } else { Vec::new() };
-        match rt.tpl_reuse(&t96, 0, false, &t97) {
-            Some(v) => rt.tpl_push(&mut t96, v, t97, false),
-            None => {
-                let mut t98 = String::new();
-                t98.push_str("app narrow ");
-                let t99 = l1.clone();
-                let t100 = rt.member(&t99, "platform")?;
-                t98.push_str(&t100.to_js_string());
-                let t101 = Value::str(&t98);
-                rt.tpl_push(&mut t96, t101, t97, true);
-            }
-        }
-        let t102: Vec<Value> = if t96.caching() { vec![read(&l6)] } else { Vec::new() };
-        match rt.tpl_reuse(&t96, 1, false, &t102) {
-            Some(v) => rt.tpl_push(&mut t96, v, t102, false),
-            None => {
-                let t103 = l6.clone();
-                rt.tpl_push(&mut t96, t103, t102, true);
-            }
-        }
-        let t104: Vec<Value> = if t96.caching() { vec![read(&l1), read(&l3)] } else { Vec::new() };
-        match rt.tpl_reuse(&t96, 2, false, &t104) {
-            Some(v) => rt.tpl_push(&mut t96, v, t104, false),
-            None => {
-                let t105 = l1.clone();
-                let t106 = rt.member(&t105, "platform")?;
-                let t107 = Value::Bool(strict_equals(&t106, &str("android")));
-                let t108 = if t107.truthy() {
-                    let t109 = inst.is_some() && rt.is_pure_render();
-                    let t110 = if t109 { occ[3] += 1; occ[3] } else { 0 };
-                    let mut t111 = rt.tpl_begin(t109, 10, t110, 5, 1);
-                    let t112: Vec<Value> = if t111.caching() { vec![read(&l3)] } else { Vec::new() };
-                    match rt.tpl_reuse(&t111, 0, false, &t112) {
-                        Some(v) => rt.tpl_push(&mut t111, v, t112, false),
-                        None => {
-                            let t113 = l3.clone();
-                            rt.tpl_push(&mut t111, t113, t112, true);
-                        }
-                    }
-                    let t114 = rt.tpl_finish(t111, None);
-                    t114
-                } else { t107 };
-                rt.tpl_push(&mut t96, t108, t104, true);
-            }
-        }
-        let t115: Vec<Value> = if t96.caching() { vec![read(&l1), read(&l3)] } else { Vec::new() };
-        match rt.tpl_reuse(&t96, 3, false, &t115) {
-            Some(v) => rt.tpl_push(&mut t96, v, t115, false),
-            None => {
-                let t116 = l1.clone();
-                let t117 = rt.member(&t116, "platform")?;
-                let t118 = Value::Bool(strict_equals(&t117, &str("ios")));
-                let t119 = if t118.truthy() {
-                    let t120 = l3.clone();
-                    t120
-                } else {
-                    Value::Undefined
-                };
-                rt.tpl_push(&mut t96, t119, t115, true);
-            }
-        }
-        let t121: Vec<Value> = if t96.caching() { vec![read(&l1)] } else { Vec::new() };
-        match rt.tpl_reuse(&t96, 4, false, &t121) {
-            Some(v) => rt.tpl_push(&mut t96, v, t121, false),
-            None => {
-                let t122 = l1.clone();
-                let t123 = rt.member(&t122, "platform")?;
-                let t124 = Value::Bool(strict_equals(&t123, &str("ios")));
-                let t125 = if t124.truthy() {
-                    str("52")
-                } else {
-                    Value::Undefined
-                };
-                rt.tpl_push(&mut t96, t125, t121, true);
-            }
-        }
-        let t126: Vec<Value> = if t96.caching() { vec![read(&l1), read(&l3)] } else { Vec::new() };
-        match rt.tpl_reuse(&t96, 5, false, &t126) {
-            Some(v) => rt.tpl_push(&mut t96, v, t126, false),
-            None => {
-                let t127 = l1.clone();
-                let t128 = rt.member(&t127, "platform")?;
-                let t129 = Value::Bool(strict_equals(&t128, &str("ios")));
-                let t130 = if t129.truthy() {
-                    let t131 = inst.is_some() && rt.is_pure_render();
-                    let t132 = if t131 { occ[4] += 1; occ[4] } else { 0 };
-                    let mut t133 = rt.tpl_begin(t131, 11, t132, 6, 1);
-                    let t134: Vec<Value> = if t133.caching() { vec![read(&l3)] } else { Vec::new() };
-                    match rt.tpl_reuse(&t133, 0, false, &t134) {
-                        Some(v) => rt.tpl_push(&mut t133, v, t134, false),
-                        None => {
-                            let t135 = l3.clone();
-                            rt.tpl_push(&mut t133, t135, t134, true);
-                        }
-                    }
-                    let t136 = rt.tpl_finish(t133, None);
-                    t136
-                } else { t129 };
-                rt.tpl_push(&mut t96, t130, t126, true);
-            }
-        }
-        let t137: Vec<Value> = if t96.caching() { vec![read(&l0)] } else { Vec::new() };
-        match rt.tpl_reuse(&t96, 6, false, &t137) {
-            Some(v) => rt.tpl_push(&mut t96, v, t137, false),
-            None => {
-                let t138 = rt.global(15);
-                let t139 = component_callee(t138)?;
-                let mut t140: Vec<(Str, Value)> = Vec::with_capacity(2);
-                let t141 = l0.clone();
-                obj_put(&mut t140, "s", t141);
-                let t142 = None;
-                let t143 = component_elem(t139, t140, t142, None);
-                rt.tpl_push(&mut t96, t143, t137, true);
-            }
-        }
-        let t144: Vec<Value> = Vec::new();
-        match rt.tpl_reuse(&t96, 7, false, &t144) {
-            Some(v) => rt.tpl_push(&mut t96, v, t144, false),
-            None => {
-                let t145 = rt.global(16);
-                let t146 = component_callee(t145)?;
-                let mut t147: Vec<(Str, Value)> = Vec::with_capacity(1);
-                let t148 = None;
-                let t149 = component_elem(t146, t147, t148, None);
-                rt.tpl_push(&mut t96, t149, t144, true);
-            }
-        }
-        let t150: Vec<Value> = if t96.caching() { vec![read(&l0)] } else { Vec::new() };
-        match rt.tpl_reuse(&t96, 8, false, &t150) {
-            Some(v) => rt.tpl_push(&mut t96, v, t150, false),
-            None => {
-                let t151 = rt.global(14);
-                let t152 = component_callee(t151)?;
-                let mut t153: Vec<(Str, Value)> = Vec::with_capacity(2);
-                let t154 = l0.clone();
-                obj_put(&mut t153, "s", t154);
-                let t155 = None;
-                let t156 = component_elem(t152, t153, t155, None);
-                rt.tpl_push(&mut t96, t156, t150, true);
-            }
-        }
-        let t157 = rt.tpl_finish(t96, None);
-        return Ok(t157);
-    }
-    let t158 = inst.is_some() && rt.is_pure_render();
-    let t159 = if t158 { occ[5] += 1; occ[5] } else { 0 };
-    let mut t160 = rt.tpl_begin(t158, 12, t159, 15, 7);
-    let t161: Vec<Value> = if t160.caching() { vec![read(&l2)] } else { Vec::new() };
-    match rt.tpl_reuse(&t160, 0, false, &t161) {
-        Some(v) => rt.tpl_push(&mut t160, v, t161, false),
-        None => {
-            let t162 = l2.clone();
-            let t163 = if t162.truthy() {
-                str("app desktop narrow")
-            } else {
-                str("app desktop")
-            };
-            rt.tpl_push(&mut t160, t163, t161, true);
-        }
-    }
-    let t164: Vec<Value> = if t160.caching() { vec![read(&l6)] } else { Vec::new() };
-    match rt.tpl_reuse(&t160, 1, false, &t164) {
-        Some(v) => rt.tpl_push(&mut t160, v, t164, false),
-        None => {
-            let t165 = l6.clone();
-            rt.tpl_push(&mut t160, t165, t164, true);
-        }
-    }
-    let t166: Vec<Value> = if t160.caching() { vec![read(&l3)] } else { Vec::new() };
-    match rt.tpl_reuse(&t160, 2, false, &t166) {
-        Some(v) => rt.tpl_push(&mut t160, v, t166, false),
-        None => {
-            let t167 = l3.clone();
-            rt.tpl_push(&mut t160, t167, t166, true);
-        }
-    }
-    let t168: Vec<Value> = if t160.caching() { vec![read(&l0)] } else { Vec::new() };
-    match rt.tpl_reuse(&t160, 3, false, &t168) {
-        Some(v) => rt.tpl_push(&mut t160, v, t168, false),
-        None => {
-            let t169 = rt.global(15);
-            let t170 = component_callee(t169)?;
-            let mut t171: Vec<(Str, Value)> = Vec::with_capacity(2);
-            let t172 = l0.clone();
-            obj_put(&mut t171, "s", t172);
-            let t173 = None;
-            let t174 = component_elem(t170, t171, t173, None);
-            rt.tpl_push(&mut t160, t174, t168, true);
-        }
-    }
-    let t175: Vec<Value> = Vec::new();
-    match rt.tpl_reuse(&t160, 4, false, &t175) {
-        Some(v) => rt.tpl_push(&mut t160, v, t175, false),
-        None => {
-            let t176 = rt.global(16);
-            let t177 = component_callee(t176)?;
-            let mut t178: Vec<(Str, Value)> = Vec::with_capacity(1);
-            let t179 = None;
-            let t180 = component_elem(t177, t178, t179, None);
-            rt.tpl_push(&mut t160, t180, t175, true);
-        }
-    }
-    let t181: Vec<Value> = if t160.caching() { vec![read(&l0)] } else { Vec::new() };
-    match rt.tpl_reuse(&t160, 5, false, &t181) {
-        Some(v) => rt.tpl_push(&mut t160, v, t181, false),
-        None => {
-            let t182 = rt.global(14);
-            let t183 = component_callee(t182)?;
-            let mut t184: Vec<(Str, Value)> = Vec::with_capacity(2);
-            let t185 = l0.clone();
-            obj_put(&mut t184, "s", t185);
-            let t186 = None;
-            let t187 = component_elem(t183, t184, t186, None);
-            rt.tpl_push(&mut t160, t187, t181, true);
-        }
-    }
-    let t188: Vec<Value> = if t160.caching() { vec![read(&l0), read(&l2), read(&l3)] } else { Vec::new() };
-    match rt.tpl_reuse(&t160, 6, false, &t188) {
-        Some(v) => rt.tpl_push(&mut t160, v, t188, false),
-        None => {
-            let t189 = l2.clone();
-            let t190 = Value::Bool(!t189.truthy());
-            let t191 = if t190.truthy() {
-                let t192 = inst.is_some() && rt.is_pure_render();
-                let t193 = if t192 { occ[6] += 1; occ[6] } else { 0 };
-                let mut t194 = rt.tpl_begin(t192, 13, t193, 14, 1);
-                let t195: Vec<Value> = if t194.caching() { vec![read(&l0), read(&l3)] } else { Vec::new() };
-                match rt.tpl_reuse(&t194, 0, false, &t195) {
-                    Some(v) => rt.tpl_push(&mut t194, v, t195, false),
-                    None => {
-                        let t196 = l0.clone();
-                        let t197 = rt.member(&t196, "open")?;
-                        let t198 = Value::Bool(!strict_equals(&t197, &Value::Null));
-                        let t199 = if t198.truthy() {
-                            let t200 = rt.global(17);
-                            let t201 = component_callee(t200)?;
-                            let mut t202: Vec<(Str, Value)> = Vec::with_capacity(4);
-                            let t203 = l0.clone();
-                            obj_put(&mut t202, "s", t203);
-                            obj_put(&mut t202, "phone", Value::Bool(false));
-                            let t204 = l3.clone();
-                            obj_put(&mut t202, "heading", t204);
-                            let t205 = None;
-                            let t206 = component_elem(t201, t202, t205, None);
-                            t206
-                        } else {
-                            let t207 = inst.is_some() && rt.is_pure_render();
-                            let t208 = if t207 { occ[7] += 1; occ[7] } else { 0 };
-                            let mut t209 = rt.tpl_begin(t207, 14, t208, 13, 0);
-                            let t210 = rt.tpl_finish(t209, None);
-                            t210
-                        };
-                        rt.tpl_push(&mut t194, t199, t195, true);
-                    }
+        rt.tpl_finish(t57, None)
+    };
+    let t62 = t58;
+    l6 = t62;
+    let t63 = l2.clone();
+    let t64 = if t63.truthy() {
+        let t65 = rt.member(&l0, "open")?;
+        let t66 = Value::Bool(!strict_equals(&t65, &Value::Null));
+        t66
+    } else { t63 };
+    if t64.truthy() {
+        let t67 = inst.is_some() && rt.is_pure_render();
+        let t68 = if t67 { occ[1] += 1; occ[1] } else { 0 };
+        let mut t69 = rt.tpl_begin(t67, 8, t68, 4, 2);
+        let t70 = {
+            let t71: Vec<Value> = if t69.caching() { vec![read(&l6)] } else { Vec::new() };
+            match rt.tpl_reuse(&t69, 0, false, &t71) {
+                Some(v) => rt.tpl_push(&mut t69, v, t71, false),
+                None => {
+                    let t72 = l6.clone();
+                    rt.tpl_push(&mut t69, t72, t71, true);
                 }
-                let t211 = rt.tpl_finish(t194, None);
-                t211
-            } else { t190 };
-            rt.tpl_push(&mut t160, t191, t188, true);
-        }
+            }
+            let t73: Vec<Value> = if t69.caching() { vec![read(&l0), read(&l3)] } else { Vec::new() };
+            match rt.tpl_reuse(&t69, 1, false, &t73) {
+                Some(v) => rt.tpl_push(&mut t69, v, t73, false),
+                None => {
+                    let t74 = rt.global(17);
+                    let t75 = component_callee(t74)?;
+                    let mut t76: Vec<(Str, Value)> = Vec::with_capacity(4);
+                    let t77 = l0.clone();
+                    let t78 = rt.lit_key(36, "s");
+                    obj_put_str(&mut t76, t78, t77);
+                    let t79 = rt.lit_key(37, "phone");
+                    obj_put_str(&mut t76, t79, Value::Bool(true));
+                    let t80 = l3.clone();
+                    let t81 = rt.lit_key(38, "heading");
+                    obj_put_str(&mut t76, t81, t80);
+                    let t82 = None;
+                    let t83 = component_elem(t75, t76, t82, None);
+                    rt.tpl_push(&mut t69, t83, t73, true);
+                }
+            }
+            rt.tpl_finish(t69, None)
+        };
+        return Ok(t70);
     }
-    let t212 = rt.tpl_finish(t160, None);
-    return Ok(t212);
+    let t84 = rt.member(&l1, "mobile")?;
+    if t84.truthy() {
+        let t85 = inst.is_some() && rt.is_pure_render();
+        let t86 = if t85 { occ[2] += 1; occ[2] } else { 0 };
+        let mut t87 = rt.tpl_begin(t85, 9, t86, 12, 9);
+        let t88 = {
+            let t89: Vec<Value> = if t87.caching() { vec![read(&l1)] } else { Vec::new() };
+            match rt.tpl_reuse(&t87, 0, false, &t89) {
+                Some(v) => rt.tpl_push(&mut t87, v, t89, false),
+                None => {
+                    let mut t90 = String::new();
+                    t90.push_str("app narrow ");
+                    let t91 = rt.member(&l1, "platform")?;
+                    t90.push_str(&t91.to_js_string());
+                    let t92 = Value::str(&t90);
+                    rt.tpl_push(&mut t87, t92, t89, true);
+                }
+            }
+            let t93: Vec<Value> = if t87.caching() { vec![read(&l6)] } else { Vec::new() };
+            match rt.tpl_reuse(&t87, 1, false, &t93) {
+                Some(v) => rt.tpl_push(&mut t87, v, t93, false),
+                None => {
+                    let t94 = l6.clone();
+                    rt.tpl_push(&mut t87, t94, t93, true);
+                }
+            }
+            let t95: Vec<Value> = if t87.caching() { vec![read(&l1), read(&l3)] } else { Vec::new() };
+            match rt.tpl_reuse(&t87, 2, false, &t95) {
+                Some(v) => rt.tpl_push(&mut t87, v, t95, false),
+                None => {
+                    let t96 = rt.member(&l1, "platform")?;
+                    let t97 = Value::Bool(eq_str(&t96, "android"));
+                    let t98 = if t97.truthy() {
+                        let t99 = inst.is_some() && rt.is_pure_render();
+                        let t100 = if t99 { occ[3] += 1; occ[3] } else { 0 };
+                        let mut t101 = rt.tpl_begin(t99, 10, t100, 5, 1);
+                        let t103: Vec<Value> = if t101.caching() { vec![read(&l3)] } else { Vec::new() };
+                        let t102 = if rt.tpl_reuse_all(&mut t101, &t103) {
+                            rt.tpl_finish(t101, None)
+                        } else {
+                            let t104: Vec<Value> = if t101.caching() { vec![read(&l3)] } else { Vec::new() };
+                            match rt.tpl_reuse(&t101, 0, false, &t104) {
+                                Some(v) => rt.tpl_push(&mut t101, v, t104, false),
+                                None => {
+                                    let t105 = l3.clone();
+                                    rt.tpl_push(&mut t101, t105, t104, true);
+                                }
+                            }
+                            rt.tpl_finish(t101, None)
+                        };
+                        t102
+                    } else { t97 };
+                    rt.tpl_push(&mut t87, t98, t95, true);
+                }
+            }
+            let t106: Vec<Value> = if t87.caching() { vec![read(&l1), read(&l3)] } else { Vec::new() };
+            match rt.tpl_reuse(&t87, 3, false, &t106) {
+                Some(v) => rt.tpl_push(&mut t87, v, t106, false),
+                None => {
+                    let t107 = rt.member(&l1, "platform")?;
+                    let t108 = if eq_str(&t107, "ios") {
+                        let t109 = l3.clone();
+                        t109
+                    } else {
+                        Value::Undefined
+                    };
+                    rt.tpl_push(&mut t87, t108, t106, true);
+                }
+            }
+            let t110: Vec<Value> = if t87.caching() { vec![read(&l1)] } else { Vec::new() };
+            match rt.tpl_reuse(&t87, 4, false, &t110) {
+                Some(v) => rt.tpl_push(&mut t87, v, t110, false),
+                None => {
+                    let t111 = rt.member(&l1, "platform")?;
+                    let t112 = if eq_str(&t111, "ios") {
+                        let t113 = rt.lit(39, "52");
+                        t113
+                    } else {
+                        Value::Undefined
+                    };
+                    rt.tpl_push(&mut t87, t112, t110, true);
+                }
+            }
+            let t114: Vec<Value> = if t87.caching() { vec![read(&l1), read(&l3)] } else { Vec::new() };
+            match rt.tpl_reuse(&t87, 5, false, &t114) {
+                Some(v) => rt.tpl_push(&mut t87, v, t114, false),
+                None => {
+                    let t115 = rt.member(&l1, "platform")?;
+                    let t116 = Value::Bool(eq_str(&t115, "ios"));
+                    let t117 = if t116.truthy() {
+                        let t118 = inst.is_some() && rt.is_pure_render();
+                        let t119 = if t118 { occ[4] += 1; occ[4] } else { 0 };
+                        let mut t120 = rt.tpl_begin(t118, 11, t119, 6, 1);
+                        let t122: Vec<Value> = if t120.caching() { vec![read(&l3)] } else { Vec::new() };
+                        let t121 = if rt.tpl_reuse_all(&mut t120, &t122) {
+                            rt.tpl_finish(t120, None)
+                        } else {
+                            let t123: Vec<Value> = if t120.caching() { vec![read(&l3)] } else { Vec::new() };
+                            match rt.tpl_reuse(&t120, 0, false, &t123) {
+                                Some(v) => rt.tpl_push(&mut t120, v, t123, false),
+                                None => {
+                                    let t124 = l3.clone();
+                                    rt.tpl_push(&mut t120, t124, t123, true);
+                                }
+                            }
+                            rt.tpl_finish(t120, None)
+                        };
+                        t121
+                    } else { t116 };
+                    rt.tpl_push(&mut t87, t117, t114, true);
+                }
+            }
+            let t125: Vec<Value> = if t87.caching() { vec![read(&l0)] } else { Vec::new() };
+            match rt.tpl_reuse(&t87, 6, false, &t125) {
+                Some(v) => rt.tpl_push(&mut t87, v, t125, false),
+                None => {
+                    let t126 = rt.global(15);
+                    let t127 = component_callee(t126)?;
+                    let mut t128: Vec<(Str, Value)> = Vec::with_capacity(2);
+                    let t129 = l0.clone();
+                    let t130 = rt.lit_key(36, "s");
+                    obj_put_str(&mut t128, t130, t129);
+                    let t131 = None;
+                    let t132 = component_elem(t127, t128, t131, None);
+                    rt.tpl_push(&mut t87, t132, t125, true);
+                }
+            }
+            let t133: Vec<Value> = Vec::new();
+            match rt.tpl_reuse(&t87, 7, false, &t133) {
+                Some(v) => rt.tpl_push(&mut t87, v, t133, false),
+                None => {
+                    let t134 = rt.global(16);
+                    let t135 = component_callee(t134)?;
+                    let mut t136: Vec<(Str, Value)> = Vec::with_capacity(1);
+                    let t137 = None;
+                    let t138 = component_elem(t135, t136, t137, None);
+                    rt.tpl_push(&mut t87, t138, t133, true);
+                }
+            }
+            let t139: Vec<Value> = if t87.caching() { vec![read(&l0)] } else { Vec::new() };
+            match rt.tpl_reuse(&t87, 8, false, &t139) {
+                Some(v) => rt.tpl_push(&mut t87, v, t139, false),
+                None => {
+                    let t140 = rt.global(14);
+                    let t141 = component_callee(t140)?;
+                    let mut t142: Vec<(Str, Value)> = Vec::with_capacity(2);
+                    let t143 = l0.clone();
+                    let t144 = rt.lit_key(36, "s");
+                    obj_put_str(&mut t142, t144, t143);
+                    let t145 = None;
+                    let t146 = component_elem(t141, t142, t145, None);
+                    rt.tpl_push(&mut t87, t146, t139, true);
+                }
+            }
+            rt.tpl_finish(t87, None)
+        };
+        return Ok(t88);
+    }
+    let t147 = inst.is_some() && rt.is_pure_render();
+    let t148 = if t147 { occ[5] += 1; occ[5] } else { 0 };
+    let mut t149 = rt.tpl_begin(t147, 12, t148, 15, 7);
+    let t150 = {
+        let t151: Vec<Value> = if t149.caching() { vec![read(&l2)] } else { Vec::new() };
+        match rt.tpl_reuse(&t149, 0, false, &t151) {
+            Some(v) => rt.tpl_push(&mut t149, v, t151, false),
+            None => {
+                let t152 = l2.clone();
+                let t153 = if t152.truthy() {
+                    let t154 = rt.lit(40, "app desktop narrow");
+                    t154
+                } else {
+                    let t155 = rt.lit(41, "app desktop");
+                    t155
+                };
+                rt.tpl_push(&mut t149, t153, t151, true);
+            }
+        }
+        let t156: Vec<Value> = if t149.caching() { vec![read(&l6)] } else { Vec::new() };
+        match rt.tpl_reuse(&t149, 1, false, &t156) {
+            Some(v) => rt.tpl_push(&mut t149, v, t156, false),
+            None => {
+                let t157 = l6.clone();
+                rt.tpl_push(&mut t149, t157, t156, true);
+            }
+        }
+        let t158: Vec<Value> = if t149.caching() { vec![read(&l3)] } else { Vec::new() };
+        match rt.tpl_reuse(&t149, 2, false, &t158) {
+            Some(v) => rt.tpl_push(&mut t149, v, t158, false),
+            None => {
+                let t159 = l3.clone();
+                rt.tpl_push(&mut t149, t159, t158, true);
+            }
+        }
+        let t160: Vec<Value> = if t149.caching() { vec![read(&l0)] } else { Vec::new() };
+        match rt.tpl_reuse(&t149, 3, false, &t160) {
+            Some(v) => rt.tpl_push(&mut t149, v, t160, false),
+            None => {
+                let t161 = rt.global(15);
+                let t162 = component_callee(t161)?;
+                let mut t163: Vec<(Str, Value)> = Vec::with_capacity(2);
+                let t164 = l0.clone();
+                let t165 = rt.lit_key(36, "s");
+                obj_put_str(&mut t163, t165, t164);
+                let t166 = None;
+                let t167 = component_elem(t162, t163, t166, None);
+                rt.tpl_push(&mut t149, t167, t160, true);
+            }
+        }
+        let t168: Vec<Value> = Vec::new();
+        match rt.tpl_reuse(&t149, 4, false, &t168) {
+            Some(v) => rt.tpl_push(&mut t149, v, t168, false),
+            None => {
+                let t169 = rt.global(16);
+                let t170 = component_callee(t169)?;
+                let mut t171: Vec<(Str, Value)> = Vec::with_capacity(1);
+                let t172 = None;
+                let t173 = component_elem(t170, t171, t172, None);
+                rt.tpl_push(&mut t149, t173, t168, true);
+            }
+        }
+        let t174: Vec<Value> = if t149.caching() { vec![read(&l0)] } else { Vec::new() };
+        match rt.tpl_reuse(&t149, 5, false, &t174) {
+            Some(v) => rt.tpl_push(&mut t149, v, t174, false),
+            None => {
+                let t175 = rt.global(14);
+                let t176 = component_callee(t175)?;
+                let mut t177: Vec<(Str, Value)> = Vec::with_capacity(2);
+                let t178 = l0.clone();
+                let t179 = rt.lit_key(36, "s");
+                obj_put_str(&mut t177, t179, t178);
+                let t180 = None;
+                let t181 = component_elem(t176, t177, t180, None);
+                rt.tpl_push(&mut t149, t181, t174, true);
+            }
+        }
+        let t182: Vec<Value> = if t149.caching() { vec![read(&l0), read(&l2), read(&l3)] } else { Vec::new() };
+        match rt.tpl_reuse(&t149, 6, false, &t182) {
+            Some(v) => rt.tpl_push(&mut t149, v, t182, false),
+            None => {
+                let t183 = l2.clone();
+                let t184 = Value::Bool(!(t183.truthy()));
+                let t185 = if t184.truthy() {
+                    let t186 = inst.is_some() && rt.is_pure_render();
+                    let t187 = if t186 { occ[6] += 1; occ[6] } else { 0 };
+                    let mut t188 = rt.tpl_begin(t186, 13, t187, 14, 1);
+                    let t190: Vec<Value> = if t188.caching() { vec![read(&l0), read(&l3)] } else { Vec::new() };
+                    let t189 = if rt.tpl_reuse_all(&mut t188, &t190) {
+                        rt.tpl_finish(t188, None)
+                    } else {
+                        let t191: Vec<Value> = if t188.caching() { vec![read(&l0), read(&l3)] } else { Vec::new() };
+                        match rt.tpl_reuse(&t188, 0, false, &t191) {
+                            Some(v) => rt.tpl_push(&mut t188, v, t191, false),
+                            None => {
+                                let t192 = rt.member(&l0, "open")?;
+                                let t193 = if !strict_equals(&t192, &Value::Null) {
+                                    let t194 = rt.global(17);
+                                    let t195 = component_callee(t194)?;
+                                    let mut t196: Vec<(Str, Value)> = Vec::with_capacity(4);
+                                    let t197 = l0.clone();
+                                    let t198 = rt.lit_key(36, "s");
+                                    obj_put_str(&mut t196, t198, t197);
+                                    let t199 = rt.lit_key(37, "phone");
+                                    obj_put_str(&mut t196, t199, Value::Bool(false));
+                                    let t200 = l3.clone();
+                                    let t201 = rt.lit_key(38, "heading");
+                                    obj_put_str(&mut t196, t201, t200);
+                                    let t202 = None;
+                                    let t203 = component_elem(t195, t196, t202, None);
+                                    t203
+                                } else {
+                                    let t204 = inst.is_some() && rt.is_pure_render();
+                                    let t205 = if t204 { occ[7] += 1; occ[7] } else { 0 };
+                                    let mut t206 = rt.tpl_begin(t204, 14, t205, 13, 0);
+                                    let t207 = {
+                                        rt.tpl_finish(t206, None)
+                                    };
+                                    t207
+                                };
+                                rt.tpl_push(&mut t188, t193, t191, true);
+                            }
+                        }
+                        rt.tpl_finish(t188, None)
+                    };
+                    t189
+                } else { t184 };
+                rt.tpl_push(&mut t149, t185, t182, true);
+            }
+        }
+        rt.tpl_finish(t149, None)
+    };
+    return Ok(t150);
     Ok(Value::Undefined)
 }
 
@@ -1759,23 +1764,33 @@ fn f24(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
         let mut t7: Vec<Value> = Vec::with_capacity(2);
         let t8 = rt.regex("\\/+$", "")?;
         t7.push(t8);
-        t7.push(str(""));
-        let t9 = rt.call_method(&t6, Method::StrReplace, t7)?;
-        t9
+        let t9 = rt.lit(12, "");
+        t7.push(t9);
+        let t10 = rt.call_method(&t6, Method::StrReplace, t7)?;
+        t10
     } else {
-        str("Notes")
+        let t11 = rt.lit(17, "Notes");
+        t11
     };
-    obj_put(&mut t1, "folder", t4);
-    let mut t10: Vec<Value> = Vec::with_capacity(0);
-    let t11 = Value::array(t10);
-    obj_put(&mut t1, "entries", t11);
-    obj_put(&mut t1, "open", Value::Null);
-    obj_put(&mut t1, "text", str(""));
-    obj_put(&mut t1, "dirty", Value::Bool(false));
-    obj_put(&mut t1, "problem", Value::Null);
-    obj_put(&mut t1, "editing", Value::Bool(false));
-    let t12 = Value::object(t1);
-    return Ok(t12);
+    let t12 = rt.lit_key(42, "folder");
+    obj_put_str(&mut t1, t12, t4);
+    let mut t13: Vec<Value> = Vec::with_capacity(0);
+    let t14 = Value::array(t13);
+    let t15 = rt.lit_key(43, "entries");
+    obj_put_str(&mut t1, t15, t14);
+    let t16 = rt.lit_key(10, "open");
+    obj_put_str(&mut t1, t16, Value::Null);
+    let t17 = rt.lit(12, "");
+    let t18 = rt.lit_key(13, "text");
+    obj_put_str(&mut t1, t18, t17);
+    let t19 = rt.lit_key(8, "dirty");
+    obj_put_str(&mut t1, t19, Value::Bool(false));
+    let t20 = rt.lit_key(44, "problem");
+    obj_put_str(&mut t1, t20, Value::Null);
+    let t21 = rt.lit_key(11, "editing");
+    obj_put_str(&mut t1, t21, Value::Bool(false));
+    let t22 = Value::object(t1);
+    return Ok(t22);
     Ok(Value::Undefined)
 }
 
@@ -1804,65 +1819,60 @@ fn f26(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
 fn f27(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R<Value> {
     let mut l0: Value = Value::Undefined; let mut l1: Value = Value::Undefined; 
     let mut t1: Vec<Value> = Vec::with_capacity(1);
-    t1.push(str("notes:body"));
-    let t2 = rt.call_builtin(Builtin::GetElementById, t1)?;
-    let t3 = t2;
-    l0 = t3;
-    let t4 = l0.clone();
-    let t5 = t4;
-    let t6 = read(&cap[0]);
-    let t7 = t5.clone();
-    rt.put_member(&t6, "current", t7)?;
-    let _ = t5;
-    let t8 = read(&cap[1]);
-    let t9 = if t8.truthy() {
-        let t10 = l0.clone();
-        t10
-    } else { t8 };
-    let t11 = if t9.truthy() {
-        let mut t12: Vec<Value> = Vec::with_capacity(0);
-        let t13 = rt.call_builtin(Builtin::ActiveElement, t12)?;
-        let t14 = l0.clone();
-        let t15 = Value::Bool(!strict_equals(&t13, &t14));
-        t15
+    let t2 = rt.lit(14, "notes:body");
+    t1.push(t2);
+    let t3 = rt.call_builtin(Builtin::GetElementById, t1)?;
+    let t4 = t3;
+    l0 = t4;
+    let t5 = l0.clone();
+    let t6 = t5;
+    let t7 = read(&cap[0]);
+    let t8 = t6.clone();
+    rt.put_member(&t7, "current", t8)?;
+    let _ = t6;
+    let t9 = read(&cap[1]);
+    let t10 = if t9.truthy() {
+        let t11 = l0.clone();
+        t11
     } else { t9 };
-    if t11.truthy() {
-        let t16 = l0.clone();
-        let mut t17: Vec<Value> = Vec::with_capacity(0);
-        let t18 = rt.call_method(&t16, Method::NodeFocus, t17)?;
-        let _ = t18;
-        let t19 = l0.clone();
-        let t20 = rt.member(&t19, "value")?;
-        let t21 = rt.member(&t20, "length")?;
-        let t22 = t21;
-        l1 = t22;
-        let t23 = l0.clone();
-        let mut t24: Vec<Value> = Vec::with_capacity(2);
-        let t25 = l1.clone();
-        t24.push(t25);
-        let t26 = l1.clone();
-        t24.push(t26);
-        let t27 = rt.call_method(&t23, Method::NodeSetSelectionRange, t24)?;
-        let _ = t27;
+    let t12 = if t10.truthy() {
+        let mut t13: Vec<Value> = Vec::with_capacity(0);
+        let t14 = rt.call_builtin(Builtin::ActiveElement, t13)?;
+        let t15 = Value::Bool(!strict_equals(&t14, &l0));
+        t15
+    } else { t10 };
+    if t12.truthy() {
+        let mut t16: Vec<Value> = Vec::with_capacity(0);
+        let t17 = rt.call_method(&l0, Method::NodeFocus, t16)?;
+        let _ = t17;
+        let t18 = rt.member(&l0, "value")?;
+        let t19 = rt.member(&t18, "length")?;
+        let t20 = t19;
+        l1 = t20;
+        let mut t21: Vec<Value> = Vec::with_capacity(2);
+        let t22 = l1.clone();
+        t21.push(t22);
+        let t23 = l1.clone();
+        t21.push(t23);
+        let t24 = rt.call_method(&l0, Method::NodeSetSelectionRange, t21)?;
+        let _ = t24;
     } else {
-        let t28 = read(&cap[1]);
-        let t29 = Value::Bool(!t28.truthy());
-        let t30 = if t29.truthy() {
-            let t31 = l0.clone();
-            t31
-        } else { t29 };
-        let t32 = if t30.truthy() {
+        let t25 = read(&cap[1]);
+        let t26 = Value::Bool(!(t25.truthy()));
+        let t27 = if t26.truthy() {
+            let t28 = l0.clone();
+            t28
+        } else { t26 };
+        let t29 = if t27.truthy() {
+            let mut t30: Vec<Value> = Vec::with_capacity(0);
+            let t31 = rt.call_builtin(Builtin::ActiveElement, t30)?;
+            let t32 = Value::Bool(strict_equals(&t31, &l0));
+            t32
+        } else { t27 };
+        if t29.truthy() {
             let mut t33: Vec<Value> = Vec::with_capacity(0);
-            let t34 = rt.call_builtin(Builtin::ActiveElement, t33)?;
-            let t35 = l0.clone();
-            let t36 = Value::Bool(strict_equals(&t34, &t35));
-            t36
-        } else { t30 };
-        if t32.truthy() {
-            let t37 = l0.clone();
-            let mut t38: Vec<Value> = Vec::with_capacity(0);
-            let t39 = rt.call_method(&t37, Method::NodeBlur, t38)?;
-            let _ = t39;
+            let t34 = rt.call_method(&l0, Method::NodeBlur, t33)?;
+            let _ = t34;
         }
     }
     Ok(Value::Undefined)
@@ -1875,13 +1885,14 @@ fn f28(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t2 = t1;
     l0 = t2;
     let mut t3: Vec<Value> = Vec::with_capacity(2);
-    t3.push(str("focusin"));
-    let t4 = l0.clone();
+    let t4 = rt.lit(45, "focusin");
     t3.push(t4);
-    let t5 = rt.call_builtin(Builtin::DocumentAddListener, t3)?;
-    let _ = t5;
-    let t6 = closure(30, vec![l0.clone()]);
-    return Ok(t6);
+    let t5 = l0.clone();
+    t3.push(t5);
+    let t6 = rt.call_builtin(Builtin::DocumentAddListener, t3)?;
+    let _ = t6;
+    let t7 = closure(30, vec![l0.clone()]);
+    return Ok(t7);
     Ok(Value::Undefined)
 }
 
@@ -1900,15 +1911,13 @@ fn f29(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t7 = if t5.truthy() {
         let mut t8: Vec<Value> = Vec::with_capacity(0);
         let t9 = rt.call_builtin(Builtin::ActiveElement, t8)?;
-        let t10 = l0.clone();
-        let t11 = Value::Bool(!strict_equals(&t9, &t10));
-        t11
+        let t10 = Value::Bool(!strict_equals(&t9, &l0));
+        t10
     } else { t5 };
     if t7.truthy() {
-        let t12 = l0.clone();
-        let mut t13: Vec<Value> = Vec::with_capacity(0);
-        let t14 = rt.call_method(&t12, Method::NodeFocus, t13)?;
-        let _ = t14;
+        let mut t11: Vec<Value> = Vec::with_capacity(0);
+        let t12 = rt.call_method(&l0, Method::NodeFocus, t11)?;
+        let _ = t12;
     }
     Ok(Value::Undefined)
 }
@@ -1916,11 +1925,12 @@ fn f29(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
 /// `<arrow>` (line 312).
 fn f30(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R<Value> {
     let mut t1: Vec<Value> = Vec::with_capacity(2);
-    t1.push(str("focusin"));
-    let t2 = read(&cap[0]);
+    let t2 = rt.lit(45, "focusin");
     t1.push(t2);
-    let t3 = rt.call_builtin(Builtin::DocumentRemoveListener, t1)?;
-    return Ok(t3);
+    let t3 = read(&cap[0]);
+    t1.push(t3);
+    let t4 = rt.call_builtin(Builtin::DocumentRemoveListener, t1)?;
+    return Ok(t4);
     Ok(Value::Undefined)
 }
 
@@ -1928,11 +1938,10 @@ fn f30(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
 fn f31(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R<Value> {
     let t1 = rt.global(20);
     let t2 = rt.member(&t1, "restored")?;
-    let t3 = Value::Bool(!t2.truthy());
-    if t3.truthy() {
-        let mut t4: Vec<Value> = Vec::with_capacity(0);
-        let t5 = f5(rt, &[], t4, None)?;
-        let _ = t5;
+    if !(t2.truthy()) {
+        let mut t3: Vec<Value> = Vec::with_capacity(0);
+        let t4 = f5(rt, &[], t3, None)?;
+        let _ = t4;
     }
     Ok(Value::Undefined)
 }
@@ -1967,10 +1976,12 @@ fn f33(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t6 = closure(34, vec![]);
     t5.push(t6);
     let t7 = rt.call_method(&t4, Method::ArrayFilter, t5)?;
-    obj_put(&mut t2, "entries", t7);
-    obj_put(&mut t2, "problem", Value::Null);
-    let t8 = Value::object(t2);
-    return Ok(t8);
+    let t8 = rt.lit_key(43, "entries");
+    obj_put_str(&mut t2, t8, t7);
+    let t9 = rt.lit_key(44, "problem");
+    obj_put_str(&mut t2, t9, Value::Null);
+    let t10 = Value::object(t2);
+    return Ok(t10);
     Ok(Value::Undefined)
 }
 
@@ -1980,11 +1991,11 @@ fn f34(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let mut args = args.into_iter();
     let t1 = args.next().unwrap_or(Value::Undefined);
     l0 = t1;
-    let t2 = l0.clone();
-    let mut t3: Vec<Value> = Vec::with_capacity(1);
-    t3.push(str("/"));
-    let t4 = rt.call_method(&t2, Method::StrEndsWith, t3)?;
-    let t5 = Value::Bool(!t4.truthy());
+    let mut t2: Vec<Value> = Vec::with_capacity(1);
+    let t3 = rt.lit(46, "/");
+    t2.push(t3);
+    let t4 = rt.call_method(&l0, Method::StrEndsWith, t2)?;
+    let t5 = Value::Bool(!(t4.truthy()));
     return Ok(t5);
     Ok(Value::Undefined)
 }
@@ -2018,22 +2029,24 @@ fn f36(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t5 = read(&cap[0]);
     t4.push(t5);
     let t6 = f4(rt, &[], t4, None)?;
-    obj_put(&mut t2, "problem", t6);
-    let t7 = Value::object(t2);
-    return Ok(t7);
+    let t7 = rt.lit_key(44, "problem");
+    obj_put_str(&mut t2, t7, t6);
+    let t8 = Value::object(t2);
+    return Ok(t8);
     Ok(Value::Undefined)
 }
 
 /// `<arrow>` (line 318).
 fn f37(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R<Value> {
     let mut t1: Vec<Value> = Vec::with_capacity(2);
-    t1.push(str("keydown"));
-    let t2 = rt.global(11);
+    let t2 = rt.lit(47, "keydown");
     t1.push(t2);
-    let t3 = rt.call_builtin(Builtin::DocumentAddListener, t1)?;
-    let _ = t3;
-    let t4 = closure(39, vec![]);
-    return Ok(t4);
+    let t3 = rt.global(11);
+    t1.push(t3);
+    let t4 = rt.call_builtin(Builtin::DocumentAddListener, t1)?;
+    let _ = t4;
+    let t5 = closure(39, vec![]);
+    return Ok(t5);
     Ok(Value::Undefined)
 }
 
@@ -2052,21 +2065,24 @@ fn f38(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t6 = rt.global(19);
     t5.push(t6);
     let t7 = rt.call_method(&t4, Method::StrSlice, t5)?;
-    obj_put(&mut t2, "text", t7);
-    obj_put(&mut t2, "dirty", Value::Bool(true));
-    let t8 = Value::object(t2);
-    return Ok(t8);
+    let t8 = rt.lit_key(13, "text");
+    obj_put_str(&mut t2, t8, t7);
+    let t9 = rt.lit_key(8, "dirty");
+    obj_put_str(&mut t2, t9, Value::Bool(true));
+    let t10 = Value::object(t2);
+    return Ok(t10);
     Ok(Value::Undefined)
 }
 
 /// `<arrow>` (line 320).
 fn f39(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> R<Value> {
     let mut t1: Vec<Value> = Vec::with_capacity(2);
-    t1.push(str("keydown"));
-    let t2 = rt.global(11);
+    let t2 = rt.lit(47, "keydown");
     t1.push(t2);
-    let t3 = rt.call_builtin(Builtin::DocumentRemoveListener, t1)?;
-    return Ok(t3);
+    let t3 = rt.global(11);
+    t1.push(t3);
+    let t4 = rt.call_builtin(Builtin::DocumentRemoveListener, t1)?;
+    return Ok(t4);
     Ok(Value::Undefined)
 }
 
@@ -2076,9 +2092,9 @@ fn f40(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let mut t2: Vec<(Str, Value)> = Vec::with_capacity(3);
     let t3 = read(&cap[0]);
     let t4 = rt.member(&t3, "open")?;
-    let t5 = Value::Bool(strict_equals(&t4, &Value::Null));
-    let t6 = if t5.truthy() {
-        str("")
+    let t5 = if strict_equals(&t4, &Value::Null) {
+        let t6 = rt.lit(12, "");
+        t6
     } else {
         let mut t7 = String::new();
         let t8 = read(&cap[0]);
@@ -2091,20 +2107,24 @@ fn f40(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
         let t12 = Value::str(&t7);
         t12
     };
-    obj_put(&mut t2, "document", t6);
-    let t13 = read(&cap[0]);
-    let t14 = rt.member(&t13, "open")?;
-    let t15 = if t14.is_nullish() {
-        str("")
-    } else { t14 };
-    obj_put(&mut t2, "caption", t15);
-    let t16 = read(&cap[0]);
-    let t17 = rt.member(&t16, "dirty")?;
-    obj_put(&mut t2, "modified", t17);
-    let t18 = Value::object(t2);
-    t1.push(t18);
-    let t19 = rt.call_builtin(Builtin::CwWindowSet, t1)?;
-    let _ = t19;
+    let t13 = rt.lit_key(48, "document");
+    obj_put_str(&mut t2, t13, t5);
+    let t14 = read(&cap[0]);
+    let t15 = rt.member(&t14, "open")?;
+    let t16 = if t15.is_nullish() {
+        let t17 = rt.lit(12, "");
+        t17
+    } else { t15 };
+    let t18 = rt.lit_key(49, "caption");
+    obj_put_str(&mut t2, t18, t16);
+    let t19 = read(&cap[0]);
+    let t20 = rt.member(&t19, "dirty")?;
+    let t21 = rt.lit_key(50, "modified");
+    obj_put_str(&mut t2, t21, t20);
+    let t22 = Value::object(t2);
+    t1.push(t22);
+    let t23 = rt.call_builtin(Builtin::CwWindowSet, t1)?;
+    let _ = t23;
     Ok(Value::Undefined)
 }
 
@@ -2117,12 +2137,17 @@ fn f41(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let mut t2: Vec<(Str, Value)> = Vec::with_capacity(5);
     let t3 = l0.clone();
     obj_spread(&mut t2, &t3);
-    obj_put(&mut t2, "open", Value::Null);
-    obj_put(&mut t2, "editing", Value::Bool(false));
-    obj_put(&mut t2, "text", str(""));
-    obj_put(&mut t2, "dirty", Value::Bool(false));
-    let t4 = Value::object(t2);
-    return Ok(t4);
+    let t4 = rt.lit_key(10, "open");
+    obj_put_str(&mut t2, t4, Value::Null);
+    let t5 = rt.lit_key(11, "editing");
+    obj_put_str(&mut t2, t5, Value::Bool(false));
+    let t6 = rt.lit(12, "");
+    let t7 = rt.lit_key(13, "text");
+    obj_put_str(&mut t2, t7, t6);
+    let t8 = rt.lit_key(8, "dirty");
+    obj_put_str(&mut t2, t8, Value::Bool(false));
+    let t9 = Value::object(t2);
+    return Ok(t9);
     Ok(Value::Undefined)
 }
 
@@ -2133,12 +2158,11 @@ fn f42(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t1 = args.next().unwrap_or(Value::Undefined);
     l0 = t1;
     let mut t2: Vec<Value> = Vec::with_capacity(1);
-    let t3 = l0.clone();
-    let t4 = rt.member(&t3, "currentTarget")?;
-    let t5 = rt.member(&t4, "value")?;
-    t2.push(t5);
-    let t6 = f10(rt, &[], t2, None)?;
-    return Ok(t6);
+    let t3 = rt.member(&l0, "currentTarget")?;
+    let t4 = rt.member(&t3, "value")?;
+    t2.push(t4);
+    let t5 = f10(rt, &[], t2, None)?;
+    return Ok(t5);
     Ok(Value::Undefined)
 }
 
@@ -2160,20 +2184,20 @@ fn f44(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let mut args = args.into_iter();
     let t1 = args.next().unwrap_or(Value::Undefined);
     l0 = t1;
-    let t2 = l0.clone();
-    let t3 = rt.member(&t2, "editing")?;
-    let t4 = if t3.truthy() {
-        let t5 = l0.clone();
-        t5
+    let t2 = rt.member(&l0, "editing")?;
+    let t3 = if t2.truthy() {
+        let t4 = l0.clone();
+        t4
     } else {
-        let mut t6: Vec<(Str, Value)> = Vec::with_capacity(2);
-        let t7 = l0.clone();
-        obj_spread(&mut t6, &t7);
-        obj_put(&mut t6, "editing", Value::Bool(true));
-        let t8 = Value::object(t6);
+        let mut t5: Vec<(Str, Value)> = Vec::with_capacity(2);
+        let t6 = l0.clone();
+        obj_spread(&mut t5, &t6);
+        let t7 = rt.lit_key(11, "editing");
+        obj_put_str(&mut t5, t7, Value::Bool(true));
+        let t8 = Value::object(t5);
         t8
     };
-    return Ok(t4);
+    return Ok(t3);
     Ok(Value::Undefined)
 }
 
@@ -2187,37 +2211,40 @@ fn f45(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t3 = l0.clone();
     obj_spread(&mut t2, &t3);
     let t4 = read(&cap[0]);
-    obj_put(&mut t2, "open", t4);
-    obj_put(&mut t2, "editing", Value::Bool(true));
-    obj_put(&mut t2, "text", str(""));
-    obj_put(&mut t2, "dirty", Value::Bool(true));
-    let t5 = l0.clone();
-    let t6 = rt.member(&t5, "entries")?;
-    let mut t7: Vec<Value> = Vec::with_capacity(1);
-    let t8 = read(&cap[0]);
-    t7.push(t8);
-    let t9 = rt.call_method(&t6, Method::ArrayIncludes, t7)?;
-    let t10 = if t9.truthy() {
-        let t11 = l0.clone();
-        let t12 = rt.member(&t11, "entries")?;
-        t12
+    let t5 = rt.lit_key(10, "open");
+    obj_put_str(&mut t2, t5, t4);
+    let t6 = rt.lit_key(11, "editing");
+    obj_put_str(&mut t2, t6, Value::Bool(true));
+    let t7 = rt.lit(12, "");
+    let t8 = rt.lit_key(13, "text");
+    obj_put_str(&mut t2, t8, t7);
+    let t9 = rt.lit_key(8, "dirty");
+    obj_put_str(&mut t2, t9, Value::Bool(true));
+    let t10 = rt.member(&l0, "entries")?;
+    let mut t11: Vec<Value> = Vec::with_capacity(1);
+    let t12 = read(&cap[0]);
+    t11.push(t12);
+    let t13 = rt.call_method(&t10, Method::ArrayIncludes, t11)?;
+    let t14 = if t13.truthy() {
+        let t15 = rt.member(&l0, "entries")?;
+        t15
     } else {
-        let mut t13: Vec<Value> = Vec::with_capacity(2);
-        let t14 = l0.clone();
-        let t15 = rt.member(&t14, "entries")?;
-        rt.spread(&mut t13, &t15)?;
-        let t16 = read(&cap[0]);
-        t13.push(t16);
-        let t17 = Value::array(t13);
-        let mut t18: Vec<Value> = Vec::with_capacity(1);
-        let t19 = rt.global(3);
-        t18.push(t19);
-        let t20 = rt.call_method(&t17, Method::ArraySort, t18)?;
-        t20
+        let mut t16: Vec<Value> = Vec::with_capacity(2);
+        let t17 = rt.member(&l0, "entries")?;
+        rt.spread(&mut t16, &t17)?;
+        let t18 = read(&cap[0]);
+        t16.push(t18);
+        let t19 = Value::array(t16);
+        let mut t20: Vec<Value> = Vec::with_capacity(1);
+        let t21 = rt.global(3);
+        t20.push(t21);
+        let t22 = rt.call_method(&t19, Method::ArraySort, t20)?;
+        t22
     };
-    obj_put(&mut t2, "entries", t10);
-    let t21 = Value::object(t2);
-    return Ok(t21);
+    let t23 = rt.lit_key(43, "entries");
+    obj_put_str(&mut t2, t23, t14);
+    let t24 = Value::object(t2);
+    return Ok(t24);
     Ok(Value::Undefined)
 }
 
@@ -2233,65 +2260,67 @@ fn f46(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let t4 = inst.is_some() && rt.is_pure_render();
     let t5 = if t4 { occ[0] += 1; occ[0] } else { 0 };
     let mut t6 = rt.tpl_begin(t4, 15, t5, 11, 5);
-    let t7: Vec<Value> = if t6.caching() { vec![read(&l0)] } else { Vec::new() };
-    match rt.tpl_reuse(&t6, 0, false, &t7) {
-        Some(v) => rt.tpl_push(&mut t6, v, t7, false),
-        None => {
-            let mut t8 = String::new();
-            t8.push_str("notes:open:");
-            let t9 = l0.clone();
-            t8.push_str(&t9.to_js_string());
-            let t10 = Value::str(&t8);
-            rt.tpl_push(&mut t6, t10, t7, true);
+    let t7 = {
+        let t8: Vec<Value> = if t6.caching() { vec![read(&l0)] } else { Vec::new() };
+        match rt.tpl_reuse(&t6, 0, false, &t8) {
+            Some(v) => rt.tpl_push(&mut t6, v, t8, false),
+            None => {
+                let mut t9 = String::new();
+                t9.push_str("notes:open:");
+                let t10 = l0.clone();
+                t9.push_str(&t10.to_js_string());
+                let t11 = Value::str(&t9);
+                rt.tpl_push(&mut t6, t11, t8, true);
+            }
         }
-    }
-    let t11: Vec<Value> = if t6.caching() { vec![read(&l0)] } else { Vec::new() };
-    match rt.tpl_reuse(&t6, 1, false, &t11) {
-        Some(v) => rt.tpl_push(&mut t6, v, t11, false),
-        None => {
-            let t12 = l0.clone();
-            rt.tpl_push(&mut t6, t12, t11, true);
+        let t12: Vec<Value> = if t6.caching() { vec![read(&l0)] } else { Vec::new() };
+        match rt.tpl_reuse(&t6, 1, false, &t12) {
+            Some(v) => rt.tpl_push(&mut t6, v, t12, false),
+            None => {
+                let t13 = l0.clone();
+                rt.tpl_push(&mut t6, t13, t12, true);
+            }
         }
-    }
-    let t13: Vec<Value> = if t6.caching() { vec![read(&l0), read(&cap[0])] } else { Vec::new() };
-    match rt.tpl_reuse(&t6, 2, false, &t13) {
-        Some(v) => rt.tpl_push(&mut t6, v, t13, false),
-        None => {
-            let t14 = read(&cap[0]);
-            let t15 = rt.member(&t14, "open")?;
-            let t16 = l0.clone();
-            let t17 = Value::Bool(strict_equals(&t15, &t16));
-            let t18 = if t17.truthy() {
-                str("row on")
-            } else {
-                str("row")
-            };
-            rt.tpl_push(&mut t6, t18, t13, true);
+        let t14: Vec<Value> = if t6.caching() { vec![read(&l0), read(&cap[0])] } else { Vec::new() };
+        match rt.tpl_reuse(&t6, 2, false, &t14) {
+            Some(v) => rt.tpl_push(&mut t6, v, t14, false),
+            None => {
+                let t15 = read(&cap[0]);
+                let t16 = rt.member(&t15, "open")?;
+                let t17 = if strict_equals(&t16, &l0) {
+                    let t18 = rt.lit(51, "row on");
+                    t18
+                } else {
+                    let t19 = rt.lit(52, "row");
+                    t19
+                };
+                rt.tpl_push(&mut t6, t17, t14, true);
+            }
         }
-    }
-    let t19: Vec<Value> = if t6.caching() { vec![read(&l0)] } else { Vec::new() };
-    match rt.tpl_reuse(&t6, 3, false, &t19) {
-        Some(v) => rt.tpl_push(&mut t6, v, t19, false),
-        None => {
-            let t20 = closure(47, vec![l0.clone()]);
-            rt.tpl_push(&mut t6, t20, t19, true);
+        let t20: Vec<Value> = if t6.caching() { vec![read(&l0)] } else { Vec::new() };
+        match rt.tpl_reuse(&t6, 3, false, &t20) {
+            Some(v) => rt.tpl_push(&mut t6, v, t20, false),
+            None => {
+                let t21 = closure(47, vec![l0.clone()]);
+                rt.tpl_push(&mut t6, t21, t20, true);
+            }
         }
-    }
-    let t21: Vec<Value> = if t6.caching() { vec![read(&l0)] } else { Vec::new() };
-    match rt.tpl_reuse(&t6, 4, false, &t21) {
-        Some(v) => rt.tpl_push(&mut t6, v, t21, false),
-        None => {
-            let t22 = l0.clone();
-            let mut t23: Vec<Value> = Vec::with_capacity(2);
-            let t24 = rt.regex("\\.txt$", "")?;
-            t23.push(t24);
-            t23.push(str(""));
-            let t25 = rt.call_method(&t22, Method::StrReplace, t23)?;
-            rt.tpl_push(&mut t6, t25, t21, true);
+        let t22: Vec<Value> = if t6.caching() { vec![read(&l0)] } else { Vec::new() };
+        match rt.tpl_reuse(&t6, 4, false, &t22) {
+            Some(v) => rt.tpl_push(&mut t6, v, t22, false),
+            None => {
+                let mut t23: Vec<Value> = Vec::with_capacity(2);
+                let t24 = rt.regex("\\.txt$", "")?;
+                t23.push(t24);
+                let t25 = rt.lit(12, "");
+                t23.push(t25);
+                let t26 = rt.call_method(&l0, Method::StrReplace, t23)?;
+                rt.tpl_push(&mut t6, t26, t22, true);
+            }
         }
-    }
-    let t26 = rt.tpl_finish(t6, t3);
-    return Ok(t26);
+        rt.tpl_finish(t6, t3)
+    };
+    return Ok(t7);
     Ok(Value::Undefined)
 }
 
@@ -2327,24 +2356,24 @@ fn f49(rt: &mut Runtime, cap: &[Value], args: Vec<Value>, inst: Option<u32>) -> 
     let mut args = args.into_iter();
     let t1 = args.next().unwrap_or(Value::Undefined);
     l0 = t1;
-    let t2 = l0.clone();
-    let t3 = rt.member(&t2, "open")?;
-    let t4 = read(&cap[0]);
-    let t5 = Value::Bool(strict_equals(&t3, &t4));
-    let t6 = if t5.truthy() {
-        let mut t7: Vec<(Str, Value)> = Vec::with_capacity(3);
-        let t8 = l0.clone();
-        obj_spread(&mut t7, &t8);
-        let t9 = read(&cap[1]);
-        obj_put(&mut t7, "text", t9);
-        obj_put(&mut t7, "dirty", Value::Bool(false));
-        let t10 = Value::object(t7);
+    let t2 = rt.member(&l0, "open")?;
+    let t3 = read(&cap[0]);
+    let t4 = if strict_equals(&t2, &t3) {
+        let mut t5: Vec<(Str, Value)> = Vec::with_capacity(3);
+        let t6 = l0.clone();
+        obj_spread(&mut t5, &t6);
+        let t7 = read(&cap[1]);
+        let t8 = rt.lit_key(13, "text");
+        obj_put_str(&mut t5, t8, t7);
+        let t9 = rt.lit_key(8, "dirty");
+        obj_put_str(&mut t5, t9, Value::Bool(false));
+        let t10 = Value::object(t5);
         t10
     } else {
         let t11 = l0.clone();
         t11
     };
-    return Ok(t6);
+    return Ok(t4);
     Ok(Value::Undefined)
 }
 
@@ -2388,7 +2417,7 @@ fn init(rt: &mut Runtime) -> R<()> {
     rt.set_global(16, closure(16, Vec::new()));
     rt.set_global(17, closure(17, Vec::new()));
     rt.set_global(18, closure(18, Vec::new()));
-    let t1 = Value::Num(Value::Num(64.0).to_number() * Value::Num(1024.0).to_number());
+    let t1 = Value::Num(Value::Num(64.0).to_number() * 1024.0);
     rt.set_global(19, t1);
     let mut t2: Vec<Value> = Vec::with_capacity(1);
     let t3 = closure(24, vec![]);
@@ -2397,21 +2426,32 @@ fn init(rt: &mut Runtime) -> R<()> {
     rt.set_global(20, t4);
     let mut t5: Vec<Value> = Vec::with_capacity(1);
     let mut t6: Vec<Value> = Vec::with_capacity(11);
-    t6.push(str("Backspace"));
-    t6.push(str("Delete"));
-    t6.push(str("Enter"));
-    t6.push(str("ArrowLeft"));
-    t6.push(str("ArrowRight"));
-    t6.push(str("ArrowUp"));
-    t6.push(str("ArrowDown"));
-    t6.push(str("Home"));
-    t6.push(str("End"));
-    t6.push(str("PageUp"));
-    t6.push(str("PageDown"));
-    let t7 = Value::array(t6);
-    t5.push(t7);
-    let t8 = rt.call_builtin(Builtin::NewSet, t5)?;
-    rt.set_global(21, t8);
+    let t7 = rt.lit(53, "Backspace");
+    t6.push(t7);
+    let t8 = rt.lit(54, "Delete");
+    t6.push(t8);
+    let t9 = rt.lit(55, "Enter");
+    t6.push(t9);
+    let t10 = rt.lit(56, "ArrowLeft");
+    t6.push(t10);
+    let t11 = rt.lit(57, "ArrowRight");
+    t6.push(t11);
+    let t12 = rt.lit(58, "ArrowUp");
+    t6.push(t12);
+    let t13 = rt.lit(59, "ArrowDown");
+    t6.push(t13);
+    let t14 = rt.lit(60, "Home");
+    t6.push(t14);
+    let t15 = rt.lit(61, "End");
+    t6.push(t15);
+    let t16 = rt.lit(62, "PageUp");
+    t6.push(t16);
+    let t17 = rt.lit(63, "PageDown");
+    t6.push(t17);
+    let t18 = Value::array(t6);
+    t5.push(t18);
+    let t19 = rt.call_builtin(Builtin::NewSet, t5)?;
+    rt.set_global(21, t19);
     Ok(())
 }
 

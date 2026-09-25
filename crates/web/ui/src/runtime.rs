@@ -327,6 +327,8 @@ pub struct Runtime {
     pub(crate) stats: Stats,
     /// Nesting of `fire` (script time is counted at the outermost).
     pub(crate) fire_depth: u32,
+    /// A generated program's string literals, made once each (`gen::Runtime::lit`).
+    pub(crate) lits: Vec<Option<Str>>,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -392,6 +394,7 @@ impl Runtime {
             global_listeners: Vec::new(),
             stats: Stats::default(),
             fire_depth: 0,
+            lits: Vec::new(),
         }
     }
 

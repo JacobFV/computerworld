@@ -944,6 +944,30 @@ impl Runtime {
         Some(o.holes[i].clone())
     }
 
+    /// Whether every hole's dependencies are unchanged since last render, when every
+    /// hole of the template depends on the same slots, whose values are `deps`: then
+    /// every hole takes last render's value, as `tpl_reuse` would give it hole by
+    /// hole, in one comparison. A generated program resolves at compile time which
+    /// templates qualify.
+    pub fn tpl_reuse_all(&mut self, b: &mut TplBuilder, deps: &[Value]) -> bool {
+        if !b.caching {
+            return false;
+        }
+        let Some(o) = b.old.as_mut() else {
+            return false;
+        };
+        let same = o.deps.iter().all(|old| {
+            old.len() == deps.len() && old.iter().zip(deps).all(|(a, b)| same_dep(a, b))
+        });
+        if !same {
+            return false;
+        }
+        self.stats.holes_skipped += o.holes.len() as u64;
+        b.values = std::mem::take(&mut o.holes);
+        b.deps = std::mem::take(&mut o.deps);
+        true
+    }
+
     /// Hole `i`'s value: reused, or `evaluated` now.
     pub fn tpl_push(&mut self, b: &mut TplBuilder, v: Value, deps: Vec<Value>, evaluated: bool) {
         if b.caching {

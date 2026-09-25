@@ -131,29 +131,39 @@ fn compiled_against_fallback() {
     );
 }
 
-/// Times one page both ways: boot, a click on `target` (twice), and a keystroke
-/// after clicking each of `focus` in turn.
-fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
-    let runs: usize = std::env::var("UI_PERF_RUNS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(15);
+/// Times the compiled app: interpreted from `ir`, or as its generated `program`.
+fn measure_compiled(
+    name: &str,
+    html: &str,
+    ir: &str,
+    target: &str,
+    focus: &[&str],
+    runs: usize,
+    program: Option<&'static cw_ui::GenProgram>,
+) {
     let url = format!("{BASE}{name}.html");
-
-    // ---------------------------------------------------------------- compiled
     let (mut boots, mut parses, mut clicks, mut keys, mut mems) =
         (vec![], vec![], vec![], vec![], vec![]);
     let mut layouts = vec![];
     let mut click_scripts = vec![];
+    let mut key_scripts = vec![];
     let (mut agains, mut again_scripts) = (vec![], vec![]);
     let (mut snap_sizes, mut restores, mut snaps) = (vec![], vec![], vec![]);
     for _ in 0..runs {
         let h = host();
         let before = LIVE.load(Ordering::Relaxed);
         let t = Instant::now();
-        let module = UiApp::parse_ir(ir).unwrap();
-        parses.push(ms(t));
-        let mut app = UiApp::new(module, html, &url, Box::new(h)).unwrap();
+        let mut app = match program {
+            Some(p) => {
+                parses.push(0.0);
+                UiApp::generated(p, html, &url, Box::new(h)).unwrap()
+            }
+            None => {
+                let module = UiApp::parse_ir(ir).unwrap();
+                parses.push(ms(t));
+                UiApp::new(module, html, &url, Box::new(h)).unwrap()
+            }
+        };
         app.boot();
         app.run_until_idle(50);
         boots.push(ms(t));
@@ -169,21 +179,21 @@ fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
             app.centre_of(n).unwrap()
         };
         let t = Instant::now();
-        let script = app.stats().script_micros;
+        let script = app.stats().script_nanos;
         click(&mut |e| drop(app.dispatch(e)), at);
         app.run_until_idle(20);
         clicks.push(ms(t));
-        click_scripts.push((app.stats().script_micros - script) as f64 / 1000.0);
+        click_scripts.push((app.stats().script_nanos - script) as f64 / 1e6);
         let at = {
             let n = app.query_selector(target).unwrap();
             app.centre_of(n).unwrap()
         };
         let t = Instant::now();
-        let script = app.stats().script_micros;
+        let script = app.stats().script_nanos;
         click(&mut |e| drop(app.dispatch(e)), at);
         app.run_until_idle(20);
         agains.push(ms(t));
-        again_scripts.push((app.stats().script_micros - script) as f64 / 1000.0);
+        again_scripts.push((app.stats().script_nanos - script) as f64 / 1e6);
         for sel in focus {
             let at = {
                 let n = app.query_selector(sel).unwrap();
@@ -193,9 +203,11 @@ fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
             app.run_until_idle(20);
         }
         let t = Instant::now();
+        let script = app.stats().script_nanos;
         app.dispatch(UiEvent::TypeText { text: "x".into() });
         app.run_until_idle(20);
         keys.push(ms(t));
+        key_scripts.push((app.stats().script_nanos - script) as f64 / 1e6);
         let t = Instant::now();
         let json = app.snapshot().to_json();
         snaps.push(ms(t));
@@ -206,9 +218,14 @@ fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
         again.fragment_tree();
         restores.push(ms(t));
     }
-    let module_bytes = ir.len();
+    let module_bytes = if program.is_some() { 0 } else { ir.len() };
+    let form = if program.is_some() {
+        "generated"
+    } else {
+        "interpreted"
+    };
     eprintln!(
-        "compiled {name}: boot {:.3} ms (best {:.3}; IR parse {:.3}; a full restyle+layout {:.3}), click {:.3} ms (best {:.3}; script {:.3}), click again {:.3} ms (script {:.3}), key {:.3} ms (best {:.3}), \
+        "{form} {name}: boot {:.3} ms (best {:.3}; IR parse {:.3}; a full restyle+layout {:.3}), click {:.3} ms (best {:.3}; script {:.4}), click again {:.3} ms (script {:.4}), key {:.4} ms (best {:.4}; script {:.4}), \
          live after boot {:.0} KB, snapshot {:.0} KB (IR {:.0} KB of it) in {:.3} ms, restore {:.3} ms (best {:.3}) [median of {runs}]",
         stats(boots.clone()).0,
         stats(boots).1,
@@ -221,6 +238,7 @@ fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
         stats(again_scripts).0,
         stats(keys.clone()).0,
         stats(keys).1,
+        stats(key_scripts).0,
         stats(mems).0 / 1024.0,
         stats(snap_sizes).0 / 1024.0,
         module_bytes as f64 / 1024.0,
@@ -228,6 +246,32 @@ fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
         stats(restores.clone()).0,
         stats(restores).1,
     );
+}
+
+/// Times one page both ways: boot, a click on `target` (twice), and a keystroke
+/// after clicking each of `focus` in turn.
+fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
+    let runs: usize = std::env::var("UI_PERF_RUNS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(15);
+    let url = format!("{BASE}{name}.html");
+
+    // ------------------------------------------------- compiled: interpreted, generated
+    let module = UiApp::parse_ir(ir).unwrap();
+    let program = cw_ui_fixtures::for_module(&module).expect("a generated program for this IR");
+    cw_ui::program::register(program);
+    for generated in [false, true] {
+        measure_compiled(
+            name,
+            html,
+            ir,
+            target,
+            focus,
+            runs,
+            generated.then_some(program),
+        );
+    }
 
     // ---------------------------------------------------------------- fallback
     let (mut boots, mut clicks, mut keys, mut mems) = (vec![], vec![], vec![], vec![]);
@@ -396,4 +440,147 @@ fn notes_phases() {
             .filter(|n| app.document().is_element(*n))
             .count()
     );
+}
+
+/// Notes (crates/applications' desktop notes app, on a stubbed `cw` channel)
+/// interpreted from its IR and as its checked-in generated Rust: launch with the
+/// listing delivered, the first style and layout, a session (open a note, its text
+/// arriving, a keystroke, save, the new listing arriving; a style and layout pass
+/// after each, as a host paints), the heap the app holds, its snapshot and a restore.
+/// The React fallback's side is cw-applications' `web_notes_cost` harness, which
+/// runs Notes on the Realm through the web-app host.
+#[test]
+#[ignore]
+fn notes_interpreted_against_generated() {
+    use cw_web::script::{ScriptHostDocument, StorageArea};
+    let runs: usize = std::env::var("UI_PERF_RUNS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(15);
+    let web =
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../applications/web/notes");
+    let ir = std::fs::read_to_string(web.join("notes.ui.json")).unwrap();
+    let css = std::fs::read_to_string(web.join("notes.css")).unwrap();
+    let html = format!(
+        "<!DOCTYPE html><html data-platform=\"macos\"><head><meta charset=\"utf-8\">\
+         <style id=\"cw-theme\"></style><style>{css}</style></head>\
+         <body><div id=\"root\"></div></body></html>"
+    );
+    let notes_host = || {
+        let mut host = MemoryHost::new();
+        host.storage_set(
+            StorageArea::Local,
+            "\u{1}cw:boot",
+            r#"{"kind":"notes","argument":"/n","state":null,"env":{"platform":"macos","mobile":false,"width":900,"height":600,"css":""}}"#,
+        );
+        host
+    };
+    let module = UiApp::parse_ir(&ir).unwrap();
+    let program = cw_ui_fixtures::for_module(&module).expect("Notes' generated program");
+    cw_ui::program::register(program);
+    let url = "cw-app://application/";
+    for generated in [false, true] {
+        let (mut boots, mut firsts, mut mems) = (vec![], vec![], vec![]);
+        let (mut sessions, mut session_scripts) = (vec![], vec![]);
+        let (mut keys, mut key_scripts) = (vec![], vec![]);
+        let (mut snap_sizes, mut restores) = (vec![], vec![]);
+        for _ in 0..runs {
+            let before = LIVE.load(Ordering::Relaxed);
+            let t = Instant::now();
+            let mut app = if generated {
+                UiApp::generated(program, &html, url, Box::new(notes_host())).unwrap()
+            } else {
+                let module = UiApp::parse_ir(&ir).unwrap();
+                UiApp::new(module, &html, url, Box::new(notes_host())).unwrap()
+            };
+            app.boot();
+            app.run_until_idle(20);
+            app.cw_deliver(r#"[{"id":1,"value":["a.txt","b.txt","c.txt"]}]"#)
+                .unwrap();
+            boots.push(ms(t));
+            let t = Instant::now();
+            app.fragment_tree();
+            firsts.push(ms(t));
+            mems.push((LIVE.load(Ordering::Relaxed) - before) as f64);
+            assert_eq!(app.is_generated(), generated);
+            // The session.
+            let mut script = 0.0;
+            let t = Instant::now();
+            let s0 = app.stats().script_nanos;
+            let n = app.query_selector("[id=\"notes:open:b.txt\"]").unwrap();
+            let at = app.centre_of(n).unwrap();
+            click(&mut |e| drop(app.dispatch(e)), at);
+            app.run_until_idle(20);
+            app.fragment_tree();
+            let d = Instant::now();
+            app.cw_deliver(r#"[{"id":2,"value":"text"}]"#).unwrap();
+            script += ms(d);
+            app.fragment_tree();
+            let n = app.query_selector("[id=\"notes:body\"]").unwrap();
+            let at = app.centre_of(n).unwrap();
+            click(&mut |e| drop(app.dispatch(e)), at);
+            app.run_until_idle(20);
+            app.fragment_tree();
+            let k = Instant::now();
+            let ks = app.stats().script_nanos;
+            app.dispatch(UiEvent::TypeText { text: "x".into() });
+            app.run_until_idle(20);
+            keys.push(ms(k));
+            key_scripts.push((app.stats().script_nanos - ks) as f64 / 1e6);
+            app.fragment_tree();
+            let n = app.query_selector("[id=\"notes:save\"]").unwrap();
+            let at = app.centre_of(n).unwrap();
+            click(&mut |e| drop(app.dispatch(e)), at);
+            app.run_until_idle(20);
+            app.fragment_tree();
+            let d = Instant::now();
+            app.cw_deliver(r#"[{"id":3,"value":null},{"id":4,"value":null}]"#)
+                .unwrap();
+            let asked = app
+                .inner()
+                .host
+                .storage_get(StorageArea::Local, "\u{1}cw:out")
+                .unwrap_or_default();
+            app.cw_deliver(r#"[{"id":5,"value":["a.txt","b.txt","c.txt"]}]"#)
+                .unwrap();
+            script += ms(d);
+            app.fragment_tree();
+            sessions.push(ms(t));
+            script += (app.stats().script_nanos - s0) as f64 / 1e6;
+            session_scripts.push(script);
+            assert!(
+                app.form_values().values().any(|v| v == "textx"),
+                "the session ran: {:?}",
+                app.form_values()
+            );
+            assert!(
+                asked.contains(r#""id":5,"kind":"list""#),
+                "the save asks for a new listing: {asked}"
+            );
+            let json = app.snapshot().to_json();
+            snap_sizes.push(json.len() as f64);
+            let t = Instant::now();
+            let state = cw_ui::UiState::from_json(&json).unwrap();
+            let mut again = UiApp::restore(&state, Box::new(notes_host())).unwrap();
+            again.fragment_tree();
+            restores.push(ms(t));
+            assert_eq!(again.is_generated(), generated);
+        }
+        eprintln!(
+            "{} notes: launch with listing {:.4} ms (best {:.4}), first style+layout {:.3} ms, \
+             session {:.3} ms (script {:.4}), key {:.4} ms (script {:.4}), live after launch {:.0} KB, \
+             snapshot {:.1} KB, restore+layout {:.3} ms [median of {runs}]",
+            if generated { "generated" } else { "interpreted" },
+            stats(boots.clone()).0,
+            stats(boots).1,
+            stats(firsts).0,
+            stats(sessions).0,
+            stats(session_scripts).0,
+            stats(keys).0,
+            stats(key_scripts).0,
+            stats(mems).0 / 1024.0,
+            stats(snap_sizes).0 / 1024.0,
+            stats(restores).0,
+        );
+    }
 }

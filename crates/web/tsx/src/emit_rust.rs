@@ -221,6 +221,8 @@ fn str_lit(s: &str) -> String {
 
 struct Gen<'m> {
     m: &'m Module,
+    /// String literals by index (`Runtime::lit`), shared by the whole program.
+    lits: std::cell::RefCell<Vec<String>>,
     /// Per global: the function it holds when it is a function declaration nobody
     /// reassigns and that runs as generated code (calls to it are direct).
     direct: Vec<Option<u32>>,
@@ -268,6 +270,7 @@ impl<'m> Gen<'m> {
             .collect();
         Gen {
             m,
+            lits: Default::default(),
             direct,
             next_site: 0,
         }
@@ -455,6 +458,118 @@ impl<'g, 'm> FnCx<'g, 'm> {
         let t = self.tmp();
         self.line(&format!("let {t} = {v};"));
         t
+    }
+
+    /// The index of string literal `s` in the program's table.
+    fn lit_index(&self, s: &str) -> usize {
+        let mut lits = self.g.lits.borrow_mut();
+        match lits.iter().position(|x| x == s) {
+            Some(i) => i,
+            None => {
+                lits.push(s.to_owned());
+                lits.len() - 1
+            }
+        }
+    }
+
+    /// A string value for literal `s` (made once per runtime).
+    fn str_value(&mut self, s: &str) -> String {
+        let i = self.lit_index(s);
+        self.bind_tmp(&format!("rt.lit({i}, {})", str_lit(s)))
+    }
+
+    /// A property key `Str` for literal `k`.
+    fn key_str(&mut self, k: &str) -> String {
+        let i = self.lit_index(k);
+        self.bind_tmp(&format!("rt.lit_key({i}, {})", str_lit(k)))
+    }
+
+    /// `e` as something to borrow: a non-boxed local's own slot when nothing in
+    /// `later` (evaluated before the borrow is used) assigns it, else a temp.
+    fn operand(&mut self, e: &Expr, later: &[&Expr]) -> String {
+        if let Expr::Local(n) = e {
+            if self.boxed.get(*n as usize) != Some(&true)
+                && !later.iter().any(|x| writes_local(x, *n))
+            {
+                return format!("l{n}");
+            }
+        }
+        self.expr(e)
+    }
+
+    /// `e` as a Rust `bool` (its truthiness), without boxing a comparison's result.
+    fn cond(&mut self, e: &Expr) -> String {
+        match e {
+            Expr::Unary(UnaryOp::Not, x) => {
+                let c = self.cond(x);
+                format!("!({c})")
+            }
+            Expr::Binary(op, a, b) => match self.binary_bool(*op, a, b) {
+                Some(c) => c,
+                None => {
+                    let v = self.expr(e);
+                    format!("{v}.truthy()")
+                }
+            },
+            Expr::Bool(b) => b.to_string(),
+            _ => {
+                let v = self.expr(e);
+                format!("{v}.truthy()")
+            }
+        }
+    }
+
+    /// A comparison or equality as a Rust `bool` expression (operands evaluated
+    /// first, in order); `None` for other operators.
+    fn binary_bool(&mut self, op: BinaryOp, a: &Expr, b: &Expr) -> Option<String> {
+        use BinaryOp as B;
+        if !matches!(
+            op,
+            B::StrictEq | B::StrictNotEq | B::Eq | B::NotEq | B::Lt | B::LtEq | B::Gt | B::GtEq
+        ) {
+            return None;
+        }
+        let not = if matches!(op, B::StrictNotEq | B::NotEq) {
+            "!"
+        } else {
+            ""
+        };
+        // Against a string literal: no string made.
+        if matches!(op, B::StrictEq | B::StrictNotEq) {
+            if let Expr::Str(lit) = b {
+                let x = self.operand(a, &[]);
+                return Some(format!("{not}eq_str(&{x}, {})", str_lit(lit)));
+            }
+            if let Expr::Str(lit) = a {
+                let x = self.operand(b, &[]);
+                return Some(format!("{not}eq_str(&{x}, {})", str_lit(lit)));
+            }
+        }
+        // Against a number literal: a numeric comparison (a string compares as a
+        // number with a number).
+        if matches!(op, B::Lt | B::LtEq | B::Gt | B::GtEq) {
+            let sym = match op {
+                B::Lt => "<",
+                B::LtEq => "<=",
+                B::Gt => ">",
+                _ => ">=",
+            };
+            if let Expr::Num(n) = b {
+                let x = self.operand(a, &[]);
+                return Some(format!("({x}.to_number() {sym} {})", num_lit(*n)));
+            }
+            if let Expr::Num(n) = a {
+                let x = self.operand(b, &[]);
+                return Some(format!("({} {sym} {x}.to_number())", num_lit(*n)));
+            }
+        }
+        let x = self.operand(a, &[b]);
+        let y = self.operand(b, &[]);
+        Some(match op {
+            B::StrictEq | B::StrictNotEq => format!("{not}strict_equals(&{x}, &{y})"),
+            B::Eq | B::NotEq => format!("{not}loose_equals(&{x}, &{y})"),
+            _ => format!("compare(BinaryOp::{op:?}, &{x}, &{y})"),
+        })
     }
 
     // ------------------------------------------------------------ slots
@@ -690,8 +805,8 @@ impl<'g, 'm> FnCx<'g, 'm> {
                 self.line(&format!("let _ = {a};"));
             }
             Stmt::If(c, a, b) => {
-                let c = self.expr(c);
-                self.open(&format!("if {c}.truthy() {{"));
+                let c = self.cond(c);
+                self.open(&format!("if {c} {{"));
                 self.block(a);
                 if b.is_empty() {
                     self.close("}");
@@ -744,8 +859,8 @@ impl<'g, 'm> FnCx<'g, 'm> {
                 self.line(&format!("let mut {guard}: u64 = 0;"));
                 self.open(&format!("'l{id}: loop {{"));
                 if let Some(t) = test {
-                    let t = self.expr(t);
-                    self.line(&format!("if !{t}.truthy() {{ break 'l{id}; }}"));
+                    let t = self.cond(t);
+                    self.line(&format!("if !({t}) {{ break 'l{id}; }}"));
                 }
                 self.ctx.push(Ctx::Loop(id));
                 self.open(&format!("'b{id}: {{"));
@@ -896,7 +1011,7 @@ impl<'g, 'm> FnCx<'g, 'm> {
             Expr::Null => "Value::Null".into(),
             Expr::Bool(b) => format!("Value::Bool({b})"),
             Expr::Num(n) => format!("Value::Num({})", num_lit(*n)),
-            Expr::Str(s) => format!("str({})", str_lit(s)),
+            Expr::Str(s) => self.str_value(s),
             Expr::Local(n) => {
                 let r = self.local_read(*n);
                 self.bind_tmp(&r)
@@ -934,7 +1049,8 @@ impl<'g, 'm> FnCx<'g, 'm> {
                     match p {
                         Prop::KeyValue(k, v) => {
                             let v = self.expr(v);
-                            self.line(&format!("obj_put(&mut {o}, {}, {v});", str_lit(k)));
+                            let k = self.key_str(k);
+                            self.line(&format!("obj_put_str(&mut {o}, {k}, {v});"));
                         }
                         Prop::Computed(k, v) => {
                             let k = self.expr(k);
@@ -950,7 +1066,7 @@ impl<'g, 'm> FnCx<'g, 'm> {
                 self.bind_tmp(&format!("Value::object({o})"))
             }
             Expr::Member(o, name, optional) => {
-                let o = self.expr(o);
+                let o = self.operand(o, &[]);
                 if *optional {
                     self.short_if_nullish(&o);
                 }
@@ -958,11 +1074,11 @@ impl<'g, 'm> FnCx<'g, 'm> {
                 self.bind_tmp(&e)
             }
             Expr::Index(o, k, optional) => {
-                let o = self.expr(o);
+                let o = self.operand(o, &[k]);
                 if *optional {
                     self.short_if_nullish(&o);
                 }
-                let k = self.expr(k);
+                let k = self.operand(k, &[]);
                 let e = self.q(&format!("rt.index(&{o}, &{k})"));
                 self.bind_tmp(&e)
             }
@@ -989,7 +1105,13 @@ impl<'g, 'm> FnCx<'g, 'm> {
                 args,
                 optional,
             } => {
-                let r = self.expr(recv);
+                let later: Vec<&Expr> = args
+                    .iter()
+                    .map(|a| match a {
+                        ArrayItem::Item(e) | ArrayItem::Spread(e) => e,
+                    })
+                    .collect();
+                let r = self.operand(recv, &later);
                 if *optional {
                     self.short_if_nullish(&r);
                 }
@@ -1002,10 +1124,14 @@ impl<'g, 'm> FnCx<'g, 'm> {
                 let e = self.q(&format!("rt.call_builtin(Builtin::{b:?}, {a})"));
                 self.bind_tmp(&e)
             }
+            Expr::Unary(UnaryOp::Not, x) => {
+                let c = self.cond(x);
+                self.bind_tmp(&format!("Value::Bool(!({c}))"))
+            }
             Expr::Unary(op, x) => {
                 let v = self.expr(x);
                 match op {
-                    UnaryOp::Not => self.bind_tmp(&format!("Value::Bool(!{v}.truthy())")),
+                    UnaryOp::Not => unreachable!(),
                     UnaryOp::Neg => self.bind_tmp(&format!("Value::Num(-{v}.to_number())")),
                     UnaryOp::Plus => self.bind_tmp(&format!("Value::Num({v}.to_number())")),
                     UnaryOp::BitNot => {
@@ -1022,9 +1148,40 @@ impl<'g, 'm> FnCx<'g, 'm> {
                 self.bind_tmp(&format!("Value::str({v}.type_of())"))
             }
             Expr::Binary(op, a, b) => {
-                let a = self.expr(a);
-                let b = self.expr(b);
-                self.binary(*op, &a, &b)
+                if let Some(c) = self.binary_bool(*op, a, b) {
+                    return self.bind_tmp(&format!("Value::Bool({c})"));
+                }
+                use BinaryOp as B;
+                match (op, &**a, &**b) {
+                    (B::Add, Expr::Str(l), _) => {
+                        let y = self.operand(b, &[]);
+                        return self.bind_tmp(&format!("add_str_left({}, &{y})", str_lit(l)));
+                    }
+                    (B::Add, _, Expr::Str(l)) => {
+                        let x = self.operand(a, &[]);
+                        return self.bind_tmp(&format!("add_str_right(&{x}, {})", str_lit(l)));
+                    }
+                    (B::Sub | B::Mul | B::Div | B::Rem, _, Expr::Num(n)) => {
+                        let x = self.operand(a, &[]);
+                        let sym = arith_sym(*op);
+                        return self.bind_tmp(&format!(
+                            "Value::Num({x}.to_number() {sym} {})",
+                            num_lit(*n)
+                        ));
+                    }
+                    (B::Sub | B::Mul | B::Div | B::Rem, Expr::Num(n), _) => {
+                        let y = self.operand(b, &[]);
+                        let sym = arith_sym(*op);
+                        return self.bind_tmp(&format!(
+                            "Value::Num({} {sym} {y}.to_number())",
+                            num_lit(*n)
+                        ));
+                    }
+                    _ => {}
+                }
+                let x = self.operand(a, &[b]);
+                let y = self.operand(b, &[]);
+                self.binary(*op, &x, &y)
             }
             Expr::Logical(op, a, b) => {
                 let a = self.expr(a);
@@ -1041,9 +1198,9 @@ impl<'g, 'm> FnCx<'g, 'm> {
                 t
             }
             Expr::Cond(c, a, b) => {
-                let c = self.expr(c);
+                let c = self.cond(c);
                 let t = self.tmp();
-                self.open(&format!("let {t} = if {c}.truthy() {{"));
+                self.open(&format!("let {t} = if {c} {{"));
                 let v = self.expr(a);
                 self.line(&v);
                 self.indent -= 1;
@@ -1278,6 +1435,32 @@ impl<'g, 'm> FnCx<'g, 'm> {
                     "let mut {b} = rt.tpl_begin({caching}, {site}, {n}, {template}, {});",
                     holes.len()
                 ));
+                // Every hole reading the same slots: one comparison decides them all.
+                let shared = match meta.first() {
+                    Some(first) if !first.deps.is_empty() => meta
+                        .iter()
+                        .all(|h| !h.always && h.deps == first.deps)
+                        .then(|| first.deps.clone()),
+                    _ => None,
+                };
+                let result = self.tmp();
+                if let Some(deps) = &shared {
+                    let d = self.tmp();
+                    let reads: Vec<String> = deps.iter().map(|c| self.slot_value(c)).collect();
+                    self.line(&format!(
+                        "let {d}: Vec<Value> = if {b}.caching() {{ vec![{}] }} else {{ Vec::new() }};",
+                        reads.join(", ")
+                    ));
+                    self.open(&format!(
+                        "let {result} = if rt.tpl_reuse_all(&mut {b}, &{d}) {{"
+                    ));
+                    self.line(&format!("rt.tpl_finish({b}, {key})"));
+                    self.indent -= 1;
+                    self.line("} else {");
+                    self.indent += 1;
+                } else {
+                    self.open(&format!("let {result} = {{"));
+                }
                 for (i, h) in holes.iter().enumerate() {
                     let (deps, always) = meta
                         .get(i)
@@ -1301,7 +1484,9 @@ impl<'g, 'm> FnCx<'g, 'm> {
                     self.close("}");
                     self.close("}");
                 }
-                self.bind_tmp(&format!("rt.tpl_finish({b}, {key})"))
+                self.line(&format!("rt.tpl_finish({b}, {key})"));
+                self.close("};");
+                result
             }
             ElementExpr::Component {
                 callee,
@@ -1321,7 +1506,8 @@ impl<'g, 'm> FnCx<'g, 'm> {
                     match pr {
                         Prop::KeyValue(k, v) => {
                             let v = self.expr(v);
-                            self.line(&format!("obj_put(&mut {p}, {}, {v});", str_lit(k)));
+                            let k = self.key_str(k);
+                            self.line(&format!("obj_put_str(&mut {p}, {k}, {v});"));
                         }
                         Prop::Computed(k, v) => {
                             let k = self.expr(k);
@@ -1383,6 +1569,30 @@ impl<'g, 'm> FnCx<'g, 'm> {
             }
         }
     }
+}
+
+fn arith_sym(op: BinaryOp) -> &'static str {
+    match op {
+        BinaryOp::Sub => "-",
+        BinaryOp::Mul => "*",
+        BinaryOp::Div => "/",
+        _ => "%",
+    }
+}
+
+/// Whether evaluating `e` can assign local slot `n` (only an assignment or an
+/// update in this function can: a callee sees a slot only through its cell, and a
+/// boxed slot is never borrowed in place).
+fn writes_local(e: &Expr, n: u32) -> bool {
+    let mut found = false;
+    walk(e, &mut |x| {
+        if let Expr::Assign(lv, _, _) | Expr::Update(lv, _, _) = x {
+            if matches!(**lv, LValue::Local(m) if m == n) {
+                found = true;
+            }
+        }
+    });
+    found
 }
 
 // ---------------------------------------------------------------- IR walks
