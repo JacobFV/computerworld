@@ -14,6 +14,8 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 use std::time::Instant;
 
 use cw_ui::UiApp;
+mod cw_host;
+
 use cw_web::script::{MemoryHost, Modifiers, Realm, UiEvent};
 
 struct Counting;
@@ -346,7 +348,6 @@ fn measure(name: &str, html: &str, ir: &str, target: &str, focus: &[&str]) {
 #[test]
 #[ignore]
 fn notes_phases() {
-    use cw_web::script::{ScriptHostDocument, StorageArea};
     let web =
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../applications/web/notes");
     let ir = std::fs::read_to_string(web.join("notes.ui.json")).unwrap();
@@ -356,10 +357,7 @@ fn notes_phases() {
          <style id=\"cw-theme\"></style><style>{css}</style></head>\
          <body><div id=\"root\"></div></body></html>"
     );
-    let mut host = MemoryHost::new();
-    host.storage_set(
-        StorageArea::Local,
-        "\u{1}cw:boot",
+    let host = cw_host::CwHost::new(
         r#"{"kind":"notes","argument":"/n","state":null,"env":{"platform":"macos","mobile":false,"width":900,"height":600,"css":""}}"#,
     );
     let module = UiApp::parse_ir(&ir).unwrap();
@@ -452,7 +450,7 @@ fn notes_phases() {
 #[test]
 #[ignore]
 fn notes_interpreted_against_generated() {
-    use cw_web::script::{ScriptHostDocument, StorageArea};
+    use cw_web::script::StorageArea;
     let runs: usize = std::env::var("UI_PERF_RUNS")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -467,13 +465,9 @@ fn notes_interpreted_against_generated() {
          <body><div id=\"root\"></div></body></html>"
     );
     let notes_host = || {
-        let mut host = MemoryHost::new();
-        host.storage_set(
-            StorageArea::Local,
-            "\u{1}cw:boot",
+        cw_host::CwHost::new(
             r#"{"kind":"notes","argument":"/n","state":null,"env":{"platform":"macos","mobile":false,"width":900,"height":600,"css":""}}"#,
-        );
-        host
+        )
     };
     let module = UiApp::parse_ir(&ir).unwrap();
     let program = cw_ui_fixtures::for_module(&module).expect("Notes' generated program");
@@ -539,7 +533,7 @@ fn notes_interpreted_against_generated() {
             let asked = app
                 .inner()
                 .host
-                .storage_get(StorageArea::Local, "\u{1}cw:out")
+                .storage_get(StorageArea::Local, cw_host::LAST_OUT)
                 .unwrap_or_default();
             app.cw_deliver(r#"[{"id":5,"value":["a.txt","b.txt","c.txt"]}]"#)
                 .unwrap();

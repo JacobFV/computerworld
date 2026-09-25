@@ -269,11 +269,13 @@ let next = app.next_timer_micros();                       // when to call it aga
   replays its journal to the same point, a `cw` request awaiting its reply is
   answered after a restore.
 * The `cw` global (`cw_ui`'s `cw` module) speaks the protocol of
-  `crates/applications/src/web_app/bridge.js` over the same channel, the host's
-  `localStorage`: it reads `"\u{1}cw:boot"` (`{kind, argument, state, env}`) and
-  `"\u{1}cw:now"`, and writes each message (`{op: "request", id, kind, …}`,
-  `{op: "state", value}`, `{op: "refuse", message}`, `{op: "chrome", chrome}`) to
-  `"\u{1}cw:out"`, so one host serves an app on either backend.
+  `crates/applications/src/web_app/bridge.js` over the same transport, the host's
+  synchronous call (`ScriptHostDocument::host_call`, which the bridge reaches as
+  `__cw_host(name, payload)`): `boot` answers the boot facts (`{kind, argument,
+  state, env}`), `now` the world clock in microseconds, and `out` takes each
+  message (`{op: "request", id, kind, …}`, `{op: "state", value}`, `{op: "refuse",
+  message}`, `{op: "chrome", chrome}`), so one host serves an app on either
+  backend, interpreted or generated.
   `cw_deliver(replies_json)` settles requests (`[{"id", "value"} | {"id", "error"}]`,
   bridge.js's `__cw_deliver`) and `cw_env(env_json)` updates `cw.env` and runs the
   `onEnv` listeners (`__cw_env`; the host applies the theme itself); both settle the

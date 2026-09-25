@@ -1,12 +1,12 @@
 //! The `cw` global of computerworld's desktop web applications, run natively.
 //!
 //! It speaks the protocol `crates/applications/src/web_app/bridge.js` speaks for an
-//! application on the JS VM, over the same channel: reserved `localStorage` keys of
-//! the host (`ScriptHostDocument::storage_get`/`storage_set`). The host reads
-//! `\u{1}cw:boot` (`{kind, argument, state, env}`) and `\u{1}cw:now` for it and
-//! receives each message (`{op: "request" | "state" | "refuse" | "chrome", …}`) as a
-//! write of `\u{1}cw:out`, so a host that runs the bridge on a Realm hosts a compiled
-//! application unchanged. What the bridge receives through `__cw_deliver(replies)`
+//! application on the JS VM, over the same transport: the host's synchronous call
+//! (`ScriptHostDocument::host_call`, what the bridge reaches as `__cw_host(name,
+//! payload)`). `boot` answers the boot facts (`{kind, argument, state, env}`), `now`
+//! the world clock in microseconds, and `out` takes each message (`{op: "request" |
+//! "state" | "refuse" | "chrome", …}`), so a host that runs the bridge on a Realm
+//! hosts a compiled application unchanged, interpreted or generated. What the bridge receives through `__cw_deliver(replies)`
 //! and `__cw_env(env)` arrives here through [`crate::UiApp::cw_deliver`] and
 //! [`crate::UiApp::cw_env`], with the same JSON. The types an application sees are
 //! `crates/applications/web/types/cw.d.ts`.
@@ -15,14 +15,12 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use cw_web::script::{FetchResponse, StorageArea};
+use cw_web::script::FetchResponse;
 
 use crate::interp::{new_promise, obj_get};
 use crate::ir::Builtin;
 use crate::runtime::*;
 use crate::value::*;
-
-const KEY: &str = "\u{1}cw:";
 
 /// The bridge's state: the boot facts, the environment, the declared state, the
 /// `onEnv` listeners and the requests awaiting a reply.
@@ -60,7 +58,8 @@ impl Runtime {
             let boot = self
                 .inner
                 .host
-                .storage_get(StorageArea::Local, &format!("{KEY}boot"))
+                .host_call("boot", "")
+                .ok()
                 .and_then(|b| crate::json::parse(&b).ok())
                 .unwrap_or(Value::Null);
             let field = |k: &str| match &boot {
@@ -84,9 +83,8 @@ impl Runtime {
 
     fn cw_send(&mut self, message: Value) {
         if let Some(json) = crate::json::stringify(&message, &Value::Undefined) {
-            self.inner
-                .host
-                .storage_set(StorageArea::Local, &format!("{KEY}out"), &json);
+            // A host that does not take messages has nowhere to put them.
+            let _ = self.inner.host.host_call("out", &json);
         }
     }
 
@@ -125,7 +123,7 @@ impl Runtime {
             B::CwNow => self
                 .inner
                 .host
-                .storage_get(StorageArea::Local, &format!("{KEY}now"))
+                .host_call("now", "")
                 .map(|n| Value::Num(string_to_number(&n)))
                 .unwrap_or(Value::Num(0.0)),
             B::CwStateGet => self.cw().state.clone(),

@@ -25,10 +25,6 @@ pub const STEP_BUDGET: u64 = 30_000_000;
 /// rendered before the host paints. The browser tab's `SETTLE_MS`, for the same reason.
 pub const SETTLE_MS: u32 = 20;
 
-/// The storage keys cw-ui reaches the host's `boot`, `now` and `out` through; the JS bridge
-/// calls them with `__cw_host`.
-const KEY: &str = "\u{1}cw:";
-
 /// One thing the application asked of its machine.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -267,10 +263,6 @@ impl ScriptHostDocument for Host {
     }
     fn storage_get(&self, area: StorageArea, key: &str) -> Option<String> {
         let c = lock(&self.channel);
-        // cw-ui reaches the same three names through the storage keys.
-        if let Some(reserved) = key.strip_prefix(KEY) {
-            return c.read(reserved);
-        }
         match area {
             StorageArea::Local => c.local.get(key).cloned(),
             StorageArea::Session => c.session.get(key).cloned(),
@@ -278,13 +270,6 @@ impl ScriptHostDocument for Host {
     }
     fn storage_set(&mut self, area: StorageArea, key: &str, value: &str) {
         let mut c = lock(&self.channel);
-        if key == "\u{1}cw:out" {
-            c.take(value);
-            return;
-        }
-        if key.starts_with(KEY) {
-            return;
-        }
         match area {
             StorageArea::Local => c.local.insert(key.to_owned(), value.to_owned()),
             StorageArea::Session => c.session.insert(key.to_owned(), value.to_owned()),

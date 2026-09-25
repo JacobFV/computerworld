@@ -6,8 +6,11 @@
 
 use std::collections::BTreeMap;
 
+mod cw_host;
+
+use cw_host::{CwHost, LAST_OUT};
 use cw_ui::UiApp;
-use cw_web::script::{MemoryHost, ScriptHostDocument, StorageArea};
+use cw_web::script::StorageArea;
 
 const CW_D_TS: &str = include_str!("../../../applications/web/types/cw.d.ts");
 
@@ -50,14 +53,11 @@ createRoot(document.getElementById('root')!).render(<App />);
 
 const SHELL: &str = r#"<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><div id="root"></div></body></html>"#;
 
-fn host() -> MemoryHost {
-    let mut h = MemoryHost::new();
-    h.storage_set(
-        StorageArea::Local,
-        "\u{1}cw:boot",
+/// A host answering the bridge's calls, as the desktop's web-app host does.
+fn host() -> CwHost {
+    CwHost::new(
         r#"{"kind":"t","argument":"/f","state":null,"env":{"platform":"macos","mobile":false,"width":800,"height":600,"css":""}}"#,
-    );
-    h
+    )
 }
 
 fn module() -> cw_ui::ir::Module {
@@ -108,7 +108,7 @@ fn text(app: &UiApp) -> String {
 fn last_out(app: &mut UiApp) -> String {
     app.inner()
         .host
-        .storage_get(StorageArea::Local, "\u{1}cw:out")
+        .storage_get(StorageArea::Local, LAST_OUT)
         .unwrap_or_default()
 }
 
