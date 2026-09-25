@@ -257,9 +257,15 @@ const CUSTOM_MEMO_ENTRIES: usize = 4096;
 
 /// Resolved custom properties by (inherited set, declarations): see
 /// `Engine::custom_properties`.
-type CustomMemo = std::cell::RefCell<
-    std::collections::HashMap<(usize, Vec<usize>), (Rc<CustomProperties>, Rc<CustomProperties>)>,
->;
+type CustomMemo = std::cell::RefCell<std::collections::HashMap<u64, Vec<CustomMemoEntry>>>;
+/// The inherited set's address, the declarations' addresses, the inherited set
+/// (kept alive) and the result.
+type CustomMemoEntry = (
+    usize,
+    Box<[usize]>,
+    Rc<CustomProperties>,
+    Rc<CustomProperties>,
+);
 
 /// Substituted `var()` values: see `Engine::resolve_pending`.
 type PendingMemo = std::cell::RefCell<
@@ -276,6 +282,8 @@ struct Engine<'a> {
     inline_cache: std::cell::RefCell<BTreeMap<NodeId, Rc<ParsedBlock>>>,
     /// The matched-rules buffer `winners` reuses.
     matched: std::cell::Cell<Vec<&'a css::IndexEntry<RuleData>>>,
+    /// `ch` and `ex` of recent fonts (see `ch_ex`).
+    font_units: std::cell::RefCell<Vec<(Font, (Au, Au))>>,
 }
 
 impl std::ops::Deref for Engine<'_> {
@@ -602,6 +610,7 @@ impl<'a> Engine<'a> {
             body_text_color,
             inline_cache: std::cell::RefCell::new(BTreeMap::new()),
             matched: std::cell::Cell::new(Vec::new()),
+            font_units: Default::default(),
         }
     }
 
@@ -635,15 +644,23 @@ impl<'a> Engine<'a> {
         if !w.custom_shared {
             return resolve_custom(&w.custom, inherited);
         }
-        let key: (usize, Vec<usize>) = (
-            Rc::as_ptr(inherited) as usize,
+        // Hashed without allocating; an entry keeps the full key to compare.
+        let base = Rc::as_ptr(inherited) as usize;
+        let ptrs = || {
             w.custom
                 .iter()
                 .map(|(_, v)| &**v as *const CustomDeclared as usize)
-                .collect(),
-        );
-        if let Some((_, out)) = self.data.custom_memo.borrow().get(&key) {
-            return out.clone();
+        };
+        let mut h: u64 = base as u64 ^ 0x9e37_79b9_7f4a_7c15;
+        for p in ptrs() {
+            h = (h.rotate_left(5) ^ p as u64).wrapping_mul(0x517c_c1b7_2722_0a95);
+        }
+        if let Some(bucket) = self.data.custom_memo.borrow().get(&h) {
+            for (b, key, _, out) in bucket {
+                if *b == base && key.len() == w.custom.len() && ptrs().eq(key.iter().copied()) {
+                    return out.clone();
+                }
+            }
         }
         let out = resolve_custom(&w.custom, inherited);
         let mut memo = self.data.custom_memo.borrow_mut();
@@ -652,7 +669,9 @@ impl<'a> Engine<'a> {
         }
         // The inherited set is kept alive with its entry, so its address cannot
         // be reused by another set while the entry exists.
-        memo.insert(key, (inherited.clone(), out.clone()));
+        memo.entry(h)
+            .or_default()
+            .push((base, ptrs().collect(), inherited.clone(), out.clone()));
         out
     }
 
@@ -683,6 +702,24 @@ impl<'a> Engine<'a> {
         // cannot be reused while it exists.
         memo.insert(key, (s.custom.clone(), r.clone()));
         r
+    }
+
+    /// The `ch` and `ex` of a font (its `0` advance and x-height), remembered for
+    /// the last few fonts: siblings and cousins mostly share one.
+    fn ch_ex(&self, font: &Font) -> (Au, Au) {
+        let mut seen = self.font_units.borrow_mut();
+        if let Some((_, u)) = seen.iter().find(|(f, _)| f == font) {
+            return *u;
+        }
+        let u = (
+            crate::layout::text::ch_unit(font),
+            crate::layout::text::font_metrics(font).x_height,
+        );
+        if seen.len() >= 8 {
+            seen.remove(0);
+        }
+        seen.push((font.clone(), u));
+        u
     }
 
     fn inline_block(&self, node: NodeId) -> Result<Option<Rc<ParsedBlock>>, Unsupported> {
@@ -918,14 +955,14 @@ impl<'a> Engine<'a> {
         // x-height, not half an em.
         let lengths_for = |font: &Font, root_fs: Au| {
             let mut l = LengthContext::for_font_size(font.size, root_fs, self.viewport);
-            l.ch = crate::layout::text::ch_unit(font);
-            l.ex = crate::layout::text::font_metrics(font).x_height;
+            (l.ch, l.ex) = self.ch_ex(font);
             l
         };
+        let parent_lengths = lengths_for(&parent.font, root_fs);
         let mut ctx = ComputeCtx {
             parent,
-            lengths: lengths_for(&parent.font, root_fs),
-            parent_lengths: lengths_for(&parent.font, root_fs),
+            lengths: parent_lengths,
+            parent_lengths,
             quirks: self.quirks,
             fonts: self.fonts,
             web_fonts: &self.web_fonts,

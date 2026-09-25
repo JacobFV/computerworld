@@ -381,4 +381,53 @@ mod perf {
         }
         profile::set_clock(None);
     }
+
+    /// A full cascade of each fixture's settled page by one cascade engine,
+    /// repeated (so what the engine memoises is warm, as in a realm's restyles).
+    #[test]
+    #[ignore]
+    fn cascade_only() {
+        let runs: usize = std::env::var("STYLE_PERF_RUNS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(7);
+        profile::set_clock(Some(clock));
+        for name in fixtures() {
+            let html = std::fs::read_to_string(fixture_dir().join(format!("{name}.html"))).unwrap();
+            let mut r = boot(&name, &html);
+            let (doc, sheets, media) = {
+                let inner = r.layout();
+                let sheets: Vec<_> = inner
+                    .sheets
+                    .iter()
+                    .filter(|s| !s.disabled)
+                    .map(|s| s.sheet.clone())
+                    .collect();
+                (inner.doc.clone(), sheets, inner.media())
+            };
+            let engine = cw_web::style::StyleEngine::build(
+                &sheets,
+                &media,
+                false,
+                cw_web::Strictness::Lenient,
+            )
+            .unwrap();
+            let ctx = cw_web::css::MatchContext::new();
+            let mut row = Row {
+                label: format!("{name} cascade"),
+                ..Default::default()
+            };
+            let _ = engine.cascade(&doc, &ctx);
+            for _ in 0..runs {
+                profile::take();
+                let t = clock();
+                std::hint::black_box(engine.cascade(&doc, &ctx).unwrap());
+                row.wall.push(clock() - t);
+                row.phases.push(profile::take().nanos.to_vec());
+            }
+            print_header();
+            print_row(&row);
+        }
+        profile::set_clock(None);
+    }
 }

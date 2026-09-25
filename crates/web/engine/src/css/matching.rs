@@ -844,54 +844,29 @@ fn element_bits(doc: &Document, element: NodeId) -> u64 {
 }
 
 /// What an element's ancestors offer a selector index: a bloom filter of all their
-/// names, and the class names themselves, so an entry keyed on a required ancestor
-/// class is only ever looked at for elements that really have such an ancestor.
+/// names (tags, ids, classes). An entry keyed on a required ancestor class is
+/// looked at only for elements whose filter has the class's bit.
 ///
 /// A cascade that walks the tree builds each element's keys from its parent's with
 /// [`AncestorKeys::under`] instead of rebuilding them from the root.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AncestorKeys {
     bloom: u64,
-    /// Sorted and deduplicated; shared with the parent's keys when the parent added
-    /// no class of its own, which most elements do not.
-    classes: std::rc::Rc<Vec<String>>,
 }
 
 impl AncestorKeys {
     /// The keys of `element`'s ancestors, walked from the element upwards.
     pub fn of(doc: &Document, element: NodeId) -> AncestorKeys {
         let mut bloom = 0;
-        let mut classes: Vec<String> = Vec::new();
         for n in doc.ancestors(element).filter(|n| doc.is_element(*n)) {
             bloom |= element_bits(doc, n);
-            classes.extend(doc.classes(n).map(str::to_owned));
         }
-        classes.sort_unstable();
-        classes.dedup();
-        AncestorKeys {
-            bloom,
-            classes: std::rc::Rc::new(classes),
-        }
+        AncestorKeys { bloom }
     }
     /// The keys of a child of `parent`, given `parent`'s own ancestor keys.
     pub fn under(&self, doc: &Document, parent: NodeId) -> AncestorKeys {
-        let bloom = self.bloom | element_bits(doc, parent);
-        if doc
-            .classes(parent)
-            .all(|c| self.classes.binary_search_by(|x| x.as_str().cmp(c)).is_ok())
-        {
-            return AncestorKeys {
-                bloom,
-                classes: self.classes.clone(),
-            };
-        }
-        let mut classes = (*self.classes).clone();
-        classes.extend(doc.classes(parent).map(str::to_owned));
-        classes.sort_unstable();
-        classes.dedup();
         AncestorKeys {
-            bloom,
-            classes: std::rc::Rc::new(classes),
+            bloom: self.bloom | element_bits(doc, parent),
         }
     }
     pub fn bloom(&self) -> u64 {
@@ -918,6 +893,20 @@ fn required_ancestor_classes(selector: &ComplexSelector) -> Vec<String> {
         }
     }
     out
+}
+
+/// Whether the first combinator that leads up from the subject (past sibling
+/// combinators, whose elements share the subject's parent) is a child combinator:
+/// the compound left of it is then the subject's parent.
+fn first_step_up_is_child(selector: &ComplexSelector) -> bool {
+    for c in selector.combinators.iter().rev() {
+        match c {
+            Combinator::NextSibling | Combinator::SubsequentSibling => {}
+            Combinator::Child => return true,
+            Combinator::Descendant => return false,
+        }
+    }
+    false
 }
 
 /// The bloom bits an element's ancestors must carry for `selector` to match.
@@ -970,9 +959,12 @@ pub struct SelectorIndex<T> {
     classes: HashMap<String, Vec<usize>>,
     tags: HashMap<String, Vec<usize>>,
     /// Entries whose rightmost compound has no key but that require an ancestor
-    /// class, bucketed by it: a utility sheet's `.space-x-4 > :not([hidden]) ~
-    /// :not([hidden])` would otherwise be a candidate for every element on the page.
-    ancestor_classes: HashMap<String, Vec<usize>>,
+    /// class, bucketed by it (with the class's bloom bit): a utility sheet's
+    /// `.space-x-4 > :not([hidden]) ~ :not([hidden])` would otherwise be a
+    /// candidate for every element on the page.
+    /// The flag says the class must be on the parent (the first step up from the
+    /// subject, past any siblings, is a child combinator), else on any ancestor.
+    ancestor_classes: Vec<(String, u64, bool, Vec<usize>)>,
     other: Vec<usize>,
 }
 
@@ -983,7 +975,7 @@ impl<T> Default for SelectorIndex<T> {
             ids: HashMap::new(),
             classes: HashMap::new(),
             tags: HashMap::new(),
-            ancestor_classes: HashMap::new(),
+            ancestor_classes: Vec::new(),
             other: Vec::new(),
         }
     }
@@ -1013,7 +1005,18 @@ impl<T> SelectorIndex<T> {
         } else if let Some(t) = right.type_name() {
             self.tags.entry(t.to_ascii_lowercase()).or_default().push(i);
         } else if let Some(c) = required_ancestor_classes(&selector).into_iter().next() {
-            self.ancestor_classes.entry(c).or_default().push(i);
+            let parent = first_step_up_is_child(&selector);
+            match self
+                .ancestor_classes
+                .iter_mut()
+                .find(|(k, _, p, _)| *k == c && *p == parent)
+            {
+                Some((_, _, _, v)) => v.push(i),
+                None => {
+                    let bit = bloom_bit(2, &c);
+                    self.ancestor_classes.push((c, bit, parent, vec![i]));
+                }
+            }
         } else {
             self.other.push(i);
         }
@@ -1062,11 +1065,20 @@ impl<T> SelectorIndex<T> {
                 idx.extend(v);
             }
         }
-        if !self.ancestor_classes.is_empty() {
-            for c in keys.classes.iter() {
-                if let Some(v) = self.ancestor_classes.get(c.as_str()) {
-                    idx.extend(v);
-                }
+        for (c, bit, parent, v) in &self.ancestor_classes {
+            if keys.bloom & bit != *bit {
+                continue;
+            }
+            // The filter saturates on a deep page of utility classes; the class
+            // itself decides.
+            let has = |n: NodeId| doc.classes(n).any(|x| x == c.as_str());
+            let found = if *parent {
+                doc.parent(element).is_some_and(has)
+            } else {
+                doc.ancestors(element).any(has)
+            };
+            if found {
+                idx.extend(v);
             }
         }
         idx.extend(&self.other);
