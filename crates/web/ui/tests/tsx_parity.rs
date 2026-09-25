@@ -13,6 +13,12 @@
 //! layout must reach the state's entry in `thresholds.json` against Chromium. The
 //! checked-in `<name>.js` and `<name>.ui.json` must be what `cw-tsx` builds today.
 //!
+//! Every fixture and agent-written app also runs as the Rust `cw-tsx` generates from
+//! its IR (`cw-ui-fixtures`), in lockstep with the interpreter: the documents (with
+//! form values, checkedness and focus), logs and render counters must be identical
+//! after boot and after every step, the final states equal, and each one's snapshot
+//! must restore on the other form.
+//!
 //!     cargo test -p cw-ui --test tsx_parity -- --nocapture
 //!     CW_TSX_BLESS=1 cargo test -p cw-ui --test tsx_parity   # rewrite <name>.js/.ui.json
 
@@ -650,5 +656,147 @@ fn agent_apps_compiled_match_react_and_chromium() {
             }
         }
     }
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}
+
+// ---------------------------------------------------------------- generated code
+
+fn app_on(module: &cw_ui::ir::Module, html: &str, name: &str, generated: bool) -> UiApp {
+    let url = format!("{BASE}{name}.html");
+    if generated {
+        let p = cw_ui_fixtures::for_module(module).unwrap_or_else(|| {
+            panic!("{name}: no generated program for its IR (cw-ui-fixtures' build.rs)")
+        });
+        UiApp::generated(p, html, &url, Box::new(host())).expect("app")
+    } else {
+        UiApp::new(module.clone(), html, &url, Box::new(host())).expect("app")
+    }
+}
+
+fn state_json(app: &UiApp) -> String {
+    let mut s = app.snapshot();
+    s.module = None;
+    s.program = None;
+    s.to_json()
+}
+
+fn observed(app: &mut UiApp) -> String {
+    let st = app.stats();
+    format!(
+        "{}\nlogs {:?}\nrenders {} holes {} skipped {} reused {}",
+        compiled_dom(app),
+        app.logs()
+            .iter()
+            .map(|l| format!("{:?}: {}", l.level, l.text))
+            .collect::<Vec<_>>(),
+        st.renders,
+        st.holes_evaluated,
+        st.holes_skipped,
+        st.elements_reused
+    )
+}
+
+/// The interpreter and the generated program side by side through `list`.
+fn lockstep(module: &cw_ui::ir::Module, html: &str, name: &str, list: &[Value]) -> Vec<String> {
+    let mut failures = Vec::new();
+    let mut a = app_on(module, html, name, false);
+    let mut b = app_on(module, html, name, true);
+    assert!(b.is_generated());
+    a.boot();
+    b.boot();
+    let (oa, ob) = (observed(&mut a), observed(&mut b));
+    if oa != ob {
+        failures.push(format!("{name} boot: {}", first_difference(&oa, &ob)));
+    }
+    for (i, step) in list.iter().enumerate() {
+        for app in [&mut a, &mut b] {
+            let at = click_step(step).map(|sel| {
+                let n = app
+                    .query_selector(sel)
+                    .unwrap_or_else(|| panic!("{sel}: no element"));
+                app.centre_of(n).expect("laid out")
+            });
+            for ev in ui_event(step, at) {
+                app.dispatch(ev);
+            }
+            app.run_until_idle(20);
+        }
+        let (oa, ob) = (observed(&mut a), observed(&mut b));
+        if oa != ob {
+            failures.push(format!("{name} step {i}: {}", first_difference(&oa, &ob)));
+        }
+    }
+    let (sa, sb) = (state_json(&a), state_json(&b));
+    if sa != sb {
+        failures.push(format!(
+            "{name}: final states differ: {}",
+            first_difference(&sa, &sb)
+        ));
+    }
+    // Each snapshot on the other form, against the same snapshot restored on its own
+    // form. (Not against the live app: a snapshot's JSON does not round-trip every
+    // float exactly — serde_json parses `93.33333333333333` as `…31` — on either
+    // form.)
+    let program = cw_ui_fixtures::for_module(module).unwrap();
+    let gen = || -> std::rc::Rc<dyn cw_ui::Program> {
+        std::rc::Rc::new(cw_ui::program::StaticProgram(program))
+    };
+    let interp = || -> std::rc::Rc<dyn cw_ui::Program> {
+        std::rc::Rc::new(cw_ui::IrProgram::new(module.clone()))
+    };
+    for (from, what) in [(&a, "interpreted"), (&b, "generated")] {
+        let state = cw_ui::UiState::from_json(&from.snapshot().to_json()).unwrap();
+        let on_interp = UiApp::restore_with(&state, interp(), Box::new(host())).unwrap();
+        let on_gen = UiApp::restore_with(&state, gen(), Box::new(host())).unwrap();
+        assert!(on_gen.is_generated() && !on_interp.is_generated());
+        let (x, y) = (state_json(&on_interp), state_json(&on_gen));
+        if x != y {
+            failures.push(format!(
+                "{name}: the {what} snapshot restores differently on the two forms: {}",
+                first_difference(&x, &y)
+            ));
+        }
+    }
+    failures
+}
+
+#[test]
+fn generated_code_matches_the_interpreter_after_every_step() {
+    let mut failures = Vec::new();
+    let mut runs = 0;
+    for name in tsx_fixtures() {
+        let built = build(&name);
+        let html = as_dumped(
+            &std::fs::read_to_string(fixture_dir().join(format!("{name}.html"))).expect("html"),
+        );
+        for (state, list) in steps(&name) {
+            failures.extend(lockstep(
+                &built.module,
+                &html,
+                &format!("{name}.{state}"),
+                &list,
+            ));
+            runs += 1;
+        }
+    }
+    for app in agent_apps() {
+        let fixture = format!("app-{app}");
+        let Ok(html) = std::fs::read_to_string(fixture_dir().join(format!("{fixture}.html")))
+        else {
+            continue;
+        };
+        let html = as_dumped(&html);
+        let (module, _) = build_agent_app(&app);
+        for (state, list) in steps(&fixture) {
+            failures.extend(lockstep(
+                &module,
+                &html,
+                &format!("{fixture}.{state}"),
+                &list,
+            ));
+            runs += 1;
+        }
+    }
+    eprintln!("{runs} sessions run interpreted and generated");
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }

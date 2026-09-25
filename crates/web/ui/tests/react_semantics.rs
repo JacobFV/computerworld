@@ -2,7 +2,11 @@
 //! that logs what it observes (renders, effects, cleanups, values). It is compiled
 //! by `cw-tsx` and run twice through the same interaction: natively on `cw-ui`, and
 //! as the emitted fallback on React 18's production build on the engine's JS
-//! `Realm`. The console logs and the documents must be identical.
+//! `Realm`. The console logs and the documents must be identical. The compiled side
+//! runs twice more: as the Rust `cw-tsx` generates from the same IR
+//! (`cw-ui-fixtures`), which must match the interpreter after every step (document,
+//! logs, render counters) and end in the same state (their snapshots equal but for
+//! the program's name), and each side's snapshot restored on the other form.
 
 use cw_ui::UiApp;
 use cw_web::dom::{Document, NodeId, NodeKind};
@@ -154,15 +158,43 @@ fn event(step: &Step, at: Option<(i32, i32)>) -> Vec<UiEvent> {
     }
 }
 
-fn run_compiled(module: &cw_ui::ir::Module, steps: &[Step]) -> Outcome {
-    let mut app = UiApp::new(
-        module.clone(),
-        SHELL,
-        &format!("{BASE}app.html"),
-        Box::new(vendor(MemoryHost::new())),
-    )
-    .unwrap();
+/// A compiled app on the interpreter, or on the Rust generated from its IR.
+fn app_on(module: &cw_ui::ir::Module, generated: bool) -> UiApp {
+    let host = Box::new(vendor(MemoryHost::new()));
+    let url = format!("{BASE}app.html");
+    if generated {
+        let p = cw_ui_fixtures::for_module(module).expect(
+            "no generated program for this IR: cw-ui-fixtures' build.rs did not see its source",
+        );
+        cw_ui::program::register(p);
+        UiApp::generated(p, SHELL, &url, host).unwrap()
+    } else {
+        UiApp::new(module.clone(), SHELL, &url, host).unwrap()
+    }
+}
+
+/// A snapshot as JSON without the program's identity (the IR or its name), which is
+/// all an interpreted and a generated app's states may differ in.
+fn state_json(app: &UiApp) -> String {
+    let mut s = app.snapshot();
+    s.module = None;
+    s.program = None;
+    s.to_json()
+}
+
+struct Compiled {
+    outcome: Outcome,
+    /// The document after each step.
+    steps: Vec<String>,
+    stats: String,
+    state: String,
+    app: UiApp,
+}
+
+fn run_compiled_on(module: &cw_ui::ir::Module, steps: &[Step], generated: bool) -> Compiled {
+    let mut app = app_on(module, generated);
     app.boot();
+    let mut per_step = Vec::new();
     for s in steps {
         let at = match s {
             Step::Click(sel) => {
@@ -184,18 +216,89 @@ fn run_compiled(module: &cw_ui::ir::Module, steps: &[Step]) -> Outcome {
             let d = app.document().clone();
             eprintln!("{s:?}: {}", dom_text(&d, &Default::default(), &|_| None));
         }
+        let values = app.form_values();
+        let doc = app.document().clone();
+        let selections = app.inner().form.selection.clone();
+        per_step.push(dom_text(&doc, &values, &|n| selections.get(&n).copied()));
     }
     let values = app.form_values();
     let doc = app.document().clone();
     let selections = app.inner().form.selection.clone();
-    Outcome {
-        logs: app
-            .logs()
-            .into_iter()
-            .map(|l| format!("{:?}: {}", l.level, l.text))
-            .collect(),
-        dom: dom_text(&doc, &values, &|n| selections.get(&n).copied()),
+    let st = app.stats();
+    Compiled {
+        outcome: Outcome {
+            logs: app
+                .logs()
+                .into_iter()
+                .map(|l| format!("{:?}: {}", l.level, l.text))
+                .collect(),
+            dom: dom_text(&doc, &values, &|n| selections.get(&n).copied()),
+        },
+        steps: per_step,
+        stats: format!(
+            "renders {} holes {} skipped {} reused {}",
+            st.renders, st.holes_evaluated, st.holes_skipped, st.elements_reused
+        ),
+        state: state_json(&app),
+        app,
     }
+}
+
+/// The interpreter and the generated program through `steps`: identical after
+/// every step and at the end, and each one's snapshot restores on the other.
+fn same_as_generated(module: &cw_ui::ir::Module, steps: &[Step]) -> Outcome {
+    let interp = run_compiled_on(module, steps, false);
+    let generated = run_compiled_on(module, steps, true);
+    assert!(generated.app.is_generated() && !interp.app.is_generated());
+    for (i, (a, b)) in interp.steps.iter().zip(&generated.steps).enumerate() {
+        assert_eq!(
+            a, b,
+            "documents differ after step {i} (left: interpreted, right: generated)"
+        );
+    }
+    assert_eq!(
+        interp.outcome.logs, generated.outcome.logs,
+        "console logs differ (left: interpreted, right: generated)"
+    );
+    assert_eq!(interp.stats, generated.stats, "render counters differ");
+    assert_eq!(
+        interp.state, generated.state,
+        "states differ (left: interpreted, right: generated)"
+    );
+    // Cross restores: the interpreter's snapshot on the generated program, and the
+    // generated program's on the interpreter.
+    let program = cw_ui_fixtures::for_module(module).unwrap();
+    let from_interp = cw_ui::UiState::from_json(&interp.app.snapshot().to_json()).unwrap();
+    let on_gen = UiApp::restore_with(
+        &from_interp,
+        std::rc::Rc::new(cw_ui::program::StaticProgram(program)),
+        Box::new(vendor(MemoryHost::new())),
+    )
+    .unwrap();
+    assert!(on_gen.is_generated());
+    assert_eq!(
+        state_json(&on_gen),
+        interp.state,
+        "interpreted state restored on generated code"
+    );
+    let from_gen = cw_ui::UiState::from_json(&generated.app.snapshot().to_json()).unwrap();
+    assert!(
+        from_gen.module.is_none(),
+        "a generated app's snapshot names its program"
+    );
+    let on_interp = UiApp::restore_with(
+        &from_gen,
+        std::rc::Rc::new(cw_ui::IrProgram::new(module.clone())),
+        Box::new(vendor(MemoryHost::new())),
+    )
+    .unwrap();
+    assert!(!on_interp.is_generated());
+    assert_eq!(
+        state_json(&on_interp),
+        generated.state,
+        "generated state restored on the interpreter"
+    );
+    interp.outcome
 }
 
 fn run_fallback(js: &str, steps: &[Step]) -> Outcome {
@@ -240,7 +343,7 @@ fn run_fallback(js: &str, steps: &[Step]) -> Outcome {
 /// Runs `tsx` both ways through `steps` and requires identical logs and documents.
 fn same_as_react(tsx: &str, steps: &[Step]) -> Vec<String> {
     let (module, js) = compile(tsx);
-    let a = run_compiled(&module, steps);
+    let a = same_as_generated(&module, steps);
     let b = run_fallback(&js, steps);
     if std::env::var_os("CW_UI_SHOW").is_some() {
         eprintln!("logs: {:?}\ndom: {}", a.logs, a.dom);
@@ -572,40 +675,37 @@ function App() {
 createRoot(document.getElementById('root')!).render(<App />);
 "#,
     );
-    let mut app = UiApp::new(
-        module,
-        SHELL,
-        &format!("{BASE}app.html"),
-        Box::new(vendor(MemoryHost::new())),
-    )
-    .unwrap();
-    app.boot();
-    let click = |app: &mut UiApp| {
-        let n = app.query_selector("#add").unwrap();
-        let (x, y) = app.centre_of(n).unwrap();
-        app.dispatch(UiEvent::Click {
-            x,
-            y,
-            button: 0,
-            modifiers: Modifiers::default(),
-            detail: 1,
-        });
-    };
-    click(&mut app);
-    let state = app.snapshot();
-    let json = state.to_json();
-    let back = cw_ui::UiState::from_json(&json).unwrap();
-    assert_eq!(back, state);
-    let mut restored = UiApp::restore(&back, Box::new(vendor(MemoryHost::new()))).unwrap();
-    click(&mut app);
-    click(&mut restored);
-    let text = |a: &UiApp| {
-        a.document()
-            .text_content(a.query_selector("#root").unwrap())
-    };
-    assert_eq!(text(&app), text(&restored));
-    assert_eq!(text(&restored), "add1,2,3,42");
-    assert_eq!(app.snapshot().to_json(), restored.snapshot().to_json());
+    for generated in [false, true] {
+        let mut app = app_on(&module, generated);
+        app.boot();
+        let click = |app: &mut UiApp| {
+            let n = app.query_selector("#add").unwrap();
+            let (x, y) = app.centre_of(n).unwrap();
+            app.dispatch(UiEvent::Click {
+                x,
+                y,
+                button: 0,
+                modifiers: Modifiers::default(),
+                detail: 1,
+            });
+        };
+        click(&mut app);
+        let state = app.snapshot();
+        let json = state.to_json();
+        let back = cw_ui::UiState::from_json(&json).unwrap();
+        assert_eq!(back, state);
+        let mut restored = UiApp::restore(&back, Box::new(vendor(MemoryHost::new()))).unwrap();
+        click(&mut app);
+        click(&mut restored);
+        let text = |a: &UiApp| {
+            a.document()
+                .text_content(a.query_selector("#root").unwrap())
+        };
+        assert_eq!(text(&app), text(&restored));
+        assert_eq!(text(&restored), "add1,2,3,42");
+        assert_eq!(app.snapshot().to_json(), restored.snapshot().to_json());
+        assert_eq!(restored.is_generated(), generated);
+    }
 }
 
 #[test]
@@ -997,35 +1097,32 @@ function App() {
 createRoot(document.getElementById('root')!).render(<App />);
 "#,
     );
-    let mut app = UiApp::new(
-        module,
-        SHELL,
-        &format!("{BASE}app.html"),
-        Box::new(vendor(MemoryHost::new())),
-    )
-    .unwrap();
-    app.boot();
-    let key = |app: &mut UiApp, k: &str| {
-        app.dispatch(UiEvent::Key {
-            key: k.into(),
-            code: String::new(),
-            modifiers: Modifiers::default(),
-            repeat: false,
-        });
-        app.run_until_idle(20);
-    };
-    key(&mut app, "a");
-    key(&mut app, "+");
-    let state = cw_ui::UiState::from_json(&app.snapshot().to_json()).unwrap();
-    let mut restored = UiApp::restore(&state, Box::new(vendor(MemoryHost::new()))).unwrap();
-    for a in [&mut app, &mut restored] {
-        key(a, "b");
-        key(a, "+");
+    for generated in [false, true] {
+        let mut app = app_on(&module, generated);
+        app.boot();
+        let key = |app: &mut UiApp, k: &str| {
+            app.dispatch(UiEvent::Key {
+                key: k.into(),
+                code: String::new(),
+                modifiers: Modifiers::default(),
+                repeat: false,
+            });
+            app.run_until_idle(20);
+        };
+        key(&mut app, "a");
+        key(&mut app, "+");
+        let state = cw_ui::UiState::from_json(&app.snapshot().to_json()).unwrap();
+        let mut restored = UiApp::restore(&state, Box::new(vendor(MemoryHost::new()))).unwrap();
+        for a in [&mut app, &mut restored] {
+            key(a, "b");
+            key(a, "+");
+        }
+        let text = |a: &UiApp| a.document().text_content(a.query_selector("#out").unwrap());
+        assert_eq!(text(&app), "2:ab:1");
+        assert_eq!(text(&restored), "2:ab:1");
+        assert_eq!(app.snapshot().to_json(), restored.snapshot().to_json());
+        assert_eq!(restored.is_generated(), generated);
     }
-    let text = |a: &UiApp| a.document().text_content(a.query_selector("#out").unwrap());
-    assert_eq!(text(&app), "2:ab:1");
-    assert_eq!(text(&restored), "2:ab:1");
-    assert_eq!(app.snapshot().to_json(), restored.snapshot().to_json());
 }
 
 #[test]

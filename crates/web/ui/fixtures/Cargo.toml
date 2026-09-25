@@ -1,0 +1,15 @@
+[package]
+name = "cw-ui-fixtures"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "cw-ui's test fixtures (the TSX apps its tests run) generated as Rust by cw-tsx at build time, so every test also runs on generated code."
+
+[dependencies]
+cw-ui = { path = ".." }
+
+[build-dependencies]
+cw-tsx = { path = "../../tsx" }
+cw-ui = { path = ".." }
+serde_json.workspace = true

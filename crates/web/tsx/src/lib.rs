@@ -10,12 +10,16 @@
 //!   classic script React 18's UMD build runs, in Chrome and on the engine's JS
 //!   `Realm`: the fallback, and what Chromium is compared against.
 //!
+//! * [`emit_rust`] translates the IR into a Rust module for `cw_ui::GenProgram`:
+//!   ahead-of-time code for apps built into the binary (`cw-tsx build --emit rust`).
+//!
 //! The parser is oxc (`oxc_parser`, with its transformer and code generator for the
 //! fallback). It parses all of TypeScript and JSX, so the fallback exists for any
 //! valid module, not only for the subset; it is pure Rust and builds for wasm32. See
 //! docs/tsx-apps.md.
 
 pub mod emit_js;
+pub mod emit_rust;
 pub mod lower;
 mod types;
 

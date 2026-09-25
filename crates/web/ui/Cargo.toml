@@ -16,3 +16,4 @@ cw-tsx = { path = "../tsx" }
 cw-scene = { path = "../../graphics/scene" }
 cw-render = { path = "../../graphics/render" }
 cw-jsvm = { path = "../../languages/jsvm" }
+cw-ui-fixtures = { path = "fixtures" }

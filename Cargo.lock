@@ -992,8 +992,18 @@ dependencies = [
  "cw-render",
  "cw-scene",
  "cw-tsx",
+ "cw-ui-fixtures",
  "cw-web",
  "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "cw-ui-fixtures"
+version = "0.2.0"
+dependencies = [
+ "cw-tsx",
+ "cw-ui",
  "serde_json",
 ]
 

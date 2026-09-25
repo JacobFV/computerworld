@@ -6,6 +6,11 @@
 //!                                      out/app.diagnostics.json. `app.tsx` is the
 //!                                      entry: the modules it imports (`./x`) are
 //!                                      compiled with it into one IR and one script.
+//!     cw-tsx build app.tsx --emit rust [--mod name]
+//!                                      also writes out/app.ui.rs: the IR as a Rust
+//!                                      module (`pub mod name`, defining
+//!                                      `PROGRAM: cw_ui::GenProgram`) for an app
+//!                                      built into the binary
 //!     cw-tsx check app.tsx             prints the diagnostics; exit 1 if any
 //!
 //! Exit status of `build`: 0 when both outputs were written, 3 when only the fallback
@@ -15,7 +20,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 fn usage() -> ExitCode {
-    eprintln!("usage: cw-tsx build <entry.tsx> [-o <dir>] [--name <stem>]\n       cw-tsx check <entry.tsx>");
+    eprintln!("usage: cw-tsx build <entry.tsx> [-o <dir>] [--name <stem>] [--emit rust [--mod <name>]]\n       cw-tsx check <entry.tsx>");
     ExitCode::from(2)
 }
 
@@ -28,11 +33,18 @@ fn main() -> ExitCode {
     let mut input: Option<PathBuf> = None;
     let mut out: Option<PathBuf> = None;
     let mut name: Option<String> = None;
+    let mut rust = false;
+    let mut mod_name: Option<String> = None;
     let mut it = rest.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "-o" | "--out" => out = it.next().map(PathBuf::from),
             "--name" => name = it.next().cloned(),
+            "--emit" => match it.next().map(String::as_str) {
+                Some("rust") => rust = true,
+                _ => return usage(),
+            },
+            "--mod" => mod_name = it.next().cloned(),
             s if input.is_none() => input = Some(PathBuf::from(s)),
             _ => return usage(),
         }
@@ -111,12 +123,19 @@ fn main() -> ExitCode {
                     if !write(format!("{stem}.ui.json"), &(text + "\n")) {
                         return ExitCode::from(1);
                     }
+                    if rust {
+                        let m = mod_name.clone().unwrap_or_else(|| rust_ident(&stem));
+                        if !write(format!("{stem}.ui.rs"), &cw_tsx::emit_rust::emit(ir, &m)) {
+                            return ExitCode::from(1);
+                        }
+                    }
                     ExitCode::SUCCESS
                 }
                 None => {
                     // A stale IR next to a module that left the subset would run the
                     // old app; remove it so the page falls back.
                     let _ = std::fs::remove_file(&ir_path);
+                    let _ = std::fs::remove_file(dir.join(format!("{stem}.ui.rs")));
                     eprintln!(
                         "{}: outside the compiled subset; the page will run on React",
                         input.display()
@@ -127,4 +146,22 @@ fn main() -> ExitCode {
         }
         _ => usage(),
     }
+}
+
+/// A Rust module name for an output stem (`tsx-tasks` → `tsx_tasks`).
+fn rust_ident(stem: &str) -> String {
+    let mut s: String = stem
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if s.is_empty() || s.starts_with(|c: char| c.is_ascii_digit()) {
+        s.insert(0, '_');
+    }
+    s
 }

@@ -1,6 +1,8 @@
 //! The `cw` global over its host channel, and what a snapshot keeps of it: requests
 //! still awaiting their replies, the promise chains hanging off them and the async
-//! functions waiting on them. A restored app is answered as the original is.
+//! functions waiting on them. A restored app is answered as the original is. Each
+//! test runs on the interpreter and on the Rust generated from the same IR
+//! (`cw-ui-fixtures`), whose async functions are the interpreter's.
 
 use std::collections::BTreeMap;
 
@@ -66,6 +68,37 @@ fn module() -> cw_ui::ir::Module {
     b.ir.unwrap()
 }
 
+/// `module` interpreted, or its generated program (registered, so a snapshot of it
+/// restores by name).
+fn app_on(module: cw_ui::ir::Module, generated: bool) -> UiApp {
+    if generated {
+        let p = cw_ui_fixtures::for_module(&module).expect("a generated program for this IR");
+        cw_ui::program::register(p);
+        let app = UiApp::generated(p, SHELL, "cw-app://t/", Box::new(host())).unwrap();
+        assert!(app.is_generated());
+        app
+    } else {
+        UiApp::new(module, SHELL, "cw-app://t/", Box::new(host())).unwrap()
+    }
+}
+
+/// A snapshot of `module()` restored on the other form than the one it was taken
+/// on: a suspended async function, its promises and the requests it awaits carry
+/// over between the interpreter and generated code.
+fn restore_on_other_form(saved: &cw_ui::UiState, generated: bool) -> UiApp {
+    let m = module();
+    let program: std::rc::Rc<dyn cw_ui::Program> = if generated {
+        std::rc::Rc::new(cw_ui::IrProgram::new(m))
+    } else {
+        let p = cw_ui_fixtures::for_module(&m).unwrap();
+        cw_ui::program::register(p);
+        std::rc::Rc::new(cw_ui::program::StaticProgram(p))
+    };
+    let app = UiApp::restore_with(saved, program, Box::new(host())).unwrap();
+    assert_eq!(app.is_generated(), !generated);
+    app
+}
+
 fn text(app: &UiApp) -> String {
     app.document()
         .text_content(app.query_selector("#root").unwrap())
@@ -86,7 +119,12 @@ fn reply(app: &mut UiApp, json: &str) {
 
 #[test]
 fn requests_in_flight_are_answered_after_a_restore() {
-    let mut app = UiApp::new(module(), SHELL, "cw-app://t/", Box::new(host())).unwrap();
+    requests_in_flight_are_answered_after_a_restore_on(false);
+    requests_in_flight_are_answered_after_a_restore_on(true);
+}
+
+fn requests_in_flight_are_answered_after_a_restore_on(generated: bool) {
+    let mut app = app_on(module(), generated);
     app.boot();
     app.run_until_idle(20);
     // 1: first.txt, 2: the listing.
@@ -105,7 +143,7 @@ fn requests_in_flight_are_answered_after_a_restore() {
     );
 
     let saved = cw_ui::UiState::from_json(&app.snapshot().to_json()).unwrap();
-    let mut restored = UiApp::restore(&saved, Box::new(host())).unwrap();
+    let mut restored = restore_on_other_form(&saved, generated);
     assert_eq!(text(&restored), "waiting");
 
     for a in [&mut app, &mut restored] {
@@ -129,12 +167,24 @@ fn requests_in_flight_are_answered_after_a_restore() {
     assert_eq!(text(&app), want);
     assert_eq!(text(&restored), want);
     assert_eq!(text(&again), want);
-    assert_eq!(app.snapshot().to_json(), again.snapshot().to_json());
+    // The same state, whichever form each runs on.
+    let state = |a: &UiApp| {
+        let mut s = a.snapshot();
+        s.module = None;
+        s.program = None;
+        s.to_json()
+    };
+    assert_eq!(state(&app), state(&again));
 }
 
 #[test]
 fn a_rejected_request_after_a_restore_reaches_the_catch() {
-    let mut app = UiApp::new(module(), SHELL, "cw-app://t/", Box::new(host())).unwrap();
+    a_rejected_request_after_a_restore_reaches_the_catch_on(false);
+    a_rejected_request_after_a_restore_reaches_the_catch_on(true);
+}
+
+fn a_rejected_request_after_a_restore_reaches_the_catch_on(generated: bool) {
+    let mut app = app_on(module(), generated);
     app.boot();
     app.run_until_idle(20);
     let saved = cw_ui::UiState::from_json(&app.snapshot().to_json()).unwrap();
@@ -152,6 +202,11 @@ fn a_rejected_request_after_a_restore_reaches_the_catch() {
 
 #[test]
 fn a_cw_fetch_reply_has_its_body_text_and_json() {
+    a_cw_fetch_reply_has_its_body_text_and_json_on(false);
+    a_cw_fetch_reply_has_its_body_text_and_json_on(true);
+}
+
+fn a_cw_fetch_reply_has_its_body_text_and_json_on(generated: bool) {
     let app_src = r#"/// <reference path="./cw.d.ts" />
 import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -175,7 +230,7 @@ createRoot(document.getElementById('root')!).render(<App />);
     let sources = cw_tsx::load("app.tsx", &mut |f| files.get(f).map(|s| (*s).to_owned())).unwrap();
     let b = cw_tsx::build_modules(&sources);
     assert!(b.diagnostics.is_empty(), "{:?}", b.diagnostics);
-    let mut app = UiApp::new(b.ir.unwrap(), SHELL, "cw-app://t/", Box::new(host())).unwrap();
+    let mut app = app_on(b.ir.unwrap(), generated);
     app.boot();
     app.run_until_idle(20);
     let out = last_out(&mut app);
