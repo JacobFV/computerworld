@@ -70,3 +70,27 @@ fn prototype_chains_and_shadowing() {
     );
     assert_eq!(out, "BA own BA gA false 1 1");
 }
+
+#[test]
+fn adding_properties_respects_prototypes_and_extensibility() {
+    let out = eval(
+        r#"
+        'use strict';
+        const log = [];
+        const proto = { set watched(v) { log.push('setter ' + v); } };
+        Object.defineProperty(proto, 'fixed', { value: 1, writable: false });
+        const o = Object.create(proto);
+        o.watched = 5;               // runs the inherited setter, adds nothing
+        let threw = false;
+        try { o.fixed = 2; } catch (e) { threw = e instanceof TypeError; }
+        o.fresh = 3;                 // a new own property
+        const sealed = Object.preventExtensions({ a: 1 });
+        let threw2 = false;
+        try { sealed.b = 2; } catch (e) { threw2 = e instanceof TypeError; }
+        sealed.a = 9;
+        [log.join(), Object.keys(o).join(), threw, o.fixed, o.fresh, threw2, sealed.a,
+         'b' in sealed].join(' ')
+        "#,
+    );
+    assert_eq!(out, "setter 5 fresh true 1 3 true 9 false");
+}

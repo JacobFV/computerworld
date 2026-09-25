@@ -580,6 +580,18 @@ impl PropMap {
         }
         self.index = Some(ix);
     }
+    /// Adds a property known to be absent (skips the lookup `insert` makes).
+    pub fn push_absent(&mut self, k: Key, p: Prop) {
+        debug_assert!(self.find(&k).is_none());
+        let k = k.canonical();
+        if let Some(ix) = &mut self.index {
+            ix.insert(key_addr(&k), self.entries.len());
+        }
+        self.entries.push((k, p));
+        if self.index.is_none() && self.entries.len() > INDEX_AT {
+            self.rebuild();
+        }
+    }
     pub fn remove(&mut self, k: &Key) -> Option<Prop> {
         let i = self.find(k)?;
         let (_, p) = self.entries.remove(i);

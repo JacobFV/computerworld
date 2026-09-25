@@ -2779,7 +2779,15 @@ fn plain_set(obj: &Value, name: &JsStr, v: &Value) -> bool {
     }
     let id = std::rc::Rc::as_ptr(&name.0) as *const u8 as usize;
     let Some(i) = d.props.find_ident(id) else {
-        return false;
+        // A new property: added here when the object is extensible and no
+        // prototype has the name (a setter or a read-only property there
+        // would decide otherwise, which the general path handles).
+        if !d.extensible || !absent_from_prototypes(d.proto.as_ref(), id) {
+            return false;
+        }
+        d.props
+            .push_absent(Key::Str(name.clone()), Prop::data(v.clone(), ALL));
+        return true;
     };
     let p = &mut d.props.entries[i].1;
     if !p.writable() {
@@ -2792,6 +2800,30 @@ fn plain_set(obj: &Value, name: &JsStr, v: &Value) -> bool {
         }
         Slot::Accessor(..) => false,
     }
+}
+
+/// Whether no object on the prototype chain starting at `proto` has an own
+/// property with identity `id`, all of them being ordinary. False (inconclusive)
+/// for exotic prototypes and very long chains.
+#[inline]
+fn absent_from_prototypes(proto: Option<&Obj>, id: usize) -> bool {
+    let Some(first) = proto else {
+        return true;
+    };
+    let mut cur: *const Obj = first;
+    for _ in 0..64 {
+        // SAFETY: as in `plain_get_ident`, each prototype is owned by the object
+        // before it, and nothing runs during the walk.
+        let d = unsafe { &*cur }.borrow();
+        if !d.kind.ordinary_props() || d.props.find_ident(id).is_some() {
+            return false;
+        }
+        match &d.proto {
+            Some(p) => cur = p,
+            None => return true,
+        }
+    }
+    false
 }
 
 /// An element read the fast path can answer: a present element of an array
