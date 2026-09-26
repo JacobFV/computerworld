@@ -3215,8 +3215,8 @@
   "checkpoint": {
     "at_step": 150,
     "state_hash": "eb1e327a84d4ad1dde5a369b84fba3e06cdc27f26d3dd0707d015e99ff455c65",
-    "export_sha256": "2cc0ed2d83d5767b73671f88d28b8d40f3c5722dab9be56eae5faea20a436651",
-    "export_bytes": 2216275,
+    "export_sha256": "a9b821789935e2b7c883bc7b928b5693ead10a03bdaec145cca03f7664dce074",
+    "export_bytes": 2215883,
     "branch_a": [
       {
         "step": 300,
