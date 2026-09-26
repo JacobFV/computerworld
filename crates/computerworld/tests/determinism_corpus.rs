@@ -1239,6 +1239,58 @@ fn a_snapshot_taken_before_the_change_still_imports_after_it() {
     );
 }
 
+/// An application registered after a snapshot was taken: the snapshot cannot refer to it.
+struct RegisteredLater;
+impl cw_sdk::Application for RegisteredLater {
+    fn kind(&self) -> &str {
+        "registered.later"
+    }
+    fn event(
+        &self,
+        _state: &mut Value,
+        _context: &cw_sdk::AppContext,
+        _event: &cw_sdk::AppEvent,
+    ) -> cw_protocol::Result<Vec<cw_sdk::AppEffect>> {
+        Ok(Vec::new())
+    }
+    fn page(
+        &self,
+        _state: &Value,
+        _context: &cw_sdk::AppContext,
+    ) -> cw_protocol::Result<cw_protocol::Page> {
+        Ok(cw_protocol::Page {
+            version: 1,
+            title: "later".into(),
+            elements: Vec::new(),
+            theme: None,
+            lang: None,
+        })
+    }
+}
+
+#[test]
+fn a_snapshot_imports_into_an_engine_that_has_registered_more_since() {
+    // A module registered after the snapshot was taken (a new application, or a
+    // service kind the world does not use, such as the `oss-web` feature's) is no
+    // reason to refuse it: nothing in the snapshot can refer to it.
+    let scenario = &SCENARIOS[PORTABLE_SNAPSHOT_SCENARIO];
+    let stored = std::fs::read_to_string(snapshot_fixture_path()).expect("baseline snapshot");
+    let golden = load(scenario.name);
+    let definition =
+        WorldDefinition::from_json(scenario.world.json()).expect("packaged world parses");
+    let mut world = World::new(definition, scenario.seed).expect("world builds");
+    world
+        .register_application(RegisteredLater)
+        .expect("registers");
+    world
+        .import_snapshot(&stored)
+        .unwrap_or_else(|e| panic!("refused: [{}] {}", e.code, e.message));
+    assert_eq!(
+        world.state_hash().expect("state hashes"),
+        golden.checkpoint.state_hash
+    );
+}
+
 // ---------------------------------------------------------------------------
 // The negative half: what `validate_snapshot` must keep refusing
 // ---------------------------------------------------------------------------

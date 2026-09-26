@@ -585,7 +585,7 @@ impl Environment {
             sessions: self.sessions.clone(),
             next_session: self.next_session,
             journal: self.journal.clone(),
-            app_modules: self.app_registry.module_versions(),
+            app_modules: self.recorded_modules(),
             interface_modules: self.interface_versions(),
             verify_steps: self.verify_steps,
         }

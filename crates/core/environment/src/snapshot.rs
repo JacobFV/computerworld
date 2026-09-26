@@ -12,11 +12,48 @@ impl Environment {
             )
             .collect()
     }
+    /// The module versions a snapshot of this world records: every application and web
+    /// application (any of them can be launched), and the services this world defines.
+    /// A service kind the world does not use is left out, so registering another kind
+    /// (a feature such as `oss-web`, or a new service) does not change the snapshot of a
+    /// world that never uses it, as the kernel's own service modules already do not.
+    pub(super) fn recorded_modules(&self) -> BTreeMap<String, u32> {
+        let used: std::collections::BTreeSet<String> = self
+            .runtime
+            .definition()
+            .services
+            .iter()
+            .map(|s| format!("service:{}", s.kind))
+            .collect();
+        self.app_registry
+            .module_versions()
+            .into_iter()
+            .filter(|(k, _)| !k.starts_with("service:") || used.contains(k))
+            .collect()
+    }
     pub(super) fn validate_snapshot(&self, snapshot: &Snapshot) -> Result<()> {
         if snapshot.interface_modules != self.interface_versions() {
             return Err(SimError::invalid("interface module versions differ"));
         }
-        if snapshot.app_modules != self.app_registry.module_versions() {
+        // Every module the snapshot recorded must be here at the same version, except
+        // services its world does not define (snapshots written before
+        // `recorded_modules` listed the whole registry). A kind registered since does
+        // not stop an older snapshot from importing: nothing in it can refer to one.
+        // The world's own services are also checked by the kernel's restore.
+        let used: std::collections::BTreeSet<String> = snapshot
+            .kernel
+            .definition()
+            .services
+            .iter()
+            .map(|s| format!("service:{}", s.kind))
+            .collect();
+        let current = self.app_registry.module_versions();
+        let recorded_match = snapshot
+            .app_modules
+            .iter()
+            .filter(|(k, _)| !k.starts_with("service:") || used.contains(*k))
+            .all(|(k, v)| current.get(k) == Some(v));
+        if !recorded_match {
             return Err(SimError::invalid("application module versions differ"));
         }
         for session in snapshot.sessions.values() {
